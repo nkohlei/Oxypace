@@ -479,3 +479,90 @@
     user-select: none;
 }
 
+/* Native VOD Controls Bar */
+.watch-party-vod-controls {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    background: rgba(10, 10, 10, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    z-index: 90;
+}
+
+.watch-party-vod-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.watch-party-vod-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.watch-party-vod-time {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-geist-mono, monospace);
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.watch-party-vod-progress-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.watch-party-vod-seekbar {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: height 0.15s ease;
+}
+
+.watch-party-vod-seekbar:hover {
+    height: 8px;
+}
+
+.watch-party-vod-seekbar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #388bfd;
+    box-shadow: 0 0 8px rgba(56, 139, 253, 0.6);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.watch-party-vod-seekbar::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+}
+
+

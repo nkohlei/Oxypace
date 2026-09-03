@@ -632,31 +632,34 @@ const WatchPartyPlayer = () => {
 
     const onPlaying = () => {
         setIsNativePlaying(true);
-        if (isSyncingRef.current) return;
-        if (videoRef.current && isNativeVOD && !watchParty?.isPlaying) {
-            sendWatchPlay(videoRef.current.currentTime);
-        }
     };
 
     const onPaused = () => {
         setIsNativePlaying(false);
-        if (isSyncingRef.current) return;
-        if (videoRef.current && isNativeVOD && watchParty?.isPlaying) {
-            sendWatchPause(videoRef.current.currentTime);
+    };
+
+    const handleTogglePlayPause = (e) => {
+        if (e) e.stopPropagation();
+        const video = videoRef.current;
+        if (!video) return;
+        if (watchParty?.isPlaying) {
+            sendWatchPause(video.currentTime);
+        } else {
+            sendWatchPlay(video.currentTime);
         }
     };
 
-    const onSeeked = () => {
-        if (isSyncingRef.current) return;
-        if (lastProgrammaticSeekTimeRef.current !== null && videoRef.current) {
-            const diff = Math.abs(videoRef.current.currentTime - lastProgrammaticSeekTimeRef.current);
-            if (diff < 2.0) {
-                lastProgrammaticSeekTimeRef.current = null;
-                return;
+    const handleNativeScrub = (e) => {
+        e.stopPropagation();
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val)) {
+            isSyncingRef.current = true;
+            lastProgrammaticSeekTimeRef.current = val;
+            if (videoRef.current) {
+                videoRef.current.currentTime = val;
             }
-        }
-        if (videoRef.current && isNativeVOD) {
-            sendWatchSeek(videoRef.current.currentTime);
+            sendWatchSeek(val);
+            setTimeout(() => { isSyncingRef.current = false; }, 400);
         }
     };
 
@@ -682,39 +685,37 @@ const WatchPartyPlayer = () => {
             if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
                 video.play().catch(err => console.warn("[WatchParty] Auto-play resume catch:", err));
-                setTimeout(() => { isSyncingRef.current = false; }, 300);
+                setTimeout(() => { isSyncingRef.current = false; }, 400);
             } else if (!watchParty.isPlaying && !video.paused) {
                 isSyncingRef.current = true;
                 video.pause();
-                setTimeout(() => { isSyncingRef.current = false; }, 300);
+                setTimeout(() => { isSyncingRef.current = false; }, 400);
             }
 
             // 2. When Paused: Keep exactly aligned
             if (!watchParty.isPlaying) {
                 video.playbackRate = 1.0;
-                if (absDrift > 0.25) {
+                if (absDrift > 0.5) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
-                    setTimeout(() => { isSyncingRef.current = false; }, 300);
+                    setTimeout(() => { isSyncingRef.current = false; }, 400);
                 }
                 return;
             }
 
             // 3. When Playing: Continuous Smart Pacer (Discord / Teleparty Engine)
-            if (forceImmediate || absDrift > 2.0) {
+            if (forceImmediate || absDrift > 2.5) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 video.currentTime = targetTime;
                 video.playbackRate = 1.0;
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
-            } else if (drift > 0.25) {
-                // Behind: gently speed up to 1.05x to catch up seamlessly with 0 lag
+            } else if (drift > 0.3) {
                 video.playbackRate = 1.05;
-            } else if (drift < -0.25) {
-                // Ahead: gently slow down to 0.95x until room catches up
+            } else if (drift < -0.3) {
                 video.playbackRate = 0.95;
-            } else if (absDrift <= 0.12) {
+            } else if (absDrift <= 0.15) {
                 if (video.playbackRate !== 1.0) {
                     video.playbackRate = 1.0;
                 }
@@ -734,32 +735,6 @@ const WatchPartyPlayer = () => {
             if (video) video.playbackRate = 1.0;
         };
     }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD]);
-
-    // Native Video Polling for manual seek detection (distinguish user seeks from sync seeks)
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!isReady || hasError || !video || !isNativeVOD) return;
-
-        const interval = setInterval(() => {
-            try {
-                const cur = video.currentTime;
-                if (lastPolledTimeRef.current !== null && !isSyncingRef.current) {
-                    const expectedProgress = watchParty?.isPlaying ? 1.0 : 0;
-                    const diff = Math.abs(cur - lastPolledTimeRef.current - expectedProgress);
-
-                    if (diff > 3.0) {
-                        console.log(`[Watch Party] Native manual seek detected: ${lastPolledTimeRef.current}s -> ${cur}s`);
-                        sendWatchSeek(cur);
-                    }
-                }
-                lastPolledTimeRef.current = cur;
-            } catch (err) {
-                console.error("Error polling native video time:", err);
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [isReady, hasError, watchParty?.isPlaying, sendWatchSeek, isNativeVOD]);
 
     // Keep live stream playing constantly (never pause)
     useEffect(() => {
@@ -833,7 +808,6 @@ const WatchPartyPlayer = () => {
                     onDurationChange={onDurationChange}
                     onPlaying={onPlaying}
                     onPause={onPaused}
-                    onSeeked={onSeeked}
                 />
 
                 {(isLive || isStream) && !isReady && !hasError && (
@@ -844,13 +818,51 @@ const WatchPartyPlayer = () => {
 
                  {(isLive || isStream) && (
                     <>
+                        {/* Native VOD Controls (Play/Pause, Time, Scrubber) */}
+                        {isNativeVOD && (
+                            <div 
+                                className="watch-party-vod-controls"
+                                style={{
+                                    opacity: controlsVisible ? 1 : 0,
+                                    pointerEvents: controlsVisible ? 'auto' : 'none',
+                                    transition: 'opacity 0.25s ease'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button 
+                                    className="watch-party-vod-btn" 
+                                    onClick={handleTogglePlayPause}
+                                    title={watchParty?.isPlaying ? "Duraklat" : "Oynat"}
+                                >
+                                    {watchParty?.isPlaying ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
+                                </button>
+
+                                <span className="watch-party-vod-time">
+                                    {formatTime(currentTime)} / {formatTime(duration)}
+                                </span>
+
+                                <div className="watch-party-vod-progress-wrapper">
+                                    <input 
+                                        type="range"
+                                        min="0"
+                                        max={duration > 0 ? duration : 100}
+                                        step="0.5"
+                                        value={currentTime || 0}
+                                        onChange={handleNativeScrub}
+                                        className="watch-party-vod-seekbar"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {/* Collapsible Vertical Volume Control */}
                         <div 
                             className="watch-party-volume-container-modern"
                             style={{
                                 opacity: controlsVisible ? 1 : 0,
                                 pointerEvents: controlsVisible ? 'auto' : 'none',
-                                transition: 'opacity 0.25s ease'
+                                transition: 'opacity 0.25s ease',
+                                bottom: isNativeVOD ? (window.innerWidth <= 768 ? '54px' : '58px') : undefined
                             }}
                             onMouseEnter={() => window.innerWidth > 768 && setVolumeOpen(true)}
                             onMouseLeave={() => window.innerWidth > 768 && setVolumeOpen(false)}
@@ -876,11 +888,7 @@ const WatchPartyPlayer = () => {
                             <button 
                                 className="watch-party-volume-btn-modern"
                                 onClick={() => {
-                                    if (window.innerWidth <= 768) {
-                                        setLocalMuted(!localMuted);
-                                    } else {
-                                        setLocalMuted(!localMuted);
-                                    }
+                                    setLocalMuted(!localMuted);
                                 }}
                                 onDoubleClick={() => {
                                     setLocalMuted(!localMuted);
@@ -899,24 +907,27 @@ const WatchPartyPlayer = () => {
                                 gap: '8px',
                                 opacity: controlsVisible ? 1 : 0,
                                 pointerEvents: controlsVisible ? 'auto' : 'none',
-                                transition: 'opacity 0.25s ease'
+                                transition: 'opacity 0.25s ease',
+                                bottom: isNativeVOD ? (window.innerWidth <= 768 ? '54px' : '58px') : undefined
                             }}
                         >
-                            <button 
-                                className="watch-party-fullscreen-btn-modern"
-                                onClick={() => {
-                                    const video = videoRef.current;
-                                    if (video && video.duration) {
-                                        const liveEdge = video.duration - 2;
-                                        const targetTime = Math.max(0, liveEdge);
-                                        video.currentTime = targetTime;
-                                        sendWatchSeek(targetTime);
-                                    }
-                                }}
-                                title="Yayını canlı sona getir / Odadaki herkesi eşitle"
-                            >
-                                <RotateCw size={18} />
-                            </button>
+                            {!isNativeVOD && (
+                                <button 
+                                    className="watch-party-fullscreen-btn-modern"
+                                    onClick={() => {
+                                        const video = videoRef.current;
+                                        if (video && video.duration) {
+                                            const liveEdge = video.duration - 2;
+                                            const targetTime = Math.max(0, liveEdge);
+                                            video.currentTime = targetTime;
+                                            sendWatchSeek(targetTime);
+                                        }
+                                    }}
+                                    title="Yayını canlı sona getir / Odadaki herkesi eşitle"
+                                >
+                                    <RotateCw size={18} />
+                                </button>
+                            )}
                             <button 
                                 className="watch-party-fullscreen-btn-modern"
                                 onClick={toggleFullscreen}

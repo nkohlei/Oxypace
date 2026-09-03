@@ -6,6 +6,7 @@ const router = express.Router();
 router.get('/proxy', async (req, res) => {
   const targetUrl = req.query.url;
   const referer = req.query.referer;
+  const origin = req.query.origin;
 
   if (!targetUrl) {
     return res.status(400).json({ error: 'Missing "url" query parameter' });
@@ -40,6 +41,10 @@ router.get('/proxy', async (req, res) => {
       } catch (e) {
         // Ignore
       }
+    }
+
+    if (origin) {
+      originHeader = origin;
     }
 
     const headers = {
@@ -101,6 +106,7 @@ router.get('/proxy', async (req, res) => {
                 const absUrl = new URL(p1, targetUrl).href;
                 let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
                 if (referer) proxied += `&referer=${encodeURIComponent(referer)}`;
+                if (origin) proxied += `&origin=${encodeURIComponent(origin)}`;
                 return `URI="${proxied}"`;
               } catch {
                 return `URI="${p1}"`;
@@ -114,6 +120,7 @@ router.get('/proxy', async (req, res) => {
           const absUrl = new URL(trimmed, targetUrl).href;
           let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
           if (referer) proxied += `&referer=${encodeURIComponent(referer)}`;
+          if (origin) proxied += `&origin=${encodeURIComponent(origin)}`;
           return proxied;
         } catch {
           return line;
