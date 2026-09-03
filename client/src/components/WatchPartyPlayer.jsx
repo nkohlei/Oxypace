@@ -360,7 +360,7 @@ const WatchPartyPlayer = () => {
         };
     }, []);
 
-    // Load and initialize HLS/DASH dynamic libraries on stream changes
+    // Live Stream / Custom HLS Engine
     useEffect(() => {
         if (!watchParty?.url || (!isLive && !isStream) || !videoRef.current) return;
 
@@ -369,7 +369,7 @@ const WatchPartyPlayer = () => {
         const urlIsHls = isHls(watchParty.url) || watchParty.isLive;
         const urlIsDash = isDash(watchParty.url);
 
-        console.log(`[WatchPartyPlayer] Initializing live stream. URL: ${streamUrl} (useProxy: ${useProxy})`);
+        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy}, isLive: ${isLive})`);
 
         if (hlsInstanceRef.current) {
             hlsInstanceRef.current.destroy();
@@ -384,11 +384,10 @@ const WatchPartyPlayer = () => {
             try {
                 if (urlIsHls || !urlIsDash) {
                     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        // Native HLS (iOS Safari / Safari)
                         video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
                             setIsReady(true);
-                            video.play().catch(err => console.warn("Native HLS autoplay blocked", err));
+                            if (watchParty?.isPlaying) video.play().catch(err => console.warn("Native HLS autoplay blocked", err));
                         });
                         video.onerror = (e) => {
                             console.error("Native HLS playback error:", e);
@@ -400,7 +399,6 @@ const WatchPartyPlayer = () => {
                             }
                         };
                     } else {
-                        // Use Hls.js
                         const Hls = await loadHls();
                         const initialStartTime = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
                         const hls = new Hls({
@@ -409,7 +407,7 @@ const WatchPartyPlayer = () => {
                             enableWorker: true,
                             lowLatencyMode: isLive,
                             backBufferLength: 30,
-                            startPosition: isLive ? -1 : initialStartTime,
+                            startPosition: isLive ? -1 : (initialStartTime > 0 ? initialStartTime : 0),
                             liveSyncDurationCount: isLive ? 3 : undefined,
                             liveMaxLatencyDurationCount: isLive ? 10 : undefined,
                         });
@@ -422,7 +420,9 @@ const WatchPartyPlayer = () => {
                             if (isNativeVOD && initialStartTime > 0) {
                                 video.currentTime = initialStartTime;
                             }
-                            video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
+                            if (watchParty?.isPlaying) {
+                                video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
+                            }
                         });
 
                         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -451,7 +451,7 @@ const WatchPartyPlayer = () => {
                     const dashjs = await loadDash();
                     const player = dashjs.MediaPlayer().create();
                     dashPlayerRef.current = player;
-                    player.initialize(video, streamUrl, true); // Autoplay true
+                    player.initialize(video, streamUrl, true);
                     
                     player.on(dashjs.MediaPlayer.events.PLAYBACK_METADATA_LOADED, () => {
                         setIsReady(true);
@@ -489,7 +489,7 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount, useProxy, isStream]);
+    }, [watchParty?.url, reconnectCount, useProxy, isStream, watchParty?.isPlaying]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
@@ -507,7 +507,6 @@ const WatchPartyPlayer = () => {
                     const expectedProgress = watchParty?.isPlaying ? 1.0 : 0;
                     const diff = Math.abs(currentTime - lastPolledTimeRef.current - expectedProgress);
 
-                    // Only trigger manual seek if difference exceeds 3.0s (avoids false-positive buffer stalls)
                     if (diff > 3.0) {
                         console.log(`[Watch Party] User manual seek detected: ${lastPolledTimeRef.current}s -> ${currentTime}s`);
                         sendWatchSeek(currentTime);
@@ -526,9 +525,10 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
 
-        let expectedTime = watchParty.currentTime;
-        if (watchParty.isPlaying && watchParty.lastUpdated) {
-            const elapsed = (Date.now() - watchParty.lastUpdated) / 1000;
+        const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated;
+        let expectedTime = watchParty.currentTime || 0;
+        if (watchParty.isPlaying && referenceTime) {
+            const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
             expectedTime += elapsed;
         }
 
@@ -549,7 +549,7 @@ const WatchPartyPlayer = () => {
         }
 
         prevIsPlayingRef.current = watchParty.isPlaying;
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, isReady, hasError, isStream]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isStream, getServerNow]);
 
     const handlePlay = (time) => {
         if (isSyncingRef.current) return;
@@ -590,9 +590,6 @@ const WatchPartyPlayer = () => {
         }
     };
 
-    // Native Video Controls Helpers
-    const isNativeVOD = isStream && !isLive;
-
     const formatTime = (secs) => {
         if (isNaN(secs) || secs === Infinity) return '00:00';
         const h = Math.floor(secs / 3600);
@@ -603,22 +600,6 @@ const WatchPartyPlayer = () => {
         }
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
-
-    const handleMouseMove = () => {
-        setControlsVisible(true);
-        if (controlsTimeoutRef.current) {
-            clearTimeout(controlsTimeoutRef.current);
-        }
-        controlsTimeoutRef.current = setTimeout(() => {
-            setControlsVisible(false);
-        }, 3000);
-    };
-
-    useEffect(() => {
-        return () => {
-            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-        };
-    }, []);
 
     const onTimeUpdate = () => {
         if (!videoRef.current) return;
@@ -673,7 +654,7 @@ const WatchPartyPlayer = () => {
         const alignNativeVideo = (forceImmediate = false) => {
             if (!video || !watchParty) return;
 
-            const serverNow = Date.now();
+            const serverNow = getServerNow();
             const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
             const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
             const targetTime = (typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0) + elapsed;
@@ -692,10 +673,10 @@ const WatchPartyPlayer = () => {
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             }
 
-            // 2. When Paused: Keep exactly aligned
+            // 2. When Paused: Keep exactly aligned (only seek if significant discrepancy > 1.2s to prevent micro-jumps)
             if (!watchParty.isPlaying) {
                 video.playbackRate = 1.0;
-                if (absDrift > 0.5) {
+                if (absDrift > 1.2) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
@@ -722,10 +703,8 @@ const WatchPartyPlayer = () => {
             }
         };
 
-        // Align immediately on state change
         alignNativeVideo(true);
 
-        // Continuous smart pacer every 1.5 seconds
         syncInterval = setInterval(() => {
             alignNativeVideo(false);
         }, 1500);
@@ -734,7 +713,7 @@ const WatchPartyPlayer = () => {
             if (syncInterval) clearInterval(syncInterval);
             if (video) video.playbackRate = 1.0;
         };
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD, getServerNow]);
 
     // Keep live stream playing constantly (never pause)
     useEffect(() => {

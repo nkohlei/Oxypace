@@ -832,10 +832,14 @@ export const VoiceProvider = ({ children }) => {
             
             if (data.watchParty) {
                 const wp = { ...data.watchParty };
-                if (wp.isPlaying && wp.lastUpdated) {
-                    const elapsed = (Date.now() - wp.lastUpdated) / 1000;
+                const referenceTime = wp.serverTimestamp || wp.lastUpdated;
+                if (wp.isPlaying && referenceTime) {
+                    const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
                     wp.currentTime += elapsed;
                 }
+                const now = getServerNow();
+                wp.lastUpdated = now;
+                wp.serverTimestamp = now;
                 setWatchParty(wp);
             } else {
                 setWatchParty(null);
@@ -927,10 +931,12 @@ export const VoiceProvider = ({ children }) => {
                 const updatedWp = { ...wp };
                 const referenceTime = updatedWp.serverTimestamp || updatedWp.lastUpdated;
                 if (updatedWp.isPlaying && referenceTime) {
-                    const elapsed = Math.max(0, (Date.now() - referenceTime) / 1000);
+                    const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
                     updatedWp.currentTime += elapsed;
                 }
-                updatedWp.lastUpdated = Date.now();
+                const now = getServerNow();
+                updatedWp.lastUpdated = now;
+                updatedWp.serverTimestamp = now;
                 setWatchParty(updatedWp);
             } else {
                 setWatchParty(null);
@@ -938,7 +944,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleWatchPlay = ({ time, serverTimestamp, senderId }) => {
-            const now = Date.now();
+            const now = getServerNow();
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: true, 
@@ -950,7 +956,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleWatchPause = ({ time, serverTimestamp, senderId }) => {
-            const now = Date.now();
+            const now = getServerNow();
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: false, 
@@ -962,7 +968,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleWatchSeek = ({ time, serverTimestamp, senderId }) => {
-            const now = Date.now();
+            const now = getServerNow();
             setWatchParty(prev => {
                 if (!prev) return null;
                 return { 
