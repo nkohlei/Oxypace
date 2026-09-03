@@ -307,6 +307,7 @@ const WatchPartyPlayer = () => {
     const isHost = true;
     const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
     const isLive = !!watchParty?.isLive;
+    const isNativeVOD = isStream && !isLive;
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
