@@ -653,7 +653,7 @@ const WatchPartyPlayer = () => {
 
         let syncInterval = null;
 
-        const alignNativeVideo = (forceImmediate = false) => {
+        const alignNativeVideo = (isStateTrigger = false) => {
             if (!video || !watchParty) return;
 
             const serverNow = getServerNow();
@@ -675,10 +675,10 @@ const WatchPartyPlayer = () => {
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             }
 
-            // 2. When Paused: Keep exactly aligned (only seek if significant discrepancy > 1.2s to prevent micro-jumps)
+            // 2. When Paused: Keep exactly aligned (only seek if significant discrepancy > 2.0s)
             if (!watchParty.isPlaying) {
                 video.playbackRate = 1.0;
-                if (absDrift > 1.2) {
+                if (absDrift > 2.0) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
@@ -687,18 +687,23 @@ const WatchPartyPlayer = () => {
                 return;
             }
 
-            // 3. When Playing: Continuous Smart Pacer (Discord / Teleparty Engine)
-            if (forceImmediate || absDrift > 2.5) {
+            // 3. When Playing: Seamless drift correction without jumping forward on resume
+            // If it's a play transition or periodic sync with normal drift, do NOT hard seek.
+            // Only hard seek if drift is huge (> 4.0s).
+            if (absDrift > 4.0) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 video.currentTime = targetTime;
                 video.playbackRate = 1.0;
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
-            } else if (drift > 0.3) {
+            } else if (drift > 0.4) {
+                // Slightly behind master clock -> speed up imperceptibly
                 video.playbackRate = 1.05;
-            } else if (drift < -0.3) {
+            } else if (drift < -0.4) {
+                // Slightly ahead of master clock -> slow down imperceptibly
                 video.playbackRate = 0.95;
-            } else if (absDrift <= 0.15) {
+            } else if (absDrift <= 0.2) {
+                // In sync -> normal playback speed
                 if (video.playbackRate !== 1.0) {
                     video.playbackRate = 1.0;
                 }
