@@ -965,10 +965,9 @@ export const VoiceProvider = ({ children }) => {
             const now = Date.now();
             setWatchParty(prev => {
                 if (!prev) return null;
-                const elapsed = (prev.isPlaying && serverTimestamp) ? Math.max(0, (now - serverTimestamp) / 1000) : 0;
                 return { 
                     ...prev, 
-                    currentTime: time + elapsed, 
+                    currentTime: time, 
                     lastUpdated: now,
                     serverTimestamp: serverTimestamp || now,
                     lastActionBy: senderId
@@ -1491,11 +1490,12 @@ export const VoiceProvider = ({ children }) => {
             try {
                 const response = await axios.post('/api/media/validate-stream', { 
                     url, 
-                    portalId: activeRoom?.portalId 
+                    portalId: activeRoom?.portalId,
+                    isLiveHint: isLive
                 });
                 const validatedLive = response.data.isLive;
                 let streamUrl = response.data.streamUrl || url;
-                if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:')) {
+                if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:') && !streamUrl.startsWith('/api/proxy')) {
                     streamUrl = getImageUrl(streamUrl);
                 }
                 console.log(`[WatchParty] URL validated by server. Final Stream: ${streamUrl}, isLive: ${validatedLive}`);
@@ -1509,7 +1509,7 @@ export const VoiceProvider = ({ children }) => {
                 console.warn('[WatchParty] Validation failed, falling back to local detection:', err);
                 const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
                 const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
-                const detectedLive = !isStaticVideo && (isLive || cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/'));
+                const detectedLive = !isStaticVideo && isLive === true;
                 safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive });
             }
         }

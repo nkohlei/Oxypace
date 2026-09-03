@@ -742,7 +742,7 @@ router.get('/*', async (req, res) => {
  */
 router.post('/validate-stream', auth, async (req, res) => {
     try {
-        const { url, portalId } = req.body;
+        const { url, portalId, isLiveHint } = req.body;
         if (!url) {
             return res.status(400).json({ message: 'URL is required' });
         }
@@ -822,18 +822,37 @@ router.post('/validate-stream', auth, async (req, res) => {
             return res.json({ isLive: false, type: 'platform' });
         }
 
-        const isHls = cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
-        const isDash = cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
+        let targetFetchUrl = url;
+        let reqReferer = 'https://closeload.filmmakinesi.to/';
+        let reqOrigin = 'https://closeload.filmmakinesi.to';
 
-        if (!isHls && !isDash) {
-            return res.json({ isLive: false, type: 'unknown' });
+        if (url.includes('/api/proxy')) {
+            try {
+                const parsedProxy = new URL(url, 'http://localhost:5000');
+                const rawTarget = parsedProxy.searchParams.get('url');
+                if (rawTarget) targetFetchUrl = rawTarget;
+                const ref = parsedProxy.searchParams.get('referer');
+                if (ref) reqReferer = ref;
+                const orig = parsedProxy.searchParams.get('origin');
+                if (orig) reqOrigin = orig;
+            } catch (e) {}
         }
 
-        console.log(`[StreamValidator] Inspecting manifest for: ${url}`);
-        const response = await axios.get(url, {
-            timeout: 5000,
+        const targetClean = targetFetchUrl.split('?')[0].split('#')[0].toLowerCase();
+        const isHls = targetClean.endsWith('.m3u8') || targetFetchUrl.includes('.m3u8') || targetFetchUrl.includes('/hls/') || targetClean.endsWith('.txt') || targetFetchUrl.includes('master.txt');
+        const isDash = targetClean.endsWith('.mpd') || targetFetchUrl.includes('.mpd') || targetFetchUrl.includes('/dash/');
+
+        if (!isHls && !isDash) {
+            return res.json({ isLive: !!isLiveHint, type: 'unknown' });
+        }
+
+        console.log(`[StreamValidator] Inspecting manifest for target: ${targetFetchUrl}`);
+        const response = await axios.get(targetFetchUrl, {
+            timeout: 6000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Referer': reqReferer,
+                'Origin': reqOrigin,
                 'Accept': '*/*'
             }
         });
@@ -841,10 +860,14 @@ router.post('/validate-stream', auth, async (req, res) => {
         const content = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
 
         if (isHls) {
-            const hasEndList = content.includes('#EXT-X-ENDLIST');
+            const hasEndList = content.includes('#EXT-X-ENDLIST') || content.includes('#EXT-X-PLAYLIST-TYPE:VOD');
+            // If it's a master playlist pointing to sub-variants, check stream type or default to VOD if not explicit live
+            const isMaster = content.includes('#EXT-X-STREAM-INF');
+            const determinedLive = isMaster ? (isLiveHint === true) : !hasEndList;
+
             return res.json({
-                isLive: !hasEndList,
-                type: hasEndList ? 'hls_vod' : 'hls_live'
+                isLive: determinedLive,
+                type: determinedLive ? 'hls_live' : 'hls_vod'
             });
         }
 
@@ -856,12 +879,12 @@ router.post('/validate-stream', auth, async (req, res) => {
             });
         }
 
-        return res.json({ isLive: false, type: 'unknown' });
+        return res.json({ isLive: !!isLiveHint, type: 'unknown' });
     } catch (error) {
         console.error('[StreamValidator] Error validating stream:', error.message);
-        const cleanUrl = req.body.url ? req.body.url.split('?')[0].split('#')[0].toLowerCase() : '';
-        const isManifest = cleanUrl.endsWith('.m3u8') || cleanUrl.endsWith('.mpd') || req.body.url?.includes('.m3u8');
-        res.json({ isLive: isManifest, type: 'fallback', error: error.message });
+        // On error, honor caller's isLiveHint if provided (e.g. false for movie resolver) instead of forcing true
+        const determinedFallbackLive = typeof req.body?.isLiveHint === 'boolean' ? req.body.isLiveHint : false;
+        res.json({ isLive: determinedFallbackLive, type: 'fallback', error: error.message });
     }
 });
 

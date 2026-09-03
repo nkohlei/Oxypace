@@ -402,11 +402,16 @@ const WatchPartyPlayer = () => {
                     } else {
                         // Use Hls.js
                         const Hls = await loadHls();
+                        const initialStartTime = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
                         const hls = new Hls({
-                            maxMaxBufferLength: 10,
+                            maxMaxBufferLength: 30,
+                            maxBufferLength: 30,
                             enableWorker: true,
-                            lowLatencyMode: true,
-                            backBufferLength: 30
+                            lowLatencyMode: isLive,
+                            backBufferLength: 30,
+                            startPosition: isLive ? -1 : initialStartTime,
+                            liveSyncDurationCount: isLive ? 3 : undefined,
+                            liveMaxLatencyDurationCount: isLive ? 10 : undefined,
                         });
                         hlsInstanceRef.current = hls;
                         hls.loadSource(streamUrl);
@@ -414,6 +419,9 @@ const WatchPartyPlayer = () => {
                         
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
                             setIsReady(true);
+                            if (isNativeVOD && initialStartTime > 0) {
+                                video.currentTime = initialStartTime;
+                            }
                             video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
                         });
 
