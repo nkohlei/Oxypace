@@ -1619,35 +1619,26 @@ export const VoiceProvider = ({ children }) => {
             senderName: user?.profile?.displayName || user?.username || 'Sen',
             senderId: user?._id?.toString(),
         });
+    }, [activeRoom, user, safeEmit]);
 
-        setChatMessages(prev => [...prev, {
-            id: Date.now() + Math.random(),
-            senderName: user?.profile?.displayName || user?.username || 'Sen',
-            senderId: user?._id?.toString(),
-            text,
-            timestamp: new Date().toISOString(),
-            isLocal: true
-        }]);
-        playInteractionSound('message');
-    }, [activeRoom, user, playInteractionSound, safeEmit]);
-
-    // Handle incoming chat messages and history via socket
+    // Handle incoming chat messages and history via socket (Single Source of Truth)
     useEffect(() => {
         if (!socket) return;
 
         const handleChatMessage = (msgObj) => {
-            if (msgObj.senderId !== user?._id?.toString()) {
-                setChatMessages(prev => [...prev, {
-                    id: Date.now() + Math.random(),
-                    senderName: msgObj.senderName,
-                    senderId: msgObj.senderId,
-                    text: msgObj.text,
-                    timestamp: new Date().toISOString(),
-                    isLocal: false
-                }]);
-                if (!isChatOpen) {
-                    setUnreadCount(prev => prev + 1);
-                }
+            const isLocal = String(msgObj.senderId) === String(user?._id);
+            setChatMessages(prev => [...prev, {
+                id: msgObj.id || (Date.now() + Math.random()),
+                senderName: msgObj.senderName,
+                senderId: msgObj.senderId,
+                text: msgObj.text,
+                timestamp: msgObj.timestamp || new Date().toISOString(),
+                isLocal
+            }]);
+            if (!isChatOpen && !isLocal) {
+                setUnreadCount(prev => prev + 1);
+            }
+            if (!isLocal) {
                 playInteractionSound('message');
             }
         };
@@ -1655,15 +1646,15 @@ export const VoiceProvider = ({ children }) => {
         const handleChatHistory = (history) => {
             if (Array.isArray(history)) {
                 setChatMessages(history.map(msg => ({
-                    id: msg.id || Date.now() + Math.random(),
+                    id: msg.id || (Date.now() + Math.random()),
                     senderName: msg.senderName,
                     senderId: msg.senderId,
                     text: msg.text,
                     timestamp: msg.timestamp || new Date().toISOString(),
-                    isLocal: msg.senderId === user?._id?.toString()
+                    isLocal: String(msg.senderId) === String(user?._id)
                 })));
                 if (!isChatOpen) {
-                    const unread = history.filter(msg => msg.senderId !== user?._id?.toString()).length;
+                    const unread = history.filter(msg => String(msg.senderId) !== String(user?._id)).length;
                     setUnreadCount(unread);
                 }
             }
