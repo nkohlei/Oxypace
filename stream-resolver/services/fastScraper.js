@@ -309,7 +309,16 @@ function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
 async function fastResolve(targetUrl, options = {}) {
   try {
     logger.info(`[FastScraper] 🚀 Sayfa taranıyor: ${targetUrl}`);
-    const html = await fetchHtmlWithBypass(targetUrl);
+    let mainReferer = '';
+    if (targetUrl.includes('hdfilmcehennemi.mobi')) {
+      mainReferer = 'https://www.hdfilmcehennemi.nl/';
+    } else if (targetUrl.includes('closeload')) {
+      mainReferer = 'https://closeload.filmmakinesi.to/';
+    } else if (targetUrl.includes('rapidvid')) {
+      mainReferer = 'https://rapidvid.net/';
+    }
+
+    const html = await fetchHtmlWithBypass(targetUrl, mainReferer);
     if (!html) return null;
 
     // Extract Title
