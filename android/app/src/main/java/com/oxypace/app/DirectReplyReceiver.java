@@ -77,7 +77,7 @@ public class DirectReplyReceiver extends BroadcastReceiver {
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
 
-            String channelId = "oxypace_messages_v1";
+            String channelId = "oxypace_messages_v2";
 
             Person userPerson = new Person.Builder()
                 .setName("Ben")
@@ -92,8 +92,21 @@ public class DirectReplyReceiver extends BroadcastReceiver {
                 .setConversationTitle(senderName)
                 .setGroupConversation(false);
 
-            // Add our sent message
+            // Add our sent message so the thread is visible
             style.addMessage(replyText, System.currentTimeMillis(), userPerson);
+
+            // Build a contentIntent so tapping the updated notification opens the correct chat screen
+            String route = "/inbox/" + recipientId;
+            Intent openIntent = new Intent(context, MainActivity.class);
+            openIntent.setAction("OPEN_ROUTE");
+            openIntent.putExtra("route", route);
+            openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            android.app.PendingIntent contentPi = android.app.PendingIntent.getActivity(
+                context,
+                notificationId,
+                openIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+            );
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -102,7 +115,8 @@ public class DirectReplyReceiver extends BroadcastReceiver {
                 .setWhen(System.currentTimeMillis())
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setAutoCancel(true);
+                .setAutoCancel(true)
+                .setContentIntent(contentPi);  // ← tap opens the chat after reply
 
             nm.notify(notificationId, builder.build());
         } catch (Exception e) {

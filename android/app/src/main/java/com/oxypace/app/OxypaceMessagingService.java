@@ -13,8 +13,11 @@ import android.media.RingtoneManager;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.FileProvider;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+import java.io.File;
+import java.io.FileOutputStream;
 
 /**
  * Handles incoming FCM messages even when the app is completely closed.
@@ -202,8 +205,12 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 NotificationCompat.MessagingStyle.Message msg = new NotificationCompat.MessagingStyle.Message(
                     item.text, item.timestamp, senderPerson
                 );
+                // Use FileProvider content:// URI for inline image display (HTTP URLs are rejected by MessagingStyle)
                 if (item.dataUri != null && !item.dataUri.isEmpty()) {
-                    msg.setData(item.mimeType != null ? item.mimeType : "image/jpeg", android.net.Uri.parse(item.dataUri));
+                    android.net.Uri contentUri = downloadImageToContentUri(item.dataUri, senderId);
+                    if (contentUri != null) {
+                        msg.setData("image/jpeg", contentUri);
+                    }
                 }
                 style.addMessage(msg);
             }
@@ -523,7 +530,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         wakeScreen();
         createNotificationChannel();
 
-        // JOIN intent (Must be MUTABLE for activity launch from lock screen/notification action to work correctly on Android 12+)
+        // JOIN intent — opens MainActivity and navigates to the voice channel (MUTABLE required on Android 12+)
         Intent joinIntent = new Intent(this, MainActivity.class);
         joinIntent.setAction("JOIN_VOICE_CALL");
         joinIntent.putExtra("route", route);
@@ -535,15 +542,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
         );
 
-        // DECLINE intent
-        Intent declineIntent = new Intent(this, CallActionReceiver.class);
-        declineIntent.setAction("DECLINE_VOICE_CALL");
-        PendingIntent declinePI = PendingIntent.getBroadcast(
-            this, 11, declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
-        );
-
-        // Full-screen intent (over lock screen)
+        // Full-screen intent (displayed over lock screen)
         Intent fullScreenIntent = new Intent(this, MainActivity.class);
         fullScreenIntent.setAction("JOIN_VOICE_CALL");
         fullScreenIntent.putExtra("route", route);
@@ -559,8 +558,18 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             android.media.RingtoneManager.TYPE_RINGTONE
         );
 
+        int smallIcon = getSafeSmallIcon();
+
+        // v2.1.0: Single "Katıl" (Join) action only — no Decline button.
+        // Notification is NOT ongoing so user can swipe it away if they don't want to join.
+        NotificationCompat.Action joinAction = new NotificationCompat.Action.Builder(
+            smallIcon,
+            "Katıl",
+            joinPI
+        ).build();
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, VOICE_INVITE_CHANNEL_ID)
-            .setSmallIcon(getSafeSmallIcon())
+            .setSmallIcon(smallIcon)
             .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
             .setContentTitle("📞 Görüntülü Sohbet Daveti")
             .setContentText(senderName + " seni " + channelName + " odasına davet ediyor!")
@@ -569,30 +578,14 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
-            .setOngoing(true)
+            .setOngoing(false)   // Swipeable — user can dismiss without joining
             .setSound(ringtoneUri)
             .setVibrate(new long[]{0, 1000, 500, 1000})
-            .setTimeoutAfter(45_000L)
+            .setTimeoutAfter(60_000L)  // Auto-dismiss after 60 seconds
             .setFullScreenIntent(fullScreenPI, true)
-            .setContentIntent(joinPI)
-            .setDefaults(NotificationCompat.DEFAULT_LIGHTS);
-
-
-        // Use Android's dedicated CallStyle to force standard/perfect rendering of Accept/Decline buttons on all versions
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ standard CallStyle
-            builder.setStyle(
-                NotificationCompat.CallStyle.forIncomingCall(
-                    new androidx.core.app.Person.Builder().setName(senderName).build(),
-                    declinePI,
-                    joinPI
-                )
-            );
-        } else {
-            // Standard action fallback for older versions
-            builder.addAction(0, "✅ Katıl", joinPI)
-                   .addAction(0, "❌ Reddet", declinePI);
-        }
+            .setContentIntent(joinPI)  // Tapping the notification body also joins
+            .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
+            .addAction(joinAction);  // Only the Join button
 
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) {
@@ -655,6 +648,46 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
     }
 
+
+    /**
+     * Downloads an image from a remote HTTP URL, saves it to the app cache directory,
+     * and returns a FileProvider content:// URI suitable for MessagingStyle.Message.setData().
+     * Returns null if the download fails or the URL is empty.
+     */
+    private android.net.Uri downloadImageToContentUri(String imageUrl, String senderId) {
+        if (imageUrl == null || imageUrl.trim().isEmpty()) return null;
+        try {
+            java.net.URL url = new java.net.URL(imageUrl.trim());
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setDoInput(true);
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) OxypaceApp");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.connect();
+            if (conn.getResponseCode() != java.net.HttpURLConnection.HTTP_OK) return null;
+
+            java.io.InputStream is = conn.getInputStream();
+            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeStream(is);
+            is.close();
+            conn.disconnect();
+            if (bmp == null) return null;
+
+            // Save bitmap to cache directory with a stable name per sender
+            File cacheDir = getCacheDir();
+            File imgFile = new File(cacheDir, "notif_img_" + senderId.replaceAll("[^a-zA-Z0-9_-]", "_") + ".jpg");
+            FileOutputStream fos = new FileOutputStream(imgFile);
+            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, fos);
+            fos.flush();
+            fos.close();
+
+            // Return a FileProvider content URI that the notification system can read
+            return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imgFile);
+        } catch (Exception e) {
+            android.util.Log.w("OxypaceMessaging", "downloadImageToContentUri failed: " + e.getMessage());
+            return null;
+        }
+    }
 
     private static String getOrDefault(java.util.Map<String, String> map, String key, String def) {
         String val = map.get(key);
