@@ -364,7 +364,10 @@ async function fastResolve(targetUrl, options = {}) {
       if (!u || typeof u !== 'string') return;
       let clean = u.replace(/\\\//g, '/').trim();
       if (clean.startsWith('//')) clean = 'https:' + clean;
-      if (clean.startsWith('http') && !visitedEmbeds.has(clean)) {
+      if (!clean.startsWith('http')) return;
+      if (/\.(jpg|jpeg|png|webp|gif|svg|ico|css|woff2?|ttf)(\?|$)/i.test(clean)) return;
+      if (clean.includes('google') || clean.includes('doubleclick') || clean.includes('analytics') || clean.includes('facebook')) return;
+      if (!visitedEmbeds.has(clean)) {
         visitedEmbeds.add(clean);
         embedQueue.push(clean);
       }
