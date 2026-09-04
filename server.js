@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.0.7',
-        versionCode: 207,
+        latestVersion: '2.0.8',
+        versionCode: 208,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.0.7: Sesli/görüntülü oda geliştirmeleri, arayüz iyileştirmeleri ve performans optimizasyonları.',
+        changelog: 'Oxypace 2.0.8: Mobil push bildirimleri ve oda yönlendirmeleri, arka planda canlı arama kararlılığı ve HLS video oynatıcı senkronizasyonu.',
     });
 });
 
