@@ -89,6 +89,40 @@ public class MainActivity extends BridgeActivity {
             String token = call.getString("token", "");
             String serverUrl = call.getString("serverUrl", "https://oxypace.com.tr");
             DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl);
+
+            // If a valid JWT token was provided, immediately push device FCM token to backend
+            if (token != null && !token.trim().isEmpty()) {
+                final Context ctx = getContext();
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && task.getResult() != null) {
+                            String fcmToken = task.getResult();
+                            new Thread(() -> {
+                                try {
+                                    String apiUrl = serverUrl.replaceAll("/+$", "") + "/api/users/fcm-token";
+                                    java.net.URL url = new java.net.URL(apiUrl);
+                                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                                    conn.setRequestMethod("POST");
+                                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                                    conn.setDoOutput(true);
+                                    conn.setConnectTimeout(8000);
+                                    conn.setReadTimeout(8000);
+                                    String jsonBody = "{\"token\":\"" + fcmToken + "\"}";
+                                    try (java.io.OutputStream os = conn.getOutputStream()) {
+                                        os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                    }
+                                    int code = conn.getResponseCode();
+                                    android.util.Log.d("AuthSync", "Immediate FCM token sync on AuthSync: " + code);
+                                    conn.disconnect();
+                                } catch (Exception e) {
+                                    android.util.Log.w("AuthSync", "Immediate FCM token sync error: " + e.getMessage());
+                                }
+                            }).start();
+                        }
+                    });
+            }
+
             call.resolve();
         }
     }

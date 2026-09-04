@@ -138,6 +138,11 @@ export const sendPushNotification = async (tokens, payload) => {
         }
 
         const message = {
+            notification: {
+                title: notificationTitle,
+                body: notificationBody,
+                ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
+            },
             data: {
                 title: notificationTitle,
                 body: notificationBody,
@@ -154,6 +159,15 @@ export const sendPushNotification = async (tokens, payload) => {
             android: {
                 priority: 'high',
                 ttl: 24 * 60 * 60 * 1000, // 24 hours TTL
+                notification: {
+                    channelId: channelId,
+                    priority: 'max',
+                    visibility: 'public',
+                    sound: 'default',
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                    ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
+                }
             },
             tokens: tokens, // Multicast message
         };
