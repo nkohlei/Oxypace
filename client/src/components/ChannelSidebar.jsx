@@ -80,6 +80,8 @@ const ChannelSidebar = ({
         if (onlineSet.has(id)) onlineCount++;
     });
 
+    const totalMemberCount = portalMemberIds.size || portal?.membersCount || (portal?.members || []).length || 0;
+
     // Clear unread count for the active channel
     useEffect(() => {
         if (currentChannel && portal?._id) {
@@ -181,7 +183,7 @@ const ChannelSidebar = ({
                             <div className="portal-stats-row">
                                 <div className="stat-item">
                                     <UserCheck size={12} />
-                                    <span>{(portal.membersCount || portal.members?.length || 0)} Üye</span>
+                                    <span>{totalMemberCount} Üye</span>
                                 </div>
                                 <div className="stat-dot" />
                                 <div className="stat-item">

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -7,6 +8,15 @@ import { X } from 'lucide-react';
 const MembersSidebar = ({ members = [], onClose }) => {
     const { onlineUsers } = useSocket();
     const { user: currentUser } = useAuth();
+    const [, setTick] = useState(0);
+
+    // 60 saniyelik periyodik tetikleyici ile "şimdi / 5m / 1h" sürelerini canlı tut
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTick(t => t + 1);
+        }, 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     // Helper to format last active time
     const formatTimeAgo = (date) => {
@@ -17,16 +27,16 @@ const MembersSidebar = ({ members = [], onClose }) => {
         
         const diffMins = Math.floor(diffMs / 60000);
         if (diffMins < 1) return 'şimdi';
-        if (diffMins < 60) return `${diffMins}m`;
+        if (diffMins < 60) return `${diffMins}dk`;
         
         const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours}h`;
+        if (diffHours < 24) return `${diffHours}sa`;
         
         const diffDays = Math.floor(diffHours / 24);
-        if (diffDays < 30) return `${diffDays}d`;
+        if (diffDays < 30) return `${diffDays}g`;
         
         const diffMonths = Math.floor(diffDays / 30);
-        if (diffMonths < 12) return `${diffMonths}mo`;
+        if (diffMonths < 12) return `${diffMonths}ay`;
         
         return `${Math.floor(diffMonths / 12)}y`;
     };
@@ -48,18 +58,41 @@ const MembersSidebar = ({ members = [], onClose }) => {
         onlineSet.delete(currentUserId);
     }
 
-    // Filter members based on socket status
-    const online = members.filter((m) => {
-        if (!m) return false;
-        const id = extractId(m);
-        return id && onlineSet.has(id);
-    });
+    // Role priority order: owner (3) > admin (2) > member (1)
+    const getRolePriority = (m) => {
+        if (m?.role === 'owner') return 3;
+        if (m?.role === 'admin' || m?.isAdmin) return 2;
+        return 1;
+    };
 
-    const offline = members.filter((m) => {
-        if (!m) return false;
-        const id = extractId(m);
-        return id && !onlineSet.has(id);
-    });
+    // Filter and sort members based on role and online status
+    const online = members
+        .filter((m) => {
+            if (!m) return false;
+            const id = extractId(m);
+            return id && onlineSet.has(id);
+        })
+        .sort((a, b) => {
+            const roleDiff = getRolePriority(b) - getRolePriority(a);
+            if (roleDiff !== 0) return roleDiff;
+            const nameA = a.profile?.displayName || a.username || '';
+            const nameB = b.profile?.displayName || b.username || '';
+            return nameA.localeCompare(nameB);
+        });
+
+    const offline = members
+        .filter((m) => {
+            if (!m) return false;
+            const id = extractId(m);
+            return id && !onlineSet.has(id);
+        })
+        .sort((a, b) => {
+            const roleDiff = getRolePriority(b) - getRolePriority(a);
+            if (roleDiff !== 0) return roleDiff;
+            const nameA = a.profile?.displayName || a.username || '';
+            const nameB = b.profile?.displayName || b.username || '';
+            return nameA.localeCompare(nameB);
+        });
 
     return (
         <div className="members-sidebar custom-scrollbar">
@@ -79,7 +112,10 @@ const MembersSidebar = ({ members = [], onClose }) => {
                 // Safeguard against malformed data
                 if (!user || typeof user === 'string') return null;
                 const username = user.username || 'Unknown';
-                const avatar = user.avatar || user.profile?.avatar;
+                const avatar = user.profile?.avatar || user.avatar;
+                const displayName = user.profile?.displayName || username;
+                const isOwner = user.role === 'owner';
+                const isAdmin = user.role === 'admin' || user.isAdmin;
 
                 return (
                     <Link to={`/profile/${username}`} key={user._id || user.id || index} className="member-item member-link">
@@ -88,24 +124,21 @@ const MembersSidebar = ({ members = [], onClose }) => {
                                 <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
                             ) : (
                                 <div className="member-avatar-placeholder">
-                                    {username[0]?.toUpperCase() || '?'}
+                                    {displayName[0]?.toUpperCase() || username[0]?.toUpperCase() || '?'}
                                 </div>
                             )}
                             <div className="status-indicator online"></div>
                         </div>
                         <div className="member-info">
-                            <span className="member-name active-role" style={{ color: '#2ecc71' }}>
-                                {user.profile?.displayName || username}
-                                {(user.role === 'owner' || user.isAdmin) && (
-                                    <span style={{ marginLeft: '4px' }}>👑</span>
+                            <span className="member-name active-role" style={{ color: isOwner ? '#f1c40f' : isAdmin ? '#3498db' : '#2ecc71' }}>
+                                {displayName}
+                                {isOwner && (
+                                    <span style={{ marginLeft: '4px' }} title="Portal Sahibi">👑</span>
+                                )}
+                                {!isOwner && isAdmin && (
+                                    <span style={{ marginLeft: '4px' }} title="Yönetici">🛡️</span>
                                 )}
                             </span>
-                            {/* Status Message if any */}
-                            <div className="member-custom-status">
-                                <span role="img" aria-label="activity">
-                                    🎮
-                                </span>
-                            </div>
                         </div>
                     </Link>
                 );
@@ -119,7 +152,10 @@ const MembersSidebar = ({ members = [], onClose }) => {
                 if (typeof user === 'string') return null;
 
                 const username = user.username || 'Unknown';
-                const avatar = user.avatar || user.profile?.avatar;
+                const avatar = user.profile?.avatar || user.avatar;
+                const displayName = user.profile?.displayName || username;
+                const isOwner = user.role === 'owner';
+                const isAdmin = user.role === 'admin' || user.isAdmin;
 
                 return (
                     <Link to={`/profile/${username}`} key={user._id || user.id || `offline-${index}`} className="member-item offline member-link">
@@ -131,14 +167,20 @@ const MembersSidebar = ({ members = [], onClose }) => {
                                     className="member-avatar-placeholder"
                                     style={{ backgroundColor: 'var(--bg-secondary)' }}
                                 >
-                                    {username[0]?.toUpperCase() || '?'}
+                                    {displayName[0]?.toUpperCase() || username[0]?.toUpperCase() || '?'}
                                 </div>
                             )}
                         </div>
                         <div className="member-info" style={{ flex: 1 }}>
                             <div className="member-name-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span className="member-name">
-                                    {user.profile?.displayName || username}
+                                    {displayName}
+                                    {isOwner && (
+                                        <span style={{ marginLeft: '4px' }} title="Portal Sahibi">👑</span>
+                                    )}
+                                    {!isOwner && isAdmin && (
+                                        <span style={{ marginLeft: '4px' }} title="Yönetici">🛡️</span>
+                                    )}
                                 </span>
                                 {user.lastActive && (
                                     <span className="last-active-time" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>

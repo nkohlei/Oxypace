@@ -260,17 +260,43 @@ const Portal = () => {
                 setPortalTypingUsers((prev) => prev.filter((u) => String(u.userId) !== String(userId)));
             }
             setPortal((prev) => {
-                if (!prev || !prev.members) return prev;
-                const updatedMembers = prev.members.map((member) => {
-                    const memberId = member._id || member.id || member;
-                    if (String(memberId) === String(userId)) {
-                        if (typeof member === 'object' && member !== null) {
-                            return { ...member, lastActive: lastActive || new Date() };
-                        }
+                if (!prev) return prev;
+                const activeTime = lastActive || new Date();
+
+                // Update owner lastActive if matched
+                let updatedOwner = prev.owner;
+                if (prev.owner) {
+                    const ownerId = prev.owner._id || prev.owner.id || prev.owner;
+                    if (String(ownerId) === String(userId) && typeof prev.owner === 'object') {
+                        updatedOwner = { ...prev.owner, lastActive: activeTime };
                     }
-                    return member;
-                });
-                return { ...prev, members: updatedMembers };
+                }
+
+                // Update admins lastActive if matched
+                let updatedAdmins = prev.admins;
+                if (Array.isArray(prev.admins)) {
+                    updatedAdmins = prev.admins.map(admin => {
+                        const adminId = admin._id || admin.id || admin;
+                        if (String(adminId) === String(userId) && typeof admin === 'object' && admin !== null) {
+                            return { ...admin, lastActive: activeTime };
+                        }
+                        return admin;
+                    });
+                }
+
+                // Update members lastActive if matched
+                let updatedMembers = prev.members;
+                if (Array.isArray(prev.members)) {
+                    updatedMembers = prev.members.map((member) => {
+                        const memberId = member._id || member.id || member;
+                        if (String(memberId) === String(userId) && typeof member === 'object' && member !== null) {
+                            return { ...member, lastActive: activeTime };
+                        }
+                        return member;
+                    });
+                }
+
+                return { ...prev, owner: updatedOwner, admins: updatedAdmins, members: updatedMembers };
             });
         };
 
