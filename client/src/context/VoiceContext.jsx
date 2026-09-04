@@ -312,6 +312,116 @@ export const VoiceProvider = ({ children }) => {
         };
     };
 
+    // Voice Activity Detection (VAD) state & references
+    const speakingMapRef = useRef(new Map()); // identity -> boolean
+    const audioContextRef = useRef(null);
+    const audioAnalysersRef = useRef(new Map()); // identity -> { analyser, dataArray, source, cleanup }
+    const vadIntervalRef = useRef(null);
+
+    // Helper to start/stop VAD analysis for a track
+    const attachVAD = useCallback((identity, track) => {
+        if (!track || track.kind !== 'audio') return;
+
+        // Cleanup existing analyser if any
+        if (audioAnalysersRef.current.has(identity)) {
+            try {
+                const old = audioAnalysersRef.current.get(identity);
+                if (old?.cleanup) old.cleanup();
+            } catch (e) {}
+            audioAnalysersRef.current.delete(identity);
+        }
+
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+
+            if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+                audioContextRef.current = new AudioContextClass();
+            }
+            const ctx = audioContextRef.current;
+            if (ctx.state === 'suspended') {
+                ctx.resume().catch(() => {});
+            }
+
+            const stream = new MediaStream([track]);
+            const source = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.4;
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            audioAnalysersRef.current.set(identity, {
+                analyser,
+                dataArray,
+                source,
+                cleanup: () => {
+                    try {
+                        source.disconnect();
+                        analyser.disconnect();
+                    } catch (e) {}
+                }
+            });
+        } catch (err) {
+            console.warn(`[VAD] Failed to attach audio analyser for ${identity}:`, err);
+        }
+    }, []);
+
+    const detachVAD = useCallback((identity) => {
+        if (audioAnalysersRef.current.has(identity)) {
+            try {
+                const item = audioAnalysersRef.current.get(identity);
+                if (item?.cleanup) item.cleanup();
+            } catch (e) {}
+            audioAnalysersRef.current.delete(identity);
+        }
+        speakingMapRef.current.delete(identity);
+    }, []);
+
+    // Periodic VAD evaluation loop (runs every 100ms for lightweight, snappy speaking detection)
+    useEffect(() => {
+        vadIntervalRef.current = setInterval(() => {
+            if (audioAnalysersRef.current.size === 0) return;
+
+            let stateChanged = false;
+            audioAnalysersRef.current.forEach(({ analyser, dataArray }, identity) => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const averageVolume = sum / dataArray.length;
+                // Threshold of 14 captures natural speaking voice without triggering on faint background hum
+                const isNowSpeaking = averageVolume > 14;
+                const wasSpeaking = speakingMapRef.current.get(identity) || false;
+
+                if (isNowSpeaking !== wasSpeaking) {
+                    speakingMapRef.current.set(identity, isNowSpeaking);
+                    stateChanged = true;
+                }
+            });
+
+            if (stateChanged) {
+                setParticipants(prev => prev.map(p => {
+                    const active = speakingMapRef.current.get(p.identity) || false;
+                    return p.isSpeaking !== active ? { ...p, isSpeaking: active } : p;
+                }));
+            }
+        }, 100);
+
+        return () => {
+            if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
+            audioAnalysersRef.current.forEach(item => {
+                try { if (item?.cleanup) item.cleanup(); } catch (e) {}
+            });
+            audioAnalysersRef.current.clear();
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(() => {});
+            }
+        };
+    }, []);
+
     // Update derived participants array for React components
     const updateParticipantList = useCallback(() => {
         const list = [];
@@ -331,6 +441,12 @@ export const VoiceProvider = ({ children }) => {
                 localScreenTrack = screenStreamRef.current.getVideoTracks()[0] || null;
             }
 
+            if (localAudioTrack && !localState.isMuted) {
+                attachVAD(localUserId, localAudioTrack);
+            } else {
+                detachVAD(localUserId);
+            }
+
             // Camera/Avatar card
             list.push({
                 identity: localUserId,
@@ -341,7 +457,7 @@ export const VoiceProvider = ({ children }) => {
                 isMuted: localState.isMuted,
                 isCameraOn: localState.isCameraOn,
                 isScreenSharing: false,
-                isSpeaking: false,
+                isSpeaking: speakingMapRef.current.get(localUserId) || false,
                 videoTrack: makeTrackObject(localVideoTrack),
                 audioTrack: makeTrackObject(localAudioTrack),
                 screenShareTrack: null,
@@ -374,6 +490,12 @@ export const VoiceProvider = ({ children }) => {
             const rState = remoteStatesRef.current.get(p.userId) || { isMuted: true, isCameraOn: false, isScreenSharing: false };
             const rTracks = remoteTracksRef.current.get(p.userId) || {};
 
+            if (rTracks.audio && !rState.isMuted) {
+                attachVAD(p.userId, rTracks.audio);
+            } else {
+                detachVAD(p.userId);
+            }
+
             // Camera/Avatar card
             list.push({
                 identity: p.userId,
@@ -384,7 +506,7 @@ export const VoiceProvider = ({ children }) => {
                 isMuted: rState.isMuted,
                 isCameraOn: rState.isCameraOn,
                 isScreenSharing: false,
-                isSpeaking: false,
+                isSpeaking: speakingMapRef.current.get(p.userId) || false,
                 videoTrack: makeTrackObject(rTracks.video),
                 audioTrack: makeTrackObject(rTracks.audio),
                 screenShareTrack: null,
@@ -410,7 +532,7 @@ export const VoiceProvider = ({ children }) => {
         });
 
         setParticipants(list);
-    }, [user, activeRoom, localState]);
+    }, [user, activeRoom, localState, attachVAD, detachVAD]);
 
     // Enumerate devices
     const enumerateDevices = useCallback(async () => {
