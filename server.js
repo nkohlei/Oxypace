@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.0.9',
-        versionCode: 209,
+        latestVersion: '2.1.0',
+        versionCode: 210,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.0.9: Mobil anlık bildirim sistemi optimize edildi, FCM arka plan ve kilit ekranı uyandırma servisleri ve doğrudan yanıtlama kararlılığı sağlandı.',
+        changelog: 'Oxypace 2.1.0: Bildirimlerde resim önizleme desteği, bildirimden doğrudan yanıtlama ve sohbete yönlendirme, canlı oda davet optimizasyonları.',
     });
 });
 
