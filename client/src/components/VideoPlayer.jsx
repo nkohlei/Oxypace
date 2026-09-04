@@ -399,11 +399,19 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const getHlsProxyUrl = useCallback((url) => {
     if (!url) return '';
+    const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
+    const baseUrl = (isNative || import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr') : '').replace(/\/$/, '');
+
+    if (url.startsWith('/api/proxy') || url.startsWith('api/proxy')) {
+      const cleanPath = url.startsWith('/') ? url : `/${url}`;
+      return `${baseUrl}${cleanPath}`;
+    }
+
     if (url.includes('/proxy-hls') || url.startsWith('/api/media/proxy-hls') || url.startsWith('http://localhost') || url.startsWith('https://oxypac3.vercel.app')) {
       return url;
     }
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return `/api/media/proxy-hls?url=${encodeURIComponent(url)}`;
+      return `${baseUrl}/api/media/proxy-hls?url=${encodeURIComponent(url)}`;
     }
     return url;
   }, []);
@@ -419,27 +427,32 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const targetUrl = isElectron ? url : getHlsProxyUrl(url);
 
     const startPlayer = (workingReferer = '') => {
-      if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-        videoEl.src = targetUrl;
-        videoEl.load();
-        
-        const handleNativeError = () => {
-          if (videoEl.src !== url) {
-            console.warn("Native HLS proxy failed, falling back to original url:", url);
-            videoEl.removeEventListener('error', handleNativeError);
-            videoEl.src = url;
-            videoEl.load();
-          }
-        };
-        videoEl.addEventListener('error', handleNativeError);
-      } else {
-        loadHls().then((HlsLib) => {
-          if (!HlsLib.isSupported()) {
-            videoEl.src = targetUrl;
-            videoEl.load();
-            return;
-          }
-          const hls = new HlsLib({
+      loadHls().then((HlsLib) => {
+        const canUseHlsJs = HlsLib && HlsLib.isSupported();
+
+        if (!canUseHlsJs && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+          videoEl.src = targetUrl;
+          videoEl.load();
+          
+          const handleNativeError = () => {
+            if (videoEl.src !== url) {
+              console.warn("Native HLS proxy failed, falling back to original url:", url);
+              videoEl.removeEventListener('error', handleNativeError);
+              videoEl.src = url;
+              videoEl.load();
+            }
+          };
+          videoEl.addEventListener('error', handleNativeError);
+          return;
+        }
+
+        if (!canUseHlsJs) {
+          videoEl.src = targetUrl;
+          videoEl.load();
+          return;
+        }
+
+        const hls = new HlsLib({
             enableWorker: true,
             lowLatencyMode: true,
             xhrSetup: (xhr, requestUrl) => {
@@ -515,7 +528,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           videoEl.src = targetUrl;
           videoEl.load();
         });
-      }
     };
 
     if (isElectron) {

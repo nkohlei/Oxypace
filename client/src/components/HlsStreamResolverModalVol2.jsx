@@ -1,8 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 import { X, Film, Play, Link2, AlertCircle, CheckCircle2, Clipboard, ArrowRight } from 'lucide-react';
 import './HlsStreamResolverModalVol2.css';
+
+const formatPlayableUrl = (relativeOrAbsoluteUrl) => {
+  if (!relativeOrAbsoluteUrl) return '';
+  if (relativeOrAbsoluteUrl.startsWith('http://') || relativeOrAbsoluteUrl.startsWith('https://')) {
+    return relativeOrAbsoluteUrl;
+  }
+  const isNative = Capacitor.isNativePlatform();
+  const baseUrl = (isNative || import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr') : '').replace(/\/$/, '');
+  const cleanPath = relativeOrAbsoluteUrl.startsWith('/') ? relativeOrAbsoluteUrl : `/${relativeOrAbsoluteUrl}`;
+  return `${baseUrl}${cleanPath}`;
+};
 
 export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty }) => {
   const [url, setUrl] = useState('');
@@ -72,7 +84,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       const lower = trimmedUrl.toLowerCase();
       if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
         clearInterval(timerRef.current);
-        const playableUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
+        const playableUrl = formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(trimmedUrl)}`);
         const result = {
           streamUrl: trimmedUrl,
           playableStreamUrl: playableUrl,
@@ -94,7 +106,11 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       clearInterval(timerRef.current);
 
       if (response.data && response.data.success) {
-        setResolvedData(response.data);
+        const resData = {
+          ...response.data,
+          playableStreamUrl: formatPlayableUrl(response.data.playableStreamUrl)
+        };
+        setResolvedData(resData);
       } else {
         setErrorMsg(
           response.data?.error ||
@@ -119,7 +135,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
   const handleStartInRoom = () => {
     if (!resolvedData?.playableStreamUrl) return;
     if (onStartWatchParty) {
-      onStartWatchParty(resolvedData.playableStreamUrl);
+      onStartWatchParty(formatPlayableUrl(resolvedData.playableStreamUrl));
       onClose();
     }
   };

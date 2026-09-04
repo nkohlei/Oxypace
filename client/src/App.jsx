@@ -111,9 +111,106 @@ const requestNativePermissions = async () => {
         const fsStatus = await Filesystem.checkPermissions();
         if (fsStatus.publicStorage !== 'granted') {
             await Filesystem.requestPermissions();
+        }        // Register Action Types for Local Notifications (Voice Invite Join Action)
+        try {
+            await LocalNotifications.registerActionTypes({
+                types: [
+                    {
+                        id: 'VOICE_INVITE',
+                        actions: [
+                            {
+                                id: 'join',
+                                title: 'Katıl',
+                                foreground: true
+                            },
+                            {
+                                id: 'dismiss',
+                                title: 'Kapat',
+                                foreground: false,
+                                destructive: true
+                            }
+                        ]
+                    }
+                ]
+            });
+        } catch (err) {
+            console.warn('Error registering action types:', err);
         }
 
-        // Push Notifications Registration
+        // Attach listeners BEFORE calling register() so no events are lost
+        try {
+            await PushNotifications.removeAllListeners();
+        } catch (e) {}
+
+        await PushNotifications.addListener('registration', (token) => {
+            const tokenVal = token?.value || token;
+            if (!tokenVal) return;
+            localStorage.setItem('fcm_token', tokenVal);
+            const authToken = localStorage.getItem('token');
+            if (authToken) {
+                axios.post('/api/users/fcm-token', { token: tokenVal }, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                }).then(() => {
+                    console.log('✅ FCM Token synced to backend immediately on registration.');
+                }).catch(err => {
+                    console.warn('⚠️ FCM Token sync initial error:', err?.message || err);
+                });
+            }
+            window.dispatchEvent(new CustomEvent('oxypace:fcm_registered', { detail: tokenVal }));
+        });
+
+        await PushNotifications.addListener('registrationError', (error) => {
+            console.error('Push registration error: ' + JSON.stringify(error));
+        });
+
+        await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+            console.log('Push notification received in foreground:', notification);
+            
+            const imageUrl = notification.data?.picture || notification.data?.image || notification.data?.bigPicture;
+            const isVoiceInvite = notification.data?.type === 'voice_invite' || notification.title?.includes('Görüntülü');
+
+            try {
+                await LocalNotifications.schedule({
+                    notifications: [
+                        {
+                            title: notification.title || 'Yeni Bildirim',
+                            body: notification.body || '',
+                            id: Math.floor(Math.random() * 1000000),
+                            extra: notification.data || {},
+                            actionTypeId: isVoiceInvite ? 'VOICE_INVITE' : undefined,
+                            ...(imageUrl && {
+                                attachments: [
+                                    {
+                                        id: 'picture',
+                                        url: imageUrl
+                                    }
+                                ]
+                            })
+                        }
+                    ]
+                });
+            } catch (localErr) {
+                console.error('Error triggering local notification:', localErr);
+            }
+        });
+
+        // Local Notification action listener for routing when clicked in foreground
+        try {
+            await LocalNotifications.removeAllListeners();
+        } catch (e) {}
+
+        await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+            console.log('Local notification action performed:', action);
+            if (action.actionId === 'dismiss') return;
+            handleNotificationRoute(action.notification?.extra, action.actionId);
+        });
+
+        await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+            console.log('Push notification action performed:', notification);
+            handleNotificationRoute(notification.notification?.data, notification.actionId);
+        });
+
+        // Push Notifications Permission Check and Registration
         let pushStatus = await PushNotifications.checkPermissions();
         if (pushStatus.receive !== 'granted') {
             pushStatus = await PushNotifications.requestPermissions();
@@ -121,96 +218,6 @@ const requestNativePermissions = async () => {
 
         if (pushStatus.receive === 'granted') {
             await PushNotifications.register();
-            
-            // Register Action Types for Local Notifications (Voice Invite Join Action)
-            try {
-                await LocalNotifications.registerActionTypes({
-                    types: [
-                        {
-                            id: 'VOICE_INVITE',
-                            actions: [
-                                {
-                                    id: 'join',
-                                    title: 'Katıl',
-                                    foreground: true
-                                },
-                                {
-                                    id: 'dismiss',
-                                    title: 'Kapat',
-                                    foreground: false,
-                                    destructive: true
-                                }
-                            ]
-                        }
-                    ]
-                });
-            } catch (err) {
-                console.warn('Error registering action types:', err);
-            }
-
-            // Listeners
-            await PushNotifications.addListener('registration', (token) => {
-                const tokenVal = token.value;
-                localStorage.setItem('fcm_token', tokenVal);
-                const authToken = localStorage.getItem('token');
-                if (authToken) {
-                    axios.post('/api/users/fcm-token', { token: tokenVal }, {
-                        headers: { Authorization: `Bearer ${authToken}` }
-                    }).then(() => {
-                        console.log('✅ FCM Token synced to backend immediately on registration.');
-                    }).catch(err => {
-                        console.warn('⚠️ FCM Token sync initial error:', err?.message || err);
-                    });
-                }
-                window.dispatchEvent(new CustomEvent('oxypace:fcm_registered', { detail: tokenVal }));
-            });
-
-            await PushNotifications.addListener('registrationError', (error) => {
-                console.error('Push registration error: ' + JSON.stringify(error));
-            });
-
-            await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-                console.log('Push notification received in foreground:', notification);
-                
-                const imageUrl = notification.data?.picture || notification.data?.image || notification.data?.bigPicture;
-                const isVoiceInvite = notification.data?.type === 'voice_invite' || notification.title?.includes('Görüntülü');
-
-                try {
-                    await LocalNotifications.schedule({
-                        notifications: [
-                            {
-                                title: notification.title || 'Yeni Bildirim',
-                                body: notification.body || '',
-                                id: Math.floor(Math.random() * 1000000),
-                                extra: notification.data || {},
-                                actionTypeId: isVoiceInvite ? 'VOICE_INVITE' : undefined,
-                                ...(imageUrl && {
-                                    attachments: [
-                                        {
-                                            id: 'picture',
-                                            url: imageUrl
-                                        }
-                                    ]
-                                })
-                            }
-                        ]
-                    });
-                } catch (localErr) {
-                    console.error('Error triggering local notification:', localErr);
-                }
-            });
-
-            // Local Notification action listener for routing when clicked in foreground
-            await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-                console.log('Local notification action performed:', action);
-                if (action.actionId === 'dismiss') return;
-                handleNotificationRoute(action.notification?.extra, action.actionId);
-            });
-
-            await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-                console.log('Push notification action performed:', notification);
-                handleNotificationRoute(notification.notification?.data, notification.actionId);
-            });
         }
 
         // Configure Status Bar for professional look

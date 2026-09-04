@@ -167,6 +167,9 @@ public class MainActivity extends BridgeActivity {
         // Handle JOIN_VOICE_CALL intent from incoming call notification
         handleIncomingCallIntent(getIntent());
 
+        // Initialize and register all notification channels upfront so Android OS never drops notifications
+        initNotificationChannels();
+
         android.webkit.WebView webView = getBridge().getWebView();
 
         if (webView != null) {
@@ -387,5 +390,63 @@ public class MainActivity extends BridgeActivity {
                 e.printStackTrace();
             }
         }, 600);
+    }
+
+    private void initNotificationChannels() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+
+            // 1. Voice & Video Call Invites Channel
+            if (nm.getNotificationChannel(OxypaceMessagingService.VOICE_INVITE_CHANNEL_ID) == null) {
+                android.app.NotificationChannel callChannel = new android.app.NotificationChannel(
+                    OxypaceMessagingService.VOICE_INVITE_CHANNEL_ID,
+                    "Görüntülü Sohbet Davetleri",
+                    android.app.NotificationManager.IMPORTANCE_MAX
+                );
+                callChannel.setDescription("Görüntülü ve sesli sohbet odası davetleri");
+                callChannel.enableLights(true);
+                callChannel.enableVibration(true);
+                callChannel.setVibrationPattern(new long[]{0, 1000, 500, 1000});
+                callChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+                callChannel.setBypassDnd(true);
+
+                android.net.Uri ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+                android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .build();
+                callChannel.setSound(ringtoneUri, audioAttributes);
+                nm.createNotificationChannel(callChannel);
+            }
+
+            // 2. Direct Messages Channel
+            if (nm.getNotificationChannel("oxypace_messages_v2") == null) {
+                android.app.NotificationChannel msgChannel = new android.app.NotificationChannel(
+                    "oxypace_messages_v2",
+                    "Mesaj Bildirimleri",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                );
+                msgChannel.setDescription("Kişisel ve grup mesaj bildirimleri");
+                msgChannel.enableLights(true);
+                msgChannel.enableVibration(true);
+                msgChannel.setShowBadge(true);
+                nm.createNotificationChannel(msgChannel);
+            }
+
+            // 3. General App Notifications Channel
+            if (nm.getNotificationChannel("oxypace_general_notifications") == null) {
+                android.app.NotificationChannel generalChannel = new android.app.NotificationChannel(
+                    "oxypace_general_notifications",
+                    "Genel Bildirimler",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                );
+                generalChannel.setDescription("Portal paylaşımları, alıntılar ve genel sistem bildirimleri");
+                generalChannel.enableLights(true);
+                generalChannel.enableVibration(true);
+                generalChannel.setShowBadge(true);
+                nm.createNotificationChannel(generalChannel);
+            }
+        }
     }
 }

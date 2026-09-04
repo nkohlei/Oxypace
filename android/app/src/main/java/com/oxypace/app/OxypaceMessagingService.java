@@ -582,32 +582,31 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm == null) return;
 
-            // Force delete older and current cached channels to reset OS notification priority/rendering rules
-            nm.deleteNotificationChannel("oxypace_voice_invite");
-            nm.deleteNotificationChannel(VOICE_INVITE_CHANNEL_ID);
+            NotificationChannel existing = nm.getNotificationChannel(VOICE_INVITE_CHANNEL_ID);
+            if (existing == null) {
+                NotificationChannel channel = new NotificationChannel(
+                    VOICE_INVITE_CHANNEL_ID,
+                    "Görüntülü Sohbet Davetleri",
+                    NotificationManager.IMPORTANCE_MAX
+                );
+                channel.setDescription("Görüntülü sohbet odası davetleri - WhatsApp tarzı arama bildirimi");
+                channel.enableLights(true);
+                channel.enableVibration(true);
+                channel.setVibrationPattern(new long[]{0, 1000, 500, 1000});
+                channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+                channel.setBypassDnd(true);
 
-            NotificationChannel channel = new NotificationChannel(
-                VOICE_INVITE_CHANNEL_ID,
-                "Görüntülü Sohbet Davetleri",
-                NotificationManager.IMPORTANCE_MAX
-            );
-            channel.setDescription("Görüntülü sohbet odası davetleri - WhatsApp tarzı arama bildirimi");
-            channel.enableLights(true);
-            channel.enableVibration(true);
-            channel.setVibrationPattern(new long[]{0, 1000, 500, 1000});
-            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            channel.setBypassDnd(true);
+                android.net.Uri ringtoneUri = android.media.RingtoneManager.getDefaultUri(
+                    android.media.RingtoneManager.TYPE_RINGTONE
+                );
+                android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .build();
+                channel.setSound(ringtoneUri, audioAttributes);
 
-            android.net.Uri ringtoneUri = android.media.RingtoneManager.getDefaultUri(
-                android.media.RingtoneManager.TYPE_RINGTONE
-            );
-            android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
-                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                .build();
-            channel.setSound(ringtoneUri, audioAttributes);
-
-            nm.createNotificationChannel(channel);
+                nm.createNotificationChannel(channel);
+            }
         }
     }
 

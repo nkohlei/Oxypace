@@ -185,7 +185,6 @@ const isPlatformUrl = (url) => {
 
 const getProxiedUrl = (url) => {
   if (!url) return '';
-  if (!url.startsWith('http')) return url;
   
   const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
   const isElectron = typeof window !== 'undefined' && (
@@ -203,9 +202,15 @@ const getProxiedUrl = (url) => {
   const useAbsoluteUrl = isNative || isElectron;
   const baseUrl = ((!useAbsoluteUrl && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
   
+  if (url.startsWith('/api/proxy') || url.startsWith('api/proxy')) {
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${cleanPath}`;
+  }
+
+  if (!url.startsWith('http')) return url;
+
   const isHlsStream = url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest');
   if (isHlsStream) {
-    if (url.startsWith('/api/proxy')) return url;
     return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
   }
   
@@ -396,7 +401,16 @@ const WatchPartyPlayer = () => {
         const initPlayer = async () => {
             try {
                 if (urlIsHls || !urlIsDash) {
-                    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    const isNativeAndroid = typeof window !== 'undefined' && (
+                        (window.navigator?.userAgent && /Android/i.test(window.navigator.userAgent)) ||
+                        !!window.Capacitor?.isNativePlatform?.()
+                    );
+                    const Hls = await loadHls();
+                    const canUseHlsJs = Hls && Hls.isSupported();
+
+                    // On Android WebView, native canPlayType('application/vnd.apple.mpegurl') is unstable with proxies and CORS.
+                    // Prefer Hls.js whenever supported, falling back to native only on iOS/Safari.
+                    if (!canUseHlsJs && video.canPlayType('application/vnd.apple.mpegurl')) {
                         video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
                             setIsReady(true);
@@ -411,18 +425,21 @@ const WatchPartyPlayer = () => {
                                 triggerReconnect();
                             }
                         };
-                    } else {
-                        const Hls = await loadHls();
+                    } else if (canUseHlsJs) {
                         const initialStartTime = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
                         const hls = new Hls({
-                            maxMaxBufferLength: 30,
+                            maxMaxBufferLength: 60,
                             maxBufferLength: 30,
+                            maxBufferSize: 60 * 1000 * 1000,
                             enableWorker: true,
                             lowLatencyMode: isLive,
                             backBufferLength: 30,
                             startPosition: isLive ? -1 : (initialStartTime > 0 ? initialStartTime : 0),
                             liveSyncDurationCount: isLive ? 3 : undefined,
                             liveMaxLatencyDurationCount: isLive ? 10 : undefined,
+                            xhrSetup: (xhr, url) => {
+                                xhr.withCredentials = false;
+                            }
                         });
                         hlsInstanceRef.current = hls;
                         hls.loadSource(streamUrl);
