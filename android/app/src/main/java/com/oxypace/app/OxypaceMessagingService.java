@@ -124,10 +124,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         String senderId = getOrDefault(data, "senderId", "default_sender");
         String senderName = getOrDefault(data, "senderName", getOrDefault(data, "title", notif != null ? notif.getTitle() : "Oxypace"));
+        String senderUsername = getOrDefault(data, "senderUsername", "");
         String messageBody = getOrDefault(data, "body", notif != null ? notif.getBody() : "");
         String senderAvatar = getOrDefault(data, "senderAvatar", "");
         String imageUrl = getOrDefault(data, "image", getOrDefault(data, "picture", getOrDefault(data, "bigPicture", "")));
         String route = getOrDefault(data, "route", "/inbox/" + senderId);
+
+        // WhatsApp-style sender name display: e.g. "Ahmet Yılmaz (@ahmet)" or "ahmet"
+        String displaySenderTitle = senderName;
+        if (senderUsername != null && !senderUsername.trim().isEmpty() && !senderUsername.equalsIgnoreCase(senderName)) {
+            displaySenderTitle = senderName + " (@" + senderUsername.trim() + ")";
+        }
 
         long now = System.currentTimeMillis();
         java.util.List<MessageItem> list = messageHistory.computeIfAbsent(senderId, k -> new java.util.ArrayList<>());
@@ -141,7 +148,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         // Circular avatar bitmap with mini app logo badge (WhatsApp style)
-        // If sender has no avatar or network is offline, create circular canvas avatar with user initial + Oxypace badge
+        // Never show pure app icon as main avatar: always sender photo or initial + Oxypace badge
         android.graphics.Bitmap avatarBitmap = null;
         if (senderAvatar != null && !senderAvatar.trim().isEmpty()) {
             avatarBitmap = fetchCircularAvatarWithBadge(senderAvatar.trim());
@@ -156,7 +163,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         androidx.core.app.Person.Builder personBuilder = new androidx.core.app.Person.Builder()
-            .setName(senderName)
+            .setName(displaySenderTitle)
             .setKey(senderId);
 
         if (avatarIconCompat != null) {
@@ -197,7 +204,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         // WhatsApp MessagingStyle Configuration:
         // isGroupConversation is false, but setConversationTitle gives the expanded header context
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
-            .setConversationTitle(senderName)
+            .setConversationTitle(displaySenderTitle)
             .setGroupConversation(false);
 
         synchronized (list) {
@@ -236,7 +243,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         replyIntent.setAction("com.oxypace.app.ACTION_DIRECT_REPLY");
         replyIntent.putExtra("recipientId", senderId);
         replyIntent.putExtra("notificationId", notifId);
-        replyIntent.putExtra("senderName", senderName);
+        replyIntent.putExtra("senderName", displaySenderTitle);
         replyIntent.putExtra("senderAvatar", senderAvatar);
 
         PendingIntent replyPendingIntent = PendingIntent.getBroadcast(
@@ -260,7 +267,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
             .setSmallIcon(smallIcon)
             .setSubText("Oxypace")
-            .setContentTitle(senderName)
+            .setContentTitle(displaySenderTitle)
             .setContentText(messageBody)
             .setStyle(style)
             .setAutoCancel(true)
@@ -518,6 +525,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
     private void showIncomingCallNotification(java.util.Map<String, String> data) {
         String senderName  = getOrDefault(data, "senderName",  "Birisi");
+        String senderAvatar = getOrDefault(data, "senderAvatar", "");
         String channelName = getOrDefault(data, "channelName", "Görüntülü Sohbet");
         String route       = getOrDefault(data, "route",       "");
         String portalId    = getOrDefault(data, "portalId",    "");
@@ -560,7 +568,16 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         int smallIcon = getSafeSmallIcon();
 
-        // v2.1.0: Single "Katıl" (Join) action only — no Decline button.
+        // WhatsApp-style avatar: sender circular avatar with mini app logo badge
+        android.graphics.Bitmap avatarBitmap = null;
+        if (senderAvatar != null && !senderAvatar.trim().isEmpty()) {
+            avatarBitmap = fetchCircularAvatarWithBadge(senderAvatar.trim());
+        }
+        if (avatarBitmap == null) {
+            avatarBitmap = createInitialAvatarWithBadge(senderName);
+        }
+
+        // v2.1.1: Single "Katıl" (Join) action only — no Decline button.
         // Notification is NOT ongoing so user can swipe it away if they don't want to join.
         NotificationCompat.Action joinAction = new NotificationCompat.Action.Builder(
             smallIcon,
@@ -570,7 +587,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, VOICE_INVITE_CHANNEL_ID)
             .setSmallIcon(smallIcon)
-            .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
             .setContentTitle("📞 Görüntülü Sohbet Daveti")
             .setContentText(senderName + " seni " + channelName + " odasına davet ediyor!")
             .setSubText("Oxypace")
@@ -586,6 +602,10 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setContentIntent(joinPI)  // Tapping the notification body also joins
             .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
             .addAction(joinAction);  // Only the Join button
+
+        if (avatarBitmap != null) {
+            builder.setLargeIcon(avatarBitmap);
+        }
 
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) {

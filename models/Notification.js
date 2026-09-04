@@ -119,7 +119,7 @@ notificationSchema.post('save', async function (doc) {
             case 'security': body = `Hesabınıza farklı bir cihaz/IP üzerinden giriş yapıldı.`; break;
             case 'security_silent': body = doc.content || `Hesabınıza giriş yapıldı.`; break;
             case 'voice_invite':
-                title = 'Görüntülü Sohbet Daveti';
+                title = '📞 Görüntülü Sohbet Daveti';
                 body = `${senderName} seni görüntülü sohbet odasına davet ediyor!`;
                 break;
         }
@@ -135,6 +135,8 @@ notificationSchema.post('save', async function (doc) {
                 url: targetRoute,
                 route: targetRoute,
                 type: doc.type || 'notification',
+                portalId: doc.portal ? doc.portal.toString() : '',
+                channelId: doc.channel ? doc.channel.toString() : '',
                 senderId: doc.sender ? doc.sender.toString() : '',
                 senderName: senderName,
                 senderUsername: senderUsername,

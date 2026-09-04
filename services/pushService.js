@@ -137,12 +137,19 @@ export const sendPushNotification = async (tokens, payload) => {
             channelId = 'oxypace_general_notifications';
         }
 
+        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite';
+
         const message = {
-            notification: {
-                title: notificationTitle,
-                body: notificationBody,
-                ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
-            },
+            // For custom-rendered notifications (messages and voice invites), omit the top-level
+            // notification object so Android OS does not intercept with generic system tray notification.
+            // This guarantees OxypaceMessagingService.onMessageReceived() runs in foreground, background, and killed states.
+            ...(!isCustomHandled && {
+                notification: {
+                    title: notificationTitle,
+                    body: notificationBody,
+                    ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
+                }
+            }),
             data: {
                 title: notificationTitle,
                 body: notificationBody,
@@ -159,15 +166,17 @@ export const sendPushNotification = async (tokens, payload) => {
             android: {
                 priority: 'high',
                 ttl: 24 * 60 * 60 * 1000, // 24 hours TTL
-                notification: {
-                    channelId: channelId,
-                    priority: 'max',
-                    visibility: 'public',
-                    sound: 'default',
-                    defaultSound: true,
-                    defaultVibrateTimings: true,
-                    ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
-                }
+                ...(!isCustomHandled && {
+                    notification: {
+                        channelId: channelId,
+                        priority: 'max',
+                        visibility: 'public',
+                        sound: 'default',
+                        defaultSound: true,
+                        defaultVibrateTimings: true,
+                        ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
+                    }
+                })
             },
             tokens: tokens, // Multicast message
         };

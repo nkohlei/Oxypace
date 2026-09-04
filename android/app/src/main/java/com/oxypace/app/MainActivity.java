@@ -163,6 +163,8 @@ public class MainActivity extends BridgeActivity {
     }
 
     private static com.getcapacitor.Bridge bridgeInstance = null;
+    private String pendingRoute = null;
+    private boolean pendingIsJoinVoice = false;
 
     public static com.getcapacitor.Bridge getBridgeInstance() {
         return bridgeInstance;
@@ -334,6 +336,35 @@ public class MainActivity extends BridgeActivity {
                             }
                         );
                     } catch (Exception ignored) {}
+
+                    // If a notification click queued a pending route while app was cold-starting, execute it now
+                    if (pendingRoute != null && !pendingRoute.isEmpty()) {
+                        final String routeToDispatch = pendingRoute;
+                        final boolean isVoiceToDispatch = pendingIsJoinVoice;
+                        pendingRoute = null;
+                        pendingIsJoinVoice = false;
+
+                        view.postDelayed(() -> {
+                            try {
+                                String script = "(function(){ " +
+                                    "try { " +
+                                    "  sessionStorage.setItem('pending_mobile_route', '" + routeToDispatch.replace("'", "\\'") + "'); " +
+                                    "  if (" + isVoiceToDispatch + ") { " +
+                                    "    window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '" + routeToDispatch.replace("'", "\\'") + "' } })); " +
+                                    "  } " +
+                                    "  if (window.__oxypaceNavigate) { " +
+                                    "    window.__oxypaceNavigate('" + routeToDispatch.replace("'", "\\'") + "'); " +
+                                    "  } else { " +
+                                    "    window.location.href = '" + routeToDispatch.replace("'", "\\'") + "'; " +
+                                    "  } " +
+                                    "} catch(e) { window.location.href = '" + routeToDispatch.replace("'", "\\'") + "'; } " +
+                                    "})();";
+                                view.evaluateJavascript(script, null);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }, 500);
+                    }
                 }
             });
         }
@@ -461,24 +492,43 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception ignored) {}
         }
 
+        // Cache for onPageFinished cold-start delivery
+        this.pendingRoute = route;
+        this.pendingIsJoinVoice = "JOIN_VOICE_CALL".equals(action);
+
         // Navigate WebView to the route seamlessly via React Router
         final String finalRoute = route;
         final boolean isJoinVoice = "JOIN_VOICE_CALL".equals(action);
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+        
+        final Runnable dispatchNav = () -> {
             try {
-                android.webkit.WebView webView = getBridge().getWebView();
+                android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                 if (webView != null) {
                     String script = "(function(){ " +
-                        "if (" + isJoinVoice + ") { window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '" + finalRoute.replace("'", "\\'") + "' } })); } " +
-                        "if (window.__oxypaceNavigate) { window.__oxypaceNavigate('" + finalRoute.replace("'", "\\'") + "'); } " +
-                        "else { window.location.href = '" + finalRoute.replace("'", "\\'") + "'; } " +
+                        "try { " +
+                        "  sessionStorage.setItem('pending_mobile_route', '" + finalRoute.replace("'", "\\'") + "'); " +
+                        "  if (" + isJoinVoice + ") { " +
+                        "    window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '" + finalRoute.replace("'", "\\'") + "' } })); " +
+                        "  } " +
+                        "  if (window.__oxypaceNavigate) { " +
+                        "    window.__oxypaceNavigate('" + finalRoute.replace("'", "\\'") + "'); " +
+                        "  } else { " +
+                        "    window.location.href = '" + finalRoute.replace("'", "\\'") + "'; " +
+                        "  } " +
+                        "} catch(e) { window.location.href = '" + finalRoute.replace("'", "\\'") + "'; } " +
                         "})();";
                     webView.evaluateJavascript(script, null);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 600);
+        };
+
+        // Dispatch with multiple staggered attempts to guarantee reception regardless of WebView mount delay
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        handler.postDelayed(dispatchNav, 300);
+        handler.postDelayed(dispatchNav, 800);
+        handler.postDelayed(dispatchNav, 1500);
     }
 
     private void initNotificationChannels() {

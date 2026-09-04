@@ -1,0 +1,20 @@
+1:"$Sreact.fragment"
+2:I[8013,["257","static/chunks/257-a3913a9a898aeef4.js","686","static/chunks/686-84ed069c0059a347.js","13","static/chunks/13-fc04d544a539df52.js","953","static/chunks/app/blog/%5Bslug%5D/page-b9881672a3af81e5.js"],"default"]
+4:I[484,[],"OutletBoundary"]
+5:"$Sreact.suspense"
+3:T9a7,
+      <p class="lead text-lg text-zinc-300 mb-6">Fiziğin en temel ve sarsıcı sorularından biri, mikroskobik düzeydeki hareket yasalarının tamamı zaman-simetrik iken (yani denklemlerde zamanı ileri veya geri almak hiçbir şeyi değiştirmezken), makroskobik evrende zamanın neden kararlı bir şekilde tek bir yöne aktığıdır. Bu sorunun cevabı, istatistiksel mekanik ve Termodinamiğin İkinci Yasası'nda saklıdır.</p>
+      
+      <h2 class="text-2xl font-bold text-white mt-8 mb-4">Entropi: Olasılıkların Geometrisi</h2>
+      <p class="text-zinc-300 mb-4">Ludwig Boltzmann'ın formüle ettiği üzere entropi, bir sistemin makroskopik durumuna karşılık gelen mikroskobik konfigürasyonların (mikro-durumların) sayısının bir ölçüsüdür. Basit bir ifadeyle, düzenli bir durumun (düşük entropi) gerçekleşme olasılığı çok düşükken, dağınık ve düzensiz durumların (yüksek entropi) gerçekleşme olasılığı ezici derecede yüksektir. İkinci yasa, kapalı bir sistemin entropisinin zamanla her zaman artma eğiliminde olduğunu söyler.</p>
+      
+      <blockquote class="border-l-4 border-accent pl-4 my-6 italic text-zinc-400">
+        "Zaman oku, evrenin düzenden düzensizliğe doğru yaptığı kaçınılmaz istatistiksel yolculuğun makroskopik bir yansımasıdır."
+      </blockquote>
+
+      <h2 class="text-2xl font-bold text-white mt-8 mb-4">Geçmiş Hipotezi ve Kozmolojik Başlangıç</h2>
+      <p class="text-zinc-300 mb-4">Eğer evren zamanla düzensizliğe gidiyorsa, bu durum geçmişte çok daha düzenli (düşük entropili) olduğu anlamına gelir. Büyük Patlama anında evrenin neden bu kadar olağanüstü derecede düşük entropiye sahip olduğu kozmolojinin en büyük bilmecelerinden biridir. Kozmolog Sean Carroll ve meslektaşları, zamanın yönünü doğrudan bu "Geçmiş Hipotezi"ne bağlar. Eğer Big Bang sırasında madde ve yerçekimi homojen ve ultra-düşük entropili bir yapıda olmasaydı, bugün ne galaksiler, ne yıldızlar ne de zamanı deneyimleyebilecek canlı organizmalar var olabilirdi.</p>
+      
+      <p class="text-zinc-300 mb-4">Nihayetinde, kahvenize damlattığınız sütün dağılması, kırılan bir bardağın kendiliğinden birleşmemesi ve biyolojik yaşlanma süreçlerimiz, evrenin kozmik ölçekteki entropi artışıyla doğrudan ilintilidir. Zamanın akışı, yerel bir illüzyon değil, kozmosun en derin termodinamik gerçeğidir.</p>
+    0:{"rsc":["$","$1","c",{"children":[["$","$L2",null,{"initialPost":{"id":1,"title":"Zamanın Yönü: Entropi ve Termodinamiğin İkinci Yasası","slug":"zamanin-yonu-entropi-ve-termodinamigin-ikinci-yasasi","excerpt":"Neden geçmişi hatırlayıp geleceği hatırlayamıyoruz? Termodinamiğin ikinci yasası ve evrenin başlangıcındaki ultra-düşük entropi durumu, zamanın tek yönlü akışını nasıl dikte ediyor?","category":"Teorik Fizik","readTime":"12 dk okuma","date":"14 Temmuz 2026","image":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80","content":"$3"},"slug":"zamanin-yonu-entropi-ve-termodinamigin-ikinci-yasasi"}],null,["$","$L4",null,{"children":["$","$5",null,{"name":"Next.MetadataOutlet","children":"$@6"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"rhAbkq8_z9i-eAZeuGmaO"}
+6:null

@@ -311,9 +311,10 @@ const AppLayout = () => {
                 navigate(route);
             }
         };
-        const pendingRoute = sessionStorage.getItem('pending_mobile_route');
+        const pendingRoute = sessionStorage.getItem('pending_mobile_route') || localStorage.getItem('pending_mobile_route');
         if (pendingRoute) {
             sessionStorage.removeItem('pending_mobile_route');
+            localStorage.removeItem('pending_mobile_route');
             navigate(pendingRoute);
         }
         return () => {

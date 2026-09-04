@@ -806,17 +806,23 @@ const Portal = () => {
         }
     }, [portal, authLoading]);
 
-    // Reset mobileChannelOpen when navigating into or away from Portal
+    // Handle mobileChannelOpen when navigating into Portal:
+    // If URL contains channel or joinVoice, automatically open mobile channel view so the live room / channel displays immediately!
     useLayoutEffect(() => {
+        const hasChannelParam = !!urlChannel || searchParams.get('joinVoice') === 'true';
         if (setMobileChannelOpen) {
-            setMobileChannelOpen(false);
+            if (hasChannelParam) {
+                setMobileChannelOpen(true);
+            } else {
+                setMobileChannelOpen(false);
+            }
         }
         return () => {
             if (setMobileChannelOpen) {
                 setMobileChannelOpen(false);
             }
         };
-    }, [id, setMobileChannelOpen]);
+    }, [id, urlChannel, searchParams, setMobileChannelOpen]);
 
     useEffect(() => {
         // Guard: Don't fetch if we are navigating (portal data mismatches URL id)
