@@ -55,8 +55,8 @@ router.post(
   async (req, res) => {
     const { url, timeout } = req.body;
     const resolveTimeout = timeout
-      ? Math.min(parseInt(timeout, 10), 28000) // 504 Gateway Timeout'u önlemek için max 28s
-      : parseInt(process.env.DEFAULT_TIMEOUT, 10) || 25000;
+      ? Math.min(parseInt(timeout, 10), 20000) // Netlify 26s proxy limitini aşmamak için max 20s
+      : 20000;
 
     logger.info(`[Route] Yeni istek — URL: ${url} | Timeout: ${resolveTimeout}ms`);
     const startTime = Date.now();
@@ -64,25 +64,31 @@ router.post(
     // 1. Aşama: Akıllı Önbellek Kontrolü (<10ms)
     const cachedResult = cacheService.get(url);
     if (cachedResult) {
-      const resolvedIn = Date.now() - startTime;
-      logger.info(`[Route] ⚡ Önbellekten döndü (${resolvedIn}ms): ${cachedResult.streamUrl}`);
-      return res.status(200).json({
-        success: true,
-        status: 'success',
-        cached: true,
-        streamUrl:   cachedResult.streamUrl,
-        type:        cachedResult.type,
-        headers:     cachedResult.headers,
-        pageTitle:   cachedResult.pageTitle || '',
-        resolvedIn,
-        data: {
+      const lowerCached = (cachedResult.streamUrl || '').toLowerCase();
+      if (lowerCached.endsWith('.vtt') || lowerCached.endsWith('.srt') || lowerCached.includes('/vtt/')) {
+        logger.warn(`[Route] 🧹 Geçersiz önbellek girdisi (.vtt) temizlendi: ${cachedResult.streamUrl}`);
+        cacheService.del(url);
+      } else {
+        const resolvedIn = Date.now() - startTime;
+        logger.info(`[Route] ⚡ Önbellekten döndü (${resolvedIn}ms): ${cachedResult.streamUrl}`);
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          cached: true,
           streamUrl:   cachedResult.streamUrl,
           type:        cachedResult.type,
           headers:     cachedResult.headers,
           pageTitle:   cachedResult.pageTitle || '',
-          resolvedIn
-        }
-      });
+          resolvedIn,
+          data: {
+            streamUrl:   cachedResult.streamUrl,
+            type:        cachedResult.type,
+            headers:     cachedResult.headers,
+            pageTitle:   cachedResult.pageTitle || '',
+            resolvedIn
+          }
+        });
+      }
     }
 
     try {
@@ -110,8 +116,11 @@ router.post(
         });
       }
 
-      // Başarılı sonucu önbelleğe al
-      cacheService.set(url, result);
+      // Başarılı sonucu önbelleğe al (altyazı dosyalarını ASLA önbelleğe alma)
+      const lowerRes = (result.streamUrl || '').toLowerCase();
+      if (!lowerRes.endsWith('.vtt') && !lowerRes.endsWith('.srt') && !lowerRes.includes('/vtt/')) {
+        cacheService.set(url, result);
+      }
 
       // ── Başarılı ───────────────────────────────────────────────────────────
 

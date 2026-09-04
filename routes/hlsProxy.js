@@ -20,8 +20,8 @@ router.get('/proxy', async (req, res) => {
       const targetObj = new URL(targetUrl);
       if (!referer) {
         if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop')) {
-          originHeader = 'https://closeload.filmmakinesi.to';
-          refererHeader = 'https://closeload.filmmakinesi.to/';
+          originHeader = 'https://hdfilmcehennemi.mobi';
+          refererHeader = 'https://hdfilmcehennemi.mobi/';
         } else if (targetObj.hostname.includes('hdfilmcehennemi')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
@@ -58,6 +58,10 @@ router.get('/proxy', async (req, res) => {
       'Origin': originHeader,
       'Referer': refererHeader,
     };
+
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range;
+    }
 
     const response = await fetch(targetUrl, {
       headers,
@@ -132,13 +136,23 @@ router.get('/proxy', async (req, res) => {
       responseBody = textEncoder.encode(manifestText).buffer;
     }
 
-    res.set({
+    const resHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Content-Type': contentType,
-    });
+    };
+    if (response.headers.get('Content-Range')) {
+      resHeaders['Content-Range'] = response.headers.get('Content-Range');
+    }
+    if (response.headers.get('Accept-Ranges')) {
+      resHeaders['Accept-Ranges'] = response.headers.get('Accept-Ranges');
+    }
+    if (response.headers.get('Content-Length')) {
+      resHeaders['Content-Length'] = responseBody.byteLength || response.headers.get('Content-Length');
+    }
 
-    return res.status(200).send(Buffer.from(responseBody));
+    res.set(resHeaders);
+    return res.status(response.status === 206 ? 206 : 200).send(Buffer.from(responseBody));
   } catch (error) {
     return res.status(500).json({
       error: error.message || 'An error occurred while proxying request',
@@ -246,9 +260,9 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
   const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
 
   try {
-    const fetchTimeout = Math.min(parseInt(timeout, 10) || 35000, 60000);
+    const fetchTimeout = Math.min(parseInt(timeout, 10) || 20000, 21000);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), fetchTimeout + 5000);
+    const timer = setTimeout(() => controller.abort(), fetchTimeout + 1000);
 
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['x-api-key'] = apiKey;

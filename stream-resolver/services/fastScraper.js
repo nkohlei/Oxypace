@@ -19,6 +19,59 @@ const FAST_STREAM_PATTERNS = [
 ];
 
 /**
+ * Safely executes dynamic array-based obfuscator functions (e.g. HDFilmCehennemi, Rapidrame, Playmix, etc.)
+ * Matches: var <streamVar> = <funcName>(["chunk1", "chunk2", ...]);
+ */
+function decodeDynamicObfuscation(html) {
+  try {
+    const arrayCallRegex = /(?:var|let|const)\s+([a-zA-Z0-9_$]+)\s*=\s*([a-zA-Z0-9_$]+)\s*\(\s*(\[\s*(?:["'][^"']*["']\s*,\s*)*["'][^"']*["']\s*\])\s*\)\s*;/g;
+    let match;
+    const scriptTags = html.match(/<script[\s\S]*?<\/script>/gi) || [];
+
+    while ((match = arrayCallRegex.exec(html)) !== null) {
+      const varName = match[1];
+      const funcName = match[2];
+
+      for (const scriptTag of scriptTags) {
+        if (scriptTag.includes(`function ${funcName}`) || scriptTag.includes(`${funcName}=function`) || scriptTag.includes(`${funcName} = function`)) {
+          const cleanScript = scriptTag.replace(/<\/?script[^>]*>/gi, '');
+          const sandbox = {
+            atob: (str) => Buffer.from(str, 'base64').toString('binary'),
+            btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
+            Math,
+            String,
+            Array,
+            parseInt,
+            parseFloat,
+            encodeURIComponent,
+            decodeURIComponent,
+            window: {},
+            document: { location: { protocol: 'https:' } },
+            location: { protocol: 'https:', hostname: '' },
+          };
+
+          try {
+            vm.createContext(sandbox);
+            const execCode = `${cleanScript}\n__stream_res__ = (typeof ${varName} !== 'undefined') ? ${varName} : null;`;
+            vm.runInContext(execCode, sandbox, { timeout: 1500 });
+            const decoded = sandbox.__stream_res__;
+            if (decoded && typeof decoded === 'string' && (decoded.startsWith('http://') || decoded.startsWith('https://'))) {
+              logger.info(`[FastScraper] 🔓 VM dinamik dizi çözücü ile akış bulundu (${funcName}): ${decoded}`);
+              return decoded;
+            }
+          } catch (e) {
+            // continue trying other script tags
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.debug(`[FastScraper] VM dinamik dizi decode hatası: ${err.message}`);
+  }
+  return null;
+}
+
+/**
  * Safely executes the embed page's exact dc_ decoder function in an isolated Node.js VM context
  */
 function decodeDcFunction(html) {
@@ -220,7 +273,7 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
 function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
   let referer = targetUrl;
   
-  if (streamUrl.includes('cdnimages') || streamUrl.includes('playmix') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
+  if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || streamUrl.includes('playmix') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
     referer = 'https://hdfilmcehennemi.mobi/';
   } else if (streamUrl.includes('closeload') || embedUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
     referer = 'https://closeload.filmmakinesi.to/';
@@ -263,8 +316,8 @@ async function fastResolve(targetUrl, options = {}) {
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-    // 1. Check dc_ decoded stream in main page
-    const decodedFromMain = decodeDcFunction(html);
+    // 1. Check dynamic obfuscated or dc_ decoded stream in main page
+    const decodedFromMain = decodeDynamicObfuscation(html) || decodeDcFunction(html);
     if (decodedFromMain) {
       const { referer, origin } = determineRefererAndOrigin(decodedFromMain, '', targetUrl);
       return {
@@ -284,7 +337,9 @@ async function fastResolve(targetUrl, options = {}) {
       const match = html.match(pattern);
       if (match && match[1]) {
         const streamUrl = match[1].replace(/\\/g, '');
-        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4')) {
+        const lowerStream = streamUrl.toLowerCase();
+        const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
+        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle) {
           logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
           const { referer, origin } = determineRefererAndOrigin(streamUrl, '', targetUrl);
           return {
@@ -318,95 +373,74 @@ async function fastResolve(targetUrl, options = {}) {
     // 2.5 Extract Fullhdfilmizlesene specific player sources (scx / atom / rapidvid)
     if (targetUrl.includes('fullhdfilmizlesene')) {
       const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
-      if (rapidMatch) {
-        addEmbed(rapidMatch[0]);
-      } else {
+      if (rapidMatch) addEmbed(rapidMatch[0]);
+
+      const scxMatch = html.match(/var\s+scx\s*=\s*({[\s\S]*?});/);
+      if (scxMatch) {
         try {
-          logger.info('[FastScraper] ⚡ Fullhdfilmizlesene dinamik oynatıcı iframe yakalanıyor...');
-          const rapidIfr = await browserPool.acquire(async (browser) => {
-            let context = null;
-            try {
-              context = await browser.newContext({
-                ignoreHTTPSErrors: true,
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-              });
-              const page = await context.newPage();
-              let rapidUrl = null;
-              page.on('response', (res) => {
-                const u = res.url();
-                if (u.includes('rapidvid.net/vx/') || u.includes('/ifr/vod/')) {
-                  rapidUrl = u;
-                }
-              });
-              await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
-              await page.waitForTimeout(1000);
-              const playBtn = await page.$('.video-play-button, #play-video, .player-alan');
-              if (playBtn) await playBtn.click().catch(() => {});
-              for (let i = 0; i < 15; i++) {
-                if (rapidUrl) break;
-                await page.waitForTimeout(200);
+          const scx = JSON.parse(scxMatch[1]);
+          for (const key of Object.keys(scx)) {
+            const sx = scx[key]?.sx;
+            if (sx) {
+              const allUrls = [...(sx.p || []), ...(sx.t || [])];
+              for (const u of allUrls) {
+                if (typeof u === 'string' && u.startsWith('http')) addEmbed(u);
               }
-              return rapidUrl;
-            } finally {
-              if (context) await context.close().catch(() => {});
             }
-          });
-          if (rapidIfr) {
-            logger.info(`[FastScraper] 🎯 Dynamic RapidVid iframe yakalandı: ${rapidIfr}`);
-            addEmbed(rapidIfr);
           }
         } catch (e) {
-          logger.debug(`[FastScraper] Fullhd dynamic iframe capture error: ${e.message}`);
+          // ignore
         }
       }
     }
 
-    // 3. Extract Embed iFrames and Players
-    let ifrMatch;
-    const ifrRegex = /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi;
-    while ((ifrMatch = ifrRegex.exec(html)) !== null) {
-      addEmbed(ifrMatch[1]);
+    // Standard iframe src extraction
+    const iframeMatches = [...html.matchAll(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi)];
+    for (const [, src] of iframeMatches) {
+      if (src && !src.includes('google') && !src.includes('ads') && !src.includes('recaptcha') && !src.includes('facebook')) {
+        addEmbed(src);
+      }
     }
 
-    const embedScriptRegex = /(https?:\/\/[^"'\s\\<>{}|^`[\]]+(?:embed|video|player|watch|url|fireplayer|hiveplayer|play|rapidvid|vx)\/[^"'\s\\<>{}|^`[\]]*)/gi;
-    let sMatch;
-    while ((sMatch = embedScriptRegex.exec(html)) !== null) {
-      addEmbed(sMatch[1]);
+    // Additional data-src / data-url / embedUrl attribute extraction
+    const dataSrcMatches = [...html.matchAll(/data-(?:src|url|embed)=["']([^"']+)["']/gi)];
+    for (const [, src] of dataSrcMatches) {
+      addEmbed(src);
+    }
+
+    // Specific player script embed extraction (e.g. video_url = "...")
+    const scriptEmbedMatches = [...html.matchAll(/(?:video_url|player_url|embed_url|iframe_url)\s*[:=]\s*["']([^"']+)["']/gi)];
+    for (const [, src] of scriptEmbedMatches) {
+      addEmbed(src);
     }
 
     logger.info(`[FastScraper] Bulunan embed URL sayısı: ${embedQueue.length}`);
 
-    while (embedQueue.length > 0) {
-      const embedUrl = embedQueue.shift();
-      if (embedUrl.includes('google') || embedUrl.includes('doubleclick') || embedUrl.includes('recaptcha') || embedUrl.includes('facebook') || embedUrl.includes('wargamings')) continue;
-
+    // 4. Scan each embed URL
+    for (const embedUrl of embedQueue) {
       logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
       const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
       if (!embedHtml) continue;
 
-      // Check RapidVid _p8 decrypter
-      const rapidStream = decodeRapidVid(embedHtml);
-      if (rapidStream) {
-        const { referer, origin } = determineRefererAndOrigin(rapidStream, embedUrl, targetUrl);
-        return {
-          streamUrl: rapidStream,
-          type: rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
-          headers: {
-            referer,
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            origin,
-          },
-          pageTitle: pageTitle || 'Film / Dizi Akışı',
-        };
+      // Check RapidVid custom payload
+      if (embedUrl.includes('rapidvid') || embedHtml.includes('_p8')) {
+        const rapidStream = decodeRapidVid(embedHtml);
+        if (rapidStream) {
+          const { referer, origin } = determineRefererAndOrigin(rapidStream, embedUrl, targetUrl);
+          return {
+            streamUrl: rapidStream,
+            type: rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
+            headers: {
+              referer,
+              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              origin,
+            },
+            pageTitle: pageTitle || 'Film / Dizi Akışı',
+          };
+        }
       }
 
-      // Check nested iframes inside embed (e.g. HivePlayer -> FirePlayer / VidMoly)
-      const nestedIfr = embedHtml.match(/src\s*=\s*["'](https?:\\\/\\\/[^"']+|https?:\/\/[^"']+)["']/i);
-      if (nestedIfr) {
-        addEmbed(nestedIfr[1]);
-      }
-
-      // Check Video API endpoints (FirePlayer, Matrudas, BeezPlayer, JW Custom endpoints)
+      // Check ?do=getVideo API for players that support it
       if (embedUrl.includes('/video/') || embedUrl.includes('/fireplayer/') || embedUrl.includes('/player/')) {
         try {
           const getVideoUrl = embedUrl.split('?')[0] + '?do=getVideo';
@@ -438,8 +472,8 @@ async function fastResolve(targetUrl, options = {}) {
         }
       }
 
-      // Check dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix Player)
-      const decodedStream = decodeDcFunction(embedHtml);
+      // Check dynamic obfuscation or dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix, HDFilmCehennemi)
+      const decodedStream = decodeDynamicObfuscation(embedHtml) || decodeDcFunction(embedHtml);
       if (decodedStream) {
         const { referer, origin } = determineRefererAndOrigin(decodedStream, embedUrl, targetUrl);
         return {
@@ -460,7 +494,7 @@ async function fastResolve(targetUrl, options = {}) {
         const unpacked = unpackJs(embedHtml);
         if (unpacked) {
           searchCorpus += '\n' + unpacked;
-          const unpackedDecoded = decodeDcFunction(unpacked);
+          const unpackedDecoded = decodeDynamicObfuscation(unpacked) || decodeDcFunction(unpacked);
           if (unpackedDecoded) {
             const { referer, origin } = determineRefererAndOrigin(unpackedDecoded, embedUrl, targetUrl);
             return {
@@ -482,7 +516,9 @@ async function fastResolve(targetUrl, options = {}) {
         const match = searchCorpus.match(pattern);
         if (match && match[1]) {
           const streamUrl = match[1].replace(/\\/g, '');
-          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4')) {
+          const lowerStream = streamUrl.toLowerCase();
+          const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
+          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
             const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
 
@@ -500,23 +536,30 @@ async function fastResolve(targetUrl, options = {}) {
         }
       }
 
-      // Check JSON sources config e.g. "file": "https://..."
-      const fileMatch = searchCorpus.match(/["']file["']\s*:\s*["'](https?:[^"']+)["']/i);
-      if (fileMatch && fileMatch[1]) {
-        const streamUrl = fileMatch[1].replace(/\\/g, '');
-        if (!streamUrl.includes('blank.mp4') && !streamUrl.endsWith('.js')) {
-          logger.info(`[FastScraper] ✅ JSON config içinden akış bulundu: ${streamUrl}`);
-          const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
-          return {
-            streamUrl,
-            type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
-            headers: {
-              referer,
-              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              origin,
-            },
-            pageTitle: pageTitle || 'Film / Dizi Akışı',
-          };
+      // Check JSON sources config e.g. "file": "https://..." (strictly ignoring .vtt, .srt, image subtitles)
+      const fileMatches = [...searchCorpus.matchAll(/["']file["']\s*:\s*["'](https?:[^"']+)["']/gi)];
+      for (const fMatch of fileMatches) {
+        if (fMatch && fMatch[1]) {
+          const streamUrl = fMatch[1].replace(/\\/g, '');
+          const lowerStream = streamUrl.toLowerCase();
+          const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/') || lowerStream.includes('/subtitles/');
+          const isImage = /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(lowerStream);
+          const isIgnored = lowerStream.includes('blank.mp4') || lowerStream.endsWith('.js') || isSubtitle || isImage;
+
+          if (!isIgnored) {
+            logger.info(`[FastScraper] ✅ JSON config içinden akış bulundu: ${streamUrl}`);
+            const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
+            return {
+              streamUrl,
+              type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
+              headers: {
+                referer,
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                origin,
+              },
+              pageTitle: pageTitle || 'Film / Dizi Akışı',
+            };
+          }
         }
       }
     }

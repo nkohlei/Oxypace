@@ -98,10 +98,14 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       }
 
       // 2. Call backend Stream Resolver Microservice bridge
-      const response = await axios.post('/api/resolve-stream', {
-        url: trimmedUrl,
-        timeout: 45000,
-      });
+      const response = await axios.post(
+        '/api/resolve-stream',
+        {
+          url: trimmedUrl,
+          timeout: 20000,
+        },
+        { timeout: 23000 }
+      );
 
       clearInterval(timerRef.current);
 
@@ -124,6 +128,10 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         setErrorMsg('Bu film sayfasında otomatik video ayrıştırılamadı. Sitedeki oynatıcının üzerine sağ tıklayıp "Çerçeve Bağlantısını Kopyala" (Embed URL) yaparak doğrudan oynatıcı linkini yapıştırabilirsiniz.');
       } else if (err.code === 'ECONNABORTED' || err.response?.status === 408) {
         setErrorMsg('Sayfa yanıt vermedi (zaman aşımı). Lütfen bağlantıyı kontrol edin.');
+      } else if (err.response?.status === 504) {
+        setErrorMsg('Ağ geçidi zaman aşımına uğradı (504). Hedef site yoğun veya engelli olabilir. Lütfen sayfayı yenileyip tekrar deneyin veya oynatıcı embed linkini yapıştırın.');
+      } else if (err.response?.status === 403) {
+        setErrorMsg('Hedef sunucu erişimi reddetti (403). Lütfen oynatıcı çerçevesini kopyalayarak deneyin.');
       } else {
         setErrorMsg(serverErr || 'Çözümleme sırasında bir hata oluştu. Lütfen bağlantıyı kontrol edin.');
       }
