@@ -468,6 +468,12 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         String senderName  = getOrDefault(data, "senderName",  "Birisi");
         String channelName = getOrDefault(data, "channelName", "Görüntülü Sohbet");
         String route       = getOrDefault(data, "route",       "");
+        String portalId    = getOrDefault(data, "portalId",    "");
+        String channelId   = getOrDefault(data, "channelId",   "");
+
+        if ((route == null || route.isEmpty()) && !portalId.isEmpty() && !channelId.isEmpty()) {
+            route = "/portal/" + portalId + "?channel=" + channelId + "&joinVoice=true";
+        }
 
         wakeScreen();
         createNotificationChannel();
@@ -476,6 +482,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         Intent joinIntent = new Intent(this, MainActivity.class);
         joinIntent.setAction("JOIN_VOICE_CALL");
         joinIntent.putExtra("route", route);
+        joinIntent.putExtra("portalId", portalId);
+        joinIntent.putExtra("channelId", channelId);
         joinIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent joinPI = PendingIntent.getActivity(
             this, 12, joinIntent,
@@ -494,6 +502,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         Intent fullScreenIntent = new Intent(this, MainActivity.class);
         fullScreenIntent.setAction("JOIN_VOICE_CALL");
         fullScreenIntent.putExtra("route", route);
+        fullScreenIntent.putExtra("portalId", portalId);
+        fullScreenIntent.putExtra("channelId", channelId);
         fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent fullScreenPI = PendingIntent.getActivity(
             this, 22, fullScreenIntent,

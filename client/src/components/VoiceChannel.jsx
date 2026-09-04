@@ -380,6 +380,33 @@ const VoiceChannel = ({ portalId, channelId, channelName }) => {
     const handleLeave = () => { disconnectFromChannel(); setFocusedIdentity(null); };
     const handleFocus = (identity) => setFocusedIdentity(focusedIdentity === identity ? null : identity);
 
+    // Auto-join if user arrived via incoming call notification or "Katıl" action
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const shouldJoinFromUrl = params.get('joinVoice') === 'true';
+        const pendingAutoJoin = sessionStorage.getItem('pending_auto_join_voice');
+
+        if ((shouldJoinFromUrl || pendingAutoJoin) && !isConnected && !isConnecting && portalId && channelId) {
+            sessionStorage.removeItem('pending_auto_join_voice');
+            console.log("📞 Auto-connecting to voice channel from invitation action:", channelId);
+            connectToChannel(portalId, channelId);
+        }
+    }, [portalId, channelId, isConnected, isConnecting, connectToChannel]);
+
+    // Listen for direct native oxypace:join_voice intent while already in portal
+    useEffect(() => {
+        const handleNativeJoin = (e) => {
+            console.log("📞 Native join voice event received:", e?.detail);
+            if (portalId && channelId && !isConnected && !isConnecting) {
+                connectToChannel(portalId, channelId);
+            }
+        };
+        window.addEventListener('oxypace:join_voice', handleNativeJoin);
+        return () => {
+            window.removeEventListener('oxypace:join_voice', handleNativeJoin);
+        };
+    }, [portalId, channelId, isConnected, isConnecting, connectToChannel]);
+
     useEffect(() => {
         if (watchParty?.url) {
             setFocusedIdentity(null);

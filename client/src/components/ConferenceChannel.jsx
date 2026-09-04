@@ -239,12 +239,29 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
 
     useEffect(() => {
         const queryParams = new URLSearchParams(window.location.search);
-        if (queryParams.get('joinVoice') === 'true' && portalId && channelId && !isConnected && !isConnecting) {
+        const shouldJoinFromUrl = queryParams.get('joinVoice') === 'true';
+        const pendingAutoJoin = sessionStorage.getItem('pending_auto_join_voice');
+
+        if ((shouldJoinFromUrl || pendingAutoJoin) && portalId && channelId && !isConnected && !isConnecting) {
+            sessionStorage.removeItem('pending_auto_join_voice');
             connectToChannel(portalId, channelId);
             // Clean up the URL search params so it doesn't rejoin endlessly if page reloads
             const newUrl = window.location.pathname + window.location.search.replace(/&?joinVoice=true/g, '').replace(/\?$/, '');
             window.history.replaceState(null, '', newUrl);
         }
+    }, [portalId, channelId, isConnected, isConnecting, connectToChannel]);
+
+    useEffect(() => {
+        const handleNativeJoin = (e) => {
+            console.log("📞 Native join voice event received in ConferenceChannel:", e?.detail);
+            if (portalId && channelId && !isConnected && !isConnecting) {
+                connectToChannel(portalId, channelId);
+            }
+        };
+        window.addEventListener('oxypace:join_voice', handleNativeJoin);
+        return () => {
+            window.removeEventListener('oxypace:join_voice', handleNativeJoin);
+        };
     }, [portalId, channelId, isConnected, isConnecting, connectToChannel]);
 
     useEffect(() => {

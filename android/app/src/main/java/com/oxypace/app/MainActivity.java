@@ -128,10 +128,17 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private static com.getcapacitor.Bridge bridgeInstance = null;
+
+    public static com.getcapacitor.Bridge getBridgeInstance() {
+        return bridgeInstance;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(DownloaderPlugin.class);
         super.onCreate(savedInstanceState);
+        bridgeInstance = getBridge();
 
         // Programmatically configure window to display over lock screen and turn screen on (Android 8.0 / 27+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
@@ -241,6 +248,14 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onDestroy() {
+        if (bridgeInstance == getBridge()) {
+            bridgeInstance = null;
+        }
+        super.onDestroy();
+    }
+
+    @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, android.content.res.Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         try {
@@ -263,6 +278,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onPause() {
+        super.onPause();
         if (CallManager.isInCall) {
             // Keep WebView active in background when in a call (WhatsApp style background persistence)
             try {
@@ -273,13 +289,12 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } else {
-            super.onPause();
         }
     }
 
     @Override
     public void onStop() {
+        super.onStop();
         if (CallManager.isInCall) {
             // Keep WebView active in background when in a call
             try {
@@ -290,8 +305,6 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } else {
-            super.onStop();
         }
     }
 
@@ -305,7 +318,7 @@ public class MainActivity extends BridgeActivity {
 
     /**
      * If the intent carries a JOIN_VOICE_CALL, OPEN_ROUTE action, or deep link URI,
-     * navigate the WebView to the target route.
+     * navigate the WebView to the target route using React Router (__oxypaceNavigate).
      */
     private void handleIncomingCallIntent(android.content.Intent intent) {
         if (intent == null) return;
@@ -330,7 +343,7 @@ public class MainActivity extends BridgeActivity {
                         android.webkit.WebView webView = getBridge().getWebView();
                         if (webView != null) {
                             webView.evaluateJavascript(
-                                "window.location.href = '" + targetRoute.replace("'", "\\'") + "';",
+                                "(function(){ if (window.__oxypaceNavigate) { window.__oxypaceNavigate('" + targetRoute.replace("'", "\\'") + "'); } else { window.location.href = '" + targetRoute.replace("'", "\\'") + "'; } })();",
                                 null
                             );
                         }
@@ -356,20 +369,23 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception ignored) {}
         }
 
-        // Navigate WebView to the route after bridge is ready
+        // Navigate WebView to the route seamlessly via React Router
         final String finalRoute = route;
+        final boolean isJoinVoice = "JOIN_VOICE_CALL".equals(action);
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             try {
                 android.webkit.WebView webView = getBridge().getWebView();
                 if (webView != null) {
-                    webView.evaluateJavascript(
-                        "window.location.href = '" + finalRoute.replace("'", "\\'") + "';",
-                        null
-                    );
+                    String script = "(function(){ " +
+                        "if (" + isJoinVoice + ") { window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '" + finalRoute.replace("'", "\\'") + "' } })); } " +
+                        "if (window.__oxypaceNavigate) { window.__oxypaceNavigate('" + finalRoute.replace("'", "\\'") + "'); } " +
+                        "else { window.location.href = '" + finalRoute.replace("'", "\\'") + "'; } " +
+                        "})();";
+                    webView.evaluateJavascript(script, null);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 800);
+        }, 600);
     }
 }

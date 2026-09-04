@@ -150,8 +150,19 @@ const requestNativePermissions = async () => {
 
             // Listeners
             await PushNotifications.addListener('registration', (token) => {
-                // Save token locally to be sent when user logs in
-                localStorage.setItem('fcm_token', token.value);
+                const tokenVal = token.value;
+                localStorage.setItem('fcm_token', tokenVal);
+                const authToken = localStorage.getItem('token');
+                if (authToken) {
+                    axios.post('/api/users/fcm-token', { token: tokenVal }, {
+                        headers: { Authorization: `Bearer ${authToken}` }
+                    }).then(() => {
+                        console.log('✅ FCM Token synced to backend immediately on registration.');
+                    }).catch(err => {
+                        console.warn('⚠️ FCM Token sync initial error:', err?.message || err);
+                    });
+                }
+                window.dispatchEvent(new CustomEvent('oxypace:fcm_registered', { detail: tokenVal }));
             });
 
             await PushNotifications.addListener('registrationError', (error) => {
@@ -193,43 +204,12 @@ const requestNativePermissions = async () => {
             await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
                 console.log('Local notification action performed:', action);
                 if (action.actionId === 'dismiss') return;
-
-                const data = action.notification?.extra;
-                if (data) {
-                    const { type, targetId, route, url } = data;
-                    const destination = route || url;
-                    if (destination) {
-                        window.location.href = destination;
-                    } else if (type === 'message' && targetId) {
-                        window.location.href = `/inbox/${targetId}`;
-                    } else if (type === 'quote' && targetId) {
-                        window.location.href = `/post/${targetId}`;
-                    } else if (type === 'security') {
-                        window.location.href = `/settings?tab=security`;
-                    } else if (type === 'friend_request') {
-                        window.location.href = `/notifications`;
-                    }
-                }
+                handleNotificationRoute(action.notification?.extra, action.actionId);
             });
 
             await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
                 console.log('Push notification action performed:', notification);
-                const data = notification.notification?.data;
-                if (data) {
-                    const { type, targetId, route, url } = data;
-                    const destination = route || url;
-                    if (destination) {
-                        window.location.href = destination;
-                    } else if (type === 'message' && targetId) {
-                        window.location.href = `/inbox/${targetId}`;
-                    } else if (type === 'quote' && targetId) {
-                        window.location.href = `/post/${targetId}`;
-                    } else if (type === 'security') {
-                        window.location.href = `/settings?tab=security`;
-                    } else if (type === 'friend_request') {
-                        window.location.href = `/notifications`;
-                    }
-                }
+                handleNotificationRoute(notification.notification?.data, notification.actionId);
             });
         }
 
@@ -264,12 +244,76 @@ const PageLoader = () => (
     </div>
 );
 
-// Redundant MobileHeader removed
+export const safeMobileNavigate = (destination) => {
+    if (!destination) return;
+    try {
+        if (typeof window !== 'undefined' && window.__oxypaceNavigate) {
+            window.__oxypaceNavigate(destination);
+        } else {
+            sessionStorage.setItem('pending_mobile_route', destination);
+            window.location.href = destination;
+        }
+    } catch (e) {
+        window.location.href = destination;
+    }
+};
 
+const handleNotificationRoute = (data, actionId) => {
+    if (!data) return;
+    const { type, targetId, route, url, portalId, channelId } = data;
+    let destination = route || url;
+
+    if (actionId === 'join' || type === 'voice_invite') {
+        if (!destination && portalId && channelId) {
+            destination = `/portal/${portalId}?channel=${channelId}&joinVoice=true`;
+        }
+        if (destination) {
+            sessionStorage.setItem('pending_auto_join_voice', JSON.stringify({
+                portalId: portalId || null,
+                channelId: channelId || null,
+                timestamp: Date.now()
+            }));
+            window.dispatchEvent(new CustomEvent('oxypace:join_voice', {
+                detail: { route: destination, portalId, channelId }
+            }));
+        }
+    }
+
+    if (destination) {
+        safeMobileNavigate(destination);
+    } else if (type === 'message' && targetId) {
+        safeMobileNavigate(`/inbox/${targetId}`);
+    } else if (type === 'quote' && targetId) {
+        safeMobileNavigate(`/post/${targetId}`);
+    } else if (type === 'security') {
+        safeMobileNavigate(`/settings?tab=security`);
+    } else if (type === 'friend_request') {
+        safeMobileNavigate(`/notifications`);
+    }
+};
 
 // Separate layout component to use useUI hook
 const AppLayout = () => {
     useRealtimeSync(); // Global websocket synchronization
+    const navigate = useNavigate();
+
+    // Register React router navigation handler for native Android bridge
+    useEffect(() => {
+        window.__oxypaceNavigate = (route) => {
+            if (route) {
+                navigate(route);
+            }
+        };
+        const pendingRoute = sessionStorage.getItem('pending_mobile_route');
+        if (pendingRoute) {
+            sessionStorage.removeItem('pending_mobile_route');
+            navigate(pendingRoute);
+        }
+        return () => {
+            delete window.__oxypaceNavigate;
+        };
+    }, [navigate]);
+
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen, setMobileChannelOpen } = useUI();
     const { user, token, updateUser } = useAuth();
     const userId = user?._id;
@@ -722,18 +766,32 @@ const MaintenanceGate = ({ children }) => {
 const AppContent = () => {
     const { loading, token } = useAuth();
 
-    // Send FCM Token to Backend if available and logged in
+    // Send FCM Token to Backend whenever token is available and in native platform
     useEffect(() => {
-        if (token && Capacitor.isNativePlatform()) {
-            const fcmToken = localStorage.getItem('fcm_token');
-            if (fcmToken) {
-                import('axios').then(({ default: axios }) => {
-                    axios.post('/api/users/fcm-token', { token: fcmToken }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    }).catch(err => console.error('FCM Token sync error:', err));
+        if (!Capacitor.isNativePlatform()) return;
+
+        const syncFcmToken = (fcmToken) => {
+            const tokenToSync = fcmToken || localStorage.getItem('fcm_token');
+            if (tokenToSync && token) {
+                axios.post('/api/users/fcm-token', { token: tokenToSync }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(() => {
+                    console.log('✅ FCM Token synced with authenticated user.');
+                }).catch(err => {
+                    console.warn('⚠️ FCM Token sync error:', err?.message || err);
                 });
             }
-        }
+        };
+
+        syncFcmToken();
+
+        const handleFcmRegistered = (e) => {
+            syncFcmToken(e.detail);
+        };
+        window.addEventListener('oxypace:fcm_registered', handleFcmRegistered);
+        return () => {
+            window.removeEventListener('oxypace:fcm_registered', handleFcmRegistered);
+        };
     }, [token]);
 
     if (loading) {
@@ -765,7 +823,7 @@ function App() {
                             token = url.split('?token=')[1];
                         }
                         if (token) {
-                            window.location.href = `/auth/process?token=${token}`;
+                            safeMobileNavigate(`/auth/process?token=${token}`);
                         }
                     } catch (e) {
                         console.error('Deep link error:', e);
@@ -774,7 +832,7 @@ function App() {
                     try {
                         const path = url.replace('oxypace://', '/');
                         if (path) {
-                            window.location.href = path;
+                            safeMobileNavigate(path);
                         }
                     } catch (e) {
                         console.error('Custom scheme deep link error:', e);

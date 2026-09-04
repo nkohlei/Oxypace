@@ -7,8 +7,8 @@ android {
         applicationId "com.oxypace.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 207
-        versionName "2.0.7"
+        versionCode 208
+        versionName "2.0.8"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Directed sub-properties to control bundling of art files
@@ -86,14 +86,14 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-// Enforce Pure React Portal SPA index.html before building APK
+// Ensure valid SPA index.html exists in android assets
 tasks.register('enforcePortalSpaAssets') {
     doLast {
-        def spaHtmlFile = file("../../client/dist/spa-index.html")
+        def mobileIndex = file("../../client/dist-mobile/index.html")
         def targetIndex = file("src/main/assets/public/index.html")
-        if (spaHtmlFile.exists() && targetIndex.exists()) {
-            targetIndex.text = spaHtmlFile.text
-            println "✅ [Gradle] Enforced Pure React Portal SPA in android assets index.html"
+        if (mobileIndex.exists() && targetIndex.exists()) {
+            targetIndex.text = mobileIndex.text
+            println "✅ [Gradle] Enforced Mobile SPA in android assets index.html"
         }
     }
 }

@@ -1796,6 +1796,25 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, toggleMicrophone, toggleCamera, toggleScreenShare, disconnectFromChannel]);
 
+    // Handle Android Native Notification Action Events (Hangup / Mic toggle from sticky notification)
+    useEffect(() => {
+        const handleRemoteLeave = () => {
+            console.log("[Native Action] oxypace:leave_call triggered from Android notification");
+            disconnectFromChannel();
+        };
+        const handleRemoteToggleMic = () => {
+            console.log("[Native Action] oxypace:toggle_mic triggered from Android notification");
+            toggleMicrophone();
+        };
+
+        window.addEventListener('oxypace:leave_call', handleRemoteLeave);
+        window.addEventListener('oxypace:toggle_mic', handleRemoteToggleMic);
+        return () => {
+            window.removeEventListener('oxypace:leave_call', handleRemoteLeave);
+            window.removeEventListener('oxypace:toggle_mic', handleRemoteToggleMic);
+        };
+    }, [disconnectFromChannel, toggleMicrophone]);
+
     const value = {
         room: { localParticipant: { identity: user?._id?.toString() } },
         activeRoom,

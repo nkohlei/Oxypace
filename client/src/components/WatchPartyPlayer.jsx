@@ -7,7 +7,18 @@ import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import './WatchPartyPlayer.css';
 
-const loadHls = () => {
+const loadHls = async () => {
+  if (window.Hls) return window.Hls;
+  try {
+    const mod = await import('hls.js');
+    const HlsLib = mod.default || mod;
+    if (HlsLib) {
+      window.Hls = HlsLib;
+      return HlsLib;
+    }
+  } catch (e) {
+    console.warn('Bundled hls.js dynamic import failed, attempting CDN fallback:', e);
+  }
   return new Promise((resolve, reject) => {
     if (window.Hls) {
       resolve(window.Hls);
