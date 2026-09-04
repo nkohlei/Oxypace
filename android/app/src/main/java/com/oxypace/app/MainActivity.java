@@ -164,11 +164,66 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(CallManager.class);
         registerPlugin(AuthSync.class);
 
+        // Android 13+ (API 33+) Runtime Notification Permission Prompt
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                androidx.core.app.ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                    1001
+                );
+            }
+        }
+
+        // Proactively fetch and sync FCM token on startup
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        String currentToken = task.getResult();
+                        android.util.Log.d("MainActivity", "Proactive FCM Token obtained: " + currentToken);
+                        android.content.SharedPreferences prefs = getSharedPreferences("OxypaceAuthPrefs", Context.MODE_PRIVATE);
+                        prefs.edit().putString("fcm_token", currentToken).apply();
+
+                        String jwtToken = prefs.getString("jwt_token", null);
+                        String serverUrl = prefs.getString("server_url", "https://oxypace.com.tr");
+                        if (jwtToken != null && !jwtToken.isEmpty()) {
+                            new Thread(() -> {
+                                try {
+                                    String apiUrl = serverUrl.replaceAll("/+$", "") + "/api/users/fcm-token";
+                                    java.net.URL url = new java.net.URL(apiUrl);
+                                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                                    conn.setRequestMethod("POST");
+                                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                                    conn.setRequestProperty("Authorization", "Bearer " + jwtToken);
+                                    conn.setDoOutput(true);
+                                    conn.setConnectTimeout(8000);
+                                    conn.setReadTimeout(8000);
+                                    String jsonBody = "{\"token\":\"" + currentToken + "\"}";
+                                    try (java.io.OutputStream os = conn.getOutputStream()) {
+                                        os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                    }
+                                    int code = conn.getResponseCode();
+                                    android.util.Log.d("MainActivity", "Proactive FCM Token sync HTTP: " + code);
+                                    conn.disconnect();
+                                } catch (Exception syncEx) {
+                                    android.util.Log.w("MainActivity", "Proactive FCM sync failed: " + syncEx.getMessage());
+                                }
+                            }).start();
+                        }
+                    }
+                });
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Could not fetch FCM token proactively: " + e.getMessage());
+        }
+
         // Handle JOIN_VOICE_CALL intent from incoming call notification
         handleIncomingCallIntent(getIntent());
 
         // Initialize and register all notification channels upfront so Android OS never drops notifications
         initNotificationChannels();
+
 
         android.webkit.WebView webView = getBridge().getWebView();
 

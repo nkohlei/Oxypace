@@ -32,14 +32,63 @@ router.post('/fcm-token', protect, async (req, res) => {
                 user.fcmTokens.push(token);
             }
             await user.save();
+            console.log(`📱 [FCM] Saved token for user @${user.username} (Total tokens: ${user.fcmTokens.length})`);
         }
 
-        res.json({ message: 'FCM token saved' });
+        res.json({ message: 'FCM token saved', tokenCount: user?.fcmTokens?.length || 0 });
     } catch (err) {
         console.error('FCM token save error:', err);
         res.status(500).json({ message: 'Failed to save FCM token' });
     }
 });
+
+// @route   POST /api/users/test-push
+// @desc    Send an immediate test push notification to the logged-in user's devices
+// @access  Private
+router.post('/test-push', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('username fcmTokens fcmToken settings profile');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const tokens = user.fcmTokens && user.fcmTokens.length > 0
+            ? user.fcmTokens
+            : (user.fcmToken ? [user.fcmToken] : []);
+
+        if (tokens.length === 0) {
+            return res.status(400).json({
+                message: 'Cihazınıza ait FCM bildirim token\'ı bulunamadı. Lütfen uygulamayı açıp bildirim izni verdiğinizden emin olun.',
+                tokenCount: 0
+            });
+        }
+
+        const { sendPushNotification } = await import('../services/pushService.js');
+        const testPayload = {
+            title: 'Oxypace Test Bildirimi',
+            body: `Selam @${user.username}! Bildirim sistemin ve mobil uygulaman kusursuz çalışıyor 🚀`,
+            data: {
+                type: 'message',
+                senderId: user._id.toString(),
+                senderName: 'Oxypace Sistem',
+                senderUsername: 'oxypace',
+                route: '/inbox',
+                url: '/inbox',
+                isTest: 'true'
+            }
+        };
+
+        const result = await sendPushNotification(tokens, testPayload);
+        res.json({
+            message: 'Test bildirimi başarıyla gönderildi!',
+            tokenCount: tokens.length,
+            successCount: result?.successCount || 0,
+            failureCount: result?.failureCount || 0,
+        });
+    } catch (err) {
+        console.error('Test push error:', err);
+        res.status(500).json({ message: 'Test bildirimi gönderilemedi: ' + err.message });
+    }
+});
+
 
 // @route   POST /api/users/follow/:id
 // @desc    Follow/Unfollow user or cancel request

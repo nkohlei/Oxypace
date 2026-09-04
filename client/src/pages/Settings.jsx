@@ -46,6 +46,8 @@ const Settings = () => {
     const [loading, setLoading] = useState(true);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [testPushLoading, setTestPushLoading] = useState(false);
+    const [testPushStatus, setTestPushStatus] = useState(null);
 
     // Profile Form State
     const [profileForm, setProfileForm] = useState({
@@ -1422,6 +1424,67 @@ const Settings = () => {
                             />
                             <span className="slider"></span>
                         </label>
+                    </div>
+
+                    {/* Test Push Notification Diagnostic Tool */}
+                    <div className="settings-item-row" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '10px', padding: '12px 16px', marginTop: '8px' }}>
+                        <div className="settings-item-info">
+                            <span className="settings-item-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#818cf8' }}>
+                                🔔 Mobil Cihaz Bildirim Testi
+                            </span>
+                            <span className="settings-item-desc" style={{ fontSize: '12px' }}>
+                                Bu butona basarak telefonunuza anında bir test bildirimi fırlatabilir, bildirim sisteminizin çalıştığını doğrulayabilirsiniz.
+                            </span>
+                            {testPushStatus && (
+                                <span style={{
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    marginTop: '4px',
+                                    display: 'block',
+                                    color: testPushStatus.type === 'success' ? '#22c55e' : '#ef4444'
+                                }}>
+                                    {testPushStatus.message}
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            disabled={testPushLoading}
+                            onClick={async () => {
+                                setTestPushLoading(true);
+                                setTestPushStatus(null);
+                                try {
+                                    const res = await axios.post('/api/users/test-push');
+                                    setTestPushStatus({
+                                        type: 'success',
+                                        message: `✅ ${res.data.message} (${res.data.tokenCount} cihaz hedeflendi)`
+                                    });
+                                } catch (err) {
+                                    setTestPushStatus({
+                                        type: 'error',
+                                        message: err.response?.data?.message || '❌ Test bildirimi gönderilemedi.'
+                                    });
+                                } finally {
+                                    setTestPushLoading(false);
+                                }
+                            }}
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: testPushLoading ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                                opacity: testPushLoading ? 0.7 : 1,
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)'
+                            }}
+                        >
+                            {testPushLoading ? 'Gönderiliyor...' : '📲 Bildirimi Test Et'}
+                        </button>
                     </div>
                 </div>
             </div>

@@ -239,8 +239,10 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0)
         );
 
+        int smallIcon = getSafeSmallIcon();
+
         NotificationCompat.Action replyAction = new NotificationCompat.Action.Builder(
-            R.drawable.ic_notification,
+            smallIcon,
             "Yanıtla",
             replyPendingIntent
         )
@@ -249,7 +251,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         .build();
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(smallIcon)
             .setSubText("Oxypace")
             .setContentTitle(senderName)
             .setContentText(messageBody)
@@ -272,8 +274,25 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             builder.setLargeIcon(avatarBitmap);
         }
 
-        nm.notify(notifId, builder.build());
+        try {
+            nm.notify(notifId, builder.build());
+            android.util.Log.d("OxypaceMessaging", "Notification successfully posted for sender: " + senderName);
+        } catch (Exception notifEx) {
+            android.util.Log.e("OxypaceMessaging", "Failed to post message notification: " + notifEx.getMessage(), notifEx);
+            // Fallback with minimal standard notification in case custom style fails
+            try {
+                NotificationCompat.Builder fallback = new NotificationCompat.Builder(this, channelId)
+                    .setSmallIcon(smallIcon)
+                    .setContentTitle(senderName)
+                    .setContentText(messageBody)
+                    .setContentIntent(pi)
+                    .setAutoCancel(true)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH);
+                nm.notify(notifId, fallback.build());
+            } catch (Exception ignored) {}
+        }
     }
+
 
     private android.graphics.Bitmap createInitialAvatarWithBadge(String name) {
         try {
@@ -449,7 +468,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(getSafeSmallIcon())
             .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
             .setContentTitle(title != null ? title : "Oxypace")
             .setContentText(body != null ? body : "")
@@ -483,7 +502,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             }
         }
 
-        nm.notify((int) System.currentTimeMillis(), builder.build());
+        try {
+            nm.notify((int) System.currentTimeMillis(), builder.build());
+        } catch (Exception e) {
+            android.util.Log.e("OxypaceMessaging", "Failed to notify standard system notification: " + e.getMessage());
+        }
     }
 
     private void showIncomingCallNotification(java.util.Map<String, String> data) {
@@ -532,13 +555,12 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
         );
 
-
         android.net.Uri ringtoneUri = android.media.RingtoneManager.getDefaultUri(
             android.media.RingtoneManager.TYPE_RINGTONE
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, VOICE_INVITE_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(getSafeSmallIcon())
             .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
             .setContentTitle("📞 Görüntülü Sohbet Daveti")
             .setContentText(senderName + " seni " + channelName + " odasına davet ediyor!")
@@ -554,6 +576,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setFullScreenIntent(fullScreenPI, true)
             .setContentIntent(joinPI)
             .setDefaults(NotificationCompat.DEFAULT_LIGHTS);
+
 
         // Use Android's dedicated CallStyle to force standard/perfect rendering of Accept/Decline buttons on all versions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -636,6 +659,18 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
     private static String getOrDefault(java.util.Map<String, String> map, String key, String def) {
         String val = map.get(key);
         return (val != null && !val.isEmpty()) ? val : def;
+    }
+
+    private int getSafeSmallIcon() {
+        try {
+            int iconRes = getResources().getIdentifier("ic_notification", "drawable", getPackageName());
+            if (iconRes != 0) return iconRes;
+        } catch (Exception ignored) {}
+        try {
+            int statRes = getResources().getIdentifier("ic_stat_name", "drawable", getPackageName());
+            if (statRes != 0) return statRes;
+        } catch (Exception ignored) {}
+        return android.R.drawable.ic_dialog_info;
     }
 
     @Override
