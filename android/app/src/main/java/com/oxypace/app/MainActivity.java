@@ -430,7 +430,16 @@ public class MainActivity extends BridgeActivity {
                 msgChannel.setDescription("Kişisel ve grup mesaj bildirimleri");
                 msgChannel.enableLights(true);
                 msgChannel.enableVibration(true);
+                msgChannel.setVibrationPattern(new long[]{0, 250, 200, 250});
                 msgChannel.setShowBadge(true);
+                msgChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+
+                android.net.Uri defaultSoundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+                android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+                    .build();
+                msgChannel.setSound(defaultSoundUri, audioAttributes);
                 nm.createNotificationChannel(msgChannel);
             }
 
@@ -445,6 +454,13 @@ public class MainActivity extends BridgeActivity {
                 generalChannel.enableLights(true);
                 generalChannel.enableVibration(true);
                 generalChannel.setShowBadge(true);
+
+                android.net.Uri defaultSoundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+                android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .build();
+                generalChannel.setSound(defaultSoundUri, audioAttributes);
                 nm.createNotificationChannel(generalChannel);
             }
         }

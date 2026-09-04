@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
@@ -55,10 +55,15 @@
         <service
             android:name=".OxypaceMessagingService"
             android:exported="false">
-            <intent-filter>
+            <intent-filter android:priority="9999">
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- Remove Capacitor plugin's default MessagingService so it does NOT intercept or drop FCM messages when app is closed -->
+        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />
 
         <!-- BroadcastReceiver: handles Reddet (Decline) action button -->
         <receiver

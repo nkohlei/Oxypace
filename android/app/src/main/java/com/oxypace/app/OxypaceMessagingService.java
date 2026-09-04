@@ -9,6 +9,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.PowerManager;
+import android.media.RingtoneManager;
+import android.media.AudioAttributes;
+import android.net.Uri;
 import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
@@ -94,13 +97,25 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
+        wakeScreen();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 channelId, "Mesaj Bildirimleri", NotificationManager.IMPORTANCE_HIGH
             );
+            channel.setDescription("Kişisel ve grup mesaj bildirimleri");
             channel.enableLights(true);
             channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 250, 200, 250});
             channel.setShowBadge(true);
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+
+            Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+                .build();
+            channel.setSound(defaultSoundUri, audioAttributes);
+
             nm.createNotificationChannel(channel);
         }
 
@@ -414,6 +429,13 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             );
             channel.enableLights(true);
             channel.enableVibration(true);
+            channel.setShowBadge(true);
+            Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build();
+            channel.setSound(defaultSoundUri, audioAttributes);
             nm.createNotificationChannel(channel);
         }
 
@@ -619,6 +641,51 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
     @Override
     public void onNewToken(String token) {
         super.onNewToken(token);
-        // Token refresh is handled by @capacitor/push-notifications plugin
+        if (token == null || token.trim().isEmpty()) return;
+
+        android.util.Log.d("OxypaceMessaging", "Firebase onNewToken received: " + token);
+
+        // 1. Forward to Capacitor plugin if active
+        try {
+            com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin.onNewToken(token);
+        } catch (Throwable ignored) {}
+
+        // 2. Persist locally in SharedPreferences
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences("OxypaceAuthPrefs", Context.MODE_PRIVATE);
+            prefs.edit().putString("fcm_token", token).apply();
+
+            // 3. If user is logged in (JWT token available in SharedPreferences), sync immediately to backend
+            String jwtToken = prefs.getString("jwt_token", null);
+            String serverUrl = prefs.getString("server_url", "https://oxypace.com.tr");
+            if (jwtToken != null && !jwtToken.isEmpty()) {
+                new Thread(() -> {
+                    try {
+                        String apiUrl = serverUrl.replaceAll("/+$", "") + "/api/users/fcm-token";
+                        java.net.URL url = new java.net.URL(apiUrl);
+                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                        conn.setRequestProperty("Authorization", "Bearer " + jwtToken);
+                        conn.setDoOutput(true);
+                        conn.setConnectTimeout(10000);
+                        conn.setReadTimeout(10000);
+
+                        String jsonBody = "{\"token\":\"" + token + "\"}";
+                        try (java.io.OutputStream os = conn.getOutputStream()) {
+                            os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        }
+
+                        int code = conn.getResponseCode();
+                        android.util.Log.d("OxypaceMessaging", "Background FCM token sync HTTP response: " + code);
+                        conn.disconnect();
+                    } catch (Exception e) {
+                        android.util.Log.w("OxypaceMessaging", "Background FCM token sync failed: " + e.getMessage());
+                    }
+                }).start();
+            }
+        } catch (Exception e) {
+            android.util.Log.w("OxypaceMessaging", "Failed to save onNewToken: " + e.getMessage());
+        }
     }
 }
