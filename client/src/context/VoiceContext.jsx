@@ -1527,11 +1527,87 @@ export const VoiceProvider = ({ children }) => {
 
     const setAudioInput = useCallback(async (deviceId) => {
         setSelectedAudioInput(deviceId);
-    }, []);
+        if (!activeRoom || !localStreamRef.current) return;
+        try {
+            console.log(`[WebRTC] Switching microphone input device to: ${deviceId}`);
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: deviceId ? { exact: deviceId } : undefined,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+            const newAudioTrack = newStream.getAudioTracks()[0];
+            if (!newAudioTrack) return;
+
+            const oldAudioTrack = localStreamRef.current.getAudioTracks()[0];
+            if (oldAudioTrack) {
+                oldAudioTrack.stop();
+                localStreamRef.current.removeTrack(oldAudioTrack);
+            }
+            newAudioTrack.enabled = !localState.isMuted;
+            localStreamRef.current.addTrack(newAudioTrack);
+
+            // Replace track on all active peer connections
+            peerConnectionsRef.current.forEach(pc => {
+                const senders = pc.getSenders();
+                const audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
+                                    pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'audio')?.sender;
+                if (audioSender) {
+                    audioSender.replaceTrack(newAudioTrack).catch(err => {
+                        console.warn("[WebRTC] Error replacing audio track on peer connection:", err);
+                    });
+                }
+            });
+
+            updateParticipantList();
+        } catch (err) {
+            console.error("Failed to switch audio input device:", err);
+        }
+    }, [activeRoom, localState.isMuted, updateParticipantList]);
 
     const setVideoInput = useCallback(async (deviceId) => {
         setSelectedVideoInput(deviceId);
-    }, []);
+        if (!activeRoom || !localState.isCameraOn || !localStreamRef.current) return;
+        try {
+            console.log(`[WebRTC] Switching camera video input device to: ${deviceId}`);
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    deviceId: deviceId ? { exact: deviceId } : undefined,
+                    width: 640,
+                    height: 480,
+                    frameRate: 24
+                }
+            });
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            if (!newVideoTrack) return;
+
+            const oldVideoTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder);
+            if (oldVideoTrack) {
+                oldVideoTrack.stop();
+                localStreamRef.current.removeTrack(oldVideoTrack);
+            }
+            newVideoTrack.enabled = true;
+            localStreamRef.current.addTrack(newVideoTrack);
+
+            // Replace track on all active peer connections
+            peerConnectionsRef.current.forEach(pc => {
+                const senders = pc.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
+                                    pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender;
+                if (videoSender) {
+                    videoSender.replaceTrack(newVideoTrack).catch(err => {
+                        console.warn("[WebRTC] Error replacing video track on peer connection:", err);
+                    });
+                }
+            });
+
+            updateParticipantList();
+        } catch (err) {
+            console.error("Failed to switch video input device:", err);
+        }
+    }, [activeRoom, localState.isCameraOn, updateParticipantList]);
 
     // Chat messaging
     const sendChatMessage = useCallback(async (text) => {
@@ -1579,7 +1655,7 @@ export const VoiceProvider = ({ children }) => {
         const handleChatHistory = (history) => {
             if (Array.isArray(history)) {
                 setChatMessages(history.map(msg => ({
-                    id: Date.now() + Math.random(),
+                    id: msg.id || Date.now() + Math.random(),
                     senderName: msg.senderName,
                     senderId: msg.senderId,
                     text: msg.text,
@@ -1601,21 +1677,22 @@ export const VoiceProvider = ({ children }) => {
         };
     }, [socket, user, playInteractionSound, isChatOpen]);
 
-    const grantSpeak = useCallback(async (portalId, channelId, targetUserId) => {
-        await axios.post(`/api/voice/rooms/${portalId}/${channelId}/permissions`, {
-            targetUserId, canPublish: true,
-        });
-    }, []);
+    const grantSpeak = useCallback((targetUserId) => {
+        if (activeRoom) {
+            safeEmit('voice:grant-speak', { roomName: activeRoom.roomName, targetUserId });
+        }
+    }, [activeRoom, safeEmit]);
 
-    const revokeSpeak = useCallback(async (portalId, channelId, targetUserId) => {
-        await axios.post(`/api/voice/rooms/${portalId}/${channelId}/permissions`, {
-            targetUserId, canPublish: false,
-        });
-    }, []);
+    const revokeSpeak = useCallback((targetUserId) => {
+        if (activeRoom) {
+            safeEmit('voice:revoke-speak', { roomName: activeRoom.roomName, targetUserId });
+        }
+    }, [activeRoom, safeEmit]);
 
     const startWatchParty = useCallback(async (url, isLive = false) => {
-        if (activeRoom) {
+        if (activeRoom && url) {
             try {
+                console.log(`[WatchParty] Requesting stream validation for: ${url} (isLiveHint: ${isLive})`);
                 const response = await axios.post('/api/media/validate-stream', { 
                     url, 
                     portalId: activeRoom?.portalId,
@@ -1778,32 +1855,48 @@ export const VoiceProvider = ({ children }) => {
     return (
         <VoiceContext.Provider value={value}>
             {children}
-            <GlobalAudioRenderer participants={participants} isDeafened={localState.isDeafened} userVolume={userVolume} />
+            <GlobalAudioRenderer 
+                participants={participants} 
+                isDeafened={localState.isDeafened} 
+                userVolume={userVolume} 
+                audioOutputId={selectedAudioOutput}
+            />
         </VoiceContext.Provider>
     );
 };
 
-// Global Audio Component for cross-navigation persistence
-const GlobalAudioRenderer = ({ participants, isDeafened, userVolume }) => {
+// Global Audio Component for cross-navigation persistence with screen audio and output sink support
+const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutputId }) => {
     return (
         <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
             {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
-                <AudioTrackPlayer key={`global-audio-${p.identity}`} track={p.audioTrack.track} muted={isDeafened} volume={userVolume} />
+                <AudioTrackPlayer 
+                    key={`global-audio-${p.identity}`} 
+                    track={p.audioTrack.track} 
+                    muted={isDeafened} 
+                    volume={userVolume} 
+                    audioOutputId={audioOutputId}
+                />
             ))}
         </div>
     );
 };
 
-const AudioTrackPlayer = ({ track, muted, volume }) => {
+const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
     const audioEl = useRef(null);
+
     useEffect(() => {
         if (audioEl.current && track) {
             audioEl.current.srcObject = new MediaStream([track]);
             audioEl.current.muted = muted;
             audioEl.current.volume = volume;
-            // Explicitly call play() after assigning srcObject.
-            // Many browsers (Chrome, Safari) do not auto-trigger autoPlay
-            // when srcObject is set dynamically on an already-rendered element.
+
+            if (audioOutputId && typeof audioEl.current.setSinkId === 'function') {
+                audioEl.current.setSinkId(audioOutputId).catch(err => {
+                    console.warn("[WebRTC] setSinkId error on audio track:", err);
+                });
+            }
+
             audioEl.current.play().catch(err => {
                 console.warn('[WebRTC] AudioTrackPlayer: audio.play() failed (likely autoplay policy):', err);
             });
@@ -1824,6 +1917,14 @@ const AudioTrackPlayer = ({ track, muted, volume }) => {
             audioEl.current.volume = volume;
         }
     }, [volume]);
+
+    useEffect(() => {
+        if (audioEl.current && audioOutputId && typeof audioEl.current.setSinkId === 'function') {
+            audioEl.current.setSinkId(audioOutputId).catch(err => {
+                console.warn("[WebRTC] setSinkId update failed:", err);
+            });
+        }
+    }, [audioOutputId]);
 
     return <audio ref={audioEl} autoPlay playsInline />;
 };
