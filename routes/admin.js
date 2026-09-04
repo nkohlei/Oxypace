@@ -1524,5 +1524,101 @@ router.post('/bots/:id/post', protect, admin, async (req, res) => {
     }
 });
 
+// @route   POST /api/admin/broadcast-announcement
+// @desc    Broadcast release announcement / notification to all active users across web and mobile
+// @access  Private/Admin
+router.post('/broadcast-announcement', protect, admin, async (req, res) => {
+    try {
+        const { title, body, link, imageUrl } = req.body;
+        if (!title || !body) {
+            return res.status(400).json({ message: 'Title ve body alanları zorunludur.' });
+        }
+
+        const targetRoute = link || '/';
+        const notifTitle = title.trim();
+        const notifBody = body.trim();
+
+        // 1. Fetch all active non-deleted users
+        const users = await User.find({ isDeleted: { $ne: true } }).select('_id fcmTokens settings');
+        if (!users || users.length === 0) {
+            return res.json({ message: 'Gönderilecek kullanıcı bulunamadı.', count: 0 });
+        }
+
+        // 2. Prepare database notifications
+        const notificationDocs = users.map(u => ({
+            recipient: u._id,
+            sender: req.user._id,
+            type: 'system',
+            content: notifBody,
+            link: targetRoute,
+            imageUrl: imageUrl || undefined,
+            read: false
+        }));
+
+        // Insert in bulk
+        await Notification.insertMany(notificationDocs);
+
+        // 3. Emit real-time socket notification to online users
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('newNotification', {
+                title: notifTitle,
+                content: notifBody,
+                link: targetRoute,
+                imageUrl: imageUrl || undefined,
+                type: 'system',
+                createdAt: new Date(),
+                sender: {
+                    username: req.user.username,
+                    profile: req.user.profile
+                }
+            });
+        }
+
+        // 4. Collect all valid FCM tokens for mobile push
+        const allTokens = [];
+        for (const u of users) {
+            if (u.settings?.notifications?.push !== false && Array.isArray(u.fcmTokens)) {
+                for (const t of u.fcmTokens) {
+                    if (t && typeof t === 'string' && !allTokens.includes(t)) {
+                        allTokens.push(t);
+                    }
+                }
+            }
+        }
+
+        // 5. Send FCM push notification
+        if (allTokens.length > 0) {
+            const { sendPushNotification } = await import('../services/pushService.js');
+            // Multicast in batches of 500
+            for (let i = 0; i < allTokens.length; i += 500) {
+                const batch = allTokens.slice(i, i + 500);
+                await sendPushNotification(batch, {
+                    title: notifTitle,
+                    body: notifBody,
+                    image: imageUrl,
+                    data: {
+                        url: targetRoute,
+                        route: targetRoute,
+                        type: 'system',
+                        title: notifTitle,
+                        body: notifBody,
+                        imageUrl: imageUrl || ''
+                    }
+                });
+            }
+        }
+
+        res.json({
+            message: 'Duyuru başarıyla tüm kullanıcılara web ve mobil olarak iletildi.',
+            userCount: users.length,
+            fcmTokenCount: allTokens.length
+        });
+    } catch (error) {
+        console.error('Broadcast announcement error:', error);
+        res.status(500).json({ message: 'Duyuru gönderilirken hata oluştu: ' + error.message });
+    }
+});
+
 export default router;
 
