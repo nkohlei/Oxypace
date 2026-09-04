@@ -1869,7 +1869,7 @@ export const VoiceProvider = ({ children }) => {
 const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutputId }) => {
     return (
         <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-            {participants.filter(p => !p.isLocal && p.audioTrack).map(p => (
+            {participants.filter(p => !p.isLocal && p.audioTrack?.track).map(p => (
                 <AudioTrackPlayer 
                     key={`global-audio-${p.identity}`} 
                     track={p.audioTrack.track} 
