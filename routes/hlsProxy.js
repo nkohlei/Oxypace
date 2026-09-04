@@ -25,6 +25,9 @@ router.get('/proxy', async (req, res) => {
         } else if (targetObj.hostname.includes('hdfilmcehennemi')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
+        } else if (targetObj.hostname.includes('bbstream')) {
+          originHeader = 'https://bbstream.org';
+          refererHeader = 'https://bbstream.org/';
         } else {
           originHeader = targetObj.origin;
           refererHeader = `${targetObj.origin}/`;

@@ -13,7 +13,7 @@ const browserPool = require('./browserPool');
 const FAST_STREAM_PATTERNS = [
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\.m3u8[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+master\.txt[^"'\s\\<>{}|^`[\]]*)/i,
-  /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/hls\/[^"'\s\\<>{}|^`[\]]*)/i,
+  /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/hls\/[^"'\s\\<>{}|^`[\]]*\.(?:m3u8|txt|mp4)[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/txt\/master\.txt[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/playlist\.m3u8[^"'\s\\<>{}|^`[\]]*)/i,
 ];
@@ -287,6 +287,8 @@ function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
     referer = 'https://filemoon.sx/';
   } else if (streamUrl.includes('dood') || embedUrl.includes('dood')) {
     referer = 'https://doodstream.com/';
+  } else if (streamUrl.includes('bbstream') || embedUrl.includes('bbstream')) {
+    referer = embedUrl || 'https://bbstream.org/';
   } else if (embedUrl && /^https?:\/\//i.test(embedUrl)) {
     referer = embedUrl;
   }
@@ -348,7 +350,8 @@ async function fastResolve(targetUrl, options = {}) {
         const streamUrl = match[1].replace(/\\/g, '');
         const lowerStream = streamUrl.toLowerCase();
         const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
-        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle) {
+        const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
+        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
           logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
           const { referer, origin } = determineRefererAndOrigin(streamUrl, '', targetUrl);
           return {
@@ -530,7 +533,8 @@ async function fastResolve(targetUrl, options = {}) {
           const streamUrl = match[1].replace(/\\/g, '');
           const lowerStream = streamUrl.toLowerCase();
           const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
-          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle) {
+          const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
+          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
             const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
 
@@ -546,6 +550,33 @@ async function fastResolve(targetUrl, options = {}) {
             };
           }
         }
+      }
+
+      // Check variable stream assignments e.g. var videolink = "https://..."
+      const varStreamMatch = searchCorpus.match(/(?:var|let|const)\s+(?:videolink|video_url|videoUrl|streamUrl|fileLink|source_url|videoSrc)\s*=\s*["'](https?:[^"']+)["']/i);
+      if (varStreamMatch && varStreamMatch[1]) {
+        const streamUrl = varStreamMatch[1].replace(/\\/g, '');
+        const lowerStream = streamUrl.toLowerCase();
+        if (!lowerStream.endsWith('.js') && !lowerStream.endsWith('.vtt')) {
+          logger.info(`[FastScraper] ✅ Değişken atamasından akış bulundu: ${streamUrl}`);
+          const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
+          return {
+            streamUrl,
+            type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
+            headers: {
+              referer,
+              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              origin,
+            },
+            pageTitle: pageTitle || 'Film / Dizi Akışı',
+          };
+        }
+      }
+
+      // Check dynamic iframe.src inside embed scripts (e.g. zipfilmizle / HivePlayer -> fireplayer)
+      const jsIfrMatches = [...searchCorpus.matchAll(/iframe\.src\s*=\s*["'](https?:[^"']+)["']/gi)];
+      for (const [, src] of jsIfrMatches) {
+        addEmbed(src);
       }
 
       // Check JSON sources config e.g. "file": "https://..." (strictly ignoring .vtt, .srt, image subtitles)
