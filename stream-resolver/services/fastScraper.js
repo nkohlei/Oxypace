@@ -126,22 +126,48 @@ function decodeDcFunction(html) {
  */
 function decodeRapidVid(html) {
   try {
-    const p8Match = html.match(/window\._p8\s*=\s*['"]([^'"]+)['"]/);
-    if (!p8Match) return null;
-    const p8 = p8Match[1];
-    let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
-    let n = '';
-    for (let t = 0; t < e.length; t++) {
-      let a = 'K9L'[t % 3];
-      let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
-      n += String.fromCharCode(i);
+    // 1. Direct file: av('...') or _('...') function call in jwSetup.sources
+    const avMatch = html.match(/["']?file["']?\s*:\s*(?:av|_)\s*\(\s*['"]([^'"]+)['"]\s*\)/);
+    if (avMatch && avMatch[1]) {
+      const p8 = avMatch[1];
+      let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
+      let n = '';
+      for (let t = 0; t < e.length; t++) {
+        let a = 'K9L'[t % 3];
+        let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
+        n += String.fromCharCode(i);
+      }
+      const decoded = Buffer.from(n, 'base64').toString('utf8');
+      if (decoded && typeof decoded === 'string' && decoded.startsWith('http')) {
+        logger.info(`[FastScraper] 🔓 RapidVid av() akışı başarıyla çözüldü: ${decoded}`);
+        return decoded;
+      }
     }
-    const decodedJsonStr = Buffer.from(n, 'base64').toString('utf8');
-    const obj = JSON.parse(decodedJsonStr);
-    const stream = obj.cm || obj.tm || (obj.sources && obj.sources[0] && obj.sources[0].file);
-    if (stream && typeof stream === 'string' && stream.startsWith('http')) {
-      logger.info(`[FastScraper] 🔓 RapidVid akışı başarıyla çözüldü: ${stream}`);
-      return stream;
+
+    // 2. window._p8 custom encrypted payload
+    const p8Match = html.match(/window\._p8\s*=\s*['"]([^'"]+)['"]/);
+    if (p8Match) {
+      const p8 = p8Match[1];
+      let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
+      let n = '';
+      for (let t = 0; t < e.length; t++) {
+        let a = 'K9L'[t % 3];
+        let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
+        n += String.fromCharCode(i);
+      }
+      const decodedJsonStr = Buffer.from(n, 'base64').toString('utf8');
+      try {
+        const obj = JSON.parse(decodedJsonStr);
+        const stream = obj.cm || obj.tm || (obj.sources && obj.sources[0] && obj.sources[0].file);
+        if (stream && typeof stream === 'string' && stream.startsWith('http')) {
+          logger.info(`[FastScraper] 🔓 RapidVid akışı başarıyla çözüldü: ${stream}`);
+          return stream;
+        }
+      } catch (parseErr) {
+        if (decodedJsonStr.startsWith('http')) {
+          return decodedJsonStr;
+        }
+      }
     }
   } catch (err) {
     logger.debug(`[FastScraper] RapidVid decode hatası: ${err.message}`);
@@ -399,7 +425,23 @@ async function fastResolve(targetUrl, options = {}) {
             if (sx) {
               const allUrls = [...(sx.p || []), ...(sx.t || [])];
               for (const u of allUrls) {
-                if (typeof u === 'string' && u.startsWith('http')) addEmbed(u);
+                if (typeof u === 'string') {
+                  if (u.startsWith('http')) {
+                    addEmbed(u);
+                  } else {
+                    // Try ROT13 + Base64 decode (Fullhdfilmizlesene Atom Player standard)
+                    try {
+                      const rot = u.replace(/[a-z]/gi, (s) =>
+                        String.fromCharCode(s.charCodeAt(0) + (s.toLowerCase() < 'n' ? 13 : -13))
+                      );
+                      const dec = Buffer.from(rot, 'base64').toString('utf8');
+                      if (dec && dec.startsWith('http')) {
+                        logger.info(`[FastScraper] 🔓 Fullhdfilmizlesene ROT13 linki çözüldü: ${dec}`);
+                        addEmbed(dec);
+                      }
+                    } catch (decErr) {}
+                  }
+                }
               }
             }
           }
