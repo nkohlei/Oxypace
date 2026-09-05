@@ -859,9 +859,9 @@
 
 @media (max-width: 768px) {
     .conversations-view {
-        width: calc(100% - 16px);
-        height: calc(100% - 16px);
-        margin: 8px;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        margin: 12px;
         border-radius: 16px;
         background: var(--glass-bg);
         backdrop-filter: blur(20px) saturate(160%);

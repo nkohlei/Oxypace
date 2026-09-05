@@ -1040,8 +1040,10 @@
 
     /* Channel sidebar: inline flow on mobile (not fixed overlay) */
     .channel-sidebar {
-        width: 100% !important;
-        max-width: 100% !important;
+        width: calc(100% - 12px) !important;
+        max-width: calc(100% - 12px) !important;
+        margin-top: 12px !important;
+        margin-right: 12px !important;
         position: static !important;
         transform: none !important;
         height: auto !important;
