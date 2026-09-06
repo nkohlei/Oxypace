@@ -270,6 +270,19 @@
   status = 200
   force = false
 
+# ── Calculations Fallback ─────────────────────────
+[[redirects]]
+  from = "/calculations"
+  to = "/calculations/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/calculations/:slug"
+  to = "/calculations/:slug/index.html"
+  status = 200
+  force = false
+
 # ── Blog Fallback (Next.js static) ───────────────
 # Kök domain'de static dosya bulunamazsa → Next.js 404 veya index
 [[redirects]]
