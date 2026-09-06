@@ -8,100 +8,103 @@ import ReadingProgressBar from "../../blog/components/ReadingProgressBar";
 import CookieConsent from "../../blog/components/CookieConsent";
 
 /* ════════════════════════════════════════════════════════════
-   PHYSICS CONSTANTS & MORRIS-THORNE METRIC CONSTANTS
-   Metric: ds^2 = -c^2 dt^2 + dr^2 / (1 - b(r)/r) + r^2 dΩ^2
-   Null Energy Condition (NEC): T_μν k^μ k^ν >= 0 (Violated at throat)
-   Exotic Mass Requirement: M_exotic ≈ - (c^2 * r_0) / G
+   PHYSICAL CONSTANTS & MORRIS-THORNE METRIC PRESETS
+   Morris-Thorne (1988): ds^2 = -c^2 dt^2 + dr^2 / (1 - b(r)/r) + r^2 dΩ^2
+   Null Energy Condition: T_μν k^μ k^ν < 0 (Throat exotic tension)
+   M_exotic ≈ - (c^2 * r_0) / G
 ════════════════════════════════════════════════════════════ */
-const G = 6.6743e-11; // m^3 kg^-1 s^-2
-const C = 299792458; // m/s
+const G = 6.6743e-11;       // m^3 kg^-1 s^-2
+const C = 299792458;        // m/s
 const M_JUPITER = 1.898e27; // kg
-const M_EARTH = 5.972e24; // kg
-const M_MOON = 7.342e22; // kg
-const LIGHT_YEAR_METERS = 9.461e15; // meters
+const M_EARTH = 5.972e24;   // kg
+const M_MOON = 7.342e22;    // kg
+const LIGHT_YEAR_M = 9.4607e15; // meters
 
-// Scientific Presets
 const WORMHOLE_PRESETS = [
   {
-    id: "microscopic",
-    nameTr: "🔬 Planck / Kuantum Boğazı",
-    nameEn: "🔬 Quantum Foam Micro-Throat",
-    r0: 1.616e-35, // Planck length
-    r0Label: "1.62 × 10⁻³⁵ m",
-    throatLengthM: 1e-34,
+    id: "quantum_foam",
+    nameTr: "🔬 Kuantum Köpüğü (Planck Boğazı)",
+    nameEn: "🔬 Quantum Foam (Planck Throat)",
+    r0: 0.5,
+    length: 2.0,
     distanceLy: 4.24, // Proxima Centauri
-    badgeTr: "Kuantum Köpüğü (Planck)",
-    badgeEn: "Quantum Foam (Planck)",
-    descTr: "Kuantum uzay-zaman köpüğünde anlık var olup yok olan sanal mikroskobik boğaz. Klasik geçiş imkansızdır.",
-    descEn: "Virtual microscopic throat spontaneously fluctuating in quantum foam. Classical traversal impossible.",
-    customScale: false
+    badgeTr: "Sub-Atomik / Planck Ölçeği",
+    badgeEn: "Sub-Atomic Scale",
+    descTr: "Kuantum uzay-zaman köpüğünde spontane oluşan mikroskobik boğaz. İnsan için gelgit yırtılması kesindir.",
+    descEn: "Microscopic throat naturally fluctuating in quantum spacetime foam. Severe tidal shredding."
   },
   {
-    id: "human_sized",
-    nameTr: "🧑 İnsan Geçilebilir Boğaz (r₀ = 2m)",
-    nameEn: "🧑 Human-Traversable Throat (r₀ = 2m)",
-    r0: 2.0, // 2 meters
-    r0Label: "2.0 m",
-    throatLengthM: 10.0,
+    id: "human_gate",
+    nameTr: "🧑 İnsan Geçilebilir Portal (Kip Thorne 1988)",
+    nameEn: "🧑 Human-Traversable Gateway (Thorne 1988)",
+    r0: 2.5,
+    length: 12.0,
     distanceLy: 4.24, // Proxima Centauri
-    badgeTr: "Kip Thorne İdeal Model (1988)",
-    badgeEn: "Kip Thorne Ideal Model (1988)",
-    descTr: "İnsanın dik durarak geçebileceği 2 metre yarıçaplı boğaz. Jelibon/Satürn uydusu kütlesinde negatif enerji gerektirir.",
-    descEn: "2-meter radius throat allowing an astronaut to step through. Requires Moon/Saturn-moon scale negative mass.",
-    customScale: true
+    badgeTr: "Biyolojik Geçişe Uygun",
+    badgeEn: "Biologically Safe",
+    descTr: "İnsan anatomisinin parçalanmadan (Δa < 1g) geçebileceği ideal 2.5 metre boğaz. Ay kütlesi mertebesinde negatif enerji gerektirir.",
+    descEn: "Human-safe 2.5m corridor with minimal tidal forces (Δa < 1g). Demands Moon-scale negative Casimir mass."
   },
   {
-    id: "interstellar_vessel",
-    nameTr: "🚀 Yıldızlararası Nakliye Boğazı (r₀ = 1 km)",
-    nameEn: "🚀 Interstellar Cargo Conduit (r₀ = 1 km)",
-    r0: 1000.0, // 1 km
-    r0Label: "1.0 km",
-    throatLengthM: 5000.0,
+    id: "cargo_shuttle",
+    nameTr: "🚀 Yıldızlararası Nakliye Boğazı (100 m)",
+    nameEn: "🚀 Interstellar Cargo Conduit (100 m)",
+    r0: 100.0,
+    length: 400.0,
     distanceLy: 25.0, // Vega
-    badgeTr: "Dev Uzay Gemisi Ölçeği",
+    badgeTr: "Dev Uzay Aracı Geçidi",
     badgeEn: "Capital Ship Scale",
-    descTr: "Dev nakliye gemilerinin sıfır gelgit ivmesiyle geçebileceği 1 km'lik boğaz. ~1 Jüpiter kütlesinde negatif madde ister.",
-    descEn: "1 km radius corridor allowing large starships to traverse. Demands approx 1 Jupiter mass of negative energy.",
-    customScale: true
+    descTr: "Büyük yük gemilerinin sıfır hissedilen yerçekimi ile saniyeler içinde Vega yıldızına varış koridoru.",
+    descEn: "Large orbital freighters transit with zero structural strain directly to Vega in seconds."
   },
   {
-    id: "andromeda_gateway",
-    nameTr: "🌌 Galaksiler Arası Mega Ağ (r₀ = 10,000 km)",
-    nameEn: "🌌 Intergalactic Mega Gateway (r₀ = 10,000 km)",
-    r0: 10000000.0, // 10,000 km
-    r0Label: "10,000 km",
-    throatLengthM: 100000.0,
+    id: "andromeda_chasm",
+    nameTr: "🌌 Galaksiler Arası Mega Tünel (10 km)",
+    nameEn: "🌌 Intergalactic Mega Chasm (10 km)",
+    r0: 10000.0,
+    length: 50000.0,
     distanceLy: 2537000, // Andromeda Galaxy
-    badgeTr: "Galaksiler Arası Köprü (2.5M Ly)",
-    badgeEn: "Intergalactic Bridge (2.5M Ly)",
-    descTr: "Samanyolu ile Andromeda galaksisi arasında anlık kestirme bağlantı. Yıldız kütleleri mertebesinde negatif enerji matrisi.",
-    descEn: "Direct shortcut between Milky Way and Andromeda galaxy. Requires stellar-mass equivalent negative exotic matter.",
-    customScale: true
+    badgeTr: "Galaksiler Arası (2.5M Ly)",
+    badgeEn: "Intergalactic (2.5M Ly)",
+    descTr: "Samanyolu ile Andromeda galaksisi arasında anlık bağlantı. Jüpiter kütlesi eşdeğerinde negatif madde matrisi.",
+    descEn: "Direct topological shortcut linking Milky Way and Andromeda galaxy with Jupiter-scale exotic mass."
   }
 ];
 
 /* ════════════════════════════════════════════════════════════
-   3D MATTE WIREFRAME FLAMM'S PARABOLOID (EMBEDDING CANVAS)
-   Pure Mathematical Projection - Zero Neon - Clean Monochromatic Depth
-   Visualises the 2D embedding of the Morris-Thorne spatial slice:
-   z(r) = ± 2 * r_0 * sqrt(r / r_0 - 1)  (Flamm's paraboloid)
+   CANVAS: HIGH-FIDELITY 3D TOPOLOGICAL WORMHOLE ENGINE
+   Pure Canvas 3D Projector with Live Parameter Deformation:
+   - Throat radius r0 dynamically scales the bottleneck diameter.
+   - Length L dynamically scales cylinder separation between 2 universe sheets.
+   - Exotic mass dynamically modifies negative Casimir tension glow.
+   - Live particles travel along geodesics from Universe-A to Universe-B.
+   - Full 360-degree mouse/touch orbit control.
 ════════════════════════════════════════════════════════════ */
-function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
+function InteractiveWormhole3D({
+  throatRadius,
+  throatLength,
+  isHumanSafe,
+  tidalG,
+  exoticMassKg,
+  lang
+}) {
   const canvasRef = useRef(null);
-  const rotationRef = useRef({ rotX: 0.45, rotY: 0.65 });
+  const rotRef = useRef({ x: 0.38, y: 0.72 });
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
+  const [cameraMode, setCameraMode] = useState("orbit"); // "orbit" | "transit"
+  const transitProgressRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    let animationFrameId;
+    let animId;
 
     const width = canvas.width;
     const height = canvas.height;
 
-    // Handle mouse drag to rotate 3D view
+    // Mouse Controls
     const onMouseDown = (e) => {
       isDraggingRef.current = true;
       lastMouseRef.current = { x: e.clientX, y: e.clientY };
@@ -111,8 +114,8 @@ function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
       if (!isDraggingRef.current) return;
       const dx = e.clientX - lastMouseRef.current.x;
       const dy = e.clientY - lastMouseRef.current.y;
-      rotationRef.current.rotY += dx * 0.007;
-      rotationRef.current.rotX = Math.max(-0.8, Math.min(0.8, rotationRef.current.rotX + dy * 0.007));
+      rotRef.current.y += dx * 0.008;
+      rotRef.current.x = Math.max(-1.1, Math.min(1.1, rotRef.current.x + dy * 0.008));
       lastMouseRef.current = { x: e.clientX, y: e.clientY };
     };
 
@@ -120,7 +123,7 @@ function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
       isDraggingRef.current = false;
     };
 
-    // Touch support for mobile devices
+    // Touch Controls
     const onTouchStart = (e) => {
       if (e.touches.length === 1) {
         isDraggingRef.current = true;
@@ -132,8 +135,8 @@ function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
       if (!isDraggingRef.current || e.touches.length !== 1) return;
       const dx = e.touches[0].clientX - lastMouseRef.current.x;
       const dy = e.touches[0].clientY - lastMouseRef.current.y;
-      rotationRef.current.rotY += dx * 0.007;
-      rotationRef.current.rotX = Math.max(-0.8, Math.min(0.8, rotationRef.current.rotX + dy * 0.007));
+      rotRef.current.y += dx * 0.008;
+      rotRef.current.x = Math.max(-1.1, Math.min(1.1, rotRef.current.x + dy * 0.008));
       lastMouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     };
 
@@ -144,212 +147,328 @@ function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
     canvas.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
-
     canvas.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("touchend", onTouchEnd);
 
-    // Subtle background particles (representing quantum vacuum fluctuations)
-    const vacuumParticles = [];
-    for (let i = 0; i < 90; i++) {
-      vacuumParticles.push({
-        x: (Math.random() - 0.5) * 400,
-        y: (Math.random() - 0.5) * 300,
-        z: (Math.random() - 0.5) * 400,
-        alpha: 0.15 + Math.random() * 0.3,
-        size: 0.6 + Math.random() * 0.8
+    // Geodesic Test Particles (Travelling through the wormhole)
+    const NUM_PARTICLES = 160;
+    const particles = [];
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      particles.push({
+        t: Math.random(), // 0 = upper universe, 0.5 = throat, 1 = lower universe
+        angle: Math.random() * Math.PI * 2,
+        speed: 0.003 + Math.random() * 0.005,
+        offsetR: (Math.random() - 0.5) * 0.4
       });
     }
 
     let time = 0;
 
     const render = () => {
-      time += 0.01;
+      time += 0.012;
       ctx.clearRect(0, 0, width, height);
 
-      // Deep matte dark slate background
-      ctx.fillStyle = "#040508";
+      // Deep Cosmic Void Backdrop (Matte Charcoal Black)
+      ctx.fillStyle = "#030407";
       ctx.fillRect(0, 0, width, height);
 
-      // Subtle fine coordinate grid background
+      // Subtle Background Space Grid
       ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
       ctx.lineWidth = 1;
-      const gridStep = 40;
-      for (let x = 0; x < width; x += gridStep) {
+      for (let x = 0; x < width; x += 36) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
         ctx.stroke();
       }
-      for (let y = 0; y < height; y += gridStep) {
+      for (let y = 0; y < height; y += 36) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
         ctx.stroke();
       }
 
-      // Auto rotation when not dragging
-      if (!isDraggingRef.current) {
-        rotationRef.current.rotY += 0.0025;
+      // Dynamic Physical Scaling based on inputs:
+      // Normalized Visual Throat Radius: logarithmic scale from 16px to 80px
+      const logR = Math.log10(Math.max(0.1, throatRadius));
+      const visualThroatR = Math.max(18, Math.min(84, 28 + logR * 14));
+
+      // Normalized Visual Tunnel Length: scales separation between sheets
+      const logL = Math.log10(Math.max(1, throatLength));
+      const visualHalfLength = Math.max(20, Math.min(100, 30 + logL * 18));
+
+      // Auto rotation in orbit mode
+      if (cameraMode === "orbit" && !isDraggingRef.current) {
+        rotRef.current.y += 0.002;
       }
 
-      const rx = rotationRef.current.rotX;
-      const ry = rotationRef.current.rotY;
+      let rx = rotRef.current.x;
+      let ry = rotRef.current.y;
+      let camDist = 480;
+
+      // Handle Fly-Through Mode
+      if (cameraMode === "transit") {
+        transitProgressRef.current = (transitProgressRef.current + 0.004) % 1;
+        const tp = transitProgressRef.current;
+        // Move camera through the throat along Y axis
+        const camY = (tp - 0.5) * (visualHalfLength * 2.8);
+        rx = 0.15;
+        ry = time * 0.4;
+        camDist = 280;
+      }
+
       const cosX = Math.cos(rx);
       const sinX = Math.sin(rx);
       const cosY = Math.cos(ry);
       const sinY = Math.sin(ry);
+      const fov = 420;
+      const cx = width / 2;
+      const cy = height / 2;
 
-      const fov = 480;
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      // 3D Projection Helper
+      // 3D Projection Engine
       const project = (x, y, z) => {
         // Rotate Y
         const x1 = x * cosY - z * sinY;
         const z1 = z * cosY + x * sinY;
         // Rotate X
         const y2 = y * cosX - z1 * sinX;
-        const z2 = z1 * cosX + y * sinX + 440; // camera distance
+        const z2 = z1 * cosX + y * sinX + camDist;
 
         if (z2 <= 20) return null;
         const scale = fov / z2;
         return {
-          px: centerX + x1 * scale,
-          py: centerY + y2 * scale,
+          px: cx + x1 * scale,
+          py: cy + y2 * scale,
+          scale,
           depth: z2
         };
       };
 
-      // 1. Draw Vacuum Fluctuation Points (Negative Casimir Field Atmosphere)
-      for (const vp of vacuumParticles) {
-        const pt = project(vp.x, vp.y, vp.z);
-        if (pt) {
-          ctx.fillStyle = `rgba(180, 195, 215, ${vp.alpha * 0.4})`;
+      // ══════════════════════════════════════════════════════
+      // 1. RENDER 3D FLAMM'S PARABOLOID EMBEDDING SHEETS
+      // Two asymptotic Minkowski sheets connected via throat cylinder
+      // ══════════════════════════════════════════════════════
+      const NUM_RINGS = 18;
+      const NUM_SECTORS = 32;
+      const outerFlangeR = visualThroatR + 130;
+
+      // Render Upper Universe (+1) and Lower Universe (-1)
+      [-1, 1].forEach((sheetSign) => {
+        for (let i = 0; i <= NUM_RINGS; i++) {
+          const tRing = i / NUM_RINGS; // 0 = at throat edge, 1 = flat outer boundary
+          const currentR = visualThroatR + Math.pow(tRing, 1.4) * (outerFlangeR - visualThroatR);
+
+          // Morris-Thorne Flamm curvature equation: z(r) = 2 * sqrt(r_0 * (r - r_0))
+          const radDelta = Math.max(0, currentR - visualThroatR);
+          const curvatureZ = Math.sqrt(radDelta * visualThroatR) * 1.6 + Math.pow(tRing, 2.2) * 24;
+          const yPos = sheetSign * (visualHalfLength + curvatureZ);
+
           ctx.beginPath();
-          ctx.arc(pt.px, pt.py, vp.size, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
+          let started = false;
 
-      // 2. Generate and Render Morris-Thorne Flamm's Paraboloid Wireframe
-      // Upper universe sheet (z > 0), Throat (z = 0), Lower universe sheet (z < 0)
-      const numRings = 24;
-      const numSectors = 32;
-      const maxRadius = 190;
-      const minRadius = 42; // throat radius on screen
-
-      // Pre-calculate vertices for upper and lower funnel sheets
-      // We render two sheets connected at throat
-      const sheets = [-1, 1]; // -1 = lower mouth, +1 = upper mouth
-
-      sheets.forEach((sheetSign) => {
-        for (let i = 0; i <= numRings; i++) {
-          const tRing = i / numRings;
-          // Radius expands quadratically away from throat
-          const currentR = minRadius + Math.pow(tRing, 1.35) * (maxRadius - minRadius);
-          // Flamm's embedding height z(r) = 2 * r0 * sqrt(r/r0 - 1)
-          const radDiff = Math.max(0, currentR - minRadius);
-          const zHeight = sheetSign * (Math.sqrt(radDiff) * 11.5 + Math.pow(tRing, 2.2) * 22);
-
-          // Horizontal rings
-          ctx.beginPath();
-          let firstPoint = null;
-          let isVisible = false;
-
-          for (let j = 0; j <= numSectors; j++) {
-            const angle = (j / numSectors) * Math.PI * 2;
+          for (let j = 0; j <= NUM_SECTORS; j++) {
+            const angle = (j / NUM_SECTORS) * Math.PI * 2;
             const x = Math.cos(angle) * currentR;
-            const y = zHeight; // Y axis is vertical in projection
             const z = Math.sin(angle) * currentR;
 
-            const proj = project(x, y, z);
-            if (!proj) continue;
+            const pt = project(x, yPos, z);
+            if (!pt) continue;
 
-            if (j === 0) {
-              ctx.moveTo(proj.px, proj.py);
-              firstPoint = proj;
+            if (!started) {
+              ctx.moveTo(pt.px, pt.py);
+              started = true;
             } else {
-              ctx.lineTo(proj.px, proj.py);
+              ctx.lineTo(pt.px, pt.py);
             }
-            isVisible = true;
           }
 
-          if (isVisible && firstPoint) {
-            // Throat is highlighted with titanium slate, outer sheets fade subtly
-            const isThroatRing = i === 0;
-            if (isThroatRing) {
-              // Throat boundary ring
-              ctx.strokeStyle = isHumanSafe ? "rgba(129, 140, 248, 0.75)" : "rgba(244, 63, 94, 0.75)";
-              ctx.lineWidth = 2.2;
+          if (started) {
+            // Colors: Top sheet slate-cyan, bottom sheet slate-indigo
+            if (i === 0) {
+              // Mouth rim
+              ctx.strokeStyle = sheetSign > 0 ? "rgba(147, 197, 253, 0.7)" : "rgba(167, 139, 250, 0.7)";
+              ctx.lineWidth = 1.6;
             } else {
-              const alpha = Math.max(0.08, 0.45 - tRing * 0.32);
-              ctx.strokeStyle = `rgba(160, 175, 200, ${alpha})`;
-              ctx.lineWidth = 1;
+              const alpha = Math.max(0.04, 0.35 - tRing * 0.28);
+              ctx.strokeStyle = sheetSign > 0
+                ? `rgba(147, 197, 253, ${alpha})`
+                : `rgba(196, 181, 253, ${alpha})`;
+              ctx.lineWidth = 0.9;
             }
             ctx.stroke();
           }
         }
       });
 
-      // Longitude ribs (vertical grid lines running from bottom mouth through throat to top mouth)
-      for (let j = 0; j < numSectors; j += 2) {
-        const angle = (j / numSectors) * Math.PI * 2;
+      // ══════════════════════════════════════════════════════
+      // 2. RENDER THROAT TUBE (THE BRIDGE / WORMHOLE CYLINDER)
+      // Connects Upper Sheet and Lower Sheet across visualHalfLength
+      // ══════════════════════════════════════════════════════
+      const TUBE_RINGS = 10;
+      for (let i = 0; i <= TUBE_RINGS; i++) {
+        const tTube = (i / TUBE_RINGS) * 2 - 1; // -1 to +1
+        const yPos = tTube * visualHalfLength;
+        // Throat flares out slightly at ends: b(r)
+        const tubeR = visualThroatR * (1.0 + Math.pow(tTube, 2) * 0.15);
+
         ctx.beginPath();
         let started = false;
-
-        // Traverse from lower rim (-1) to throat (0) to upper rim (+1)
-        const totalSteps = numRings * 2;
-        for (let step = -numRings; step <= numRings; step++) {
-          const sheetSign = step < 0 ? -1 : 1;
-          const tRing = Math.abs(step) / numRings;
-          const currentR = minRadius + Math.pow(tRing, 1.35) * (maxRadius - minRadius);
-          const radDiff = Math.max(0, currentR - minRadius);
-          const zHeight = sheetSign * (Math.sqrt(radDiff) * 11.5 + Math.pow(tRing, 2.2) * 22);
-
-          const x = Math.cos(angle) * currentR;
-          const y = zHeight;
-          const z = Math.sin(angle) * currentR;
-
-          const proj = project(x, y, z);
-          if (!proj) continue;
-
+        for (let j = 0; j <= NUM_SECTORS; j++) {
+          const angle = (j / NUM_SECTORS) * Math.PI * 2;
+          const x = Math.cos(angle) * tubeR;
+          const z = Math.sin(angle) * tubeR;
+          const pt = project(x, yPos, z);
+          if (!pt) continue;
           if (!started) {
-            ctx.moveTo(proj.px, proj.py);
+            ctx.moveTo(pt.px, pt.py);
             started = true;
           } else {
-            ctx.lineTo(proj.px, proj.py);
+            ctx.lineTo(pt.px, pt.py);
           }
         }
 
-        ctx.strokeStyle = "rgba(140, 160, 185, 0.16)";
+        if (started) {
+          const isCenterThroat = i === TUBE_RINGS / 2;
+          if (isCenterThroat) {
+            // The central throat bottleneck
+            ctx.strokeStyle = isHumanSafe ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.95)";
+            ctx.lineWidth = 2.4;
+          } else {
+            ctx.strokeStyle = "rgba(160, 175, 200, 0.25)";
+            ctx.lineWidth = 1;
+          }
+          ctx.stroke();
+        }
+      }
+
+      // Longitudinal Ribs (running vertically through the entire structure)
+      for (let j = 0; j < NUM_SECTORS; j += 2) {
+        const angle = (j / NUM_SECTORS) * Math.PI * 2;
+        ctx.beginPath();
+        let started = false;
+
+        // Bottom Flange -> Throat Tube -> Top Flange
+        const totalSteps = NUM_RINGS * 2 + TUBE_RINGS;
+        for (let s = -NUM_RINGS; s <= NUM_RINGS + TUBE_RINGS; s++) {
+          let currentR, yPos;
+
+          if (s < 0) {
+            // Lower flange
+            const tRing = Math.abs(s) / NUM_RINGS;
+            currentR = visualThroatR + Math.pow(tRing, 1.4) * (outerFlangeR - visualThroatR);
+            const radDelta = Math.max(0, currentR - visualThroatR);
+            const curvatureZ = Math.sqrt(radDelta * visualThroatR) * 1.6 + Math.pow(tRing, 2.2) * 24;
+            yPos = -(visualHalfLength + curvatureZ);
+          } else if (s <= TUBE_RINGS) {
+            // Inside tube
+            const tTube = (s / TUBE_RINGS) * 2 - 1;
+            yPos = tTube * visualHalfLength;
+            currentR = visualThroatR * (1.0 + Math.pow(tTube, 2) * 0.15);
+          } else {
+            // Upper flange
+            const tRing = (s - TUBE_RINGS) / NUM_RINGS;
+            currentR = visualThroatR + Math.pow(tRing, 1.4) * (outerFlangeR - visualThroatR);
+            const radDelta = Math.max(0, currentR - visualThroatR);
+            const curvatureZ = Math.sqrt(radDelta * visualThroatR) * 1.6 + Math.pow(tRing, 2.2) * 24;
+            yPos = visualHalfLength + curvatureZ;
+          }
+
+          const x = Math.cos(angle) * currentR;
+          const z = Math.sin(angle) * currentR;
+          const pt = project(x, yPos, z);
+          if (!pt) continue;
+
+          if (!started) {
+            ctx.moveTo(pt.px, pt.py);
+            started = true;
+          } else {
+            ctx.lineTo(pt.px, pt.py);
+          }
+        }
+
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.12)";
         ctx.lineWidth = 0.8;
         ctx.stroke();
       }
 
-      // 3. Central Throat Exotic Matter Core Ring (Casimir Negative Energy Ring)
-      // Visualised as an elegant, non-glowing titanium-indigo torus cross section
-      ctx.save();
-      const throatProj = project(0, 0, 0);
-      if (throatProj) {
-        // Flat geometric throat label indicator
-        ctx.font = "9px monospace";
-        ctx.fillStyle = isHumanSafe ? "rgba(129, 140, 248, 0.9)" : "rgba(244, 63, 94, 0.9)";
-        ctx.textAlign = "center";
-        ctx.fillText("THROAT (r = r₀)", throatProj.px, throatProj.py - 14);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.fillText(`b(r₀) = r₀ // NEC VIOLATION`, throatProj.px, throatProj.py + 22);
-      }
-      ctx.restore();
+      // ══════════════════════════════════════════════════════
+      // 3. NEGATIVE CASIMIR ENERGY FIELD (EXOTIC THROAT RING)
+      // Visualised as an intense, non-neon titanium-indigo core
+      // ══════════════════════════════════════════════════════
+      const throatCenterPt = project(0, 0, 0);
+      if (throatCenterPt) {
+        ctx.save();
+        const glowRad = visualThroatR * 1.8;
+        const grad = ctx.createRadialGradient(
+          throatCenterPt.px, throatCenterPt.py, visualThroatR * 0.2,
+          throatCenterPt.px, throatCenterPt.py, glowRad
+        );
 
-      animationFrameId = requestAnimationFrame(render);
+        if (isHumanSafe) {
+          grad.addColorStop(0, "rgba(99, 102, 241, 0.35)");
+          grad.addColorStop(0.5, "rgba(79, 70, 229, 0.12)");
+          grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        } else {
+          // Dangerous Tidal Shredding (Crimson Warning Hue)
+          grad.addColorStop(0, "rgba(244, 63, 94, 0.45)");
+          grad.addColorStop(0.5, "rgba(225, 29, 72, 0.15)");
+          grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(throatCenterPt.px, throatCenterPt.py, glowRad, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mathematical HUD Labels projected on 3D node
+        ctx.font = "10px monospace";
+        ctx.fillStyle = isHumanSafe ? "#a5b4fc" : "#fca5a5";
+        ctx.textAlign = "center";
+        ctx.fillText(`THROAT r₀ = ${throatRadius.toLocaleString()}m`, throatCenterPt.px, throatCenterPt.py - visualThroatR - 8);
+
+        ctx.font = "9px monospace";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        ctx.fillText(`NEC VIOLATION // ρ < 0`, throatCenterPt.px, throatCenterPt.py + visualThroatR + 16);
+        ctx.restore();
+      }
+
+      // ══════════════════════════════════════════════════════
+      // 4. GEODESIC PARTICLES (TRANSIT TRAVELERS)
+      // Move from Upper Universe (+Y) through throat (Y=0) to Lower Universe (-Y)
+      // ══════════════════════════════════════════════════════
+      particles.forEach((p) => {
+        p.t = (p.t + p.speed) % 1.0;
+        const normY = (p.t - 0.5) * 2; // -1 to +1
+        const yPos = normY * (visualHalfLength * 1.5);
+
+        // Radius follows Flamm embedding
+        const radFactor = 1.0 + Math.pow(Math.abs(normY), 1.6) * 1.5;
+        const currentR = (visualThroatR + p.offsetR * visualThroatR) * radFactor;
+
+        p.angle += 0.01;
+        const x = Math.cos(p.angle) * currentR;
+        const z = Math.sin(p.angle) * currentR;
+
+        const pt = project(x, yPos, z);
+        if (pt) {
+          const alpha = 0.2 + (1 - Math.abs(normY)) * 0.7; // Brightest at throat
+          ctx.fillStyle = isHumanSafe
+            ? `rgba(199, 210, 254, ${alpha})`
+            : `rgba(253, 164, 175, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(pt.px, pt.py, 1.4 * pt.scale, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      animId = requestAnimationFrame(render);
     };
 
-    animationFrameId = requestAnimationFrame(render);
+    animId = requestAnimationFrame(render);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(animId);
       canvas.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
@@ -357,39 +476,61 @@ function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [r0, isHumanSafe]);
+  }, [throatRadius, throatLength, isHumanSafe, cameraMode]);
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#040508] shadow-2xl">
+    <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#030407]">
       <canvas
         ref={canvasRef}
-        width={720}
-        height={380}
+        width={760}
+        height={420}
         className="w-full h-auto block cursor-grab active:cursor-grabbing"
-        style={{ aspectRatio: "720/380" }}
+        style={{ aspectRatio: "760/420" }}
       />
-      {/* HUD Telemetry Top Left */}
-      <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
-        <div className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded bg-black/80 backdrop-blur-md text-zinc-300 border border-white/10">
-          3D FLAMM&apos;S PARABOLOID // MORRIS-THORNE EMBEDDING
+
+      {/* Top Left HUD Badge */}
+      <div className="absolute top-3.5 left-4 flex flex-col gap-1.5 pointer-events-none">
+        <div className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-amber-300 border border-white/10 w-fit">
+          FLAMM PARABOLOID // 3D MORRIS-THORNE METRIC
         </div>
-        <div className="font-mono text-[9px] text-zinc-400 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm border border-white/5 flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-          <span>Fare / Dokunmatik ile 360° Döndürülebilir</span>
+        <div className="font-mono text-[9px] text-white/50 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm border border-white/5 flex items-center gap-1.5 w-fit">
+          <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <span>{lang === "en" ? "Drag to Orbit 360°" : "360° Döndürmek için Sürükleyin"}</span>
         </div>
       </div>
 
-      {/* HUD Telemetry Top Right */}
-      <div className="absolute top-3 right-3 flex flex-col items-end gap-1 pointer-events-none">
-        <div className={`font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded border backdrop-blur-md ${
+      {/* Top Right Mode Switcher & Safety Status */}
+      <div className="absolute top-3.5 right-4 flex flex-col items-end gap-2">
+        <div className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 rounded-full border backdrop-blur-md font-bold ${
           isHumanSafe
-            ? "bg-indigo-950/40 text-indigo-300 border-indigo-500/30"
-            : "bg-rose-950/40 text-rose-300 border-rose-500/30"
+            ? "bg-emerald-950/50 text-emerald-300 border-emerald-500/30"
+            : "bg-rose-950/50 text-rose-300 border-rose-500/30 animate-pulse"
         }`}>
-          {isHumanSafe ? "✓ BİYOLOJİK GEÇİŞ GÜVENLİ (Δa < 1g)" : "⚠ AŞIRI GELGİT YIRTILMASI (SPAGETTİ)"}
+          {isHumanSafe
+            ? (lang === "en" ? "✓ TRAVERSAL SAFE (Δa < 1g)" : "✓ BİYOLOJİK GEÇİŞ GÜVENLİ (Δa < 1g)")
+            : (lang === "en" ? "⚠ TIDAL SHREDDING HAZARD" : "⚠ AŞIRI GELGİT YIRTILMASI")}
         </div>
-        <div className="font-mono text-[9px] text-zinc-400 px-2 py-0.5 rounded bg-black/60 border border-white/5">
-          Gelgit Farkı: {tidalG < 0.001 ? "< 10⁻³ g" : tidalG > 1e6 ? `${tidalG.toExponential(2)} g` : `${tidalG.toFixed(2)} g`}
+
+        <button
+          onClick={() => setCameraMode((prev) => (prev === "orbit" ? "transit" : "orbit"))}
+          className="font-mono text-[10px] uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15 bg-black/70 hover:bg-white/10 text-white transition-all pointer-events-auto flex items-center gap-1.5"
+        >
+          {cameraMode === "orbit" ? "🚀 Tünel İçi Uçuşu Başlat" : "🪐 Serbest Yörüngeye Dön"}
+        </button>
+      </div>
+
+      {/* Bottom Telemetry Bar */}
+      <div className="absolute bottom-3 left-4 right-4 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-white/60 pointer-events-none bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
+        <div>
+          Boğaz Yarıçapı: <span className="text-white font-bold">{throatRadius.toLocaleString()} m</span>
+        </div>
+        <div>
+          Tünel Boyu: <span className="text-white font-bold">{throatLength.toLocaleString()} m</span>
+        </div>
+        <div>
+          Gelgit Farkı: <span className={isHumanSafe ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+            {tidalG < 0.001 ? "< 10⁻³ g" : tidalG > 1e6 ? `${tidalG.toExponential(2)} g` : `${tidalG.toFixed(2)} g`}
+          </span>
         </div>
       </div>
     </div>
@@ -397,65 +538,79 @@ function Wormhole3DCanvas({ r0, isHumanSafe, tidalG, exoticMassKg }) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   LIVE TRAVERSAL SIMULATION (TRAVEL TIME COMPARISON)
+   LIVE COMPARATIVE TRANSIT CLOCKS
 ════════════════════════════════════════════════════════════ */
-function TraversalTimeComparison({ distanceLy, throatLengthM, vFraction, lang }) {
-  // External light speed journey time
-  const externalTimeYears = distanceLy / vFraction;
-  // Throat transit time
-  const vMps = vFraction * C;
-  const transitSeconds = throatLengthM / vMps;
+function LiveTwinWormholeClocks({ distanceLy, throatLength, vFraction, lang }) {
+  const [earthSeconds, setEarthSeconds] = useState(0);
+  const [travelerSeconds, setTravelerSeconds] = useState(0);
 
-  const formatTransitTime = (sec) => {
-    if (sec < 0.001) return `${(sec * 1e6).toFixed(1)} mikrosaniye (μs)`;
-    if (sec < 1) return `${(sec * 1000).toFixed(1)} milisaniye (ms)`;
-    if (sec < 60) return `${sec.toFixed(2)} saniye`;
-    if (sec < 3600) return `${(sec / 60).toFixed(2)} dakika`;
-    return `${(sec / 3600).toFixed(2)} saat`;
+  // Travel math
+  const externalTimeYears = distanceLy / vFraction;
+  const transitSeconds = throatLength / (vFraction * C);
+
+  useEffect(() => {
+    let animId;
+    let lastTime = performance.now();
+
+    const update = (now) => {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      setEarthSeconds((prev) => prev + dt);
+      setTravelerSeconds((prev) => prev + dt);
+      animId = requestAnimationFrame(update);
+    };
+
+    animId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  const formatSec = (s) => {
+    if (s < 0.001) return `${(s * 1e6).toFixed(1)} μs`;
+    if (s < 1) return `${(s * 1000).toFixed(1)} ms`;
+    if (s < 60) return `${s.toFixed(2)} s`;
+    if (s < 3600) return `${(s / 60).toFixed(1)} dk`;
+    return `${(s / 3600).toFixed(2)} saat`;
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-      {/* Classical External Travel Box */}
+      {/* Clock 1: External Classical Observer */}
       <div className="p-5 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md">
         <div className="flex items-center justify-between mb-3">
           <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-            {lang === "en" ? "Classical Flat Spacetime (Sub-light)" : "Klasik Düz Uzay-Zaman (Dış Yol)"}
+            <span className="h-2 w-2 rounded-full bg-zinc-400 animate-pulse" />
+            🌍 Dış Uzay-Zaman (Minkowski Düz Yol)
           </span>
           <span className="font-mono text-[10px] text-zinc-500">d = {distanceLy.toLocaleString()} Ly</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-2xl md:text-3xl font-black text-zinc-200 tracking-wider">
+          <span className="font-mono text-3xl md:text-4xl font-black text-white tracking-wider">
             {externalTimeYears > 1e6 ? externalTimeYears.toExponential(2) : Math.round(externalTimeYears).toLocaleString()}
           </span>
           <span className="font-mono text-sm text-zinc-400">{lang === "en" ? "years" : "yıl"}</span>
         </div>
         <p className="font-mono text-[11px] text-zinc-500 mt-2 leading-relaxed">
-          {lang === "en"
-            ? "Standard Minkowski space travel time constrained by cosmic speed limit c."
-            : "Işık hızının altındaki klasik araçlarla uzay-zaman düzleminde kat edilen asgari süre."}
+          Işık hızının altındaki klasik gemilerin evrenin dış düzleminde kat etmek zorunda olduğu asgari zaman.
         </p>
       </div>
 
-      {/* Wormhole Throat Transit Box */}
-      <div className="p-5 rounded-2xl border border-indigo-500/20 bg-indigo-950/10 backdrop-blur-md">
+      {/* Clock 2: Wormhole Traveler Proper Time */}
+      <div className="p-5 rounded-2xl border border-indigo-500/30 bg-indigo-950/15 backdrop-blur-md">
         <div className="flex items-center justify-between mb-3">
           <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-300 font-bold flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
-            {lang === "en" ? "Morris-Thorne Throat Geodesic" : "Morris-Thorne Boğaz Jeodeziği"}
+            <span className="h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
+            🚀 Morris-Thorne Boğaz İçi Öz-Zaman (τ)
           </span>
-          <span className="font-mono text-[10px] text-indigo-300/60">L = {throatLengthM.toLocaleString()} m</span>
+          <span className="font-mono text-[10px] text-indigo-300/70">L = {throatLength.toLocaleString()} m</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-2xl md:text-3xl font-black text-white tracking-wider">
-            {formatTransitTime(transitSeconds)}
+          <span className="font-mono text-3xl md:text-4xl font-black text-indigo-200 tracking-wider">
+            {formatSec(transitSeconds)}
           </span>
+          <span className="font-mono text-sm text-indigo-300/60">geçiş süresi</span>
         </div>
         <p className="font-mono text-[11px] text-indigo-200/60 mt-2 leading-relaxed">
-          {lang === "en"
-            ? "Proper time (τ) experienced by traveler crossing directly through the throat corridor."
-            : "Gezginin uzay-zaman eğriliği sayesinde boğaz içinden geçerken bizzat hissettiği öz-zaman (τ)."}
+          Uzay bükülmesi sayesinde boğaz koridorundan doğrudan geçen gezginin kolundaki saatte geçen anlık süre.
         </p>
       </div>
     </div>
@@ -463,141 +618,172 @@ function TraversalTimeComparison({ distanceLy, throatLengthM, vFraction, lang })
 }
 
 /* ════════════════════════════════════════════════════════════
-   MAIN COMPONENT: WORMHOLE CALCULATOR
+   MAIN PAGE: MORRIS-THORNE CALCULATOR
 ════════════════════════════════════════════════════════════ */
-export default function WormholeCalculator() {
+export default function WormholePage() {
   const [lang, setLang] = useState("tr");
-  const [activeTab, setActiveTab] = useState("simulator"); // "simulator" | "math" | "casimir"
+  const [activeTab, setActiveTab] = useState("simulator"); // "simulator" | "theory" | "casimir"
 
-  // Physics State
-  const [throatRadius, setThroatRadius] = useState(2.0); // meters (r_0)
-  const [throatLength, setThroatLength] = useState(10.0); // meters (L)
-  const [targetDistanceLy, setTargetDistanceLy] = useState(4.24); // light years
-  const [transitSpeedFraction, setTransitSpeedFraction] = useState(0.01); // fraction of c (e.g. 0.01c = 3000 km/s)
+  // Authoritative Numeric Physics States
+  const [throatRadius, setThroatRadius] = useState(2.5); // meters (r_0)
+  const [throatLength, setThroatLength] = useState(12.0); // meters (L)
+  const [targetDistanceLy, setTargetDistanceLy] = useState(4.24); // Ly
+  const [vFraction, setVFraction] = useState(0.01); // 0.01c = 3000 km/s
 
-  // Advanced Morris-Thorne Metric Parameters
-  // Tidal acceleration across traveler body (length Δξ = 1.8 meters)
-  // For standard zero-tidal Morris-Thorne metric with flat entrance:
-  // Radial tidal acceleration: |Δa_r| ≈ c^2 * |d^2 Φ / dr^2| * Δξ or geometric curvature term
-  // For Thorne's standard simple benchmark: Δa_radial ≈ (c^2 * r_0) / (r^3) * Δξ (at throat r = r_0)
-  const travelerHeightMeters = 1.8;
-  const tidalAccelMs2 = (Math.pow(C, 2) / Math.max(0.1, Math.pow(throatRadius, 2))) * (travelerHeightMeters / 1e16); // scaled benchmark
-  const tidalG = tidalAccelMs2 / 9.80665;
-  const isHumanSafe = tidalG <= 2.5; // Up to 2.5g is biologically safe for humans
+  // String Inputs for Natural Typing
+  const [r0InputStr, setR0InputStr] = useState("2.5");
+  const [lengthInputStr, setLengthInputStr] = useState("12.0");
+  const [distInputStr, setDistInputStr] = useState("4.24");
 
-  // Exotic Negative Mass Requirement:
-  // Thorne 1988 formula: Total negative exotic mass required to sustain throat:
-  // M_exotic ≈ - (c^2 * r_0) / G
-  const exoticMassKg = -((Math.pow(C, 2) * throatRadius) / G);
-  const exoticMassInJupiters = Math.abs(exoticMassKg) / M_JUPITER;
-  const exoticMassInMoons = Math.abs(exoticMassKg) / M_MOON;
-  const exoticEnergyJoules = Math.abs(exoticMassKg) * Math.pow(C, 2);
-
-  // Apply Preset
-  const handleSelectPreset = (preset) => {
-    setThroatRadius(preset.r0);
-    setThroatLength(preset.throatLengthM);
-    setTargetDistanceLy(preset.distanceLy);
+  // Sync helpers
+  const updateRadius = (val) => {
+    setThroatRadius(val);
+    setR0InputStr(val.toString());
   };
 
+  const updateLength = (val) => {
+    setThroatLength(val);
+    setLengthInputStr(val.toString());
+  };
+
+  const updateDistance = (val) => {
+    setTargetDistanceLy(val);
+    setDistInputStr(val.toString());
+  };
+
+  const applyPreset = (preset) => {
+    updateRadius(preset.r0);
+    updateLength(preset.length);
+    updateDistance(preset.distanceLy);
+  };
+
+  // ══════════════════════════════════════════════════════
+  // PHYSICS CALCULATIONS (MORRIS & THORNE 1988)
+  // ══════════════════════════════════════════════════════
+  // 1. Exotic Negative Mass Requirement: M_exotic ≈ - (c^2 * r_0) / G
+  const exoticMassKg = -((Math.pow(C, 2) * throatRadius) / G);
+  const exoticMoons = Math.abs(exoticMassKg) / M_MOON;
+  const exoticJupiters = Math.abs(exoticMassKg) / M_JUPITER;
+
+  // 2. Biophysical Head-to-Toe Tidal Acceleration:
+  // For flat-mouth Morris-Thorne throat, Riemann tensor component:
+  // Δa_tidal ≈ (c^2 / r_0^2) * (Δξ_body / c^2) ... Thorne's benchmark:
+  // Δa ≈ (G * |M_effective| / r_0^3) * Δξ = (c^2 / r_0^2) * Δξ
+  const humanHeight = 1.8; // meters
+  // Scaling benchmark: for r0 = 2m, Δa is modest; for sub-millimeter r0 it becomes infinite
+  const tidalAccelMs2 = (Math.pow(C, 2) / Math.max(0.01, Math.pow(throatRadius, 2))) * (humanHeight / 1e16);
+  const tidalG = tidalAccelMs2 / 9.80665;
+  const isHumanSafe = tidalG <= 2.5;
+
+  const PAGE_TEXT = {
+    tr: {
+      badge: "KURAMSAL ASTROFİZİK // MORRIS-THORNE METRİĞİ",
+      title: "Morris-Thorne Geçilebilir Solucan Deliği\n& Kuantum Egzotik Madde Simülatörü",
+      sub: "1988 Kip Thorne denklemine dayanan ufuksuz uzay-zaman köprüsünün Flamm paraboloid geometrisini, Casimir negatif enerji tensörünü ve biyofiziksel gelgit dayanımını interaktif analiz edin.",
+      tabSim: "🕳️ 3D Tünel Simülatörü",
+      tabTheory: "📐 Metrik & Matematiksel İspat",
+      tabCasimir: "⚡ Casimir Negatif Enerjisi"
+    },
+    en: {
+      badge: "THEORETICAL ASTROPHYSICS // MORRIS-THORNE METRIC",
+      title: "Morris-Thorne Traversable Wormhole\n& Exotic Matter Simulator",
+      sub: "Interactively analyze Flamm's paraboloid geometry, Casimir negative energy requirements, and human tidal tolerances of a traversable wormhole based on Einstein's Field Equations.",
+      tabSim: "🕳️ 3D Tunnel Simulator",
+      tabTheory: "📐 Metric & Mathematical Proof",
+      tabCasimir: "⚡ Casimir Negative Energy"
+    }
+  }[lang];
+
   return (
-    <div className="min-h-screen transition-theme bg-[#040508]" style={{ color: "var(--foreground)" }}>
+    <div className="min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
       <ReadingProgressBar />
       <Header isArticle={false} lang={lang} onLangChange={setLang} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Top Breadcrumb & Metadata */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/calculations"
-              className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
-            >
-              ← {lang === "en" ? "Calculations" : "Hesaplama Portalı"}
-            </Link>
-            <span className="text-zinc-600">/</span>
-            <span className="font-mono text-xs uppercase tracking-widest text-indigo-400">
-              MORRIS-THORNE METRIC // 1988
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-            <span className="h-2 w-2 rounded-full bg-indigo-400" />
-            <span>Kip S. Thorne & Michael S. Morris Arşivi</span>
-          </div>
-        </div>
+      {/* Standard Compact Container (Identical to time-dilation) */}
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        {/* Breadcrumb */}
+        <Link
+          href="/calculations"
+          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest mb-6 transition-theme opacity-75 hover:opacity-100 hover:text-amber-400"
+        >
+          ← {lang === "en" ? "All Calculation Tools" : "Tüm Hesaplama Araçları"}
+        </Link>
 
         {/* Hero Title */}
-        <div className="mb-8">
-          <span className="font-mono text-xs uppercase tracking-widest text-zinc-400 font-bold block mb-2">
-            RESEARCH APEX // GEOMETRODYNAMICS
-          </span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
-            {lang === "en"
-              ? "Morris-Thorne Traversable Wormhole Analyzer"
-              : "Morris-Thorne Geçilebilir Solucan Deliği Analizörü"}
-          </h1>
-          <p className="text-sm md:text-base text-zinc-400 mt-3 max-w-3xl leading-relaxed">
-            {lang === "en"
-              ? "Investigate the spatial curvature, exotic matter tension, Casimir negative energy density, and human tidal tolerance of a traversable wormhole based on Einstein's Field Equations."
-              : "Einstein Alan Denklemleri'ne dayanan ufuksuz ve çift yönlü geçilebilir bir solucan deliğinin Flamm paraboloid eğriliğini, Casimir negatif enerji ihtiyacını ve biyolojik gelgit dayanımını analiz edin."}
-          </p>
+        <div
+          className="inline-flex items-center gap-2 mb-4 font-mono text-[10px] uppercase tracking-widest px-3 py-1 rounded-full block w-fit"
+          style={{ border: "1px solid rgba(99, 102, 241, 0.3)", background: "rgba(99, 102, 241, 0.08)", color: "#818cf8" }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full inline-block bg-indigo-400 animate-pulse" />
+          {PAGE_TEXT.badge}
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-white/10 mb-8 overflow-x-auto">
+        <h1
+          className="font-black uppercase tracking-tight"
+          style={{
+            fontSize: "clamp(2rem, 4.5vw, 3.2rem)",
+            lineHeight: 1.05,
+            whiteSpace: "pre-line"
+          }}
+        >
+          {PAGE_TEXT.title}
+        </h1>
+        <p className="mt-4 text-sm md:text-base leading-relaxed max-w-3xl opacity-80">
+          {PAGE_TEXT.sub}
+        </p>
+
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mt-8 overflow-x-auto pb-2 border-b border-white/10">
           <button
             onClick={() => setActiveTab("simulator")}
-            className={`font-mono text-xs uppercase tracking-widest px-6 py-3 border-b-2 transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === "simulator"
-                ? "border-indigo-400 text-white font-bold bg-white/5"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
           >
-            {lang === "en" ? "Interactive 3D Simulator" : "İnteraktif 3D Simülatör"}
+            {PAGE_TEXT.tabSim}
           </button>
           <button
-            onClick={() => setActiveTab("math")}
-            className={`font-mono text-xs uppercase tracking-widest px-6 py-3 border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "math"
-                ? "border-indigo-400 text-white font-bold bg-white/5"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            onClick={() => setActiveTab("theory")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+              activeTab === "theory"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
           >
-            {lang === "en" ? "Mathematical Proof & Metric" : "Matematiksel İspat & Metrik"}
+            {PAGE_TEXT.tabTheory}
           </button>
           <button
             onClick={() => setActiveTab("casimir")}
-            className={`font-mono text-xs uppercase tracking-widest px-6 py-3 border-b-2 transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === "casimir"
-                ? "border-indigo-400 text-white font-bold bg-white/5"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
           >
-            {lang === "en" ? "Casimir Effect & Exotic Matter" : "Casimir Etkisi & Egzotik Madde"}
+            {PAGE_TEXT.tabCasimir}
           </button>
         </div>
 
-        {/* Tab 1: Simulator */}
+        {/* TAB 1: 3D SIMULATOR */}
         {activeTab === "simulator" && (
-          <div className="space-y-8">
-            {/* Presets Grid */}
+          <div className="space-y-8 mt-8 animate-fade-in-up">
+            {/* Presets Row */}
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-zinc-400 font-bold block mb-3">
-                {lang === "en" ? "Astrophysical & Engineering Presets" : "Astrofiziksel ve Kuramsal Senaryolar"}
+                {lang === "en" ? "Theoretical Presets" : "Kuramsal Senaryo Presetleri"}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {WORMHOLE_PRESETS.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => handleSelectPreset(p)}
-                    className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-all text-left group"
+                    onClick={() => applyPreset(p)}
+                    className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] transition-all text-left group"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-[10px] text-indigo-400 uppercase tracking-wider font-semibold">
-                        {lang === "en" ? p.badgeEn : p.badgeTr}
-                      </span>
-                    </div>
+                    <span className="font-mono text-[10px] text-indigo-400 uppercase tracking-wider font-semibold block mb-1">
+                      {lang === "en" ? p.badgeEn : p.badgeTr}
+                    </span>
                     <div className="text-sm font-bold text-white group-hover:text-indigo-200 transition-colors">
                       {lang === "en" ? p.nameEn : p.nameTr}
                     </div>
@@ -609,59 +795,98 @@ export default function WormholeCalculator() {
               </div>
             </div>
 
-            {/* 3D Wireframe Canvas */}
-            <Wormhole3DCanvas
-              r0={throatRadius}
+            {/* True 3D Reactive Interactive Canvas */}
+            <InteractiveWormhole3D
+              throatRadius={throatRadius}
+              throatLength={throatLength}
               isHumanSafe={isHumanSafe}
               tidalG={tidalG}
               exoticMassKg={exoticMassKg}
+              lang={lang}
             />
 
-            {/* Live Parameter Controls & HUD Panels */}
+            {/* Controls & Scientific Proof Matrix */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column: Sliders & Controls */}
+              {/* Left Column: Parametric Controls */}
               <div className="lg:col-span-1 p-6 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md space-y-6">
                 <div>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 font-bold block mb-1">
-                    PARAMETRİK KONTROL ÜNİTESİ
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-400 font-bold block mb-1">
+                    GEOMETRİ KONTROL PANELİ
                   </span>
-                  <h3 className="text-lg font-bold text-white">Boğaz & Geometri Değişkenleri</h3>
+                  <h3 className="text-lg font-bold text-white">Metrik Parametreleri</h3>
                 </div>
 
-                {/* Slider 1: Throat Radius r_0 */}
+                {/* Radius Slider + Direct Input */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="font-mono text-xs text-zinc-300">
-                      {lang === "en" ? "Throat Radius (r₀)" : "Boğaz Yarıçapı (r₀)"}
+                      Boğaz Yarıçapı (r₀):
                     </label>
-                    <span className="font-mono text-xs text-indigo-300 font-bold">
-                      {throatRadius >= 1000
-                        ? `${(throatRadius / 1000).toLocaleString()} km`
-                        : throatRadius < 0.01
-                        ? throatRadius.toExponential(2) + " m"
-                        : `${throatRadius.toFixed(1)} m`}
-                    </span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={r0InputStr}
+                      onChange={(e) => {
+                        setR0InputStr(e.target.value);
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val > 0) setThroatRadius(val);
+                      }}
+                      className="w-24 px-2 py-0.5 text-right font-mono text-xs bg-white/5 border border-white/10 rounded text-indigo-300 font-bold"
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="500"
+                    step="0.5"
+                    value={Math.min(500, Math.max(0.2, throatRadius))}
+                    onChange={(e) => updateRadius(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
+                  />
+                  <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
+                    <span>0.2 m (Kritik Gelgit)</span>
+                    <span>500 m (Geniş Koridor)</span>
+                  </div>
+                </div>
+
+                {/* Length Slider + Direct Input */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="font-mono text-xs text-zinc-300">
+                      Tünel Uzunluğu (L):
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={lengthInputStr}
+                      onChange={(e) => {
+                        setLengthInputStr(e.target.value);
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val > 0) setThroatLength(val);
+                      }}
+                      className="w-24 px-2 py-0.5 text-right font-mono text-xs bg-white/5 border border-white/10 rounded text-indigo-300 font-bold"
+                    />
                   </div>
                   <input
                     type="range"
                     min="1"
-                    max="10000"
-                    step="1"
-                    value={Math.min(10000, Math.max(1, throatRadius))}
-                    onChange={(e) => setThroatRadius(parseFloat(e.target.value))}
+                    max="1000"
+                    step="5"
+                    value={Math.min(1000, Math.max(1, throatLength))}
+                    onChange={(e) => updateLength(parseFloat(e.target.value))}
                     className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
                   <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
-                    <span>1 m (Dar)</span>
-                    <span>10 km (Dev İstasyon)</span>
+                    <span>1 m (Anlık Geçiş)</span>
+                    <span>1,000 m (Uzun Boğaz)</span>
                   </div>
                 </div>
 
-                {/* Slider 2: Target Distance (Light Years) */}
+                {/* Distance Slider */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="font-mono text-xs text-zinc-300">
-                      {lang === "en" ? "Shortcut Distance" : "Bağlanan Uzay Mesafesi"}
+                      Köprü Mesafesi (Ly):
                     </label>
                     <span className="font-mono text-xs text-zinc-300 font-bold">
                       {targetDistanceLy.toLocaleString()} Ly
@@ -670,50 +895,45 @@ export default function WormholeCalculator() {
                   <input
                     type="range"
                     min="1"
-                    max="100000"
+                    max="50000"
                     step="10"
                     value={targetDistanceLy}
-                    onChange={(e) => setTargetDistanceLy(parseFloat(e.target.value))}
+                    onChange={(e) => updateDistance(parseFloat(e.target.value))}
                     className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
                   <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
-                    <span>1 Ly</span>
-                    <span>100,000 Ly (Samanyolu Çapı)</span>
+                    <span>1 Ly (Yakın Yıldız)</span>
+                    <span>50,000 Ly (Galaktik Merkez)</span>
                   </div>
                 </div>
 
-                {/* Slider 3: Transit Speed Fraction */}
+                {/* Velocity */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="font-mono text-xs text-zinc-300">
-                      {lang === "en" ? "Throat Transit Speed (v/c)" : "Boğaz İçi Geçiş Hızı (v/c)"}
+                      Geçiş Hızı (v/c):
                     </label>
                     <span className="font-mono text-xs text-zinc-300 font-bold">
-                      %{(transitSpeedFraction * 100).toFixed(1)} c (~
-                      {Math.round(transitSpeedFraction * 300000).toLocaleString()} km/s)
+                      %{(vFraction * 100).toFixed(1)} c
                     </span>
                   </div>
                   <input
                     type="range"
                     min="0.001"
-                    max="0.5"
+                    max="0.2"
                     step="0.005"
-                    value={transitSpeedFraction}
-                    onChange={(e) => setTransitSpeedFraction(parseFloat(e.target.value))}
+                    value={vFraction}
+                    onChange={(e) => setVFraction(parseFloat(e.target.value))}
                     className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
-                  <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
-                    <span>%0.1 c (Kimyasal/İyon)</span>
-                    <span>%50 c (Rölativistik)</span>
-                  </div>
                 </div>
               </div>
 
-              {/* Right Column: Physical Analysis & Proof Results */}
+              {/* Right Column: Physical Proof & Analysis Results */}
               <div className="lg:col-span-2 space-y-4">
-                {/* Result Card 1: Negative Exotic Mass Calculation */}
+                {/* Metric Proof Card */}
                 <div className="p-6 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-400 font-bold">
                       EINSTEIN ALAN DENKLEMLERİ // BOĞAZ GERİLİMİ
                     </span>
@@ -721,85 +941,83 @@ export default function WormholeCalculator() {
                       M_exotic ≈ - (c² · r₀) / G
                     </span>
                   </div>
+
                   <h4 className="text-xl font-bold text-white mb-2">
-                    {lang === "en" ? "Exotic Negative Energy Requisite" : "Gereken Negatif Egzotik Enerji / Kütle"}
+                    {lang === "en" ? "Exotic Negative Mass Required" : "Gereken Negatif Casimir Kütlesi"}
                   </h4>
+
                   <div className="flex items-baseline gap-2 mb-3">
-                    <span className="font-mono text-2xl md:text-3xl font-black text-rose-400">
+                    <span className="font-mono text-3xl font-black text-rose-400">
                       {exoticMassKg.toExponential(4)}
                     </span>
                     <span className="font-mono text-sm text-zinc-400">kg (Negatif Kütle)</span>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-white/5 text-xs font-mono">
                     <div className="text-zinc-400">
                       Ay Kütlesi Eşdeğeri:{" "}
                       <span className="text-zinc-200 font-bold">
-                        {exoticMassInMoons.toFixed(2)} × M_Ay
+                        {exoticMoons.toFixed(2)} × M_Ay
                       </span>
                     </div>
                     <div className="text-zinc-400">
                       Jüpiter Kütlesi Eşdeğeri:{" "}
                       <span className="text-zinc-200 font-bold">
-                        {exoticMassInJupiters.toFixed(4)} × M_Jüpiter
+                        {exoticJupiters.toFixed(4)} × M_Jüpiter
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Result Card 2: Biophysical Tidal Acceleration */}
+                {/* Biophysical Tidal Safety Card */}
                 <div className={`p-6 rounded-2xl border backdrop-blur-md ${
                   isHumanSafe
-                    ? "border-indigo-500/20 bg-indigo-950/10"
-                    : "border-rose-500/20 bg-rose-950/10"
+                    ? "border-emerald-500/30 bg-emerald-950/10"
+                    : "border-rose-500/30 bg-rose-950/15"
                 }`}>
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <span className={`font-mono text-[10px] uppercase tracking-widest font-bold ${
-                      isHumanSafe ? "text-indigo-300" : "text-rose-400"
+                      isHumanSafe ? "text-emerald-400" : "text-rose-400"
                     }`}>
-                      BİYOFİZİKSEL SPAGETTİLEŞME TOLERANSI
+                      BİYOFİZİKSEL GELGİT FARKI & SPAGETTİLEŞME
                     </span>
                     <span className="font-mono text-[10px] text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                      Δξ = 1.8 m (İnsan Boyu)
+                      Δξ = 1.8 m (Astronot Boyu)
                     </span>
                   </div>
+
                   <h4 className="text-xl font-bold text-white mb-2">
-                    {lang === "en" ? "Head-to-Toe Tidal Force" : "Baştan Ayağa Gelgit İvmesi Farkı"}
+                    Baş-Ayak Arası Diferansiyel İvme:{" "}
+                    <span className={isHumanSafe ? "text-emerald-300 font-mono" : "text-rose-400 font-mono"}>
+                      {tidalG < 0.001 ? "< 0.001" : tidalG.toFixed(2)} g
+                    </span>
                   </h4>
-                  <div className="flex items-baseline gap-3 mb-2">
-                    <span className={`font-mono text-2xl md:text-3xl font-black ${
-                      isHumanSafe ? "text-indigo-200" : "text-rose-400"
-                    }`}>
-                      {tidalG < 0.001 ? "< 0.001" : tidalG.toFixed(3)} g
-                    </span>
-                    <span className="text-xs text-zinc-400 font-mono">
-                      ({(tidalG * 9.81).toFixed(2)} m/s² diferansiyel ivme)
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+
+                  <p className="text-xs text-zinc-300 leading-relaxed">
                     {isHumanSafe
-                      ? "✓ Boğaz yarıçapı insan anatomisi için yeterince geniştir. Riemann eğrilik tensörü insan hücrelerini veya iskelet yapısını parçalayacak düzeyde diferansiyel çekim oluşturmaz."
-                      : "⚠ UYARI: Boğaz yarıçapı aşırı dar olduğundan uzay-zaman eğriliği çok keskindir. Baş ile ayaklar arasındaki yerçekimi farkı insanı spagetti gibi uzatarak ölümcül doku yırtılmasına yol açar."}
+                      ? "✓ Boğaz yarıçapı insan anatomisi için yeterince geniştir. Riemann eğrilik tensörü insan hücrelerini veya iskelet sistemini parçalayacak düzeyde diferansiyel kuvvet üretmez."
+                      : "⚠ UYARI: Boğaz aşırı dar olduğundan uzay-zaman eğriliği çok diktir. Baş ile ayaklar arasındaki yerçekimi farkı insanı spagetti gibi uzatarak dokusal yırtılmaya neden olur."}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Travel Time Comparison Panel */}
-            <TraversalTimeComparison
+            {/* Live Twin Clocks */}
+            <LiveTwinWormholeClocks
               distanceLy={targetDistanceLy}
-              throatLengthM={throatLength}
-              vFraction={transitSpeedFraction}
+              throatLength={throatLength}
+              vFraction={vFraction}
               lang={lang}
             />
           </div>
         )}
 
-        {/* Tab 2: Mathematical Proof & Metric */}
-        {activeTab === "math" && (
-          <div className="p-6 md:p-10 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md space-y-8">
+        {/* TAB 2: MATHEMATICAL PROOF & METRIC */}
+        {activeTab === "theory" && (
+          <div className="p-6 md:p-10 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md space-y-8 mt-8 animate-fade-in-up">
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold block mb-2">
-                KURAMSAL ASTROFİZİK // EINSTEIN-MORRIS-THORNE METRİĞİ
+                KURAMSAL ASTROFİZİK // EINSTEIN ALAN DENKLEMLERİ
               </span>
               <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
                 Morris-Thorne Geçilebilir Solucan Deliğinin Matematiksel İspatı
@@ -809,7 +1027,6 @@ export default function WormholeCalculator() {
               </p>
             </div>
 
-            {/* Metric Formula Box */}
             <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
               <h3 className="font-mono text-sm font-bold text-indigo-300 mb-2">
                 1. Morris-Thorne Çizgi Elemanı (Line Element)
@@ -819,7 +1036,7 @@ export default function WormholeCalculator() {
               </div>
               <ul className="text-xs text-zinc-400 space-y-2 list-disc list-inside mt-3">
                 <li>
-                  <strong className="text-zinc-200">Φ(r) (Kızılkayma Fonksiyonu):</strong> Olay ufku (event horizon) oluşmaması için her yerde sonlu olmalıdır. Eğer e^(2Φ) = 0 olursa, zaman durur ve Schwarzschild kara deliğinde olduğu gibi geri dönüşsüz tek yönlü bir ufuk oluşur.
+                  <strong className="text-zinc-200">Φ(r) (Kızılkayma Fonksiyonu):</strong> Olay ufku (event horizon) oluşmaması için her yerde sonlu olmalıdır. Eğer e^(2Φ) = 0 olursa zaman durur ve Schwarzschild kara deliğinde olduğu gibi geri dönüşsüz tek yönlü bir ufuk oluşur.
                 </li>
                 <li>
                   <strong className="text-zinc-200">b(r) (Şekil Fonksiyonu):</strong> Boğazın 3 boyutlu geometrisini belirler. Boğaz noktasında (r = r₀) b(r₀) = r₀ şartı sağlanır.
@@ -830,7 +1047,6 @@ export default function WormholeCalculator() {
               </ul>
             </div>
 
-            {/* Null Energy Condition (NEC) Violation */}
             <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
               <h3 className="font-mono text-sm font-bold text-rose-300 mb-2">
                 2. Null Enerji Şartının (NEC) Çiğnenmesi ve Egzotik Madde
@@ -848,9 +1064,9 @@ export default function WormholeCalculator() {
           </div>
         )}
 
-        {/* Tab 3: Casimir Effect & Exotic Matter */}
+        {/* TAB 3: CASIMIR EFFECT */}
         {activeTab === "casimir" && (
-          <div className="p-6 md:p-10 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md space-y-8">
+          <div className="p-6 md:p-10 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md space-y-8 mt-8 animate-fade-in-up">
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold block mb-2">
                 KUANTUM VAKUM ENERJİSİ // CASIMIR ETKİSİ
@@ -867,17 +1083,14 @@ export default function WormholeCalculator() {
               <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
                 <h3 className="font-mono text-sm font-bold text-white mb-2">Casimir Plakaları Deneyi</h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Vakum ortamında birbirine nanometre mesafede duran yüksüz iki iletken metal plaka arasına sadece belirli dalga boyundaki kuantum vakum modları sığabilir. Plakaların dışındaki sonsuz dalga modları içeridekilerden fazla olduğu için, plakaların arasındaki efektif enerji yoğunluğu dışarıdaki boşluğa göre <strong>negatif</strong> hale gelir:
+                  Vakum ortamında birbirine nanometre mesafede duran yüksüz iki iletken metal plaka arasına sadece belirli dalga boyundaki kuantum vakum modları sığabilir. Plakaların dışındaki sonsuz dalga modları içeridekilerden fazla olduğu için, plakaların arasındaki efektif enerji yoğunluğu dışarıdaki boşluğa göre <strong>negatif</strong> hale gelir.
                 </p>
-                <div className="font-mono text-xs bg-black/60 p-3 rounded-lg text-indigo-300 mt-3 border border-white/5">
-                  ⟨T₀₀⟩ = - (π² ħ c) / (720 d⁴)
-                </div>
               </div>
 
               <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                <h3 className="font-mono text-sm font-bold text-white mb-2">Makroskopik Mühendislik Engeli</h3>
+                <h3 className="font-mono text-sm font-bold text-white mb-2">Makroskopik Mühendislik Sınırı</h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Laboratuvarda nanometre mesafelerde negatif enerji elde edebilsek de, 2 metrelik bir insan boğazını açık tutmak için gereken $-10^{23}$ Joule mertebesindeki negatif enerjiyi bir arada tutacak kuantum kararlılık mekanizması henüz bilinmemektedir. Geleceğin Kuantum Kütleçekimi (Quantum Gravity) teorisi bu sınırları aydınlatacaktır.
+                  Laboratuvarda nanometre mesafelerde negatif enerji elde edebilsek de, 2.5 metrelik bir insan boğazını açık tutmak için gereken negatif Casimir enerjisini bir arada tutacak kuantum kararlılık mekanizması henüz bilinmemektedir. Geleceğin Kuantum Kütleçekimi kuramı bu sırrı aydınlatacaktır.
                 </p>
               </div>
             </div>
