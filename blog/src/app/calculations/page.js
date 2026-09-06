@@ -60,6 +60,23 @@ const DEFAULT_CALCULATORS = [
     },
     accentColor: "#a855f7",
   },
+  {
+    id: "wormhole",
+    toolId: "wormhole",
+    slug: "/calculations/wormhole",
+    category: "GENERAL RELATIVITY & GEOMETRODYNAMICS",
+    type: "INTERACTIVE SIMULATOR",
+    image: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80",
+    title: {
+      tr: "Morris-Thorne Geçilebilir Solucan Deliği Simülatörü",
+      en: "Morris-Thorne Traversable Wormhole Simulator",
+    },
+    excerpt: {
+      tr: "Einstein Alan Denklemleri'ne dayanan ufuksuz ve geçilebilir bir solucan deliğinin Flamm paraboloid geometrisini, Casimir negatif enerji gereksinimini ve biyofiziksel gelgit kuvvetlerini 3D simülasyonla inceleyin.",
+      en: "Explore Flamm's paraboloid geometry, Casimir negative energy requirements, and biophysical tidal stresses of a traversable wormhole in 3D based on Einstein's Field Equations.",
+    },
+    accentColor: "#6366f1",
+  },
 ];
 
 export default function CalculationsPage() {

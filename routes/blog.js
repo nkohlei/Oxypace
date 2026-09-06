@@ -119,6 +119,36 @@ const INITIAL_POSTS = [
         content: `<p class="lead text-lg mb-6 opacity-90">DNA'daki Watson-Crick baz çiftlerini bir arada tutan tautomerik protonların, enerji bariyeri altından kuantum mekanik tünelleme ile geçebileceği hipotezi Löwdin tarafından 1963 yılında önerilmiştir. Bu süreç, spontan mutasyonların kaynaklarından biri olabilir.</p>
           <h2 class="text-2xl font-bold mt-8 mb-4">Proton Tünellemesi Mekanizması</h2>
           <p class="mb-4 opacity-90">Adenin-Timin baz çiftindeki keto-enol tautomerizasyonu, protonun hidrojen bağı boyunca klasik termal aktivasyon olmaksızın geçişine yol açabilir. Eğer bu tautomer hali DNA replikasyonu sırasında şablon görevi görürse, yanlış baz eşleşmesi ve dolayısıyla mutasyon meydana gelebilir.</p>`
+    },
+    {
+        title: "Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği",
+        slug: "morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi",
+        excerpt: "Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu fiziği.",
+        category: "Teorik Astrofizik",
+        readTime: "15 dk okuma",
+        date: "16 Temmuz 2026",
+        image: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80",
+        isPublished: true,
+        content: `
+          <p class="lead text-lg mb-6 opacity-90">Genel Görelilik kuramının en büyüleyici ve tartışmalı öngörülerinden biri, uzay-zamanın iki uzak noktasını birbirine bağlayan topolojik tünellerdir: Solucan Delikleri (Wormholes). Ancak onlarca yıl boyunca bu yapılar yalnızca matematiksel bir fantezi olarak kaldı. Çünkü 1935 tarihli klasik Einstein-Rosen köprüsü, üzerinden hiçbir maddenin geçemeyeceği kadar kararsızdı ve anında tekilliğe çöküyordu.</p>
+          
+          <h2 class="text-2xl font-bold mt-8 mb-4">1988 Devrimi: Morris-Thorne Metriği</h2>
+          <p class="mb-4 opacity-90">1980'lerin ortasında Carl Sagan, 'Contact' romanını yazarken arkadaşı olan ünlü astrofizikçi Kip Thorne'a şu soruyu yöneltti: <em>'Bir insanın tekillikte ezilmeden ve zaman durmadan galaksiler arasında seyahat edebileceği fiziksel bir geçit tasarlayabilir miyiz?'</em></p>
+          
+          <p class="mb-4 opacity-90">Bu soru üzerine Kip Thorne ve öğrencisi Michael Morris, Einstein Alan Denklemleri'ni tersten çözdüler: Önce bir insanın güvenle geçebileceği (olay ufku olmayan, gelgit kuvvetleri insan vücudunu parçalamayan) bir uzay-zaman geometrisi tanımladılar, ardından bu geometriyi oluşturmak için gereken enerji-momentum tensörünü hesapladılar. Ortaya çıkan metrik şudur:</p>
+          
+          <blockquote class="border-l-4 border-indigo-500 pl-4 my-6 italic opacity-80 font-mono text-sm">
+            ds² = -e^(2Φ(r)) c² dt² + [1 - b(r)/r]⁻¹ dr² + r² (dθ² + sin²θ dφ²)
+          </blockquote>
+
+          <h2 class="text-2xl font-bold mt-8 mb-4">Null Enerji Şartı (NEC) ve Negatif Enerji</h2>
+          <p class="mb-4 opacity-90">Thorne ve Morris'in vardığı en kritik sonuç, yerçekiminin çekici doğasına karşı koyarak boğazı açık tutabilecek tek şeyin <strong>Negatif Enerji Yoğunluğuna (ρ &lt; 0)</strong> sahip 'Egzotik Madde' olduğuydu. Genel göreliliğin Null Enerji Şartı (Null Energy Condition - NEC), boğazın dışbükey açılma noktasında kaçınılmaz olarak çiğnenmek zorundadır.</p>
+
+          <p class="mb-4 opacity-90">Klasik fizikte negatif enerji imkansız kabul edilse de, Kuantum Alan Teorisinde <strong>Casimir Etkisi</strong> sayesinde vakum enerjisinin yerel olarak negatif değerler alabildiği deneysel olarak kanıtlanmıştır. Birbirine nanometre mesafedeki iki iletken levha arasında kuantum dalgalanmaları bastırılarak negatif enerji yoğunluğu elde edilir.</p>
+
+          <h2 class="text-2xl font-bold mt-8 mb-4">İnteraktif Simülatör ve İspatlar</h2>
+          <p class="mb-4 opacity-90">Event Horizon Hesaplama Portalı'nda yer alan 3D Morris-Thorne simülatörümüzle, farklı boğaz yarıçapları için gereken negatif enerji miktarını, insan boyundaki bir astronotun maruz kalacağı diferansiyel gelgit kuvvetlerini ve uzay yolculuğu sürelerini canlı hesaplayabilirsiniz.</p>
+        `
     }
 ];
 
@@ -680,6 +710,22 @@ const DEFAULT_CALCULATION_TOOLS = [
             en: "Live simulate space-time distortion, Lorentz factor (γ), time dilation, length contraction, and relativistic mass increase as velocity approaches the speed of light.",
         },
         accentColor: "#a855f7",
+    },
+    {
+        toolId: "wormhole",
+        slug: "/calculations/wormhole",
+        category: "GENERAL RELATIVITY & GEOMETRODYNAMICS",
+        type: "INTERACTIVE SIMULATOR",
+        image: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80",
+        title: {
+            tr: "Morris-Thorne Geçilebilir Solucan Deliği Simülatörü",
+            en: "Morris-Thorne Traversable Wormhole Simulator",
+        },
+        excerpt: {
+            tr: "Einstein Alan Denklemleri'ne dayanan ufuksuz ve geçilebilir bir solucan deliğinin Flamm paraboloid geometrisini, Casimir negatif enerji gereksinimini ve biyofiziksel gelgit kuvvetlerini 3D simülasyonla inceleyin.",
+            en: "Explore Flamm's paraboloid geometry, Casimir negative energy requirements, and biophysical tidal stresses of a traversable wormhole in 3D based on Einstein's Field Equations.",
+        },
+        accentColor: "#6366f1",
     },
 ];
 
