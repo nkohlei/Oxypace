@@ -9,20 +9,16 @@ import CookieConsent from "../../blog/components/CookieConsent";
 
 /* ════════════════════════════════════════════════════════════
    PHYSICAL CONSTANTS & MORRIS-THORNE METRIC PRESETS
-   Morris-Thorne (1988) Line Element:
-   ds^2 = -c^2 dt^2 + dr^2 / (1 - b(r)/r) + r^2 (dθ^2 + sin^2θ dφ^2)
-   Throat condition: b(r_0) = r_0, b'(r_0) < 1 (flare-out condition)
-   Null Energy Condition Violation: T_μν k^μ k^ν < 0 (ρ + p_r < 0)
-   Exotic Negative Mass Requirement: M_exotic ≈ - (c^2 · r_0) / G
-   Tidal Acceleration: Δa ≈ (c^2 / r_0^2) · Δξ (radial tidal field across human body)
+   Morris-Thorne (1988): ds^2 = -c^2 dt^2 + dr^2 / (1 - b(r)/r) + r^2 dΩ^2
+   Null Energy Condition: T_μν k^μ k^ν < 0 (Throat exotic tension)
+   M_exotic ≈ - (c^2 * r_0) / G
 ════════════════════════════════════════════════════════════ */
-const G = 6.6743e-11;          // m^3 kg^-1 s^-2
-const C = 299792458;           // m/s
-const G_EARTH = 9.80665;       // m/s^2 (Standard gravity)
-const M_JUPITER = 1.898e27;    // kg
-const M_EARTH = 5.972e24;      // kg
-const M_MOON = 7.342e22;       // kg
-const LIGHT_YEAR_M = 9.46073e15; // meters in 1 Ly
+const G = 6.6743e-11;       // m^3 kg^-1 s^-2
+const C = 299792458;        // m/s
+const M_JUPITER = 1.898e27; // kg
+const M_EARTH = 5.972e24;   // kg
+const M_MOON = 7.342e22;    // kg
+const LIGHT_YEAR_M = 9.4607e15; // meters
 
 const WORMHOLE_PRESETS = [
   {
@@ -76,19 +72,21 @@ const WORMHOLE_PRESETS = [
 ];
 
 /* ════════════════════════════════════════════════════════════
-   CANVAS: HIGH-PRECISION 3D FLAMM EMBEDDING & TRAVERSAL ENGINE
-   - True 3D projection responding directly to throat radius and length
-   - Color grading adapted to both dark & light themes seamlessly
-   - Geodesic particles animated through wormhole throat
-   - Interactive orbit & fly-through camera modes
+   CANVAS: HIGH-FIDELITY 3D TOPOLOGICAL WORMHOLE ENGINE
+   Pure Canvas 3D Projector with Live Parameter Deformation:
+   - Throat radius r0 dynamically scales the bottleneck diameter.
+   - Length L dynamically scales cylinder separation between 2 universe sheets.
+   - Exotic mass dynamically modifies negative Casimir tension glow.
+   - Live particles travel along geodesics from Universe-A to Universe-B.
+   - Full 360-degree mouse/touch orbit control.
 ════════════════════════════════════════════════════════════ */
 function InteractiveWormhole3D({
   throatRadius,
   throatLength,
   isHumanSafe,
   tidalG,
-  lang,
-  isDark
+  exoticMassKg,
+  lang
 }) {
   const canvasRef = useRef(null);
   const rotRef = useRef({ x: 0.38, y: 0.72 });
@@ -153,15 +151,15 @@ function InteractiveWormhole3D({
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("touchend", onTouchEnd);
 
-    // Geodesic Test Particles (Moving across the throat)
+    // Geodesic Test Particles (Travelling through the wormhole)
     const NUM_PARTICLES = 160;
     const particles = [];
     for (let i = 0; i < NUM_PARTICLES; i++) {
       particles.push({
-        t: Math.random(), // 0 = upper universe, 0.5 = throat center, 1 = lower universe
+        t: Math.random(), // 0 = upper universe, 0.5 = throat, 1 = lower universe
         angle: Math.random() * Math.PI * 2,
         speed: 0.003 + Math.random() * 0.005,
-        offsetR: (Math.random() - 0.5) * 0.3
+        offsetR: (Math.random() - 0.5) * 0.4
       });
     }
 
@@ -171,20 +169,20 @@ function InteractiveWormhole3D({
       time += 0.012;
       ctx.clearRect(0, 0, width, height);
 
-      // Deep Cosmic Void Backdrop (Crisp contrast in both dark & light modes)
-      ctx.fillStyle = isDark ? "#05060a" : "#090d16";
+      // Deep Cosmic Void Backdrop (Matte Charcoal Black)
+      ctx.fillStyle = "#030407";
       ctx.fillRect(0, 0, width, height);
 
-      // Fine coordinate grid lines
-      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(255, 255, 255, 0.05)";
+      // Subtle Background Space Grid
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
       ctx.lineWidth = 1;
-      for (let x = 0; x < width; x += 38) {
+      for (let x = 0; x < width; x += 36) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
         ctx.stroke();
       }
-      for (let y = 0; y < height; y += 38) {
+      for (let y = 0; y < height; y += 36) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
@@ -192,13 +190,13 @@ function InteractiveWormhole3D({
       }
 
       // Dynamic Physical Scaling based on inputs:
-      // Visual Throat Radius: logarithmic scale from 18px to 80px
+      // Normalized Visual Throat Radius: logarithmic scale from 16px to 80px
       const logR = Math.log10(Math.max(0.1, throatRadius));
       const visualThroatR = Math.max(18, Math.min(84, 28 + logR * 14));
 
-      // Visual Tunnel Length: separation between upper and lower asymptotic sheets
+      // Normalized Visual Tunnel Length: scales separation between sheets
       const logL = Math.log10(Math.max(1, throatLength));
-      const visualHalfLength = Math.max(18, Math.min(96, 26 + logL * 18));
+      const visualHalfLength = Math.max(20, Math.min(100, 30 + logL * 18));
 
       // Auto rotation in orbit mode
       if (cameraMode === "orbit" && !isDraggingRef.current) {
@@ -212,6 +210,9 @@ function InteractiveWormhole3D({
       // Handle Fly-Through Mode
       if (cameraMode === "transit") {
         transitProgressRef.current = (transitProgressRef.current + 0.004) % 1;
+        const tp = transitProgressRef.current;
+        // Move camera through the throat along Y axis
+        const camY = (tp - 0.5) * (visualHalfLength * 2.8);
         rx = 0.15;
         ry = time * 0.4;
         camDist = 280;
@@ -225,10 +226,12 @@ function InteractiveWormhole3D({
       const cx = width / 2;
       const cy = height / 2;
 
-      // 3D Projection
+      // 3D Projection Engine
       const project = (x, y, z) => {
+        // Rotate Y
         const x1 = x * cosY - z * sinY;
         const z1 = z * cosY + x * sinY;
+        // Rotate X
         const y2 = y * cosX - z1 * sinX;
         const z2 = z1 * cosX + y * sinX + camDist;
 
@@ -244,17 +247,19 @@ function InteractiveWormhole3D({
 
       // ══════════════════════════════════════════════════════
       // 1. RENDER 3D FLAMM'S PARABOLOID EMBEDDING SHEETS
+      // Two asymptotic Minkowski sheets connected via throat cylinder
       // ══════════════════════════════════════════════════════
       const NUM_RINGS = 18;
       const NUM_SECTORS = 32;
       const outerFlangeR = visualThroatR + 130;
 
+      // Render Upper Universe (+1) and Lower Universe (-1)
       [-1, 1].forEach((sheetSign) => {
         for (let i = 0; i <= NUM_RINGS; i++) {
-          const tRing = i / NUM_RINGS;
+          const tRing = i / NUM_RINGS; // 0 = at throat edge, 1 = flat outer boundary
           const currentR = visualThroatR + Math.pow(tRing, 1.4) * (outerFlangeR - visualThroatR);
 
-          // Morris-Thorne Flamm embedding curvature
+          // Morris-Thorne Flamm curvature equation: z(r) = 2 * sqrt(r_0 * (r - r_0))
           const radDelta = Math.max(0, currentR - visualThroatR);
           const curvatureZ = Math.sqrt(radDelta * visualThroatR) * 1.6 + Math.pow(tRing, 2.2) * 24;
           const yPos = sheetSign * (visualHalfLength + curvatureZ);
@@ -279,11 +284,13 @@ function InteractiveWormhole3D({
           }
 
           if (started) {
+            // Colors: Top sheet slate-cyan, bottom sheet slate-indigo
             if (i === 0) {
-              ctx.strokeStyle = sheetSign > 0 ? "rgba(147, 197, 253, 0.85)" : "rgba(167, 139, 250, 0.85)";
+              // Mouth rim
+              ctx.strokeStyle = sheetSign > 0 ? "rgba(147, 197, 253, 0.7)" : "rgba(167, 139, 250, 0.7)";
               ctx.lineWidth = 1.6;
             } else {
-              const alpha = Math.max(0.06, 0.4 - tRing * 0.3);
+              const alpha = Math.max(0.04, 0.35 - tRing * 0.28);
               ctx.strokeStyle = sheetSign > 0
                 ? `rgba(147, 197, 253, ${alpha})`
                 : `rgba(196, 181, 253, ${alpha})`;
@@ -295,12 +302,14 @@ function InteractiveWormhole3D({
       });
 
       // ══════════════════════════════════════════════════════
-      // 2. RENDER THROAT TUBE (CYLINDER CORRIDOR)
+      // 2. RENDER THROAT TUBE (THE BRIDGE / WORMHOLE CYLINDER)
+      // Connects Upper Sheet and Lower Sheet across visualHalfLength
       // ══════════════════════════════════════════════════════
       const TUBE_RINGS = 10;
       for (let i = 0; i <= TUBE_RINGS; i++) {
         const tTube = (i / TUBE_RINGS) * 2 - 1; // -1 to +1
         const yPos = tTube * visualHalfLength;
+        // Throat flares out slightly at ends: b(r)
         const tubeR = visualThroatR * (1.0 + Math.pow(tTube, 2) * 0.15);
 
         ctx.beginPath();
@@ -322,37 +331,42 @@ function InteractiveWormhole3D({
         if (started) {
           const isCenterThroat = i === TUBE_RINGS / 2;
           if (isCenterThroat) {
-            ctx.strokeStyle = isHumanSafe ? "rgba(99, 102, 241, 0.95)" : "rgba(244, 63, 94, 0.95)";
+            // The central throat bottleneck
+            ctx.strokeStyle = isHumanSafe ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.95)";
             ctx.lineWidth = 2.4;
           } else {
-            ctx.strokeStyle = "rgba(160, 175, 200, 0.3)";
+            ctx.strokeStyle = "rgba(160, 175, 200, 0.25)";
             ctx.lineWidth = 1;
           }
           ctx.stroke();
         }
       }
 
-      // Longitudinal Ribs
+      // Longitudinal Ribs (running vertically through the entire structure)
       for (let j = 0; j < NUM_SECTORS; j += 2) {
         const angle = (j / NUM_SECTORS) * Math.PI * 2;
         ctx.beginPath();
         let started = false;
 
+        // Bottom Flange -> Throat Tube -> Top Flange
         const totalSteps = NUM_RINGS * 2 + TUBE_RINGS;
         for (let s = -NUM_RINGS; s <= NUM_RINGS + TUBE_RINGS; s++) {
           let currentR, yPos;
 
           if (s < 0) {
+            // Lower flange
             const tRing = Math.abs(s) / NUM_RINGS;
             currentR = visualThroatR + Math.pow(tRing, 1.4) * (outerFlangeR - visualThroatR);
             const radDelta = Math.max(0, currentR - visualThroatR);
             const curvatureZ = Math.sqrt(radDelta * visualThroatR) * 1.6 + Math.pow(tRing, 2.2) * 24;
             yPos = -(visualHalfLength + curvatureZ);
           } else if (s <= TUBE_RINGS) {
+            // Inside tube
             const tTube = (s / TUBE_RINGS) * 2 - 1;
             yPos = tTube * visualHalfLength;
             currentR = visualThroatR * (1.0 + Math.pow(tTube, 2) * 0.15);
           } else {
+            // Upper flange
             const tRing = (s - TUBE_RINGS) / NUM_RINGS;
             currentR = visualThroatR + Math.pow(tRing, 1.4) * (outerFlangeR - visualThroatR);
             const radDelta = Math.max(0, currentR - visualThroatR);
@@ -373,13 +387,14 @@ function InteractiveWormhole3D({
           }
         }
 
-        ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.12)";
         ctx.lineWidth = 0.8;
         ctx.stroke();
       }
 
       // ══════════════════════════════════════════════════════
-      // 3. NEGATIVE CASIMIR ENERGY CORE
+      // 3. NEGATIVE CASIMIR ENERGY FIELD (EXOTIC THROAT RING)
+      // Visualised as an intense, non-neon titanium-indigo core
       // ══════════════════════════════════════════════════════
       const throatCenterPt = project(0, 0, 0);
       if (throatCenterPt) {
@@ -391,12 +406,13 @@ function InteractiveWormhole3D({
         );
 
         if (isHumanSafe) {
-          grad.addColorStop(0, "rgba(99, 102, 241, 0.4)");
-          grad.addColorStop(0.5, "rgba(79, 70, 229, 0.15)");
+          grad.addColorStop(0, "rgba(99, 102, 241, 0.35)");
+          grad.addColorStop(0.5, "rgba(79, 70, 229, 0.12)");
           grad.addColorStop(1, "rgba(0, 0, 0, 0)");
         } else {
-          grad.addColorStop(0, "rgba(244, 63, 94, 0.5)");
-          grad.addColorStop(0.5, "rgba(225, 29, 72, 0.18)");
+          // Dangerous Tidal Shredding (Crimson Warning Hue)
+          grad.addColorStop(0, "rgba(244, 63, 94, 0.45)");
+          grad.addColorStop(0.5, "rgba(225, 29, 72, 0.15)");
           grad.addColorStop(1, "rgba(0, 0, 0, 0)");
         }
 
@@ -405,26 +421,28 @@ function InteractiveWormhole3D({
         ctx.arc(throatCenterPt.px, throatCenterPt.py, glowRad, 0, Math.PI * 2);
         ctx.fill();
 
-        // 3D Projected Labels
-        ctx.font = "bold 10px monospace";
-        ctx.fillStyle = isHumanSafe ? "#c7d2fe" : "#fca5a5";
+        // Mathematical HUD Labels projected on 3D node
+        ctx.font = "10px monospace";
+        ctx.fillStyle = isHumanSafe ? "#a5b4fc" : "#fca5a5";
         ctx.textAlign = "center";
         ctx.fillText(`THROAT r₀ = ${throatRadius.toLocaleString()}m`, throatCenterPt.px, throatCenterPt.py - visualThroatR - 8);
 
         ctx.font = "9px monospace";
-        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
         ctx.fillText(`NEC VIOLATION // ρ < 0`, throatCenterPt.px, throatCenterPt.py + visualThroatR + 16);
         ctx.restore();
       }
 
       // ══════════════════════════════════════════════════════
-      // 4. GEODESIC TRAVELER PARTICLES
+      // 4. GEODESIC PARTICLES (TRANSIT TRAVELERS)
+      // Move from Upper Universe (+Y) through throat (Y=0) to Lower Universe (-Y)
       // ══════════════════════════════════════════════════════
       particles.forEach((p) => {
         p.t = (p.t + p.speed) % 1.0;
-        const normY = (p.t - 0.5) * 2;
+        const normY = (p.t - 0.5) * 2; // -1 to +1
         const yPos = normY * (visualHalfLength * 1.5);
 
+        // Radius follows Flamm embedding
         const radFactor = 1.0 + Math.pow(Math.abs(normY), 1.6) * 1.5;
         const currentR = (visualThroatR + p.offsetR * visualThroatR) * radFactor;
 
@@ -434,12 +452,12 @@ function InteractiveWormhole3D({
 
         const pt = project(x, yPos, z);
         if (pt) {
-          const alpha = 0.25 + (1 - Math.abs(normY)) * 0.75;
+          const alpha = 0.2 + (1 - Math.abs(normY)) * 0.7; // Brightest at throat
           ctx.fillStyle = isHumanSafe
-            ? `rgba(224, 231, 255, ${alpha})`
-            : `rgba(254, 205, 211, ${alpha})`;
+            ? `rgba(199, 210, 254, ${alpha})`
+            : `rgba(253, 164, 175, ${alpha})`;
           ctx.beginPath();
-          ctx.arc(pt.px, pt.py, 1.5 * pt.scale, 0, Math.PI * 2);
+          ctx.arc(pt.px, pt.py, 1.4 * pt.scale, 0, Math.PI * 2);
           ctx.fill();
         }
       });
@@ -458,10 +476,10 @@ function InteractiveWormhole3D({
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [throatRadius, throatLength, isHumanSafe, cameraMode, isDark]);
+  }, [throatRadius, throatLength, isHumanSafe, cameraMode]);
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700/50 shadow-2xl bg-[#05060a]">
+    <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#030407]">
       <canvas
         ref={canvasRef}
         width={760}
@@ -472,10 +490,10 @@ function InteractiveWormhole3D({
 
       {/* Top Left HUD Badge */}
       <div className="absolute top-3.5 left-4 flex flex-col gap-1.5 pointer-events-none">
-        <div className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/85 backdrop-blur-md text-amber-300 border border-white/20 w-fit">
+        <div className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-amber-300 border border-white/10 w-fit">
           FLAMM PARABOLOID // 3D MORRIS-THORNE METRIC
         </div>
-        <div className="font-mono text-[9px] text-white/80 px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm border border-white/10 flex items-center gap-1.5 w-fit">
+        <div className="font-mono text-[9px] text-white/50 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm border border-white/5 flex items-center gap-1.5 w-fit">
           <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
           <span>{lang === "en" ? "Drag to Orbit 360°" : "360° Döndürmek için Sürükleyin"}</span>
         </div>
@@ -485,8 +503,8 @@ function InteractiveWormhole3D({
       <div className="absolute top-3.5 right-4 flex flex-col items-end gap-2">
         <div className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 rounded-full border backdrop-blur-md font-bold ${
           isHumanSafe
-            ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/50"
-            : "bg-rose-950/80 text-rose-300 border-rose-500/50 animate-pulse"
+            ? "bg-emerald-950/50 text-emerald-300 border-emerald-500/30"
+            : "bg-rose-950/50 text-rose-300 border-rose-500/30 animate-pulse"
         }`}>
           {isHumanSafe
             ? (lang === "en" ? "✓ TRAVERSAL SAFE (Δa < 1g)" : "✓ BİYOLOJİK GEÇİŞ GÜVENLİ (Δa < 1g)")
@@ -495,14 +513,14 @@ function InteractiveWormhole3D({
 
         <button
           onClick={() => setCameraMode((prev) => (prev === "orbit" ? "transit" : "orbit"))}
-          className="font-mono text-[10px] uppercase tracking-wider px-3 py-1 rounded-lg border border-white/20 bg-black/80 hover:bg-white/15 text-white transition-all pointer-events-auto flex items-center gap-1.5 shadow-md"
+          className="font-mono text-[10px] uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15 bg-black/70 hover:bg-white/10 text-white transition-all pointer-events-auto flex items-center gap-1.5"
         >
           {cameraMode === "orbit" ? "🚀 Tünel İçi Uçuşu Başlat" : "🪐 Serbest Yörüngeye Dön"}
         </button>
       </div>
 
       {/* Bottom Telemetry Bar */}
-      <div className="absolute bottom-3 left-4 right-4 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-zinc-300 pointer-events-none bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15">
+      <div className="absolute bottom-3 left-4 right-4 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-white/60 pointer-events-none bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
         <div>
           Boğaz Yarıçapı: <span className="text-white font-bold">{throatRadius.toLocaleString()} m</span>
         </div>
@@ -521,15 +539,13 @@ function InteractiveWormhole3D({
 
 /* ════════════════════════════════════════════════════════════
    LIVE COMPARATIVE TRANSIT CLOCKS
-   Accurate proper time τ vs. flat Minkowski coordinate time t
 ════════════════════════════════════════════════════════════ */
 function LiveTwinWormholeClocks({ distanceLy, throatLength, vFraction, lang }) {
-  const [elapsedRealSeconds, setElapsedRealSeconds] = useState(0);
+  const [earthSeconds, setEarthSeconds] = useState(0);
+  const [travelerSeconds, setTravelerSeconds] = useState(0);
 
-  // Physical travel math
-  // Outside Euclidean / Minkowski space:
+  // Travel math
   const externalTimeYears = distanceLy / vFraction;
-  // Inside wormhole proper frame (dr/dt_proper = v):
   const transitSeconds = throatLength / (vFraction * C);
 
   useEffect(() => {
@@ -539,7 +555,8 @@ function LiveTwinWormholeClocks({ distanceLy, throatLength, vFraction, lang }) {
     const update = (now) => {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
-      setElapsedRealSeconds((prev) => prev + dt);
+      setEarthSeconds((prev) => prev + dt);
+      setTravelerSeconds((prev) => prev + dt);
       animId = requestAnimationFrame(update);
     };
 
@@ -548,7 +565,6 @@ function LiveTwinWormholeClocks({ distanceLy, throatLength, vFraction, lang }) {
   }, []);
 
   const formatSec = (s) => {
-    if (s < 0.000001) return `${(s * 1e9).toFixed(1)} ns`;
     if (s < 0.001) return `${(s * 1e6).toFixed(1)} μs`;
     if (s < 1) return `${(s * 1000).toFixed(1)} ms`;
     if (s < 60) return `${s.toFixed(2)} s`;
@@ -559,42 +575,42 @@ function LiveTwinWormholeClocks({ distanceLy, throatLength, vFraction, lang }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
       {/* Clock 1: External Classical Observer */}
-      <div className="cockpit-panel p-5 rounded-2xl shadow-md transition-all">
+      <div className="p-5 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md">
         <div className="flex items-center justify-between mb-3">
-          <span className="font-mono text-[10px] uppercase tracking-widest font-bold flex items-center gap-2" style={{ color: "var(--foreground-muted)" }}>
-            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-zinc-400 animate-pulse" />
             🌍 Dış Uzay-Zaman (Minkowski Düz Yol)
           </span>
-          <span className="font-mono text-[10px]" style={{ color: "var(--foreground-subtle)" }}>d = {distanceLy.toLocaleString()} Ly</span>
+          <span className="font-mono text-[10px] text-zinc-500">d = {distanceLy.toLocaleString()} Ly</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-3xl md:text-4xl font-black tracking-wider" style={{ color: "var(--foreground)" }}>
+          <span className="font-mono text-3xl md:text-4xl font-black text-white tracking-wider">
             {externalTimeYears > 1e6 ? externalTimeYears.toExponential(2) : Math.round(externalTimeYears).toLocaleString()}
           </span>
-          <span className="font-mono text-sm" style={{ color: "var(--foreground-muted)" }}>{lang === "en" ? "years" : "yıl"}</span>
+          <span className="font-mono text-sm text-zinc-400">{lang === "en" ? "years" : "yıl"}</span>
         </div>
-        <p className="font-mono text-[11px] mt-2 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-          Işık hızının altındaki klasik gemilerin evrenin dış düzleminde kat etmek zorunda olduğu asgari zaman. (Geçen Canlı: {elapsedRealSeconds.toFixed(1)}s)
+        <p className="font-mono text-[11px] text-zinc-500 mt-2 leading-relaxed">
+          Işık hızının altındaki klasik gemilerin evrenin dış düzleminde kat etmek zorunda olduğu asgari zaman.
         </p>
       </div>
 
       {/* Clock 2: Wormhole Traveler Proper Time */}
-      <div className="cockpit-panel p-5 rounded-2xl border border-indigo-500/40 shadow-md transition-all">
+      <div className="p-5 rounded-2xl border border-indigo-500/30 bg-indigo-950/15 backdrop-blur-md">
         <div className="flex items-center justify-between mb-3">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-300 font-bold flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
             🚀 Morris-Thorne Boğaz İçi Öz-Zaman (τ)
           </span>
-          <span className="font-mono text-[10px]" style={{ color: "var(--foreground-subtle)" }}>L = {throatLength.toLocaleString()} m</span>
+          <span className="font-mono text-[10px] text-indigo-300/70">L = {throatLength.toLocaleString()} m</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-3xl md:text-4xl font-black text-indigo-600 dark:text-indigo-300 tracking-wider">
+          <span className="font-mono text-3xl md:text-4xl font-black text-indigo-200 tracking-wider">
             {formatSec(transitSeconds)}
           </span>
-          <span className="font-mono text-sm" style={{ color: "var(--foreground-muted)" }}>geçiş süresi</span>
+          <span className="font-mono text-sm text-indigo-300/60">geçiş süresi</span>
         </div>
-        <p className="font-mono text-[11px] mt-2 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-          Topolojik bükülme sayesinde boğaz koridorundan doğrudan geçen gezginin kolundaki saatte geçen kesin süre.
+        <p className="font-mono text-[11px] text-indigo-200/60 mt-2 leading-relaxed">
+          Uzay bükülmesi sayesinde boğaz koridorundan doğrudan geçen gezginin kolundaki saatte geçen anlık süre.
         </p>
       </div>
     </div>
@@ -607,19 +623,6 @@ function LiveTwinWormholeClocks({ distanceLy, throatLength, vFraction, lang }) {
 export default function WormholePage() {
   const [lang, setLang] = useState("tr");
   const [activeTab, setActiveTab] = useState("simulator"); // "simulator" | "theory" | "casimir"
-  const [isDark, setIsDark] = useState(true);
-
-  // Detect theme dynamically
-  useEffect(() => {
-    const updateTheme = () => {
-      const darkActive = document.documentElement.classList.contains("dark");
-      setIsDark(darkActive);
-    };
-    updateTheme();
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
-    return () => observer.disconnect();
-  }, []);
 
   // Authoritative Numeric Physics States
   const [throatRadius, setThroatRadius] = useState(2.5); // meters (r_0)
@@ -655,19 +658,21 @@ export default function WormholePage() {
   };
 
   // ══════════════════════════════════════════════════════
-  // RIGOROUS PHYSICS CALCULATIONS (MORRIS & THORNE 1988)
+  // PHYSICS CALCULATIONS (MORRIS & THORNE 1988)
   // ══════════════════════════════════════════════════════
-  // 1. Total Exotic Negative Mass: M_exotic ≈ - (c^2 · r_0) / G
+  // 1. Exotic Negative Mass Requirement: M_exotic ≈ - (c^2 * r_0) / G
   const exoticMassKg = -((Math.pow(C, 2) * throatRadius) / G);
   const exoticMoons = Math.abs(exoticMassKg) / M_MOON;
   const exoticJupiters = Math.abs(exoticMassKg) / M_JUPITER;
 
-  // 2. Head-to-toe Tidal Acceleration across 1.8 m human:
-  // Riemann curvature tensor component: R^r_0r0 ≈ c^2 / r_0^2
-  // Δa_radial = (c^2 / r_0^2) · Δξ
+  // 2. Biophysical Head-to-Toe Tidal Acceleration:
+  // For flat-mouth Morris-Thorne throat, Riemann tensor component:
+  // Δa_tidal ≈ (c^2 / r_0^2) * (Δξ_body / c^2) ... Thorne's benchmark:
+  // Δa ≈ (G * |M_effective| / r_0^3) * Δξ = (c^2 / r_0^2) * Δξ
   const humanHeight = 1.8; // meters
+  // Scaling benchmark: for r0 = 2m, Δa is modest; for sub-millimeter r0 it becomes infinite
   const tidalAccelMs2 = (Math.pow(C, 2) / Math.max(0.01, Math.pow(throatRadius, 2))) * (humanHeight / 1e16);
-  const tidalG = tidalAccelMs2 / G_EARTH;
+  const tidalG = tidalAccelMs2 / 9.80665;
   const isHumanSafe = tidalG <= 2.5;
 
   const PAGE_TEXT = {
@@ -690,17 +695,16 @@ export default function WormholePage() {
   }[lang];
 
   return (
-    <div className="min-h-screen transition-theme" style={{ color: "var(--foreground)", background: "var(--background)" }}>
+    <div className="min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
       <ReadingProgressBar />
       <Header isArticle={false} lang={lang} onLangChange={setLang} />
 
-      {/* Standard Compact Container */}
+      {/* Standard Compact Container (Identical to time-dilation) */}
       <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         {/* Breadcrumb */}
         <Link
           href="/calculations"
-          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest mb-6 transition-theme opacity-75 hover:opacity-100 hover:text-indigo-500"
-          style={{ color: "var(--foreground-muted)" }}
+          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest mb-6 transition-theme opacity-75 hover:opacity-100 hover:text-amber-400"
         >
           ← {lang === "en" ? "All Calculation Tools" : "Tüm Hesaplama Araçları"}
         </Link>
@@ -708,9 +712,9 @@ export default function WormholePage() {
         {/* Hero Title */}
         <div
           className="inline-flex items-center gap-2 mb-4 font-mono text-[10px] uppercase tracking-widest px-3 py-1 rounded-full block w-fit"
-          style={{ border: "1px solid var(--border-color)", background: "var(--glass-bg)", color: "var(--accent)" }}
+          style={{ border: "1px solid rgba(99, 102, 241, 0.3)", background: "rgba(99, 102, 241, 0.08)", color: "#818cf8" }}
         >
-          <span className="h-1.5 w-1.5 rounded-full inline-block bg-indigo-500 animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full inline-block bg-indigo-400 animate-pulse" />
           {PAGE_TEXT.badge}
         </div>
 
@@ -719,26 +723,24 @@ export default function WormholePage() {
           style={{
             fontSize: "clamp(2rem, 4.5vw, 3.2rem)",
             lineHeight: 1.05,
-            whiteSpace: "pre-line",
-            color: "var(--foreground)"
+            whiteSpace: "pre-line"
           }}
         >
           {PAGE_TEXT.title}
         </h1>
-        <p className="mt-4 text-sm md:text-base leading-relaxed max-w-3xl" style={{ color: "var(--foreground-muted)" }}>
+        <p className="mt-4 text-sm md:text-base leading-relaxed max-w-3xl opacity-80">
           {PAGE_TEXT.sub}
         </p>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 mt-8 overflow-x-auto pb-2" style={{ borderBottom: "1px solid var(--border-color)" }}>
+        <div className="flex gap-2 mt-8 overflow-x-auto pb-2 border-b border-white/10">
           <button
             onClick={() => setActiveTab("simulator")}
             className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === "simulator"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "hover:text-indigo-600"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
-            style={activeTab !== "simulator" ? { background: "var(--glass-bg)", color: "var(--foreground-muted)", border: "1px solid var(--border-color)" } : {}}
           >
             {PAGE_TEXT.tabSim}
           </button>
@@ -746,10 +748,9 @@ export default function WormholePage() {
             onClick={() => setActiveTab("theory")}
             className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === "theory"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "hover:text-indigo-600"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
-            style={activeTab !== "theory" ? { background: "var(--glass-bg)", color: "var(--foreground-muted)", border: "1px solid var(--border-color)" } : {}}
           >
             {PAGE_TEXT.tabTheory}
           </button>
@@ -757,10 +758,9 @@ export default function WormholePage() {
             onClick={() => setActiveTab("casimir")}
             className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === "casimir"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "hover:text-indigo-600"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
             }`}
-            style={activeTab !== "casimir" ? { background: "var(--glass-bg)", color: "var(--foreground-muted)", border: "1px solid var(--border-color)" } : {}}
           >
             {PAGE_TEXT.tabCasimir}
           </button>
@@ -771,32 +771,27 @@ export default function WormholePage() {
           <div className="space-y-8 mt-8 animate-fade-in-up">
             {/* Presets Row */}
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest font-bold block mb-3" style={{ color: "var(--foreground-muted)" }}>
+              <span className="font-mono text-xs uppercase tracking-widest text-zinc-400 font-bold block mb-3">
                 {lang === "en" ? "Theoretical Presets" : "Kuramsal Senaryo Presetleri"}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {WORMHOLE_PRESETS.map((p) => {
-                  const isCurrent = Math.abs(throatRadius - p.r0) < 0.001;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => applyPreset(p)}
-                      className={`cockpit-panel p-4 text-left transition-all group ${
-                        isCurrent ? "ring-2 ring-indigo-500 border-indigo-500" : ""
-                      }`}
-                    >
-                      <span className="font-mono text-[10px] text-indigo-500 dark:text-indigo-400 uppercase tracking-wider font-semibold block mb-1">
-                        {lang === "en" ? p.badgeEn : p.badgeTr}
-                      </span>
-                      <div className="text-sm font-bold group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors" style={{ color: "var(--foreground)" }}>
-                        {lang === "en" ? p.nameEn : p.nameTr}
-                      </div>
-                      <p className="text-[11px] mt-2 line-clamp-2 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                        {lang === "en" ? p.descEn : p.descTr}
-                      </p>
-                    </button>
-                  );
-                })}
+                {WORMHOLE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => applyPreset(p)}
+                    className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] transition-all text-left group"
+                  >
+                    <span className="font-mono text-[10px] text-indigo-400 uppercase tracking-wider font-semibold block mb-1">
+                      {lang === "en" ? p.badgeEn : p.badgeTr}
+                    </span>
+                    <div className="text-sm font-bold text-white group-hover:text-indigo-200 transition-colors">
+                      {lang === "en" ? p.nameEn : p.nameTr}
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-2 line-clamp-2 leading-relaxed">
+                      {lang === "en" ? p.descEn : p.descTr}
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -806,25 +801,25 @@ export default function WormholePage() {
               throatLength={throatLength}
               isHumanSafe={isHumanSafe}
               tidalG={tidalG}
+              exoticMassKg={exoticMassKg}
               lang={lang}
-              isDark={isDark}
             />
 
             {/* Controls & Scientific Proof Matrix */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column: Parametric Controls */}
-              <div className="cockpit-panel lg:col-span-1 p-6 space-y-6 shadow-md">
+              <div className="lg:col-span-1 p-6 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md space-y-6">
                 <div>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold block mb-1">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-400 font-bold block mb-1">
                     GEOMETRİ KONTROL PANELİ
                   </span>
-                  <h3 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Metrik Parametreleri</h3>
+                  <h3 className="text-lg font-bold text-white">Metrik Parametreleri</h3>
                 </div>
 
                 {/* Radius Slider + Direct Input */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="font-mono text-xs font-semibold" style={{ color: "var(--foreground-muted)" }}>
+                    <label className="font-mono text-xs text-zinc-300">
                       Boğaz Yarıçapı (r₀):
                     </label>
                     <input
@@ -836,12 +831,7 @@ export default function WormholePage() {
                         const val = parseFloat(e.target.value);
                         if (!isNaN(val) && val > 0) setThroatRadius(val);
                       }}
-                      className="w-24 px-2 py-0.5 text-right font-mono text-xs rounded font-bold border"
-                      style={{
-                        background: "var(--glass-bg)",
-                        borderColor: "var(--glass-border)",
-                        color: "var(--foreground)"
-                      }}
+                      className="w-24 px-2 py-0.5 text-right font-mono text-xs bg-white/5 border border-white/10 rounded text-indigo-300 font-bold"
                     />
                   </div>
                   <input
@@ -851,9 +841,9 @@ export default function WormholePage() {
                     step="0.5"
                     value={Math.min(500, Math.max(0.2, throatRadius))}
                     onChange={(e) => updateRadius(parseFloat(e.target.value))}
-                    className="slider-dilation w-full"
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
-                  <div className="flex justify-between text-[10px] font-mono mt-1" style={{ color: "var(--foreground-subtle)" }}>
+                  <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
                     <span>0.2 m (Kritik Gelgit)</span>
                     <span>500 m (Geniş Koridor)</span>
                   </div>
@@ -862,7 +852,7 @@ export default function WormholePage() {
                 {/* Length Slider + Direct Input */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="font-mono text-xs font-semibold" style={{ color: "var(--foreground-muted)" }}>
+                    <label className="font-mono text-xs text-zinc-300">
                       Tünel Uzunluğu (L):
                     </label>
                     <input
@@ -874,12 +864,7 @@ export default function WormholePage() {
                         const val = parseFloat(e.target.value);
                         if (!isNaN(val) && val > 0) setThroatLength(val);
                       }}
-                      className="w-24 px-2 py-0.5 text-right font-mono text-xs rounded font-bold border"
-                      style={{
-                        background: "var(--glass-bg)",
-                        borderColor: "var(--glass-border)",
-                        color: "var(--foreground)"
-                      }}
+                      className="w-24 px-2 py-0.5 text-right font-mono text-xs bg-white/5 border border-white/10 rounded text-indigo-300 font-bold"
                     />
                   </div>
                   <input
@@ -889,9 +874,9 @@ export default function WormholePage() {
                     step="5"
                     value={Math.min(1000, Math.max(1, throatLength))}
                     onChange={(e) => updateLength(parseFloat(e.target.value))}
-                    className="slider-dilation w-full"
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
-                  <div className="flex justify-between text-[10px] font-mono mt-1" style={{ color: "var(--foreground-subtle)" }}>
+                  <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
                     <span>1 m (Anlık Geçiş)</span>
                     <span>1,000 m (Uzun Boğaz)</span>
                   </div>
@@ -900,10 +885,10 @@ export default function WormholePage() {
                 {/* Distance Slider */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="font-mono text-xs font-semibold" style={{ color: "var(--foreground-muted)" }}>
+                    <label className="font-mono text-xs text-zinc-300">
                       Köprü Mesafesi (Ly):
                     </label>
-                    <span className="font-mono text-xs font-bold" style={{ color: "var(--foreground)" }}>
+                    <span className="font-mono text-xs text-zinc-300 font-bold">
                       {targetDistanceLy.toLocaleString()} Ly
                     </span>
                   </div>
@@ -914,9 +899,9 @@ export default function WormholePage() {
                     step="10"
                     value={targetDistanceLy}
                     onChange={(e) => updateDistance(parseFloat(e.target.value))}
-                    className="slider-dilation w-full"
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
-                  <div className="flex justify-between text-[10px] font-mono mt-1" style={{ color: "var(--foreground-subtle)" }}>
+                  <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
                     <span>1 Ly (Yakın Yıldız)</span>
                     <span>50,000 Ly (Galaktik Merkez)</span>
                   </div>
@@ -925,10 +910,10 @@ export default function WormholePage() {
                 {/* Velocity */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="font-mono text-xs font-semibold" style={{ color: "var(--foreground-muted)" }}>
+                    <label className="font-mono text-xs text-zinc-300">
                       Geçiş Hızı (v/c):
                     </label>
-                    <span className="font-mono text-xs font-bold" style={{ color: "var(--foreground)" }}>
+                    <span className="font-mono text-xs text-zinc-300 font-bold">
                       %{(vFraction * 100).toFixed(1)} c
                     </span>
                   </div>
@@ -939,7 +924,7 @@ export default function WormholePage() {
                     step="0.005"
                     value={vFraction}
                     onChange={(e) => setVFraction(parseFloat(e.target.value))}
-                    className="slider-dilation w-full"
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                   />
                 </div>
               </div>
@@ -947,37 +932,37 @@ export default function WormholePage() {
               {/* Right Column: Physical Proof & Analysis Results */}
               <div className="lg:col-span-2 space-y-4">
                 {/* Metric Proof Card */}
-                <div className="cockpit-panel p-6 shadow-md">
+                <div className="p-6 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md">
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-400 font-bold">
                       EINSTEIN ALAN DENKLEMLERİ // BOĞAZ GERİLİMİ
                     </span>
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)", color: "var(--foreground-muted)" }}>
+                    <span className="font-mono text-[10px] text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
                       M_exotic ≈ - (c² · r₀) / G
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                  <h4 className="text-xl font-bold text-white mb-2">
                     {lang === "en" ? "Exotic Negative Mass Required" : "Gereken Negatif Casimir Kütlesi"}
                   </h4>
 
                   <div className="flex items-baseline gap-2 mb-3">
-                    <span className="font-mono text-3xl font-black text-rose-500 dark:text-rose-400">
+                    <span className="font-mono text-3xl font-black text-rose-400">
                       {exoticMassKg.toExponential(4)}
                     </span>
-                    <span className="font-mono text-sm" style={{ color: "var(--foreground-muted)" }}>kg (Negatif Kütle)</span>
+                    <span className="font-mono text-sm text-zinc-400">kg (Negatif Kütle)</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 text-xs font-mono" style={{ borderTop: "1px solid var(--border-color)" }}>
-                    <div style={{ color: "var(--foreground-muted)" }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-white/5 text-xs font-mono">
+                    <div className="text-zinc-400">
                       Ay Kütlesi Eşdeğeri:{" "}
-                      <span className="font-bold" style={{ color: "var(--foreground)" }}>
+                      <span className="text-zinc-200 font-bold">
                         {exoticMoons.toFixed(2)} × M_Ay
                       </span>
                     </div>
-                    <div style={{ color: "var(--foreground-muted)" }}>
+                    <div className="text-zinc-400">
                       Jüpiter Kütlesi Eşdeğeri:{" "}
-                      <span className="font-bold" style={{ color: "var(--foreground)" }}>
+                      <span className="text-zinc-200 font-bold">
                         {exoticJupiters.toFixed(4)} × M_Jüpiter
                       </span>
                     </div>
@@ -985,30 +970,30 @@ export default function WormholePage() {
                 </div>
 
                 {/* Biophysical Tidal Safety Card */}
-                <div className={`cockpit-panel p-6 shadow-md border ${
+                <div className={`p-6 rounded-2xl border backdrop-blur-md ${
                   isHumanSafe
-                    ? "border-emerald-500/40 bg-emerald-500/5"
-                    : "border-rose-500/40 bg-rose-500/5"
+                    ? "border-emerald-500/30 bg-emerald-950/10"
+                    : "border-rose-500/30 bg-rose-950/15"
                 }`}>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className={`font-mono text-[10px] uppercase tracking-widest font-bold ${
-                      isHumanSafe ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                      isHumanSafe ? "text-emerald-400" : "text-rose-400"
                     }`}>
                       BİYOFİZİKSEL GELGİT FARKI & SPAGETTİLEŞME
                     </span>
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)", color: "var(--foreground-muted)" }}>
+                    <span className="font-mono text-[10px] text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
                       Δξ = 1.8 m (Astronot Boyu)
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                  <h4 className="text-xl font-bold text-white mb-2">
                     Baş-Ayak Arası Diferansiyel İvme:{" "}
-                    <span className={isHumanSafe ? "text-emerald-600 dark:text-emerald-400 font-mono" : "text-rose-600 dark:text-rose-400 font-mono"}>
+                    <span className={isHumanSafe ? "text-emerald-300 font-mono" : "text-rose-400 font-mono"}>
                       {tidalG < 0.001 ? "< 0.001" : tidalG.toFixed(2)} g
                     </span>
                   </h4>
 
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+                  <p className="text-xs text-zinc-300 leading-relaxed">
                     {isHumanSafe
                       ? "✓ Boğaz yarıçapı insan anatomisi için yeterince geniştir. Riemann eğrilik tensörü insan hücrelerini veya iskelet sistemini parçalayacak düzeyde diferansiyel kuvvet üretmez."
                       : "⚠ UYARI: Boğaz aşırı dar olduğundan uzay-zaman eğriliği çok diktir. Baş ile ayaklar arasındaki yerçekimi farkı insanı spagetti gibi uzatarak dokusal yırtılmaya neden olur."}
@@ -1029,52 +1014,50 @@ export default function WormholePage() {
 
         {/* TAB 2: MATHEMATICAL PROOF & METRIC */}
         {activeTab === "theory" && (
-          <div className="cockpit-panel p-6 md:p-10 space-y-8 mt-8 animate-fade-in-up shadow-md">
+          <div className="p-6 md:p-10 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md space-y-8 mt-8 animate-fade-in-up">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold block mb-2">
+              <span className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold block mb-2">
                 KURAMSAL ASTROFİZİK // EINSTEIN ALAN DENKLEMLERİ
               </span>
-              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight" style={{ color: "var(--foreground)" }}>
+              <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
                 Morris-Thorne Geçilebilir Solucan Deliğinin Matematiksel İspatı
               </h2>
-              <p className="text-sm md:text-base mt-3 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+              <p className="text-sm md:text-base text-zinc-400 mt-3 leading-relaxed">
                 1988 yılında Carl Sagan&apos;ın &quot;Contact&quot; romanındaki bilimsel tutarlılık sorusu üzerine Nobel ödüllü fizikçi Kip Thorne ve doktora öğrencisi Michael Morris, Genel Görelilik kurallarını ihlal etmeyen ilk geçilebilir solucan deliği çözümünü türettiler.
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)" }}>
-              <h3 className="font-mono text-sm font-bold text-indigo-600 dark:text-indigo-300 mb-2">
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
+              <h3 className="font-mono text-sm font-bold text-indigo-300 mb-2">
                 1. Morris-Thorne Çizgi Elemanı (Line Element)
               </h3>
-              <div className="font-mono text-xs md:text-sm p-4 rounded-xl overflow-x-auto my-3 leading-relaxed border"
-                style={{ background: "var(--panel-bg)", borderColor: "var(--border-color)", color: "var(--foreground)" }}>
+              <div className="font-mono text-xs md:text-sm bg-black/60 p-4 rounded-xl text-indigo-200 overflow-x-auto border border-white/5 my-3 leading-relaxed">
                 ds² = -e^(2Φ(r)) c² dt² + [1 - b(r)/r]⁻¹ dr² + r² (dθ² + sin²θ dφ²)
               </div>
-              <ul className="text-xs space-y-2 list-disc list-inside mt-3" style={{ color: "var(--foreground-muted)" }}>
+              <ul className="text-xs text-zinc-400 space-y-2 list-disc list-inside mt-3">
                 <li>
-                  <strong style={{ color: "var(--foreground)" }}>Φ(r) (Kızılkayma Fonksiyonu):</strong> Olay ufku (event horizon) oluşmaması için her yerde sonlu olmalıdır. Eğer e^(2Φ) = 0 olursa zaman durur ve Schwarzschild kara deliğinde olduğu gibi tek yönlü geri dönüşsüz bir ufuk oluşur.
+                  <strong className="text-zinc-200">Φ(r) (Kızılkayma Fonksiyonu):</strong> Olay ufku (event horizon) oluşmaması için her yerde sonlu olmalıdır. Eğer e^(2Φ) = 0 olursa zaman durur ve Schwarzschild kara deliğinde olduğu gibi geri dönüşsüz tek yönlü bir ufuk oluşur.
                 </li>
                 <li>
-                  <strong style={{ color: "var(--foreground)" }}>b(r) (Şekil Fonksiyonu):</strong> Boğazın 3 boyutlu geometrisini belirler. Boğaz noktasında (r = r₀) b(r₀) = r₀ şartı sağlanır.
+                  <strong className="text-zinc-200">b(r) (Şekil Fonksiyonu):</strong> Boğazın 3 boyutlu geometrisini belirler. Boğaz noktasında (r = r₀) b(r₀) = r₀ şartı sağlanır.
                 </li>
                 <li>
-                  <strong style={{ color: "var(--foreground)" }}>Dışbükeylik (Flare-out Condition):</strong> Boğazın iki yana doğru açılması için türevin b&apos;(r₀) &lt; 1 olması şarttır.
+                  <strong className="text-zinc-200">Dışbükeylik (Flare-out Condition):</strong> Boğazın iki yana doğru açılması için türevin b&apos;(r₀) &lt; 1 olması şarttır.
                 </li>
               </ul>
             </div>
 
-            <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)" }}>
-              <h3 className="font-mono text-sm font-bold text-rose-600 dark:text-rose-300 mb-2">
+            <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
+              <h3 className="font-mono text-sm font-bold text-rose-300 mb-2">
                 2. Null Enerji Şartının (NEC) Çiğnenmesi ve Egzotik Madde
               </h3>
-              <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--foreground-muted)" }}>
+              <p className="text-xs text-zinc-400 leading-relaxed mb-3">
                 Einstein Alan Denklemleri (G_μν = 8πG/c⁴ · T_μν) çözüldüğünde, boğazın kütleçekimsel olarak kendi içine çökmemesi ve açık kalması için gereken gerilim tensörü negatif enerji yoğunluğu gerektirir:
               </p>
-              <div className="font-mono text-xs md:text-sm p-4 rounded-xl overflow-x-auto my-3 border text-rose-600 dark:text-rose-300 font-bold"
-                style={{ background: "var(--panel-bg)", borderColor: "var(--border-color)" }}>
+              <div className="font-mono text-xs md:text-sm bg-black/60 p-4 rounded-xl text-rose-200 overflow-x-auto border border-white/5 my-3">
                 T_μν k^μ k^ν &lt; 0  ⟹  ρ + p_r &lt; 0
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+              <p className="text-xs text-zinc-400 leading-relaxed">
                 Klasik fizikte enerji yoğunluğu daima pozitiftir (ρ &gt; 0). Ancak kuantum alan teorisinde (Casimir etkisi) negatif enerji yoğunluğu deneysel olarak gözlemlenmiştir. Bu nedenle solucan delikleri saf kuantum yerçekimi olgularıdır.
               </p>
             </div>
@@ -1083,30 +1066,30 @@ export default function WormholePage() {
 
         {/* TAB 3: CASIMIR EFFECT */}
         {activeTab === "casimir" && (
-          <div className="cockpit-panel p-6 md:p-10 space-y-8 mt-8 animate-fade-in-up shadow-md">
+          <div className="p-6 md:p-10 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md space-y-8 mt-8 animate-fade-in-up">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold block mb-2">
+              <span className="font-mono text-xs uppercase tracking-widest text-indigo-400 font-bold block mb-2">
                 KUANTUM VAKUM ENERJİSİ // CASIMIR ETKİSİ
               </span>
-              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight" style={{ color: "var(--foreground)" }}>
+              <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
                 Negatif Enerji Bir Hayal mi, Laboratuvar Gerçeği mi?
               </h2>
-              <p className="text-sm md:text-base mt-3 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+              <p className="text-sm md:text-base text-zinc-400 mt-3 leading-relaxed">
                 Solucan deliklerini açık tutması gereken &quot;egzotik madde&quot;, bilimkurgu eseri değil; kuantum elektrodinamiğinde 1948 yılında Hendrik Casimir tarafından öngörülmüş ve laboratuvar ortamında mikron düzeyinde ölçülmüş bir fizik gerçeğidir.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)" }}>
-                <h3 className="font-mono text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>Casimir Plakaları Deneyi</h3>
-                <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+              <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                <h3 className="font-mono text-sm font-bold text-white mb-2">Casimir Plakaları Deneyi</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
                   Vakum ortamında birbirine nanometre mesafede duran yüksüz iki iletken metal plaka arasına sadece belirli dalga boyundaki kuantum vakum modları sığabilir. Plakaların dışındaki sonsuz dalga modları içeridekilerden fazla olduğu için, plakaların arasındaki efektif enerji yoğunluğu dışarıdaki boşluğa göre <strong>negatif</strong> hale gelir.
                 </p>
               </div>
 
-              <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)" }}>
-                <h3 className="font-mono text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>Makroskopik Mühendislik Sınırı</h3>
-                <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+              <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                <h3 className="font-mono text-sm font-bold text-white mb-2">Makroskopik Mühendislik Sınırı</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
                   Laboratuvarda nanometre mesafelerde negatif enerji elde edebilsek de, 2.5 metrelik bir insan boğazını açık tutmak için gereken negatif Casimir enerjisini bir arada tutacak kuantum kararlılık mekanizması henüz bilinmemektedir. Geleceğin Kuantum Kütleçekimi kuramı bu sırrı aydınlatacaktır.
                 </p>
               </div>
@@ -1118,8 +1101,7 @@ export default function WormholePage() {
         <div className="mt-12">
           <Link
             href="/calculations"
-            className="font-mono text-xs uppercase tracking-widest transition-colors inline-flex items-center gap-2 hover:text-indigo-500"
-            style={{ color: "var(--foreground-muted)" }}
+            className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors inline-flex items-center gap-2"
           >
             ← {lang === "en" ? "Back to All Calculators" : "Tüm Hesaplama Araçlarına Dön"}
           </Link>
