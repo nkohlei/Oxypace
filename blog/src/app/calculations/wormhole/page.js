@@ -616,6 +616,7 @@ export default function WormholePage() {
   const [lang, setLang] = useState("tr");
   const [activeTab, setActiveTab] = useState("simulator"); // "simulator" | "theory" | "casimir"
   const [isDark, setIsDark] = useState(true);
+  const [selectedPreset, setSelectedPreset] = useState(WORMHOLE_PRESETS[1]);
 
   // Synchronize dynamic theme state
   useEffect(() => {
@@ -657,6 +658,7 @@ export default function WormholePage() {
   };
 
   const applyPreset = (preset) => {
+    setSelectedPreset(preset);
     updateRadius(preset.r0);
     updateLength(preset.length);
     updateDistance(preset.distanceLy);
@@ -698,109 +700,126 @@ export default function WormholePage() {
   }[lang];
 
   return (
-    <div className="min-h-screen transition-theme" style={{ color: "var(--foreground)", background: "var(--background)" }}>
+    <div className="min-h-screen transition-theme" style={{ color: "var(--foreground)" }}>
       <ReadingProgressBar />
       <Header isArticle={false} lang={lang} onLangChange={setLang} />
 
-      {/* Standard Compact Container (Matching other calculators) */}
-      <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        {/* Breadcrumb */}
-        <Link
-          href="/calculations"
-          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest mb-6 transition-theme opacity-75 hover:opacity-100 hover:text-indigo-500"
-          style={{ color: "var(--foreground-muted)" }}
-        >
-          ← {lang === "en" ? "All Calculation Tools" : "Tüm Hesaplama Araçları"}
-        </Link>
+      {/* Hero Header matching site standard */}
+      <section className="py-12 md:py-16 animate-fade-in-up" style={{ borderBottom: "1px solid var(--border-color)" }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          {/* Breadcrumb */}
+          <Link
+            href="/calculations"
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest mb-6 transition-theme opacity-75 hover:opacity-100 hover:text-indigo-400"
+          >
+            ← {lang === "en" ? "All Calculation Tools" : "Tüm Hesaplama Araçları"}
+          </Link>
 
-        {/* Hero Badge */}
-        <div
-          className="inline-flex items-center gap-2 mb-4 font-mono text-[10px] uppercase tracking-widest px-3 py-1 rounded-full block w-fit"
-          style={{ border: "1px solid var(--border-color)", background: "var(--glass-bg)", color: "var(--accent)" }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full inline-block bg-indigo-500 animate-pulse" />
-          {PAGE_TEXT.badge}
+          {/* Hero Badge */}
+          <div
+            className="inline-flex items-center gap-2 mb-4 font-mono text-[10px] uppercase tracking-widest px-3 py-1 rounded-full block w-fit"
+            style={{ border: "1px solid rgba(99, 102, 241, 0.3)", background: "rgba(99, 102, 241, 0.08)", color: "#818cf8" }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full inline-block bg-indigo-500 animate-pulse" />
+            {PAGE_TEXT.badge}
+          </div>
+
+          <h1
+            className="font-black uppercase tracking-tight"
+            style={{
+              fontSize: "clamp(2rem, 5vw, 3.5rem)",
+              lineHeight: 0.96,
+              whiteSpace: "pre-line"
+            }}
+          >
+            {PAGE_TEXT.title}
+          </h1>
+          <p className="mt-4 text-sm md:text-base leading-relaxed max-w-3xl opacity-80">
+            {PAGE_TEXT.sub}
+          </p>
+
+          {/* Navigation Tabs */}
+          <div className="flex gap-2 mt-8 overflow-x-auto pb-2 border-b border-white/10">
+            <button
+              onClick={() => setActiveTab("simulator")}
+              className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                activeTab === "simulator"
+                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {PAGE_TEXT.tabSim}
+            </button>
+            <button
+              onClick={() => setActiveTab("theory")}
+              className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                activeTab === "theory"
+                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {PAGE_TEXT.tabTheory}
+            </button>
+            <button
+              onClick={() => setActiveTab("casimir")}
+              className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                activeTab === "casimir"
+                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-lg"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {PAGE_TEXT.tabCasimir}
+            </button>
+          </div>
         </div>
+      </section>
 
-        <h1
-          className="font-black uppercase tracking-tight"
-          style={{
-            fontSize: "clamp(2rem, 4.5vw, 3.2rem)",
-            lineHeight: 1.05,
-            whiteSpace: "pre-line",
-            color: "var(--foreground)"
-          }}
-        >
-          {PAGE_TEXT.title}
-        </h1>
-        <p className="mt-4 text-sm md:text-base leading-relaxed max-w-3xl" style={{ color: "var(--foreground-muted)" }}>
-          {PAGE_TEXT.sub}
-        </p>
-
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mt-8 overflow-x-auto pb-2" style={{ borderBottom: "1px solid var(--border-color)" }}>
-          <button
-            onClick={() => setActiveTab("simulator")}
-            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
-              activeTab === "simulator"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "hover:text-indigo-600"
-            }`}
-            style={activeTab !== "simulator" ? { background: "var(--glass-bg)", color: "var(--foreground-muted)", border: "1px solid var(--border-color)" } : {}}
-          >
-            {PAGE_TEXT.tabSim}
-          </button>
-          <button
-            onClick={() => setActiveTab("theory")}
-            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
-              activeTab === "theory"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "hover:text-indigo-600"
-            }`}
-            style={activeTab !== "theory" ? { background: "var(--glass-bg)", color: "var(--foreground-muted)", border: "1px solid var(--border-color)" } : {}}
-          >
-            {PAGE_TEXT.tabTheory}
-          </button>
-          <button
-            onClick={() => setActiveTab("casimir")}
-            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
-              activeTab === "casimir"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "hover:text-indigo-600"
-            }`}
-            style={activeTab !== "casimir" ? { background: "var(--glass-bg)", color: "var(--foreground-muted)", border: "1px solid var(--border-color)" } : {}}
-          >
-            {PAGE_TEXT.tabCasimir}
-          </button>
-        </div>
-
+      {/* Main Interactive App Body */}
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         {/* TAB 1: 3D SIMULATOR */}
         {activeTab === "simulator" && (
-          <div className="space-y-8 mt-8 animate-fade-in-up">
-            {/* Presets Row */}
-            <div>
-              <span className="font-mono text-xs uppercase tracking-widest font-bold block mb-3" style={{ color: "var(--foreground-muted)" }}>
-                {lang === "en" ? "Theoretical Presets" : "Kuramsal Senaryo Presetleri"}
-              </span>
+          <div className="space-y-8 animate-fade-in-up">
+            {/* Control Panel: Presets & Overview */}
+            <div className="cockpit-panel p-6 md:p-8 rounded-3xl shadow-xl" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b mb-6" style={{ borderColor: "var(--border-color)" }}>
+                <div>
+                  <h3 className="font-mono text-xs uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold mb-1">
+                    KURAMSAL SOLUCAN DELİĞİ SENARYOLARI:
+                  </h3>
+                  <p className="text-xs" style={{ color: "var(--foreground-muted)" }}>
+                    Kip Thorne (1988) ve kuantum Flamm paraboloid geometrisine göre hesaplanmış model ölçekleri.
+                  </p>
+                </div>
+                <div className="font-mono text-xs" style={{ color: "var(--foreground-muted)" }}>
+                  Boğaz Yarıçapı (r₀): <strong className="text-indigo-600 dark:text-indigo-300 font-bold">{throatRadius >= 1000 ? `${(throatRadius / 1000).toLocaleString()} km` : `${throatRadius.toLocaleString()} m`}</strong>
+                </div>
+              </div>
+
+              {/* Preset Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {WORMHOLE_PRESETS.map((p) => {
-                  const isCurrent = Math.abs(throatRadius - p.r0) < 0.001;
+                {WORMHOLE_PRESETS.map((preset) => {
+                  const isSelected = selectedPreset?.id === preset.id || Math.abs(throatRadius - preset.r0) < 0.001;
                   return (
                     <button
-                      key={p.id}
-                      onClick={() => applyPreset(p)}
-                      className={`cockpit-panel p-4 text-left transition-all group ${
-                        isCurrent ? "ring-2 ring-indigo-500 border-indigo-500" : ""
+                      key={preset.id}
+                      onClick={() => applyPreset(preset)}
+                      className={`text-left p-3.5 rounded-2xl border transition-all ${
+                        isSelected
+                          ? "border-indigo-500 bg-indigo-500/15 shadow-lg shadow-indigo-500/10"
+                          : "border-[var(--glass-border)] bg-[var(--glass-bg)] hover:border-indigo-500/40 hover:bg-[var(--glass-bg-hover)]"
                       }`}
                     >
-                      <span className="font-mono text-[10px] text-indigo-500 dark:text-indigo-400 uppercase tracking-wider font-semibold block mb-1">
-                        {lang === "en" ? p.badgeEn : p.badgeTr}
-                      </span>
-                      <div className="text-sm font-bold group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors" style={{ color: "var(--foreground)" }}>
-                        {lang === "en" ? p.nameEn : p.nameTr}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] text-indigo-500 dark:text-indigo-400 uppercase tracking-wider font-semibold">
+                          {lang === "en" ? preset.badgeEn : preset.badgeTr}
+                        </span>
+                        {isSelected && <span className="text-xs text-indigo-500 dark:text-indigo-400 font-bold">✓</span>}
                       </div>
-                      <p className="text-[11px] mt-2 line-clamp-2 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                        {lang === "en" ? p.descEn : p.descTr}
+                      <div className="text-sm font-bold mb-1" style={{ color: "var(--foreground)" }}>
+                        {lang === "en" ? preset.nameEn : preset.nameTr}
+                      </div>
+                      <p className="text-[11px] line-clamp-2 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+                        {lang === "en" ? preset.descEn : preset.descTr}
                       </p>
                     </button>
                   );
@@ -821,7 +840,7 @@ export default function WormholePage() {
             {/* Controls & Scientific Proof Matrix */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column: Parametric Controls */}
-              <div className="cockpit-panel lg:col-span-1 p-6 space-y-6 shadow-md">
+              <div className="cockpit-panel lg:col-span-1 p-6 space-y-6 rounded-3xl shadow-xl" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
                 <div>
                   <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold block mb-1">
                     GEOMETRİ KONTROL PANELİ
@@ -955,7 +974,7 @@ export default function WormholePage() {
               {/* Right Column: Physical Proof & Analysis Results */}
               <div className="lg:col-span-2 space-y-4">
                 {/* Metric Proof Card */}
-                <div className="cockpit-panel p-6 shadow-md">
+                <div className="cockpit-panel p-6 rounded-3xl shadow-xl" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold">
                       EINSTEIN ALAN DENKLEMLERİ // BOĞAZ GERİLİMİ
@@ -993,10 +1012,10 @@ export default function WormholePage() {
                 </div>
 
                 {/* Biophysical Tidal Safety Card */}
-                <div className={`cockpit-panel p-6 shadow-md border ${
+                <div className={`cockpit-panel p-6 rounded-3xl border shadow-xl ${
                   isHumanSafe
-                    ? "border-emerald-500/40 bg-emerald-500/5"
-                    : "border-rose-500/40 bg-rose-500/5"
+                    ? "border-emerald-500/40 bg-emerald-500/10"
+                    : "border-rose-500/40 bg-rose-500/10"
                 }`}>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className={`font-mono text-[10px] uppercase tracking-widest font-bold ${
@@ -1037,7 +1056,7 @@ export default function WormholePage() {
 
         {/* TAB 2: MATHEMATICAL PROOF & METRIC */}
         {activeTab === "theory" && (
-          <div className="cockpit-panel p-6 md:p-10 space-y-8 mt-8 animate-fade-in-up shadow-md">
+          <div className="cockpit-panel p-6 md:p-10 rounded-3xl space-y-8 animate-fade-in-up shadow-xl" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold block mb-2">
                 KURAMSAL ASTROFİZİK // EINSTEIN ALAN DENKLEMLERİ
@@ -1050,7 +1069,7 @@ export default function WormholePage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)" }}>
+            <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
               <h3 className="font-mono text-sm font-bold text-indigo-600 dark:text-indigo-300 mb-2">
                 1. Morris-Thorne Çizgi Elemanı (Line Element)
               </h3>
@@ -1071,7 +1090,7 @@ export default function WormholePage() {
               </ul>
             </div>
 
-            <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--border-color)" }}>
+            <div className="p-5 rounded-2xl border" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
               <h3 className="font-mono text-sm font-bold text-rose-600 dark:text-rose-300 mb-2">
                 2. Null Enerji Şartının (NEC) Çiğnenmesi ve Egzotik Madde
               </h3>
@@ -1091,7 +1110,7 @@ export default function WormholePage() {
 
         {/* TAB 3: CASIMIR EFFECT */}
         {activeTab === "casimir" && (
-          <div className="cockpit-panel p-6 md:p-10 space-y-8 mt-8 animate-fade-in-up shadow-md">
+          <div className="cockpit-panel p-6 md:p-10 rounded-3xl space-y-8 animate-fade-in-up shadow-xl" style={{ background: "var(--glass-bg)", borderColor: "var(--glass-border)" }}>
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-indigo-500 dark:text-indigo-400 font-bold block mb-2">
                 KUANTUM VAKUM ENERJİSİ // CASIMIR ETKİSİ
