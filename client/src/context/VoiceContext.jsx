@@ -1054,30 +1054,38 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleWatchPlay = ({ time, serverTimestamp, senderId }) => {
+            // serverTimestamp'i getServerNow() olarak ayarla — elapsed = 0 garantisi.
+            // Sunucunun timestamp'ini kullanmak RTT + React render gecikmesi kadar
+            // (150-1500ms) elapsed oluşturuyor ve video T+elapsed'a seek yapıyor.
+            // Video pause esnasında durmuştu, elapsed = 0 olmalı ve T'den başlamalı.
+            // Periyodik sync interval (1.5s) drift'i sessizce playbackRate ile düzeltir.
             const now = getServerNow();
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: true, 
                 currentTime: time, 
                 lastUpdated: now,
-                serverTimestamp: serverTimestamp || now,
+                serverTimestamp: now,  // <- Kendi saatimiz, elapsed = 0 garantisi
                 lastActionBy: senderId
             } : null);
         };
 
         const handleWatchPause = ({ time, serverTimestamp, senderId }) => {
+            // Pause'da elapsed = 0 zaten (isPlaying=false). Ama serverTimestamp'i now
+            // olarak ayarlıyoruz ki sonraki play event'i ile consistency sağlansın.
             const now = getServerNow();
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: false, 
                 currentTime: time, 
                 lastUpdated: now,
-                serverTimestamp: serverTimestamp || now,
+                serverTimestamp: now,  // <- Tutarlılık için
                 lastActionBy: senderId
             } : null);
         };
 
         const handleWatchSeek = ({ time, serverTimestamp, senderId }) => {
+            // Seek sonrası video tam time'dan oynamalı, elapsed = 0 garantisi.
             const now = getServerNow();
             setWatchParty(prev => {
                 if (!prev) return null;
@@ -1085,7 +1093,7 @@ export const VoiceProvider = ({ children }) => {
                     ...prev, 
                     currentTime: time, 
                     lastUpdated: now,
-                    serverTimestamp: serverTimestamp || now,
+                    serverTimestamp: now,  // <- Seek anından itibaren yeni referans
                     lastActionBy: senderId
                 };
             });

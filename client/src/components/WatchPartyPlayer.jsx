@@ -555,6 +555,17 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
 
+        const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
+        prevIsPlayingRef.current = watchParty.isPlaying;
+
+        // Play geçişinde hiç seek yapma.
+        // Video pause esnasında T'de duruyordu. Play'e basıldığında T'den devam etmeli.
+        // handleWatchPlay artık serverTimestamp=now kullandığından elapsed=0 zaten.
+        // Bu erken return’la o garantiyi kod seviyesinde de pekiştiriyoruz.
+        if (isPlayTransition) {
+            return;
+        }
+
         const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated;
         let expectedTime = watchParty.currentTime || 0;
         if (watchParty.isPlaying && referenceTime) {
@@ -564,11 +575,8 @@ const WatchPartyPlayer = () => {
 
         const localTime = playerRef.current.getCurrentTime();
         const timeDiff = Math.abs(localTime - expectedTime);
-
-        const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-        // Play geçişinde threshold 1.5s: tarayıcı/buffer/ağ gecikmesi ~0.5-1s normaldir.
-        // Çok küçük threshold (0.2s) her oynat olayında seek tetikliyordu → kullanıcılar atlama görüyordu.
-        const threshold = isPlayTransition ? 1.5 : (watchParty.isPlaying ? 2.0 : 0.5);
+        // Threshold: oynuyor iken 2.0s, durakken 0.5s
+        const threshold = watchParty.isPlaying ? 2.0 : 0.5;
 
         if (timeDiff > threshold) {
             isSyncingRef.current = true;
@@ -579,8 +587,6 @@ const WatchPartyPlayer = () => {
                 isSyncingRef.current = false;
             }, 1000);
         }
-
-        prevIsPlayingRef.current = watchParty.isPlaying;
     }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isStream, getServerNow]);
 
     const handlePlay = (time) => {
@@ -718,10 +724,12 @@ const WatchPartyPlayer = () => {
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             }
 
-            // 2. When Paused: Keep exactly aligned (only seek if significant discrepancy > 2.0s)
+            // 2. When Paused: Keep exactly aligned
+            // Threshold 0.5s: pause esnasında kullanıcılar arası 0.5s’den fazla fark tolere etme.
+            // Önceki 2.0s threshold çok genişti — bu fark play sonrası görünür desync'e yol açıyordu.
             if (!watchParty.isPlaying) {
                 video.playbackRate = 1.0;
-                if (absDrift > 2.0) {
+                if (absDrift > 0.5) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
@@ -1015,6 +1023,7 @@ const WatchPartyPlayer = () => {
                             onPlay={handlePlay}
                             onPause={handlePause}
                             onSeek={handleSeek}
+                            serverNow={getServerNow}
                             disableWatchSync={false}
                             className="watch-party-custom-videoplayer"
                         />

@@ -169,7 +169,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, serverNow: serverNowProp, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -241,6 +241,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const activeEl = getActiveEl();
     if (!activeEl) return;
 
+    // serverNowFn: clock-corrected zaman. WatchPartyPlayer'dan getServerNow() geçirilirse
+    // NTP düzeltmesi uygulanır. Geçirilmezse Date.now() kullanılır.
+    const serverNowFn = serverNowProp || (() => Date.now());
+
     let syncInterval = null;
     let playTransitionGuardActive = false;
     let playTransitionGuardTimer = null;
@@ -249,7 +253,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const el = getActiveEl();
       if (!el || !watchParty) return;
 
-      const serverNow = Date.now();
+      const serverNow = serverNowFn();
       const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
       const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
       const targetTime = (typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0) + elapsed;
@@ -260,7 +264,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       // 1. Play / Pause state synchronization
       if (watchParty.isPlaying && el.paused) {
         isSyncingRef.current = true;
-        // Play geçişinde guard aç
+        // Play geçişinde guard aç ve bu cycle'da drift check’i tamamen atla.
+        // Video T'de duruyordu, T'den başlamalı. elapsed-based seek = atlama.
         playTransitionGuardActive = true;
         if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
         playTransitionGuardTimer = setTimeout(() => {
@@ -269,6 +274,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         el.play().catch(() => {});
         setIsPaused(false);
         setTimeout(() => { isSyncingRef.current = false; }, 300);
+        return;  // <- Bu cycle'da drift check yapma. Bir sonraki interval tick’i yapar.
       } else if (!watchParty.isPlaying && !el.paused) {
         isSyncingRef.current = true;
         playTransitionGuardActive = false;
@@ -289,33 +295,27 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         return;
       }
 
-      // 3. When Playing: Continuous Smart Pacer (Discord / Teleparty Engine)
+      // 3. When Playing: Continuous Smart Pacer
       // Play geçiş guard aktifken hard seek yapma — playbackRate ile yumuşak düzelt
       if (!playTransitionGuardActive && (forceImmediate || absDrift > 2.0)) {
-        // Severe drift (e.g. from network delay or screen lock): snap directly to live time
         isSyncingRef.current = true;
         lastProgrammaticSeekTimeRef.current = targetTime;
         el.currentTime = targetTime;
         el.playbackRate = 1.0;
         setTimeout(() => { isSyncingRef.current = false; }, 400);
       } else if (drift > 0.25) {
-        // Behind by 0.25s - 2.0s: imperceptibly accelerate to 1.05x to catch up seamlessly
         el.playbackRate = 1.05;
       } else if (drift < -0.25) {
-        // Ahead by 0.25s: imperceptibly decelerate to 0.95x until room catches up
         el.playbackRate = 0.95;
       } else if (absDrift <= 0.12) {
-        // Within 120ms: perfect sync, maintain normal 1.0x rate
         if (el.playbackRate !== 1.0) {
           el.playbackRate = 1.0;
         }
       }
     };
 
-    // Run alignment immediately on state change
     alignVideo(true);
 
-    // Continuous smart pacer every 1.5 seconds (prevents drift from accumulating!)
     syncInterval = setInterval(() => {
       alignVideo(false);
     }, 1500);
@@ -326,7 +326,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const el = getActiveEl();
       if (el) el.playbackRate = 1.0;
     };
-  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo, disableWatchSync]);
+  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo, disableWatchSync, serverNowProp]);
 
   // --- URL resolution helper to prevent double resolution/proxying ---
   const resolveVideoUrl = (url) => {
