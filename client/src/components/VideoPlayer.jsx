@@ -169,7 +169,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -235,11 +235,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const isSyncingRef = useRef(false);
 
   useEffect(() => {
-    if (!watchParty) return;
+    // disableWatchSync: WatchPartyPlayer kendi sync engine'ini yönetirken bu motoru devre dışı bırak.
+    // Çifte senkronizasyon çatışmasını önler (seek loop, playbackRate çakışması).
+    if (!watchParty || disableWatchSync) return;
     const activeEl = getActiveEl();
     if (!activeEl) return;
 
     let syncInterval = null;
+    let playTransitionGuardActive = false;
+    let playTransitionGuardTimer = null;
 
     const alignVideo = (forceImmediate = false) => {
       const el = getActiveEl();
@@ -256,11 +260,19 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       // 1. Play / Pause state synchronization
       if (watchParty.isPlaying && el.paused) {
         isSyncingRef.current = true;
+        // Play geçişinde guard aç
+        playTransitionGuardActive = true;
+        if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
+        playTransitionGuardTimer = setTimeout(() => {
+          playTransitionGuardActive = false;
+        }, 2500);
         el.play().catch(() => {});
         setIsPaused(false);
         setTimeout(() => { isSyncingRef.current = false; }, 300);
       } else if (!watchParty.isPlaying && !el.paused) {
         isSyncingRef.current = true;
+        playTransitionGuardActive = false;
+        if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
         el.pause();
         setIsPaused(true);
         setTimeout(() => { isSyncingRef.current = false; }, 300);
@@ -278,7 +290,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       }
 
       // 3. When Playing: Continuous Smart Pacer (Discord / Teleparty Engine)
-      if (forceImmediate || absDrift > 2.0) {
+      // Play geçiş guard aktifken hard seek yapma — playbackRate ile yumuşak düzelt
+      if (!playTransitionGuardActive && (forceImmediate || absDrift > 2.0)) {
         // Severe drift (e.g. from network delay or screen lock): snap directly to live time
         isSyncingRef.current = true;
         lastProgrammaticSeekTimeRef.current = targetTime;
@@ -309,10 +322,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     return () => {
       if (syncInterval) clearInterval(syncInterval);
+      if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
       const el = getActiveEl();
       if (el) el.playbackRate = 1.0;
     };
-  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo]);
+  }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo, disableWatchSync]);
 
   // --- URL resolution helper to prevent double resolution/proxying ---
   const resolveVideoUrl = (url) => {

@@ -566,7 +566,9 @@ const WatchPartyPlayer = () => {
         const timeDiff = Math.abs(localTime - expectedTime);
 
         const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-        const threshold = isPlayTransition ? 0.2 : (watchParty.isPlaying ? 1.2 : 0.5);
+        // Play geçişinde threshold 1.5s: tarayıcı/buffer/ağ gecikmesi ~0.5-1s normaldir.
+        // Çok küçük threshold (0.2s) her oynat olayında seek tetikliyordu → kullanıcılar atlama görüyordu.
+        const threshold = isPlayTransition ? 1.5 : (watchParty.isPlaying ? 2.0 : 0.5);
 
         if (timeDiff > threshold) {
             isSyncingRef.current = true;
@@ -680,6 +682,11 @@ const WatchPartyPlayer = () => {
         if (!watchParty || !video || !isReady || hasError || !isNativeVOD) return;
 
         let syncInterval = null;
+        // Play geçişinde ilk 2.5s boyunca hard seek yapma.
+        // Video buffer'ın dolması ve ağ gecikmesinin dengelenmesi için zaman tanı.
+        // Bu süre içinde sadece playbackRate ile yumuşak düzeltme yapılır.
+        let playTransitionGuardActive = false;
+        let playTransitionGuardTimer = null;
 
         const alignNativeVideo = (isStateTrigger = false) => {
             if (!video || !watchParty) return;
@@ -695,10 +702,18 @@ const WatchPartyPlayer = () => {
             // 1. Play / Pause State Synchronization
             if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
-                video.play().catch(err => console.warn("[WatchParty] Auto-play resume catch:", err));
+                // Yeni play geçişi → guard aktif et
+                playTransitionGuardActive = true;
+                if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
+                playTransitionGuardTimer = setTimeout(() => {
+                    playTransitionGuardActive = false;
+                }, 2500);
+                video.play().catch(err => console.warn('[WatchParty] Auto-play resume catch:', err));
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             } else if (!watchParty.isPlaying && !video.paused) {
                 isSyncingRef.current = true;
+                playTransitionGuardActive = false;
+                if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 video.pause();
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             }
@@ -715,10 +730,10 @@ const WatchPartyPlayer = () => {
                 return;
             }
 
-            // 3. When Playing: Seamless drift correction without jumping forward on resume
-            // If it's a play transition or periodic sync with normal drift, do NOT hard seek.
-            // Only hard seek if drift is huge (> 4.0s).
-            if (absDrift > 4.0) {
+            // 3. When Playing: Seamless drift correction without jumping forward on resume.
+            // During play transition guard period (first 2.5s), only use playbackRate correction.
+            // Only hard seek if drift is huge (> 4.0s) OR guard period has ended.
+            if (absDrift > 4.0 && !playTransitionGuardActive) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 video.currentTime = targetTime;
@@ -746,6 +761,7 @@ const WatchPartyPlayer = () => {
 
         return () => {
             if (syncInterval) clearInterval(syncInterval);
+            if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
             if (video) video.playbackRate = 1.0;
         };
     }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD, getServerNow]);
@@ -999,6 +1015,7 @@ const WatchPartyPlayer = () => {
                             onPlay={handlePlay}
                             onPause={handlePause}
                             onSeek={handleSeek}
+                            disableWatchSync={false}
                             className="watch-party-custom-videoplayer"
                         />
                     )

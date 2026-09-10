@@ -953,16 +953,12 @@ export const VoiceProvider = ({ children }) => {
             }
             
             if (data.watchParty) {
-                const wp = { ...data.watchParty };
-                const referenceTime = wp.serverTimestamp || wp.lastUpdated;
-                if (wp.isPlaying && referenceTime) {
-                    const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
-                    wp.currentTime += elapsed;
-                }
-                const now = getServerNow();
-                wp.lastUpdated = now;
-                wp.serverTimestamp = now;
-                setWatchParty(wp);
+                // Store the server state as-is; do NOT pre-add elapsed here.
+                // The sync engine in WatchPartyPlayer/VideoPlayer will compute
+                // elapsed from serverTimestamp on each render tick.
+                // Pre-adding elapsed AND then resetting serverTimestamp to "now"
+                // caused a double-count jump every time a participant event arrived.
+                setWatchParty({ ...data.watchParty });
             } else {
                 setWatchParty(null);
             }
@@ -1050,16 +1046,8 @@ export const VoiceProvider = ({ children }) => {
 
         const handleWatchState = (wp) => {
             if (wp && wp.url) {
-                const updatedWp = { ...wp };
-                const referenceTime = updatedWp.serverTimestamp || updatedWp.lastUpdated;
-                if (updatedWp.isPlaying && referenceTime) {
-                    const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
-                    updatedWp.currentTime += elapsed;
-                }
-                const now = getServerNow();
-                updatedWp.lastUpdated = now;
-                updatedWp.serverTimestamp = now;
-                setWatchParty(updatedWp);
+                // Store server state raw. Elapsed is computed live in the sync engine.
+                setWatchParty({ ...wp });
             } else {
                 setWatchParty(null);
             }
@@ -1719,27 +1707,26 @@ export const VoiceProvider = ({ children }) => {
 
     const sendWatchPlay = useCallback((time) => {
         if (activeRoom) {
-            const now = getServerNow();
+            // Do NOT update local state here. Since server now uses io.to() (not socket.to()),
+            // the sender will also receive the 'voice:watch-play' event with the canonical
+            // serverTimestamp from the server, ensuring all clients are in perfect sync.
             safeEmit('voice:watch-play', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit, getServerNow]);
+    }, [activeRoom, safeEmit]);
 
     const sendWatchPause = useCallback((time) => {
         if (activeRoom) {
-            const now = getServerNow();
+            // Same rationale: server broadcast (io.to) handles state update for sender too.
             safeEmit('voice:watch-pause', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit, getServerNow]);
+    }, [activeRoom, safeEmit]);
 
     const sendWatchSeek = useCallback((time) => {
         if (activeRoom) {
-            const now = getServerNow();
+            // Same rationale: server broadcast (io.to) handles state update for sender too.
             safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit, getServerNow]);
+    }, [activeRoom, safeEmit]);
 
     // Trigger update on state change
     useEffect(() => {

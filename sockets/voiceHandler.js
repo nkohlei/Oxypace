@@ -291,7 +291,7 @@ export const initializeVoiceHandler = (io) => {
                     }
                 } catch (err) {}
             }
-            socket.to(`voice:${roomName}`).emit('voice:watch-play', { time, serverTimestamp: now, senderId: socket.userId });
+            io.to(`voice:${roomName}`).emit('voice:watch-play', { time, serverTimestamp: now, senderId: socket.userId });
             console.log(`[Watch Party] play event in ${roomName} at time: ${time}`);
         });
 
@@ -318,7 +318,7 @@ export const initializeVoiceHandler = (io) => {
                     }
                 } catch (err) {}
             }
-            socket.to(`voice:${roomName}`).emit('voice:watch-pause', { time, serverTimestamp: now, senderId: socket.userId });
+            io.to(`voice:${roomName}`).emit('voice:watch-pause', { time, serverTimestamp: now, senderId: socket.userId });
             console.log(`[Watch Party] pause event in ${roomName} at time: ${time}`);
         });
 
@@ -343,7 +343,7 @@ export const initializeVoiceHandler = (io) => {
                     }
                 } catch (err) {}
             }
-            socket.to(`voice:${roomName}`).emit('voice:watch-seek', { time, serverTimestamp: now, senderId: socket.userId });
+            io.to(`voice:${roomName}`).emit('voice:watch-seek', { time, serverTimestamp: now, senderId: socket.userId });
             console.log(`[Watch Party] seek event in ${roomName} to time: ${time}`);
         });
 
