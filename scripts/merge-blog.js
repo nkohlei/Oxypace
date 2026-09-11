@@ -56,8 +56,13 @@ function copyRecursive(src, dest) {
 const portalHtmlSrc = path.join(CLIENT_DIST, 'index.html');
 const portalHtmlDest = path.join(CLIENT_DIST, 'portal.html');
 if (fs.existsSync(portalHtmlSrc)) {
-    console.log('📦 Preserving Portal SPA HTML as portal.html...');
-    fs.copyFileSync(portalHtmlSrc, portalHtmlDest);
+    const content = fs.readFileSync(portalHtmlSrc, 'utf8');
+    if (content.includes('type="module"') || content.includes('/assets/index') || content.includes('root')) {
+        console.log('📦 Preserving Portal SPA HTML as portal.html...');
+        fs.copyFileSync(portalHtmlSrc, portalHtmlDest);
+    } else {
+        console.log('ℹ️ index.html is not Vite SPA, preserving existing portal.html...');
+    }
 }
 
 // 1.1 Preserve downloads folder with oxypace.apk
