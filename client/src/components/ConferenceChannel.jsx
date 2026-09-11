@@ -38,7 +38,7 @@ const VideoRenderer = ({ track, isLocal, className }) => {
     );
 };
 
-const ConferenceChannel = ({ portalId, channelId, channelName }) => {
+const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const {
         activeRoom,
         connectionState,
@@ -322,8 +322,26 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
     };
 
     if (!isActiveRoom) {
+        const handleBack = () => {
+            if (onBack) {
+                onBack();
+            } else {
+                window.history.back();
+            }
+        };
+
         return (
             <div className="vc-container glass-container lobby-bg">
+                <button
+                    className="vc-lobby-back-btn"
+                    onClick={handleBack}
+                    aria-label="Geri"
+                    title="Geri"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                </button>
                 <div className="vc-lobby-card">
                     {/* Live Status Badge */}
                     <div className="vc-lobby-status-pill">
@@ -559,6 +577,17 @@ const ConferenceChannel = ({ portalId, channelId, channelName }) => {
                             </div>
                             <div className="vc-ctrl-group">
                                 <button className={`vc-ctrl-btn ${localState.isCameraOn ? 'active' : 'danger'}`} onClick={toggleCamera}>{localState.isCameraOn ? <Video size={22} /> : <VideoOff size={22} />}</button>
+                                {localState.isCameraOn && (
+                                    <button 
+                                        className="vc-ctrl-btn vc-quick-flip-btn" 
+                                        onClick={toggleFacingMode} 
+                                        title="Kamerayı Çevir"
+                                        aria-label="Kamerayı Çevir"
+                                        style={{ marginLeft: '4px' }}
+                                    >
+                                        <RefreshCw size={18} />
+                                    </button>
+                                )}
                                 <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={14} /></button>
                                 {isCameraMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>

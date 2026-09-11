@@ -28,7 +28,7 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
             setLoading(true);
             const response = await axios.get(`/api/portals/${portalId}/notifications`);
             setIsAllMuted(response.data.isAllMuted || false);
-            setMutedChannels(response.data.mutedChannels || []);
+            setMutedChannels((response.data.mutedChannels || []).map(id => (id?._id || id)?.toString()));
             setIsAdmin(response.data.isAdmin || false);
             
             // Set tab to settings by default, but if admin, they also have other tabs
@@ -66,11 +66,12 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
     };
 
     const toggleChannelMute = async (channelId) => {
+        const cIdStr = channelId?.toString();
         let updated;
-        if (mutedChannels.includes(channelId)) {
-            updated = mutedChannels.filter(id => id !== channelId);
+        if (mutedChannels.some(id => id === cIdStr)) {
+            updated = mutedChannels.filter(id => id !== cIdStr);
         } else {
-            updated = [...mutedChannels, channelId];
+            updated = [...mutedChannels, cIdStr];
         }
         setMutedChannels(updated);
         await handleSaveSettings(isAllMuted, updated);
@@ -231,7 +232,7 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Kanal bulunamadı.</p>
                             ) : (
                                 portalChannels.map((channel) => {
-                                    const isMuted = isAllMuted || mutedChannels.includes(channel._id);
+                                    const isMuted = isAllMuted || mutedChannels.includes(channel._id?.toString());
                                     return (
                                         <div key={channel._id} className="channel-mute-item">
                                             <div className="channel-mute-name-wrapper">

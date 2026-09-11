@@ -905,6 +905,17 @@
     border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
+@media (max-width: 768px) {
+    .portal-notifications-modal {
+        padding: 8px !important;
+    }
+    .notifications-modal-content {
+        max-height: 92vh !important;
+        border-radius: 14px !important;
+        width: 100% !important;
+    }
+}
+
 /* Scroll To Top — Round floating button (matches Home page FloatingScrollTop) */
 .portal-scroll-top.floating-scroll-top {
     position: fixed;
@@ -1042,15 +1053,17 @@
     .channel-sidebar {
         width: calc(100% - 12px) !important;
         max-width: calc(100% - 12px) !important;
-        margin-top: 12px !important;
-        margin-right: 12px !important;
+        margin: 6px auto 12px auto !important;
+        border-radius: 14px !important;
+        border: 1px solid var(--border-subtle) !important;
+        background: var(--glass-bg) !important;
+        overflow: hidden !important;
         position: static !important;
         transform: none !important;
         height: auto !important;
         min-height: 100% !important;
-        box-shadow: none !important;
+        box-shadow: var(--glass-shadow) !important;
         padding-bottom: 28px !important;
-        margin-bottom: 16px !important;
     }
 
     .cs-panel--userbar {
@@ -1071,10 +1084,20 @@
         display: none !important;
     }
 
-    /* Fullscreen feed mode — main content takes full width */
+    /* Standardized thin-box feed mode on mobile */
     .mobile-feed-active .discord-main-content {
-        width: 100%;
-        flex: 1;
+        width: calc(100% - 12px) !important;
+        max-width: calc(100% - 12px) !important;
+        margin: 6px auto 6px auto !important;
+        height: calc(100% - 12px) !important;
+        border-radius: 14px !important;
+        border: 1px solid var(--border-subtle) !important;
+        background: var(--glass-bg) !important;
+        box-shadow: var(--glass-shadow) !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
     }
 
     /* Channel Back Button in channel-top-bar */
@@ -1107,7 +1130,14 @@
 
     .channel-top-bar {
         padding: 0 12px;
-        height: 56px;
+        height: 50px;
+        width: 100% !important;
+        min-width: 100% !important;
+        margin: 0 !important;
+        border-radius: 14px 14px 0 0 !important;
+        border: none !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        box-shadow: none !important;
     }
 
     .discord-feed {

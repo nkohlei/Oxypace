@@ -608,8 +608,32 @@ input:hover {
 
 /* Native momentum scrolling on scroll containers */
 .native-app .content-scroll-area {
-  -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-y: contain;
   scroll-behavior: auto !important;
 }
+
+/* Fast touch responsiveness on mobile buttons & links */
+.native-app button,
+.native-app a,
+.native-app [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Hardware-accelerated smooth page transition */
+@keyframes pageEnterSmooth {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.native-app .content-scroll-area > * {
+  animation: pageEnterSmooth 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 

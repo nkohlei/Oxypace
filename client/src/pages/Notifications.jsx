@@ -273,22 +273,27 @@ const Notifications = () => {
                     <div className="notifications-list">
                         {filteredNotifications.length > 0 ? (
                             filteredNotifications.map((notif) => {
-                                // Guard clause: if no sender and not security/system type, skip rendering to prevent crash
-                                if (!notif.sender && notif.type !== 'security' && notif.type !== 'security_silent' && notif.type !== 'system') return null;
+                                const senderName = notif.sender?.profile?.displayName || notif.sender?.username || 'Oxypace';
+                                const senderInitial = senderName ? senderName[0].toUpperCase() : 'O';
+
+                                const targetUrl = 
+                                    notif.type === 'security' || notif.type === 'security_silent'
+                                        ? '/settings?section=devices'
+                                        : notif.type === 'message'
+                                            ? `/inbox?user=${notif.sender?.username || ''}`
+                                            : notif.type === 'portal_post' || notif.type === 'portal_invite'
+                                                ? (notif.portal ? `/portal/${notif.portal._id || notif.portal}` : '/')
+                                                : notif.type === 'voice_invite'
+                                                    ? (notif.link || (notif.portal ? `/portal/${notif.portal._id || notif.portal}` : '/'))
+                                                    : notif.post
+                                                        ? `/post/${notif.post._id || notif.post}`
+                                                        : notif.sender?.username
+                                                            ? `/profile/${notif.sender.username}`
+                                                            : '#';
 
                                 return (
                                     <Link
-                                        to={
-                                            notif.type === 'security' || notif.type === 'security_silent'
-                                                ? '/settings?section=devices'
-                                                : notif.type === 'message'
-                                                    ? `/inbox?user=${notif.sender?.username}`
-                                                    : notif.post
-                                                        ? `/post/${notif.post._id || notif.post}`
-                                                        : notif.sender
-                                                            ? `/profile/${notif.sender.username}`
-                                                            : '#'
-                                        }
+                                        to={targetUrl}
                                         key={notif._id}
                                         className={`notification-item ${!notif.read ? 'unread' : ''}`}
                                     >
@@ -296,7 +301,7 @@ const Notifications = () => {
                                             {notif.sender?.profile?.avatar ? (
                                                 <img
                                                     src={getImageUrl(notif.sender.profile.avatar)}
-                                                    alt={notif.sender.username}
+                                                    alt={senderName}
                                                     loading="lazy"
                                                     decoding="async"
                                                     width="36"
@@ -304,9 +309,7 @@ const Notifications = () => {
                                                 />
                                             ) : (
                                                 <div className="notif-avatar-placeholder">
-                                                    {notif.sender?.username
-                                                        ? notif.sender.username[0].toUpperCase()
-                                                        : '?'}
+                                                    {senderInitial}
                                                 </div>
                                             )}
                                             <div className={`notif-icon-badge ${notif.type}`}>
@@ -318,6 +321,8 @@ const Notifications = () => {
                                                 {(notif.type === 'follow_request' || notif.type === 'friend_request') && '👤'}
                                                 {notif.type === 'message' && '✉️'}
                                                 {notif.type === 'portal_invite' && '🏰'}
+                                                {notif.type === 'portal_post' && '🏰'}
+                                                {notif.type === 'voice_invite' && '📞'}
                                                 {notif.type === 'system' && '📢'}
                                                 {(notif.type === 'security' || notif.type === 'security_silent') && '🛡️'}
                                             </div>
@@ -327,9 +332,9 @@ const Notifications = () => {
                                             <div className="notif-text-row">
                                                 <div className="notif-text-left">
                                                     <p className="notif-message-text">
-                                                        {notif.type !== 'security' && notif.type !== 'security_silent' && notif.type !== 'system' && notif.sender && (
+                                                        {notif.type !== 'security' && notif.type !== 'security_silent' && notif.type !== 'system' && (
                                                             <span className="notif-user">
-                                                                {notif.sender.username}
+                                                                {senderName}
                                                             </span>
                                                         )}
                                                         {notif.type === 'like' && ' gönderini beğendi.'}
@@ -342,8 +347,13 @@ const Notifications = () => {
                                                         {notif.type === 'follow_request_handled' && ' tanışma isteği reddedildi.'}
                                                         {notif.type === 'message' && ' sana bir mesaj gönderdi.'}
                                                         {notif.type === 'portal_invite' && ' seni bir portala davet etti.'}
+                                                        {notif.type === 'portal_post' && ' portalında yeni bir gönderi paylaşıldı.'}
+                                                        {notif.type === 'voice_invite' && ' seni canlı sohbet odasına davet etti.'}
                                                         {(notif.type === 'system' || notif.type === 'security' || notif.type === 'security_silent') && (
-                                                            <span>{notif.content}</span>
+                                                            <span>{notif.content || 'Sistem bildirimi.'}</span>
+                                                        )}
+                                                        {!['like', 'comment', 'reply', 'quote', 'follow', 'follow_request', 'friend_request', 'friend_connected', 'follow_request_handled', 'message', 'portal_invite', 'portal_post', 'voice_invite', 'system', 'security', 'security_silent'].includes(notif.type) && (
+                                                            <span>{notif.content || ' Yeni bir bildiriminiz var.'}</span>
                                                         )}
                                                     </p>
 

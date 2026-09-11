@@ -24,18 +24,6 @@
     .search-title {
         display: none !important; /* Completely hide "Keşfet" text on mobile */
     }
-    
-    .search-header {
-        display: flex;
-        flex-direction: row !important;
-        align-items: center;
-        gap: 8px !important;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border-subtle);
-        margin-left: -16px;
-        margin-right: -16px;
-        width: calc(100% + 32px);
-    }
 }
 
 .search-page-wrapper {
@@ -229,19 +217,29 @@
     }
 
     .search-container {
-        padding: 16px;
+        width: calc(100% - 12px) !important;
+        max-width: calc(100% - 12px) !important;
+        margin: 6px auto 12px auto !important;
+        padding: 12px 10px !important;
+        border-radius: 14px !important;
+        background: var(--glass-bg) !important;
+        border: 1px solid var(--border-subtle) !important;
+        box-shadow: var(--glass-shadow) !important;
+        box-sizing: border-box !important;
     }
 
     .search-header {
-        margin-bottom: 20px !important;
-        padding: 12px 16px !important;
+        margin-bottom: 14px !important;
+        padding: 0 !important;
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
-        justify-content: space-between !important;
-        gap: 8px !important;
+        gap: 6px !important;
         width: 100% !important;
+        border: none !important;
+        border-bottom: none !important;
+        background: transparent !important;
     }
 
     .title-with-back {
@@ -256,36 +254,24 @@
 
     .oxypace-search-input-wrapper {
         flex: 1 1 auto !important;
-        max-width: none !important;
-        width: auto !important;
+        max-width: 100% !important;
+        width: 100% !important;
     }
 
     .search-mobile-back-btn {
         display: flex;
     }
 
-    /* Small/elegant search on map button on mobile */
-    .map-search-btn {
-        padding: 6px 10px !important;
-        font-size: 0.8rem !important;
-        border-radius: 8px !important;
-        gap: 4px !important;
-        margin-left: 0;
-    }
-    .map-search-btn span {
-        font-size: 0.8rem !important;
-    }
-
     /* Smaller, thinner segment tabs on mobile */
     .modern-tabs {
-        gap: 12px;
-        margin-bottom: 20px;
-        padding-bottom: 8px;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding-bottom: 4px;
     }
     .modern-tab {
         padding: 6px 14px !important;
-        font-size: 0.9rem !important;
-        border-radius: 6px !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
     }
 }
 

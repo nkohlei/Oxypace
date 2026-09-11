@@ -73,3 +73,19 @@
     font-size: 0.9rem;
     color: var(--text-tertiary);
 }
+
+@media (max-width: 768px) {
+    .saved-container {
+        width: calc(100% - 12px) !important;
+        margin: 6px auto 12px auto !important;
+        background: var(--glass-bg, rgba(18, 20, 29, 0.7));
+        border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+        border-radius: 14px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .saved-header {
+        padding: 14px 16px;
+    }
+}

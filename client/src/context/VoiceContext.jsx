@@ -1506,7 +1506,58 @@ export const VoiceProvider = ({ children }) => {
     const toggleFacingMode = useCallback(async () => {
         const newMode = facingMode === 'user' ? 'environment' : 'user';
         setFacingMode(newMode);
-    }, [facingMode]);
+        console.log(`[WebRTC] toggleFacingMode called, switching to: ${newMode}`);
+
+        if (localState.isCameraOn && localStreamRef.current) {
+            try {
+                let newStream;
+                try {
+                    newStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: newMode },
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            frameRate: { ideal: 24 }
+                        }
+                    });
+                } catch (fallbackErr) {
+                    newStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: newMode }
+                    });
+                }
+
+                const newVideoTrack = newStream?.getVideoTracks()[0];
+                if (!newVideoTrack) return;
+
+                // Stop and remove old non-placeholder video tracks
+                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder);
+                oldTracks.forEach(t => {
+                    t.stop();
+                    localStreamRef.current.removeTrack(t);
+                });
+
+                newVideoTrack.enabled = true;
+                localStreamRef.current.addTrack(newVideoTrack);
+
+                // Replace track on all active peer connections
+                peerConnectionsRef.current.forEach(pc => {
+                    const senders = pc.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
+                                        pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender ||
+                                        pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'video')?.sender;
+                    if (videoSender) {
+                        videoSender.replaceTrack(newVideoTrack).catch(e => {
+                            console.warn("[WebRTC] replaceTrack error in toggleFacingMode:", e);
+                        });
+                    }
+                });
+
+                renegotiateAll();
+            } catch (err) {
+                console.error("[WebRTC] Failed to switch camera facingMode:", err);
+            }
+        }
+    }, [facingMode, localState.isCameraOn, renegotiateAll]);
 
     const setAudioOutput = useCallback(async (deviceId) => {
         setSelectedAudioOutput(deviceId);

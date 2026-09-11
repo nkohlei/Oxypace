@@ -166,29 +166,30 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         }, 50);
     };
 
+    const handleLogoClick = (e) => {
+        const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+        if (isMobile) {
+            e.preventDefault();
+            navigate('/messages');
+        }
+    };
+
     return (
         <>
-            {/* Background Upload Progress Banner */}
+            {/* Upload Progress Bar (Floating below navbar) */}
             {uploadingItem && (
-                <div className="global-upload-banner">
-                    <div className="global-upload-banner-content">
-                        <span className="upload-banner-text">
-                            Video paylaşılıyor: <strong>{uploadingItem.fileName}</strong> (%{uploadingItem.progress}) - {uploadingItem.stage}
-                        </span>
-                    </div>
-                    <div className="upload-banner-bar-bg">
-                        <div 
-                            className="upload-banner-bar-fill" 
-                            style={{ width: `${uploadingItem.progress}%` }} 
-                        />
-                    </div>
+                <div className="navbar-upload-progress">
+                    <div 
+                        className="navbar-upload-fill" 
+                        style={{ width: `${uploadingItem.progress}%` }} 
+                    />
                 </div>
             )}
             {/* Top Header */}
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}${hidden ? ' navbar-hidden' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
-                        <Link to="/" className="brand-logo">
+                        <Link to="/" className="brand-logo" onClick={handleLogoClick}>
                             <img src="/logo.png" alt="Oxypace Logo" className="logo-image" width="38" height="38" decoding="async" />
                             <img src="/oxypace-text-logo2.webp" alt="oxypace" className="logo-text" width="110" height="25" decoding="async" />
                         </Link>

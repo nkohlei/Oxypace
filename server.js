@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.1.3',
-        versionCode: 213,
+        latestVersion: '2.1.4',
+        versionCode: 214,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.1.3: Jet hızında mobil akıcılık! Sayfa geçişleri, 60/120 FPS akıcı animasyonlar, sıfır GPU yükü ve Play Protect güvenilirlik güncellemesi.',
+        changelog: 'Oxypace 2.1.4: Bildirimler sayfası iyileştirmesi, standart çerçeveli sayfa düzeni, destek modülü yüksek kontrast tema desteği, lobi geri dönüş tuşu ve aktif kamera çevirme sistemi.',
     });
 });
 

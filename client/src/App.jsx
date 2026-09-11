@@ -71,6 +71,9 @@ const DesktopOverlay = lazyWithRetry(() => import('./pages/DesktopOverlay'));
 const GlobalVideoPIP = lazyWithRetry(() => import('./components/GlobalVideoPIP'));
 
 import { Capacitor } from '@capacitor/core';
+if (typeof document !== 'undefined' && Capacitor.isNativePlatform()) {
+    document.body.classList.add('native-app');
+}
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Device } from '@capacitor/device';
 import { Camera } from '@capacitor/camera';
@@ -507,6 +510,15 @@ const AppLayout = () => {
             document.body.classList.remove('discord-layout-active');
         };
     }, [isLoggedIn, location.pathname]);
+
+    // On mobile or native platform, redirect from '/' directly to '/messages' when logged in
+    useEffect(() => {
+        const isMobileDevice = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+        const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
+        if (isMobileDevice && location.pathname === '/' && (isLoggedIn || hasToken)) {
+            navigate('/messages', { replace: true });
+        }
+    }, [isLoggedIn, location.pathname, navigate]);
 
     // Page titles for mobile header
     const getPageTitle = () => {

@@ -1433,12 +1433,14 @@ const Portal = () => {
                                                         portalId={id}
                                                         channelId={currentChannel}
                                                         channelName={channelName}
+                                                        onBack={() => setMobileChannelOpen(false)}
                                                     />
                                                 ) : (
                                                     <VoiceChannel
                                                         portalId={id}
                                                         channelId={currentChannel}
                                                         channelName={channelName}
+                                                        onBack={() => setMobileChannelOpen(false)}
                                                     />
                                                 )}
                                             </Suspense>

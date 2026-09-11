@@ -37,6 +37,28 @@
   filter: none !important;
 }
 
+/* Disable starry fake cosmic background on native mobile app and small screens */
+.native-app .app-wrapper.advanced-home::before,
+.native-app .advanced-home::before,
+body.native-app .app-wrapper.advanced-home::before {
+  display: none !important;
+  background-image: none !important;
+}
+
+@media (max-width: 768px) {
+  .app-wrapper.advanced-home::before,
+  .advanced-home::before {
+    display: none !important;
+    background-image: none !important;
+    background: #090a0f !important;
+  }
+  .app-wrapper.advanced-home,
+  .advanced-home {
+    background-image: none !important;
+    background: #090a0f !important;
+  }
+}
+
 .advanced-home-content {
   position: relative; width: 100%;
 }

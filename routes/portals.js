@@ -1091,6 +1091,7 @@ router.put('/:id/notifications', protect, async (req, res) => {
             });
         }
 
+        user.markModified('portalNotificationSettings');
         await user.save();
 
         res.json({
