@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
@@ -101,6 +101,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const autoJoinedRef = useRef(false);
 
     // Call duration timer
     useEffect(() => {
@@ -228,7 +229,17 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     }, [socket, user, isActiveRoom]);
 
     const handleJoin = () => connectToChannel(portalId, channelId);
-    const handleLeave = () => disconnectFromChannel();
+    const handleLeave = () => {
+        sessionStorage.removeItem('pending_auto_join_voice');
+        try {
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.has('joinVoice')) {
+                currentUrl.searchParams.delete('joinVoice');
+                window.history.replaceState(null, '', currentUrl.pathname + (currentUrl.search ? currentUrl.search : ''));
+            }
+        } catch (e) {}
+        disconnectFromChannel();
+    };
     const handleSendMessageChat = (text) => { if (isChatRestricted && !isAdmin) return; handleSendMessage(text); };
     const handleRaiseHand = () => {
         const newState = !handRaised; setHandRaised(newState);
@@ -242,12 +253,17 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
         const shouldJoinFromUrl = queryParams.get('joinVoice') === 'true';
         const pendingAutoJoin = sessionStorage.getItem('pending_auto_join_voice');
 
-        if ((shouldJoinFromUrl || pendingAutoJoin) && portalId && channelId && !isConnected && !isConnecting) {
+        if ((shouldJoinFromUrl || pendingAutoJoin) && portalId && channelId && !isConnected && !isConnecting && !autoJoinedRef.current) {
+            autoJoinedRef.current = true;
             sessionStorage.removeItem('pending_auto_join_voice');
+            try {
+                const currentUrl = new URL(window.location.href);
+                if (currentUrl.searchParams.has('joinVoice')) {
+                    currentUrl.searchParams.delete('joinVoice');
+                    window.history.replaceState(null, '', currentUrl.pathname + (currentUrl.search ? currentUrl.search : ''));
+                }
+            } catch (e) {}
             connectToChannel(portalId, channelId);
-            // Clean up the URL search params so it doesn't rejoin endlessly if page reloads
-            const newUrl = window.location.pathname + window.location.search.replace(/&?joinVoice=true/g, '').replace(/\?$/, '');
-            window.history.replaceState(null, '', newUrl);
         }
     }, [portalId, channelId, isConnected, isConnecting, connectToChannel]);
 
@@ -566,7 +582,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         <>
                             <div className="vc-ctrl-group">
                                 <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : 'active'}`} onClick={toggleMicrophone}>{localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}</button>
-                                <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={14} /></button>
+                                {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.length > 1 && (
+                                    <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={14} /></button>
+                                )}
                                 {isMicMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
                                         {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
@@ -588,7 +606,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                         <RefreshCw size={18} />
                                     </button>
                                 )}
-                                <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={14} /></button>
+                                {Array.isArray(availableDevices?.videoInputs) && availableDevices.videoInputs.length > 1 && (
+                                    <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={14} /></button>
+                                )}
                                 {isCameraMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
                                         {Array.isArray(availableDevices?.videoInputs) && availableDevices.videoInputs.map(d => (

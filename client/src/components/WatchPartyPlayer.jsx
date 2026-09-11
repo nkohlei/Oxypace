@@ -5,7 +5,10 @@ import { useVoice } from '../context/VoiceContext';
 import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
+import { registerPlugin, Capacitor } from '@capacitor/core';
 import './WatchPartyPlayer.css';
+
+const CallManager = registerPlugin('CallManager');
 
 const loadHls = async () => {
   if (window.Hls) return window.Hls;
@@ -277,6 +280,16 @@ const WatchPartyPlayer = () => {
     const [volumeOpen, setVolumeOpen] = useState(false);
     const [dimensions, setDimensions] = useState({ width: null, height: null });
     const isResizingRef = useRef(false);
+
+    // Switch Android audio routing to media mode for rich, full-fidelity stereo sound while video plays
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
+            return () => {
+                CallManager.setAudioMode({ mode: 'communication' }).catch(() => {});
+            };
+        }
+    }, []);
 
     const startResize = (e, direction) => {
         e.preventDefault();

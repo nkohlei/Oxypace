@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.1.5',
-        versionCode: 215,
+        latestVersion: '2.1.6',
+        versionCode: 216,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.1.5: Sabit ve yapışık header düzeni, saf siyah (dark) ve saf beyaz (light) tema standardizasyonu, canlı görüşme odalarının tam ekran ve çerçevesiz görünüm düzeltmesi.',
+        changelog: 'Oxypace 2.1.6: Canlı oda kamera çevirme (ön/arka) düzeltildi, canlı oda mikrofon ve kamera ok butonları iyileştirildi, sağ üst butonlar için açılır çekmece sistemi eklendi, arama daveti kabulü sonrası sonlandırma ve yeniden bağlanma sorunu giderildi, birlikte video izleme (Watch Party) ses kalitesi kristal netliğe kavuşturuldu.',
     });
 });
 

@@ -64,9 +64,27 @@ const createPlaceholderVideoTrack = () => {
     return null;
 };
 
-// Helper to prioritize universally supported H264/VP8 codecs in SDP (prevents black screens/decoding issues on mobile WebViews)
+// Helper to prioritize universally supported H264/VP8 codecs in SDP and enable high-fidelity stereo Opus audio
 const prioritizeVideoCodec = (sdp) => {
-    const lines = sdp.split('\r\n');
+    let result = sdp;
+    // Optimize audio bitrate and stereo fidelity for Opus so shared media/mic sounds crisp and not like a telephone call
+    if (result && result.includes('opus/48000')) {
+        result = result.replace(
+            /(a=fmtp:\d+ [^\r\n]*)/g,
+            (match) => {
+                if (match.includes('useinbandfec')) {
+                    let fmtp = match;
+                    if (!fmtp.includes('stereo=')) fmtp += ';stereo=1';
+                    if (!fmtp.includes('sprop-stereo=')) fmtp += ';sprop-stereo=1';
+                    if (!fmtp.includes('maxaveragebitrate=')) fmtp += ';maxaveragebitrate=128000';
+                    return fmtp;
+                }
+                return match;
+            }
+        );
+    }
+
+    const lines = result.split('\r\n');
     let mVideoIndex = -1;
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith('m=video ')) {
@@ -74,7 +92,7 @@ const prioritizeVideoCodec = (sdp) => {
             break;
         }
     }
-    if (mVideoIndex === -1) return sdp;
+    if (mVideoIndex === -1) return result;
 
     const codecs = [];
     for (const line of lines) {
@@ -170,6 +188,19 @@ export const VoiceProvider = ({ children }) => {
 
     // Watch Party State
     const [watchParty, setWatchParty] = useState(null);
+
+    // Switch native Android audio routing:
+    // When a Watch Party video is playing, switch to media mode (MODE_NORMAL + speakerphone) for full-fidelity rich sound.
+    // When watch party ends, return to communication mode if still in call.
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            if (watchParty && watchParty.url) {
+                CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
+            } else if (activeRoom) {
+                CallManager.setAudioMode({ mode: 'communication' }).catch(() => {});
+            }
+        }
+    }, [watchParty?.url, activeRoom]);
 
     const [userVolume, setUserVolume] = useState(() => {
         const saved = localStorage.getItem('voiceUserVolume');
@@ -771,7 +802,13 @@ export const VoiceProvider = ({ children }) => {
             let localStream;
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                    audio: {
+                        echoCancellation: { ideal: true },
+                        noiseSuppression: { ideal: true },
+                        autoGainControl: { ideal: false },
+                        channelCount: { ideal: 2 },
+                        sampleRate: { ideal: 48000 }
+                    }
                 });
                 localStreamRef.current = localStream;
                 console.log('[WebRTC Log] getUserMedia Success (Audio Only)');
@@ -1294,7 +1331,12 @@ export const VoiceProvider = ({ children }) => {
                 try {
                     console.log("[WebRTC] Requesting local camera stream...");
                     const videoStream = await navigator.mediaDevices.getUserMedia({
-                        video: { width: 640, height: 480, frameRate: 24 }
+                        video: {
+                            facingMode: { ideal: facingMode },
+                            width: 640,
+                            height: 480,
+                            frameRate: 24
+                        }
                     });
                     const videoTrack = videoStream.getVideoTracks()[0];
                     if (videoTrack) {
@@ -1372,7 +1414,7 @@ export const VoiceProvider = ({ children }) => {
             }
             return next;
         });
-    }, [localState, activeRoom, user, safeEmit]);
+    }, [localState, activeRoom, user, safeEmit, facingMode, renegotiateAll]);
 
     const stopScreenShareAndRevert = useCallback(() => {
         if (screenStreamRef.current) {
@@ -1510,36 +1552,57 @@ export const VoiceProvider = ({ children }) => {
 
         if (localState.isCameraOn && localStreamRef.current) {
             try {
-                let newStream;
+                // 1. First stop and remove existing non-placeholder video tracks so the camera sensor is released on Android
+                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder);
+                oldTracks.forEach(t => {
+                    try { t.stop(); } catch (e) {}
+                    try { localStreamRef.current.removeTrack(t); } catch (e) {}
+                });
+
+                // 2. Request new video stream with the new facingMode
+                let newStream = null;
                 try {
                     newStream = await navigator.mediaDevices.getUserMedia({
                         video: {
-                            facingMode: { ideal: newMode },
+                            facingMode: { exact: newMode },
                             width: { ideal: 640 },
                             height: { ideal: 480 },
                             frameRate: { ideal: 24 }
                         }
                     });
-                } catch (fallbackErr) {
-                    newStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: newMode }
-                    });
+                } catch (exactErr) {
+                    try {
+                        newStream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: { ideal: newMode },
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                frameRate: { ideal: 24 }
+                            }
+                        });
+                    } catch (idealErr) {
+                        const altDevice = availableDevices?.videoInputs?.find(d => 
+                            newMode === 'environment' 
+                                ? (d.label?.toLowerCase().includes('back') || d.label?.toLowerCase().includes('arka') || d.label?.toLowerCase().includes('environment'))
+                                : (d.label?.toLowerCase().includes('front') || d.label?.toLowerCase().includes('ön') || d.label?.toLowerCase().includes('user'))
+                        );
+                        if (altDevice && altDevice.deviceId) {
+                            newStream = await navigator.mediaDevices.getUserMedia({
+                                video: { deviceId: { exact: altDevice.deviceId } }
+                            });
+                        } else {
+                            newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        }
+                    }
                 }
 
                 const newVideoTrack = newStream?.getVideoTracks()[0];
                 if (!newVideoTrack) return;
 
-                // Stop and remove old non-placeholder video tracks
-                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder);
-                oldTracks.forEach(t => {
-                    t.stop();
-                    localStreamRef.current.removeTrack(t);
-                });
-
                 newVideoTrack.enabled = true;
                 localStreamRef.current.addTrack(newVideoTrack);
 
-                // Replace track on all active peer connections
+                // 3. Replace track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
@@ -1552,12 +1615,14 @@ export const VoiceProvider = ({ children }) => {
                     }
                 });
 
+                // 4. Update React participant list so local camera card immediately shows the switched camera
+                updateParticipantList();
                 renegotiateAll();
             } catch (err) {
                 console.error("[WebRTC] Failed to switch camera facingMode:", err);
             }
         }
-    }, [facingMode, localState.isCameraOn, renegotiateAll]);
+    }, [facingMode, localState.isCameraOn, availableDevices, updateParticipantList, renegotiateAll]);
 
     const setAudioOutput = useCallback(async (deviceId) => {
         setSelectedAudioOutput(deviceId);

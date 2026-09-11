@@ -557,6 +557,41 @@
     transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
 }
 
+/* Collapsible Top-Right Controls Drawer */
+.vc-drawer-toggle-btn {
+    transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+
+.vc-drawer-chevron {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.vc-drawer-chevron.rotated {
+    transform: rotate(180deg);
+}
+
+.vc-extra-controls-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+    transform-origin: top center;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.vc-extra-controls-drawer.open {
+    max-height: 380px;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
 /* User Idle / Auto-hide styles */
 .vc-container.user-idle .vc-top-right-controls,
 .vc-container.user-idle .vc-controls {
@@ -647,6 +682,10 @@
         gap: 8px !important;
         z-index: 1200 !important;
         pointer-events: auto !important;
+    }
+
+    .vc-extra-controls-drawer {
+        gap: 8px !important;
     }
 
     .vc-viewport {

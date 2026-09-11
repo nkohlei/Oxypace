@@ -58,6 +58,14 @@ public class MainActivity extends BridgeActivity {
                         ctx.startService(serviceIntent);
                     }
 
+                    // Ensure speakerphone is enabled on Android for hands-free live room calls
+                    try {
+                        android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            am.setSpeakerphoneOn(true);
+                        }
+                    } catch (Exception ignored) {}
+
                     // Update PiP Params for Android 12+ Auto-Enter
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
@@ -67,6 +75,14 @@ public class MainActivity extends BridgeActivity {
                 } else {
                     serviceIntent.setAction("STOP_CALL");
                     ctx.startService(serviceIntent);
+
+                    // Revert audio mode to normal when call stops
+                    try {
+                        android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            am.setMode(android.media.AudioManager.MODE_NORMAL);
+                        }
+                    } catch (Exception ignored) {}
 
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
@@ -79,6 +95,27 @@ public class MainActivity extends BridgeActivity {
             }
 
             call.resolve();
+        }
+
+        @PluginMethod
+        public void setAudioMode(PluginCall call) {
+            String mode = call.getString("mode", "normal");
+            try {
+                android.content.Context ctx = getContext();
+                android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                if (am != null) {
+                    if ("normal".equalsIgnoreCase(mode) || "media".equalsIgnoreCase(mode)) {
+                        am.setMode(android.media.AudioManager.MODE_NORMAL);
+                        am.setSpeakerphoneOn(true);
+                    } else if ("communication".equalsIgnoreCase(mode)) {
+                        am.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION);
+                        am.setSpeakerphoneOn(true);
+                    }
+                }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
         }
     }
 

@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -167,6 +167,8 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
     const [isHlsVol2ModalOpen, setIsHlsVol2ModalOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [isExtraControlsOpen, setIsExtraControlsOpen] = useState(false);
+    const autoJoinedRef = useRef(false);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
     const [isIdle, setIsIdle] = useState(false);
@@ -377,17 +379,36 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     };
 
     const handleJoin = () => connectToChannel(portalId, channelId);
-    const handleLeave = () => { disconnectFromChannel(); setFocusedIdentity(null); };
+    const handleLeave = () => {
+        sessionStorage.removeItem('pending_auto_join_voice');
+        try {
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.has('joinVoice')) {
+                currentUrl.searchParams.delete('joinVoice');
+                window.history.replaceState(null, '', currentUrl.pathname + (currentUrl.search ? currentUrl.search : ''));
+            }
+        } catch (e) {}
+        disconnectFromChannel();
+        setFocusedIdentity(null);
+    };
     const handleFocus = (identity) => setFocusedIdentity(focusedIdentity === identity ? null : identity);
 
-    // Auto-join if user arrived via incoming call notification or "Katıl" action
+    // Auto-join if user arrived via incoming call notification or "Katıl" action (runs strictly once!)
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const shouldJoinFromUrl = params.get('joinVoice') === 'true';
         const pendingAutoJoin = sessionStorage.getItem('pending_auto_join_voice');
 
-        if ((shouldJoinFromUrl || pendingAutoJoin) && !isConnected && !isConnecting && portalId && channelId) {
+        if ((shouldJoinFromUrl || pendingAutoJoin) && !isConnected && !isConnecting && portalId && channelId && !autoJoinedRef.current) {
+            autoJoinedRef.current = true;
             sessionStorage.removeItem('pending_auto_join_voice');
+            try {
+                const currentUrl = new URL(window.location.href);
+                if (currentUrl.searchParams.has('joinVoice')) {
+                    currentUrl.searchParams.delete('joinVoice');
+                    window.history.replaceState(null, '', currentUrl.pathname + (currentUrl.search ? currentUrl.search : ''));
+                }
+            } catch (e) {}
             console.log("📞 Auto-connecting to voice channel from invitation action:", channelId);
             connectToChannel(portalId, channelId);
         }
@@ -697,62 +718,75 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                     )}
                 </div>
                 
-                {/* Picture-in-Picture Button */}
+                {/* Collapsible Trigger Arrow (Directly below the top 3 buttons) */}
                 <button 
-                    className="vc-ctrl-btn" 
-                    onClick={handleTriggerDocumentPiP} 
-                    title="Yüzen Pencereye Geç (PiP)"
-                    style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                    className={`vc-ctrl-btn vc-drawer-toggle-btn ${isExtraControlsOpen ? 'active' : ''}`}
+                    onClick={() => setIsExtraControlsOpen(prev => !prev)}
+                    title={isExtraControlsOpen ? "Daha Az Göster" : "Daha Fazla Göster"}
+                    aria-label="Diğer Kontrolleri Göster/Gizle"
                 >
-                    <PictureInPicture size={18} color="#818cf8" />
+                    <ChevronDown size={18} className={`vc-drawer-chevron ${isExtraControlsOpen ? 'rotated' : ''}`} />
                 </button>
 
-                {/* HLS Video Oynatıcı & Çözücü Butonu */}
-                <button 
-                    className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
-                    onClick={() => setIsHlsModalOpen(true)} 
-                    title="HLS Oynatıcı & Çözücü Modalını Aç"
-                    style={{ background: 'rgba(168, 85, 247, 0.25)', borderColor: 'rgba(168, 85, 247, 0.6)' }}
-                >
-                    <Radio size={18} color="#c084fc" />
-                </button>
+                {/* Collapsible Drawer with remaining buttons */}
+                <div className={`vc-extra-controls-drawer ${isExtraControlsOpen ? 'open' : ''}`}>
+                    {/* Picture-in-Picture Button */}
+                    <button 
+                        className="vc-ctrl-btn" 
+                        onClick={handleTriggerDocumentPiP} 
+                        title="Yüzen Pencereye Geç (PiP)"
+                        style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                    >
+                        <PictureInPicture size={18} color="#818cf8" />
+                    </button>
 
-                {/* HLS Video Oynatıcı Vol 2 (Microservice Stream Resolver) */}
-                <button 
-                    className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
-                    onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); }} 
-                    title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
-                    style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.25)' : 'rgba(255, 255, 255, 0.05)', borderColor: isHlsVol2ModalOpen ? '#58a6ff' : 'rgba(255, 255, 255, 0.12)' }}
-                >
-                    <Film size={18} color={isHlsVol2ModalOpen ? '#58a6ff' : '#c9d1d9'} />
-                </button>
+                    {/* HLS Video Oynatıcı & Çözücü Butonu */}
+                    <button 
+                        className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
+                        onClick={() => setIsHlsModalOpen(true)} 
+                        title="HLS Oynatıcı & Çözücü Modalını Aç"
+                        style={{ background: 'rgba(168, 85, 247, 0.25)', borderColor: 'rgba(168, 85, 247, 0.6)' }}
+                    >
+                        <Radio size={18} color="#c084fc" />
+                    </button>
 
-                {/* Mobile More Menu Trigger (Arrow) */}
-                {isMobile && (
-                    <div style={{ position: 'relative' }}>
-                        <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Daha Fazla">
-                            <ChevronDown size={20} />
-                        </button>
-                        {isMoreMenuOpen && (
-                            <div className="vc-more-dropdown glass-panel">
-                                <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
-                                    <MonitorUp size={16} /> <span>Ekran Paylaş</span>
-                                </button>
-                                <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
-                                    {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
-                                </button>
-                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px' }}>HOPARLÖR</div>
-                                {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
-                                    <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
-                                        {selectedAudioOutput === d.deviceId && <Check size={14} />}
+                    {/* HLS Video Oynatıcı Vol 2 (Microservice Stream Resolver) */}
+                    <button 
+                        className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
+                        onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); }} 
+                        title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
+                        style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.25)' : 'rgba(255, 255, 255, 0.05)', borderColor: isHlsVol2ModalOpen ? '#58a6ff' : 'rgba(255, 255, 255, 0.12)' }}
+                    >
+                        <Film size={18} color={isHlsVol2ModalOpen ? '#58a6ff' : '#c9d1d9'} />
+                    </button>
+
+                    {/* Mobile More Options Trigger (Ayarlar / Hoparlör / Ekran) */}
+                    {isMobile && (
+                        <div style={{ position: 'relative' }}>
+                            <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Ekran Paylaşımı & Ayarlar">
+                                <Settings size={18} />
+                            </button>
+                            {isMoreMenuOpen && (
+                                <div className="vc-more-dropdown glass-panel">
+                                    <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
+                                        <MonitorUp size={16} /> <span>Ekran Paylaş</span>
                                     </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                                    <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
+                                        {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
+                                    </button>
+                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px' }}>HOPARLÖR</div>
+                                    {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
+                                        <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
+                                            {selectedAudioOutput === d.deviceId && <Check size={14} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '0px', position: 'relative' }}>
@@ -846,7 +880,9 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             <button className={`vc-ctrl-btn ${localState.isMuted ? 'danger' : 'active'}`} onClick={toggleMicrophone}>
                                 {localState.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
                             </button>
-                            <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
+                            {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.length > 1 && (
+                                <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
+                            )}
                             {isMicMenuOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
                                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>MİKROFON</div>
@@ -876,7 +912,9 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     <RefreshCw size={18} />
                                 </button>
                             )}
-                            <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
+                            {Array.isArray(availableDevices?.videoInputs) && availableDevices.videoInputs.length > 1 && (
+                                <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
+                            )}
                             {isCameraMenuOpen && (
                                 <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
                                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>KAMERA</div>
