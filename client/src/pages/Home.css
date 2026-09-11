@@ -50,12 +50,12 @@ body.native-app .app-wrapper.advanced-home::before {
   .advanced-home::before {
     display: none !important;
     background-image: none !important;
-    background: #000000 !important;
+    background: #090a0f !important;
   }
   .app-wrapper.advanced-home,
   .advanced-home {
     background-image: none !important;
-    background: #000000 !important;
+    background: #090a0f !important;
   }
 }
 

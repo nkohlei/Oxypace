@@ -56,13 +56,8 @@ function copyRecursive(src, dest) {
 const portalHtmlSrc = path.join(CLIENT_DIST, 'index.html');
 const portalHtmlDest = path.join(CLIENT_DIST, 'portal.html');
 if (fs.existsSync(portalHtmlSrc)) {
-    const content = fs.readFileSync(portalHtmlSrc, 'utf8');
-    if (content.includes('type="module"') || content.includes('/assets/index') || content.includes('root')) {
-        console.log('📦 Preserving Portal SPA HTML as portal.html...');
-        fs.copyFileSync(portalHtmlSrc, portalHtmlDest);
-    } else {
-        console.log('ℹ️ index.html is not Vite SPA, preserving existing portal.html...');
-    }
+    console.log('📦 Preserving Portal SPA HTML as portal.html...');
+    fs.copyFileSync(portalHtmlSrc, portalHtmlDest);
 }
 
 // 1.1 Preserve downloads folder with oxypace.apk
@@ -76,11 +71,6 @@ if (fs.existsSync(downloadsSrc)) {
 // 2. Copy Blog static files into client/dist (Blog index.html overrides root index.html)
 console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);
-
-// 3. Sync merged files to root dist folder
-const ROOT_DIST = path.join(ROOT, 'dist');
-console.log('📦 Syncing merged distribution to root dist directory for Netlify...');
-copyRecursive(CLIENT_DIST, ROOT_DIST);
 
 console.log('\n✅ Merge complete!');
 console.log('   oxypace.com.tr/          → Blog (Next.js - index.html)');
