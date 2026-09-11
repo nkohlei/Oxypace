@@ -2,6 +2,12 @@ import { useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 
 export default function WarpGridBackground() {
+  // On native mobile app, skip canvas to free 100% of GPU/CPU for buttery smooth 60/120fps UI
+  // Website desktop continues to render full visual experience
+  if (Capacitor.isNativePlatform()) {
+    return null;
+  }
+
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -11,12 +17,9 @@ export default function WarpGridBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const isNative = Capacitor.isNativePlatform();
-
-    // Native mobile: smaller grid + 30fps cap to avoid killing the CPU
-    const cols = isNative ? 16 : 28;
-    const rows = isNative ? 16 : 28;
-    const TARGET_FPS = isNative ? 30 : 60;
+    const cols = 28;
+    const rows = 28;
+    const TARGET_FPS = 60;
     const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
     let animationId;
@@ -56,7 +59,7 @@ export default function WarpGridBackground() {
       if (timestamp - lastFrameTime < FRAME_INTERVAL) return;
       lastFrameTime = timestamp;
 
-      time += isNative ? 0.004 : 0.003;
+      time += 0.003;
 
       // Background fill
       ctx.fillStyle = isDark ? "#050505" : "#FAF9F6";

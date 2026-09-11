@@ -264,6 +264,9 @@ public class MainActivity extends BridgeActivity {
         android.webkit.WebView webView = getBridge().getWebView();
 
         if (webView != null) {
+            // Explicitly force hardware acceleration on WebView for 60/120fps smooth scrolling
+            webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+
             android.webkit.WebSettings settings = webView.getSettings();
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);

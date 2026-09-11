@@ -588,39 +588,28 @@ input:hover {
 }
 
 /* ==========================================================================
-   MOBILE PERFORMANCE OPTIMIZATIONS
-   Applied via .native-app class (set by requestNativePermissions in App.jsx)
+   MOBILE NATIVE APP PERFORMANCE (Capacitor Android Only)
+   Only active when .native-app is attached to body by Capacitor on mobile.
+   Web desktop / browser is 100% UNTOUCHED.
    ========================================================================== */
-
-/* 1. Reduce backdrop-filter blur on native mobile — same visual quality at ~60% less GPU cost */
 .native-app {
-  --glass-blur: blur(8px);
+  --glass-blur: none !important;
+  --glass-bg: rgba(10, 15, 32, 0.96) !important;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
-/* 2. Promote frequently animated elements to their own GPU compositing layers */
-.native-app .portal-sidebar-wrapper,
-.native-app .main-content-wrapper,
-.native-app .content-scroll-area,
-.native-app .app-container {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+/* Turn off heavy GPU multi-pass backdrop-filter on mobile native app to achieve solid 60/120fps */
+.native-app,
+.native-app * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
-/* 3. Respect reduced-motion preference & help low-powered devices */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+/* Native momentum scrolling on scroll containers */
+.native-app .content-scroll-area {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: auto !important;
 }
 
-/* 4. Ensure will-change only uses compositor-friendly properties (not 'background') */
-.card {
-  will-change: transform;
-}
