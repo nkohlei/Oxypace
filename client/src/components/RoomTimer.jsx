@@ -2,62 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { useVoice } from '../context/VoiceContext';
 
 const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
-    const { roomDuration, roomStartTime } = useVoice() || {};
+    // roomDuration removed from VoiceContext (was causing 1s re-renders of entire context tree).
+    // We now compute elapsed locally — RoomTimer only re-renders itself.
+    const { roomStartTime } = useVoice() || {};
     const [elapsed, setElapsed] = useState('00:00');
 
     useEffect(() => {
-        // If the startedAt corresponds to the active voice room, use global roomDuration
-        if (roomStartTime && startedAt === roomStartTime && typeof roomDuration === 'number') {
-            const diff = roomDuration;
-            const h = Math.floor(diff / 3600);
-            const m = Math.floor((diff % 3600) / 60);
-            const s = diff % 60;
+        // Determine the effective start time: prefer the voice room's start if it matches
+        const effectiveStart = (roomStartTime && startedAt === roomStartTime)
+            ? roomStartTime
+            : startedAt;
 
-            if (h > 0) {
-                setElapsed(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-            } else {
-                setElapsed(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-            }
-            return;
-        }
-
-        // Fallback to local timer if not active room timer
-        if (!startedAt) {
+        if (!effectiveStart) {
             setElapsed('00:00');
             return;
         }
 
         const updateTimer = () => {
-            const now = Date.now();
-            const diff = Math.floor((now - startedAt) / 1000); // in seconds
-            if (diff < 0) {
-                setElapsed('00:00');
-                return;
-            }
-
+            const diff = Math.floor((Date.now() - effectiveStart) / 1000);
+            if (diff < 0) { setElapsed('00:00'); return; }
             const h = Math.floor(diff / 3600);
             const m = Math.floor((diff % 3600) / 60);
             const s = diff % 60;
-
-            if (h > 0) {
-                setElapsed(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-            } else {
-                setElapsed(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-            }
+            setElapsed(
+                h > 0
+                    ? `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+                    : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+            );
         };
 
         updateTimer();
         const intervalId = setInterval(updateTimer, 1000);
-
         return () => clearInterval(intervalId);
-    }, [startedAt, roomStartTime, roomDuration]);
+    }, [startedAt, roomStartTime]);
 
     const defaultStyle = {
         display: 'flex',
         alignItems: 'center',
         fontSize: '15px',
         fontWeight: '800',
-        color: '#39FF14', // Phosphorus green
+        color: '#39FF14',
         background: 'transparent',
         border: 'none',
         padding: '0 4px',
@@ -71,3 +55,4 @@ const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
 };
 
 export default RoomTimer;
+

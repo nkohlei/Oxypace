@@ -138,7 +138,8 @@ export const VoiceProvider = ({ children }) => {
     const [facingMode, setFacingMode] = useState('user'); // 'user' or 'environment'
 
     const [roomStartTime, setRoomStartTime] = useState(null);
-    const [roomDuration, setRoomDuration] = useState(0);
+    // roomDuration removed from context — it caused VoiceProvider to re-render every second.
+    // RoomTimer.jsx now calculates elapsed time locally from roomStartTime.
 
     // Ref to roomStartTime so connectToChannel closure always reads the latest value
     const roomStartTimeRef = useRef(null);
@@ -153,19 +154,8 @@ export const VoiceProvider = ({ children }) => {
         setActiveRoom(val);
     };
 
-    useEffect(() => {
-        if (!roomStartTime) {
-            setRoomDuration(0);
-            return;
-        }
-        const update = () => {
-            const diff = Math.floor((Date.now() - roomStartTime) / 1000);
-            setRoomDuration(diff >= 0 ? diff : 0);
-        };
-        update();
-        const interval = setInterval(update, 1000);
-        return () => clearInterval(interval);
-    }, [roomStartTime]);
+    // roomDuration interval removed — was triggering full VoiceContext re-render every second.
+    // RoomTimer calculates elapsed time independently from roomStartTime.
 
     // Chat states
     const [chatMessages, setChatMessages] = useState([]);
@@ -235,11 +225,12 @@ export const VoiceProvider = ({ children }) => {
     }, [socket]);
 
     useEffect(() => {
-        if (!socket) return;
+        // Only sync NTP when inside an active room — no need when idle
+        if (!socket || !activeRoom) return;
         syncServerTime();
         const interval = setInterval(syncServerTime, 10000);
         return () => clearInterval(interval);
-    }, [socket, syncServerTime]);
+    }, [socket, activeRoom, syncServerTime]);
 
     const getServerNow = useCallback(() => {
         return Date.now() + (serverOffsetRef.current || 0);
@@ -1816,7 +1807,6 @@ export const VoiceProvider = ({ children }) => {
         connectionState,
         participants,
         roomStartTime,
-        roomDuration,
         errorMsg,
         localState,
         chatMessages,

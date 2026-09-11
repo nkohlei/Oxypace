@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { useGlobalStore } from '../store/useGlobalStore';
@@ -161,7 +161,8 @@ export const SocketProvider = ({ children }) => {
         window.addEventListener('pageshow', handleLifecycleEvent);
         window.addEventListener('online', handleLifecycleEvent);
         window.addEventListener('resume', handleLifecycleEvent);
-        window.addEventListener('pointerdown', handleLifecycleEvent, { passive: true, once: false });
+        // NOTE: pointerdown removed — it was calling socket.emit('join') on every screen tap,
+        // flooding the server. The 25s heartbeat below handles reconnection sufficiently.
 
         // Mobilde bağlantının uyumaması için 25 saniyelik periyodik canlılık nabzı (heartbeat)
         const heartbeatInterval = setInterval(() => {
@@ -175,7 +176,6 @@ export const SocketProvider = ({ children }) => {
             window.removeEventListener('pageshow', handleLifecycleEvent);
             window.removeEventListener('online', handleLifecycleEvent);
             window.removeEventListener('resume', handleLifecycleEvent);
-            window.removeEventListener('pointerdown', handleLifecycleEvent);
             newSocket.close();
         };
     }, []); // Only run on mount
@@ -194,7 +194,9 @@ export const SocketProvider = ({ children }) => {
 
     // Aktif oturum açmış kullanıcı varsa ve socket bağlıysa,
     // gizlilik ayarına (showOnlineStatus) göre kendi ID'sinin onlineUsers listesinde yer almasını sağla
-    const effectiveOnlineUsers = (() => {
+    // useMemo ile sarıldı: onlineUsers/user/connected değişmediğinde yeni array üretilmez
+    // ve tüm context consumer'ları gereksiz re-render almaz.
+    const effectiveOnlineUsers = useMemo(() => {
         const set = new Set((onlineUsers || []).map(String));
         const showMyOnline = user?.settings?.privacy?.showOnlineStatus !== false;
         if (user?._id && connected && showMyOnline) {
@@ -203,7 +205,7 @@ export const SocketProvider = ({ children }) => {
             set.delete(String(user._id));
         }
         return Array.from(set);
-    })();
+    }, [onlineUsers, user?._id, user?.settings?.privacy?.showOnlineStatus, connected]);
 
     const value = {
         socket,
