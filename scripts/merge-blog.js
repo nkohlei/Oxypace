@@ -77,6 +77,11 @@ if (fs.existsSync(downloadsSrc)) {
 console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);
 
+// 3. Sync merged files to root dist folder
+const ROOT_DIST = path.join(ROOT, 'dist');
+console.log('📦 Syncing merged distribution to root dist directory for Netlify...');
+copyRecursive(CLIENT_DIST, ROOT_DIST);
+
 console.log('\n✅ Merge complete!');
 console.log('   oxypace.com.tr/          → Blog (Next.js - index.html)');
 console.log('   oxypace.com.tr/login      → Portal SPA (portal.html)');
