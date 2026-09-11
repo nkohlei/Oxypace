@@ -117,6 +117,29 @@ public class MainActivity extends BridgeActivity {
                 call.reject(e.getMessage());
             }
         }
+
+        @PluginMethod
+        public void enterPiP(PluginCall call) {
+            try {
+                if (getActivity() != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    getActivity().runOnUiThread(() -> {
+                        try {
+                            android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
+                            builder.setAspectRatio(new android.util.Rational(3, 4));
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                builder.setAutoEnterEnabled(true);
+                            }
+                            getActivity().enterPictureInPictureMode(builder.build());
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
     }
 
     @CapacitorPlugin(name = "AuthSync")

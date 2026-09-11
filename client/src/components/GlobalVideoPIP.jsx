@@ -5,9 +5,11 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Minimize2, Volume2, VolumeX, Shield, Crown, UserPlus, MessageCircle, X, MonitorUp, Search, ChevronUp, ChevronDown } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import axios from 'axios';
 import './GlobalVideoPIP.css';
+
+const CallManager = registerPlugin('CallManager');
 
 // Standalone VideoRenderer outside main component scope to guarantee zero DOM re-creations / unmounts
 const VideoRenderer = React.memo(({ participant, className }) => {
@@ -82,6 +84,7 @@ const GlobalVideoPIP = () => {
     const [isInNativePiP, setIsInNativePiP] = useState(false);
     const [pipContainer, setPipContainer] = useState(null);
     const [isDocumentPiPActive, setIsDocumentPiPActive] = useState(false);
+    const [isFloatingActive, setIsFloatingActive] = useState(false);
 
     // Popover states for right-top buttons in PiP
     const [isPipInviteOpen, setIsPipInviteOpen] = useState(false);
@@ -222,7 +225,14 @@ const GlobalVideoPIP = () => {
 
     useEffect(() => {
         const handleManualPipTrigger = () => {
-            openDocumentPiPWindow();
+            if ('documentPictureInPicture' in window) {
+                openDocumentPiPWindow();
+            } else if (Capacitor.isNativePlatform()) {
+                CallManager.enterPiP().catch(err => console.warn('[CallManager] enterPiP error:', err));
+                setIsFloatingActive(prev => !prev);
+            } else {
+                setIsFloatingActive(prev => !prev);
+            }
         };
 
         window.addEventListener('triggerDocumentPiP', handleManualPipTrigger);
@@ -232,11 +242,14 @@ const GlobalVideoPIP = () => {
     }, [isDocumentPiPActive]);
 
     useEffect(() => {
-        if (!isConnected && pipWindowRef.current) {
-            pipWindowRef.current.close();
-            pipWindowRef.current = null;
-            setPipContainer(null);
-            setIsDocumentPiPActive(false);
+        if (!isConnected) {
+            if (pipWindowRef.current) {
+                pipWindowRef.current.close();
+                pipWindowRef.current = null;
+                setPipContainer(null);
+                setIsDocumentPiPActive(false);
+            }
+            setIsFloatingActive(false);
         }
     }, [isConnected]);
 
@@ -274,7 +287,8 @@ const GlobalVideoPIP = () => {
 
     const shouldShow = isConnected && (
         (Capacitor.isNativePlatform() && isInNativePiP) || 
-        isDocumentPiPActive
+        isDocumentPiPActive ||
+        isFloatingActive
     );
 
     if (!shouldShow) return null;
@@ -434,6 +448,15 @@ const GlobalVideoPIP = () => {
                                 >
                                     <Volume2 size={14} />
                                 </button>
+                                {isFloatingActive && (
+                                    <button 
+                                        className="pip-header-btn" 
+                                        onClick={() => setIsFloatingActive(false)} 
+                                        title="Yüzen Pencereyi Kapat"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -633,7 +656,7 @@ const GlobalVideoPIP = () => {
         return createPortal(content, pipContainer);
     }
 
-    if (isInNativePiP) {
+    if (isInNativePiP || isFloatingActive) {
         return content;
     }
 

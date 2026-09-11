@@ -2,9 +2,9 @@
 .global-video-pip-window {
     position: fixed;
     z-index: 12000;
-    background: #090d16;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
     border-radius: 16px;
     overflow: hidden;
     user-select: none;
@@ -90,7 +90,7 @@
     width: 100%;
     height: 100%;
     position: relative;
-    background: #070a12;
+    background: #000000;
 }
 
 /* Header overlay - Autohide */

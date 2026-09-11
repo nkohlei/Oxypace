@@ -10,7 +10,10 @@ import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import { useUI } from '../context/UIContext';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import './VoiceChannel.css';
+
+const CallManager = registerPlugin('CallManager');
 
 const VideoRenderer = ({ track, isLocal, className, identity }) => {
     const videoEl = React.useRef(null);
@@ -98,8 +101,17 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
 
 
 const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
+    const { setMobileChannelOpen } = useUI();
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
     const handleTriggerDocumentPiP = () => {
+        if (Capacitor.isNativePlatform()) {
+            CallManager.enterPiP().catch(err => console.warn('[CallManager] enterPiP error:', err));
+        }
         window.dispatchEvent(new CustomEvent('triggerDocumentPiP'));
+        if (isMobile) {
+            setMobileChannelOpen(false);
+        }
     };
     const { user } = useAuth();
     const {
@@ -135,8 +147,6 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         setUserVolume
     } = useVoice();
 
-    const { setMobileChannelOpen } = useUI();
-
     const handleSendMessage = (text) => {
         if (text.startsWith('/watch ')) {
             const url = text.substring(7).trim();
@@ -166,8 +176,26 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
     const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
     const [isHlsVol2ModalOpen, setIsHlsVol2ModalOpen] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [isExtraControlsOpen, setIsExtraControlsOpen] = useState(false);
+    const drawerTimerRef = useRef(null);
+
+    const resetDrawerTimer = () => {
+        if (drawerTimerRef.current) clearTimeout(drawerTimerRef.current);
+        drawerTimerRef.current = setTimeout(() => {
+            setIsExtraControlsOpen(false);
+        }, 5000);
+    };
+
+    useEffect(() => {
+        if (isExtraControlsOpen) {
+            resetDrawerTimer();
+        } else {
+            if (drawerTimerRef.current) clearTimeout(drawerTimerRef.current);
+        }
+        return () => {
+            if (drawerTimerRef.current) clearTimeout(drawerTimerRef.current);
+        };
+    }, [isExtraControlsOpen]);
     const autoJoinedRef = useRef(false);
     const [watchStreamAccepted, setWatchStreamAccepted] = useState(false);
     const [lastScreenShareId, setLastScreenShareId] = useState(null);
@@ -718,18 +746,24 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                     )}
                 </div>
                 
-                {/* Collapsible Trigger Arrow (Directly below the top 3 buttons) */}
-                <button 
-                    className={`vc-ctrl-btn vc-drawer-toggle-btn ${isExtraControlsOpen ? 'active' : ''}`}
-                    onClick={() => setIsExtraControlsOpen(prev => !prev)}
-                    title={isExtraControlsOpen ? "Daha Az Göster" : "Daha Fazla Göster"}
-                    aria-label="Diğer Kontrolleri Göster/Gizle"
-                >
-                    <ChevronDown size={18} className={`vc-drawer-chevron ${isExtraControlsOpen ? 'rotated' : ''}`} />
-                </button>
+                {/* When closed: Arrow is right below the top 3 buttons */}
+                {!isExtraControlsOpen && (
+                    <button 
+                        className="vc-ctrl-btn vc-drawer-toggle-btn"
+                        onClick={() => setIsExtraControlsOpen(true)}
+                        title="Daha Fazla Göster"
+                        aria-label="Diğer Kontrolleri Göster"
+                    >
+                        <ChevronDown size={18} className="vc-drawer-chevron" />
+                    </button>
+                )}
 
                 {/* Collapsible Drawer with remaining buttons */}
-                <div className={`vc-extra-controls-drawer ${isExtraControlsOpen ? 'open' : ''}`}>
+                <div 
+                    className={`vc-extra-controls-drawer ${isExtraControlsOpen ? 'open' : ''}`}
+                    onMouseMove={resetDrawerTimer}
+                    onTouchStart={resetDrawerTimer}
+                >
                     {/* Picture-in-Picture Button */}
                     <button 
                         className="vc-ctrl-btn" 
@@ -743,7 +777,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                     {/* HLS Video Oynatıcı & Çözücü Butonu */}
                     <button 
                         className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
-                        onClick={() => setIsHlsModalOpen(true)} 
+                        onClick={() => { setIsHlsModalOpen(true); resetDrawerTimer(); }} 
                         title="HLS Oynatıcı & Çözücü Modalını Aç"
                         style={{ background: 'rgba(168, 85, 247, 0.25)', borderColor: 'rgba(168, 85, 247, 0.6)' }}
                     >
@@ -753,38 +787,23 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                     {/* HLS Video Oynatıcı Vol 2 (Microservice Stream Resolver) */}
                     <button 
                         className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
-                        onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); }} 
+                        onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); resetDrawerTimer(); }} 
                         title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
                         style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.25)' : 'rgba(255, 255, 255, 0.05)', borderColor: isHlsVol2ModalOpen ? '#58a6ff' : 'rgba(255, 255, 255, 0.12)' }}
                     >
                         <Film size={18} color={isHlsVol2ModalOpen ? '#58a6ff' : '#c9d1d9'} />
                     </button>
 
-                    {/* Mobile More Options Trigger (Ayarlar / Hoparlör / Ekran) */}
-                    {isMobile && (
-                        <div style={{ position: 'relative' }}>
-                            <button className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} title="Ekran Paylaşımı & Ayarlar">
-                                <Settings size={18} />
-                            </button>
-                            {isMoreMenuOpen && (
-                                <div className="vc-more-dropdown glass-panel">
-                                    <button className="vc-more-option" onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
-                                        <MonitorUp size={16} /> <span>Ekran Paylaş</span>
-                                    </button>
-                                    <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
-                                        {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
-                                    </button>
-                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
-                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px' }}>HOPARLÖR</div>
-                                    {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
-                                        <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
-                                            {selectedAudioOutput === d.deviceId && <Check size={14} />}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                    {/* When open: Arrow moves to the very bottom of the drawer */}
+                    {isExtraControlsOpen && (
+                        <button 
+                            className="vc-ctrl-btn vc-drawer-toggle-btn active"
+                            onClick={() => setIsExtraControlsOpen(false)}
+                            title="Daha Az Göster"
+                            aria-label="Diğer Kontrolleri Gizle"
+                        >
+                            <ChevronUp size={18} className="vc-drawer-chevron" />
+                        </button>
                     )}
                 </div>
             </div>
@@ -1069,6 +1088,52 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             )}
                         </div>
 
+                        {/* Ek Ayar Butonu (Çark Simgesi - Canlı video izle butonunun hemen sağında) */}
+                        <div className="vc-ctrl-group" style={{ position: 'relative' }}>
+                            <button 
+                                className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} 
+                                onClick={() => { setIsMoreMenuOpen(!isMoreMenuOpen); setIsWatchInputOpen(false); setIsLiveWatchInputOpen(false); }} 
+                                title="Oda Ayarları"
+                            >
+                                <Settings size={22} />
+                            </button>
+                            {isMoreMenuOpen && (
+                                <div className="vc-settings-dropdown glass-panel" style={{ 
+                                    position: 'absolute', 
+                                    bottom: '100%', 
+                                    left: '50%', 
+                                    transform: 'translateX(-50%)', 
+                                    marginBottom: '12px', 
+                                    padding: '8px', 
+                                    minWidth: '220px',
+                                    background: 'rgba(18, 18, 18, 0.98)',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
+                                    zIndex: 1000
+                                }}>
+                                    <button className={`vc-more-option ${localState.isScreenSharing ? 'active' : ''}`} onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
+                                        <MonitorUp size={16} /> <span>{localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}</span>
+                                    </button>
+                                    <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
+                                        {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
+                                    </button>
+                                    {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
+                                        <>
+                                            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />
+                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HOPARLÖR ÇIKIŞI</div>
+                                            {availableDevices.audioOutputs.map(d => (
+                                                <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Hoparlör'}</span>
+                                                    {selectedAudioOutput === d.deviceId && <Check size={14} />}
+                                                </button>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         <HlsTesterModal
                             isOpen={isHlsModalOpen}
                             onClose={() => setIsHlsModalOpen(false)}
@@ -1077,29 +1142,15 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             }}
                         />
 
-                        {/* Desktop Specific Controls (Screen Share & Deafen) */}
+                        {/* Desktop Direct Quick Shortcuts (Screen Share & Deafen) */}
                         {!isMobile && (
                             <>
                                 <button className={`vc-ctrl-btn ${localState.isScreenSharing ? 'active' : 'danger'}`} onClick={toggleScreenShare} title="Ekran Paylaş">
                                     <MonitorUp size={22} />
                                 </button>
-                                <div className="vc-ctrl-group">
-                                    <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : 'active'}`} onClick={toggleDeafen}>
-                                        {localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}
-                                    </button>
-                                    <button className={`vc-device-arrow ${isMoreMenuOpen ? 'active' : ''}`} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><ChevronUp size={16} /></button>
-                                    {isMoreMenuOpen && (
-                                        <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>HOPARLÖR</div>
-                                            {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
-                                                <div key={d.deviceId} className={`vc-device-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                                    <span>{d.label || 'Hoparlör'}</span>
-                                                    {selectedAudioOutput === d.deviceId && <Check size={12} />}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <button className={`vc-ctrl-btn ${localState.isDeafened ? 'danger' : 'active'}`} onClick={toggleDeafen} title={localState.isDeafened ? "Sesi Aç" : "Sağırlaştır"}>
+                                    {localState.isDeafened ? <VolumeX size={22} /> : <Volume2 size={22} />}
+                                </button>
                             </>
                         )}
                     </div>

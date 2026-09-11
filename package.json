@@ -1,7 +1,7 @@
 {
-    "name": "globalmessage2",
-    "version": "2.1.6",
-    "description": "Social media platform backend",
+    "name": "oxypace",
+    "version": "2.1.7",
+    "description": "Oxypace - Modern Social & Portal Platform backend",
     "main": "server.js",
     "type": "module",
     "engines": {
