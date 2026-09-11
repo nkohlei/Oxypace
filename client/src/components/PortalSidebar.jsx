@@ -347,7 +347,7 @@ const PortalSidebar = () => {
                 .portal-floating-tooltip {
                     position: fixed;
                     transform: translateY(-50%);
-                    background-color: rgba(10, 15, 32, 0.95);
+                    background-color: var(--bg-card, #121212);
                     color: white;
                     padding: 5px 12px;
                     border-radius: 6px;

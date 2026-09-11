@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.1.4',
-        versionCode: 214,
+        latestVersion: '2.1.5',
+        versionCode: 215,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.1.4: Bildirimler sayfası iyileştirmesi, standart çerçeveli sayfa düzeni, destek modülü yüksek kontrast tema desteği, lobi geri dönüş tuşu ve aktif kamera çevirme sistemi.',
+        changelog: 'Oxypace 2.1.5: Sabit ve yapışık header düzeni, saf siyah (dark) ve saf beyaz (light) tema standardizasyonu, canlı görüşme odalarının tam ekran ve çerçevesiz görünüm düzeltmesi.',
     });
 });
 

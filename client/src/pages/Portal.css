@@ -1100,6 +1100,26 @@
         flex: 1 !important;
     }
 
+    /* Live call / meeting rooms must NEVER be boxed on mobile — edge-to-edge full screen */
+    .mobile-feed-active.voice-room-active .discord-main-content,
+    .mobile-feed-active .discord-main-content.voice-channel-active,
+    .mobile-feed-active .discord-main-content:has(.vc-container),
+    .mobile-feed-active .discord-main-content:has(.conference-container) {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        height: 100% !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
+    .voice-channel-active .channel-top-bar {
+        border-radius: 0 !important;
+    }
+
     /* Channel Back Button in channel-top-bar */
     .channel-back-btn {
         display: flex;

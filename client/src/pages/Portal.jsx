@@ -1345,7 +1345,7 @@ const Portal = () => {
             )}
 
 
-            <div className={`discord-split-view ${isMobileView && mobileChannelOpen ? 'mobile-feed-active' : ''} ${isDesktopSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <div className={`discord-split-view ${isMobileView && mobileChannelOpen ? 'mobile-feed-active' : ''} ${isVoiceChannelActive ? 'voice-room-active' : ''} ${isDesktopSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                 {user && (
                     <ChannelSidebar
                         portal={portal}
@@ -1363,7 +1363,7 @@ const Portal = () => {
                     />
                 )}
 
-                <main className={`discord-main-content ${isMobileView && !mobileChannelOpen ? 'mobile-content-hidden' : ''}`}>
+                <main className={`discord-main-content ${isMobileView && !mobileChannelOpen ? 'mobile-content-hidden' : ''} ${isVoiceChannel ? 'voice-channel-active' : ''}`}>
                     {/* Dual Header: Sub-Header System */}
                     {isMobileView && !mobileChannelOpen && (
                         <SubHeader 
@@ -1374,7 +1374,7 @@ const Portal = () => {
 
                     {/* Determine current channel type */}
                     {(() => {
-                        const currentChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
+                        const currentChannelObj = activeChannelObj;
                         const channelType = currentChannelObj?.type || 'text';
                         const channelName = currentChannelObj?.name || '...';
                         const isVoiceChannel = channelType === 'voice' || channelType === 'conference';
