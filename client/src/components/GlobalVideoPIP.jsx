@@ -425,7 +425,7 @@ const GlobalVideoPIP = () => {
 
     const content = (
         <div 
-            className={`global-video-pip-window vertical-mode ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''}`}
+            className={`global-video-pip-window vertical-mode ${isMinimized ? 'minimized' : ''} ${showOverlayControls ? 'show-controls' : ''} ${isInNativePiP ? 'native-pip' : ''} ${isDocumentPiPActive ? 'document-pip' : ''} ${isNative ? 'is-mobile-pip' : ''}`}
             style={windowStyle}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}

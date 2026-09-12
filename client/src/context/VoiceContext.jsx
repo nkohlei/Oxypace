@@ -179,8 +179,10 @@ export const VoiceProvider = ({ children }) => {
     const [chatMessages, setChatMessages] = useState([]);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const isChatOpenRef = useRef(isChatOpen);
 
     useEffect(() => {
+        isChatOpenRef.current = isChatOpen;
         if (isChatOpen) {
             setUnreadCount(0);
         }
@@ -231,6 +233,8 @@ export const VoiceProvider = ({ children }) => {
     // WebRTC connection references
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
+    const screenCanvasRef = useRef(null);
+    const screenImageRef = useRef(null);
     const peerConnectionsRef = useRef(new Map()); // userId -> RTCPeerConnection
     const remoteTracksRef = useRef(new Map()); // userId -> { audio: Track, video: Track, screen: Track }
     const remoteStatesRef = useRef(new Map()); // userId -> { isMuted, isCameraOn, isScreenSharing }
@@ -792,7 +796,7 @@ export const VoiceProvider = ({ children }) => {
 
     // Handle joining room and configuring media
     const connectToChannel = useCallback(async (portalId, channelId) => {
-        if (connectionState === ConnectionState.Connecting || connectionState === ConnectionState.Connected) {
+        if (connectionState === ConnectionState.Connected && activeRoomRef.current?.channelId === channelId) {
             return;
         }
 
@@ -931,6 +935,8 @@ export const VoiceProvider = ({ children }) => {
         setWatchParty(null);
         setIsChatOpen(false);
         setUnreadCount(0);
+        setErrorMsg('');
+        setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
         setConnectionState(ConnectionState.Disconnected);
 
         if (Capacitor.isNativePlatform()) {
@@ -1318,8 +1324,50 @@ export const VoiceProvider = ({ children }) => {
 
     // Media toggle functions
     const toggleMicrophone = useCallback(async () => {
-        if (!localStreamRef.current) return;
-        const track = localStreamRef.current.getAudioTracks()[0];
+        if (!localStreamRef.current) {
+            localStreamRef.current = new MediaStream();
+        }
+        let track = localStreamRef.current.getAudioTracks()[0];
+
+        // If audio track is missing or stopped, dynamically request microphone permission and audio stream
+        if (!track || track.readyState === 'ended') {
+            try {
+                console.log("[WebRTC] Requesting local audio track dynamically...");
+                const audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: { ideal: true },
+                        noiseSuppression: { ideal: true },
+                        autoGainControl: { ideal: false },
+                        channelCount: { ideal: 2 },
+                        sampleRate: { ideal: 48000 }
+                    }
+                });
+                const newAudioTrack = audioStream.getAudioTracks()[0];
+                if (newAudioTrack) {
+                    if (track) {
+                        try { localStreamRef.current.removeTrack(track); } catch (e) {}
+                    }
+                    localStreamRef.current.addTrack(newAudioTrack);
+                    track = newAudioTrack;
+
+                    // Attach new audio track to all active peer connections
+                    peerConnectionsRef.current.forEach(pc => {
+                        const senders = pc.getSenders();
+                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
+                                            pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'audio')?.sender;
+                        if (audioSender) {
+                            audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
+                        } else {
+                            try { pc.addTrack(newAudioTrack, localStreamRef.current); } catch (e) {}
+                        }
+                    });
+                }
+            } catch (permErr) {
+                console.warn("[WebRTC] Failed to acquire audio stream dynamically:", permErr);
+                return;
+            }
+        }
+
         if (track) {
             const willMute = !localState.isMuted;
             track.enabled = !willMute;
@@ -1353,14 +1401,20 @@ export const VoiceProvider = ({ children }) => {
             if (!cameraTrack) {
                 try {
                     console.log("[WebRTC] Requesting local camera stream...");
-                    const videoStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: facingMode },
-                            width: 640,
-                            height: 480,
-                            frameRate: 24
-                        }
-                    });
+                    let videoStream;
+                    try {
+                        videoStream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: { ideal: facingMode || 'user' },
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                frameRate: { ideal: 24 }
+                            }
+                        });
+                    } catch (e1) {
+                        console.warn("[WebRTC] Strict camera constraints failed, attempting basic fallback:", e1);
+                        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    }
                     const videoTrack = videoStream.getVideoTracks()[0];
                     if (videoTrack) {
                         localStreamRef.current.addTrack(videoTrack);
@@ -1392,6 +1446,12 @@ export const VoiceProvider = ({ children }) => {
                         videoSender.replaceTrack(cameraTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
                         });
+                    } else {
+                        try {
+                            pc.addTrack(cameraTrack, localStreamRef.current);
+                        } catch (addErr) {
+                            console.warn("[WebRTC] addTrack error (ON):", addErr);
+                        }
                     }
                 });
                 renegotiateAll();
@@ -1496,7 +1556,8 @@ export const VoiceProvider = ({ children }) => {
                             return;
                         }
 
-                        const canvas = document.createElement('canvas');
+                        const canvas = screenCanvasRef.current || document.createElement('canvas');
+                        screenCanvasRef.current = canvas;
                         canvas.width = 540;
                         canvas.height = 960;
                         const ctx = canvas.getContext('2d');
@@ -1506,9 +1567,17 @@ export const VoiceProvider = ({ children }) => {
                         let isDecoding = false;
                         let pendingBase64 = null;
 
-                        const screenImg = new Image();
+                        const screenImg = screenImageRef.current || new Image();
+                        screenImageRef.current = screenImg;
+
                         screenImg.onload = () => {
                             try {
+                                if (screenImg.naturalWidth > 0 && screenImg.naturalHeight > 0) {
+                                    if (canvas.width !== screenImg.naturalWidth || canvas.height !== screenImg.naturalHeight) {
+                                        canvas.width = screenImg.naturalWidth;
+                                        canvas.height = screenImg.naturalHeight;
+                                    }
+                                }
                                 ctx.drawImage(screenImg, 0, 0, canvas.width, canvas.height);
                             } catch (drawErr) {}
                             isDecoding = false;
@@ -1824,11 +1893,16 @@ export const VoiceProvider = ({ children }) => {
     const sendChatMessage = useCallback(async (text) => {
         if (!text.trim() || !activeRoom) return;
 
+        const msgId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const timestamp = new Date().toISOString();
+
         safeEmit('voice:chat-message', {
+            id: msgId,
             roomName: activeRoom.roomName,
             text,
             senderName: user?.profile?.displayName || user?.username || 'Sen',
             senderId: user?._id?.toString(),
+            timestamp,
         });
     }, [activeRoom, user, safeEmit]);
 
@@ -1838,15 +1912,22 @@ export const VoiceProvider = ({ children }) => {
 
         const handleChatMessage = (msgObj) => {
             const isLocal = String(msgObj.senderId) === String(user?._id);
-            setChatMessages(prev => [...prev, {
-                id: msgObj.id || (Date.now() + Math.random()),
-                senderName: msgObj.senderName,
-                senderId: msgObj.senderId,
-                text: msgObj.text,
-                timestamp: msgObj.timestamp || new Date().toISOString(),
-                isLocal
-            }]);
-            if (!isChatOpen && !isLocal) {
+            const msgId = msgObj.id || `${msgObj.senderId}-${msgObj.timestamp || Date.now()}-${msgObj.text}`;
+            
+            setChatMessages(prev => {
+                if (prev.some(m => m.id === msgId)) {
+                    return prev;
+                }
+                return [...prev, {
+                    id: msgId,
+                    senderName: msgObj.senderName,
+                    senderId: msgObj.senderId,
+                    text: msgObj.text,
+                    timestamp: msgObj.timestamp || new Date().toISOString(),
+                    isLocal
+                }];
+            });
+            if (!isChatOpenRef.current && !isLocal) {
                 setUnreadCount(prev => prev + 1);
             }
             if (!isLocal) {
@@ -1856,15 +1937,24 @@ export const VoiceProvider = ({ children }) => {
 
         const handleChatHistory = (history) => {
             if (Array.isArray(history)) {
-                setChatMessages(history.map(msg => ({
-                    id: msg.id || (Date.now() + Math.random()),
-                    senderName: msg.senderName,
-                    senderId: msg.senderId,
-                    text: msg.text,
-                    timestamp: msg.timestamp || new Date().toISOString(),
-                    isLocal: String(msg.senderId) === String(user?._id)
-                })));
-                if (!isChatOpen) {
+                setChatMessages(() => {
+                    const uniqueMap = new Map();
+                    history.forEach(msg => {
+                        const id = msg.id || `${msg.senderId}-${msg.timestamp}-${msg.text}`;
+                        if (!uniqueMap.has(id)) {
+                            uniqueMap.set(id, {
+                                id,
+                                senderName: msg.senderName,
+                                senderId: msg.senderId,
+                                text: msg.text,
+                                timestamp: msg.timestamp || new Date().toISOString(),
+                                isLocal: String(msg.senderId) === String(user?._id)
+                            });
+                        }
+                    });
+                    return Array.from(uniqueMap.values());
+                });
+                if (!isChatOpenRef.current) {
                     const unread = history.filter(msg => String(msg.senderId) !== String(user?._id)).length;
                     setUnreadCount(unread);
                 }
@@ -1877,7 +1967,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:chat-message', handleChatMessage);
             socket.off('voice:chat-history', handleChatHistory);
         };
-    }, [socket, user, playInteractionSound, isChatOpen]);
+    }, [socket, user, playInteractionSound]);
 
     const grantSpeak = useCallback((targetUserId) => {
         if (activeRoom) {

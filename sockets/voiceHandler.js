@@ -216,17 +216,20 @@ export const initializeVoiceHandler = (io) => {
         });
 
         // ─── Broadcast Chat Messages ───
-        socket.on('voice:chat-message', ({ roomName, text, senderName, senderId }) => {
+        socket.on('voice:chat-message', ({ id, roomName, text, senderName, senderId, timestamp }) => {
             if (!roomName) return;
+            const msgId = id || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            const msgTimestamp = timestamp || new Date().toISOString();
             
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
                 if (!roomData.chatHistory) roomData.chatHistory = [];
                 roomData.chatHistory.push({
+                    id: msgId,
                     text,
                     senderName,
                     senderId,
-                    timestamp: new Date().toISOString()
+                    timestamp: msgTimestamp
                 });
                 if (roomData.chatHistory.length > 100) {
                     roomData.chatHistory.shift();
@@ -234,9 +237,11 @@ export const initializeVoiceHandler = (io) => {
             }
 
             io.to(`voice:${roomName}`).emit('voice:chat-message', {
+                id: msgId,
                 text,
                 senderName,
-                senderId
+                senderId,
+                timestamp: msgTimestamp
             });
         });
 

@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.2.0',
-        versionCode: 220,
+        latestVersion: '2.2.1',
+        versionCode: 221,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.2.0: Ayarlar modülü mobil alt sayfaları tamamen düzeltildi. Canlı odadaki bildirim heads-up yerine cihaz bildirim paneline sessiz ve minimal bar olarak sabitlendi. PiP yüzen pencerede kendi kamera görüntüsü gizlendi ve 3 yerel buton eklendi. Gerçek anlık mobil cihaz ekran paylaşımı kuruldu. Çark menüsüne "Kamera görüntü penceremi benden gizle" seçeneği eklendi.',
+        changelog: 'Oxypace 2.2.1: Canlı oda ve yüzen pencere mikrofon & kamera kontrolleri düzeltildi. Canlı oda ekran paylaşımı görüntüsü anlık aktarılacak şekilde optimize edildi. Arama sonrasında bekleme ekranından tekrar odaya katılma sorunu çözüldü. Arama bittiğinde bildirim sabit çubuğunun kaldırılması sağlandı. Oda sohbetindeki mükerrer mesaj sorunu giderildi. Yüzen pencere katılımcı kartları çerçevesiz ve ekrana tam oturacak şekilde güncellendi.',
     });
 });
 
@@ -512,10 +512,8 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Initialize Socket.IO
-setupRedisAdapter(io);
-initializeSocket(io);
-setupChangeStreams(io);
+// Socket.IO, Redis adapter, and Change Streams are already initialized above at lines 129-136
+
 
 const repairUserFriendships = async () => {
     try {

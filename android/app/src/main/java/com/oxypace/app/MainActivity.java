@@ -79,6 +79,15 @@ public class MainActivity extends BridgeActivity {
                     serviceIntent.setAction("STOP_CALL");
                     ctx.startService(serviceIntent);
 
+                    // Explicitly cancel ongoing call notification immediately
+                    try {
+                        android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                        if (nm != null) {
+                            nm.cancel(ActiveCallService.NOTIFICATION_ID);
+                        }
+                    } catch (Exception ignored) {}
+
+
                     // Revert audio mode to normal when call stops
                     try {
                         android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
@@ -616,17 +625,30 @@ public class MainActivity extends BridgeActivity {
             );
         }
 
-        // Android 13+ (API 33+) Runtime Notification Permission Prompt
+        // Android Runtime Permissions (Microphone, Camera, Notifications)
+        java.util.List<String> permissionsNeeded = new java.util.ArrayList<>();
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(android.Manifest.permission.RECORD_AUDIO);
+        }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(android.Manifest.permission.CAMERA);
+        }
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                     != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                androidx.core.app.ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
-                    1001
-                );
+                permissionsNeeded.add(android.Manifest.permission.POST_NOTIFICATIONS);
             }
         }
+        if (!permissionsNeeded.isEmpty()) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                permissionsNeeded.toArray(new String[0]),
+                1001
+            );
+        }
+
 
         // Proactively fetch and sync FCM token on startup
         try {

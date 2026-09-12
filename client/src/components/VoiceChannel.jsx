@@ -429,8 +429,12 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         }
     };
 
-    const handleJoin = () => connectToChannel(portalId, channelId);
+    const handleJoin = () => {
+        autoJoinedRef.current = false;
+        connectToChannel(portalId, channelId);
+    };
     const handleLeave = () => {
+        autoJoinedRef.current = false;
         sessionStorage.removeItem('pending_auto_join_voice');
         try {
             const currentUrl = new URL(window.location.href);
@@ -553,7 +557,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         const isShowingScreen = p.isScreenSharing;
         const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
-        const shouldAttachVideo = !isShowingScreen || p.isLocal || watchStreamAccepted;
+        const shouldAttachVideo = true;
 
         return (
             <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={handleCardClick}>
@@ -579,26 +583,6 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <img className="vc-card-avatar" src={avatarUrl} alt="" />
                             </div>
                         )
-                    )}
-
-                    {isShowingScreen && !p.isLocal && (
-                        <div className={`vc-screenshare-overlay-mobile ${watchStreamAccepted ? 'hidden' : ''}`}>
-                            <div className="vc-screenshare-overlay-content">
-                                <MonitorUp size={32} style={{ marginBottom: '8px', color: '#00d2ff' }} />
-                                <span className="vc-screenshare-overlay-text">
-                                    {p.name} ekran paylaşıyor
-                                </span>
-                                <button 
-                                    className="vc-watch-stream-btn"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setWatchStreamAccepted(true);
-                                    }}
-                                >
-                                    Yayını İzle
-                                </button>
-                            </div>
-                        </div>
                     )}
                 </div>
                 <div className="vc-card-info">
@@ -649,9 +633,19 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                     {/* Room Title */}
                     <h2 className="vc-lobby-title">{channelName || 'Ses Kanalı'}</h2>
 
+                    {errorMsg && (
+                        <p style={{ color: '#ef4444', fontSize: '13px', margin: '8px 0', textAlign: 'center' }}>
+                            {errorMsg}
+                        </p>
+                    )}
+
                     {/* Minimalist Silver Dark Join CTA */}
-                    <button className="vc-lobby-join-btn" onClick={handleJoin}>
-                        <span>Aramaya Katıl</span>
+                    <button 
+                        className="vc-lobby-join-btn" 
+                        onClick={handleJoin}
+                        disabled={isConnecting}
+                    >
+                        <span>{isConnecting ? 'Bağlanılıyor...' : 'Aramaya Katıl'}</span>
                     </button>
                 </div>
             </div>

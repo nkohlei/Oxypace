@@ -33,10 +33,11 @@ public class CallActionReceiver extends BroadcastReceiver {
                 android.util.Log.e("CallActionReceiver", "Failed to stop call service: " + e.getMessage());
             }
 
-            // Also cancel incoming call notification if active
+            // Also cancel incoming call notification and active ongoing call bar if active
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.cancel(OxypaceMessagingService.VOICE_INVITE_NOTIF_ID);
+                nm.cancel(ActiveCallService.NOTIFICATION_ID);
             }
 
             // Cleanly notify React WebView to disconnect from room

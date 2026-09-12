@@ -210,7 +210,15 @@ public class ActiveCallService extends Service {
         disconnectLiveKitNatively();
 
         try {
-            stopForeground(true);
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.cancel(NOTIFICATION_ID);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
             stopSelf();
         } catch (Exception e) {
             android.util.Log.e("ActiveCallService", "Error stopping service: " + e.getMessage());
@@ -291,6 +299,13 @@ public class ActiveCallService extends Service {
         }
         stopUpdatingDuration();
         disconnectLiveKitNatively();
+        
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.cancel(NOTIFICATION_ID);
+            }
+        } catch (Exception ignored) {}
         
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
