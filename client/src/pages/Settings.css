@@ -1877,19 +1877,6 @@ input:checked + .slider::before {
     border: 1px solid var(--border-subtle);
 }
 
-@media (max-width: 768px) {
-    .glass-redesign .channel-sidebar.settings-sidebar-global {
-        margin: 6px auto !important;
-        border-radius: 14px !important;
-        height: calc(100% - 12px) !important;
-        width: calc(100% - 12px) !important;
-        max-width: calc(100% - 12px) !important;
-        box-sizing: border-box;
-        background: var(--glass-bg);
-        border: 1px solid var(--border-subtle);
-        box-shadow: var(--glass-shadow);
-    }
-}
 
 /* InfoPage Style Replications for Settings */
 .settings-page-wrapper .gradient-title {
@@ -1953,6 +1940,31 @@ input:checked + .slider::before {
         box-sizing: border-box;
     }
 
+    .glass-redesign .channel-sidebar.settings-sidebar-global,
+    .glass-redesign .settings-sidebar-global,
+    .settings-page-wrapper .channel-sidebar.settings-sidebar-global,
+    .settings-page-wrapper .settings-sidebar-global,
+    .settings-sidebar-global {
+        margin: 6px auto !important;
+        border-radius: 14px !important;
+        height: calc(100% - 12px) !important;
+        width: calc(100% - 12px) !important;
+        max-width: calc(100% - 12px) !important;
+        box-sizing: border-box !important;
+        background: var(--glass-bg, rgba(18, 20, 29, 0.7)) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08)) !important;
+        box-shadow: var(--glass-shadow) !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .settings-sidebar-global .custom-scrollbar {
+        padding-bottom: 90px !important;
+    }
+
     .glass-redesign .discord-main-content,
     .settings-page-wrapper .discord-main-content {
         padding-top: 0 !important;
@@ -1961,11 +1973,15 @@ input:checked + .slider::before {
         max-width: calc(100% - 12px) !important;
         height: calc(100% - 12px) !important;
         border-radius: 14px !important;
-        background: var(--glass-bg) !important;
-        border: 1px solid var(--border-subtle) !important;
+        background: var(--glass-bg, rgba(18, 20, 29, 0.7)) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08)) !important;
         box-shadow: var(--glass-shadow) !important;
         overflow: hidden !important;
         box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     .settings-page-wrapper .info-page-content {
@@ -2029,18 +2045,6 @@ input:checked + .slider::before {
         overflow-x: hidden !important;
     }
 
-    .settings-page-wrapper .info-page-content {
-        padding: 16px 14px !important;
-        border-radius: 16px !important;
-        background: var(--glass-bg) !important;
-        backdrop-filter: blur(20px) saturate(160%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
-        border: 1px solid var(--glass-border) !important;
-        box-shadow: var(--glass-shadow) !important;
-        box-sizing: border-box !important;
-        width: 100% !important;
-    }
-
     .settings-card, 
     .settings-main-panel,
     .account-profile-card {
@@ -2068,17 +2072,5 @@ input:checked + .slider::before {
         flex-wrap: wrap !important;
         gap: 10px !important;
         box-sizing: border-box !important;
-    }
-
-    /* Mobile sidebar: fills the padded parent, not flush to left edge */
-    .settings-sidebar-global {
-        width: 100% !important;
-        height: 100% !important;
-        border-radius: 16px !important;
-        /* Glassmorphism preserved */
-        background: var(--glass-bg) !important;
-        backdrop-filter: blur(20px) saturate(160%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
-        border: 1px solid var(--glass-border) !important;
     }
 }

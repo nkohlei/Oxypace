@@ -371,7 +371,7 @@ const GlobalVideoPIP = () => {
         zIndex: 99999
     } : { left: `${position.x}px`, top: `${position.y}px` };
 
-    const showOverlayControls = showControls && !isInNativePiP;
+    const showOverlayControls = showControls;
 
     const handleDisconnectAction = (e) => {
         if (e) e.stopPropagation();
@@ -606,47 +606,45 @@ const GlobalVideoPIP = () => {
                         )}
                     </div>
 
-                    {!isInNativePiP && (
-                        <div className="pip-controls vertical-controls">
-                            <button 
-                                className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
-                                onClick={toggleMicrophone}
-                                title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
-                            >
-                                {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
-                            </button>
-                            <button 
-                                className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
-                                onClick={toggleCamera}
-                                title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
-                            >
-                                {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
-                            </button>
-                            <button 
-                                className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
-                                onClick={toggleDeafen}
-                                title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
-                            >
-                                {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                            </button>
-                            
-                            <button 
-                                className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
-                                onClick={toggleScreenShare}
-                                title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
-                            >
-                                <MonitorUp size={14} />
-                            </button>
+                    <div className={`pip-controls vertical-controls ${isInNativePiP ? 'in-native-pip-controls' : ''}`}>
+                        <button 
+                            className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
+                            onClick={toggleMicrophone}
+                            title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                        >
+                            {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+                        </button>
+                        <button 
+                            className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
+                            onClick={toggleCamera}
+                            title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
+                        >
+                            {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
+                        </button>
+                        <button 
+                            className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
+                            onClick={toggleDeafen}
+                            title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
+                        >
+                            {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                        </button>
+                        
+                        <button 
+                            className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
+                            onClick={toggleScreenShare}
+                            title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
+                        >
+                            <MonitorUp size={14} />
+                        </button>
 
-                            <button 
-                                className="pip-control-btn danger disconnect-btn" 
-                                onClick={handleDisconnectAction}
-                                title="Aramayı Sonlandır"
-                            >
-                                <PhoneOff size={14} />
-                            </button>
-                        </div>
-                    )}
+                        <button 
+                            className="pip-control-btn danger disconnect-btn" 
+                            onClick={handleDisconnectAction}
+                            title="Aramayı Sonlandır"
+                        >
+                            <PhoneOff size={14} />
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

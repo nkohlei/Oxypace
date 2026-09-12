@@ -633,6 +633,8 @@
 /* Desktop Document PiP and Native Android Picture-in-Picture window layout resets */
 .global-video-pip-window.document-pip:not(.minimized),
 .global-video-pip-window.document-pip,
+.global-video-pip-window.native-pip:not(.minimized),
+.global-video-pip-window.native-pip,
 .global-video-pip-window.is-native-pip:not(.minimized),
 .global-video-pip-window.is-native-pip {
     position: fixed !important;
@@ -646,6 +648,29 @@
     min-width: unset !important;
     z-index: 99999 !important;
     background: #000000 !important;
+}
+
+.in-native-pip-controls {
+    position: absolute !important;
+    bottom: 8px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
+    gap: 8px !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    padding: 4px 10px !important;
+    border-radius: 24px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    z-index: 1000 !important;
+}
+
+.in-native-pip-controls .pip-control-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 50% !important;
 }
 
 /* Mobile responsive */

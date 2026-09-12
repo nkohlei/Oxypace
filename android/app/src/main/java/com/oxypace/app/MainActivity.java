@@ -127,21 +127,31 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void enterPiP(PluginCall call) {
             try {
-                if (getActivity() != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    getActivity().runOnUiThread(() -> {
+                final android.app.Activity act = getActivity();
+                if (act != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    act.runOnUiThread(() -> {
                         try {
                             android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
-                            builder.setAspectRatio(new android.util.Rational(3, 4));
+                            android.util.DisplayMetrics dm = act.getResources().getDisplayMetrics();
+                            android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
+                                ? new android.util.Rational(16, 9)
+                                : new android.util.Rational(9, 16);
+                            builder.setAspectRatio(rational);
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                                 builder.setAutoEnterEnabled(true);
+                                builder.setSeamlessResizeEnabled(true);
                             }
-                            getActivity().enterPictureInPictureMode(builder.build());
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                            act.enterPictureInPictureMode(builder.build());
+                        } catch (Throwable e) {
+                            try {
+                                act.enterPictureInPictureMode();
+                            } catch (Throwable ignored) {}
                         }
                     });
+                    call.resolve();
+                } else {
+                    call.reject("PiP not supported");
                 }
-                call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }
@@ -198,9 +208,14 @@ public class MainActivity extends BridgeActivity {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             try {
                 android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
-                builder.setAspectRatio(new android.util.Rational(3, 4));
+                android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
+                android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
+                    ? new android.util.Rational(16, 9)
+                    : new android.util.Rational(9, 16);
+                builder.setAspectRatio(rational);
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                     builder.setAutoEnterEnabled(enabled);
+                    builder.setSeamlessResizeEnabled(true);
                 }
                 activity.setPictureInPictureParams(builder.build());
             } catch (Exception e) {
@@ -216,17 +231,25 @@ public class MainActivity extends BridgeActivity {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 try {
                     android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
-                    builder.setAspectRatio(new android.util.Rational(3, 4));
+                    android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                    android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
+                        ? new android.util.Rational(16, 9)
+                        : new android.util.Rational(9, 16);
+                    builder.setAspectRatio(rational);
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                         builder.setAutoEnterEnabled(true);
+                        builder.setSeamlessResizeEnabled(true);
                     }
                     enterPictureInPictureMode(builder.build());
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (Throwable e) {
+                    try {
+                        enterPictureInPictureMode();
+                    } catch (Throwable ignored) {}
                 }
             }
         }
     }
+
 
     private static com.getcapacitor.Bridge bridgeInstance = null;
     private String pendingRoute = null;
@@ -239,6 +262,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(DownloaderPlugin.class);
+        registerPlugin(CallManager.class);
+        registerPlugin(AuthSync.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
 
@@ -261,10 +286,6 @@ public class MainActivity extends BridgeActivity {
                 android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
             );
         }
-
-        registerPlugin(DownloaderPlugin.class);
-        registerPlugin(CallManager.class);
-        registerPlugin(AuthSync.class);
 
         // Android 13+ (API 33+) Runtime Notification Permission Prompt
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -451,8 +472,9 @@ public class MainActivity extends BridgeActivity {
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, android.content.res.Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         try {
-            android.webkit.WebView webView = getBridge().getWebView();
+            android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
             if (webView != null) {
+                webView.resumeTimers();
                 webView.post(new Runnable() {
                     @Override
                     public void run() {

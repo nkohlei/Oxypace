@@ -430,7 +430,7 @@ const Settings = () => {
     // to handle the 'back' button behavior (hidden on desktop).
 
     const renderSidebar = () => (
-        <div className={`settings-sidebar-global ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''}`}>
+        <div className={`channel-sidebar settings-sidebar-global ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''}`}>
             {/* Sidebar Header mimicking ChannelSidebar */}
             <div className="channel-header" style={{ cursor: 'default' }}>
                 <div style={{
@@ -439,7 +439,7 @@ const Settings = () => {
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    background: 'var(--bg-secondary)',
+                    background: 'transparent',
                     borderBottom: '1px solid var(--border-subtle)',
                     zIndex: 0
                 }}></div>

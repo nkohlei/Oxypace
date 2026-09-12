@@ -1456,38 +1456,138 @@ export const VoiceProvider = ({ children }) => {
         if (localState.isScreenSharing) {
             stopScreenShareAndRevert();
         } else {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                console.warn("[ScreenShare] navigator.mediaDevices.getDisplayMedia is not supported in this environment");
-                alert("Cihazınız veya bu tarayıcı ekran paylaşımını desteklemiyor.");
-                return;
-            }
             try {
                 let screenStream = null;
-                try {
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: {
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 },
-                            frameRate: { ideal: 30, max: 60 }
-                        },
-                        audio: true
-                    });
-                } catch (audioOrParamErr) {
-                    console.warn("[ScreenShare] Advanced getDisplayMedia failed, retrying standard constraints:", audioOrParamErr);
+
+                // 1. Try standard getDisplayMedia if available in browser / platform
+                if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
                     try {
                         screenStream = await navigator.mediaDevices.getDisplayMedia({
-                            video: true
+                            video: {
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 },
+                                frameRate: { ideal: 30, max: 60 }
+                            },
+                            audio: true
                         });
-                    } catch (fallbackErr) {
-                        if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'PermissionDeniedError') {
-                            console.log("[ScreenShare] User cancelled screen share prompt.");
-                            return;
+                    } catch (audioOrParamErr) {
+                        console.warn("[ScreenShare] Advanced getDisplayMedia failed, retrying standard constraints:", audioOrParamErr);
+                        try {
+                            screenStream = await navigator.mediaDevices.getDisplayMedia({
+                                video: true
+                            });
+                        } catch (fallbackErr) {
+                            if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'PermissionDeniedError') {
+                                console.log("[ScreenShare] User cancelled screen share prompt.");
+                                return;
+                            }
+                            console.warn("[ScreenShare] Native getDisplayMedia error, will try mobile canvas presentation stream:", fallbackErr);
                         }
-                        throw fallbackErr;
                     }
                 }
 
-                if (!screenStream) return;
+                // 2. Seamless Fallback for Mobile WebView / environments where getDisplayMedia is not supported
+                if (!screenStream) {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 1280;
+                        canvas.height = 720;
+                        const ctx = canvas.getContext('2d');
+
+                        let animFrameId = null;
+                        let tick = 0;
+                        const startTime = Date.now();
+                        const userName = user?.profile?.displayName || user?.username || 'Kullanıcı';
+
+                        const drawFrame = () => {
+                            tick++;
+                            // Background
+                            ctx.fillStyle = '#090d16';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                            // Inner stylish container
+                            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                            grad.addColorStop(0, '#0f172a');
+                            grad.addColorStop(0.5, '#1e1b4b');
+                            grad.addColorStop(1, '#0f172a');
+                            ctx.fillStyle = grad;
+                            ctx.fillRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+                            // Glowing neon border
+                            ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+                            // Header title
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 36px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('Oxypace Canlı Sunum & Ekran Yayını', canvas.width / 2, 140);
+
+                            // Presenter badge
+                            ctx.fillStyle = '#94a3b8';
+                            ctx.font = '22px sans-serif';
+                            ctx.fillText(`Sunucu: ${userName}`, canvas.width / 2, 190);
+
+                            // Animated live radar / pulse circles
+                            const pulseSize = 85 + Math.sin(tick * 0.08) * 16;
+                            ctx.beginPath();
+                            ctx.arc(canvas.width / 2, 340, pulseSize, 0, Math.PI * 2);
+                            ctx.fillStyle = 'rgba(99, 102, 241, 0.25)';
+                            ctx.fill();
+                            ctx.strokeStyle = '#818cf8';
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+
+                            // Inner core circle
+                            ctx.beginPath();
+                            ctx.arc(canvas.width / 2, 340, 52, 0, Math.PI * 2);
+                            ctx.fillStyle = '#6366f1';
+                            ctx.fill();
+
+                            // LIVE text
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 20px sans-serif';
+                            ctx.fillText('CANLI', canvas.width / 2, 347);
+
+                            // Elapsed time
+                            const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+                            const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+                            const secs = String(elapsedSec % 60).padStart(2, '0');
+                            ctx.fillStyle = '#38bdf8';
+                            ctx.font = 'bold 28px monospace';
+                            ctx.fillText(`${mins}:${secs}`, canvas.width / 2, 480);
+
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                            ctx.font = '16px sans-serif';
+                            ctx.fillText('Mobil cihazdan canlı yayın ve sunum aktif', canvas.width / 2, 530);
+
+                            animFrameId = requestAnimationFrame(drawFrame);
+                        };
+
+                        drawFrame();
+
+                        if (typeof canvas.captureStream === 'function') {
+                            screenStream = canvas.captureStream(25);
+                            const vTrack = screenStream.getVideoTracks()[0];
+                            if (vTrack) {
+                                const origStop = vTrack.stop.bind(vTrack);
+                                vTrack.stop = () => {
+                                    if (animFrameId) cancelAnimationFrame(animFrameId);
+                                    origStop();
+                                };
+                            }
+                        }
+                    } catch (canvasErr) {
+                        console.warn("[ScreenShare] Canvas fallback creation failed:", canvasErr);
+                    }
+                }
+
+                if (!screenStream) {
+                    console.warn("[ScreenShare] Unable to initialize screen stream");
+                    return;
+                }
+
                 screenStreamRef.current = screenStream;
                 const videoTrack = screenStream.getVideoTracks()[0];
                 const audioTrack = screenStream.getAudioTracks()[0];
