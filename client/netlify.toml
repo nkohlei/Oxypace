@@ -74,6 +74,13 @@
   force = true
   conditions = {Role = ["bot"]}
 
+[[redirects]]
+  from = "/blog/*"
+  to = "https://api.oxypace.com.tr/og/blog/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
 # ── Assets Fallback ──────────────────────────────
 [[redirects]]
   from = "/assets/*"
@@ -247,6 +254,32 @@
 [[redirects]]
   from = "/desktop-overlay"
   to = "/portal.html"
+  status = 200
+  force = false
+
+# ── Dynamic Blog Post Fallback (DB'deki dinamik makaleler ve statik makaleler için) ─
+[[redirects]]
+  from = "/blog/:slug"
+  to = "/blog/:slug/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/blog/post/*"
+  to = "/blog/post/index.html"
+  status = 200
+  force = false
+
+# ── Calculations Fallback ─────────────────────────
+[[redirects]]
+  from = "/calculations"
+  to = "/calculations/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/calculations/:slug"
+  to = "/calculations/:slug/index.html"
   status = 200
   force = false
 
