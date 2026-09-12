@@ -295,17 +295,17 @@ const PostDetail = () => {
         const url1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'];
         const url2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'];
 
-        // Prioritize verified playable H.264 streams
+        if (prefQuality === '2160' && url2160) return url2160;
+        if (prefQuality === '1080' && url1080) return url1080;
         if (prefQuality === '720' && url720) return url720;
         if (prefQuality === '360' && url360) return url360;
         if (prefQuality === '144' && url144) return url144;
-        if (prefQuality === '1080') return url720 || url1080;
-        if (prefQuality === '2160') return url720 || url2160 || url1080;
 
+        if (url2160) return url2160;
+        if (url1080) return url1080;
         if (url720) return url720;
         if (url360) return url360;
         if (url144) return url144;
-        if (url1080) return url1080;
         return Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
     };
 
