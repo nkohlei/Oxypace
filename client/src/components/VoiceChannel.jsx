@@ -107,10 +107,11 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const handleTriggerDocumentPiP = () => {
         if (Capacitor.isNativePlatform()) {
             CallManager.enterPiP().catch(err => console.warn('[CallManager] enterPiP error:', err));
-        }
-        window.dispatchEvent(new CustomEvent('triggerDocumentPiP'));
-        if (isMobile) {
-            setMobileChannelOpen(false);
+        } else {
+            window.dispatchEvent(new CustomEvent('triggerDocumentPiP'));
+            if (isMobile) {
+                setMobileChannelOpen(false);
+            }
         }
     };
     const { user } = useAuth();
@@ -903,8 +904,8 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
                             )}
                             {isMicMenuOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>MİKROFON</div>
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '8px', padding: '6px', width: 'min(200px, 75vw)', boxSizing: 'border-box' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px', padding: '0 4px' }}>MİKROFON</div>
                                     {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
                                         <div key={d.deviceId} className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}>
                                             <span>{d.label || 'Mikrofon'}</span>
@@ -935,15 +936,15 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <button className={`vc-device-arrow ${isCameraMenuOpen ? 'active' : ''}`} onClick={() => setIsCameraMenuOpen(!isCameraMenuOpen)}><ChevronUp size={16} /></button>
                             )}
                             {isCameraMenuOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', padding: '0 4px' }}>KAMERA</div>
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '8px', padding: '6px', width: 'min(200px, 75vw)', boxSizing: 'border-box' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px', padding: '0 4px' }}>KAMERA</div>
                                     {Array.isArray(availableDevices?.videoInputs) && availableDevices.videoInputs.map(d => (
                                         <div key={d.deviceId} className={`vc-device-option ${selectedVideoInput === d.deviceId ? 'active' : ''}`} onClick={() => { setVideoInput(d.deviceId); setIsCameraMenuOpen(false); }}>
                                             <span>{d.label || 'Kamera'}</span>
                                             {selectedVideoInput === d.deviceId && <Check size={12} />}
                                         </div>
                                     ))}
-                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 0' }} />
+                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '6px 0' }} />
                                     <button className="vc-more-option" onClick={() => { toggleFacingMode(); setIsCameraMenuOpen(false); }}>
                                         <RefreshCw size={14} /> <span>Kamerayı Çevir</span>
                                     </button>
@@ -957,16 +958,16 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <Link size={22} color={watchParty?.url && !watchParty?.isLive ? '#ffffff' : '#ef4444'} />
                             </button>
                             {isWatchInputOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px' }}>
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '8px', padding: '8px', width: 'min(280px, 85vw)', display: 'flex', gap: '6px', boxSizing: 'border-box' }}>
                                     <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 
-                                            placeholder="YouTube, MP4 linki veya Video ID yapıştırın..." 
+                                            placeholder="YouTube, MP4 linki veya Video ID..." 
                                             value={watchUrl} 
                                             onChange={(e) => setWatchUrl(e.target.value)}
-                                            style={{ width: '100%', padding: '6px 28px 6px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '12px' }}
+                                            style={{ width: '100%', padding: '5px 24px 5px 6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '11px' }}
                                         />
-                                        <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '4px' }}>
+                                        <div style={{ position: 'absolute', right: '3px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '2px' }}>
                                             <button 
                                                 type="button"
                                                 onClick={async () => {
@@ -977,7 +978,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                                         console.warn("Could not paste from clipboard", err);
                                                     }
                                                 }}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                 title="Yapıştır"
                                             >
                                                 <Clipboard size={12} />
@@ -985,7 +986,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                             <button 
                                                 type="button"
                                                 onClick={() => setWatchUrl('')}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                 title="Temizle"
                                             >
                                                 <X size={12} />
@@ -1000,7 +1001,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                             }
                                         }}
                                         className="chat-send-btn glass-btn active"
-                                        style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+                                        style={{ padding: '5px 10px', fontSize: '11px', flexShrink: 0 }}
                                     >
                                         Başlat
                                     </button>
@@ -1014,10 +1015,10 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                                 setIsWatchInputOpen(false);
                                             }}
                                             className="chat-send-btn glass-btn"
-                                            style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}
+                                            style={{ padding: '5px 10px', fontSize: '11px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}
                                             title="Film sitesini açıp oynatılan videoyu yakalayın"
                                         >
-                                            <Globe size={14} /> Film Aç
+                                            <Globe size={13} /> Film Aç
                                         </button>
                                     )}
                                 </div>
@@ -1030,16 +1031,16 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <Radio size={22} color={watchParty?.url && watchParty?.isLive ? '#ffffff' : '#10b981'} />
                             </button>
                             {isLiveWatchInputOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '12px', padding: '12px', minWidth: '320px', display: 'flex', gap: '8px' }}>
-                                    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '8px', padding: '8px', width: 'min(280px, 85vw)', display: 'flex', flexWrap: 'wrap', gap: '6px', boxSizing: 'border-box' }}>
+                                    <div style={{ position: 'relative', flex: 1, minWidth: '130px', display: 'flex', alignItems: 'center' }}>
                                         <input 
                                             type="text" 
-                                            placeholder="Canlı Yayın Linki (.m3u8 veya .mpd) yapıştırın..." 
+                                            placeholder="Canlı Yayın Linki (.m3u8/.mpd)..." 
                                             value={liveWatchUrl} 
                                             onChange={(e) => setLiveWatchUrl(e.target.value)}
-                                            style={{ width: '100%', padding: '6px 28px 6px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '12px' }}
+                                            style={{ width: '100%', padding: '5px 24px 5px 6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '11px' }}
                                         />
-                                        <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '4px' }}>
+                                        <div style={{ position: 'absolute', right: '3px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '2px' }}>
                                             <button 
                                                 type="button"
                                                 onClick={async () => {
@@ -1050,7 +1051,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                                         console.warn("Could not paste from clipboard", err);
                                                     }
                                                 }}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                 title="Yapıştır"
                                             >
                                                 <Clipboard size={12} />
@@ -1058,32 +1059,34 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                             <button 
                                                 type="button"
                                                 onClick={() => setLiveWatchUrl('')}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                 title="Temizle"
                                             >
                                                 <X size={12} />
                                             </button>
                                         </div>
                                     </div>
-                                    <button 
-                                        onClick={() => {
-                                            if (liveWatchUrl.trim()) {
-                                                startWatchParty(liveWatchUrl.trim(), true);
-                                                setIsLiveWatchInputOpen(false);
-                                            }
-                                        }}
-                                        className="chat-send-btn glass-btn active"
-                                        style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
-                                    >
-                                        Başlat
-                                    </button>
-                                    <button 
-                                        onClick={() => setIsHlsModalOpen(true)}
-                                        className="chat-send-btn glass-btn active"
-                                        style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                        <Radio size={14} /> HLS Oynatıcı
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                        <button 
+                                            onClick={() => {
+                                                if (liveWatchUrl.trim()) {
+                                                    startWatchParty(liveWatchUrl.trim(), true);
+                                                    setIsLiveWatchInputOpen(false);
+                                                }
+                                            }}
+                                            className="chat-send-btn glass-btn active"
+                                            style={{ padding: '5px 8px', fontSize: '11px' }}
+                                        >
+                                            Başlat
+                                        </button>
+                                        <button 
+                                            onClick={() => setIsHlsModalOpen(true)}
+                                            className="chat-send-btn glass-btn active"
+                                            style={{ padding: '5px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                        >
+                                            <Radio size={12} /> HLS
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1101,31 +1104,31 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <div className="vc-settings-dropdown glass-panel" style={{ 
                                     position: 'absolute', 
                                     bottom: '100%', 
-                                    left: '50%', 
-                                    transform: 'translateX(-50%)', 
-                                    marginBottom: '12px', 
-                                    padding: '8px', 
-                                    minWidth: '220px',
+                                    right: '0', 
+                                    marginBottom: '8px', 
+                                    padding: '6px', 
+                                    width: 'min(220px, 80vw)',
                                     background: 'rgba(18, 18, 18, 0.98)',
                                     border: '1px solid rgba(255, 255, 255, 0.12)',
                                     borderRadius: '12px',
-                                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
-                                    zIndex: 1000
+                                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7)',
+                                    zIndex: 1000,
+                                    boxSizing: 'border-box'
                                 }}>
                                     <button className={`vc-more-option ${localState.isScreenSharing ? 'active' : ''}`} onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
-                                        <MonitorUp size={16} /> <span>{localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}</span>
+                                        <MonitorUp size={15} /> <span>{localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}</span>
                                     </button>
                                     <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
-                                        {localState.isDeafened ? <VolumeX size={16} /> : <Volume2 size={16} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
+                                        {localState.isDeafened ? <VolumeX size={15} /> : <Volume2 size={15} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
                                     </button>
                                     {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
                                         <>
-                                            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />
-                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HOPARLÖR ÇIKIŞI</div>
+                                            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                                            <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HOPARLÖR ÇIKIŞI</div>
                                             {availableDevices.audioOutputs.map(d => (
                                                 <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
                                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Hoparlör'}</span>
-                                                    {selectedAudioOutput === d.deviceId && <Check size={14} />}
+                                                    {selectedAudioOutput === d.deviceId && <Check size={13} />}
                                                 </button>
                                             ))}
                                         </>

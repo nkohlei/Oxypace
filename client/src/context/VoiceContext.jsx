@@ -1456,28 +1456,38 @@ export const VoiceProvider = ({ children }) => {
         if (localState.isScreenSharing) {
             stopScreenShareAndRevert();
         } else {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                console.warn("[ScreenShare] navigator.mediaDevices.getDisplayMedia is not supported in this environment");
+                alert("Cihazınız veya bu tarayıcı ekran paylaşımını desteklemiyor.");
+                return;
+            }
             try {
-                const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
-                const audioConstraints = {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                    channelCount: 2
-                };
-                if (supportedConstraints.restrictOwnAudio) {
-                    audioConstraints.restrictOwnAudio = true;
+                let screenStream = null;
+                try {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
+                            frameRate: { ideal: 30, max: 60 }
+                        },
+                        audio: true
+                    });
+                } catch (audioOrParamErr) {
+                    console.warn("[ScreenShare] Advanced getDisplayMedia failed, retrying standard constraints:", audioOrParamErr);
+                    try {
+                        screenStream = await navigator.mediaDevices.getDisplayMedia({
+                            video: true
+                        });
+                    } catch (fallbackErr) {
+                        if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'PermissionDeniedError') {
+                            console.log("[ScreenShare] User cancelled screen share prompt.");
+                            return;
+                        }
+                        throw fallbackErr;
+                    }
                 }
 
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                        frameRate: { ideal: 30, max: 60 }
-                    },
-                    audio: audioConstraints,
-                    selfBrowserSurface: "exclude",
-                    systemAudio: "include"
-                });
+                if (!screenStream) return;
                 screenStreamRef.current = screenStream;
                 const videoTrack = screenStream.getVideoTracks()[0];
                 const audioTrack = screenStream.getAudioTracks()[0];
@@ -1536,7 +1546,11 @@ export const VoiceProvider = ({ children }) => {
                     return next;
                 });
             } catch (err) {
-                console.warn("Screen sharing failed:", err);
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    console.log("[ScreenShare] Screen share permission was denied or dismissed.");
+                } else {
+                    console.warn("Screen sharing failed:", err);
+                }
             }
         }
     }, [localState, activeRoom, user, safeEmit, stopScreenShareAndRevert, renegotiateAll]);

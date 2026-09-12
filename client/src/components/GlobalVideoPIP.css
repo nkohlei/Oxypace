@@ -630,9 +630,11 @@
     background: rgba(255, 255, 255, 0.4);
 }
 
-/* Desktop Document PiP window layout resets */
+/* Desktop Document PiP and Native Android Picture-in-Picture window layout resets */
 .global-video-pip-window.document-pip:not(.minimized),
-.global-video-pip-window.document-pip {
+.global-video-pip-window.document-pip,
+.global-video-pip-window.is-native-pip:not(.minimized),
+.global-video-pip-window.is-native-pip {
     position: fixed !important;
     left: 0 !important;
     top: 0 !important;
@@ -642,6 +644,8 @@
     border: none !important;
     box-shadow: none !important;
     min-width: unset !important;
+    z-index: 99999 !important;
+    background: #000000 !important;
 }
 
 /* Mobile responsive */

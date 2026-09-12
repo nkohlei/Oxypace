@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.1.7',
-        versionCode: 217,
+        latestVersion: '2.1.8',
+        versionCode: 218,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.1.7: Saf siyah karanlık tema ve ekran/header aralıkları onarıldı, canlı oda sağ üst çekmece ok butonu en alta taşındı ve otomatik kapanma eklendi, canlı video izle yanına minimal işlevsel oda ayarları menüsü eklendi, minimal yüzen pencere ve arka planda kesintisiz bağlantı entegrasyonu tamamlandı.',
+        changelog: 'Oxypace 2.1.8: Çerçeve ve kenar boşlukları tüm modüllerde (mesajlar, sohbet, ayarlar vb.) standartlaştırıldı. Canlı oda buton menüleri ve popoverları kompakt hale getirildi. Android sistem düzeyinde yüzen pencere (tüm uygulamaların üstünde, iki parmakla boyutlandırılabilir) ve arka planda sıfır kopma garantisi sağlandı, ekran paylaşımı kararlı hale getirildi.',
     });
 });
 

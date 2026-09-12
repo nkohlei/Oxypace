@@ -1684,5 +1684,35 @@
     }
 }
 
+/* Compact & responsive live room dropdowns and popovers */
+.vc-settings-dropdown {
+    box-sizing: border-box !important;
+    max-width: min(280px, calc(100vw - 20px)) !important;
+    border-radius: 12px !important;
+    padding: 6px 8px !important;
+    background: rgba(18, 18, 18, 0.98) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75) !important;
+    z-index: 1500 !important;
+}
+
+.vc-settings-dropdown .vc-more-option {
+    padding: 5px 8px !important;
+    min-height: 28px !important;
+    font-size: 11.5px !important;
+    gap: 8px !important;
+    border-radius: 6px !important;
+}
+
+.vc-settings-dropdown .vc-device-option {
+    padding: 5px 8px !important;
+    min-height: 26px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+}
+
+
 
 

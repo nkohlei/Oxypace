@@ -66,9 +66,12 @@ public class MainActivity extends BridgeActivity {
                         }
                     } catch (Exception ignored) {}
 
-                    // Update PiP Params for Android 12+ Auto-Enter
+                    // Update PiP Params for Android 12+ Auto-Enter and keep screen alive during call
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
+                            try {
+                                getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                            } catch (Exception ignored) {}
                             updatePiPParams(getActivity(), true);
                         });
                     }
@@ -86,6 +89,9 @@ public class MainActivity extends BridgeActivity {
 
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
+                            try {
+                                getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                            } catch (Exception ignored) {}
                             updatePiPParams(getActivity(), false);
                         });
                     }
@@ -465,10 +471,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onPause() {
         super.onPause();
-        if (CallManager.isInCall) {
-            // Keep WebView active in background when in a call (WhatsApp style background persistence)
+        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
+            // Keep WebView active in background when in a call or PiP (WhatsApp style background persistence)
             try {
-                android.webkit.WebView webView = getBridge().getWebView();
+                android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                 if (webView != null) {
                     webView.resumeTimers();
                 }
@@ -481,10 +487,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onStop() {
         super.onStop();
-        if (CallManager.isInCall) {
-            // Keep WebView active in background when in a call
+        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
+            // Keep WebView active in background when in a call or PiP
             try {
-                android.webkit.WebView webView = getBridge().getWebView();
+                android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                 if (webView != null) {
                     webView.resumeTimers();
                 }

@@ -885,44 +885,43 @@
 
 @media (max-width: 768px) {
     .conversations-view {
-        width: calc(100% - 12px);
-        height: calc(100% - 12px);
-        margin: 6px auto;
-        border-radius: 14px;
-        background: var(--glass-bg);
-        border: 1px solid var(--border-subtle);
-        box-shadow: var(--glass-shadow);
-        display: flex;
-        overflow: hidden;
+        width: calc(100% - 12px) !important;
+        max-width: calc(100% - 12px) !important;
+        height: calc(100% - 12px) !important;
+        margin: 6px auto !important;
+        border-radius: 14px !important;
+        background: var(--glass-bg) !important;
+        border: 1px solid var(--border-subtle) !important;
+        box-shadow: var(--glass-shadow) !important;
+        display: flex !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
     }
 
-    /* Standardized thin-box chat view on mobile */
+    /* Standardized thin-box chat view on mobile (matches conversations-view exactly) */
     .chat-view {
-        display: none;
-        position: fixed;
-        top: calc(50px + env(safe-area-inset-top, 0px) + 6px);
-        left: 6px;
-        right: 6px;
-        bottom: 6px;
-        width: calc(100% - 12px);
-        height: calc(100dvh - 50px - env(safe-area-inset-top, 0px) - 12px);
-        margin: 0 auto;
-        border-radius: 14px;
-        border: 1px solid var(--border-subtle);
-        box-shadow: var(--glass-shadow);
-        background: var(--glass-bg);
-        overflow: hidden;
-        z-index: 50;
-        flex-direction: column;
+        display: none !important;
+        width: calc(100% - 12px) !important;
+        max-width: calc(100% - 12px) !important;
+        height: calc(100% - 12px) !important;
+        margin: 6px auto !important;
+        border-radius: 14px !important;
+        border: 1px solid var(--border-subtle) !important;
+        box-shadow: var(--glass-shadow) !important;
+        background: var(--glass-bg) !important;
+        overflow: hidden !important;
+        flex-direction: column !important;
+        position: relative !important;
+        box-sizing: border-box !important;
     }
 
     /* When conversation selected */
     .inbox-container.chat-active .conversations-view {
-        display: none;
+        display: none !important;
     }
 
     .inbox-container.chat-active .chat-view {
-        display: flex;
+        display: flex !important;
     }
 
     .back-btn {
@@ -960,7 +959,7 @@
     /* Input area safe bottom padding */
     .message-form {
         padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
-        background: rgba(10, 15, 32, 0.9);
+        background: #000000;
         border-top: 1px solid var(--border-subtle);
     }
 }

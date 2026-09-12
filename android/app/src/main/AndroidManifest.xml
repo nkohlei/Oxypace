@@ -75,12 +75,12 @@
             android:name=".DirectReplyReceiver"
             android:exported="false" />
 
-        <!-- Foreground Service for ongoing voice/video calls -->
+        <!-- Foreground Service for ongoing voice/video calls and screen sharing -->
         <service
             android:name=".ActiveCallService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="microphone|camera" />
+            android:foregroundServiceType="microphone|camera|mediaProjection" />
 
         <!-- Telecom ConnectionService: binds our app to system call UI and management -->
         <service
@@ -108,6 +108,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Required for ringtone vibration and waking screen on incoming calls -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
