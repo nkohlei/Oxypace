@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 import { useVoice } from '../context/VoiceContext';
@@ -195,6 +195,11 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             return next;
         });
     };
+
+    const displayParticipants = useMemo(() => {
+        if (!hideSelfView) return participants || [];
+        return (participants || []).filter(p => !p.isLocal);
+    }, [participants, hideSelfView]);
     const drawerTimerRef = useRef(null);
 
     const resetDrawerTimer = () => {
@@ -675,11 +680,6 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             </div>
         );
     }
-
-    const displayParticipants = React.useMemo(() => {
-        if (!hideSelfView) return participants;
-        return (participants || []).filter(p => !p.isLocal);
-    }, [participants, hideSelfView]);
 
     const activeFocusIdentity = focusedIdentity;
     const focusedParticipant = (activeFocusIdentity && displayParticipants.length > 1) 
