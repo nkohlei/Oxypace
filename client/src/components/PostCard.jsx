@@ -356,23 +356,23 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     const getDownloadUrlForQuality = (post, prefQuality) => {
         const qualities = post.videoQualities || {};
-        const url2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'];
-        const url1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'];
         const url720  = post.video720  || qualities.video720  || qualities.p720  || qualities['720p'];
         const url360  = post.video360  || qualities.video360  || qualities.p360  || qualities['360p'];
         const url144  = post.video144  || qualities.video144  || qualities.p144  || qualities['144p'];
+        const url1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'];
+        const url2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'];
 
-        if (prefQuality === '2160' && url2160) return url2160;
-        if (prefQuality === '1080' && url1080) return url1080;
+        // Prioritize verified playable H.264 streams
         if (prefQuality === '720' && url720) return url720;
         if (prefQuality === '360' && url360) return url360;
         if (prefQuality === '144' && url144) return url144;
+        if (prefQuality === '1080') return url720 || url1080;
+        if (prefQuality === '2160') return url720 || url2160 || url1080;
 
         if (url720) return url720;
-        if (url1080) return url1080;
         if (url360) return url360;
-        if (url2160) return url2160;
         if (url144) return url144;
+        if (url1080) return url1080;
         return Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
     };
 
@@ -397,7 +397,11 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
             }
 
             const targetUrl = getDownloadUrlForQuality(post, downloadPref);
-            const filename = targetUrl.split('/').pop() || `oxypace-video-${Date.now()}`;
+            const ext = (targetUrl.split('?')[0].split('.').pop() || 'mp4').toLowerCase();
+            const cleanExt = ['mp4', 'webm', 'mov'].includes(ext) ? ext : 'mp4';
+            const postIdShort = (post._id ? post._id.toString().slice(-6) : Date.now().toString().slice(-6));
+            const timeShort = Date.now().toString().slice(-4);
+            const filename = `oxypace-video-${downloadPref || 'hd'}-${postIdShort}-${timeShort}.${cleanExt}`;
             await nativeDownloadFile(getImageUrl(targetUrl), filename);
         } else if (Array.isArray(post.media)) {
             // Download all images sequentially/in parallel
@@ -1022,8 +1026,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     onDownload={async (url, label) => {
                         const ext = (url.split('?')[0].split('.').pop() || 'mp4').toLowerCase();
                         const cleanExt = ['mp4', 'webm', 'mov'].includes(ext) ? ext : 'mp4';
-                        const tag = label ? label.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'video';
-                        const filename = `oxypace-${tag}-${post._id || Date.now()}.${cleanExt}`;
+                        const tag = label ? label.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') : 'video';
+                        const postIdShort = (post._id ? post._id.toString().slice(-6) : Date.now().toString().slice(-6));
+                        const timeShort = Date.now().toString().slice(-4);
+                        const filename = `oxypace-${tag}-${postIdShort}-${timeShort}.${cleanExt}`;
                         await nativeDownloadFile(getImageUrl(url), filename);
                     }}
                 />

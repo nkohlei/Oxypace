@@ -126,17 +126,17 @@ const createDownloadProgressToast = (filename) => {
 
     Object.assign(toast.style, {
         position: 'fixed',
-        top: '16px',
+        top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 54px))',
         left: '50%',
-        transform: 'translateX(-50%) translateY(-100px)',
+        transform: 'translateX(-50%) translateY(-160px)',
         background: '#18181b',
         color: '#ffffff',
         padding: '12px 16px',
         borderRadius: '12px',
         width: 'calc(100% - 32px)',
         maxWidth: '340px',
-        zIndex: '999999',
-        boxShadow: '0 12px 28px rgba(0,0,0,0.6)',
+        zIndex: '9999999',
+        boxShadow: '0 12px 28px rgba(0,0,0,0.7)',
         border: '1px solid #27272a',
         boxSizing: 'border-box',
         transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
@@ -171,7 +171,7 @@ const createDownloadProgressToast = (filename) => {
             if (statusEl) statusEl.innerText = `İndirme tamamlandı.`;
 
             setTimeout(() => {
-                toast.style.transform = 'translateX(-50%) translateY(-100px)';
+                toast.style.transform = 'translateX(-50%) translateY(-160px)';
                 toast.style.opacity = '0';
                 setTimeout(() => {
                     if (document.body.contains(toast)) {
@@ -184,7 +184,7 @@ const createDownloadProgressToast = (filename) => {
             if (statusEl) statusEl.innerText = `${msg || 'İndirme başarısız oldu.'}`;
             if (barEl) barEl.style.background = '#ef4444';
             setTimeout(() => {
-                toast.style.transform = 'translateX(-50%) translateY(-100px)';
+                toast.style.transform = 'translateX(-50%) translateY(-160px)';
                 toast.style.opacity = '0';
                 setTimeout(() => {
                     if (document.body.contains(toast)) {

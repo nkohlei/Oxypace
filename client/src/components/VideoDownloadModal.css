@@ -1,23 +1,25 @@
 .download-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999;
+  z-index: 9999999;
   padding: 16px;
   animation: downloadFadeIn 0.2s ease-out;
 }
 
 .download-modal-card {
   width: calc(100% - 32px);
-  max-width: 320px;
+  max-width: 310px;
   background: #141416;
   border: 1px solid #27272a;
   border-radius: 14px;
   padding: 18px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
   animation: downloadScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   box-sizing: border-box;
 }

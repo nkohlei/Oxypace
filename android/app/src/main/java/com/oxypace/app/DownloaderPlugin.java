@@ -190,8 +190,31 @@ public class DownloaderPlugin extends Plugin {
                         installApk(ctx, targetFile);
                     } else {
                         try {
-                            if (targetFile != null && targetFile.exists()) {
-                                String[] scanPaths = new String[]{ targetFile.getAbsolutePath() };
+                            File realDownloadedFile = targetFile;
+                            DownloadManager dm = (DownloadManager) ctx.getSystemService(Context.DOWNLOAD_SERVICE);
+                            if (dm != null) {
+                                DownloadManager.Query query = new DownloadManager.Query();
+                                query.setFilterById(id);
+                                Cursor cursor = dm.query(query);
+                                if (cursor != null) {
+                                    if (cursor.moveToFirst()) {
+                                        int localUriIdx = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
+                                        if (localUriIdx != -1) {
+                                            String localUriStr = cursor.getString(localUriIdx);
+                                            if (localUriStr != null) {
+                                                Uri localUri = Uri.parse(localUriStr);
+                                                if ("file".equalsIgnoreCase(localUri.getScheme()) && localUri.getPath() != null) {
+                                                    realDownloadedFile = new File(localUri.getPath());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    cursor.close();
+                                }
+                            }
+
+                            if (realDownloadedFile != null && realDownloadedFile.exists()) {
+                                String[] scanPaths = new String[]{ realDownloadedFile.getAbsolutePath() };
                                 String[] scanMimes = (mimeType != null && !mimeType.isEmpty() && !mimeType.equals("*/*")) 
                                         ? new String[]{ mimeType } 
                                         : null;
@@ -209,7 +232,7 @@ public class DownloaderPlugin extends Plugin {
                                 );
 
                                 Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                                scanIntent.setData(Uri.fromFile(targetFile));
+                                scanIntent.setData(Uri.fromFile(realDownloadedFile));
                                 ctx.sendBroadcast(scanIntent);
                             }
                         } catch (Exception e) {
