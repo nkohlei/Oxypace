@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.2.2',
-        versionCode: 222,
+        latestVersion: '2.2.3',
+        versionCode: 223,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.2.2: Hayalet bildirim çubuğu sorunu giderildi. Canlı oda ekran paylaşımı 28 FPS akıcı ve düşük gecikmeli hale getirildi; sonradan odaya katılanların ekranı görememe sorunu çözüldü. Oda içi sohbet mesaj tekrarlama hatası giderildi. Uygulama genelinde video, pdf, görsel ve gif indirme altyapısı Android DownloadManager ile sorunsuz hale getirildi.',
+        changelog: 'Oxypace 2.2.3: Video indirme uyumluluğu çözüldü; indirilen videoların galeride oynatılamama ve kodek desteklenmiyor hatası giderildi. Kalite seçimi penceresi ve indirme bildirim penceresi minimalist, şeffaflık içermeyen koyu tema çizgilerine kavuşturuldu.',
     });
 });
 

@@ -1,84 +1,81 @@
 .download-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(6, 9, 19, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  animation: downloadFadeIn 0.25s ease-out;
+  z-index: 99999;
+  padding: 16px;
+  animation: downloadFadeIn 0.2s ease-out;
 }
 
 .download-modal-card {
-  width: 100%;
-  max-width: 400px;
-  background: rgba(30, 39, 58, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  transform: scale(0.95);
-  animation: downloadScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  width: calc(100% - 32px);
+  max-width: 320px;
+  background: #141416;
+  border: 1px solid #27272a;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+  animation: downloadScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
 }
 
 .download-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .header-title-box {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .film-icon {
-  color: var(--primary-cyan, #00f0ff);
+  color: #e4e4e7;
 }
 
 .download-modal-header h3 {
-  color: var(--text-primary, #ffffff);
-  font-size: 18px;
-  font-weight: 700;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
   margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: var(--text-muted, #949ba4);
+  color: #71717a;
   cursor: pointer;
   padding: 4px;
-  border-radius: 50%;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary, #ffffff);
+  background: #27272a;
+  color: #ffffff;
 }
 
 .download-modal-subtitle {
-  color: var(--text-secondary, #b5bac1);
-  font-size: 13.5px;
-  margin: 0 0 16px 0;
-  line-height: 1.5;
+  color: #a1a1aa;
+  font-size: 12.5px;
+  margin: 0 0 14px 0;
+  line-height: 1.4;
 }
 
 .quality-options-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .quality-option-btn {
@@ -86,39 +83,41 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  color: var(--text-primary, #ffffff);
+  padding: 10px 14px;
+  background: #1f1f23;
+  border: 1px solid #2e2e34;
+  border-radius: 8px;
+  color: #f4f4f5;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   text-align: left;
+  box-sizing: border-box;
 }
 
 .quality-option-btn:hover {
-  background: rgba(0, 240, 255, 0.08);
-  border-color: rgba(0, 240, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 240, 255, 0.1);
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .quality-option-btn:active {
   transform: translateY(0);
+  background: #1f1f23;
 }
 
 .opt-label {
-  font-weight: 600;
-  font-size: 14.5px;
+  font-weight: 500;
+  font-size: 13.5px;
 }
 
 .opt-download-icon {
-  color: var(--text-muted, #949ba4);
-  transition: color 0.2s;
+  color: #71717a;
+  transition: color 0.15s ease;
 }
 
 .quality-option-btn:hover .opt-download-icon {
-  color: var(--primary-cyan, #00f0ff);
+  color: #ffffff;
 }
 
 @keyframes downloadFadeIn {
@@ -127,6 +126,6 @@
 }
 
 @keyframes downloadScaleIn {
-  from { transform: scale(0.95); opacity: 0; }
+  from { transform: scale(0.96); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }

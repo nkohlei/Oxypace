@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
+import android.media.MediaScannerConnection;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -92,10 +93,8 @@ public class DownloaderPlugin extends Plugin {
 
             enqueuedDownloadId = manager.enqueue(request);
 
-            // Register receiver to automatically open the APK installer ONLY IF isApk is true
-            if (isApk) {
-                registerDownloadReceiver(context, enqueuedDownloadId, targetFile);
-            }
+            // Register receiver for all downloads (scan media or open APK installer)
+            registerDownloadReceiver(context, enqueuedDownloadId, targetFile, isApk, mimeType);
 
             // Start polling progress to notify JS frontend
             startProgressTracker(manager, enqueuedDownloadId);
@@ -168,7 +167,7 @@ public class DownloaderPlugin extends Plugin {
         }
     }
 
-    private void registerDownloadReceiver(Context context, long downloadId, File targetFile) {
+    private void registerDownloadReceiver(Context context, long downloadId, File targetFile, boolean isApk, String mimeType) {
         if (downloadReceiver != null) {
             try {
                 context.unregisterReceiver(downloadReceiver);
@@ -187,7 +186,37 @@ public class DownloaderPlugin extends Plugin {
                     doneData.put("status", DownloadManager.STATUS_SUCCESSFUL);
                     notifyListeners("downloadProgress", doneData);
 
-                    installApk(ctx, targetFile);
+                    if (isApk) {
+                        installApk(ctx, targetFile);
+                    } else {
+                        try {
+                            if (targetFile != null && targetFile.exists()) {
+                                String[] scanPaths = new String[]{ targetFile.getAbsolutePath() };
+                                String[] scanMimes = (mimeType != null && !mimeType.isEmpty() && !mimeType.equals("*/*")) 
+                                        ? new String[]{ mimeType } 
+                                        : null;
+
+                                MediaScannerConnection.scanFile(
+                                    ctx.getApplicationContext(),
+                                    scanPaths,
+                                    scanMimes,
+                                    new MediaScannerConnection.OnScanCompletedListener() {
+                                        @Override
+                                        public void onScanCompleted(String path, Uri uri) {
+                                            android.util.Log.d("DownloaderPlugin", "Media scanned: " + path + " -> " + uri);
+                                        }
+                                    }
+                                );
+
+                                Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                                scanIntent.setData(Uri.fromFile(targetFile));
+                                ctx.sendBroadcast(scanIntent);
+                            }
+                        } catch (Exception e) {
+                            android.util.Log.e("DownloaderPlugin", "Failed to scan downloaded media: " + e.getMessage());
+                        }
+                    }
+
                     try {
                         ctx.unregisterReceiver(this);
                     } catch (Exception ignored) {}

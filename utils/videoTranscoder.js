@@ -221,15 +221,20 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             global.io.emit('post:updated', postAfterOriginal);
         }
 
+        const codecName = videoStream?.codec_name?.toLowerCase() || '';
+        const isH264 = codecName === 'h264';
+        console.log(`[VideoTranscoder] Source codec: ${codecName} (isH264: ${isH264})`);
+
         // ── Step 5: Sequential low-memory transcoding queue ───────────────────
         const qualityLadder = [
+            { targetH: 1080, label: '1080p', field: 'p1080', rootField: 'video1080', bitrate: '2400k', maxrate: '2800k', bufsize: '4800k' },
             { targetH: 720,  label: '720p',  field: 'p720',  rootField: 'video720',  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k' },
             { targetH: 360,  label: '360p',  field: 'p360',  rootField: 'video360',  bitrate: '400k',  maxrate: '450k',  bufsize: '800k'  },
             { targetH: 144,  label: '144p',  field: 'p144',  rootField: 'video144',  bitrate: '150k',  maxrate: '180k',  bufsize: '300k'  }
         ];
 
-        // Filter to only jobs strictly below the source resolution
-        const jobs = qualityLadder.filter(q => srcHeight > q.targetH);
+        // Filter to jobs below source resolution, OR equal to source resolution if original is not standard H.264 (e.g. AV1/HEVC)
+        const jobs = qualityLadder.filter(q => srcHeight > q.targetH || (srcHeight >= q.targetH && !isH264 && srcHeight <= q.targetH + 120));
         console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued (sequential, -threads 1, -preset ultrafast)`);
 
         const finalQualities = { ...initialQualities };

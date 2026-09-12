@@ -112,35 +112,34 @@ const createDownloadProgressToast = (filename) => {
 
     toast.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-            <div style="display:flex; align-items:center; gap:8px; overflow:hidden; max-width:75%;">
-                <span style="font-size:16px;">📥</span>
-                <span id="dl-filename" style="font-weight:600; font-size:13px; color:#fff; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${filename}</span>
+            <div style="display:flex; align-items:center; gap:8px; overflow:hidden; max-width:78%;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span id="dl-filename" style="font-weight:600; font-size:12.5px; color:#f4f4f5; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${filename}</span>
             </div>
-            <span id="dl-percent" style="font-family:monospace; font-weight:700; font-size:13px; color:#38bdf8;">%0</span>
+            <span id="dl-percent" style="font-family:monospace; font-weight:600; font-size:12px; color:#ffffff;">%0</span>
         </div>
-        <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:6px; overflow:hidden; position:relative;">
-            <div id="dl-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #0ea5e9, #38bdf8); border-radius:6px; transition:width 0.05s linear;"></div>
+        <div style="width:100%; height:4px; background:#27272a; border-radius:4px; overflow:hidden; position:relative;">
+            <div id="dl-bar" style="width:0%; height:100%; background:#ffffff; border-radius:4px; transition:width 0.05s linear;"></div>
         </div>
-        <div id="dl-status" style="font-size:11px; color:#94a3b8; margin-top:6px; text-align:left;">İndirme başlatılıyor...</div>
+        <div id="dl-status" style="font-size:11px; color:#a1a1aa; margin-top:6px; text-align:left;">İndirme başlatılıyor...</div>
     `;
 
     Object.assign(toast.style, {
         position: 'fixed',
-        top: '20px',
+        top: '16px',
         left: '50%',
-        transform: 'translateX(-50%) translateY(-120px)',
-        background: 'rgba(15, 23, 42, 0.92)',
-        color: '#fff',
-        padding: '16px 20px',
-        borderRadius: '16px',
-        width: '90%',
-        maxWidth: '420px',
+        transform: 'translateX(-50%) translateY(-100px)',
+        background: '#18181b',
+        color: '#ffffff',
+        padding: '12px 16px',
+        borderRadius: '12px',
+        width: 'calc(100% - 32px)',
+        maxWidth: '340px',
         zIndex: '999999',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 20px rgba(14,165,233,0.15)',
-        border: '1px solid rgba(56, 189, 248, 0.25)',
-        backdropFilter: 'blur(20px)',
-        webkitBackdropFilter: 'blur(20px)',
-        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease',
+        boxShadow: '0 12px 28px rgba(0,0,0,0.6)',
+        border: '1px solid #27272a',
+        boxSizing: 'border-box',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
         opacity: '0'
     });
 
@@ -167,31 +166,31 @@ const createDownloadProgressToast = (filename) => {
             if (percentEl) percentEl.innerText = `%100`;
             if (barEl) {
                 barEl.style.width = `100%`;
-                barEl.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+                barEl.style.background = '#e4e4e7';
             }
-            if (statusEl) statusEl.innerText = `🎉 İndirme başarıyla tamamlandı!`;
+            if (statusEl) statusEl.innerText = `İndirme tamamlandı.`;
 
             setTimeout(() => {
-                toast.style.transform = 'translateX(-50%) translateY(-120px)';
+                toast.style.transform = 'translateX(-50%) translateY(-100px)';
                 toast.style.opacity = '0';
                 setTimeout(() => {
                     if (document.body.contains(toast)) {
                         document.body.removeChild(toast);
                     }
-                }, 400);
+                }, 300);
             }, 1800);
         },
         errorProgress: (msg) => {
-            if (statusEl) statusEl.innerText = `❌ ${msg || 'İndirme başarısız'}`;
+            if (statusEl) statusEl.innerText = `${msg || 'İndirme başarısız oldu.'}`;
             if (barEl) barEl.style.background = '#ef4444';
             setTimeout(() => {
-                toast.style.transform = 'translateX(-50%) translateY(-120px)';
+                toast.style.transform = 'translateX(-50%) translateY(-100px)';
                 toast.style.opacity = '0';
                 setTimeout(() => {
                     if (document.body.contains(toast)) {
                         document.body.removeChild(toast);
                     }
-                }, 400);
+                }, 300);
             }, 2500);
         }
     };

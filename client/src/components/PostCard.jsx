@@ -356,30 +356,24 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     const getDownloadUrlForQuality = (post, prefQuality) => {
         const qualities = post.videoQualities || {};
-        const has2160 = !!(post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p']);
-        const has1080 = !!(post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'] || post.videoOriginal || qualities.videoOriginal || qualities.high || post.videoUrl);
-        const has720  = !!(post.video720  || qualities.video720  || qualities.p720  || qualities['720p']);
-        const has360  = !!(post.video360  || qualities.video360  || qualities.p360  || qualities['360p']);
-        const has144  = !!(post.video144  || qualities.video144  || qualities.p144  || qualities['144p']);
+        const url2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'];
+        const url1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'];
+        const url720  = post.video720  || qualities.video720  || qualities.p720  || qualities['720p'];
+        const url360  = post.video360  || qualities.video360  || qualities.p360  || qualities['360p'];
+        const url144  = post.video144  || qualities.video144  || qualities.p144  || qualities['144p'];
 
-        const src144  = post.video144  || qualities.video144  || qualities.p144  || qualities['144p']  || qualities.low || post.lowVideoUrl || post.media;
-        const src360  = post.video360  || qualities.video360  || qualities.p360  || qualities['360p']  || src144;
-        const src720  = post.video720  || qualities.video720  || qualities.p720  || qualities['720p']  || src360;
-        const src1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'] || post.videoOriginal || qualities.videoOriginal || qualities.high || post.videoUrl || post.media;
-        const src2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'] || src1080;
+        if (prefQuality === '2160' && url2160) return url2160;
+        if (prefQuality === '1080' && url1080) return url1080;
+        if (prefQuality === '720' && url720) return url720;
+        if (prefQuality === '360' && url360) return url360;
+        if (prefQuality === '144' && url144) return url144;
 
-        if (prefQuality === '2160' && has2160) return src2160;
-        if (prefQuality === '1080' && has1080) return src1080;
-        if (prefQuality === '720' && has720) return src720;
-        if (prefQuality === '360' && has360) return src360;
-        if (prefQuality === '144' && has144) return src144;
-
-        if (has2160) return src2160;
-        if (has1080) return src1080;
-        if (has720) return src720;
-        if (has360) return src360;
-        if (has144) return src144;
-        return post.media;
+        if (url720) return url720;
+        if (url1080) return url1080;
+        if (url360) return url360;
+        if (url2160) return url2160;
+        if (url144) return url144;
+        return Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
     };
 
     const handleDownload = async (e) => {
@@ -1026,7 +1020,10 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     onClose={() => setShowDownloadModal(false)}
                     post={post}
                     onDownload={async (url, label) => {
-                        const filename = url.split('/').pop() || `oxypace-video-${Date.now()}`;
+                        const ext = (url.split('?')[0].split('.').pop() || 'mp4').toLowerCase();
+                        const cleanExt = ['mp4', 'webm', 'mov'].includes(ext) ? ext : 'mp4';
+                        const tag = label ? label.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'video';
+                        const filename = `oxypace-${tag}-${post._id || Date.now()}.${cleanExt}`;
                         await nativeDownloadFile(getImageUrl(url), filename);
                     }}
                 />
