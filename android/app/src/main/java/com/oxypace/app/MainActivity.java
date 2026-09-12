@@ -156,6 +156,61 @@ public class MainActivity extends BridgeActivity {
                 call.reject(e.getMessage());
             }
         }
+
+        public static boolean sIsMuted = false;
+        public static boolean sIsCameraOn = true;
+        public static boolean sIsScreenSharing = false;
+        public static PluginCall sScreenCaptureCall = null;
+        public static final int REQUEST_CODE_SCREEN_CAPTURE = 9981;
+
+        @PluginMethod
+        public void updateCallState(PluginCall call) {
+            sIsMuted = call.getBoolean("isMuted", sIsMuted);
+            sIsCameraOn = call.getBoolean("isCameraOn", sIsCameraOn);
+            sIsScreenSharing = call.getBoolean("isScreenSharing", sIsScreenSharing);
+
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    updatePiPParams(getActivity(), CallManager.isInCall);
+                });
+            }
+
+            try {
+                android.content.Context ctx = getContext();
+                android.content.Intent sIntent = new android.content.Intent(ctx, ActiveCallService.class);
+                sIntent.setAction("UPDATE_STATE");
+                sIntent.putExtra("isMuted", sIsMuted);
+                sIntent.putExtra("isScreenSharing", sIsScreenSharing);
+                ctx.startService(sIntent);
+            } catch (Exception ignored) {}
+
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void startScreenCapture(PluginCall call) {
+            sScreenCaptureCall = call;
+            android.app.Activity act = getActivity();
+            if (act == null) {
+                call.reject("Activity is null");
+                return;
+            }
+            android.media.projection.MediaProjectionManager mpm =
+                (android.media.projection.MediaProjectionManager) act.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            if (mpm == null) {
+                call.reject("MediaProjectionManager not available");
+                return;
+            }
+            act.startActivityForResult(mpm.createScreenCaptureIntent(), REQUEST_CODE_SCREEN_CAPTURE);
+        }
+
+        @PluginMethod
+        public void stopScreenCapture(PluginCall call) {
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).stopScreenProjection();
+            }
+            call.resolve();
+        }
     }
 
     @CapacitorPlugin(name = "AuthSync")
@@ -217,6 +272,66 @@ public class MainActivity extends BridgeActivity {
                     builder.setAutoEnterEnabled(enabled);
                     builder.setSeamlessResizeEnabled(true);
                 }
+
+                if (enabled) {
+                    // Set up 3 native RemoteActions on the PiP overlay:
+                    // 1) Mic Toggle, 2) Camera Toggle, 3) Hangup
+                    java.util.ArrayList<android.app.RemoteAction> actions = new java.util.ArrayList<>();
+
+                    // 1. Mic
+                    android.content.Intent micIntent = new android.content.Intent(activity, CallActionReceiver.class);
+                    micIntent.setAction(CallActionReceiver.ACTION_TOGGLE_MIC);
+                    android.app.PendingIntent piMic = android.app.PendingIntent.getBroadcast(
+                        activity, 201, micIntent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                    );
+                    android.graphics.drawable.Icon micIcon = android.graphics.drawable.Icon.createWithResource(
+                        activity, CallManager.sIsMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic
+                    );
+                    actions.add(new android.app.RemoteAction(
+                        micIcon,
+                        CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
+                        CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
+                        piMic
+                    ));
+
+                    // 2. Camera
+                    android.content.Intent camIntent = new android.content.Intent(activity, CallActionReceiver.class);
+                    camIntent.setAction(CallActionReceiver.ACTION_TOGGLE_CAMERA);
+                    android.app.PendingIntent piCam = android.app.PendingIntent.getBroadcast(
+                        activity, 202, camIntent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                    );
+                    android.graphics.drawable.Icon camIcon = android.graphics.drawable.Icon.createWithResource(
+                        activity, CallManager.sIsCameraOn ? R.drawable.ic_pip_cam : R.drawable.ic_pip_cam_off
+                    );
+                    actions.add(new android.app.RemoteAction(
+                        camIcon,
+                        CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
+                        CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
+                        piCam
+                    ));
+
+                    // 3. Hangup
+                    android.content.Intent endIntent = new android.content.Intent(activity, CallActionReceiver.class);
+                    endIntent.setAction(CallActionReceiver.ACTION_HANGUP);
+                    android.app.PendingIntent piEnd = android.app.PendingIntent.getBroadcast(
+                        activity, 203, endIntent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                    );
+                    android.graphics.drawable.Icon endIcon = android.graphics.drawable.Icon.createWithResource(
+                        activity, R.drawable.ic_pip_end_call
+                    );
+                    actions.add(new android.app.RemoteAction(
+                        endIcon,
+                        "Odadan Ayrıl",
+                        "Odadan Ayrıl",
+                        piEnd
+                    ));
+
+                    builder.setActions(actions);
+                }
+
                 activity.setPictureInPictureParams(builder.build());
             } catch (Exception e) {
                 e.printStackTrace();
@@ -230,6 +345,7 @@ public class MainActivity extends BridgeActivity {
         if (CallManager.isInCall) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 try {
+                    updatePiPParams(this, true);
                     android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
                     android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
                     android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
@@ -249,6 +365,175 @@ public class MainActivity extends BridgeActivity {
             }
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Screen Capture (MediaProjection + VirtualDisplay + ImageReader)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private android.media.projection.MediaProjection mediaProjection = null;
+    private android.hardware.display.VirtualDisplay virtualDisplay = null;
+    private android.media.ImageReader imageReader = null;
+    private android.os.HandlerThread captureThread = null;
+    private android.os.Handler captureHandler = null;
+    private long lastFrameTimeMs = 0;
+
+    public void startScreenProjection(int resultCode, android.content.Intent data) {
+        stopScreenProjection();
+
+        try {
+            android.media.projection.MediaProjectionManager mpm =
+                (android.media.projection.MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            if (mpm == null) return;
+
+            mediaProjection = mpm.getMediaProjection(resultCode, data);
+            if (mediaProjection == null) return;
+
+            mediaProjection.registerCallback(new android.media.projection.MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    stopScreenProjection();
+                    try {
+                        com.getcapacitor.Bridge bridge = getBridgeInstance();
+                        if (bridge != null && bridge.getWebView() != null) {
+                            bridge.getWebView().post(() -> {
+                                bridge.getWebView().evaluateJavascript(
+                                    "window.dispatchEvent(new CustomEvent('oxypace:screenshare_stopped'));", null
+                                );
+                            });
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }, null);
+
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int width = 540;
+            int height = (int) (540f * ((float) dm.heightPixels / (float) dm.widthPixels));
+            if (height % 2 != 0) height++;
+
+            captureThread = new android.os.HandlerThread("ScreenCaptureThread");
+            captureThread.start();
+            captureHandler = new android.os.Handler(captureThread.getLooper());
+
+            imageReader = android.media.ImageReader.newInstance(width, height, android.graphics.PixelFormat.RGBA_8888, 2);
+
+            virtualDisplay = mediaProjection.createVirtualDisplay(
+                "OxypaceScreenCapture",
+                width, height, dm.densityDpi,
+                android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.getSurface(),
+                null,
+                captureHandler
+            );
+
+            final int captureWidth = width;
+            final int captureHeight = height;
+
+            imageReader.setOnImageAvailableListener(reader -> {
+                android.media.Image image = null;
+                try {
+                    image = reader.acquireLatestImage();
+                    if (image == null) return;
+
+                    long now = System.currentTimeMillis();
+                    if (now - lastFrameTimeMs < 66) {
+                        return;
+                    }
+                    lastFrameTimeMs = now;
+
+                    android.media.Image.Plane[] planes = image.getPlanes();
+                    java.nio.ByteBuffer buffer = planes[0].getBuffer();
+                    int pixelStride = planes[0].getPixelStride();
+                    int rowStride = planes[0].getRowStride();
+                    int rowPadding = rowStride - pixelStride * captureWidth;
+
+                    android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+                        captureWidth + rowPadding / pixelStride,
+                        captureHeight,
+                        android.graphics.Bitmap.Config.ARGB_8888
+                    );
+                    bitmap.copyPixelsFromBuffer(buffer);
+
+                    android.graphics.Bitmap finalBitmap = (rowPadding > 0)
+                        ? android.graphics.Bitmap.createBitmap(bitmap, 0, 0, captureWidth, captureHeight)
+                        : bitmap;
+
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, baos);
+                    byte[] jpegBytes = baos.toByteArray();
+                    String base64 = android.util.Base64.encodeToString(jpegBytes, android.util.Base64.NO_WRAP);
+
+                    if (bitmap != finalBitmap) {
+                        bitmap.recycle();
+                    }
+                    finalBitmap.recycle();
+
+                    com.getcapacitor.Bridge bridge = getBridgeInstance();
+                    if (bridge != null && bridge.getWebView() != null) {
+                        bridge.getWebView().post(() -> {
+                            bridge.getWebView().evaluateJavascript(
+                                "if (window.onNativeScreenFrame) { window.onNativeScreenFrame('" + base64 + "'); }",
+                                null
+                            );
+                        });
+                    }
+
+                } catch (Exception ignored) {
+                } finally {
+                    if (image != null) {
+                        try { image.close(); } catch (Exception ignored) {}
+                    }
+                }
+            }, captureHandler);
+
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to start screen projection: " + e.getMessage(), e);
+            stopScreenProjection();
+        }
+    }
+
+    public void stopScreenProjection() {
+        try {
+            if (virtualDisplay != null) {
+                virtualDisplay.release();
+                virtualDisplay = null;
+            }
+            if (imageReader != null) {
+                imageReader.close();
+                imageReader = null;
+            }
+            if (mediaProjection != null) {
+                mediaProjection.stop();
+                mediaProjection = null;
+            }
+            if (captureThread != null) {
+                captureThread.quitSafely();
+                captureThread = null;
+                captureHandler = null;
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == CallManager.REQUEST_CODE_SCREEN_CAPTURE) {
+            if (resultCode == RESULT_OK && data != null) {
+                startScreenProjection(resultCode, data);
+                if (CallManager.sScreenCaptureCall != null) {
+                    JSObject ret = new JSObject();
+                    ret.put("success", true);
+                    CallManager.sScreenCaptureCall.resolve(ret);
+                    CallManager.sScreenCaptureCall = null;
+                }
+            } else {
+                if (CallManager.sScreenCaptureCall != null) {
+                    CallManager.sScreenCaptureCall.reject("Kullanıcı ekran paylaşım iznini reddetti");
+                    CallManager.sScreenCaptureCall = null;
+                }
+            }
+        }
+    }
+
 
 
     private static com.getcapacitor.Bridge bridgeInstance = null;
@@ -462,6 +747,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        stopScreenProjection();
         if (bridgeInstance == getBridge()) {
             bridgeInstance = null;
         }

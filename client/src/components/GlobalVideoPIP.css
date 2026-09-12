@@ -673,6 +673,39 @@
     border-radius: 50% !important;
 }
 
+/* In native Android PiP, hide web controls and header completely so OS overlay has full clarity and no touch conflicts */
+.global-video-pip-window.native-pip .pip-controls,
+.global-video-pip-window.native-pip .pip-header,
+.global-video-pip-window.native-pip .pip-order-controls {
+    display: none !important;
+}
+
+/* Three buttons minimal PiP controls */
+.pip-three-buttons-only {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 14px !important;
+    padding: 10px !important;
+    background: rgba(10, 15, 26, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.pip-three-buttons-only .pip-control-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: transform 0.2s ease, background 0.2s ease !important;
+}
+
+.pip-three-buttons-only .pip-control-btn:hover {
+    transform: scale(1.08) !important;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
     .global-video-pip-window:not(.minimized) {

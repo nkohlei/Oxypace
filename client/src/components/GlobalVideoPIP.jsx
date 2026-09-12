@@ -109,10 +109,11 @@ const GlobalVideoPIP = () => {
         setCustomOrder(newOrder);
     };
 
-    // Sort participants according to custom order preference if available
+    // Filter out local participant from PiP: User specifically requested not to see their own camera in PiP
     const orderedParticipants = React.useMemo(() => {
-        if (!customOrder || customOrder.length === 0) return participants;
-        const copy = [...participants];
+        const remoteOnly = (participants || []).filter(p => !p.isLocal);
+        if (!customOrder || customOrder.length === 0) return remoteOnly;
+        const copy = [...remoteOnly];
         return copy.sort((a, b) => {
             const indexA = customOrder.indexOf(a.identity);
             const indexB = customOrder.indexOf(b.identity);
@@ -293,7 +294,7 @@ const GlobalVideoPIP = () => {
 
     if (!shouldShow) return null;
 
-    const mainUser = participants.find(p => p.isSpeaking && !p.isLocal) || participants[0];
+    const mainUser = orderedParticipants.find(p => p.isSpeaking) || orderedParticipants[0];
 
     const constrainPosition = (x, y) => {
         const minX = 10;
@@ -412,8 +413,8 @@ const GlobalVideoPIP = () => {
                             alt="" 
                             className={`pip-bubble-avatar ${mainUser?.isSpeaking ? 'speaking' : ''}`} 
                         />
-                        {participants.length > 1 && (
-                            <span className="pip-badge-count">{participants.length}</span>
+                        {orderedParticipants.length > 1 && (
+                            <span className="pip-badge-count">{orderedParticipants.length}</span>
                         )}
                     </div>
                 </div>
@@ -423,7 +424,7 @@ const GlobalVideoPIP = () => {
                         <div className="pip-header">
                             <div className="pip-header-info">
                                 <span className="pip-title">{activeRoom?.channelName || 'Canlı Oda'}</span>
-                                <span className="pip-subtitle">{participants.length} katılımcı</span>
+                                <span className="pip-subtitle">{orderedParticipants.length} katılımcı</span>
                             </div>
                             
                             <div className="pip-header-actions">
@@ -471,10 +472,10 @@ const GlobalVideoPIP = () => {
                             <div className="pip-search-box">
                                 <Search size={12} color="#94a3b8" />
                                 <input 
-                                    type="text"
-                                    placeholder="Kullanıcı ara..."
-                                    value={inviteSearchQuery}
-                                    onChange={(e) => setInviteSearchQuery(e.target.value)}
+                                    type="text" 
+                                    placeholder="Kullanıcı ara..." 
+                                    value={inviteSearchQuery} 
+                                    onChange={(e) => setInviteSearchQuery(e.target.value)} 
                                 />
                                 {inviteSearchQuery && (
                                     <button onClick={() => setInviteSearchQuery('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}>
@@ -574,7 +575,7 @@ const GlobalVideoPIP = () => {
                             orderedParticipants.map((p, idx) => (
                                 <div 
                                     key={p.identity} 
-                                    className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''} ${p.isLocal ? 'local' : ''}`}
+                                    className={`pip-participant-card ${p.isSpeaking ? 'speaking' : ''}`}
                                 >
                                     <VideoRenderer participant={p} className="pip-participant-video" />
                                     
@@ -593,7 +594,7 @@ const GlobalVideoPIP = () => {
 
                                     <div className="pip-participant-minimal-badge">
                                         <span className="pip-participant-name-text">
-                                            {p.name} {p.isLocal && '(Sen)'}
+                                            {p.name}
                                         </span>
                                         {p.role === 'owner' && <Crown size={10} className="role-icon owner" />}
                                         {p.role === 'admin' && <Shield size={10} className="role-icon admin" />}
@@ -602,49 +603,35 @@ const GlobalVideoPIP = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="pip-empty">Oda boş</div>
+                            <div className="pip-empty">Oda boş (Diğer katılımcılar bekleniyor)</div>
                         )}
                     </div>
 
-                    <div className={`pip-controls vertical-controls ${isInNativePiP ? 'in-native-pip-controls' : ''}`}>
-                        <button 
-                            className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
-                            onClick={toggleMicrophone}
-                            title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
-                        >
-                            {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
-                        </button>
-                        <button 
-                            className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
-                            onClick={toggleCamera}
-                            title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
-                        >
-                            {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
-                        </button>
-                        <button 
-                            className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
-                            onClick={toggleDeafen}
-                            title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
-                        >
-                            {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                        </button>
-                        
-                        <button 
-                            className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
-                            onClick={toggleScreenShare}
-                            title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
-                        >
-                            <MonitorUp size={14} />
-                        </button>
-
-                        <button 
-                            className="pip-control-btn danger disconnect-btn" 
-                            onClick={handleDisconnectAction}
-                            title="Aramayı Sonlandır"
-                        >
-                            <PhoneOff size={14} />
-                        </button>
-                    </div>
+                    {!isInNativePiP && (
+                        <div className="pip-controls vertical-controls pip-three-buttons-only">
+                            <button 
+                                className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
+                                onClick={toggleMicrophone}
+                                title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                            >
+                                {localState.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                            </button>
+                            <button 
+                                className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
+                                onClick={toggleCamera}
+                                title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
+                            >
+                                {localState.isCameraOn ? <Video size={16} /> : <VideoOff size={16} />}
+                            </button>
+                            <button 
+                                className="pip-control-btn danger disconnect-btn" 
+                                onClick={handleDisconnectAction}
+                                title="Aramayı Sonlandır"
+                            >
+                                <PhoneOff size={16} />
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

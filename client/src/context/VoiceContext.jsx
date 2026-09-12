@@ -1417,6 +1417,11 @@ export const VoiceProvider = ({ children }) => {
     }, [localState, activeRoom, user, safeEmit, facingMode, renegotiateAll]);
 
     const stopScreenShareAndRevert = useCallback(() => {
+        window.onNativeScreenFrame = null;
+        if (Capacitor.isNativePlatform()) {
+            CallManager.stopScreenCapture().catch(() => {});
+        }
+
         if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach(t => t.stop());
             screenStreamRef.current = null;
@@ -1459,8 +1464,53 @@ export const VoiceProvider = ({ children }) => {
             try {
                 let screenStream = null;
 
-                // 1. Try standard getDisplayMedia if available in browser / platform
-                if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
+                // 1. Mobile Native Real Screen Capture via MediaProjection
+                if (Capacitor.isNativePlatform()) {
+                    try {
+                        const captureResult = await CallManager.startScreenCapture();
+                        if (!captureResult || captureResult.success === false) {
+                            console.log("[ScreenShare] User cancelled native screen capture prompt.");
+                            return;
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 540;
+                        canvas.height = 960;
+                        const ctx = canvas.getContext('2d');
+
+                        const screenImg = new Image();
+                        screenImg.onload = () => {
+                            if (canvas.width !== screenImg.width || canvas.height !== screenImg.height) {
+                                canvas.width = screenImg.width;
+                                canvas.height = screenImg.height;
+                            }
+                            ctx.drawImage(screenImg, 0, 0);
+                        };
+
+                        window.onNativeScreenFrame = (base64) => {
+                            screenImg.src = "data:image/jpeg;base64," + base64;
+                        };
+
+                        if (typeof canvas.captureStream === 'function') {
+                            screenStream = canvas.captureStream(15);
+                            const vTrack = screenStream.getVideoTracks()[0];
+                            if (vTrack) {
+                                const origStop = vTrack.stop.bind(vTrack);
+                                vTrack.stop = () => {
+                                    window.onNativeScreenFrame = null;
+                                    CallManager.stopScreenCapture().catch(() => {});
+                                    origStop();
+                                };
+                            }
+                        }
+                    } catch (nativeErr) {
+                        console.warn("[ScreenShare] Native screen capture start error:", nativeErr);
+                        return;
+                    }
+                }
+
+                // 2. Try standard getDisplayMedia if available in desktop browser
+                if (!screenStream && navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
                     try {
                         screenStream = await navigator.mediaDevices.getDisplayMedia({
                             video: {
@@ -1481,105 +1531,8 @@ export const VoiceProvider = ({ children }) => {
                                 console.log("[ScreenShare] User cancelled screen share prompt.");
                                 return;
                             }
-                            console.warn("[ScreenShare] Native getDisplayMedia error, will try mobile canvas presentation stream:", fallbackErr);
+                            console.warn("[ScreenShare] Native getDisplayMedia error:", fallbackErr);
                         }
-                    }
-                }
-
-                // 2. Seamless Fallback for Mobile WebView / environments where getDisplayMedia is not supported
-                if (!screenStream) {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 1280;
-                        canvas.height = 720;
-                        const ctx = canvas.getContext('2d');
-
-                        let animFrameId = null;
-                        let tick = 0;
-                        const startTime = Date.now();
-                        const userName = user?.profile?.displayName || user?.username || 'Kullanıcı';
-
-                        const drawFrame = () => {
-                            tick++;
-                            // Background
-                            ctx.fillStyle = '#090d16';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                            // Inner stylish container
-                            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                            grad.addColorStop(0, '#0f172a');
-                            grad.addColorStop(0.5, '#1e1b4b');
-                            grad.addColorStop(1, '#0f172a');
-                            ctx.fillStyle = grad;
-                            ctx.fillRect(24, 24, canvas.width - 48, canvas.height - 48);
-
-                            // Glowing neon border
-                            ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
-                            ctx.lineWidth = 3;
-                            ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
-
-                            // Header title
-                            ctx.fillStyle = '#ffffff';
-                            ctx.font = 'bold 36px sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.fillText('Oxypace Canlı Sunum & Ekran Yayını', canvas.width / 2, 140);
-
-                            // Presenter badge
-                            ctx.fillStyle = '#94a3b8';
-                            ctx.font = '22px sans-serif';
-                            ctx.fillText(`Sunucu: ${userName}`, canvas.width / 2, 190);
-
-                            // Animated live radar / pulse circles
-                            const pulseSize = 85 + Math.sin(tick * 0.08) * 16;
-                            ctx.beginPath();
-                            ctx.arc(canvas.width / 2, 340, pulseSize, 0, Math.PI * 2);
-                            ctx.fillStyle = 'rgba(99, 102, 241, 0.25)';
-                            ctx.fill();
-                            ctx.strokeStyle = '#818cf8';
-                            ctx.lineWidth = 3;
-                            ctx.stroke();
-
-                            // Inner core circle
-                            ctx.beginPath();
-                            ctx.arc(canvas.width / 2, 340, 52, 0, Math.PI * 2);
-                            ctx.fillStyle = '#6366f1';
-                            ctx.fill();
-
-                            // LIVE text
-                            ctx.fillStyle = '#ffffff';
-                            ctx.font = 'bold 20px sans-serif';
-                            ctx.fillText('CANLI', canvas.width / 2, 347);
-
-                            // Elapsed time
-                            const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
-                            const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
-                            const secs = String(elapsedSec % 60).padStart(2, '0');
-                            ctx.fillStyle = '#38bdf8';
-                            ctx.font = 'bold 28px monospace';
-                            ctx.fillText(`${mins}:${secs}`, canvas.width / 2, 480);
-
-                            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                            ctx.font = '16px sans-serif';
-                            ctx.fillText('Mobil cihazdan canlı yayın ve sunum aktif', canvas.width / 2, 530);
-
-                            animFrameId = requestAnimationFrame(drawFrame);
-                        };
-
-                        drawFrame();
-
-                        if (typeof canvas.captureStream === 'function') {
-                            screenStream = canvas.captureStream(25);
-                            const vTrack = screenStream.getVideoTracks()[0];
-                            if (vTrack) {
-                                const origStop = vTrack.stop.bind(vTrack);
-                                vTrack.stop = () => {
-                                    if (animFrameId) cancelAnimationFrame(animFrameId);
-                                    origStop();
-                                };
-                            }
-                        }
-                    } catch (canvasErr) {
-                        console.warn("[ScreenShare] Canvas fallback creation failed:", canvasErr);
                     }
                 }
 
@@ -2012,24 +1965,54 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, toggleMicrophone, toggleCamera, toggleScreenShare, disconnectFromChannel]);
 
-    // Handle Android Native Notification Action Events (Hangup / Mic toggle from sticky notification)
+    // Sync local call state (mic, camera, screenshare) to Android native PiP & notification bar
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            CallManager.updateCallState({
+                isMuted: localState.isMuted,
+                isCameraOn: localState.isCameraOn,
+                isScreenSharing: localState.isScreenSharing
+            }).catch(() => {});
+        }
+    }, [localState.isMuted, localState.isCameraOn, localState.isScreenSharing]);
+
+    // Handle Android Native Notification Bar and PiP RemoteAction Events
     useEffect(() => {
         const handleRemoteLeave = () => {
-            console.log("[Native Action] oxypace:leave_call triggered from Android notification");
+            console.log("[Native Action] oxypace:leave_call triggered");
             disconnectFromChannel();
         };
         const handleRemoteToggleMic = () => {
-            console.log("[Native Action] oxypace:toggle_mic triggered from Android notification");
+            console.log("[Native Action] oxypace:toggle_mic triggered");
             toggleMicrophone();
+        };
+        const handleRemoteToggleCamera = () => {
+            console.log("[Native Action] oxypace:toggle_camera triggered");
+            toggleCamera();
+        };
+        const handleRemoteToggleScreen = () => {
+            console.log("[Native Action] oxypace:toggle_screenshare triggered");
+            toggleScreenShare();
+        };
+        const handleRemoteScreenshareStopped = () => {
+            console.log("[Native Action] oxypace:screenshare_stopped triggered");
+            stopScreenShareAndRevert();
         };
 
         window.addEventListener('oxypace:leave_call', handleRemoteLeave);
         window.addEventListener('oxypace:toggle_mic', handleRemoteToggleMic);
+        window.addEventListener('oxypace:toggle_camera', handleRemoteToggleCamera);
+        window.addEventListener('oxypace:toggle_screenshare', handleRemoteToggleScreen);
+        window.addEventListener('oxypace:screenshare_stopped', handleRemoteScreenshareStopped);
+
         return () => {
             window.removeEventListener('oxypace:leave_call', handleRemoteLeave);
             window.removeEventListener('oxypace:toggle_mic', handleRemoteToggleMic);
+            window.removeEventListener('oxypace:toggle_camera', handleRemoteToggleCamera);
+            window.removeEventListener('oxypace:toggle_screenshare', handleRemoteToggleScreen);
+            window.removeEventListener('oxypace:screenshare_stopped', handleRemoteScreenshareStopped);
         };
-    }, [disconnectFromChannel, toggleMicrophone]);
+    }, [disconnectFromChannel, toggleMicrophone, toggleCamera, toggleScreenShare, stopScreenShareAndRevert]);
 
     const value = {
         room: { localParticipant: { identity: user?._id?.toString() } },

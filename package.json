@@ -1,6 +1,6 @@
 {
     "name": "oxypace",
-    "version": "2.1.9",
+    "version": "2.2.0",
     "description": "Oxypace - Modern Social & Portal Platform backend",
     "main": "server.js",
     "type": "module",

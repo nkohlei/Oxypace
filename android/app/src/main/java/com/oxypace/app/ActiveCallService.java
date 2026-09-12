@@ -24,13 +24,13 @@ import kotlinx.coroutines.BuildersKt;
 import kotlinx.coroutines.Dispatchers;
 
 /**
- * ActiveCallService is the background champion.
- * When the app moves to background, this Foreground Service keeps the audio line alive,
- * displays an ongoing sticky notification with timer and action buttons (Mute / Hangup).
+ * ActiveCallService keeps the audio line and media projection alive in the background.
+ * It displays a silent, sticky minimal notification bar strictly pinned inside the Android
+ * notification panel (shade) without any heads-up screen popup banners.
  */
 public class ActiveCallService extends Service {
 
-    public static final String CHANNEL_ID      = "oxypace_active_call_v4";
+    public static final String CHANNEL_ID      = "oxypace_call_shade_bar_v5";
     public static final int    NOTIFICATION_ID = 9500;
 
     private Handler  handler;
@@ -40,6 +40,7 @@ public class ActiveCallService extends Service {
     private String channelName = "Görüntülü Sohbet";
     private String route       = "";
     private boolean isMuted    = false;
+    private boolean isScreenSharing = false;
 
     // LiveKit Room instance kept in pure Java Memory
     private Room livekitRoom = null;
@@ -83,6 +84,9 @@ public class ActiveCallService extends Service {
             route = intent.getStringExtra("route");
             if (route == null) route = "";
 
+            isMuted = intent.getBooleanExtra("isMuted", false);
+            isScreenSharing = intent.getBooleanExtra("isScreenSharing", false);
+
             long serverStartedAt = intent.getLongExtra("startedAt", 0L);
             roomStartedAtEpoch = (serverStartedAt > 0) ? serverStartedAt : System.currentTimeMillis();
 
@@ -92,13 +96,20 @@ public class ActiveCallService extends Service {
 
             createNotificationChannel();
 
-            // Start foreground with try/catch to gracefully handle Android 14 API 34 type exceptions
+            // Start foreground with media projection and microphone types
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    int fgsType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+                    }
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+                    }
                     startForeground(
                         NOTIFICATION_ID,
                         buildNotification(formatDuration()),
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                        fgsType
                     );
                 } else {
                     startForeground(NOTIFICATION_ID, buildNotification(formatDuration()));
@@ -129,6 +140,21 @@ public class ActiveCallService extends Service {
                 }
             }
             // Refresh notification immediately
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.notify(NOTIFICATION_ID, buildNotification(formatDuration()));
+            }
+
+        } else if ("TOGGLE_SCREEN".equals(action)) {
+            isScreenSharing = !isScreenSharing;
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.notify(NOTIFICATION_ID, buildNotification(formatDuration()));
+            }
+
+        } else if ("UPDATE_STATE".equals(action)) {
+            if (intent.hasExtra("isMuted")) isMuted = intent.getBooleanExtra("isMuted", false);
+            if (intent.hasExtra("isScreenSharing")) isScreenSharing = intent.getBooleanExtra("isScreenSharing", false);
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.notify(NOTIFICATION_ID, buildNotification(formatDuration()));
@@ -238,7 +264,7 @@ public class ActiveCallService extends Service {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Timer & Notification with Action Buttons (Mute / Hangup)
+    // Timer & Notification Bar with Action Buttons (Mic / Screen / Hangup)
     // ─────────────────────────────────────────────────────────────────────────
 
     private void startUpdatingDuration() {
@@ -298,7 +324,15 @@ public class ActiveCallService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Action 2: Hangup / Leave Room (Aramayı / Odayı Sonlandır)
+        // Action 2: Toggle Screen Share (Ekran Paylaş / Paylaşımı Durdur)
+        Intent toggleScreenIntent = new Intent(this, CallActionReceiver.class);
+        toggleScreenIntent.setAction(CallActionReceiver.ACTION_TOGGLE_SCREEN);
+        PendingIntent piToggleScreen = PendingIntent.getBroadcast(
+            this, 25, toggleScreenIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        // Action 3: Hangup / Leave Room (Aramayı / Odayı Sonlandır)
         Intent hangupIntent = new Intent(this, CallActionReceiver.class);
         hangupIntent.setAction(CallActionReceiver.ACTION_HANGUP);
         PendingIntent piHangup = PendingIntent.getBroadcast(
@@ -306,21 +340,24 @@ public class ActiveCallService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        String micLabel = isMuted ? "🎙️ Mikrofonu Aç" : "🎤 Sessize Al";
+        String micLabel = isMuted ? "🎙️ Aç" : "🎤 Sessiz";
+        String screenLabel = isScreenSharing ? "⏹️ Durdur" : "📺 Ekran";
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("📞 Canlı Oda — Aktif")
-            .setContentText(channelName + "  •  " + duration)
-            .setSubText("Oxypace Voice")
+            .setContentTitle("📞 " + channelName)
+            .setContentText("⏱️ Süre: " + duration + "  •  Aktif Görüşme")
+            .setSubText("Oxypace")
             .setOngoing(true)
             .setShowWhen(false)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(piMain)
-            .addAction(R.drawable.ic_notification, micLabel, piToggleMic)
-            .addAction(R.drawable.ic_notification, "🔴 Odadan Ayrıl", piHangup)
+            .addAction(isMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic, micLabel, piToggleMic)
+            .addAction(isScreenSharing ? R.drawable.ic_pip_screen_off : R.drawable.ic_pip_screen, screenLabel, piToggleScreen)
+            .addAction(R.drawable.ic_pip_end_call, "🔴 Ayrıl", piHangup)
             .build();
     }
 
@@ -329,14 +366,19 @@ public class ActiveCallService extends Service {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm == null) return;
 
+            try {
+                nm.deleteNotificationChannel("oxypace_active_call_v4");
+            } catch (Exception ignored) {}
+
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
-                "Aktif Canlı Oda",
-                NotificationManager.IMPORTANCE_HIGH
+                "Aktif Canlı Görüşme Çubuğu",
+                NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("Devam eden görüntülü ve sesli görüşmeleri arka planda canlı tutar.");
+            channel.setDescription("Devam eden canlı görüşme ve oda süresi bildirim panelinde sabit çubuk olarak gösterilir.");
             channel.setSound(null, null);
             channel.enableVibration(false);
+            channel.setShowBadge(false);
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
             nm.createNotificationChannel(channel);

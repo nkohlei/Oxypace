@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings, Eye, EyeOff } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -178,6 +178,23 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const [isHlsModalOpen, setIsHlsModalOpen] = useState(false);
     const [isHlsVol2ModalOpen, setIsHlsVol2ModalOpen] = useState(false);
     const [isExtraControlsOpen, setIsExtraControlsOpen] = useState(false);
+    const [hideSelfView, setHideSelfView] = useState(() => {
+        try {
+            return localStorage.getItem('vc_hide_self_view') === 'true';
+        } catch (e) {
+            return false;
+        }
+    });
+
+    const toggleHideSelfView = () => {
+        setHideSelfView(prev => {
+            const next = !prev;
+            try {
+                localStorage.setItem('vc_hide_self_view', String(next));
+            } catch (e) {}
+            return next;
+        });
+    };
     const drawerTimerRef = useRef(null);
 
     const resetDrawerTimer = () => {
@@ -659,14 +676,23 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         );
     }
 
+    const displayParticipants = React.useMemo(() => {
+        if (!hideSelfView) return participants;
+        return (participants || []).filter(p => !p.isLocal);
+    }, [participants, hideSelfView]);
+
     const activeFocusIdentity = focusedIdentity;
-    const focusedParticipant = (activeFocusIdentity && participants.length > 1) ? participants.find(p => p.identity === activeFocusIdentity) : null;
+    const focusedParticipant = (activeFocusIdentity && displayParticipants.length > 1) 
+        ? displayParticipants.find(p => p.identity === activeFocusIdentity) 
+        : null;
 
     const carouselItemsCount = (watchParty && watchParty.url) 
-        ? participants.length 
-        : (focusedParticipant ? participants.length - 1 : 0);
+        ? displayParticipants.length 
+        : (focusedParticipant ? displayParticipants.length - 1 : 0);
     const carouselClass = carouselItemsCount >= 4 ? 'grid-multi' : 'grid-single';
-    const gridClass = (focusedParticipant || (watchParty && watchParty.url)) ? 'layout-spotlight' : `layout-dynamic grid-${Math.min(participants.length, 4)}`;
+    const gridClass = (focusedParticipant || (watchParty && watchParty.url)) 
+        ? 'layout-spotlight' 
+        : `layout-dynamic grid-${Math.min(displayParticipants.length, 4)}`;
 
     return (
         <div className={`vc-container glass-container ${isIdle ? 'user-idle' : ''}`} onClick={handleContainerClick}>
@@ -847,7 +873,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     style={{ height: '160px', marginBottom: '8px', opacity: 0, pointerEvents: 'none', width: '100%', flexShrink: 0 }} 
                                 />
                             )}
-                            {participants.filter(p => !focusedParticipant || p.identity !== focusedParticipant.identity).map(p => 
+                            {displayParticipants.filter(p => !focusedParticipant || p.identity !== focusedParticipant.identity).map(p => 
                                 renderParticipantCard(p, 'carousel', () => handleFocus(p.identity))
                             )}
                         </div>
@@ -872,7 +898,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     touchAction: 'none'
                                 } : undefined}
                             >
-                                {participants.filter(p => p.identity !== activeFocusIdentity).map(p => 
+                                {displayParticipants.filter(p => p.identity !== activeFocusIdentity).map(p => 
                                     renderParticipantCard(p, 'carousel', () => handleFocus(p.identity))
                                 )}
                             </div>
@@ -881,8 +907,8 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             {focusedParticipant ? (
                                 renderParticipantCard(focusedParticipant, 'hero', () => handleFocus(focusedParticipant.identity))
                             ) : (
-                                <div className={`vc-grid grid-${Math.min(participants.length, 4)}`}>
-                                    {participants.map(p => 
+                                <div className={`vc-grid grid-${Math.min(displayParticipants.length, 4)}`}>
+                                    {displayParticipants.map(p => 
                                         renderParticipantCard(p, 'grid', () => handleFocus(p.identity))
                                     )}
                                 </div>
@@ -1120,6 +1146,9 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     </button>
                                     <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
                                         {localState.isDeafened ? <VolumeX size={15} /> : <Volume2 size={15} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
+                                    </button>
+                                    <button className={`vc-more-option ${hideSelfView ? 'active' : ''}`} onClick={() => { toggleHideSelfView(); setIsMoreMenuOpen(false); }}>
+                                        {hideSelfView ? <Eye size={15} /> : <EyeOff size={15} />} <span>{hideSelfView ? 'Kendi Görüntümü Göster' : 'Kamera görüntü penceremi benden gizle'}</span>
                                     </button>
                                     {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
                                         <>

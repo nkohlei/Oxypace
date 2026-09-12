@@ -1920,18 +1920,6 @@ input:checked + .slider::before {
 }
 
 @media (max-width: 768px) {
-    .settings-page-wrapper .channel-sidebar.hidden-on-mobile,
-    .settings-page-wrapper .settings-sidebar-global.hidden-on-mobile,
-    .channel-sidebar.hidden-on-mobile,
-    .settings-sidebar-global.hidden-on-mobile {
-        display: none !important;
-    }
-
-    .settings-page-wrapper .discord-main-content.hidden-on-mobile,
-    .discord-main-content.hidden-on-mobile {
-        display: none !important;
-    }
-
     .settings-page-wrapper .discord-split-view {
         max-width: 100vw;
         width: 100%;
@@ -2072,5 +2060,22 @@ input:checked + .slider::before {
         flex-wrap: wrap !important;
         gap: 10px !important;
         box-sizing: border-box !important;
+    }
+
+    /* Mobile View Toggle: Placed at the end with highest specificity to guarantee sidebar hides when submenu is open and content hides when on main menu */
+    .app-wrapper.settings-page-wrapper .channel-sidebar.hidden-on-mobile,
+    .app-wrapper.settings-page-wrapper .settings-sidebar-global.hidden-on-mobile,
+    .glass-redesign .channel-sidebar.settings-sidebar-global.hidden-on-mobile,
+    .glass-redesign .settings-sidebar-global.hidden-on-mobile,
+    .settings-page-wrapper .channel-sidebar.hidden-on-mobile,
+    .settings-page-wrapper .settings-sidebar-global.hidden-on-mobile,
+    .channel-sidebar.hidden-on-mobile,
+    .settings-sidebar-global.hidden-on-mobile,
+    .app-wrapper.settings-page-wrapper .discord-main-content.hidden-on-mobile,
+    .glass-redesign .discord-main-content.hidden-on-mobile,
+    .settings-page-wrapper .discord-main-content.hidden-on-mobile,
+    .discord-main-content.hidden-on-mobile,
+    .hidden-on-mobile {
+        display: none !important;
     }
 }
