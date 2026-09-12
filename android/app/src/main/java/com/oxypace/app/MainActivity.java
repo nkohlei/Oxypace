@@ -131,17 +131,12 @@ public class MainActivity extends BridgeActivity {
                 if (act != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     act.runOnUiThread(() -> {
                         try {
-                            android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
-                            android.util.DisplayMetrics dm = act.getResources().getDisplayMetrics();
-                            android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
-                                ? new android.util.Rational(16, 9)
-                                : new android.util.Rational(9, 16);
-                            builder.setAspectRatio(rational);
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                                builder.setAutoEnterEnabled(true);
-                                builder.setSeamlessResizeEnabled(true);
+                            android.app.PictureInPictureParams params = buildPiPParams(act, true);
+                            if (params != null) {
+                                act.enterPictureInPictureMode(params);
+                            } else {
+                                act.enterPictureInPictureMode();
                             }
-                            act.enterPictureInPictureMode(builder.build());
                         } catch (Throwable e) {
                             try {
                                 act.enterPictureInPictureMode();
@@ -258,110 +253,111 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    public static void updatePiPParams(android.app.Activity activity, boolean enabled) {
-        if (activity == null) return;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            try {
-                android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
-                android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
-                android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
-                    ? new android.util.Rational(16, 9)
-                    : new android.util.Rational(9, 16);
-                builder.setAspectRatio(rational);
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    builder.setAutoEnterEnabled(enabled);
-                    builder.setSeamlessResizeEnabled(true);
-                }
-
-                if (enabled) {
-                    // Set up 3 native RemoteActions on the PiP overlay:
-                    // 1) Mic Toggle, 2) Camera Toggle, 3) Hangup
-                    java.util.ArrayList<android.app.RemoteAction> actions = new java.util.ArrayList<>();
-
-                    // 1. Mic
-                    android.content.Intent micIntent = new android.content.Intent(activity, CallActionReceiver.class);
-                    micIntent.setAction(CallActionReceiver.ACTION_TOGGLE_MIC);
-                    android.app.PendingIntent piMic = android.app.PendingIntent.getBroadcast(
-                        activity, 201, micIntent,
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-                    );
-                    android.graphics.drawable.Icon micIcon = android.graphics.drawable.Icon.createWithResource(
-                        activity, CallManager.sIsMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic
-                    );
-                    actions.add(new android.app.RemoteAction(
-                        micIcon,
-                        CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
-                        CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
-                        piMic
-                    ));
-
-                    // 2. Camera
-                    android.content.Intent camIntent = new android.content.Intent(activity, CallActionReceiver.class);
-                    camIntent.setAction(CallActionReceiver.ACTION_TOGGLE_CAMERA);
-                    android.app.PendingIntent piCam = android.app.PendingIntent.getBroadcast(
-                        activity, 202, camIntent,
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-                    );
-                    android.graphics.drawable.Icon camIcon = android.graphics.drawable.Icon.createWithResource(
-                        activity, CallManager.sIsCameraOn ? R.drawable.ic_pip_cam : R.drawable.ic_pip_cam_off
-                    );
-                    actions.add(new android.app.RemoteAction(
-                        camIcon,
-                        CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
-                        CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
-                        piCam
-                    ));
-
-                    // 3. Hangup
-                    android.content.Intent endIntent = new android.content.Intent(activity, CallActionReceiver.class);
-                    endIntent.setAction(CallActionReceiver.ACTION_HANGUP);
-                    android.app.PendingIntent piEnd = android.app.PendingIntent.getBroadcast(
-                        activity, 203, endIntent,
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-                    );
-                    android.graphics.drawable.Icon endIcon = android.graphics.drawable.Icon.createWithResource(
-                        activity, R.drawable.ic_pip_end_call
-                    );
-                    actions.add(new android.app.RemoteAction(
-                        endIcon,
-                        "Odadan Ayrıl",
-                        "Odadan Ayrıl",
-                        piEnd
-                    ));
-
-                    builder.setActions(actions);
-                }
-
-                activity.setPictureInPictureParams(builder.build());
-            } catch (Exception e) {
-                e.printStackTrace();
+    public static android.app.PictureInPictureParams buildPiPParams(android.app.Activity activity, boolean enabled) {
+        if (activity == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return null;
+        try {
+            android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
+            android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
+            android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
+                ? new android.util.Rational(16, 9)
+                : new android.util.Rational(9, 16);
+            builder.setAspectRatio(rational);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                builder.setAutoEnterEnabled(enabled);
+                builder.setSeamlessResizeEnabled(true);
             }
+
+            if (enabled) {
+                // Set up 3 native RemoteActions on the PiP overlay:
+                // 1) Mic Toggle, 2) Camera Toggle, 3) Hangup
+                java.util.ArrayList<android.app.RemoteAction> actions = new java.util.ArrayList<>();
+
+                // 1. Mic
+                android.content.Intent micIntent = new android.content.Intent(activity, CallActionReceiver.class);
+                micIntent.setAction(CallActionReceiver.ACTION_TOGGLE_MIC);
+                android.app.PendingIntent piMic = android.app.PendingIntent.getBroadcast(
+                    activity, 201, micIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                );
+                android.graphics.drawable.Icon micIcon = android.graphics.drawable.Icon.createWithResource(
+                    activity, CallManager.sIsMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic
+                );
+                actions.add(new android.app.RemoteAction(
+                    micIcon,
+                    CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
+                    CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
+                    piMic
+                ));
+
+                // 2. Camera
+                android.content.Intent camIntent = new android.content.Intent(activity, CallActionReceiver.class);
+                camIntent.setAction(CallActionReceiver.ACTION_TOGGLE_CAMERA);
+                android.app.PendingIntent piCam = android.app.PendingIntent.getBroadcast(
+                    activity, 202, camIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                );
+                android.graphics.drawable.Icon camIcon = android.graphics.drawable.Icon.createWithResource(
+                    activity, CallManager.sIsCameraOn ? R.drawable.ic_pip_cam : R.drawable.ic_pip_cam_off
+                );
+                actions.add(new android.app.RemoteAction(
+                    camIcon,
+                    CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
+                    CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
+                    piCam
+                ));
+
+                // 3. Hangup
+                android.content.Intent endIntent = new android.content.Intent(activity, CallActionReceiver.class);
+                endIntent.setAction(CallActionReceiver.ACTION_HANGUP);
+                android.app.PendingIntent piEnd = android.app.PendingIntent.getBroadcast(
+                    activity, 203, endIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                );
+                android.graphics.drawable.Icon endIcon = android.graphics.drawable.Icon.createWithResource(
+                    activity, R.drawable.ic_pip_end_call
+                );
+                actions.add(new android.app.RemoteAction(
+                    endIcon,
+                    "Odadan Ayrıl",
+                    "Odadan Ayrıl",
+                    piEnd
+                ));
+
+                builder.setActions(actions);
+            }
+
+            return builder.build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
+    }
+
+    public static void updatePiPParams(android.app.Activity activity, boolean enabled) {
+        if (activity == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+        try {
+            android.app.PictureInPictureParams params = buildPiPParams(activity, enabled);
+            if (params != null) {
+                activity.setPictureInPictureParams(params);
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
-        if (CallManager.isInCall) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                try {
-                    updatePiPParams(this, true);
-                    android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
-                    android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-                    android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
-                        ? new android.util.Rational(16, 9)
-                        : new android.util.Rational(9, 16);
-                    builder.setAspectRatio(rational);
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        builder.setAutoEnterEnabled(true);
-                        builder.setSeamlessResizeEnabled(true);
-                    }
-                    enterPictureInPictureMode(builder.build());
-                } catch (Throwable e) {
-                    try {
-                        enterPictureInPictureMode();
-                    } catch (Throwable ignored) {}
+        if (CallManager.isInCall && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            try {
+                android.app.PictureInPictureParams params = buildPiPParams(this, true);
+                if (params != null) {
+                    enterPictureInPictureMode(params);
+                } else {
+                    enterPictureInPictureMode();
                 }
+            } catch (Throwable e) {
+                try {
+                    enterPictureInPictureMode();
+                } catch (Throwable ignored) {}
             }
         }
     }
@@ -377,16 +373,22 @@ public class MainActivity extends BridgeActivity {
     private android.os.Handler captureHandler = null;
     private long lastFrameTimeMs = 0;
 
-    public void startScreenProjection(int resultCode, android.content.Intent data) {
+    public boolean startScreenProjection(int resultCode, android.content.Intent data) {
         stopScreenProjection();
 
         try {
             android.media.projection.MediaProjectionManager mpm =
                 (android.media.projection.MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-            if (mpm == null) return;
+            if (mpm == null) {
+                android.util.Log.e("MainActivity", "MediaProjectionManager is null");
+                return false;
+            }
 
             mediaProjection = mpm.getMediaProjection(resultCode, data);
-            if (mediaProjection == null) return;
+            if (mediaProjection == null) {
+                android.util.Log.e("MainActivity", "MediaProjection is null after getMediaProjection");
+                return false;
+            }
 
             mediaProjection.registerCallback(new android.media.projection.MediaProjection.Callback() {
                 @Override
@@ -435,7 +437,7 @@ public class MainActivity extends BridgeActivity {
                     if (image == null) return;
 
                     long now = System.currentTimeMillis();
-                    if (now - lastFrameTimeMs < 66) {
+                    if (now - lastFrameTimeMs < 100) {
                         return;
                     }
                     lastFrameTimeMs = now;
@@ -458,7 +460,7 @@ public class MainActivity extends BridgeActivity {
                         : bitmap;
 
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                    finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, baos);
+                    finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 45, baos);
                     byte[] jpegBytes = baos.toByteArray();
                     String base64 = android.util.Base64.encodeToString(jpegBytes, android.util.Base64.NO_WRAP);
 
@@ -485,9 +487,13 @@ public class MainActivity extends BridgeActivity {
                 }
             }, captureHandler);
 
+            android.util.Log.d("MainActivity", "Screen projection successfully started at " + width + "x" + height);
+            return true;
+
         } catch (Exception e) {
             android.util.Log.e("MainActivity", "Failed to start screen projection: " + e.getMessage(), e);
             stopScreenProjection();
+            return false;
         }
     }
 
@@ -510,6 +516,19 @@ public class MainActivity extends BridgeActivity {
                 captureThread = null;
                 captureHandler = null;
             }
+            if (ActiveCallService.sInstance != null) {
+                ActiveCallService.sInstance.revertFromMediaProjection();
+            } else {
+                try {
+                    android.content.Intent revertIntent = new android.content.Intent(this, ActiveCallService.class);
+                    revertIntent.setAction("DISABLE_MEDIA_PROJECTION");
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        startForegroundService(revertIntent);
+                    } else {
+                        startService(revertIntent);
+                    }
+                } catch (Exception ignored) {}
+            }
         } catch (Exception ignored) {}
     }
 
@@ -518,11 +537,30 @@ public class MainActivity extends BridgeActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CallManager.REQUEST_CODE_SCREEN_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
-                startScreenProjection(resultCode, data);
+                // Elevate ActiveCallService synchronously before initializing projection on Android 14+
+                if (ActiveCallService.sInstance != null) {
+                    ActiveCallService.sInstance.elevateToMediaProjection();
+                } else {
+                    try {
+                        android.content.Intent elevateIntent = new android.content.Intent(this, ActiveCallService.class);
+                        elevateIntent.setAction("ENABLE_MEDIA_PROJECTION");
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            startForegroundService(elevateIntent);
+                        } else {
+                            startService(elevateIntent);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                boolean started = startScreenProjection(resultCode, data);
                 if (CallManager.sScreenCaptureCall != null) {
-                    JSObject ret = new JSObject();
-                    ret.put("success", true);
-                    CallManager.sScreenCaptureCall.resolve(ret);
+                    if (started) {
+                        JSObject ret = new JSObject();
+                        ret.put("success", true);
+                        CallManager.sScreenCaptureCall.resolve(ret);
+                    } else {
+                        CallManager.sScreenCaptureCall.reject("Ekran paylaşımı başlatılamadı");
+                    }
                     CallManager.sScreenCaptureCall = null;
                 }
             } else {
@@ -537,6 +575,7 @@ public class MainActivity extends BridgeActivity {
 
 
     private static com.getcapacitor.Bridge bridgeInstance = null;
+    private static MainActivity activityInstance = null;
     private String pendingRoute = null;
     private boolean pendingIsJoinVoice = false;
 
@@ -544,8 +583,13 @@ public class MainActivity extends BridgeActivity {
         return bridgeInstance;
     }
 
+    public static MainActivity getActivityInstance() {
+        return activityInstance;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        activityInstance = this;
         registerPlugin(DownloaderPlugin.class);
         registerPlugin(CallManager.class);
         registerPlugin(AuthSync.class);
@@ -750,6 +794,9 @@ public class MainActivity extends BridgeActivity {
         stopScreenProjection();
         if (bridgeInstance == getBridge()) {
             bridgeInstance = null;
+        }
+        if (activityInstance == this) {
+            activityInstance = null;
         }
         super.onDestroy();
     }

@@ -109,11 +109,13 @@ const GlobalVideoPIP = () => {
         setCustomOrder(newOrder);
     };
 
-    // Filter out local participant from PiP: User specifically requested not to see their own camera in PiP
+    const isNative = Capacitor.isNativePlatform();
+
+    // Mobile: hide self camera. Desktop web: preserve full participant list with local user.
     const orderedParticipants = React.useMemo(() => {
-        const remoteOnly = (participants || []).filter(p => !p.isLocal);
-        if (!customOrder || customOrder.length === 0) return remoteOnly;
-        const copy = [...remoteOnly];
+        const list = isNative ? (participants || []).filter(p => !p.isLocal) : (participants || []);
+        if (!customOrder || customOrder.length === 0) return list;
+        const copy = [...list];
         return copy.sort((a, b) => {
             const indexA = customOrder.indexOf(a.identity);
             const indexB = customOrder.indexOf(b.identity);
@@ -122,7 +124,7 @@ const GlobalVideoPIP = () => {
             if (indexB !== -1) return 1;
             return 0;
         });
-    }, [participants, customOrder]);
+    }, [participants, customOrder, isNative]);
 
     // Member invite & search states
     const [portalMembers, setPortalMembers] = useState([]);
@@ -243,7 +245,7 @@ const GlobalVideoPIP = () => {
     }, [isDocumentPiPActive]);
 
     useEffect(() => {
-        if (!isConnected) {
+        if (!isConnected || !activeRoom) {
             if (pipWindowRef.current) {
                 pipWindowRef.current.close();
                 pipWindowRef.current = null;
@@ -251,8 +253,26 @@ const GlobalVideoPIP = () => {
                 setIsDocumentPiPActive(false);
             }
             setIsFloatingActive(false);
+            setIsInNativePiP(false);
         }
-    }, [isConnected]);
+    }, [isConnected, activeRoom]);
+
+    useEffect(() => {
+        const handleCallEnded = () => {
+            setIsFloatingActive(false);
+            setIsInNativePiP(false);
+            if (pipWindowRef.current) {
+                pipWindowRef.current.close();
+                pipWindowRef.current = null;
+            }
+        };
+        window.addEventListener('oxypace:call_ended', handleCallEnded);
+        window.addEventListener('oxypace:leave_call', handleCallEnded);
+        return () => {
+            window.removeEventListener('oxypace:call_ended', handleCallEnded);
+            window.removeEventListener('oxypace:leave_call', handleCallEnded);
+        };
+    }, []);
 
     useEffect(() => {
         const handlePipChange = (e) => {
@@ -375,11 +395,17 @@ const GlobalVideoPIP = () => {
     const showOverlayControls = showControls;
 
     const handleDisconnectAction = (e) => {
-        if (e) e.stopPropagation();
-        disconnectFromChannel();
+        if (e) {
+            e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
+        }
+        setIsFloatingActive(false);
+        setIsInNativePiP(false);
         if (pipWindowRef.current) {
             pipWindowRef.current.close();
+            pipWindowRef.current = null;
         }
+        disconnectFromChannel();
     };
 
     const handleSendChatSubmit = (e) => {
@@ -594,7 +620,7 @@ const GlobalVideoPIP = () => {
 
                                     <div className="pip-participant-minimal-badge">
                                         <span className="pip-participant-name-text">
-                                            {p.name}
+                                            {p.name} {!isNative && p.isLocal && '(Sen)'}
                                         </span>
                                         {p.role === 'owner' && <Crown size={10} className="role-icon owner" />}
                                         {p.role === 'admin' && <Shield size={10} className="role-icon admin" />}
@@ -603,34 +629,92 @@ const GlobalVideoPIP = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="pip-empty">Oda boş (Diğer katılımcılar bekleniyor)</div>
+                            <div className="pip-empty">
+                                {isNative ? "Oda boş (Diğer katılımcılar bekleniyor)" : "Oda boş"}
+                            </div>
                         )}
                     </div>
 
                     {!isInNativePiP && (
-                        <div className="pip-controls vertical-controls pip-three-buttons-only">
-                            <button 
-                                className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
-                                onClick={toggleMicrophone}
-                                title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                        isNative ? (
+                            <div 
+                                className="pip-controls vertical-controls pip-three-buttons-only"
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
                             >
-                                {localState.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
-                            </button>
-                            <button 
-                                className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
-                                onClick={toggleCamera}
-                                title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
-                            >
-                                {localState.isCameraOn ? <Video size={16} /> : <VideoOff size={16} />}
-                            </button>
-                            <button 
-                                className="pip-control-btn danger disconnect-btn" 
-                                onClick={handleDisconnectAction}
-                                title="Aramayı Sonlandır"
-                            >
-                                <PhoneOff size={16} />
-                            </button>
-                        </div>
+                                <button 
+                                    className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleMicrophone();
+                                    }}
+                                    title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                                >
+                                    {localState.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                                </button>
+                                <button 
+                                    className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleCamera();
+                                    }}
+                                    title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
+                                >
+                                    {localState.isCameraOn ? <Video size={16} /> : <VideoOff size={16} />}
+                                </button>
+                                <button 
+                                    className="pip-control-btn danger disconnect-btn" 
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={handleDisconnectAction}
+                                    title="Aramayı Sonlandır"
+                                >
+                                    <PhoneOff size={16} />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className={`pip-controls vertical-controls ${isInNativePiP ? 'in-native-pip-controls' : ''}`}>
+                                <button 
+                                    className={`pip-control-btn ${localState.isMuted ? 'danger' : ''}`} 
+                                    onClick={toggleMicrophone}
+                                    title={localState.isMuted ? "Sesi Aç" : "Sesi Kapat"}
+                                >
+                                    {localState.isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+                                </button>
+                                <button 
+                                    className={`pip-control-btn ${!localState.isCameraOn ? 'danger' : ''}`} 
+                                    onClick={toggleCamera}
+                                    title={localState.isCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç"}
+                                >
+                                    {localState.isCameraOn ? <Video size={14} /> : <VideoOff size={14} />}
+                                </button>
+                                <button 
+                                    className={`pip-control-btn ${localState.isDeafened ? 'danger' : ''}`} 
+                                    onClick={toggleDeafen}
+                                    title={localState.isDeafened ? "Kulaklık Sesini Aç" : "Kulaklığı Sustur"}
+                                >
+                                    {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                                </button>
+                                <button 
+                                    className={`pip-control-btn ${localState.isScreenSharing ? 'active-share' : ''}`} 
+                                    onClick={toggleScreenShare}
+                                    title={localState.isScreenSharing ? "Ekran Paylaşımını Durdur" : "Ekranı Paylaş"}
+                                >
+                                    <MonitorUp size={14} />
+                                </button>
+                                <button 
+                                    className="pip-control-btn danger disconnect-btn" 
+                                    onClick={handleDisconnectAction}
+                                    title="Aramayı Sonlandır"
+                                >
+                                    <PhoneOff size={14} />
+                                </button>
+                            </div>
+                        )
                     )}
                 </div>
             )}

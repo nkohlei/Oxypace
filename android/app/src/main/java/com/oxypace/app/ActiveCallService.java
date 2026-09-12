@@ -48,10 +48,12 @@ public class ActiveCallService extends Service {
     // Wake and Wifi locks to prevent background suspension on aggressive Android devices
     private android.os.PowerManager.WakeLock wakeLock = null;
     private android.net.wifi.WifiManager.WifiLock wifiLock = null;
+    public static ActiveCallService sInstance = null;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        sInstance = this;
         handler = new Handler(Looper.getMainLooper());
 
         try {
@@ -96,15 +98,12 @@ public class ActiveCallService extends Service {
 
             createNotificationChannel();
 
-            // Start foreground with media projection and microphone types
+            // Start foreground initially with microphone and camera types (Android 14 requires mediaProjection only AFTER user consent)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     int fgsType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
                     if (Build.VERSION.SDK_INT >= 30) {
                         fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
-                    }
-                    if (Build.VERSION.SDK_INT >= 29) {
-                        fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
                     }
                     startForeground(
                         NOTIFICATION_ID,
@@ -129,6 +128,12 @@ public class ActiveCallService extends Service {
             if (token != null && !token.isEmpty() && serverUrl != null && !serverUrl.isEmpty()) {
                 connectLiveKitNatively(serverUrl, token, userId);
             }
+
+        } else if ("ENABLE_MEDIA_PROJECTION".equals(action)) {
+            elevateToMediaProjection();
+
+        } else if ("DISABLE_MEDIA_PROJECTION".equals(action)) {
+            revertFromMediaProjection();
 
         } else if ("TOGGLE_MIC".equals(action)) {
             isMuted = !isMuted;
@@ -165,6 +170,39 @@ public class ActiveCallService extends Service {
         }
 
         return START_NOT_STICKY;
+    }
+
+    public void elevateToMediaProjection() {
+        isScreenSharing = true;
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                int fgsType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+                }
+                fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+                startForeground(NOTIFICATION_ID, buildNotification(formatDuration()), fgsType);
+                android.util.Log.d("ActiveCallService", "FGS elevated to MEDIA_PROJECTION");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("ActiveCallService", "Failed to elevate FGS to mediaProjection: " + e.getMessage(), e);
+        }
+    }
+
+    public void revertFromMediaProjection() {
+        isScreenSharing = false;
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                int fgsType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    fgsType |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+                }
+                startForeground(NOTIFICATION_ID, buildNotification(formatDuration()), fgsType);
+                android.util.Log.d("ActiveCallService", "FGS reverted from MEDIA_PROJECTION");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("ActiveCallService", "Failed to revert FGS mediaProjection: " + e.getMessage(), e);
+        }
     }
 
     private void stopCall() {
@@ -248,6 +286,9 @@ public class ActiveCallService extends Service {
 
     @Override
     public void onDestroy() {
+        if (sInstance == this) {
+            sInstance = null;
+        }
         stopUpdatingDuration();
         disconnectLiveKitNatively();
         

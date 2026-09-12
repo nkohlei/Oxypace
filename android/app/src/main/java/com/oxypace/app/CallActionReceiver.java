@@ -44,6 +44,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                 com.getcapacitor.Bridge bridge = MainActivity.getBridgeInstance();
                 if (bridge != null && bridge.getWebView() != null) {
                     bridge.getWebView().post(() -> {
+                        bridge.getWebView().resumeTimers();
                         bridge.getWebView().evaluateJavascript(
                             "window.dispatchEvent(new CustomEvent('oxypace:leave_call'));", null
                         );
@@ -51,7 +52,29 @@ public class CallActionReceiver extends BroadcastReceiver {
                 }
             } catch (Exception ignored) {}
 
+            // If Activity is in Picture-in-Picture mode, close the PiP overlay
+            try {
+                MainActivity act = MainActivity.getActivityInstance();
+                if (act != null) {
+                    act.runOnUiThread(() -> {
+                        try {
+                            if (act.isInPictureInPictureMode()) {
+                                act.moveTaskToBack(true);
+                            }
+                        } catch (Exception ignored) {}
+                    });
+                }
+            } catch (Exception ignored) {}
+
         } else if (ACTION_TOGGLE_MIC.equals(action)) {
+            MainActivity.CallManager.sIsMuted = !MainActivity.CallManager.sIsMuted;
+            try {
+                MainActivity act = MainActivity.getActivityInstance();
+                if (act != null) {
+                    act.runOnUiThread(() -> MainActivity.updatePiPParams(act, true));
+                }
+            } catch (Exception ignored) {}
+
             try {
                 Intent toggleMicIntent = new Intent(context, ActiveCallService.class);
                 toggleMicIntent.setAction("TOGGLE_MIC");
@@ -65,6 +88,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                 com.getcapacitor.Bridge bridge = MainActivity.getBridgeInstance();
                 if (bridge != null && bridge.getWebView() != null) {
                     bridge.getWebView().post(() -> {
+                        bridge.getWebView().resumeTimers();
                         bridge.getWebView().evaluateJavascript(
                             "window.dispatchEvent(new CustomEvent('oxypace:toggle_mic'));", null
                         );
@@ -73,11 +97,20 @@ public class CallActionReceiver extends BroadcastReceiver {
             } catch (Exception ignored) {}
 
         } else if (ACTION_TOGGLE_CAMERA.equals(action)) {
+            MainActivity.CallManager.sIsCameraOn = !MainActivity.CallManager.sIsCameraOn;
+            try {
+                MainActivity act = MainActivity.getActivityInstance();
+                if (act != null) {
+                    act.runOnUiThread(() -> MainActivity.updatePiPParams(act, true));
+                }
+            } catch (Exception ignored) {}
+
             // Toggle camera state in React WebRTC context
             try {
                 com.getcapacitor.Bridge bridge = MainActivity.getBridgeInstance();
                 if (bridge != null && bridge.getWebView() != null) {
                     bridge.getWebView().post(() -> {
+                        bridge.getWebView().resumeTimers();
                         bridge.getWebView().evaluateJavascript(
                             "window.dispatchEvent(new CustomEvent('oxypace:toggle_camera'));", null
                         );

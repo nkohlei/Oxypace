@@ -535,7 +535,8 @@ export const VoiceProvider = ({ children }) => {
             });
 
             // Independent screenshare card
-            if (rState.isScreenSharing && rTracks.screen) {
+            const effectiveScreenTrack = rTracks.screen || (rState.isScreenSharing && !rState.isCameraOn ? rTracks.video : null);
+            if (rState.isScreenSharing && effectiveScreenTrack) {
                 list.push({
                     identity: `${p.userId}-screen`,
                     name: `${p.username} (Ekran)`,
@@ -548,7 +549,7 @@ export const VoiceProvider = ({ children }) => {
                     isSpeaking: false,
                     videoTrack: null,
                     audioTrack: rTracks.screenAudio ? makeTrackObject(rTracks.screenAudio) : null,
-                    screenShareTrack: makeTrackObject(rTracks.screen),
+                    screenShareTrack: makeTrackObject(effectiveScreenTrack),
                 });
             }
         });
@@ -586,9 +587,10 @@ export const VoiceProvider = ({ children }) => {
                 const offer = await pc.createOffer();
                 const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
                 await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                if (activeRoom) {
+                const currentRoom = activeRoomRef.current;
+                if (currentRoom) {
                     safeEmit('voice:video-offer', {
-                        roomName: activeRoom.roomName,
+                        roomName: currentRoom.roomName,
                         targetUserId,
                         sdp: prioritizedOffer
                     });
@@ -598,7 +600,7 @@ export const VoiceProvider = ({ children }) => {
                 console.error("Renegotiation failed for:", targetUserId, err);
             }
         }
-    }, [activeRoom, safeEmit]);
+    }, [safeEmit]);
 
     // Helper to process queued candidates for a peer
     const processQueuedCandidates = async (userId, pc) => {
@@ -761,9 +763,12 @@ export const VoiceProvider = ({ children }) => {
                     console.log(`[WebRTC] remote audioTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 }
             } else if (event.track.kind === 'video') {
-                // Determine if screenshare: check content hint, stream ID string, track ID difference, or custom stream ID mismatch
+                const rState = remoteStatesRef.current.get(targetUserId);
+                // Determine if screenshare: check content hint, stream ID, track label, remote state or video slot occupancy
                 const isScreen = event.track.contentHint === 'text' || 
                                  stream.id.includes('screen') || 
+                                 (event.track.label && event.track.label.toLowerCase().includes('screen')) ||
+                                 (rState && rState.isScreenSharing && !tracks.screen) ||
                                  (tracks.video && tracks.video.id !== event.track.id) ||
                                  (tracks.camStreamId && stream.id !== tracks.camStreamId);
 
@@ -931,6 +936,10 @@ export const VoiceProvider = ({ children }) => {
         if (Capacitor.isNativePlatform()) {
             CallManager.setInCall({ isInCall: false }).catch(err => console.warn(err));
         }
+
+        try {
+            window.dispatchEvent(new CustomEvent('oxypace:call_ended'));
+        } catch (ignored) {}
     }, [activeRoom, user, safeEmit]);
 
     // Handle WebSocket Signaling Events
@@ -1069,6 +1078,20 @@ export const VoiceProvider = ({ children }) => {
         const handleStateUpdate = ({ userId, isMuted, isCameraOn, isScreenSharing }) => {
             console.log(`[Socket] voice:state-update received for user ${userId}: Mute=${isMuted}, Camera=${isCameraOn}, Screen=${isScreenSharing}`);
             remoteStatesRef.current.set(userId, { isMuted, isCameraOn, isScreenSharing });
+
+            const rTracks = remoteTracksRef.current.get(userId);
+            if (rTracks) {
+                if (isScreenSharing && !rTracks.screen && rTracks.video) {
+                    // Track was initially classified as video track because camera was off
+                    rTracks.screen = rTracks.video;
+                    if (!isCameraOn) {
+                        rTracks.video = null;
+                    }
+                } else if (!isScreenSharing && rTracks.screen) {
+                    rTracks.screen = null;
+                }
+            }
+
             updateParticipantList();
         };
 
@@ -1477,17 +1500,35 @@ export const VoiceProvider = ({ children }) => {
                         canvas.width = 540;
                         canvas.height = 960;
                         const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#0a0d14';
+                        ctx.fillRect(0, 0, 540, 960);
+
+                        let isDecoding = false;
+                        let pendingBase64 = null;
 
                         const screenImg = new Image();
                         screenImg.onload = () => {
-                            if (canvas.width !== screenImg.width || canvas.height !== screenImg.height) {
-                                canvas.width = screenImg.width;
-                                canvas.height = screenImg.height;
+                            try {
+                                ctx.drawImage(screenImg, 0, 0, canvas.width, canvas.height);
+                            } catch (drawErr) {}
+                            isDecoding = false;
+                            if (pendingBase64) {
+                                const next = pendingBase64;
+                                pendingBase64 = null;
+                                isDecoding = true;
+                                screenImg.src = "data:image/jpeg;base64," + next;
                             }
-                            ctx.drawImage(screenImg, 0, 0);
+                        };
+                        screenImg.onerror = () => {
+                            isDecoding = false;
                         };
 
                         window.onNativeScreenFrame = (base64) => {
+                            if (isDecoding) {
+                                pendingBase64 = base64;
+                                return;
+                            }
+                            isDecoding = true;
                             screenImg.src = "data:image/jpeg;base64," + base64;
                         };
 
