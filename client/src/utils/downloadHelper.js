@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import axios from 'axios';
+import { getImageUrl } from './imageUtils';
 
 const Downloader = registerPlugin('Downloader');
 
@@ -205,11 +206,31 @@ const createDownloadProgressToast = (filename) => {
 export const downloadFile = async (url, filename) => {
     let progressToast = null;
     try {
-        if (!filename) {
-            filename = url.split('/').pop() || `oxypace-${Date.now()}`;
+        if (!url) return;
+
+        let fullUrl = url;
+        if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+            fullUrl = getImageUrl(fullUrl);
         }
 
-        progressToast = createDownloadProgressToast(filename);
+        // Clean filename: strip query params (?...) and hash (#...)
+        let cleanFilename = filename || fullUrl.split('/').pop() || `oxypace-${Date.now()}`;
+        cleanFilename = cleanFilename.split('?')[0].split('#')[0];
+        cleanFilename = cleanFilename.replace(/[/\\?%*:|"<>]/g, '-').trim();
+        if (!cleanFilename) cleanFilename = `oxypace-${Date.now()}`;
+
+        // Ensure proper extension if missing
+        if (!cleanFilename.includes('.')) {
+            const urlLower = fullUrl.split('?')[0].toLowerCase();
+            if (urlLower.endsWith('.mp4') || urlLower.includes('.mp4')) cleanFilename += '.mp4';
+            else if (urlLower.endsWith('.pdf') || urlLower.includes('.pdf')) cleanFilename += '.pdf';
+            else if (urlLower.endsWith('.gif') || urlLower.includes('.gif')) cleanFilename += '.gif';
+            else if (urlLower.endsWith('.png') || urlLower.includes('.png')) cleanFilename += '.png';
+            else if (urlLower.endsWith('.webp') || urlLower.includes('.webp')) cleanFilename += '.webp';
+            else cleanFilename += '.jpg';
+        }
+
+        progressToast = createDownloadProgressToast(cleanFilename);
 
         const counter = new AdaptiveProgressCounter(
             (percent) => progressToast.updateProgress(percent),
@@ -217,81 +238,51 @@ export const downloadFile = async (url, filename) => {
         );
 
         if (Capacitor.isNativePlatform()) {
-            const notifId = Math.floor(Math.random() * 1000000);
+            let progressListener = null;
             try {
-                await LocalNotifications.schedule({
-                    notifications: [
-                        {
-                            title: 'Dosya İndiriliyor',
-                            body: `${filename} indiriliyor...`,
-                            id: notifId
+                try {
+                    progressListener = await Downloader.addListener('downloadProgress', (data) => {
+                        if (data && typeof data.percentage === 'number') {
+                            counter.setTarget(data.percentage);
                         }
-                    ]
-                });
-            } catch (err) {}
-
-            try {
-                const response = await fetch(url);
-                const reader = response.body.getReader();
-                const contentLength = +response.headers.get('Content-Length') || 0;
-                let receivedLength = 0;
-                let chunks = [];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    receivedLength += value.length;
-                    if (contentLength) {
-                        const percent = (receivedLength * 100) / contentLength;
-                        counter.setTarget(percent);
-                    }
+                        if (data && data.status === 8) { // STATUS_SUCCESSFUL
+                            counter.finish();
+                            if (progressListener) {
+                                progressListener.remove?.();
+                                progressListener = null;
+                            }
+                        } else if (data && data.status === 16) { // STATUS_FAILED
+                            progressToast.errorProgress('İndirme başarısız oldu');
+                            if (progressListener) {
+                                progressListener.remove?.();
+                                progressListener = null;
+                            }
+                        }
+                    });
+                } catch (listenerErr) {
+                    console.warn('[Download] Could not attach listener to Downloader:', listenerErr);
                 }
 
-                counter.finish();
+                await Downloader.downloadFile({
+                    url: fullUrl,
+                    filename: cleanFilename,
+                    isApk: false,
+                    title: cleanFilename,
+                    description: 'Dosya indiriliyor...'
+                });
 
-                const blob = new Blob(chunks);
-                const fileReader = new FileReader();
-                fileReader.readAsDataURL(blob);
-                fileReader.onloadend = async () => {
-                    const base64data = fileReader.result;
-                    try {
-                        await Filesystem.writeFile({
-                            path: filename,
-                            data: base64data,
-                            directory: Directory.ExternalStorage,
-                            recursive: true
-                        });
-                        try {
-                            await LocalNotifications.schedule({
-                                notifications: [
-                                    {
-                                        title: 'İndirme Tamamlandı',
-                                        body: `${filename} başarıyla indirildi.`,
-                                        id: notifId
-                                    }
-                                ]
-                            });
-                        } catch (e) {}
-                    } catch (err) {
-                        try {
-                            await Filesystem.writeFile({
-                                path: `Oxypace/${filename}`,
-                                data: base64data,
-                                directory: Directory.Documents,
-                                recursive: true
-                            });
-                        } catch (fallbackErr) {
-                            progressToast.errorProgress('Dosya kaydedilemedi');
-                        }
-                    }
-                };
-            } catch (fetchErr) {
-                progressToast.errorProgress('Bağlantı hatası oluştu');
+            } catch (nativeErr) {
+                console.warn('[Download] Native DownloaderPlugin error, falling back to system intent:', nativeErr);
+                try {
+                    window.open(fullUrl, '_system');
+                    counter.finish();
+                } catch (fallbackErr) {
+                    progressToast.errorProgress('İndirme başlatılamadı');
+                }
             }
         } else {
             // WEB DOWNLOAD VIA BACKEND PROXY WITH LIVE ADAPTIVE AXIOS PROGRESS
-            const proxyUrl = `/api/posts/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+            const proxyUrl = `/api/posts/download?url=${encodeURIComponent(fullUrl)}&filename=${encodeURIComponent(cleanFilename)}`;
 
             const response = await axios.get(proxyUrl, {
                 responseType: 'blob',
@@ -300,7 +291,6 @@ export const downloadFile = async (url, filename) => {
                         const percent = (progressEvent.loaded * 100) / progressEvent.total;
                         counter.setTarget(percent);
                     } else if (progressEvent.loaded) {
-                        // Fallback estimate if Content-Length header is omitted by proxy
                         const estPercent = Math.min(95, Math.round(progressEvent.loaded / 100000));
                         counter.setTarget(estPercent);
                     }
@@ -313,7 +303,7 @@ export const downloadFile = async (url, filename) => {
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
-            a.download = filename;
+            a.download = cleanFilename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

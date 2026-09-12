@@ -217,32 +217,43 @@ export const initializeVoiceHandler = (io) => {
 
         // ─── Broadcast Chat Messages ───
         socket.on('voice:chat-message', ({ id, roomName, text, senderName, senderId, timestamp }) => {
-            if (!roomName) return;
-            const msgId = id || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            const msgTimestamp = timestamp || new Date().toISOString();
-            
+            if (!roomName || !text) return;
+            const now = Date.now();
+            const sSenderId = String(senderId || '');
+
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
                 if (!roomData.chatHistory) roomData.chatHistory = [];
+                // Discard rapid identical duplicate from same sender within 800ms
+                const lastMsg = roomData.chatHistory[roomData.chatHistory.length - 1];
+                if (lastMsg && String(lastMsg.senderId) === sSenderId && lastMsg.text === text && (now - (lastMsg.receivedAt || 0)) < 800) {
+                    console.log(`[VoiceChat] Ignored duplicate message from ${sSenderId}: "${text}"`);
+                    return;
+                }
+
+                const msgId = id || `${now}-${Math.random().toString(36).substring(2, 9)}`;
+                const msgTimestamp = timestamp || new Date().toISOString();
+
                 roomData.chatHistory.push({
                     id: msgId,
                     text,
                     senderName,
-                    senderId,
-                    timestamp: msgTimestamp
+                    senderId: sSenderId,
+                    timestamp: msgTimestamp,
+                    receivedAt: now
                 });
                 if (roomData.chatHistory.length > 100) {
                     roomData.chatHistory.shift();
                 }
-            }
 
-            io.to(`voice:${roomName}`).emit('voice:chat-message', {
-                id: msgId,
-                text,
-                senderName,
-                senderId,
-                timestamp: msgTimestamp
-            });
+                io.to(`voice:${roomName}`).emit('voice:chat-message', {
+                    id: msgId,
+                    text,
+                    senderName,
+                    senderId: sSenderId,
+                    timestamp: msgTimestamp
+                });
+            }
         });
 
         // ─── Watch Party (YouTube / Stream Sync) ───

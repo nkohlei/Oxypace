@@ -13,11 +13,18 @@ const VoiceChatSidebar = React.memo(({ messages, onSendMessage, onClose, isRestr
         }
     }, [messages]);
 
+    const isSubmittingRef = useRef(false);
+
     const handleSend = (e) => {
-        e.preventDefault();
-        if (inputText.trim()) {
-            onSendMessage(inputText);
+        if (e && e.preventDefault) e.preventDefault();
+        const trimmed = inputText.trim();
+        if (trimmed && !isSubmittingRef.current) {
+            isSubmittingRef.current = true;
             setInputText('');
+            onSendMessage(trimmed);
+            setTimeout(() => {
+                isSubmittingRef.current = false;
+            }, 350);
         }
     };
 

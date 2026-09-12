@@ -149,6 +149,10 @@ export const VoiceProvider = ({ children }) => {
     // Derived UI states
     const [participants, setParticipants] = useState([]);
     const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
+    const localStateRef = useRef(localState);
+    useEffect(() => {
+        localStateRef.current = localState;
+    }, [localState]);
     const [pinnedParticipant, setPinnedParticipant] = useState(null);
 
     // Device management
@@ -540,7 +544,7 @@ export const VoiceProvider = ({ children }) => {
 
             // Independent screenshare card
             const effectiveScreenTrack = rTracks.screen || (rState.isScreenSharing && !rState.isCameraOn ? rTracks.video : null);
-            if (rState.isScreenSharing && effectiveScreenTrack) {
+            if ((rState.isScreenSharing || rTracks.screen) && (rTracks.screen || effectiveScreenTrack)) {
                 list.push({
                     identity: `${p.userId}-screen`,
                     name: `${p.username} (Ekran)`,
@@ -553,7 +557,7 @@ export const VoiceProvider = ({ children }) => {
                     isSpeaking: false,
                     videoTrack: null,
                     audioTrack: rTracks.screenAudio ? makeTrackObject(rTracks.screenAudio) : null,
-                    screenShareTrack: makeTrackObject(effectiveScreenTrack),
+                    screenShareTrack: makeTrackObject(rTracks.screen || effectiveScreenTrack),
                 });
             }
         });
@@ -640,11 +644,16 @@ export const VoiceProvider = ({ children }) => {
             });
         }
 
-        // Add local screen share track if currently screen sharing
-        if (localState.isScreenSharing && screenStreamRef.current) {
+        // Add local screen share track if currently screen sharing or active stream exists
+        const hasLiveScreen = screenStreamRef.current && 
+            screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
+        if (hasLiveScreen || (localStateRef.current?.isScreenSharing && screenStreamRef.current)) {
             const screenTrack = screenStreamRef.current.getVideoTracks()[0];
             const screenAudioTrack = screenStreamRef.current.getAudioTracks()[0];
             if (screenTrack) {
+                try {
+                    screenTrack.contentHint = 'detail';
+                } catch (e) {}
                 const sender = pc.addTrack(screenTrack, screenStreamRef.current);
                 if (sender) {
                     try {
@@ -658,7 +667,7 @@ export const VoiceProvider = ({ children }) => {
                             params.encodings = [{}];
                         }
                         params.encodings.forEach(enc => {
-                            enc.maxBitrate = 2000000; // Balanced 2 Mbps for smooth high quality without network congestion
+                            enc.maxBitrate = 2500000; // 2.5 Mbps for smooth high quality screen share
                             enc.priority = 'high';
                             enc.networkPriority = 'high';
                         });
@@ -680,12 +689,13 @@ export const VoiceProvider = ({ children }) => {
         pc.onnegotiationneeded = async () => {
             try {
                 // To avoid glare/collision on initial track addition, only the designated offer creator
-                // initiates offers unless the connection is already stable and we are explicitly renegotiating.
+                // initiates offers unless connection has active screen stream or is stable renegotiating.
                 if (pc.signalingState !== 'stable') {
                     console.log(`[WebRTC] onnegotiationneeded ignored because signalingState is ${pc.signalingState}`);
                     return;
                 }
-                if (!isOfferCreator) {
+                const isScreenLive = screenStreamRef.current?.getVideoTracks().some(t => t.readyState === 'live');
+                if (!isOfferCreator && !isScreenLive) {
                     console.log(`[WebRTC] onnegotiationneeded ignored for non-offer creator ${targetUserId}`);
                     return;
                 }
@@ -770,6 +780,7 @@ export const VoiceProvider = ({ children }) => {
                 const rState = remoteStatesRef.current.get(targetUserId);
                 // Determine if screenshare: check content hint, stream ID, track label, remote state or video slot occupancy
                 const isScreen = event.track.contentHint === 'text' || 
+                                 event.track.contentHint === 'detail' ||
                                  stream.id.includes('screen') || 
                                  (event.track.label && event.track.label.toLowerCase().includes('screen')) ||
                                  (rState && rState.isScreenSharing && !tracks.screen) ||
@@ -1050,6 +1061,22 @@ export const VoiceProvider = ({ children }) => {
                 }
             });
 
+            // If local user is currently sharing screen, announce state so all peers stay in sync
+            const hasLiveScreen = screenStreamRef.current && 
+                screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
+            if (hasLiveScreen || localStateRef.current?.isScreenSharing) {
+                const curRoom = activeRoomRef.current;
+                if (curRoom && localUserId) {
+                    safeEmit('voice:state-update', {
+                        roomName: curRoom.roomName,
+                        userId: localUserId,
+                        isMuted: localStateRef.current?.isMuted ?? true,
+                        isCameraOn: localStateRef.current?.isCameraOn ?? false,
+                        isScreenSharing: true
+                    });
+                }
+            }
+
             updateParticipantList();
         };
 
@@ -1057,6 +1084,21 @@ export const VoiceProvider = ({ children }) => {
             console.log(`[Socket] voice:user-joined: ${data.username} (${data.userId})`);
             if (String(data.userId) !== user?._id?.toString()) {
                 playInteractionSound('join');
+                // Re-broadcast local state (especially screen share and camera) to ensure new peer has full state immediately
+                const hasLiveScreen = screenStreamRef.current && 
+                    screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
+                if (hasLiveScreen || localStateRef.current?.isScreenSharing || localStateRef.current?.isCameraOn) {
+                    const curRoom = activeRoomRef.current;
+                    if (curRoom) {
+                        safeEmit('voice:state-update', {
+                            roomName: curRoom.roomName,
+                            userId: user?._id?.toString(),
+                            isMuted: localStateRef.current?.isMuted ?? true,
+                            isCameraOn: localStateRef.current?.isCameraOn ?? false,
+                            isScreenSharing: !!(hasLiveScreen || localStateRef.current?.isScreenSharing)
+                        });
+                    }
+                }
             }
         };
 
@@ -1227,6 +1269,32 @@ export const VoiceProvider = ({ children }) => {
                         sdp: prioritizedAnswer
                     });
                     console.log(`[Socket] video-answer gönderildi to ${senderId}`);
+
+                    // If local user is sharing screen, renegotiate so the new peer receives our screen track
+                    const hasLiveScreen = screenStreamRef.current && 
+                        screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
+                    if (hasLiveScreen) {
+                        setTimeout(async () => {
+                            try {
+                                if (pc.signalingState === 'stable') {
+                                    console.log(`[WebRTC] Initiating screenshare renegotiation offer to newly joined ${senderId}`);
+                                    const renegOffer = await pc.createOffer();
+                                    const prioritizedRenegOffer = prioritizeVideoCodec(renegOffer.sdp);
+                                    await pc.setLocalDescription({ type: 'offer', sdp: prioritizedRenegOffer });
+                                    const curRoom = activeRoomRef.current;
+                                    if (curRoom) {
+                                        safeEmit('voice:video-offer', {
+                                            roomName: curRoom.roomName,
+                                            targetUserId: senderId,
+                                            sdp: prioritizedRenegOffer
+                                        });
+                                    }
+                                }
+                            } catch (renegErr) {
+                                console.warn('[WebRTC] Screenshare renegotiation offer failed:', renegErr);
+                            }
+                        }, 350);
+                    }
                 } else {
                     console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
                 }
@@ -1602,9 +1670,12 @@ export const VoiceProvider = ({ children }) => {
                         };
 
                         if (typeof canvas.captureStream === 'function') {
-                            screenStream = canvas.captureStream(15);
+                            screenStream = canvas.captureStream(25);
                             const vTrack = screenStream.getVideoTracks()[0];
                             if (vTrack) {
+                                try {
+                                    vTrack.contentHint = 'detail';
+                                } catch (e) {}
                                 const origStop = vTrack.stop.bind(vTrack);
                                 vTrack.stop = () => {
                                     window.onNativeScreenFrame = null;
@@ -1889,17 +1960,26 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, localState.isCameraOn, updateParticipantList]);
 
-    // Chat messaging
+    // Chat messaging with rapid multi-click debounce
+    const lastSentMsgRef = useRef({ text: '', time: 0 });
     const sendChatMessage = useCallback(async (text) => {
-        if (!text.trim() || !activeRoom) return;
+        const trimmed = text?.trim();
+        if (!trimmed || !activeRoom) return;
 
-        const msgId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const now = Date.now();
+        if (lastSentMsgRef.current.text === trimmed && (now - lastSentMsgRef.current.time) < 800) {
+            console.log('[VoiceChat] Ignored duplicate rapid message send:', trimmed);
+            return;
+        }
+        lastSentMsgRef.current = { text: trimmed, time: now };
+
+        const msgId = `${now}-${Math.random().toString(36).substring(2, 9)}`;
         const timestamp = new Date().toISOString();
 
         safeEmit('voice:chat-message', {
             id: msgId,
             roomName: activeRoom.roomName,
-            text,
+            text: trimmed,
             senderName: user?.profile?.displayName || user?.username || 'Sen',
             senderId: user?._id?.toString(),
             timestamp,
@@ -1915,7 +1995,11 @@ export const VoiceProvider = ({ children }) => {
             const msgId = msgObj.id || `${msgObj.senderId}-${msgObj.timestamp || Date.now()}-${msgObj.text}`;
             
             setChatMessages(prev => {
-                if (prev.some(m => m.id === msgId)) {
+                const isDuplicate = prev.some(m => 
+                    m.id === msgId || 
+                    (String(m.senderId) === String(msgObj.senderId) && m.text === msgObj.text && Math.abs(new Date(m.timestamp).getTime() - new Date(msgObj.timestamp || Date.now()).getTime()) < 1000)
+                );
+                if (isDuplicate) {
                     return prev;
                 }
                 return [...prev, {
@@ -2098,14 +2182,14 @@ export const VoiceProvider = ({ children }) => {
 
     // Sync local call state (mic, camera, screenshare) to Android native PiP & notification bar
     useEffect(() => {
-        if (Capacitor.isNativePlatform()) {
+        if (Capacitor.isNativePlatform() && activeRoom) {
             CallManager.updateCallState({
                 isMuted: localState.isMuted,
                 isCameraOn: localState.isCameraOn,
                 isScreenSharing: localState.isScreenSharing
             }).catch(() => {});
         }
-    }, [localState.isMuted, localState.isCameraOn, localState.isScreenSharing]);
+    }, [activeRoom, localState.isMuted, localState.isCameraOn, localState.isScreenSharing]);
 
     // Handle Android Native Notification Bar and PiP RemoteAction Events
     useEffect(() => {

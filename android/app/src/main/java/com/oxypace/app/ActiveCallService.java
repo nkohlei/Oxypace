@@ -79,6 +79,14 @@ public class ActiveCallService extends Service {
 
         String action = intent.getAction();
 
+        // If action is not START_CALL and there is no active call, immediately stop and dismiss notification
+        if (!"START_CALL".equals(action)) {
+            if (roomStartedAtEpoch <= 0 || !MainActivity.CallManager.isInCall) {
+                stopCall();
+                return START_NOT_STICKY;
+            }
+        }
+
         if ("START_CALL".equals(action)) {
             channelName = intent.getStringExtra("channelName");
             if (channelName == null || channelName.isEmpty()) channelName = "Görüntülü Sohbet";
@@ -345,7 +353,18 @@ public class ActiveCallService extends Service {
         }
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        if (!MainActivity.CallManager.isInCall) {
+            stopCall();
+        }
+    }
+
     private String formatDuration() {
+        if (roomStartedAtEpoch <= 0) {
+            return "00:00";
+        }
         long elapsedMs = System.currentTimeMillis() - roomStartedAtEpoch;
         if (elapsedMs < 0) elapsedMs = 0;
 

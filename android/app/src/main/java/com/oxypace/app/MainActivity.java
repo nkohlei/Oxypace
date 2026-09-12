@@ -169,6 +169,11 @@ public class MainActivity extends BridgeActivity {
 
         @PluginMethod
         public void updateCallState(PluginCall call) {
+            if (!isInCall) {
+                call.resolve();
+                return;
+            }
+
             sIsMuted = call.getBoolean("isMuted", sIsMuted);
             sIsCameraOn = call.getBoolean("isCameraOn", sIsCameraOn);
             sIsScreenSharing = call.getBoolean("isScreenSharing", sIsScreenSharing);
@@ -446,7 +451,7 @@ public class MainActivity extends BridgeActivity {
                     if (image == null) return;
 
                     long now = System.currentTimeMillis();
-                    if (now - lastFrameTimeMs < 100) {
+                    if (now - lastFrameTimeMs < 35) {
                         return;
                     }
                     lastFrameTimeMs = now;
@@ -468,8 +473,8 @@ public class MainActivity extends BridgeActivity {
                         ? android.graphics.Bitmap.createBitmap(bitmap, 0, 0, captureWidth, captureHeight)
                         : bitmap;
 
-                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                    finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 45, baos);
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream(65536);
+                    finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, baos);
                     byte[] jpegBytes = baos.toByteArray();
                     String base64 = android.util.Base64.encodeToString(jpegBytes, android.util.Base64.NO_WRAP);
 
@@ -604,6 +609,16 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AuthSync.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
+
+        // Dismiss any orphaned call notification on app launch if not in active call
+        try {
+            if (!CallManager.isInCall) {
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    nm.cancel(ActiveCallService.NOTIFICATION_ID);
+                }
+            }
+        } catch (Exception ignored) {}
 
         // Programmatically configure window to display over lock screen and turn screen on (Android 8.0 / 27+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
