@@ -337,18 +337,43 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     return getImageUrl(url);
   };
 
-  // --- URL resolution ---
-  const src144  = resolveVideoUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']  || qualities?.low || lowVideoUrl || src);
-  const src360  = resolveVideoUrl(video360  || qualities?.video360  || qualities?.p360  || qualities?.['360p']  || src144);
-  const src720  = resolveVideoUrl(video720  || qualities?.video720  || qualities?.p720  || qualities?.['720p']  || src360);
-  const src1080 = resolveVideoUrl(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
-  const src2160 = resolveVideoUrl(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p'] || src1080);
+  // --- URL resolution & natural dimension analysis ---
+  const rawBase = resolveVideoUrl(videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
 
-  const has2160 = !!(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p']);
-  const has1080 = !!(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p'] || videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
-  const has720  = !!(video720  || qualities?.video720  || qualities?.p720  || qualities?.['720p']);
-  const has360  = !!(video360  || qualities?.video360  || qualities?.p360  || qualities?.['360p']);
-  const has144  = !!(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']);
+  const raw2160 = resolveVideoUrl(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p']);
+  const raw1080 = resolveVideoUrl(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p']);
+  const raw720  = resolveVideoUrl(video720  || qualities?.video720  || qualities?.p720  || qualities?.['720p']);
+  const raw360  = resolveVideoUrl(video360  || qualities?.video360  || qualities?.p360  || qualities?.['360p']);
+  const raw144  = resolveVideoUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']);
+
+  const natH = naturalDimensions?.height || 0;
+  const natW = naturalDimensions?.width || 0;
+  const isNatural4K = natH >= 2160 || natW >= 3840;
+  const isNatural1080 = (natH >= 1080 || natW >= 1920) && !isNatural4K;
+  const isNatural720  = (natH >= 720  || natW >= 1280) && !isNatural4K && !isNatural1080;
+  const isNatural360  = (natH >= 360  || natW >= 640 ) && !isNatural4K && !isNatural1080 && !isNatural720;
+
+  // 2160p (4K): explicitly present OR detected from video element metadata
+  const has2160 = !!raw2160 || isNatural4K;
+  const src2160 = raw2160 || (has2160 ? rawBase : '');
+
+  // 1080p:
+  // If video is 4K, 1080p ONLY exists if an explicit 1080p transcode has been provided!
+  // If video is not 4K, it is true if explicit 1080p exists OR if video is naturally 1080p OR default fallback
+  const has1080 = !!raw1080 || (!has2160 && (isNatural1080 || (!raw720 && !raw360 && !raw144 && !!rawBase)));
+  const src1080 = raw1080 || (has1080 ? (!has2160 ? rawBase : '') : '');
+
+  // 720p:
+  const has720 = !!raw720 || (!has2160 && !has1080 && isNatural720);
+  const src720 = raw720 || (has720 ? rawBase : (src1080 || src2160 || rawBase));
+
+  // 360p:
+  const has360 = !!raw360 || (!has2160 && !has1080 && !has720 && isNatural360);
+  const src360 = raw360 || (has360 ? rawBase : (src720 || src1080 || src2160 || rawBase));
+
+  // 144p:
+  const has144 = !!raw144;
+  const src144 = raw144 || resolveVideoUrl(qualities?.low || lowVideoUrl) || src360 || src720 || src1080 || src2160 || rawBase;
 
   let maxResolution = '1080p';
   if (has2160) maxResolution = '2160p';

@@ -2,6 +2,24 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { AdaptiveProgressCounter } from '../utils/downloadHelper';
 
+// Extract video dimensions from file blob
+const getVideoDimensions = (file) => new Promise((resolve) => {
+    try {
+        const v = document.createElement('video');
+        v.preload = 'metadata';
+        v.onloadedmetadata = () => {
+            const width = v.videoWidth || 0;
+            const height = v.videoHeight || 0;
+            try { URL.revokeObjectURL(v.src); } catch (_) {}
+            resolve({ width, height });
+        };
+        v.onerror = () => resolve({ width: 0, height: 0 });
+        v.src = URL.createObjectURL(file);
+    } catch (_) {
+        resolve({ width: 0, height: 0 });
+    }
+});
+
 // Upload original video directly to Cloudflare R2
 const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onProgress) => {
     const { data: { uploadUrl, mediaKey } } = await axios.post('/api/media/presigned-url', {
@@ -50,6 +68,9 @@ export const useUploadStore = create((set, get) => ({
         }));
 
         try {
+            // Read dimensions in background while uploading
+            const dimPromise = getVideoDimensions(file);
+
             const counter = new AdaptiveProgressCounter(
                 (p) => {
                     set((state) => {
@@ -77,6 +98,8 @@ export const useUploadStore = create((set, get) => ({
 
             counter.finish();
 
+            const { width, height } = await dimPromise;
+
             // 2. Set stage to complete
             set((state) => {
                 const current = state.activeUploads[uploadKey];
@@ -97,6 +120,8 @@ export const useUploadStore = create((set, get) => ({
                 quotedPostId,
                 mediaKey,
                 mediaType: 'video',
+                videoWidth: width,
+                videoHeight: height,
             };
 
             const response = await axios.post('/api/posts', postData);

@@ -365,15 +365,18 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
         if (prefFormat === 'mp4') {
             // Evrensel MP4: Galeri uyumlu H.264 transcode akışlarını önceliklendir
+            if (prefQuality === '2160' && url2160) return url2160;
             if (prefQuality === '1080' && url1080) return url1080;
             if (prefQuality === '720' && url720) return url720;
             if (prefQuality === '360' && url360) return url360;
             if (prefQuality === '144' && url144) return url144;
 
+            if (url2160 && prefQuality === '2160') return url2160;
             if (url1080) return url1080;
             if (url720) return url720;
             if (url360) return url360;
             if (url144) return url144;
+            if (url2160) return url2160;
             return rawMedia;
         } else {
             // Orijinal: En yüksek ham kaynak dosyasını önceliklendir

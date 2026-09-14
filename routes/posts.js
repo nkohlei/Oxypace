@@ -157,24 +157,39 @@ router.post(
                         postData.isProcessing = true;
                         postData.processingProgress = 0;
                         postData.estimatedTime = 'Hesaplanıyor...';
-                        // IMPORTANT: Kalite alanları (p1080, video1080, vb.) kasıtlı olarak boş bırakılıyor.
-                        // Transcode tamamlanmadan önce orijinal (ham) dosya kalite alanlarına yazılırsa
-                        // kullanıcı '1080p' etiketiyle gerçekte 4K/HEVC/AV1 dosyası indirebilir.
-                        // Bu alanlar videoTranscoder.js tarafından H.264 transcode tamamlandığında doldurulur.
+
+                        const clientWidth = Number(req.body.videoWidth) || 0;
+                        const clientHeight = Number(req.body.videoHeight) || 0;
+
+                        let initialP2160 = '';
+                        let initialP1080 = '';
+                        let initialP720 = '';
+                        let initialP360 = '';
+
+                        if (clientHeight >= 2160 || clientWidth >= 3840) {
+                            initialP2160 = actualVideoUrl;
+                        } else if (clientHeight >= 1080 || clientWidth >= 1920) {
+                            initialP1080 = actualVideoUrl;
+                        } else if (clientHeight >= 720 || clientWidth >= 1280) {
+                            initialP720 = actualVideoUrl;
+                        } else if (clientHeight >= 360 || clientWidth >= 640) {
+                            initialP360 = actualVideoUrl;
+                        }
+
                         postData.videoQualities = {
                             high:  actualVideoUrl,
                             low:   actualVideoUrl,
                             p144:  '',
-                            p360:  '',
-                            p720:  '',
-                            p1080: '',
-                            p2160: ''
+                            p360:  initialP360,
+                            p720:  initialP720,
+                            p1080: initialP1080,
+                            p2160: initialP2160
                         };
                         postData.video144    = '';
-                        postData.video360    = '';
-                        postData.video720    = '';
-                        postData.video1080   = '';
-                        postData.video2160   = '';
+                        postData.video360    = initialP360;
+                        postData.video720    = initialP720;
+                        postData.video1080   = initialP1080;
+                        postData.video2160   = initialP2160;
                         postData.videoUrl    = actualVideoUrl;
                         postData.lowVideoUrl = actualVideoUrl;
                         postData.media       = actualVideoUrl;
@@ -236,22 +251,39 @@ router.post(
                     postData.isProcessing = true;
                     postData.processingProgress = 0;
                     postData.estimatedTime = 'Hesaplanıyor...';
-                    // IMPORTANT: Kalite alanları kasıtlı olarak boş bırakılıyor.
-                    // videoTranscoder.js H.264 transcode tamamlandığında doldurur.
+
+                    const clientWidth = Number(req.body.videoWidth) || 0;
+                    const clientHeight = Number(req.body.videoHeight) || 0;
+
+                    let initialP2160 = '';
+                    let initialP1080 = '';
+                    let initialP720 = '';
+                    let initialP360 = '';
+
+                    if (clientHeight >= 2160 || clientWidth >= 3840) {
+                        initialP2160 = actualVideoUrl;
+                    } else if (clientHeight >= 1080 || clientWidth >= 1920) {
+                        initialP1080 = actualVideoUrl;
+                    } else if (clientHeight >= 720 || clientWidth >= 1280) {
+                        initialP720 = actualVideoUrl;
+                    } else if (clientHeight >= 360 || clientWidth >= 640) {
+                        initialP360 = actualVideoUrl;
+                    }
+
                     postData.videoQualities = {
                         high:  actualVideoUrl,
                         low:   actualVideoUrl,
                         p144:  '',
-                        p360:  '',
-                        p720:  '',
-                        p1080: '',
-                        p2160: ''
+                        p360:  initialP360,
+                        p720:  initialP720,
+                        p1080: initialP1080,
+                        p2160: initialP2160
                     };
                     postData.video144    = '';
-                    postData.video360    = '';
-                    postData.video720    = '';
-                    postData.video1080   = '';
-                    postData.video2160   = '';
+                    postData.video360    = initialP360;
+                    postData.video720    = initialP720;
+                    postData.video1080   = initialP1080;
+                    postData.video2160   = initialP2160;
                     postData.videoUrl    = actualVideoUrl;
                     postData.lowVideoUrl = actualVideoUrl;
                     postData.media       = actualVideoUrl;

@@ -48,14 +48,25 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
   if (activeFormat === 'mp4') {
     // Evrensel MP4 (H.264 / AAC) - Galeri Uyumlu
     // SADECE transcode tamamlanmış URL'leri göster — boş alanlar = transcode henüz bitmedi
-    if (url1080) {
+    if (url2160) {
+      options.push({
+        label: '4K Ultra HD (2160p)',
+        sublabel: 'Evrensel MP4 • 4K Kalite',
+        resolution: RESOLUTION_MAP['2160'],
+        value: '2160',
+        url: url2160,
+        badge: 'Ultra HD'
+      });
+    }
+
+    if (url1080 && url1080 !== url2160) {
       options.push({
         label: 'Full HD (1080p)',
         sublabel: 'Evrensel MP4 • H.264 + AAC',
         resolution: RESOLUTION_MAP['1080'],
         value: '1080',
         url: url1080,
-        badge: 'Önerilen'
+        badge: !url2160 ? 'Önerilen' : null
       });
     }
 
@@ -98,7 +109,7 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
     if (url2160) {
       options.push({
         label: '4K Ultra HD (2160p)',
-        sublabel: 'Orijinal Kaynak • H.264 (Transcode Edilmiş)',
+        sublabel: 'Orijinal Kaynak • 4K Kalite',
         resolution: RESOLUTION_MAP['2160'],
         value: '2160',
         url: url2160,

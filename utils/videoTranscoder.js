@@ -189,9 +189,10 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const urlOriginal = constructProxiedUrl(keyOriginal);
 
         // Write original to DB right away — video is playable via videoUrl even if transcode crashes
-        // IMPORTANT: Kalite alanları (p1080, p720 vb.) kasıtlı olarak boş bırakılıyor.
-        // Bu alanlar sadece H.264 transcode tamamlandığında doldurulur.
-        // Aksi takdirde kullanıcı '1080p' etiketiyle ham 4K/HEVC/AV1 dosya indirebilir.
+        // Orijinal dosya URL'si, kaynak kalite alanına (p2160, p1080 vb.) yazılıyor
+        // böylece player doğru kalite etiketini hemen gösterebiliyor.
+        // ÖNEMLİ: Bu URL, VideoDownloadModal'da "Evrensel MP4" sekmesinde GÖRÜNTÜLENMEZ
+        // (transcode edilmemiş = galeri uyumsuz olabilir). Sadece "Orijinal Ham" sekmesinde görünür.
         const initialQualities = {
             high:  urlOriginal,
             low:   urlOriginal,
@@ -201,7 +202,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             p1080: '',
             p2160: ''
         };
-        // maxField'e (p1080, p2160 vb.) orijinal URL atanmiyor — transcode sonrasi doldurulacak
+        // Kaynak kalite alanına orijinal URL'yi yaz (player için şart)
+        initialQualities[maxField] = urlOriginal;
 
         const initialUpdates = {
             videoUrl:           urlOriginal,
@@ -212,7 +214,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             processingProgress: 0,
             estimatedTime:      formatEstimatedTime(totalEstimatedTimeSeconds)
         };
-        // maxRootField'e (video1080, video2160 vb.) orijinal URL atanmiyor
+        // Root field'e de yaz (video2160, video1080 vb.) — player src resolver için
+        initialUpdates[maxRootField] = urlOriginal;
 
         const postAfterOriginal = await Post.findByIdAndUpdate(postId, initialUpdates, { new: true })
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
@@ -330,6 +333,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         finalQualities.high = urlOriginal;
 
         const updatedPost = await Post.findByIdAndUpdate(postId, {
+            [maxRootField]: urlOriginal,
             lowVideoUrl:    lowestUrl,
             videoQualities: finalQualities,
             isProcessing:   false,
