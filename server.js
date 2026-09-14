@@ -38,6 +38,7 @@ import blogRoutes from './routes/blog.js';
 import ogRoutes from './routes/og.js';
 import hlsProxyRoutes from './routes/hlsProxy.js';
 import { initFirebase } from './utils/firebase.js';
+import { seedTanitimPortalOnBoot } from './services/tanitimService.js';
 
 // Initialize Firebase Admin SDK for FCM push notifications
 initFirebase();
@@ -641,6 +642,7 @@ httpServer.listen(PORT, async () => {
             await connectDB();
             await repairUserFriendships();
             await cleanupExpiredTouristAdmins();
+            await seedTanitimPortalOnBoot();
         } catch (err) {
             console.error('⚠️ Boot DB connect/repair failed:', err.message);
         }
