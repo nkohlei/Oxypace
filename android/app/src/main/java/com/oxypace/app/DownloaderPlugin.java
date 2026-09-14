@@ -213,30 +213,62 @@ public class DownloaderPlugin extends Plugin {
                                 }
                             }
 
-                            if (realDownloadedFile != null && realDownloadedFile.exists()) {
-                                String[] scanPaths = new String[]{ realDownloadedFile.getAbsolutePath() };
-                                String[] scanMimes = (mimeType != null && !mimeType.isEmpty() && !mimeType.equals("*/*")) 
-                                        ? new String[]{ mimeType } 
-                                        : null;
+                            final Context appContext = ctx.getApplicationContext();
+                            final File fileToScan = realDownloadedFile;
+                            final String scanMime = (mimeType != null && !mimeType.isEmpty() && !mimeType.equals("*/*"))
+                                    ? mimeType
+                                    : (fileToScan != null && fileToScan.getName().toLowerCase().endsWith(".mp4") ? "video/mp4" : null);
 
-                                MediaScannerConnection.scanFile(
-                                    ctx.getApplicationContext(),
-                                    scanPaths,
-                                    scanMimes,
-                                    new MediaScannerConnection.OnScanCompletedListener() {
-                                        @Override
-                                        public void onScanCompleted(String path, Uri uri) {
-                                            android.util.Log.d("DownloaderPlugin", "Media scanned: " + path + " -> " + uri);
+                            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        long now = System.currentTimeMillis();
+
+                                        // 1. Force filesystem lastModified timestamp to current moment (download time)
+                                        if (fileToScan != null && fileToScan.exists()) {
+                                            try {
+                                                fileToScan.setLastModified(now);
+                                            } catch (Exception ignored) {}
                                         }
-                                    }
-                                );
 
-                                Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                                scanIntent.setData(Uri.fromFile(realDownloadedFile));
-                                ctx.sendBroadcast(scanIntent);
-                            }
+                                        // 2. Scan file into MediaStore so Android Gallery indexes it cleanly
+                                        if (fileToScan != null && fileToScan.exists()) {
+                                            String[] scanPaths = new String[]{ fileToScan.getAbsolutePath() };
+                                            String[] scanMimes = scanMime != null ? new String[]{ scanMime } : null;
+
+                                            MediaScannerConnection.scanFile(
+                                                appContext,
+                                                scanPaths,
+                                                scanMimes,
+                                                new MediaScannerConnection.OnScanCompletedListener() {
+                                                    @Override
+                                                    public void onScanCompleted(String path, Uri uri) {
+                                                        android.util.Log.d("DownloaderPlugin", "Media scanned: " + path + " -> " + uri);
+                                                        // 3. Update MediaStore DATE_TAKEN and DATE_MODIFIED so Gallery places it at current moment
+                                                        if (uri != null) {
+                                                            try {
+                                                                android.content.ContentValues values = new android.content.ContentValues();
+                                                                long currentMs = System.currentTimeMillis();
+                                                                values.put(android.provider.MediaStore.MediaColumns.DATE_MODIFIED, currentMs / 1000);
+                                                                values.put(android.provider.MediaStore.MediaColumns.DATE_ADDED, currentMs / 1000);
+                                                                values.put("datetaken", currentMs);
+                                                                appContext.getContentResolver().update(uri, values, null, null);
+                                                            } catch (Exception updateErr) {
+                                                                android.util.Log.w("DownloaderPlugin", "Could not update MediaStore date: " + updateErr.getMessage());
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            );
+                                        }
+                                    } catch (Exception e) {
+                                        android.util.Log.e("DownloaderPlugin", "Failed to scan downloaded media: " + e.getMessage());
+                                    }
+                                }
+                            }, 500);
                         } catch (Exception e) {
-                            android.util.Log.e("DownloaderPlugin", "Failed to scan downloaded media: " + e.getMessage());
+                            android.util.Log.e("DownloaderPlugin", "Failed to prepare media scan: " + e.getMessage());
                         }
                     }
 

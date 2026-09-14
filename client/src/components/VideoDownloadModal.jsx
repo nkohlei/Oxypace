@@ -36,14 +36,6 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
     options.push({ label: 'Düşük Kalite (144p)', value: '144', url: url144 });
   }
 
-  // Fallback if no specific quality URL was matched
-  if (options.length === 0) {
-    const rawUrl = url1080 || url2160 || post.videoUrl || (Array.isArray(post.media) ? post.media[0] : post.media);
-    if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim()) {
-      options.push({ label: 'Orijinal Kalite', value: 'original', url: rawUrl });
-    }
-  }
-
   const handleSelect = (url, label) => {
     onDownload(url, label);
     onClose();

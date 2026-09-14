@@ -368,11 +368,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.2.4',
-        versionCode: 224,
+        latestVersion: '2.2.5',
+        versionCode: 225,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.2.4: Video indirme kalitesi seçimi güncellendi; 1080p (Full HD) ve 2160p (4K) seçenekleri artık mevcut videolarda gösterilmektedir. Seçilen kalitede gerçek URL doğrudan indirilmektedir.',
+        changelog: 'Oxypace 2.2.5: İndirilen videoların galeri uyumluluğu ve MediaStore indeksleme optimizasyonu yapıldı; indirme tarihinin güncel an olarak kaydedilmesi sağlandı.',
     });
 });
 
