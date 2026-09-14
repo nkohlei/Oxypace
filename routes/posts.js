@@ -157,19 +157,24 @@ router.post(
                         postData.isProcessing = true;
                         postData.processingProgress = 0;
                         postData.estimatedTime = 'Hesaplanıyor...';
+                        // IMPORTANT: Kalite alanları (p1080, video1080, vb.) kasıtlı olarak boş bırakılıyor.
+                        // Transcode tamamlanmadan önce orijinal (ham) dosya kalite alanlarına yazılırsa
+                        // kullanıcı '1080p' etiketiyle gerçekte 4K/HEVC/AV1 dosyası indirebilir.
+                        // Bu alanlar videoTranscoder.js tarafından H.264 transcode tamamlandığında doldurulur.
                         postData.videoQualities = {
                             high:  actualVideoUrl,
                             low:   actualVideoUrl,
                             p144:  '',
                             p360:  '',
                             p720:  '',
-                            p1080: actualVideoUrl,
+                            p1080: '',
                             p2160: ''
                         };
                         postData.video144    = '';
                         postData.video360    = '';
                         postData.video720    = '';
-                        postData.video1080   = actualVideoUrl;
+                        postData.video1080   = '';
+                        postData.video2160   = '';
                         postData.videoUrl    = actualVideoUrl;
                         postData.lowVideoUrl = actualVideoUrl;
                         postData.media       = actualVideoUrl;
@@ -231,19 +236,22 @@ router.post(
                     postData.isProcessing = true;
                     postData.processingProgress = 0;
                     postData.estimatedTime = 'Hesaplanıyor...';
+                    // IMPORTANT: Kalite alanları kasıtlı olarak boş bırakılıyor.
+                    // videoTranscoder.js H.264 transcode tamamlandığında doldurur.
                     postData.videoQualities = {
                         high:  actualVideoUrl,
                         low:   actualVideoUrl,
                         p144:  '',
                         p360:  '',
                         p720:  '',
-                        p1080: actualVideoUrl,
+                        p1080: '',
                         p2160: ''
                     };
                     postData.video144    = '';
                     postData.video360    = '';
                     postData.video720    = '';
-                    postData.video1080   = actualVideoUrl;
+                    postData.video1080   = '';
+                    postData.video2160   = '';
                     postData.videoUrl    = actualVideoUrl;
                     postData.lowVideoUrl = actualVideoUrl;
                     postData.media       = actualVideoUrl;
