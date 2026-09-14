@@ -354,26 +354,40 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         navigate(`/portal/${portalId}`, { state: { quotedPostId: post._id, quotedPost: post, selectedChannelId: channelId } });
     };
 
-    const getDownloadUrlForQuality = (post, prefQuality) => {
+    const getDownloadUrlForQuality = (post, prefQuality, prefFormat = 'mp4') => {
         const qualities = post.videoQualities || {};
         const url720  = post.video720  || qualities.video720  || qualities.p720  || qualities['720p'];
         const url360  = post.video360  || qualities.video360  || qualities.p360  || qualities['360p'];
         const url144  = post.video144  || qualities.video144  || qualities.p144  || qualities['144p'];
         const url1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'];
         const url2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'];
+        const rawMedia = Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
 
-        if (prefQuality === '2160' && url2160) return url2160;
-        if (prefQuality === '1080' && url1080) return url1080;
-        if (prefQuality === '720' && url720) return url720;
-        if (prefQuality === '360' && url360) return url360;
-        if (prefQuality === '144' && url144) return url144;
+        if (prefFormat === 'mp4') {
+            // Evrensel MP4: Galeri uyumlu H.264 transcode akışlarını önceliklendir
+            if (prefQuality === '1080' && url1080) return url1080;
+            if (prefQuality === '720' && url720) return url720;
+            if (prefQuality === '360' && url360) return url360;
+            if (prefQuality === '144' && url144) return url144;
 
-        if (url2160) return url2160;
-        if (url1080) return url1080;
-        if (url720) return url720;
-        if (url360) return url360;
-        if (url144) return url144;
-        return Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
+            if (url1080) return url1080;
+            if (url720) return url720;
+            if (url360) return url360;
+            if (url144) return url144;
+            return rawMedia;
+        } else {
+            // Orijinal: En yüksek ham kaynak dosyasını önceliklendir
+            if (prefQuality === '2160' && url2160) return url2160;
+            if (prefQuality === '1080' && url1080) return url1080;
+            if (prefQuality === '720' && url720) return url720;
+            if (prefQuality === '360' && url360) return url360;
+            if (prefQuality === '144' && url144) return url144;
+
+            if (url2160) return url2160;
+            if (url1080) return url1080;
+            if (url720) return url720;
+            return rawMedia;
+        }
     };
 
     const handleDownload = async (e) => {
@@ -390,19 +404,22 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
         if (post.mediaType === 'video') {
             const downloadPref = user?.settings?.video?.downloadQuality || 'ask';
-            if (downloadPref === 'ask') {
+            const formatPref = user?.settings?.video?.downloadFormat || 'ask';
+            if (downloadPref === 'ask' || formatPref === 'ask') {
                 setShowDownloadModal(true);
                 setShowMenu(false);
                 return;
             }
 
-            const targetUrl = getDownloadUrlForQuality(post, downloadPref);
+            const targetUrl = getDownloadUrlForQuality(post, downloadPref, formatPref);
             const ext = (targetUrl.split('?')[0].split('.').pop() || 'mp4').toLowerCase();
             const cleanExt = ['mp4', 'webm', 'mov'].includes(ext) ? ext : 'mp4';
             const postIdShort = (post._id ? post._id.toString().slice(-6) : Date.now().toString().slice(-6));
             const timeShort = Date.now().toString().slice(-4);
-            const filename = `oxypace-video-${downloadPref || 'hd'}-${postIdShort}-${timeShort}.${cleanExt}`;
+            const filename = `oxypace-video-${downloadPref || 'hd'}-${formatPref}-${postIdShort}-${timeShort}.${cleanExt}`;
             await nativeDownloadFile(getImageUrl(targetUrl), filename);
+            setShowMenu(false);
+            return;
         } else if (Array.isArray(post.media)) {
             // Download all images sequentially/in parallel
             for (let i = 0; i < post.media.length; i++) {

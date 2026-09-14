@@ -14,7 +14,7 @@
 
 .download-modal-card {
   width: calc(100% - 32px);
-  max-width: 310px;
+  max-width: 330px;
   background: #141416;
   border: 1px solid #27272a;
   border-radius: 14px;
@@ -67,10 +67,76 @@
   color: #ffffff;
 }
 
+/* Format Switcher Tabs */
+.download-format-switcher {
+  display: flex;
+  gap: 6px;
+  background: #09090b;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #27272a;
+  margin-bottom: 14px;
+}
+
+.format-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #a1a1aa;
+  transition: all 0.15s ease;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.format-tab-btn:hover {
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.format-tab-btn.active {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.format-tab-icon {
+  flex-shrink: 0;
+  color: #60a5fa;
+}
+
+.format-tab-btn:not(.active) .format-tab-icon {
+  color: #71717a;
+}
+
+.format-tab-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.format-tab-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.format-tab-sub {
+  font-size: 9.5px;
+  opacity: 0.7;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
 .download-modal-subtitle {
   color: #a1a1aa;
-  font-size: 12.5px;
-  margin: 0 0 14px 0;
+  font-size: 12px;
+  margin: 0 0 12px 0;
   line-height: 1.4;
 }
 
@@ -108,14 +174,43 @@
   background: #1f1f23;
 }
 
+.opt-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .opt-label {
-  font-weight: 500;
-  font-size: 13.5px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.opt-badge-pill {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.opt-sublabel {
+  font-size: 11px;
+  color: #71717a;
 }
 
 .opt-download-icon {
   color: #71717a;
   transition: color 0.15s ease;
+  flex-shrink: 0;
 }
 
 .quality-option-btn:hover .opt-download-icon {

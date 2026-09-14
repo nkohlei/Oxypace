@@ -40,6 +40,7 @@ const Settings = () => {
     const [videoSettings, setVideoSettings] = useState({
         playbackQuality: 'auto',
         downloadQuality: 'ask',
+        downloadFormat: 'ask',
     });
 
     // UI State
@@ -268,6 +269,9 @@ const Settings = () => {
                     if (response.data.settings.video.downloadQuality) {
                         localStorage.setItem('video_download_quality', response.data.settings.video.downloadQuality);
                     }
+                    if (response.data.settings.video.downloadFormat) {
+                        localStorage.setItem('video_download_format', response.data.settings.video.downloadFormat);
+                    }
                 }
             }
         } catch (error) {
@@ -285,6 +289,8 @@ const Settings = () => {
             localStorage.setItem('video_playback_quality', value);
         } else if (setting === 'downloadQuality') {
             localStorage.setItem('video_download_quality', value);
+        } else if (setting === 'downloadFormat') {
+            localStorage.setItem('video_download_format', value);
         }
 
         try {
@@ -1573,7 +1579,7 @@ const Settings = () => {
                 <h3 className="settings-group-title">Video İndirme Kalitesi</h3>
                 <div className="settings-card">
                     <p className="settings-section-desc" style={{ marginBottom: '12px' }}>
-                        Video indirmelerinde varsayılan davranışı seçin (Görseller ve GIF'ler orijinal kalitede inmeye devam eder).
+                        Video indirmelerinde varsayılan kaliteyi seçin (Görseller ve GIF'ler orijinal kalitede inmeye devam eder).
                     </p>
                     <div className="segmented-options-group">
                         {[
@@ -1587,6 +1593,31 @@ const Settings = () => {
                                 type="button"
                                 className={`segment-btn ${(videoSettings.downloadQuality || 'ask') === opt.value ? 'active' : ''}`}
                                 onClick={() => handleVideoSelectChange('downloadQuality', opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">İndirilecek Video Biçimi</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc" style={{ marginBottom: '12px' }}>
+                        Cihazınızın varsayılan galerisinde sorunsuz oynatma için <b>Evrensel MP4</b> önerilir.
+                    </p>
+                    <div className="segmented-options-group">
+                        {[
+                            { value: 'ask', label: 'Her Defasında Sor' },
+                            { value: 'mp4', label: 'Evrensel MP4 (Önerilen)' },
+                            { value: 'original', label: 'Orijinal Ham Biçim' }
+                        ].map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                className={`segment-btn ${(videoSettings.downloadFormat || 'ask') === opt.value ? 'active' : ''}`}
+                                onClick={() => handleVideoSelectChange('downloadFormat', opt.value)}
                             >
                                 {opt.label}
                             </button>

@@ -201,6 +201,11 @@ const userSchema = new mongoose.Schema(
                     type: String,
                     enum: ['ask', '1080', '720', '360'],
                     default: 'ask',
+                },
+                downloadFormat: {
+                    type: String,
+                    enum: ['ask', 'mp4', 'original'],
+                    default: 'ask',
                 }
             }
         },
