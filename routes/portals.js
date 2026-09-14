@@ -363,6 +363,10 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
         const posts = await Post.find(query)
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
             .populate({
+                path: 'promotedPortal',
+                select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status'
+            })
+            .populate({
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
@@ -379,6 +383,32 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             .sort({ isPinned: -1, pinnedAt: -1, createdAt: -1 })
             .limit(limit)
             .lean();
+
+        // Format and filter promoted portals (+18 NSFW filter enforced)
+        const userIdStr = userId?.toString();
+        posts.forEach((p) => {
+            if (p.promotedPortal) {
+                if (p.promotedPortal.isNSFW) {
+                    p.promotedPortal = null;
+                } else {
+                    const members = p.promotedPortal.members || [];
+                    p.promotedPortal.memberCount = members.length;
+                    if (userIdStr) {
+                        p.promotedPortal.isMember = members.some(
+                            (m) => (m._id || m).toString() === userIdStr
+                        );
+                        p.promotedPortal.isRequested = (p.promotedPortal.joinRequests || []).some(
+                            (r) => (r._id || r).toString() === userIdStr
+                        );
+                    } else {
+                        p.promotedPortal.isMember = false;
+                        p.promotedPortal.isRequested = false;
+                    }
+                    delete p.promotedPortal.members;
+                    delete p.promotedPortal.joinRequests;
+                }
+            }
+        });
 
         // --- PERSISTENT NOTIFICATION SYNC (Fix for Critical Bug 1) ---
         // When a user successfully fetches posts for a specific channel, mark those notifications as read.

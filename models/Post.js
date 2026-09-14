@@ -75,6 +75,10 @@ const postSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Post',
         },
+        promotedPortal: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Portal',
+        },
         videoQualities: {
             high: { type: String, default: '' },
             low: { type: String, default: '' },

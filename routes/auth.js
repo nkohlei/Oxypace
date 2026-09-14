@@ -16,6 +16,7 @@ import {
     newPasswordValidation,
 } from '../middleware/validation.js';
 import { verifyEmailDomain } from '../utils/emailVerifier.js';
+import { enrollInTanitimPortal } from '../utils/portalAutoEnroll.js';
 
 const router = express.Router();
 
@@ -139,6 +140,9 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
                 displayName: username,
             },
         });
+
+        // Auto-enroll new user in Oxypace Tanıtım portal
+        await enrollInTanitimPortal(user._id);
 
         // Send verification email
         let emailSent = false;
@@ -635,6 +639,9 @@ router.post('/google/complete', async (req, res) => {
                 avatar: avatar || '',
             },
         });
+
+        // Auto-enroll new user in Oxypace Tanıtım portal
+        await enrollInTanitimPortal(user._id);
 
         // Device Registration & Security Notification Logic for Google Complete Registration
         const { deviceId, deviceName, deviceType } = req.body;

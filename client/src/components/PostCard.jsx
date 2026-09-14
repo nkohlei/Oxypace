@@ -24,6 +24,7 @@ import QuotedPost from './QuotedPost';
 import ReportModal from './ReportModal';
 import VideoDownloadModal from './VideoDownloadModal';
 import PostImageGallery from './PostImageGallery';
+import PromotedPortalCard from './PromotedPortalCard';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -858,8 +859,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     )}
                 </div>
 
-                {/* Link Preview (Isolated from media) */}
+                {/* Promoted Portal Showcase Card */}
+                {post.promotedPortal && (
+                    <PromotedPortalCard portal={post.promotedPortal} />
+                )}
+
+                {/* Link Preview (Isolated from media, suppressed when promotedPortal is shown) */}
                 {(() => {
+                    if (post.promotedPortal) return null;
                     if (post.mediaType === 'videoUrl') return null;
                     const firstUrl = extractFirstUrl(post.content);
                     if (firstUrl) {

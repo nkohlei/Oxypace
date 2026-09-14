@@ -100,6 +100,9 @@ const Portal = () => {
     }, [activeUpload?.progress, activeUpload?.status]);
 
     const [showPortalInfo, setShowPortalInfo] = useState(false);
+    const isTanitimPortal = Boolean(portal?.name && /Oxypace Tan[ıi]t[ıi]m/i.test(portal.name));
+    const isOxypaceAdmin = Boolean(user && (user.username?.toLowerCase() === 'oxypace' || user.isAdmin));
+    const canCreatePostInPortal = isTanitimPortal ? isOxypaceAdmin : (user && isMember);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
 
@@ -1654,7 +1657,7 @@ const Portal = () => {
                                                                         );
                                                                     })()}
 
-                                                                    {user && isMember ? (
+                                                                    {isTanitimPortal && !isOxypaceAdmin ? null : canCreatePostInPortal ? (
                                                                         <div className="channel-input-area">
                                                                         {showPlusMenu && createPortal(
                                                                             <div

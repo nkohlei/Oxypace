@@ -96,8 +96,20 @@ router.post(
                     return res.status(404).json({ message: 'Portal bulunamadı' });
                 }
 
+                // Oxypace Tanıtım: Only @oxypace (or platform admin) can post
+                const isTanitimPortal = /Oxypace Tan[ıi]t[ıi]m/i.test(portal.name);
+                if (isTanitimPortal) {
+                    const isOxypaceUser = req.user.username?.toLowerCase() === 'oxypace' || req.user.isAdmin;
+                    if (!isOxypaceUser) {
+                        return res.status(403).json({ message: 'Bu portala yalnızca @oxypace paylaşım yapabilir.' });
+                    }
+                }
+
                 if (portal.isReadOnly) {
-                    return res.status(403).json({ message: 'Bu portal salt okunurdur. Yeni gönderi paylaşılamaz.' });
+                    const isOxypaceUser = req.user.username?.toLowerCase() === 'oxypace' || req.user.isAdmin;
+                    if (!isOxypaceUser) {
+                        return res.status(403).json({ message: 'Bu portal salt okunurdur. Yeni gönderi paylaşılamaz.' });
+                    }
                 }
 
                 const isMember = portal.members.some(
@@ -125,6 +137,16 @@ router.post(
                         }
                     }
                 }
+            }
+
+            // Promoted Portal handling (+18 NSFW filter enforced)
+            if (req.body.promotedPortal) {
+                try {
+                    const targetPortal = await Portal.findById(req.body.promotedPortal);
+                    if (targetPortal && !targetPortal.isNSFW && targetPortal.status === 'active') {
+                        postData.promotedPortal = targetPortal._id;
+                    }
+                } catch (e) {}
             }
 
             // PDF File Handling & Media Key parsing
@@ -320,6 +342,10 @@ router.post(
                     select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted'
                 })
                 .populate('portal')
+                .populate({
+                    path: 'promotedPortal',
+                    select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status'
+                })
                 .populate({
                     path: 'quotedPost',
                     populate: [
@@ -718,6 +744,10 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isShadowbanned isDeleted')
             .populate('portal', 'privacy members blockedUsers allowedUsers')
             .populate({
+                path: 'promotedPortal',
+                select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status'
+            })
+            .populate({
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
@@ -735,6 +765,26 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Format promotedPortal if present
+        if (post.promotedPortal) {
+            if (post.promotedPortal.isNSFW) {
+                post.promotedPortal = null;
+            } else {
+                const viewerId = req.user?._id?.toString();
+                const members = post.promotedPortal.members || [];
+                post.promotedPortal.memberCount = members.length;
+                if (viewerId) {
+                    post.promotedPortal.isMember = members.some(m => (m._id || m).toString() === viewerId);
+                    post.promotedPortal.isRequested = (post.promotedPortal.joinRequests || []).some(r => (r._id || r).toString() === viewerId);
+                } else {
+                    post.promotedPortal.isMember = false;
+                    post.promotedPortal.isRequested = false;
+                }
+                delete post.promotedPortal.members;
+                delete post.promotedPortal.joinRequests;
+            }
         }
 
         // Shadowban Check

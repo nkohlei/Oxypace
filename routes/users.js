@@ -13,6 +13,7 @@ import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
 import Comment from '../models/Comment.js';
 import Portal from '../models/Portal.js';
 import { pubClient } from '../sockets/redisAdapter.js';
+import { enrollInTanitimPortal } from '../utils/portalAutoEnroll.js';
 
 const router = express.Router();
 
@@ -354,6 +355,19 @@ router.get('/me', protect, async (req, res) => {
                 allPortals.push(owned);
             }
         });
+
+        // Auto-enroll in Oxypace Tanıtım if user has no joined or owned portals at all
+        if (allPortals.length === 0) {
+            const tanitimPortal = await enrollInTanitimPortal(req.user._id);
+            if (tanitimPortal) {
+                allPortals.push({
+                    _id: tanitimPortal._id,
+                    name: tanitimPortal.name,
+                    avatar: tanitimPortal.avatar || '',
+                    lowResAvatar: tanitimPortal.lowResAvatar || '',
+                });
+            }
+        }
 
         userObj.portals = allPortals;
 
