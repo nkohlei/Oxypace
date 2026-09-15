@@ -14,6 +14,7 @@ import AdsterraPostCard from '../components/AdsterraPostCard';
 import { adsConfig } from '../config/ads';
 import ChannelSidebar from '../components/ChannelSidebar';
 import MembersSidebar from '../components/MembersSidebar';
+import TanitimShowcase from '../components/TanitimShowcase';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useUI } from '../context/UIContext';
@@ -1571,66 +1572,72 @@ const Portal = () => {
                                                                         onScroll={handleScroll}
                                                                         ref={feedRef}
                                                                     >
-                                                                        {/* Feed Header / Welcome */}
-                                                                        {posts.length === 0 && !loading && (
-                                                                            <div className="empty-portal">
-                                                                                <div className="empty-portal-icon">👋</div>
-                                                                                <h3>
-                                                                                    {portal?.channels?.find((c) => c._id === currentChannel)?.type === 'voice' ? '🎙️' :
-                                                                                    portal?.channels?.find((c) => c._id === currentChannel)?.type === 'conference' ? '🎤' : 
-                                                                                    portal?.channels?.find((c) => c._id === currentChannel)?.type === 'image' ? '🖼️' : '#'}
-                                                                                    {portal?.channels?.find(
-                                                                                        (c) => String(c._id) === String(currentChannel)
-                                                                                    )?.name || '...'}{' '}
-                                                                                    kanalına hoş geldin!
-                                                                                </h3>
-                                                                                <p>
-                                                                                    Bu kanalda henüz mesaj yok. İlk mesajı sen at!
-                                                                                </p>
-                                                                            </div>
-                                                                        )}
+                                                                        {isTanitimPortal ? (
+                                                                            <TanitimShowcase />
+                                                                        ) : (
+                                                                            <>
+                                                                                {/* Feed Header / Welcome */}
+                                                                                {posts.length === 0 && !loading && (
+                                                                                    <div className="empty-portal">
+                                                                                        <div className="empty-portal-icon">👋</div>
+                                                                                        <h3>
+                                                                                            {portal?.channels?.find((c) => c._id === currentChannel)?.type === 'voice' ? '🎙️' :
+                                                                                            portal?.channels?.find((c) => c._id === currentChannel)?.type === 'conference' ? '🎤' : 
+                                                                                            portal?.channels?.find((c) => c._id === currentChannel)?.type === 'image' ? '🖼️' : '#'}
+                                                                                            {portal?.channels?.find(
+                                                                                                (c) => String(c._id) === String(currentChannel)
+                                                                                            )?.name || '...'}{' '}
+                                                                                            kanalına hoş geldin!
+                                                                                        </h3>
+                                                                                        <p>
+                                                                                            Bu kanalda henüz mesaj yok. İlk mesajı sen at!
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
 
-                                                                        {/* Posts List */}
-                                                                        {(() => {
-                                                                            let organicCount = 0;
-                                                                            return Array.isArray(posts) && posts.map((post, index) => {
-                                                                                const isBotPost = post.isBot === true || post.author?.isBot === true;
-                                                                                if (!isBotPost) {
-                                                                                    organicCount++;
-                                                                                }
-                                                                                const showAdAfter = adsConfig.enableAds && !isBotPost && organicCount > 0 && organicCount % 8 === 0;
-                                                                                return (
-                                                                                    <Fragment key={post._id}>
-                                                                                        <PostCard
-                                                                                            key={post._id}
-                                                                                            post={post}
-                                                                                            onDelete={handleDeletePost}
-                                                                                            onPin={handlePin}
-                                                                                            onArchive={handleArchivePost}
-                                                                                            isAdmin={isAdmin}
-                                                                                        />
-                                                                                        {index < posts.length - 1 && <div className="post-separator" />}
-                                                                                        {showAdAfter && (
-                                                                                            <Fragment key={`ad-${post._id}-${index}`}>
-                                                                                                {adsConfig.enableAdsterraAds ? (
-                                                                                                    <AdsterraPostCard />
-                                                                                                ) : adsConfig.enableProgrammaticAds ? (
-                                                                                                    <ExternalAdHolder />
-                                                                                                ) : (
-                                                                                                    <AdPostCard index={Math.floor(organicCount / 8) - 1} />
-                                                                                                )}
+                                                                                {/* Posts List */}
+                                                                                {(() => {
+                                                                                    let organicCount = 0;
+                                                                                    return Array.isArray(posts) && posts.map((post, index) => {
+                                                                                        const isBotPost = post.isBot === true || post.author?.isBot === true;
+                                                                                        if (!isBotPost) {
+                                                                                            organicCount++;
+                                                                                        }
+                                                                                        const showAdAfter = adsConfig.enableAds && !isBotPost && organicCount > 0 && organicCount % 8 === 0;
+                                                                                        return (
+                                                                                            <Fragment key={post._id}>
+                                                                                                <PostCard
+                                                                                                    key={post._id}
+                                                                                                    post={post}
+                                                                                                    onDelete={handleDeletePost}
+                                                                                                    onPin={handlePin}
+                                                                                                    onArchive={handleArchivePost}
+                                                                                                    isAdmin={isAdmin}
+                                                                                                />
                                                                                                 {index < posts.length - 1 && <div className="post-separator" />}
+                                                                                                {showAdAfter && (
+                                                                                                    <Fragment key={`ad-${post._id}-${index}`}>
+                                                                                                        {adsConfig.enableAdsterraAds ? (
+                                                                                                            <AdsterraPostCard />
+                                                                                                        ) : adsConfig.enableProgrammaticAds ? (
+                                                                                                            <ExternalAdHolder />
+                                                                                                        ) : (
+                                                                                                            <AdPostCard index={Math.floor(organicCount / 8) - 1} />
+                                                                                                        )}
+                                                                                                        {index < posts.length - 1 && <div className="post-separator" />}
+                                                                                                    </Fragment>
+                                                                                                )}
                                                                                             </Fragment>
-                                                                                        )}
-                                                                                    </Fragment>
-                                                                                );
-                                                                            });
-                                                                        })()}
+                                                                                        );
+                                                                                    });
+                                                                                })()}
 
-                                                                        {/* Infinite Scroll Sentinel */}
-                                                                        <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                            {loadingMore && <div className="spinner-small"></div>}
-                                                                        </div>
+                                                                                {/* Infinite Scroll Sentinel */}
+                                                                                <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                    {loadingMore && <div className="spinner-small"></div>}
+                                                                                </div>
+                                                                            </>
+                                                                        )}
                                                                     </div>
 
                                                                     {/* Scroll To Top Button - Round with progress ring */}
@@ -1657,7 +1664,7 @@ const Portal = () => {
                                                                         );
                                                                     })()}
 
-                                                                    {isTanitimPortal && !isOxypaceAdmin ? null : canCreatePostInPortal ? (
+                                                                    {isTanitimPortal ? null : canCreatePostInPortal ? (
                                                                         <div className="channel-input-area">
                                                                         {showPlusMenu && createPortal(
                                                                             <div

@@ -642,16 +642,20 @@ httpServer.listen(PORT, async () => {
             await connectDB();
             await repairUserFriendships();
             await cleanupExpiredTouristAdmins();
-            await seedTanitimPortalOnBoot();
         } catch (err) {
             console.error('⚠️ Boot DB connect/repair failed:', err.message);
         }
 
-        // Run background worker tasks (Bots & Cron) ONLY on primary cluster instance (Instance 0)
+        // Run background worker tasks (Bots & Cron & Tanitim Setup) ONLY on primary cluster instance (Instance 0)
         // This prevents 4x parallel duplicate scraping, socket spam, and database race conditions.
         const isPrimaryInstance = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
         if (isPrimaryInstance) {
             console.log('👑 Primary Cluster Worker (Instance 0): Starting News Bot & System Cron Jobs...');
+            try {
+                await seedTanitimPortalOnBoot();
+            } catch (seedErr) {
+                console.error('⚠️ seedTanitimPortalOnBoot error:', seedErr.message);
+            }
             startBotLoop(io);
 
             // Keep-Alive Cron Job

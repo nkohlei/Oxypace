@@ -41,7 +41,7 @@ export async function seedTanitimPortalOnBoot() {
                 admins: [oxypaceUser._id],
                 members: [oxypaceUser._id],
                 privacy: 'public',
-                themeColor: '#0284c7',
+                themeColor: '#111111',
                 isVerified: true,
                 badges: ['official'],
                 channels: [{ name: 'genel', type: 'text' }],
@@ -53,8 +53,9 @@ export async function seedTanitimPortalOnBoot() {
         const portalId = tanitimPortal._id;
         const targetChannel = tanitimPortal.channels?.[0]?._id?.toString() || 'general';
 
-        // Ensure oxypace is member & admin
+        // Ensure oxypace is member & admin, themeColor is dark monochrome (no blue!)
         await Portal.findByIdAndUpdate(portalId, {
+            $set: { themeColor: '#111111' },
             $addToSet: { members: oxypaceUser._id, admins: oxypaceUser._id }
         });
         await User.findByIdAndUpdate(oxypaceUser._id, {
@@ -86,89 +87,38 @@ export async function seedTanitimPortalOnBoot() {
             console.log(`✅ [TanitimBoot] Successfully enrolled ${userIds.length} users.`);
         }
 
-        // 4. Seed Guide Posts if not already present
-        const existingPostsCount = await Post.countDocuments({ portal: portalId });
-        console.log(`ℹ️ [TanitimBoot] Current posts in Tanitim portal: ${existingPostsCount}`);
+        // 4. Wipe all legacy & duplicate posts in Oxypace Tanıtım
+        await Post.deleteMany({ portal: portalId });
+        console.log('🧹 [TanitimBoot] Wiped all legacy posts in Oxypace Tanıtım');
 
-        const guidePosts = [
-            {
-                key: 'welcome',
-                isPinned: true,
-                content: `✨ Oxypace'e Hoş Geldiniz! 🚀\n\nOxypace; modern, özgür, hızlı ve güvenli bir topluluk deneyimi sunmak için tasarlandı.\n\n📱 Neler Yapabilirsiniz?\n• Kendi ilgi alanlarınıza özel Portallar oluşturabilir ve topluluklarınızı büyütebilirsiniz.\n• Metin, Sesli sohbet ve Sahne modlu Konferans odalarıyla arkadaşlarınızla canlı iletişim kurabilirsiniz.\n• 4K çözünürlüğe kadar yüksek kaliteli videolar, çoklu görseller ve PDF dokümanları paylaşabilirsiniz.\n• Hem Aydınlık Beyaz (Light) hem de Karanlık Siyah (OLED Dark) temalarla gözlerinizi yormayan tasarımı keşfedebilirsiniz.\n\nAşağıdaki rehber paylaşımlarını inceleyerek platformun tüm inceliklerini hemen öğrenebilirsiniz! 👇`,
-            },
-            {
-                key: 'portals',
-                isPinned: false,
-                content: `🏰 Rehber: Portallar ve Kanallar Nasıl Kullanılır?\n\nOxypace'de her topluluk bir "Portal" olarak adlandırılır:\n\n1️⃣ Portal Keşfetme ve Katılma:\nSol menüdeki pusula simgesine veya arama çubuğuna tıklayarak açık veya gizli portalları keşfedebilir, tek dokunuşla katılabilirsiniz.\n\n2️⃣ Kendi Portalınızı Oluşturma:\nSol menüdeki (+) butonuna basarak kendi portalınızı saniyeler içinde oluşturabilirsiniz. Gizlilik ayarını Herkese Açık, Gizli veya Kısıtlı Erişim olarak seçebilirsiniz.\n\n3️⃣ Kanal Çeşitleri:\n💬 Metin Kanalları: Günlük sohbetler ve paylaşımlar için.\n🎙️ Ses Kanalları: Düşük gecikmeli, kristal netliğinde sesli iletişim.\n🎥 Sahne Konferans Kanalları: Seminerler, etkinlikler ve sunumlar için konuşmacı-dinleyici modlu odalar!`,
-            },
-            {
-                key: 'media',
-                isPinned: false,
-                content: `📸 Rehber: Zengin Medya ve Gönderi Paylaşımı\n\nOxypace akışında fikirlerinizi dilediğiniz gibi özgürce ifade edin:\n\n🎬 Video Oynatıcı & Transcoding:\nYüklediğiniz videolar arka planda otomatik optimize edilir. 360p'den 4K'ya kadar bant genişliğinize en uygun kalitede izleyebilirsiniz.\n\n🖼️ Çoklu Görsel Paylaşımı:\nTek bir gönderide 10 adede kadar yüksek çözünürlüklü görsel yükleyebilir, modern galeri görünümünde sunabilirsiniz.\n\n📄 PDF & Doküman Desteği:\nKitap, makale, ders notu veya sunumlarınızı doğrudan PDF kartı olarak paylaşabilir; tek tıkla cihazınıza indirebilirsiniz.\n\n🔗 YouTube Entegrasyonu:\nYouTube bağlantılarını yapıştırdığınızda doğrudan gönderi içerisine hafif, hızlı oynatıcı yerleşir!`,
-            },
-            {
-                key: 'security',
-                isPinned: false,
-                content: `🛡️ Rehber: Hesap Güvenliği ve Doğrulama Rozetleri\n\nGüvenliğiniz Oxypace için en birinci önceliktir:\n\n🔑 Güvenlik Soruları:\nAyarlar > Güvenlik menüsünden güvenlik sorularınızı tanımlayarak hesabınızı parola unutma durumlarına karşı koruyabilirsiniz.\n\n📲 Cihaz Yönetimi:\nHesabınıza giriş yapılan tüm cihazları ve IP geçmişini inceleyebilir, tanımadığınız oturumları tek tuşla sonlandırabilirsiniz.\n\n⭐ Onaylı Hesap (Mavi/Altın Rozet):\nProfil sayfanızdan veya Ayarlar sekmesinden doğrulama rozeti talebinde bulunarak toplulukta güvenilirliğinizi taçlandırabilirsiniz!`,
-            },
-        ];
+        // 5. Seed exactly ONE clean, detailed, cool guide post (no emojis, no blue references)
+        const singleGuideContent = `OXISPACE CORE DIRECTIVE // PLATFORM REHBERİ
 
-        for (const gp of guidePosts) {
-            const pattern = gp.key === 'welcome'
-                ? 'Oxypace.*Hoş Geldiniz'
-                : gp.key === 'portals'
-                ? 'Portallar ve Kanallar'
-                : gp.key === 'media'
-                ? 'Zengin Medya'
-                : 'Hesap Güvenliği';
+Oxypace; modern, özgür, yüksek performanslı ve gizlilik odaklı yeni nesil bir iletişim altyapısıdır.
 
-            const existing = await Post.findOne({
-                portal: portalId,
-                content: { $regex: new RegExp(pattern, 'i') }
-            });
+[01 // TOPLULUK & PORTAL MİMARİSİ]
+İlgi alanlarınıza özel izole portallar kurun. Herkese Açık, Gizli veya Kısıtlı Erişim protokolleriyle alanınızın gizliliğini tam denetim altında tutun.
 
-            if (!existing) {
-                await Post.create({
-                    author: oxypaceUser._id,
-                    portal: portalId,
-                    channel: targetChannel,
-                    content: gp.content,
-                    isPinned: gp.isPinned,
-                    pinnedAt: gp.isPinned ? new Date() : undefined,
-                });
-                console.log(`✅ [TanitimBoot] Seeded guide post: ${gp.key}`);
-            }
-        }
+[02 // SES, SAHNE & İLETİŞİM ALTYAPISI]
+Kesintisiz metin kanalları, düşük gecikmeli ses odaları ve seminer/etkinlikler için tasarlanmış sahne konferans altyapısıyla canlı etkileşime geçin.
 
-        // 5. Seed Featured Portal Showcases (+18 Strictly Excluded!)
-        const featuredPortals = await Portal.find({
-            _id: { $ne: portalId },
-            isNSFW: { $ne: true }, // Filter +18 portals
-            status: 'active',
-            privacy: { $in: ['public', 'private'] }
-        }).limit(6);
+[03 // ULTRA-HD MEDYA & DOKÜMAN MOTORU]
+4K çözünürlüğe kadar otomatik video transcoding ve akıllı oynatıcı. 10 adede kadar yüksek kaliteli görsel galerisi. Doğrudan önizlenebilir ve indirilebilir PDF doküman desteği.
 
-        for (const p of featuredPortals) {
-            const existingPromo = await Post.findOne({
-                portal: portalId,
-                promotedPortal: p._id
-            });
+[04 // KRİPTO-GÜVENLİK & VERİ İZOLASYONU]
+Sıfır veri madenciliği. Cihaz oturum denetimi ve yetkisiz erişim blokajı. Resmi doğrulama ve onay rozetleri.`;
 
-            if (!existingPromo) {
-                const promoContent = `🌟 Öne Çıkan Topluluk: ${p.name}\n\n${p.description || 'Oxypace platformunun popüler ve aktif topluluklarından biri. Hemen aramıza katılın!'}\n\n👇 Aşağıdaki kart üzerinden tek tıkla katılabilir veya portalı inceleyebilirsiniz:`;
+        await Post.create({
+            author: oxypaceUser._id,
+            portal: portalId,
+            channel: targetChannel,
+            content: singleGuideContent,
+            isPinned: true,
+            pinnedAt: new Date(),
+        });
+        console.log('✅ [TanitimBoot] Seeded single clean guide post in Oxypace Tanıtım');
 
-                await Post.create({
-                    author: oxypaceUser._id,
-                    portal: portalId,
-                    channel: targetChannel,
-                    content: promoContent,
-                    promotedPortal: p._id,
-                });
-                console.log(`✅ [TanitimBoot] Seeded showcase post for portal: "${p.name}"`);
-            }
-        }
-
-        console.log('🎉 [TanitimBoot] Oxypace Tanıtım check and seeding complete!');
+        console.log('🏁 [TanitimBoot] Oxypace Tanıtım check and setup complete!');
     } catch (err) {
         console.error('⚠️ [TanitimBoot] Error in seedTanitimPortalOnBoot:', err.message);
     }

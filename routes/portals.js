@@ -113,6 +113,131 @@ router.get('/', optionalProtect, async (req, res) => {
         res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
+
+// @desc    Get Tanitim Showcase Portals (Oxypace Global + Top 3 Popular Non-Bot Non-NSFW Portals)
+// @route   GET /api/portals/showcase
+// @access  Public / Optional Auth
+router.get('/showcase', optionalProtect, async (req, res) => {
+    try {
+        const userId = req.user?._id?.toString();
+
+        const formatPortalHelper = (portalDoc) => {
+            if (!portalDoc) return null;
+            const p = portalDoc.toObject ? portalDoc.toObject() : { ...portalDoc };
+            const activeMembers = (p.members || []).filter(m => !m.isDeleted);
+            p.memberCount = activeMembers.length;
+            if (userId) {
+                p.isMember = activeMembers.some((m) => (m._id || m).toString() === userId);
+                p.isRequested = (p.joinRequests || []).some((r) => r.toString() === userId);
+            } else {
+                p.isMember = false;
+                p.isRequested = false;
+            }
+            delete p.members;
+            delete p.joinRequests;
+            return p;
+        };
+
+        // 1. Fetch Oxypace Global portal
+        let globalPortal = await Portal.findOne({
+            name: { $regex: /^Oxypace Global$/i },
+            status: { $ne: 'closed' }
+        })
+        .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+        .populate('members', 'isDeleted');
+
+        // Fallback if not named exactly "Oxypace Global"
+        if (!globalPortal) {
+            globalPortal = await Portal.findOne({
+                name: { $not: { $regex: /Tan[ıi]t[ıi]m/i } },
+                status: 'active',
+                isNSFW: { $ne: true }
+            })
+            .sort({ 'members.length': -1 })
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+            .populate('members', 'isDeleted');
+        }
+
+        const excludedIds = [];
+        if (globalPortal?._id) excludedIds.push(globalPortal._id);
+
+        // Exclude Tanitim portal itself
+        const tanitim = await Portal.findOne({ name: { $regex: /Oxypace Tan[ıi]t[ıi]m/i } }).select('_id');
+        if (tanitim?._id) excludedIds.push(tanitim._id);
+
+        // 2. Identify bot user IDs so we strictly exclude bot posts
+        const botUsers = await User.find({ isBot: true }).distinct('_id');
+
+        // 3. Count non-bot posts per portal to find the most active/popular portals
+        const postActivity = await Post.aggregate([
+            {
+                $match: {
+                    portal: { $nin: excludedIds },
+                    author: { $nin: botUsers }
+                }
+            },
+            {
+                $group: {
+                    _id: '$portal',
+                    nonBotPostCount: { $sum: 1 }
+                }
+            },
+            { $sort: { nonBotPostCount: -1 } },
+            { $limit: 10 }
+        ]);
+
+        const activePortalIds = postActivity.map(item => item._id).filter(Boolean);
+
+        // Fetch portal details for active portals, strictly excluding +18 NSFW
+        let topPortals = [];
+        if (activePortalIds.length > 0) {
+            const fetched = await Portal.find({
+                _id: { $in: activePortalIds, $nin: excludedIds },
+                isNSFW: { $ne: true },
+                status: 'active',
+                privacy: { $in: ['public', 'private'] }
+            })
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+            .populate('members', 'isDeleted');
+
+            topPortals = activePortalIds
+                .map(id => fetched.find(p => p._id.toString() === id.toString()))
+                .filter(Boolean);
+        }
+
+        // If less than 3 portals found by post count, fill remaining from member count
+        if (topPortals.length < 3) {
+            const alreadySelectedIds = [...excludedIds, ...topPortals.map(p => p._id)];
+            const fillPortals = await Portal.find({
+                _id: { $nin: alreadySelectedIds },
+                isNSFW: { $ne: true },
+                status: 'active',
+                privacy: { $in: ['public', 'private'] }
+            })
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+            .populate('members', 'isDeleted')
+            .limit(10);
+
+            fillPortals.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
+
+            for (const fp of fillPortals) {
+                if (topPortals.length >= 3) break;
+                topPortals.push(fp);
+            }
+        }
+
+        topPortals = topPortals.slice(0, 3);
+
+        res.json({
+            globalPortal: formatPortalHelper(globalPortal),
+            topPortals: topPortals.map(formatPortalHelper)
+        });
+    } catch (error) {
+        console.error('Error fetching showcase portals:', error);
+        res.status(500).json({ message: 'Vitrin portalları yüklenemedi' });
+    }
+});
+
 // @desc    Get portals with location (for 3D map)
 // @route   GET /api/portals/map
 // @access  Semi-public (members see private portals, blocked users are excluded)
