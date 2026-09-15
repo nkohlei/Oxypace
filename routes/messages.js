@@ -370,11 +370,13 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
                 populate: { path: 'sender', select: 'username profile.displayName' },
             });
 
-        // Mark messages as read
-        await Message.updateMany(
-            { sender: otherUserId, recipient: currentUserId, read: false },
-            { read: true }
-        );
+        // Mark messages as read (Skip in Ghost Mode so observer never alters target user's unread state)
+        if (!req.user?.isGhost) {
+            await Message.updateMany(
+                { sender: otherUserId, recipient: currentUserId, read: false },
+                { read: true }
+            );
+        }
 
         const otherUser = await User.findById(otherUserId).select('settings');
         const hideReadReceipts = (req.user.settings?.privacy?.readReceipts === false) || 

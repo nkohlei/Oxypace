@@ -11,12 +11,14 @@ import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
 import './Navbar.css';
 import UserAvatar from './UserAvatar';
+import GhostModeBar from './GhostModeBar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useUploadStore } from '../store/useUploadStore';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
     const { user, token, logout } = useAuth();
+    const isGhostMode = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
     const { toggleSidebar, isMobileView } = useUI();
@@ -195,10 +197,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                         </Link>
                     </div>
 
-                    {/* Optional center slot — used by map page for portal search */}
-                    {centerContent && (
+                    {/* Center slot — used by Ghost Mode (highest priority) OR map page portal search */}
+                    {(isGhostMode || centerContent) && (
                         <div className="nav-center">
-                            {centerContent}
+                            {isGhostMode ? <GhostModeBar user={user} /> : centerContent}
                         </div>
                     )}
 

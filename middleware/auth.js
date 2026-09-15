@@ -22,7 +22,14 @@ export const protect = async (req, res, next) => {
             // Ghost Mode / Taklit Modu kısıtlaması (Read-Only)
             if (decoded.isGhost) {
                 req.user.isGhost = true;
-                if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+
+                // Allow safe notification read sync PUT requests through to handler so they return 200 without mutating DB
+                const isSafeNotificationRead = req.method === 'PUT' && (
+                    req.originalUrl.includes('/notifications/read') ||
+                    req.originalUrl.includes('/notifications/portal/')
+                );
+
+                if (!isSafeNotificationRead && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
                     return res.status(403).json({ message: 'Taklit modunda (Ghost Mode) yazma işlemleri kısıtlanmıştır.' });
                 }
             }

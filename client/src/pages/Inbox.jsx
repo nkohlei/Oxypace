@@ -50,6 +50,7 @@ const Inbox = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { socket } = useSocket();
+    const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
     const [conversations, setConversations] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -353,6 +354,7 @@ const Inbox = () => {
 
     // Direct Message Typing Indicator Persistence
     useEffect(() => {
+        if (isGhost) return;
         if (!socket || !selectedUser) return;
 
         if (newMessage.trim().length > 0 || media.length > 0) {
@@ -442,6 +444,7 @@ const Inbox = () => {
     };
 
     const handleReact = async (messageId, emoji) => {
+        if (isGhost) return; // Ghost observer cannot react
         try {
             await axios.post(`/api/messages/${messageId}/react`, { emoji });
         } catch (error) {
@@ -450,6 +453,7 @@ const Inbox = () => {
     };
 
     const handleFileSelect = (e) => {
+        if (isGhost) return;
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files);
             for (const file of files) {
@@ -464,6 +468,10 @@ const Inbox = () => {
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
+        if (isGhost) {
+            alert('Hayalet Modu: Salt okunur izleme modundasınız. Mesaj gönderemezsiniz.');
+            return;
+        }
         if ((!newMessage.trim() && media.length === 0) || !selectedUser) return;
 
         // Clear typing indicator instantly on send
@@ -883,7 +891,16 @@ const Inbox = () => {
                                 </div>
                             )}
 
-                            {selectedUser.isSystemAccount ? (
+                            {isGhost ? (
+                                <div className="system-no-reply-notice" style={{ backgroundColor: '#0c0c0c', borderTop: '1px solid #222', color: '#888', padding: '14px 20px' }}>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.7 }}>
+                                        <path d="M12 2a5 5 0 0 0-5 5v14l3-2 2 2 2-2 3 2V7a5 5 0 0 0-5-5z" />
+                                        <circle cx="10" cy="8" r="1" fill="currentColor" />
+                                        <circle cx="14" cy="8" r="1" fill="currentColor" />
+                                    </svg>
+                                    <span>Hayalet Modu: Salt okunur izleme modundasınız. Mesaj veya medya gönderilemez.</span>
+                                </div>
+                            ) : selectedUser.isSystemAccount ? (
                                 <div className="system-no-reply-notice">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />

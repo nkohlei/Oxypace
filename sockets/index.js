@@ -119,56 +119,66 @@ export const initializeSocket = (io) => {
                     }
                 }
             }
-            // -----------------------------------------------------------------------------------------
-
+            // ----------------------------------------------------------------
             socket.data.userId = strUserId;
             socket.data.isGhost = !!isGhost;
+            socket.isGhost = !!isGhost;
 
             userSockets.set(socket.id, strUserId);
             socket.join(strUserId);
 
             let userDoc = null;
             try {
-                userDoc = await User.findByIdAndUpdate(strUserId, { lastActive: new Date() }, { new: true });
+                if (isGhost) {
+                    userDoc = await User.findById(strUserId);
+                } else {
+                    userDoc = await User.findByIdAndUpdate(strUserId, { lastActive: new Date() }, { new: true });
+                }
                 if (userDoc) {
                     socket.user = userDoc;
                 }
             } catch (err) {
-                console.error('Error updating lastActive on join:', err);
+                console.error('Error fetching user on join:', err);
             }
 
             const isGhostMode = !!isGhost;
-            const isUserHidden = isGhostMode || (userDoc?.settings?.privacy?.showOnlineStatus === false);
-            socket.data.showOnlineStatus = !isUserHidden;
-
-            if (isUserHidden) {
-                activeUsersMap.delete(strUserId);
-                if (pubClient) {
-                    try {
-                        await pubClient.sadd('hidden_user_ids', strUserId);
-                        await pubClient.srem('online_user_ids', strUserId);
-                    } catch (err) {}
-                }
-                io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
-                await broadcastGlobalOnlineUsers();
-                console.log(`👤 User ${strUserId} joined in hidden/invisible mode`);
+            if (isGhostMode) {
+                // Ghost Mode: strictly observer only, never broadcast presence or alter online lists
+                socket.data.showOnlineStatus = false;
+                console.log(`👻 Ghost Mode active: observer joined as ${strUserId} without affecting user presence or lastActive.`);
             } else {
-                if (pubClient) {
-                    try {
-                        await pubClient.srem('hidden_user_ids', strUserId);
-                        await pubClient.sadd('online_user_ids', strUserId);
-                    } catch (err) {
-                        console.error('⚠️ Error adding user to Redis online set:', err);
-                    }
-                }
-                if (!activeUsersMap.has(strUserId)) {
-                    activeUsersMap.set(strUserId, new Set());
-                }
-                activeUsersMap.get(strUserId).add(socket.id);
+                const isUserHidden = userDoc?.settings?.privacy?.showOnlineStatus === false;
+                socket.data.showOnlineStatus = !isUserHidden;
 
-                io.emit('user_status_change', { userId: strUserId, status: 'online' });
-                await broadcastGlobalOnlineUsers();
-                console.log(`👤 User ${strUserId} joined visible (active sockets: ${activeUsersMap.get(strUserId).size})`);
+                if (isUserHidden) {
+                    activeUsersMap.delete(strUserId);
+                    if (pubClient) {
+                        try {
+                            await pubClient.sadd('hidden_user_ids', strUserId);
+                            await pubClient.srem('online_user_ids', strUserId);
+                        } catch (err) {}
+                    }
+                    io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
+                    await broadcastGlobalOnlineUsers();
+                    console.log(`👤 User ${strUserId} joined in hidden/invisible mode`);
+                } else {
+                    if (pubClient) {
+                        try {
+                            await pubClient.srem('hidden_user_ids', strUserId);
+                            await pubClient.sadd('online_user_ids', strUserId);
+                        } catch (err) {
+                            console.error('⚠️ Error adding user to Redis online set:', err);
+                        }
+                    }
+                    if (!activeUsersMap.has(strUserId)) {
+                        activeUsersMap.set(strUserId, new Set());
+                    }
+                    activeUsersMap.get(strUserId).add(socket.id);
+
+                    io.emit('user_status_change', { userId: strUserId, status: 'online' });
+                    await broadcastGlobalOnlineUsers();
+                    console.log(`👤 User ${strUserId} joined visible (active sockets: ${activeUsersMap.get(strUserId).size})`);
+                }
             }
 
             const currentOnlineList = await getOnlineUserIds();
@@ -280,6 +290,10 @@ export const initializeSocket = (io) => {
 
             if (userId) {
                 const strUserId = String(userId);
+                if (socket.isGhost || socket.data?.isGhost) {
+                    console.log(`👻 Ghost observer disconnected: ${socket.id} for user ${strUserId}. Skipping presence mutations.`);
+                    return;
+                }
                 console.log(`👋 Socket disconnected: ${socket.id} for user ${strUserId}`);
 
                 const userSocketsSet = activeUsersMap.get(strUserId);
@@ -382,7 +396,7 @@ export const initializeSocket = (io) => {
         socket.on('presence_update', async ({ path }) => {
             const user = socket.user;
             if (!user) {return;}
-            if (socket.isGhost) {return;} // Ghost modunda ise presence kaydı oluşturma!
+            if (socket.isGhost || socket.data?.isGhost) {return;} // Ghost modunda ise presence kaydı oluşturma!
 
             try {
                 await savePresence(user._id, {
@@ -421,6 +435,7 @@ export const initializeSocket = (io) => {
 
         // Direct Message (DM) Typing Indicator
         socket.on('dm_typing', ({ recipientId, isTyping }) => {
+            if (socket.isGhost || socket.data?.isGhost) return; // Ghost observer never emits typing
             const senderId = socket.user?._id?.toString();
             if (senderId) {
                 if (isTyping) {
@@ -446,6 +461,7 @@ export const initializeSocket = (io) => {
 
         // Portal Feed Typing Indicator
         socket.on('portal_typing', ({ portalId, isTyping }) => {
+            if (socket.isGhost || socket.data?.isGhost) return; // Ghost observer never emits typing
             const userId = socket.user?._id?.toString();
             if (userId) {
                 const displayName = socket.user.profile?.displayName || socket.user.username;

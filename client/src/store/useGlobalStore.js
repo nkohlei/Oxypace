@@ -57,39 +57,43 @@ export const useGlobalStore = create(
                 };
             }),
 
-            removeUnreadPost: (postId) => set((state) => {
-                const newState = {
-                    unreadPostsByPortal: { ...state.unreadPostsByPortal },
-                    unreadPostsByChannel: { ...state.unreadPostsByChannel }
-                };
-                let modified = false;
-                
-                // Clear from portals
-                Object.keys(newState.unreadPostsByPortal).forEach(portalId => {
-                    if (newState.unreadPostsByPortal[portalId].includes(postId)) {
-                        newState.unreadPostsByPortal[portalId] = newState.unreadPostsByPortal[portalId].filter(id => id !== postId);
-                        if (newState.unreadPostsByPortal[portalId].length === 0) {
-                            delete newState.unreadPostsByPortal[portalId];
+            removeUnreadPost: (postId) => {
+                if (typeof window !== 'undefined' && localStorage.getItem('admin_backup_token')) return;
+                set((state) => {
+                    const newState = {
+                        unreadPostsByPortal: { ...state.unreadPostsByPortal },
+                        unreadPostsByChannel: { ...state.unreadPostsByChannel }
+                    };
+                    let modified = false;
+                    
+                    // Clear from portals
+                    Object.keys(newState.unreadPostsByPortal).forEach(portalId => {
+                        if (newState.unreadPostsByPortal[portalId].includes(postId)) {
+                            newState.unreadPostsByPortal[portalId] = newState.unreadPostsByPortal[portalId].filter(id => id !== postId);
+                            if (newState.unreadPostsByPortal[portalId].length === 0) {
+                                delete newState.unreadPostsByPortal[portalId];
+                            }
+                            modified = true;
                         }
-                        modified = true;
-                    }
-                });
+                    });
 
-                // Clear from channels
-                Object.keys(newState.unreadPostsByChannel).forEach(channelId => {
-                    if (newState.unreadPostsByChannel[channelId].includes(postId)) {
-                        newState.unreadPostsByChannel[channelId] = newState.unreadPostsByChannel[channelId].filter(id => id !== postId);
-                        if (newState.unreadPostsByChannel[channelId].length === 0) {
-                            delete newState.unreadPostsByChannel[channelId];
+                    // Clear from channels
+                    Object.keys(newState.unreadPostsByChannel).forEach(channelId => {
+                        if (newState.unreadPostsByChannel[channelId].includes(postId)) {
+                            newState.unreadPostsByChannel[channelId] = newState.unreadPostsByChannel[channelId].filter(id => id !== postId);
+                            if (newState.unreadPostsByChannel[channelId].length === 0) {
+                                delete newState.unreadPostsByChannel[channelId];
+                            }
+                            modified = true;
                         }
-                        modified = true;
-                    }
-                });
+                    });
 
-                return modified ? newState : state;
-            }),
+                    return modified ? newState : state;
+                });
+            },
 
             clearUnreadForPortal: async (portalId) => {
+                if (typeof window !== 'undefined' && localStorage.getItem('admin_backup_token')) return;
                 set((state) => {
                     const newUnread = { ...state.unreadPostsByPortal };
                     delete newUnread[portalId];
@@ -146,6 +150,7 @@ export const useGlobalStore = create(
             },
 
             clearUnreadForChannel: async (channelId, portalId) => {
+                if (typeof window !== 'undefined' && localStorage.getItem('admin_backup_token')) return;
                 set((state) => {
                     const newUnreadByChannel = { ...state.unreadPostsByChannel };
                     const channelPostIds = newUnreadByChannel[channelId] || [];

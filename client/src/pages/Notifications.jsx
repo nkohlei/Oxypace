@@ -82,9 +82,12 @@ const Notifications = () => {
         }
     };
 
+    const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
+
     const handleDelete = async (e, id) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isGhost) return;
         const notifToDelete = notifications.find(n => n._id === id);
         const wasUnread = notifToDelete && !notifToDelete.read;
         try {
@@ -99,6 +102,7 @@ const Notifications = () => {
     };
 
     const handleDeleteAllNotifications = async () => {
+        if (isGhost) return;
         const confirmDelete = window.confirm("Tüm bildirimlerinizi kalıcı olarak silmek istediğinizden emin misiniz?");
         if (!confirmDelete) return;
         try {
@@ -136,7 +140,8 @@ const Notifications = () => {
             setNotifications(response.data.notifications);
             setUnreadNotificationsCount(response.data.unreadCount || 0);
 
-            if (response.data.notifications.some((n) => !n.read)) {
+            // Ghost Mode guard: observer must never auto-mark notifications as read
+            if (!isGhost && response.data.notifications.some((n) => !n.read)) {
                 handleMarkAllRead();
             }
         } catch (err) {
@@ -148,6 +153,7 @@ const Notifications = () => {
     };
 
     const handleMarkAllRead = async () => {
+        if (isGhost) return;
         try {
             await axios.put('/api/notifications/read');
             setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -229,7 +235,7 @@ const Notifications = () => {
                             <h1 className="gradient-title">Bildirimler</h1>
                         </div>
                         <div className="notifications-header-actions">
-                            {notifications.length > 0 && (
+                            {notifications.length > 0 && !isGhost && (
                                 <>
                                     <button className="mark-read-btn" onClick={handleMarkAllRead}>
                                         Tümünü Oku
@@ -436,24 +442,26 @@ const Notifications = () => {
                                             </div>
                                         ) : null}
 
-                                        {/* Delete Button */}
-                                        <button
-                                            className="delete-notif-btn"
-                                            onClick={(e) => handleDelete(e, notif._id)}
-                                            title="Bildirimi sil"
-                                        >
-                                            <svg
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
+                                        {/* Delete Button (Hidden in Ghost Mode) */}
+                                        {!isGhost && (
+                                            <button
+                                                className="delete-notif-btn"
+                                                onClick={(e) => handleDelete(e, notif._id)}
+                                                title="Bildirimi sil"
                                             >
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                            </svg>
-                                        </button>
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                </svg>
+                                            </button>
+                                        )}
                                     </Link>
                                 );
                             })

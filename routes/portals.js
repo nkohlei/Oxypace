@@ -537,8 +537,8 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
 
         // --- PERSISTENT NOTIFICATION SYNC (Fix for Critical Bug 1) ---
         // When a user successfully fetches posts for a specific channel, mark those notifications as read.
-        // This ensures the blue badge disappears in the DB only when the content is actually viewed.
-        if (userId && targetChannel) {
+        // In Ghost Mode, skip this entirely so target user's notification badges and unread dots remain untouched.
+        if (userId && targetChannel && !req.user?.isGhost) {
             const channelId = targetChannel._id.toString();
             // Fire and forget (async) to avoid delaying the response
             Notification.updateMany(

@@ -650,6 +650,10 @@ body.dark-mode .dropdown-divider {
         gap: 6px;
     }
 
+    .nav-center {
+        padding: 0 4px;
+    }
+
     /* Theme toggle: show as icon-only on mobile */
     .nav-theme-toggle-btn {
         width: 38px;

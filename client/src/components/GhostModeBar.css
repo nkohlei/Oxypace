@@ -1,0 +1,178 @@
+/* Ghost Mode Minimal Header Bar */
+
+.ghost-mode-header-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #0a0a0a;
+    border: 1px solid #282828;
+    border-radius: 0px; /* Strictly sharp corners */
+    padding: 4px 8px 4px 10px;
+    height: 34px;
+    box-sizing: border-box;
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.6), inset 0 0 8px rgba(255, 255, 255, 0.03);
+    user-select: none;
+    max-width: 100%;
+}
+
+/* Ghost Icon & Pulse/Float Animation */
+.ghost-bar-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ghost-icon-pulse {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.ghost-svg-animated {
+    color: #ffffff;
+    animation: ghostFloat 2.6s ease-in-out infinite, ghostGlow 2.6s ease-in-out infinite;
+}
+
+@keyframes ghostFloat {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2.5px);
+    }
+}
+
+@keyframes ghostGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+        opacity: 0.85;
+    }
+    50% {
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.95));
+        opacity: 1;
+    }
+}
+
+/* Text & Details */
+.ghost-bar-details {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ghost-bar-badge {
+    color: #ffffff;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    font-family: inherit;
+    font-size: 10px;
+}
+
+.ghost-bar-separator {
+    color: #444444;
+    font-weight: 700;
+}
+
+.ghost-bar-target {
+    color: #ffffff;
+    font-weight: 700;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ghost-bar-readonly {
+    color: #777777;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* Sharp Rectangular Exit Button (0px border-radius, pure monochrome) */
+.ghost-bar-exit-btn {
+    appearance: none;
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #ffffff;
+    border-radius: 0px !important; /* Strictly no curved/pill buttons */
+    padding: 0 10px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.ghost-bar-exit-btn:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #ffffff;
+}
+
+.ghost-bar-exit-btn:active {
+    background: #1a1a1a;
+    color: #ffffff;
+    transform: scale(0.97);
+}
+
+.exit-btn-desktop {
+    display: inline;
+}
+
+.exit-btn-mobile {
+    display: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .ghost-mode-header-bar {
+        padding: 3px 6px 3px 8px;
+        gap: 8px;
+        height: 30px;
+    }
+
+    .ghost-bar-readonly {
+        display: none;
+    }
+
+    .ghost-bar-badge {
+        display: none;
+    }
+
+    .ghost-bar-separator {
+        display: none;
+    }
+
+    .ghost-bar-target {
+        max-width: 90px;
+        font-size: 11px;
+    }
+
+    .ghost-bar-exit-btn {
+        padding: 0 8px;
+        height: 22px;
+        font-size: 9px;
+    }
+
+    .exit-btn-desktop {
+        display: none;
+    }
+
+    .exit-btn-mobile {
+        display: inline;
+    }
+}

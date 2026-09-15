@@ -46,6 +46,7 @@ const Portal = () => {
     const uiContext = useUI();
     const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = uiContext || {};
     const isDesktopSidebarCollapsed = uiContext?.isDesktopSidebarCollapsed || false;
+    const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
 
     const [portal, setPortal] = useState(null);
     const posts = useGlobalStore((state) => state.posts);
@@ -519,6 +520,7 @@ const Portal = () => {
 
     // Typing Indicator Persistence logic
     useEffect(() => {
+        if (isGhost) return;
         if (!socket || !id) return;
 
         if (messageText.trim().length > 0 || mediaFile !== null || mediaFiles.length > 0) {
@@ -532,17 +534,21 @@ const Portal = () => {
                 setIsTypingSent(false);
             }
         }
-    }, [messageText, mediaFile, mediaFiles, id, socket, isTypingSent]);
+    }, [messageText, mediaFile, mediaFiles, id, socket, isTypingSent, isGhost]);
 
     useEffect(() => {
         return () => {
-            if (socket && id && isTypingSent) {
+            if (!isGhost && socket && id && isTypingSent) {
                 socket.emit('portal_typing', { portalId: id, isTyping: false });
             }
         };
-    }, [id, socket, isTypingSent]);
+    }, [id, socket, isTypingSent, isGhost]);
 
     const handleSendMessage = async () => {
+        if (isGhost) {
+            triggerToast('Hayalet Modu: Salt okunur izleme modundasınız. Gönderi paylaşılamaz.', 'error');
+            return;
+        }
         const hasText = messageText.trim().length > 0;
         const hasSingleMedia = !!mediaFile;
         const hasMultiImages = mediaFiles.length > 0;
@@ -1948,7 +1954,27 @@ const Portal = () => {
                                                                             </div>
                                                                         )}
 
-                                                                        <div className="message-input-wrapper">
+                                                                        {isGhost ? (
+                                                                            <div className="ghost-channel-notice" style={{
+                                                                                backgroundColor: '#0c0c0c',
+                                                                                borderTop: '1px solid #222',
+                                                                                color: '#888',
+                                                                                padding: '14px 20px',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                gap: '10px',
+                                                                                fontSize: '13px'
+                                                                            }}>
+                                                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.7 }}>
+                                                                                    <path d="M12 2a5 5 0 0 0-5 5v14l3-2 2 2 2-2 3 2V7a5 5 0 0 0-5-5z" />
+                                                                                    <circle cx="10" cy="8" r="1" fill="currentColor" />
+                                                                                    <circle cx="14" cy="8" r="1" fill="currentColor" />
+                                                                                </svg>
+                                                                                <span>Hayalet Modu: Salt okunur izleme modundasınız. Kanalda mesaj ve gönderi paylaşılamaz.</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="message-input-wrapper">
                                                                             <button
                                                                                 ref={plusButtonRef}
                                                                                 className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
@@ -2089,6 +2115,7 @@ const Portal = () => {
                                                                                 </button>
                                                                             </div>
                                                                         </div>
+                                                                    )}
 
                                                                         {/* Multi-Image Selected Previews Gallery (Left to Right, Square Grid/Row) */}
                                                                         {mediaPreviews && mediaPreviews.length > 0 && (

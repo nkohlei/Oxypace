@@ -564,50 +564,6 @@ const AppLayout = () => {
                     }} 
                 />
             )}
-            {localStorage.getItem('admin_backup_token') && (
-                <div 
-                    className="ghost-mode-banner" 
-                    style={{
-                        backgroundColor: '#e74c3c',
-                        color: '#fff',
-                        padding: '10px 20px',
-                        textAlign: 'center',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: '15px',
-                        boxShadow: '0 4px 12px rgba(231, 76, 60, 0.4)',
-                        flexShrink: 0,
-                        zIndex: 99999
-                    }}
-                >
-                    <span>🔴 TAKLİT MODU AKTİF: <strong>@{user?.username}</strong> olarak görüntülüyorsunuz (Salt Okunur).</span>
-                    <button 
-                        onClick={() => {
-                            const backupToken = localStorage.getItem('admin_backup_token');
-                            localStorage.setItem('token', backupToken);
-                            localStorage.removeItem('admin_backup_token');
-                            window.location.reload();
-                        }}
-                        style={{
-                            backgroundColor: '#fff',
-                            color: '#e74c3c',
-                            border: 'none',
-                            padding: '5px 14px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            fontSize: '12px',
-                            transition: '0.2s',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                        }}
-                    >
-                        Taklidi Sonlandır
-                    </button>
-                </div>
-            )}
             <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Mobile Overlay */}
                 <div

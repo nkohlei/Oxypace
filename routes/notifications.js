@@ -102,8 +102,8 @@ router.get('/portal-unreads', protect, async (req, res) => {
             }
         }
         
-        // Clean up orphan notifications asynchronously in the background
-        if (orphanIds.length > 0) {
+        // Clean up orphan notifications asynchronously in the background (skip in Ghost Mode)
+        if (orphanIds.length > 0 && !req.user?.isGhost) {
             Notification.updateMany(
                 { _id: { $in: orphanIds } },
                 { $set: { read: true } }
@@ -122,6 +122,11 @@ router.get('/portal-unreads', protect, async (req, res) => {
 // @access  Private
 router.put('/read', protect, async (req, res) => {
     try {
+        // Ghost Mode guard: observer must never clear target user's notification badges
+        if (req.user?.isGhost) {
+            return res.json({ message: 'Ghost mode: read status preserved' });
+        }
+
         // Mark all generic notifications as read (except portal posts and messages)
         await Notification.updateMany(
             { 
@@ -143,6 +148,11 @@ router.put('/read', protect, async (req, res) => {
 // @access  Private
 router.put('/portal/:portalId/read', protect, async (req, res) => {
     try {
+        // Ghost Mode guard: observer must never clear target user's portal unreads
+        if (req.user?.isGhost) {
+            return res.json({ message: 'Ghost mode: read status preserved' });
+        }
+
         const { channel } = req.query;
 
         const filter = {
@@ -183,6 +193,11 @@ router.put('/:id/read', protect, async (req, res) => {
 
         if (notification.recipient.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        // Ghost Mode guard: observer must never mark individual notifications as read
+        if (req.user?.isGhost) {
+            return res.json(notification);
         }
 
         notification.read = true;
