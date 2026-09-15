@@ -96,17 +96,25 @@ export async function seedTanitimPortalOnBoot() {
 
 Oxypace; modern, özgür, yüksek performanslı ve gizlilik odaklı yeni nesil bir iletişim altyapısıdır.
 
-[01 // TOPLULUK & PORTAL MİMARİSİ]
-İlgi alanlarınıza özel izole portallar kurun. Herkese Açık, Gizli veya Kısıtlı Erişim protokolleriyle alanınızın gizliliğini tam denetim altında tutun.
+[01 // SAYFA YAPISI & ARAYÜZ HARİTASI]
+• Sol Navigasyon: Doğrudan Mesajlar (DM), Portallar listesi, Keşfet (Pusula), Portal Oluşturma (+) ve hızlı ses/kimlik paneli.
+• Portal Menüsü: Özel afiş ve başlık, tematik Metin Kanalları (#), anlık Ses Odaları (🎙️), Sahne Konferansları (🎤).
+• Üst Panel: Kanal bilgisi, arama kutusu ve aktif üyeler paneli.
 
-[02 // SES, SAHNE & İLETİŞİM ALTYAPISI]
-Kesintisiz metin kanalları, düşük gecikmeli ses odaları ve seminer/etkinlikler için tasarlanmış sahne konferans altyapısıyla canlı etkileşime geçin.
+[02 // GELİŞMİŞ MESAJLAŞMA MEKANİZMASI]
+Markdown desteği, alıntılı yanıtlama (quote reply), @bahsetmeler, otomatik zengin bağlantı önizlemeleri ve mesaj sabitleme kontrolleri.
 
-[03 // ULTRA-HD MEDYA & DOKÜMAN MOTORU]
-4K çözünürlüğe kadar otomatik video transcoding ve akıllı oynatıcı. 10 adede kadar yüksek kaliteli görsel galerisi. Doğrudan önizlenebilir ve indirilebilir PDF doküman desteği.
+[03 // CANLI SES, SAHNE & ARKA PLAN İLETİŞİMİ]
+WebRTC düşük gecikmeli serbest ses odaları. Seminer, toplantı ve duyurular için kontrollü Sahne Konferans modları (el kaldırma, konuşmacı/dinleyici ayrımı) ve arka planda kesintisiz dinleme.
 
-[04 // KRİPTO-GÜVENLİK & VERİ İZOLASYONU]
-Sıfır veri madenciliği. Cihaz oturum denetimi ve yetkisiz erişim blokajı. Resmi doğrulama ve onay rozetleri.`;
+[04 // MOBİL EKOSİSTEM & KAYAN PIP VİDEO]
+Android APK ve tam uyumlu PWA desteği. Canlı FCM bildirimleri ve sayfalar arasında gezinirken köşede kesintisiz oynayan Kayan Canlı PIP (Picture-in-Picture) video motoru.
+
+[05 // ULTRA-HD MEDYA & DOKÜMAN MOTORU]
+İstemci içi WASM motoru ile 360p'den 4K'ya kadar otomatik video transcoding. 10 adede kadar görsel galerisi ve doğrudan önizlenebilir PDF doküman entegrasyonu.
+
+[06 // ÖZELLEŞTİRİLEBİLİR SİSTEMLER & KRİPTO-GÜVENLİK]
+Saf OLED siyahı ve yüksek kontrastlı açık tema. Kişisel profil afişi ve avatarı, detaylı portal rol matrisi, sıfır veri madenciliği ve aktif cihaz oturum denetimi.`;
 
         await Post.create({
             author: oxypaceUser._id,

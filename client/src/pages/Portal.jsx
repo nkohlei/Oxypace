@@ -1568,7 +1568,7 @@ const Portal = () => {
 
                                                             {/* Message Area */}
                                                             <div
-                                                                        className="portal-feed-container discord-feed"
+                                                                        className={`portal-feed-container discord-feed ${isTanitimPortal ? 'tanitim-feed-mode' : ''}`}
                                                                         onScroll={handleScroll}
                                                                         ref={feedRef}
                                                                     >

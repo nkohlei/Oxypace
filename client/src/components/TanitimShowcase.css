@@ -2,13 +2,20 @@
 
 .tanitim-showcase-wrapper {
     width: 100%;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 24px 20px 60px 20px;
+    max-width: 1440px;
+    margin: 0;
+    padding: 12px 24px 60px 8px;
     display: flex;
     flex-direction: column;
-    gap: 36px;
+    gap: 32px;
     box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .tanitim-showcase-wrapper {
+        padding: 8px 4px 40px 4px;
+        gap: 20px;
+    }
 }
 
 /* ==========================================================================
@@ -18,7 +25,7 @@
     background: #0a0a0a;
     border: 1px solid #262626;
     border-radius: 0px;
-    padding: 32px 28px;
+    padding: 28px 24px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     position: relative;
     overflow: hidden;
@@ -45,9 +52,9 @@
 }
 
 .tanitim-guide-header {
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     border-bottom: 1px solid #1f1f1f;
-    padding-bottom: 20px;
+    padding-bottom: 18px;
 }
 
 [data-theme='light'] .tanitim-guide-header {
@@ -84,18 +91,158 @@
     color: #a3a3a3;
     margin: 0;
     line-height: 1.6;
-    max-width: 720px;
+    max-width: 820px;
 }
 
 [data-theme='light'] .tanitim-guide-lead {
     color: #525252;
 }
 
-/* PILLARS 2x2 GRID */
+/* ==========================================================================
+   SUB-SECTIONS & HEADERS
+   ========================================================================== */
+.tanitim-sub-section {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sub-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sub-section-tag {
+    font-size: 10.5px;
+    font-weight: 800;
+    font-family: monospace;
+    letter-spacing: 1px;
+    color: #777777;
+    text-transform: uppercase;
+}
+
+.sub-section-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+
+[data-theme='light'] .sub-section-title {
+    color: #000000;
+}
+
+/* ==========================================================================
+   NAV MAP GRID (3 SÜTUNLU MENÜ VE ARAYÜZ REHBERİ)
+   ========================================================================== */
+.tanitim-nav-map-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+@media (max-width: 992px) {
+    .tanitim-nav-map-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.nav-map-card {
+    background: #0f0f0f;
+    border: 1px solid #202020;
+    border-radius: 0px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+[data-theme='light'] .nav-map-card {
+    background: #f8f8f8;
+    border-color: #e5e5e5;
+}
+
+.nav-map-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+}
+
+[data-theme='light'] .nav-map-header {
+    color: #000000;
+}
+
+.nav-map-code {
+    font-size: 10px;
+    font-family: monospace;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    color: #888888;
+}
+
+.nav-map-title {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+[data-theme='light'] .nav-map-title {
+    color: #000000;
+}
+
+.nav-map-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid #1a1a1a;
+    padding-top: 10px;
+}
+
+[data-theme='light'] .nav-map-list {
+    border-top-color: #e5e5e5;
+}
+
+.nav-map-list li {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #999999;
+}
+
+[data-theme='light'] .nav-map-list li {
+    color: #4a4a4a;
+}
+
+.nav-map-list li strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+[data-theme='light'] .nav-map-list li strong {
+    color: #000000;
+}
+
+/* ==========================================================================
+   PILLARS 3x2 OR 2x3 GRID (6 ANA SİSTEM DİREĞİ)
+   ========================================================================== */
 .tanitim-pillars-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+@media (max-width: 1100px) {
+    .tanitim-pillars-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 680px) {
@@ -105,10 +252,10 @@
 }
 
 .tanitim-pillar-item {
-    background: #121212;
-    border: 1px solid #222222;
+    background: #111111;
+    border: 1px solid #202020;
     border-radius: 0px;
-    padding: 20px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -116,13 +263,13 @@
 }
 
 [data-theme='light'] .tanitim-pillar-item {
-    background: #f9f9f9;
-    border-color: #ebebeb;
+    background: #fbfbfb;
+    border-color: #e5e5e5;
 }
 
 .tanitim-pillar-item:hover {
-    border-color: #404040;
-    background: #161616;
+    border-color: #444444;
+    background: #141414;
 }
 
 [data-theme='light'] .tanitim-pillar-item:hover {
@@ -134,11 +281,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .pillar-index {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 900;
     font-family: monospace;
     color: #555555;
@@ -151,23 +298,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
+    background: #181818;
+    border: 1px solid #282828;
     border-radius: 0px;
     color: #ffffff;
 }
 
 [data-theme='light'] .pillar-icon-box {
     background: #ffffff;
-    border-color: #e5e5e5;
+    border-color: #e0e0e0;
     color: #000000;
 }
 
 .pillar-title {
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 700;
     color: #ffffff;
-    margin: 0 0 8px 0;
+    margin: 0 0 6px 0;
     letter-spacing: -0.2px;
 }
 
@@ -176,10 +323,10 @@
 }
 
 .pillar-text {
-    font-size: 13px;
+    font-size: 12.5px;
     color: #999999;
     line-height: 1.55;
-    margin: 0 0 14px 0;
+    margin: 0 0 12px 0;
     flex: 1;
 }
 
@@ -187,22 +334,35 @@
     color: #4a4a4a;
 }
 
-.pillar-meta {
+.pillar-features {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #666666;
-    border-top: 1px dashed #222222;
+    border-top: 1px dashed #202020;
     padding-top: 10px;
 }
 
-[data-theme='light'] .pillar-meta {
+[data-theme='light'] .pillar-features {
     border-top-color: #e5e5e5;
-    color: #737373;
+}
+
+.pillar-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #888888;
+    background: #181818;
+    border: 1px solid #282828;
+    padding: 2px 6px;
+    border-radius: 0px;
+    text-transform: uppercase;
+}
+
+[data-theme='light'] .pillar-tag {
+    background: #eeeeee;
+    border-color: #dddddd;
+    color: #333333;
 }
 
 /* ==========================================================================
@@ -211,13 +371,13 @@
 .tanitim-section {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .tanitim-section-header {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
 }
 
 .section-label-row {
@@ -299,7 +459,7 @@
 }
 
 .hero-card-banner {
-    height: 120px;
+    height: 125px;
     position: relative;
     background-color: #141414;
 }
@@ -470,7 +630,7 @@
 .tanitim-portals-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 14px;
 }
 
 @media (max-width: 820px) {
@@ -507,7 +667,7 @@
 }
 
 .classic-card-banner {
-    height: 90px;
+    height: 95px;
     position: relative;
     background-color: #141414;
 }

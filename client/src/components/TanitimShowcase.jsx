@@ -14,10 +14,23 @@ import {
     Globe,
     Check,
     Clock,
-    ArrowUpRight,
     Terminal,
     Hash,
-    ChevronRight
+    MessageSquare,
+    Smartphone,
+    PictureInPicture,
+    Sliders,
+    Compass,
+    AtSign,
+    Pin,
+    FileText,
+    Mic,
+    ShieldCheck,
+    Sidebar,
+    LayoutGrid,
+    Settings,
+    ChevronRight,
+    Sparkle
 } from 'lucide-react';
 import './TanitimShowcase.css';
 
@@ -123,89 +136,216 @@ const TanitimShowcase = () => {
                         Oxypace İletişim Protokolü & Kullanım Mimarisi
                     </h1>
                     <p className="tanitim-guide-lead">
-                        Özgür, sansürsüz ve yüksek performanslı yeni nesil topluluk ekosistemi.
-                        Aşağıdaki yönergeleri takip ederek platform kabiliyetlerini keşfedin.
+                        Özgür, sansürsüz, yüksek performanslı ve gizlilik odaklı yeni nesil topluluk ekosistemi.
+                        Arayüz haritasını ve platformun tüm gelişmiş yeteneklerini aşağıdaki yönergelerden inceleyin.
                     </p>
                 </div>
 
-                <div className="tanitim-pillars-grid">
-                    {/* Pillar 01 */}
-                    <div className="tanitim-pillar-item">
-                        <div className="pillar-header">
-                            <span className="pillar-index">01</span>
-                            <div className="pillar-icon-box">
-                                <Layers size={18} />
-                            </div>
-                        </div>
-                        <h2 className="pillar-title">Topluluk & Portal Mimarisi</h2>
-                        <p className="pillar-text">
-                            Oxypace üzerinde her bağımsız alan bir "Portal"dır. Topluluklarınızı
-                            <strong> Herkese Açık</strong>, <strong>Gizli</strong> veya <strong>Kısıtlı Erişim</strong> protokolleriyle
-                            oluşturup tam izolasyon sağlayabilirsiniz.
-                        </p>
-                        <div className="pillar-meta">
-                            <Hash size={13} />
-                            <span>Metin Akışları & Kanallar</span>
-                        </div>
+                {/* ARAYÜZ KONFİGÜRASYONU & MENÜ HARİTASI */}
+                <div className="tanitim-sub-section">
+                    <div className="sub-section-header">
+                        <span className="sub-section-tag">// NAVİGASYON VE MENÜ YERLEŞİMİ</span>
+                        <h2 className="sub-section-title">Sayfa Yapısı & Arayüz Konumlandırması</h2>
                     </div>
 
-                    {/* Pillar 02 */}
-                    <div className="tanitim-pillar-item">
-                        <div className="pillar-header">
-                            <span className="pillar-index">02</span>
-                            <div className="pillar-icon-box">
-                                <Radio size={18} />
+                    <div className="tanitim-nav-map-grid">
+                        <div className="nav-map-card">
+                            <div className="nav-map-header">
+                                <Sidebar size={16} />
+                                <span className="nav-map-code">[ SOL NAVİGASYON BARI ]</span>
                             </div>
+                            <h3 className="nav-map-title">Ana Gezinme Çubuğu</h3>
+                            <ul className="nav-map-list">
+                                <li>
+                                    <strong>Doğrudan Mesajlar (DM):</strong> Birebir şifreli özel yazışmalar ve anlık bildirim kutusu.
+                                </li>
+                                <li>
+                                    <strong>Portallar Listesi:</strong> Üye olduğunuz veya yönettiğiniz tüm portalların dikey simgeleri.
+                                </li>
+                                <li>
+                                    <strong>Keşfet Pusulası:</strong> Yeni toplulukları, popüler portalları ve kişileri arama alanı.
+                                </li>
+                                <li>
+                                    <strong>Portal Oluştur (+):</strong> Saniyeler içinde kendi özgür topluluğunuzu kurma aracı.
+                                </li>
+                                <li>
+                                    <strong>Kimlik & Hızlı Ayar:</strong> En altta mikrofon, kulaklık ve profil hızlı kontrolleri.
+                                </li>
+                            </ul>
                         </div>
-                        <h2 className="pillar-title">Düşük Gecikmeli Ses & Sahne</h2>
-                        <p className="pillar-text">
-                            WebRTC tabanlı, kristal netliğinde ses iletişimi. Serbest konuşma
-                            kanallarının yanı sıra seminer ve etkinlikler için geliştirilmiş
-                            konuşmacı-dinleyici mimarili Sahne Konferans odaları.
-                        </p>
-                        <div className="pillar-meta">
-                            <Radio size={13} />
-                            <span>Ultra Düşük Gecikme & Konferans</span>
+
+                        <div className="nav-map-card">
+                            <div className="nav-map-header">
+                                <Layers size={16} />
+                                <span className="nav-map-code">[ PORTAL İÇİ MENÜ ]</span>
+                            </div>
+                            <h3 className="nav-map-title">Kanal Hiyerarşisi</h3>
+                            <ul className="nav-map-list">
+                                <li>
+                                    <strong>Portal Kimliği:</strong> Özel afiş, doğrulanmış rozet ve çevrimiçi üye göstergeleri.
+                                </li>
+                                <li>
+                                    <strong>Metin Kanalları (#):</strong> Tematik konulara göre ayrılmış gönderi ve tartışma akışları.
+                                </li>
+                                <li>
+                                    <strong>Ses Kanalları (🎙️):</strong> Tek dokunuşla girilebilen, gecikmesiz canlı ses odaları.
+                                </li>
+                                <li>
+                                    <strong>Sahne Kanalları (🎤):</strong> Seminer, podcast ve etkinlikler için konuşmacı odaları.
+                                </li>
+                                <li>
+                                    <strong>Kanal Yönetimi:</strong> Yöneticiler için yeni kanallar açma ve gizlilik kilidi.
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="nav-map-card">
+                            <div className="nav-map-header">
+                                <Sliders size={16} />
+                                <span className="nav-map-code">[ ÜST DENETİM & AKIŞ ]</span>
+                            </div>
+                            <h3 className="nav-map-title">İçerik & Üye Denetimi</h3>
+                            <ul className="nav-map-list">
+                                <li>
+                                    <strong>Kanal Üst Başlığı:</strong> Aktif kanal adı, açıklaması ve hızlı üye paneli butonu.
+                                </li>
+                                <li>
+                                    <strong>Üye Listesi Paneli:</strong> Sağ tarafta çevrimiçi yöneticiler ve aktif üyeler.
+                                </li>
+                                <li>
+                                    <strong>Görsel Akış Alanı:</strong> 4K videolar, çoklu galeriler ve doküman önizlemeleri.
+                                </li>
+                                <li>
+                                    <strong>Bildirim Zil İkonu:</strong> Kanal ve portal bazlı bildirim filtreleme ayarları.
+                                </li>
+                                <li>
+                                    <strong>Portal Ayarları:</strong> Portal sahibi ve yöneticileri için tam yönetim konsolu.
+                                </li>
+                            </ul>
                         </div>
                     </div>
+                </div>
 
-                    {/* Pillar 03 */}
-                    <div className="tanitim-pillar-item">
-                        <div className="pillar-header">
-                            <span className="pillar-index">03</span>
-                            <div className="pillar-icon-box">
-                                <Film size={18} />
-                            </div>
-                        </div>
-                        <h2 className="pillar-title">Ultra-HD Medya & Doküman</h2>
-                        <p className="pillar-text">
-                            360p'den 4K'ya kadar otomatik video kodlama ve hafif oynatıcı altyapısı.
-                            Gönderi başına 10 adede kadar yüksek kaliteli görsel desteği ve
-                            doğrudan görüntülenebilir PDF doküman paylaşımı.
-                        </p>
-                        <div className="pillar-meta">
-                            <Film size={13} />
-                            <span>4K Video & PDF Desteği</span>
-                        </div>
+                {/* 6 ANA SİSTEM DİREĞİ (CORE CAPABILITIES) */}
+                <div className="tanitim-sub-section">
+                    <div className="sub-section-header">
+                        <span className="sub-section-tag">// GELİŞMİŞ SİSTEM DİREKLERİ</span>
+                        <h2 className="sub-section-title">Platform Mekanizmaları & Özellikler</h2>
                     </div>
 
-                    {/* Pillar 04 */}
-                    <div className="tanitim-pillar-item">
-                        <div className="pillar-header">
-                            <span className="pillar-index">04</span>
-                            <div className="pillar-icon-box">
-                                <Shield size={18} />
+                    <div className="tanitim-pillars-grid">
+                        {/* 01: Mesaj Mekanizması */}
+                        <div className="tanitim-pillar-item">
+                            <div className="pillar-header">
+                                <span className="pillar-index">01</span>
+                                <div className="pillar-icon-box">
+                                    <MessageSquare size={18} />
+                                </div>
+                            </div>
+                            <h3 className="pillar-title">Gelişmiş Mesaj Mekanizması</h3>
+                            <p className="pillar-text">
+                                Markdown formatlama, tek tıkla alıntılı yanıtlama (quote reply), kullanıcıyı doğrudan haberdar eden @etiketleme sistemi ve akıllı bağlantı (link preview) ayrıştırma desteği.
+                            </p>
+                            <div className="pillar-features">
+                                <span className="pillar-tag">Alıntılı Yanıt</span>
+                                <span className="pillar-tag">@Bahsetmeler</span>
+                                <span className="pillar-tag">Mesaj Sabitleme</span>
                             </div>
                         </div>
-                        <h2 className="pillar-title">Veri Gizliliği & Güvenlik</h2>
-                        <p className="pillar-text">
-                            Kişisel veriler asla ticari hedefleme veya profilleme amacıyla işlenmez.
-                            Gelişmiş oturum ve IP denetimi, kurtarma anahtarları ve doğrulanmış
-                            topluluk rozetleri ile güvenli iletişim ağı.
-                        </p>
-                        <div className="pillar-meta">
-                            <Shield size={13} />
-                            <span>Sıfır İzleme & Doğrulama</span>
+
+                        {/* 02: Canlı Ses ve Sahne Odaları */}
+                        <div className="tanitim-pillar-item">
+                            <div className="pillar-header">
+                                <span className="pillar-index">02</span>
+                                <div className="pillar-icon-box">
+                                    <Radio size={18} />
+                                </div>
+                            </div>
+                            <h3 className="pillar-title">Canlı Ses Odaları & Sahne Modu</h3>
+                            <p className="pillar-text">
+                                Ultra düşük gecikmeli WebRTC ses mimarisi. Herkesin serbestçe katılabildiği sohbet odaları ile seminer ve konferanslar için konuşmacı-dinleyici ayrımı ve el kaldırma desteği sunan Sahne kanalları.
+                            </p>
+                            <div className="pillar-features">
+                                <span className="pillar-tag">Sıfır Gecikme</span>
+                                <span className="pillar-tag">Sahne Hiyerarşisi</span>
+                                <span className="pillar-tag">Arka Planda Ses</span>
+                            </div>
+                        </div>
+
+                        {/* 03: Mobil Uygulama & PIP Oynatıcı */}
+                        <div className="tanitim-pillar-item">
+                            <div className="pillar-header">
+                                <span className="pillar-index">03</span>
+                                <div className="pillar-icon-box">
+                                    <Smartphone size={18} />
+                                </div>
+                            </div>
+                            <h3 className="pillar-title">Mobil Ekosistem & PIP Video</h3>
+                            <p className="pillar-text">
+                                Yerel Android APK ve tam uyumlu PWA deneyimi. Canlı FCM Push bildirimleri, mobil veri tasarrufu modu ve gezinirken köşede kesintisiz oynayan Kayan Resim İçinde Resim (PIP) video motoru.
+                            </p>
+                            <div className="pillar-features">
+                                <span className="pillar-tag">Android APK / PWA</span>
+                                <span className="pillar-tag">Canlı PIP Oynatıcı</span>
+                                <span className="pillar-tag">FCM Push Bildirim</span>
+                            </div>
+                        </div>
+
+                        {/* 04: Ultra-HD Medya & Doküman */}
+                        <div className="tanitim-pillar-item">
+                            <div className="pillar-header">
+                                <span className="pillar-index">04</span>
+                                <div className="pillar-icon-box">
+                                    <Film size={18} />
+                                </div>
+                            </div>
+                            <h3 className="pillar-title">Ultra-HD Medya & Transcoding</h3>
+                            <p className="pillar-text">
+                                İstemci içi WASM motoru ile 360p'den 4K'ya kadar otomatik optimize edilen video akışı. Tek gönderide 10 adede kadar yüksek kaliteli fotoğraf galerisi ve tek tıkla önizlenebilir PDF dokümanları.
+                            </p>
+                            <div className="pillar-features">
+                                <span className="pillar-tag">4K Video Transcoding</span>
+                                <span className="pillar-tag">10'lu Görsel Galerisi</span>
+                                <span className="pillar-tag">PDF Doküman Desteği</span>
+                            </div>
+                        </div>
+
+                        {/* 05: Özelleştirilebilir Sistemler */}
+                        <div className="tanitim-pillar-item">
+                            <div className="pillar-header">
+                                <span className="pillar-index">05</span>
+                                <div className="pillar-icon-box">
+                                    <Sliders size={18} />
+                                </div>
+                            </div>
+                            <h3 className="pillar-title">Özelleştirilebilir Sistemler & Temalar</h3>
+                            <p className="pillar-text">
+                                Saf OLED siyahı ve yüksek kontrastlı Aydınlık tema desteği. Kişisel profil afişi, biyografi ve avatar özelleştirmeleri. Portallar için özel roller, izin matrisleri ve gizlilik kalkanları.
+                            </p>
+                            <div className="pillar-features">
+                                <span className="pillar-tag">OLED Siyah & Açık Tema</span>
+                                <span className="pillar-tag">Rol & Yetki Matrisi</span>
+                                <span className="pillar-tag">Özel Profil Afişi</span>
+                            </div>
+                        </div>
+
+                        {/* 06: Güvenlik & Doğrulama */}
+                        <div className="tanitim-pillar-item">
+                            <div className="pillar-header">
+                                <span className="pillar-index">06</span>
+                                <div className="pillar-icon-box">
+                                    <Shield size={18} />
+                                </div>
+                            </div>
+                            <h3 className="pillar-title">Kripto-Güvenlik & Sıfır Takip</h3>
+                            <p className="pillar-text">
+                                Sıfır veri madenciliği ve ticari profil koruması. IP ve aktif cihaz oturum denetimi, güvenlik anahtarları ile hesap kurtarma ve doğrulanmış resmi topluluk rozetleri.
+                            </p>
+                            <div className="pillar-features">
+                                <span className="pillar-tag">Sıfır Veri İzleme</span>
+                                <span className="pillar-tag">Cihaz & Oturum Denetimi</span>
+                                <span className="pillar-tag">Onay Rozetleri</span>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -479,9 +479,18 @@
     justify-content: flex-start !important;
 }
 
+.portal-feed-container.tanitim-feed-mode {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 @media (max-width: 768px) {
     .portal-feed-container {
         padding: 0 12px 20px 12px;
+    }
+
+    .portal-feed-container.tanitim-feed-mode {
+        padding: 0 2px 20px 2px !important;
     }
 
     .channel-top-bar .sub-header-back-circle {
