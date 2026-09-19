@@ -106,9 +106,7 @@ const Search = () => {
     };
 
     const getDefaultBanner = (portal) => {
-        // Generate a gradient based on portal ID or theme color
-        // Simple placeholder for now
-        return 'linear-gradient(45deg, #4f46e5, #9333ea)';
+        return 'linear-gradient(135deg, #18181b 0%, #27272a 50%, #3f3f46 100%)';
     };
 
     return (

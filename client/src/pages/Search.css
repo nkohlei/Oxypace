@@ -377,10 +377,10 @@
     left: 16px;
 }
 
-/* Base Portal Card Styles (Desktop default) */
+/* Base Portal Card Styles (Desktop default) - Mat ve Geçirgen Olmayan Tasarım */
 .modern-portal-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background-color: #0e1015 !important; /* Mat, opak koyu arka plan */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 16px;
     overflow: hidden;
     cursor: pointer;
@@ -389,12 +389,25 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
 }
 
+[data-theme='light'] .modern-portal-card {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Hover: Mavi kaldırıldı, siyah modda gümüşümsü çerçeve, beyaz modda zıttı */
 .modern-portal-card:hover {
     transform: translateY(-6px);
-    box-shadow: none;
-    border-color: var(--primary-cyan);
+    border-color: #cbd5e1 !important; /* Gümüşümsü çerçeve */
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 16px rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme='light'] .modern-portal-card:hover {
+    border-color: #1e293b !important; /* Beyaz modda tam zıttı (koyu metal) */
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15) !important;
 }
 
 .card-banner {
@@ -415,10 +428,14 @@
     height: 72px;
     border-radius: 20px;
     padding: 5px;
-    background-color: var(--card-bg);
+    background-color: #0e1015 !important;
     position: relative;
     z-index: 2;
     box-shadow: none;
+}
+
+[data-theme='light'] .card-icon-wrapper {
+    background-color: #ffffff !important;
 }
 
 .card-icon-img,
@@ -433,10 +450,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--primary-color);
-    color: white;
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
     font-weight: bold;
     font-size: 1.5rem;
+}
+
+[data-theme='light'] .card-icon-placeholder {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%) !important;
+    color: #0f172a !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
 }
 
 .card-body {
@@ -444,6 +468,11 @@
     display: flex;
     flex-direction: column;
     flex: 1;
+    background-color: #0e1015 !important;
+}
+
+[data-theme='light'] .card-body {
+    background-color: #ffffff !important;
 }
 
 .card-title {
@@ -509,9 +538,15 @@
     gap: 6px;
     font-size: 0.85rem;
     color: var(--text-secondary);
-    background-color: var(--bg-secondary);
+    background-color: rgba(255, 255, 255, 0.05);
     padding: 4px 8px;
     border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .member-count {
+    background-color: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 .status-dot {
@@ -521,50 +556,80 @@
     border-radius: 50%;
 }
 
+/* Minimalist Bright Silver Rectangular Join & Request Buttons (tıpkı .vc-lobby-join-btn tarzı) */
 .join-action-btn,
 .join-status-btn {
-    padding: 6px 14px;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 7px 16px !important;
     border-radius: 6px !important; /* Hafif yumuşak köşeli */
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px !important;
+    cursor: pointer !important;
+    transition: all 0.18s ease !important;
     z-index: 5;
+    outline: none !important;
+    text-decoration: none !important;
 }
 
-.join-action-btn.join {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.join-action-btn.join:hover {
-    background-color: #2563eb;
-    transform: scale(1.05);
-}
-
+.join-action-btn.join,
 .join-action-btn.request {
-    background-color: #4f46e5;
-    color: white;
+    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%) !important;
+    color: #090b10 !important;
+    border: 1px solid #ffffff !important;
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
 }
 
+.join-action-btn.join:hover,
 .join-action-btn.request:hover {
-    background-color: #4338ca;
-    transform: scale(1.05);
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    box-shadow: 0 6px 18px rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    transform: translateY(-1px) !important;
+    color: #000000 !important;
+}
+
+.join-action-btn.join:active,
+.join-action-btn.request:active {
+    transform: translateY(1px) !important;
+    background: #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme='light'] .join-action-btn.join,
+[data-theme='light'] .join-action-btn.request {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme='light'] .join-action-btn.join:hover,
+[data-theme='light'] .join-action-btn.request:hover {
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+    border-color: #475569 !important;
+    color: #ffffff !important;
 }
 
 .join-status-btn.joined {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-    border: 1px solid rgba(34, 197, 94, 0.2);
-    cursor: default;
+    background-color: rgba(34, 197, 94, 0.1) !important;
+    color: #22c55e !important;
+    border: 1px solid rgba(34, 197, 94, 0.2) !important;
+    cursor: default !important;
 }
 
 .join-status-btn.requested {
-    background-color: rgba(79, 70, 229, 0.1);
-    color: #818cf8;
-    border: 1px solid rgba(79, 70, 229, 0.2);
-    cursor: default;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    cursor: default !important;
+}
+
+[data-theme='light'] .join-status-btn.requested {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #334155 !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
 }
 
 /* User List Style */
@@ -581,16 +646,26 @@
     align-items: center;
     gap: 16px;
     padding: 16px;
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background-color: #0e1015 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 12px;
     text-decoration: none;
     transition: all 0.2s;
 }
 
+[data-theme='light'] .user-result-modern {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
 .user-result-modern:hover {
-    border-color: var(--primary-color);
-    background-color: var(--bg-secondary);
+    border-color: #cbd5e1 !important;
+    background-color: #141720 !important;
+}
+
+[data-theme='light'] .user-result-modern:hover {
+    border-color: #1e293b !important;
+    background-color: #f8fafc !important;
 }
 
 .empty-search {
