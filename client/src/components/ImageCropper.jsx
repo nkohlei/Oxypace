@@ -13,8 +13,9 @@ import './ImageCropper.css';
  * ImageCropper - Oxypace Profesyonel Profil/Görsel Düzenleyici
  *
  * - Açık (Light) ve Koyu (Dark) tema desteği
- * - Derece cinsinden (-180° ile +180°) hassas rotasyon ve 90° hızlı döndürme
- * - Modern, ölçülü yumuşatılmış köşeler
+ * - Kadrajın hemen altında dereceli kadran (graduated dial) ile rotasyon
+ * - Alt kısımda konumlandırılmış ölçek (zoom) barı
+ * - Hafif yumuşatılmış köşeler (asla pill/kapsül olmayan modern butonlar)
  * - Sürükleme, tekerlek zoom ve pinch-to-zoom desteği
  * - GIF dosyaları için kayıpsız doğrudan yükleme
  */
@@ -491,93 +492,80 @@ const ImageCropper = ({
 
                 {/* Kontrol Paneli */}
                 <div className="cropper-controls-wrapper">
-                    {/* Zoom Kontrol Barı */}
-                    <div className="cropper-control-row">
-                        <div className="cropper-control-label">
-                            <span>ÖLÇEK</span>
-                            <span className="cropper-val-badge">{zoomPercent}%</span>
-                        </div>
-
-                        <div className="cropper-slider-group">
-                            <button
-                                type="button"
-                                className="cropper-icon-btn"
-                                onClick={() => handleZoomStep(0.9)}
-                                title="Uzaklaştır"
-                                disabled={scale <= minScale || loading}
-                            >
-                                <ZoomOut size={15} strokeWidth={2.5} />
-                            </button>
-
-                            <input
-                                type="range"
-                                min={minScale}
-                                max={maxScale}
-                                step={(maxScale - minScale) / 100 || 0.01}
-                                value={scale}
-                                onChange={handleZoomSlider}
-                                className="zoom-slider"
-                                disabled={loading}
-                            />
-
-                            <button
-                                type="button"
-                                className="cropper-icon-btn"
-                                onClick={() => handleZoomStep(1.1)}
-                                title="Yakınlaştır"
-                                disabled={scale >= maxScale || loading}
-                            >
-                                <ZoomIn size={15} strokeWidth={2.5} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Rotasyon / Açı Kontrolü (Derece Cinsinden) */}
+                    {/* 1. DÖNDÜRME / DERECELİ KADRAN (Profil vizörünün hemen altında) */}
                     {isGif ? (
                         <div className="cropper-gif-notice">
                             [!] HAREKETLİ GIF: ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR
                         </div>
                     ) : (
-                        <div className="cropper-control-row">
+                        <div className="cropper-control-row cropper-rotation-section">
                             <div className="cropper-control-label">
-                                <span>DÖNDÜRME (DERECE)</span>
-                                <span className="cropper-val-badge">{rotation}°</span>
+                                <span className="cropper-label-text">DÖNDÜRME / AÇI</span>
+                                <span className="cropper-val-badge">
+                                    {rotation > 0 ? `+${rotation}` : rotation}°
+                                </span>
                             </div>
 
-                            <div className="cropper-slider-group">
+                            {/* Dereceli Kadran / Cetvel (Graduated Angle Dial) */}
+                            <div className="cropper-ruler-wrapper">
                                 <button
                                     type="button"
-                                    className="cropper-icon-btn"
+                                    className="cropper-icon-btn cropper-step-btn"
                                     onClick={() => handleRotationChange(rotation - 1)}
-                                    title="-1° Döndür"
+                                    title="-1° İnce Ayar"
                                     disabled={loading}
                                 >
                                     -1°
                                 </button>
 
-                                <input
-                                    type="range"
-                                    min={-180}
-                                    max={180}
-                                    step={1}
-                                    value={rotation}
-                                    onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
-                                    className="zoom-slider rotation-slider"
-                                    disabled={loading}
-                                />
+                                <div className="cropper-ruler-dial">
+                                    <input
+                                        type="range"
+                                        min={-180}
+                                        max={180}
+                                        step={1}
+                                        value={rotation}
+                                        onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
+                                        className="cropper-ruler-input"
+                                        disabled={loading}
+                                        aria-label="Döndürme Açısı"
+                                    />
+                                    {/* Dereceli Çizgiler & Etiketler */}
+                                    <div className="cropper-ruler-ticks" aria-hidden="true">
+                                        <span className="ruler-tick tick-major" style={{ left: '0%' }}>
+                                            <span className="tick-label">-180°</span>
+                                        </span>
+                                        <span className="ruler-tick tick-sub" style={{ left: '12.5%' }} />
+                                        <span className="ruler-tick tick-major" style={{ left: '25%' }}>
+                                            <span className="tick-label">-90°</span>
+                                        </span>
+                                        <span className="ruler-tick tick-sub" style={{ left: '37.5%' }} />
+                                        <span className="ruler-tick tick-center" style={{ left: '50%' }}>
+                                            <span className="tick-label">0°</span>
+                                        </span>
+                                        <span className="ruler-tick tick-sub" style={{ left: '62.5%' }} />
+                                        <span className="ruler-tick tick-major" style={{ left: '75%' }}>
+                                            <span className="tick-label">+90°</span>
+                                        </span>
+                                        <span className="ruler-tick tick-sub" style={{ left: '87.5%' }} />
+                                        <span className="ruler-tick tick-major" style={{ left: '100%' }}>
+                                            <span className="tick-label">+180°</span>
+                                        </span>
+                                    </div>
+                                </div>
 
                                 <button
                                     type="button"
-                                    className="cropper-icon-btn"
+                                    className="cropper-icon-btn cropper-step-btn"
                                     onClick={() => handleRotationChange(rotation + 1)}
-                                    title="+1° Döndür"
+                                    title="+1° İnce Ayar"
                                     disabled={loading}
                                 >
                                     +1°
                                 </button>
                             </div>
 
-                            {/* Hızlı 90° ve Sıfırlama Butonları */}
+                            {/* Hızlı Açı Butonları */}
                             <div className="cropper-tool-bar">
                                 <button
                                     type="button"
@@ -625,6 +613,48 @@ const ImageCropper = ({
                             </div>
                         </div>
                     )}
+
+                    {/* 2. ÖLÇEK (ZOOM) BÖLÜMÜ (Aşağıda Konumlandırıldı) */}
+                    <div className="cropper-control-row cropper-zoom-section">
+                        <div className="cropper-control-label">
+                            <span className="cropper-label-text">ÖLÇEK</span>
+                            <span className="cropper-val-badge">{zoomPercent}%</span>
+                        </div>
+
+                        <div className="cropper-slider-group">
+                            <button
+                                type="button"
+                                className="cropper-icon-btn"
+                                onClick={() => handleZoomStep(0.9)}
+                                title="Uzaklaştır"
+                                disabled={scale <= minScale || loading}
+                            >
+                                <ZoomOut size={15} strokeWidth={2.5} />
+                            </button>
+
+                            <input
+                                type="range"
+                                min={minScale}
+                                max={maxScale}
+                                step={(maxScale - minScale) / 100 || 0.01}
+                                value={scale}
+                                onChange={handleZoomSlider}
+                                className="zoom-slider"
+                                disabled={loading}
+                                aria-label="Ölçek"
+                            />
+
+                            <button
+                                type="button"
+                                className="cropper-icon-btn"
+                                onClick={() => handleZoomStep(1.1)}
+                                title="Yakınlaştır"
+                                disabled={scale >= maxScale || loading}
+                            >
+                                <ZoomIn size={15} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Alt Aksiyonlar */}

@@ -1,6 +1,7 @@
 /* ==========================================================================
    ImageCropper.css - Oxypace Profesyonel & Dengeli Kırpma Arayüzü
-   Tasarım: Açık/Koyu Tema Uyumu, Ölçülü Yumuşatılmış Köşeler, Sıfır Neon
+   Tasarım: Açık/Koyu Tema Uyumu, Ölçülü Yumuşatılmış Köşeler (Asla Pill Değil),
+   Dereceli Kadran (Graduated Ruler) & Altta Ölçek Barı
    ========================================================================== */
 
 /* Arka Plan Karartma & Konteyner */
@@ -18,11 +19,11 @@
     box-sizing: border-box;
 }
 
-/* Modal Pencere: Ölçülü Yumuşatılmış Köşeler (12px) */
+/* Modal Pencere: Ölçülü Yumuşatılmış Köşeler (10px) */
 .cropper-modal {
     background: #09090b;
     border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 12px;
+    border-radius: 10px !important;
     max-width: 520px;
     width: 100%;
     overflow: hidden;
@@ -47,6 +48,15 @@
         opacity: 1;
         transform: scale(1) translateY(0);
     }
+}
+
+/* BUTONLAR: Asla Kapsül/Pill Olmayacak, Sadece Hafif Yumuşatılmış Köşeler (6px) */
+.cropper-modal button,
+.cropper-btn,
+.cropper-tool-btn,
+.cropper-icon-btn,
+.cropper-close-btn {
+    border-radius: 6px !important;
 }
 
 /* Header */
@@ -86,8 +96,8 @@
 
 .cropper-close-btn {
     background: #141418;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 6px !important;
     width: 32px;
     height: 32px;
     display: flex;
@@ -102,7 +112,7 @@
 .cropper-close-btn:hover {
     background: #ffffff;
     color: #000000;
-    border-color: #ffffff;
+    border-color: #ffffff !important;
 }
 
 /* Viewport / Kırpma Alanı */
@@ -148,7 +158,7 @@
     box-sizing: border-box;
 }
 
-/* Avatar: Keskin Beyaz Odak Çemberi */
+/* Avatar: Odak Çemberi */
 .cropper-frame-circle {
     border: 1.5px solid rgba(255, 255, 255, 0.9);
     border-radius: 50% !important;
@@ -158,7 +168,7 @@
 /* Banner / Cover: Dikdörtgen */
 .cropper-frame-rect {
     border: 1.5px solid rgba(255, 255, 255, 0.9);
-    border-radius: 4px;
+    border-radius: 4px !important;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.82);
 }
 
@@ -257,7 +267,7 @@
     height: 26px;
     border: 2px solid rgba(255, 255, 255, 0.12);
     border-top-color: #ffffff;
-    border-radius: 50%;
+    border-radius: 50% !important;
     animation: cropperSpin 0.7s linear infinite;
 }
 
@@ -279,7 +289,7 @@
     padding: 14px 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -306,10 +316,185 @@
     color: #ffffff;
     background: rgba(255, 255, 255, 0.08);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 4px !important;
     font-size: 10px;
+    font-family: monospace, inherit;
 }
 
+/* ==========================================================================
+   DERECELİ KADRAN / CETVEL (GRADUATED ANGLE DIAL)
+   ========================================================================== */
+.cropper-ruler-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.cropper-step-btn {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    padding: 0 4px !important;
+    min-width: 32px !important;
+}
+
+.cropper-ruler-dial {
+    position: relative;
+    flex: 1;
+    height: 44px;
+    background: #141418;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px !important;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+
+/* Ruler Ticks */
+.cropper-ruler-ticks {
+    position: absolute;
+    inset: 0 16px;
+    pointer-events: none;
+}
+
+.ruler-tick {
+    position: absolute;
+    top: 5px;
+    width: 1px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateX(-50%);
+}
+
+.tick-major {
+    height: 14px;
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.tick-center {
+    height: 18px;
+    width: 2px;
+    background: #ffffff;
+}
+
+.tick-sub {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.tick-label {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    font-weight: 700;
+    color: #a1a1aa;
+    white-space: nowrap;
+    font-family: monospace, inherit;
+}
+
+.tick-center .tick-label {
+    color: #ffffff;
+    font-weight: 800;
+}
+
+/* Ruler Range Input */
+.cropper-ruler-input {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: ew-resize;
+    outline: none;
+}
+
+.cropper-ruler-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 30px;
+    background: #ffffff;
+    border: 1.5px solid #000000;
+    border-radius: 3px !important;
+    cursor: ew-resize;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.1s ease, transform 0.1s ease;
+}
+
+.cropper-ruler-input::-webkit-slider-thumb:hover {
+    background: #e4e4e7;
+    transform: scale(1.05);
+}
+
+.cropper-ruler-input::-moz-range-thumb {
+    width: 12px;
+    height: 30px;
+    background: #ffffff;
+    border: 1.5px solid #000000;
+    border-radius: 3px !important;
+    cursor: ew-resize;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Hızlı Döndürme & Sıfırlama Butonları */
+.cropper-tool-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.cropper-tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: #141418;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 6px !important;
+    color: #e4e4e7;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.cropper-tool-btn:hover:not(:disabled) {
+    background: #27272a;
+    border-color: #ffffff !important;
+    color: #ffffff;
+}
+
+.cropper-tool-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.cropper-tool-btn-reset {
+    color: #a1a1aa;
+    background: #09090b;
+}
+
+.cropper-tool-btn-reset:hover:not(:disabled) {
+    color: #ffffff;
+    border-color: #ffffff !important;
+}
+
+/* ==========================================================================
+   ÖLÇEK (ZOOM) BÖLÜMÜ (ALTA TAŞINDI)
+   ========================================================================== */
 .cropper-slider-group {
     display: flex;
     align-items: center;
@@ -319,8 +504,8 @@
 
 .cropper-icon-btn {
     background: #141418;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 6px !important;
     min-width: 32px;
     height: 30px;
     display: flex;
@@ -338,7 +523,7 @@
 
 .cropper-icon-btn:hover:not(:disabled) {
     background: #27272a;
-    border-color: #ffffff;
+    border-color: #ffffff !important;
     color: #ffffff;
 }
 
@@ -347,14 +532,14 @@
     cursor: not-allowed;
 }
 
-/* Slider */
+/* Zoom Slider */
 .zoom-slider {
     flex: 1;
     height: 4px;
     -webkit-appearance: none;
     appearance: none;
     background: #27272a;
-    border-radius: 2px;
+    border-radius: 2px !important;
     outline: none;
     cursor: pointer;
     margin: 0;
@@ -365,7 +550,7 @@
     appearance: none;
     width: 14px;
     height: 14px;
-    border-radius: 3px;
+    border-radius: 3px !important;
     background: #ffffff;
     border: 1px solid #000000;
     cursor: ew-resize;
@@ -381,7 +566,7 @@
 .zoom-slider::-moz-range-thumb {
     width: 14px;
     height: 14px;
-    border-radius: 3px;
+    border-radius: 3px !important;
     background: #ffffff;
     border: 1px solid #000000;
     cursor: ew-resize;
@@ -393,61 +578,12 @@
     transform: scale(1.15);
 }
 
-/* Araç Çubuğu: Rotasyon & Sıfırlama Butonları */
-.cropper-tool-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-}
-
-.cropper-tool-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    background: #141418;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 6px;
-    color: #e4e4e7;
-    padding: 7px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-transform: uppercase;
-    flex: 1;
-}
-
-.cropper-tool-btn:hover:not(:disabled) {
-    background: #27272a;
-    border-color: #ffffff;
-    color: #ffffff;
-}
-
-.cropper-tool-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.cropper-tool-btn-reset {
-    color: #a1a1aa;
-    background: #09090b;
-}
-
-.cropper-tool-btn-reset:hover:not(:disabled) {
-    color: #ffffff;
-    border-color: #ffffff;
-}
-
 /* GIF Uyarısı */
 .cropper-gif-notice {
     background: #141418;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-left: 3px solid #ffffff;
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-left: 3px solid #ffffff !important;
+    border-radius: 6px !important;
     color: #a1a1aa;
     font-size: 11px;
     font-weight: 700;
@@ -469,8 +605,8 @@
 }
 
 .cropper-btn {
-    padding: 10px 20px;
-    border-radius: 6px;
+    padding: 10px 22px;
+    border-radius: 6px !important;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -482,31 +618,31 @@
 
 .cropper-btn-cancel {
     background: #121216;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
     color: #a1a1aa;
 }
 
 .cropper-btn-cancel:hover:not(:disabled) {
     background: #222228;
-    border-color: #ffffff;
+    border-color: #ffffff !important;
     color: #ffffff;
 }
 
 .cropper-btn-apply {
     background: #ffffff;
-    border: 1px solid #ffffff;
+    border: 1px solid #ffffff !important;
     color: #000000;
 }
 
 .cropper-btn-apply:hover:not(:disabled) {
     background: #d4d4d8;
-    border-color: #d4d4d8;
+    border-color: #d4d4d8 !important;
 }
 
 .cropper-btn-apply:disabled,
 .cropper-btn-cancel:disabled {
     background: #18181b;
-    border-color: #27272a;
+    border-color: #27272a !important;
     color: #52525b;
     cursor: not-allowed;
 }
@@ -540,7 +676,7 @@
 :root[data-theme='light'] .cropper-close-btn,
 [data-theme='light'] .cropper-close-btn {
     background: #f1f5f9;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
     color: #475569;
 }
 
@@ -548,7 +684,7 @@
 [data-theme='light'] .cropper-close-btn:hover {
     background: #0f172a;
     color: #ffffff;
-    border-color: #0f172a;
+    border-color: #0f172a !important;
 }
 
 :root[data-theme='light'] .cropper-controls-wrapper,
@@ -568,20 +704,100 @@
     background: #e2e8f0;
 }
 
+/* Light Mode: Ruler Dial */
+:root[data-theme='light'] .cropper-ruler-dial,
+[data-theme='light'] .cropper-ruler-dial {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme='light'] .ruler-tick,
+[data-theme='light'] .ruler-tick {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme='light'] .tick-major,
+[data-theme='light'] .tick-major {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme='light'] .tick-center,
+[data-theme='light'] .tick-center {
+    background: #0f172a;
+}
+
+:root[data-theme='light'] .tick-sub,
+[data-theme='light'] .tick-sub {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme='light'] .tick-label,
+[data-theme='light'] .tick-label {
+    color: #64748b;
+}
+
+:root[data-theme='light'] .tick-center .tick-label,
+[data-theme='light'] .tick-center .tick-label {
+    color: #0f172a;
+}
+
+:root[data-theme='light'] .cropper-ruler-input::-webkit-slider-thumb,
+[data-theme='light'] .cropper-ruler-input::-webkit-slider-thumb {
+    background: #0f172a;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+:root[data-theme='light'] .cropper-ruler-input::-moz-range-thumb,
+[data-theme='light'] .cropper-ruler-input::-moz-range-thumb {
+    background: #0f172a;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Light Mode: Icon & Tool Buttons */
 :root[data-theme='light'] .cropper-icon-btn,
 [data-theme='light'] .cropper-icon-btn {
     background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
     color: #1e293b;
 }
 
 :root[data-theme='light'] .cropper-icon-btn:hover:not(:disabled),
 [data-theme='light'] .cropper-icon-btn:hover:not(:disabled) {
     background: #f1f5f9;
-    border-color: #0f172a;
+    border-color: #0f172a !important;
     color: #0f172a;
 }
 
+:root[data-theme='light'] .cropper-tool-btn,
+[data-theme='light'] .cropper-tool-btn {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    color: #1e293b;
+}
+
+:root[data-theme='light'] .cropper-tool-btn:hover:not(:disabled),
+[data-theme='light'] .cropper-tool-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #0f172a !important;
+    color: #0f172a;
+}
+
+:root[data-theme='light'] .cropper-tool-btn-reset,
+[data-theme='light'] .cropper-tool-btn-reset {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+:root[data-theme='light'] .cropper-tool-btn-reset:hover:not(:disabled),
+[data-theme='light'] .cropper-tool-btn-reset:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #0f172a !important;
+}
+
+/* Light Mode: Zoom Slider */
 :root[data-theme='light'] .zoom-slider,
 [data-theme='light'] .zoom-slider {
     background: #e2e8f0;
@@ -609,38 +825,12 @@
     background: #334155;
 }
 
-:root[data-theme='light'] .cropper-tool-btn,
-[data-theme='light'] .cropper-tool-btn {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    color: #1e293b;
-}
-
-:root[data-theme='light'] .cropper-tool-btn:hover:not(:disabled),
-[data-theme='light'] .cropper-tool-btn:hover:not(:disabled) {
-    background: #f1f5f9;
-    border-color: #0f172a;
-    color: #0f172a;
-}
-
-:root[data-theme='light'] .cropper-tool-btn-reset,
-[data-theme='light'] .cropper-tool-btn-reset {
-    background: #f8fafc;
-    color: #64748b;
-}
-
-:root[data-theme='light'] .cropper-tool-btn-reset:hover:not(:disabled),
-[data-theme='light'] .cropper-tool-btn-reset:hover:not(:disabled) {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-color: #0f172a;
-}
-
+/* Light Mode: GIF Notice & Actions */
 :root[data-theme='light'] .cropper-gif-notice,
 [data-theme='light'] .cropper-gif-notice {
     background: #f8fafc;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-left: 3px solid #0f172a;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-left: 3px solid #0f172a !important;
     color: #475569;
 }
 
@@ -653,7 +843,7 @@
 :root[data-theme='light'] .cropper-btn-cancel,
 [data-theme='light'] .cropper-btn-cancel {
     background: #f1f5f9;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
     color: #475569;
 }
 
@@ -661,26 +851,26 @@
 [data-theme='light'] .cropper-btn-cancel:hover:not(:disabled) {
     background: #e2e8f0;
     color: #0f172a;
-    border-color: #0f172a;
+    border-color: #0f172a !important;
 }
 
 :root[data-theme='light'] .cropper-btn-apply,
 [data-theme='light'] .cropper-btn-apply {
     background: #0f172a;
-    border: 1px solid #0f172a;
+    border: 1px solid #0f172a !important;
     color: #ffffff;
 }
 
 :root[data-theme='light'] .cropper-btn-apply:hover:not(:disabled),
 [data-theme='light'] .cropper-btn-apply:hover:not(:disabled) {
     background: #1e293b;
-    border-color: #1e293b;
+    border-color: #1e293b !important;
 }
 
 :root[data-theme='light'] .cropper-btn-apply:disabled,
 [data-theme='light'] .cropper-btn-cancel:disabled {
     background: #f1f5f9;
-    border-color: #e2e8f0;
+    border-color: #e2e8f0 !important;
     color: #94a3b8;
 }
 
@@ -688,7 +878,7 @@
 @media (max-width: 540px) {
     .cropper-modal {
         max-width: 100%;
-        border-radius: 8px;
+        border-radius: 8px !important;
     }
 
     .cropper-container {
