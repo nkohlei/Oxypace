@@ -59,6 +59,25 @@ const Profile = () => {
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('posts'); // Default tab - Posts first
+    const tabsContainerRef = useRef(null);
+    const [tabIndicatorStyle, setTabIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+
+    const updateTabIndicator = useCallback(() => {
+        if (!tabsContainerRef.current) return;
+        const activeEl = tabsContainerRef.current.querySelector('.profile-tab-item.active');
+        if (activeEl) {
+            const left = activeEl.offsetLeft;
+            const width = activeEl.offsetWidth * 0.6; // exact 60% width matching original design
+            setTabIndicatorStyle({ left, width, opacity: 1 });
+        }
+    }, []);
+
+    useEffect(() => {
+        updateTabIndicator();
+        window.addEventListener('resize', updateTabIndicator);
+        return () => window.removeEventListener('resize', updateTabIndicator);
+    }, [activeTab, updateTabIndicator]);
+
     const [showUsernameGuide, setShowUsernameGuide] = useState(false);
     const [visibilityDropdownOpen, setVisibilityDropdownOpen] = useState(false);
     const [initialFormData, setInitialFormData] = useState(null);
@@ -1082,7 +1101,7 @@ const Profile = () => {
                                 </div>
                             ) : (
                                 <>
-                                    <div className="profile-tabs">
+                                    <div className="profile-tabs" ref={tabsContainerRef}>
                                         <div
                                             className={`profile-tab-item ${activeTab === 'posts' ? 'active' : ''}`}
                                             onClick={() => setActiveTab('posts')}
@@ -1135,6 +1154,14 @@ const Profile = () => {
                                                 Arşivlenenler
                                             </div>
                                         )}
+                                        <span
+                                            className="profile-tab-active-indicator"
+                                            style={{
+                                                transform: `translateX(${tabIndicatorStyle.left}px)`,
+                                                width: `${tabIndicatorStyle.width}px`,
+                                                opacity: tabIndicatorStyle.opacity
+                                            }}
+                                        />
                                     </div>
 
                                     <div className="profile-tab-view">

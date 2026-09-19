@@ -357,6 +357,7 @@
 }
 
 .profile-tabs {
+    position: relative;
     display: flex;
     gap: 24px;
     margin-bottom: 24px;
@@ -371,6 +372,21 @@
     display: none;
 }
 
+.profile-tab-active-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--primary-cyan);
+    border-radius: 10px;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.15s ease;
+    pointer-events: none;
+    will-change: transform, width;
+    z-index: 2;
+}
+
 .profile-tab-view {
     flex: 1;
     min-height: 0;
@@ -378,6 +394,22 @@
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.profile-tab-view .tab-content {
+    animation: profileTabContentFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: opacity, transform;
+}
+
+@keyframes profileTabContentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .profile-tab-view::-webkit-scrollbar {
@@ -420,17 +452,6 @@
 
 .profile-tab-item.active {
     color: var(--text-primary);
-}
-
-.profile-tab-item.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 60%;
-    height: 3px;
-    background: var(--primary-cyan);
-    border-radius: 10px;
 }
 
 .section-header {

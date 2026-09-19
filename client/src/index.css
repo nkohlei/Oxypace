@@ -115,6 +115,110 @@ html.theme-transitioning *::after {
   }
 }
 
+/* ==========================================================================
+   GLOBAL HIGH-FPS MODAL & POPUP ANIMATIONS
+   Arayüz yapısını ve düzenini bozmadan tüm açılır pencerelere
+   ve menülere donanım ivmeli açılma hareket animasyonu
+   ========================================================================== */
+
+/* 1. Tüm Açılır Pencere Arka Plan Katmanları (Overlays) */
+.modal-overlay,
+.profile-edit-modal-overlay,
+.edit-modal-overlay,
+.ticket-modal-overlay,
+.modal-overlay-modern,
+.download-modal-overlay,
+.update-modal-overlay,
+.share-modal-overlay,
+.report-modal-overlay,
+.quote-modal-overlay,
+.profile-image-modal-overlay,
+.settings-modal-overlay,
+.portal-info-modal-overlay,
+.invite-modal-overlay,
+.maintenance-modal-overlay,
+.security-questions-modal-overlay,
+.register-device-modal-overlay,
+.device-modal-overlay {
+    animation: oxypaceOverlayFadeIn 0.22s ease-out forwards !important;
+    will-change: opacity;
+}
+
+/* 2. Tüm Açılır Pencere Gövdeleri / Kartları (Modal Contents & Dialogs) */
+.modal-content,
+.profile-edit-modal-dialog,
+.edit-modal-content-modern,
+.ticket-modal-content,
+.modal-content-modern,
+.download-modal-card,
+.update-modal-content,
+.share-modal-card,
+.report-modal-card,
+.report-modal-content,
+.quote-modal-card,
+.profile-image-modal-content,
+.settings-modal,
+.settings-modal-container,
+.portal-info-modal,
+.portal-info-modal-content,
+.invite-modal-card,
+.invite-modal-content,
+.maintenance-modal-content,
+.security-questions-modal-content,
+.register-device-modal-content,
+.advanced-modal,
+.notifications-modal-content {
+    animation: oxypaceModalPopIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    will-change: transform, opacity;
+    transform-origin: center center;
+}
+
+/* 3. Tüm Açılır Menüler & Popover'lar (Dropdowns & Popovers) */
+.pd-dropdown-menu,
+.profile-visibility-dropdown-menu,
+.flyout-menu,
+.popover-menu,
+.dropdown-menu,
+.user-popover,
+.custom-select-menu,
+.member-flyout,
+.channel-actions-menu {
+    animation: oxypaceDropdownSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    will-change: transform, opacity;
+    transform-origin: top center;
+}
+
+@keyframes oxypaceOverlayFadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes oxypaceModalPopIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.92) translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes oxypaceDropdownSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 /* Reduced Motion Preference */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
