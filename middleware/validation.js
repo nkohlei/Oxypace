@@ -83,6 +83,14 @@ export const messageValidation = [
 
 // Profile update validation
 export const profileValidation = [
+    body('username')
+        .optional()
+        .isLength({ min: 3, max: 30 })
+        .withMessage('Kullanıcı adı 3-30 karakter arasında olmalı')
+        .matches(/^[a-zA-Z0-9_]+$/)
+        .withMessage('Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir')
+        .trim()
+        .escape(),
     body('displayName')
         .optional()
         .isLength({ max: 50 })

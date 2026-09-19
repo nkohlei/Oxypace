@@ -14,6 +14,7 @@ import Comment from '../models/Comment.js';
 import Portal from '../models/Portal.js';
 import { pubClient } from '../sockets/redisAdapter.js';
 import { enrollInTanitimPortal } from '../utils/portalAutoEnroll.js';
+import { validateProfileFields } from '../utils/profanityFilter.js';
 
 const router = express.Router();
 
@@ -404,16 +405,29 @@ router.put('/me', protect, profileValidation, async (req, res) => {
     try {
         const { displayName, bio, avatar, username } = req.body;
 
+        // Check for profanity, insults, or sexual expressions in any field
+        const profanityCheck = validateProfileFields({ username, displayName, bio });
+        if (profanityCheck.hasProfanity) {
+            return res.status(400).json({ message: profanityCheck.message });
+        }
+
         const user = await User.findById(req.user._id);
 
         // Handle Username Change
         if (username && username !== user.username) {
+            const cleanUsername = username.trim().toLowerCase();
+            if (!/^[a-zA-Z0-9_]{3,30}$/.test(cleanUsername)) {
+                return res.status(400).json({
+                    message: 'Kullanıcı adı 3-30 karakter arasında olmalı ve yalnızca harf, rakam ile alt çizgi (_) içerebilir.',
+                });
+            }
+
             // Check if username taken
-            const existingUser = await User.findOne({ username });
-            if (existingUser) {
+            const existingUser = await User.findOne({ username: cleanUsername });
+            if (existingUser && String(existingUser._id) !== String(user._id)) {
                 return res.status(400).json({ message: 'Bu kullanıcı adı zaten alınmış.' });
             }
-            user.username = username;
+            user.username = cleanUsername;
         }
 
         if (displayName !== undefined) {
