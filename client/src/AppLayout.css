@@ -213,3 +213,29 @@
 .map-page-active .horizontal-layout-container {
     padding-top: 0 !important;
 }
+
+/* -----------------------------------------------------------------------------
+   ROUTE PAGE TRANSITIONS (High-FPS 60/120 FPS)
+   ----------------------------------------------------------------------------- */
+.route-transition-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    min-height: 100%;
+    animation: routeFadeSlideIn calc(var(--motion-duration-normal, 220ms) * var(--motion-speed, 1)) var(--motion-ease, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+@keyframes routeFadeSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, Hourglass, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
@@ -13,11 +14,13 @@ import './Settings.css';
 
 const Settings = () => {
     const { logout, user, updateUser, loading: authLoading } = useAuth();
+    const { isDark, toggleTheme, motionSpeed, setMotionSpeed } = useTheme();
     const { socket } = useSocket();
     const navigate = useNavigate();
 
     // Navigation State
     const [activeMenu, setActiveMenu] = useState('main'); // main, account, notifications, privacy, verification
+    const [testMotionOpen, setTestMotionOpen] = useState(false);
 
     // Settings State
     const [notifications, setNotifications] = useState({
@@ -132,7 +135,7 @@ const Settings = () => {
     useLayoutEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const section = params.get('section');
-        if (section && ['account', 'verification', 'devices', 'privacy', 'notifications'].includes(section)) {
+        if (section && ['account', 'verification', 'devices', 'privacy', 'notifications', 'video', 'appearance'].includes(section)) {
             setActiveMenu(section);
         } else {
             setActiveMenu('main');
@@ -567,6 +570,15 @@ const Settings = () => {
                 </div>
 
                 <div
+                    className={`channel-item ${activeMenu === 'appearance' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('appearance')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'appearance' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'appearance' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <span style={{ fontWeight: 500 }}>Görünüm & Hareket</span>
+                </div>
+
+                <div
                     className={`channel-item ${activeMenu === 'notifications' ? 'active' : ''}`}
                     onClick={() => setActiveMenu('notifications')}
                     style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'notifications' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'notifications' ? 'var(--bg-hover)' : 'transparent' }}
@@ -662,6 +674,10 @@ const Settings = () => {
             case 'devices':
                 title = "Kayıtlı Cihazlar";
                 content = renderDevicesMenu();
+                break;
+            case 'appearance':
+                title = "Görünüm & Hareket";
+                content = renderAppearanceMenu();
                 break;
             case 'notifications':
                 title = "Bildirimler";
@@ -1542,6 +1558,121 @@ const Settings = () => {
                             <span className="slider"></span>
                         </label>
                     </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderAppearanceMenu = () => (
+        <div className="submenu-content animation-slide-in">
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Arayüz Teması</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc" style={{ marginBottom: '14px' }}>
+                        Oxypace arayüzü için yüksek kontrastlı Saf Siyah veya Parlak Beyaz tema görünümünü seçin.
+                    </p>
+                    <div className="segmented-options-group">
+                        <button
+                            type="button"
+                            className={`segment-btn ${isDark ? 'active' : ''}`}
+                            onClick={() => { if (!isDark) toggleTheme(); }}
+                        >
+                            🌙 Koyu Tema (Saf Siyah)
+                        </button>
+                        <button
+                            type="button"
+                            className={`segment-btn ${!isDark ? 'active' : ''}`}
+                            onClick={() => { if (isDark) toggleTheme(); }}
+                        >
+                            ☀️ Açık Tema (Beyaz)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Hareket & Animasyon Hızı</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc" style={{ marginBottom: '14px' }}>
+                        Sayfa geçişleri, pencereler, menü açılışları ve tema değişim animasyonlarının hızını belirleyin. Tüm animasyonlar donanım ivmeli yüksek FPS (60/120 Hz) ile çalışır.
+                    </p>
+                    <div className="segmented-options-group">
+                        <button
+                            type="button"
+                            className={`segment-btn ${motionSpeed === '1x' ? 'active' : ''}`}
+                            onClick={() => setMotionSpeed('1x')}
+                        >
+                            ⚡ 1x (Normal - 60/120 FPS Akıcı)
+                        </button>
+                        <button
+                            type="button"
+                            className={`segment-btn ${motionSpeed === '0.5x' ? 'active' : ''}`}
+                            onClick={() => setMotionSpeed('0.5x')}
+                        >
+                            🎬 0.5x (Sinematik / Yavaş Geçişler)
+                        </button>
+                    </div>
+
+                    <div style={{
+                        marginTop: '18px',
+                        padding: '14px 16px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                    }}>
+                        <div>
+                            <span style={{ fontWeight: 600, fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>
+                                Animasyon Hız Testi
+                            </span>
+                            <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                                Seçili hızı ({motionSpeed}) pencere animasyonu üzerinde anında test edin.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setTestMotionOpen(!testMotionOpen)}
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid rgba(255, 255, 255, 0.16)',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all calc(var(--motion-duration-fast, 140ms) * var(--motion-speed, 1)) ease'
+                            }}
+                        >
+                            {testMotionOpen ? 'Kapat' : 'Pencereyi Test Et'}
+                        </button>
+                    </div>
+
+                    {testMotionOpen && (
+                        <div style={{
+                            marginTop: '14px',
+                            padding: '16px',
+                            background: 'rgba(56, 189, 248, 0.08)',
+                            border: '1px solid rgba(56, 189, 248, 0.25)',
+                            borderRadius: '8px',
+                            animation: 'oxypaceScaleUp calc(var(--motion-duration-normal, 220ms) * var(--motion-speed, 1)) var(--motion-ease) forwards',
+                            willChange: 'transform, opacity'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <span style={{ fontSize: '18px' }}>✨</span>
+                                <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                                    {motionSpeed === '1x' ? '1x Hızlı & Akıcı Mod' : '0.5x Sinematik Mod'}
+                                </strong>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                Şu anda {motionSpeed} hız katsayısı aktiftir. Sayfa geçişleri, pencereler, bildirimler ve menüler bu hız ve cubic-bezier ivmelenmesiyle hareket eder.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

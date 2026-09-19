@@ -8,9 +8,33 @@ export const ThemeProvider = ({ children }) => {
         return saved ? saved === 'dark' : true; // Default to dark
     });
 
-    // Apply theme changes synchronously with Blog
+    const [motionSpeed, setMotionSpeed] = useState(() => {
+        return localStorage.getItem('motion_speed') || '1x';
+    });
+
+    // Apply motion speed to CSS variables
     useEffect(() => {
         const root = document.documentElement;
+        if (motionSpeed === '0.5x') {
+            root.style.setProperty('--motion-speed', '2'); // 2x duration = 0.5x speed
+            root.setAttribute('data-motion-speed', '0.5x');
+        } else {
+            root.style.setProperty('--motion-speed', '1'); // 1x duration
+            root.setAttribute('data-motion-speed', '1x');
+        }
+        localStorage.setItem('motion_speed', motionSpeed);
+    }, [motionSpeed]);
+
+    // Apply theme changes with smooth morphing
+    useEffect(() => {
+        const root = document.documentElement;
+
+        // Smooth transition class for color morphing
+        root.classList.add('theme-transitioning');
+        const timer = setTimeout(() => {
+            root.classList.remove('theme-transitioning');
+        }, 300);
+
         if (isDark) {
             root.classList.add('dark');
             root.classList.remove('light');
@@ -24,14 +48,22 @@ export const ThemeProvider = ({ children }) => {
             localStorage.setItem('theme', 'light');
             localStorage.setItem('theme_mode', 'light');
         }
+
+        return () => clearTimeout(timer);
     }, [isDark]);
 
     const toggleTheme = () => {
         setIsDark(!isDark);
     };
 
+    const toggleMotionSpeed = () => {
+        setMotionSpeed((prev) => (prev === '1x' ? '0.5x' : '1x'));
+    };
+
     return (
-        <ThemeContext.Provider value={{ isDark, toggleTheme }}>{children}</ThemeContext.Provider>
+        <ThemeContext.Provider value={{ isDark, toggleTheme, motionSpeed, setMotionSpeed, toggleMotionSpeed }}>
+            {children}
+        </ThemeContext.Provider>
     );
 };
 

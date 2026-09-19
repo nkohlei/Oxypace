@@ -10,7 +10,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn calc(var(--motion-duration-fast, 140ms) * var(--motion-speed, 1)) ease-out;
+    will-change: opacity;
 }
 
 .profile-image-modal-content {
@@ -21,6 +22,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    animation: oxypaceScaleUp calc(var(--motion-duration-normal, 220ms) * var(--motion-speed, 1)) var(--motion-ease, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0);
 }
 
 .profile-image-modal-close {

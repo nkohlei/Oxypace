@@ -47,6 +47,15 @@
   /* Layout */
   --nav-top-height: 50px;
 
+  /* Motion & Animation Tokens (Oxypace High-FPS Engine) */
+  --motion-speed: 1;
+  --motion-duration-fast: calc(140ms * var(--motion-speed, 1));
+  --motion-duration-normal: calc(220ms * var(--motion-speed, 1));
+  --motion-duration-slow: calc(340ms * var(--motion-speed, 1));
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
   /* Variable Mappings */
   --bg-primary: var(--bg-dark);
   --bg-secondary: var(--bg-darker);
@@ -54,6 +63,66 @@
   --border-color: var(--border-subtle);
   --hover-bg: rgba(255, 255, 255, 0.08);
   --primary-color: var(--primary-cyan);
+}
+
+/* Smooth Theme Transition Class - Runs for 300ms on theme change */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color calc(240ms * var(--motion-speed, 1)) ease,
+              border-color calc(240ms * var(--motion-speed, 1)) ease,
+              color calc(240ms * var(--motion-speed, 1)) ease,
+              box-shadow calc(240ms * var(--motion-speed, 1)) ease !important;
+}
+
+/* Reusable High-FPS Motion Keyframes */
+@keyframes oxypaceFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes oxypaceScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes oxypaceSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes oxypaceSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* LIGHT THEME - Stark White & High Readability */
