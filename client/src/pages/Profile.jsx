@@ -23,6 +23,7 @@ import PostImageGallery from '../components/PostImageGallery';
 import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
 import { useSocket } from '../context/SocketContext';
+import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2 } from 'lucide-react';
 import './Profile.css';
 
 
@@ -878,7 +879,16 @@ const Profile = () => {
                                     {isOwnProfile && (
                                         <button
                                             className="profile-edit-trigger-btn"
-                                            onClick={() => setEditing(true)}
+                                            onClick={() => {
+                                                setFormData({
+                                                    displayName: profileUser?.profile?.displayName || '',
+                                                    bio: profileUser?.profile?.bio || '',
+                                                    portalVisibility: profileUser?.settings?.privacy?.portalVisibility || 'public',
+                                                });
+                                                setError('');
+                                                setSuccess('');
+                                                setEditing(true);
+                                            }}
                                         >
                                             <svg
                                                 width="14"
@@ -1771,149 +1781,193 @@ const Profile = () => {
                         </div>
                     )}
 
-                    {/* Edit Profile Modal */}
+                    {/* Modern Edit Profile Modal */}
                     {editing && (
-                        <div className="edit-modal-overlay" onClick={() => setEditing(false)}>
-                            <div className="edit-modal-modern" onClick={(e) => e.stopPropagation()}>
-                                <div className="edit-modal-header-modern">
-                                    <div className="header-left">
-                                        <button
-                                            className="close-btn-modern"
-                                            onClick={() => setEditing(false)}
-                                        >
-                                            ✕
-                                        </button>
-                                        <h2 className="header-title-modern">Profili düzenle</h2>
+                        <div className="profile-edit-modal-overlay" onClick={() => setEditing(false)}>
+                            <div className="profile-edit-modal-dialog" onClick={(e) => e.stopPropagation()}>
+                                <div className="profile-edit-modal-header">
+                                    <div className="profile-edit-header-title-block">
+                                        <span className="profile-edit-tag">[ HESAP &amp; PROFİL ]</span>
+                                        <h2 className="profile-edit-title">Profili Düzenle</h2>
                                     </div>
                                     <button
-                                        className="save-btn-modern"
-                                        onClick={handleSubmit}
-                                        disabled={loading}
+                                        type="button"
+                                        className="profile-edit-close-btn"
+                                        onClick={() => setEditing(false)}
+                                        aria-label="Kapat"
                                     >
-                                        {loading ? '...' : 'Kaydet'}
+                                        <X size={18} />
                                     </button>
                                 </div>
 
-                                <div
-                                    className="edit-modal-content-modern"
-                                    style={{ backgroundColor: '#1e1f22' }}
-                                >
-                                    <div className="edit-form-fields" style={{ padding: '24px' }}>
-                                        <div className="floating-label-group">
-                                            <input
-                                                type="text"
-                                                name="displayName"
-                                                value={formData.displayName}
-                                                onChange={handleChange}
-                                                className="floating-input"
-                                                placeholder=" "
-                                                id="input-name"
-                                                style={{
-                                                    backgroundColor: '#111214',
-                                                    border: '1px solid #1e1f22',
-                                                    color: 'white',
-                                                    padding: '12px',
-                                                    borderRadius: '8px',
-                                                }}
-                                            />
-                                            <label
-                                                htmlFor="input-name"
-                                                className="floating-label"
-                                                style={{
-                                                    top: '-10px',
-                                                    left: '12px',
-                                                    background: '#1e1f22',
-                                                    padding: '0 4px',
-                                                }}
-                                            >
-                                                İsim
-                                            </label>
+                                <form onSubmit={handleSubmit} className="profile-edit-form">
+                                    <div className="profile-edit-modal-body">
+                                        {/* Display Name */}
+                                        <div className="profile-edit-field-group">
+                                            <div className="profile-edit-field-header">
+                                                <label htmlFor="input-displayName" className="profile-edit-field-label">
+                                                    <User size={14} className="profile-edit-field-icon" />
+                                                    <span>Görünen İsim</span>
+                                                </label>
+                                                <span className="profile-edit-counter">
+                                                    {(formData.displayName || '').length}/50
+                                                </span>
+                                            </div>
+                                            <div className="profile-edit-input-wrapper">
+                                                <input
+                                                    id="input-displayName"
+                                                    type="text"
+                                                    name="displayName"
+                                                    value={formData.displayName}
+                                                    onChange={handleChange}
+                                                    maxLength={50}
+                                                    placeholder="Görünen adınızı yazın..."
+                                                    className="profile-edit-input"
+                                                    autoComplete="off"
+                                                />
+                                            </div>
                                         </div>
 
-                                        <div
-                                            className="floating-label-group"
-                                            style={{ marginTop: '20px' }}
-                                        >
-                                            <textarea
-                                                name="bio"
-                                                value={formData.bio}
-                                                onChange={handleChange}
-                                                className="floating-input floating-textarea"
-                                                placeholder=" "
-                                                id="input-bio"
-                                                style={{
-                                                    backgroundColor: '#111214',
-                                                    border: '1px solid #1e1f22',
-                                                    color: 'white',
-                                                    padding: '12px',
-                                                    borderRadius: '8px',
-                                                    minHeight: '100px',
-                                                }}
-                                            />
-                                            <label
-                                                htmlFor="input-bio"
-                                                className="floating-label"
-                                                style={{
-                                                    top: '-10px',
-                                                    left: '12px',
-                                                    background: '#1e1f22',
-                                                    padding: '0 4px',
-                                                }}
-                                            >
-                                                Biyografi
-                                            </label>
+                                        {/* Bio */}
+                                        <div className="profile-edit-field-group">
+                                            <div className="profile-edit-field-header">
+                                                <label htmlFor="input-bio" className="profile-edit-field-label">
+                                                    <FileText size={14} className="profile-edit-field-icon" />
+                                                    <span>Biyografi</span>
+                                                </label>
+                                                <span className="profile-edit-counter">
+                                                    {(formData.bio || '').length}/200
+                                                </span>
+                                            </div>
+                                            <div className="profile-edit-input-wrapper">
+                                                <textarea
+                                                    id="input-bio"
+                                                    name="bio"
+                                                    value={formData.bio}
+                                                    onChange={handleChange}
+                                                    maxLength={200}
+                                                    placeholder="Kendinizden, ilgi alanlarınızdan bahsedin..."
+                                                    className="profile-edit-textarea"
+                                                    rows={3}
+                                                />
+                                            </div>
                                         </div>
 
-                                        <div className="form-group" style={{ marginTop: '20px' }}>
-                                            <label
-                                                style={{
-                                                    display: 'block',
-                                                    fontSize: '12px',
-                                                    color: '#b5bac1',
-                                                    marginBottom: '8px',
-                                                    fontWeight: 'bold',
-                                                }}
-                                            >
-                                                PORTAL GÖRÜNÜRLÜĞÜ
-                                            </label>
-                                            <select
-                                                name="portalVisibility"
-                                                value={formData.portalVisibility}
-                                                onChange={handleChange}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '12px',
-                                                    backgroundColor: '#111214',
-                                                    border: '1px solid #1e1f22',
-                                                    color: 'white',
-                                                    borderRadius: '8px',
-                                                    outline: 'none',
-                                                }}
-                                            >
-                                                <option value="public">Herkese Açık</option>
-                                                <option value="friends">Sadece Arkadaşlar</option>
-                                                <option value="private">Gizli</option>
-                                            </select>
+                                        {/* Portal Visibility */}
+                                        <div className="profile-edit-field-group">
+                                            <div className="profile-edit-field-header">
+                                                <label className="profile-edit-field-label">
+                                                    <Shield size={14} className="profile-edit-field-icon" />
+                                                    <span>Portal Görünürlüğü</span>
+                                                </label>
+                                            </div>
+                                            <p className="profile-edit-field-hint">
+                                                Profilinizin ve portal aktivitelerinizin kimler tarafından görüntülenebileceğini belirleyin.
+                                            </p>
+
+                                            <div className="profile-visibility-cards">
+                                                <div
+                                                    className={`profile-visibility-card ${formData.portalVisibility === 'public' ? 'active' : ''}`}
+                                                    onClick={() => setFormData(prev => ({ ...prev, portalVisibility: 'public' }))}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                >
+                                                    <div className="vis-card-left">
+                                                        <div className="vis-card-icon-box">
+                                                            <Globe size={18} />
+                                                        </div>
+                                                        <div className="vis-card-info">
+                                                            <span className="vis-card-title">Herkese Açık</span>
+                                                            <span className="vis-card-desc">Profiliniz ve paylaşımlarınız tüm kullanıcılara açıktır.</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="vis-card-radio">
+                                                        {formData.portalVisibility === 'public' && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    className={`profile-visibility-card ${formData.portalVisibility === 'friends' ? 'active' : ''}`}
+                                                    onClick={() => setFormData(prev => ({ ...prev, portalVisibility: 'friends' }))}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                >
+                                                    <div className="vis-card-left">
+                                                        <div className="vis-card-icon-box">
+                                                            <Users size={18} />
+                                                        </div>
+                                                        <div className="vis-card-info">
+                                                            <span className="vis-card-title">Sadece Arkadaşlar</span>
+                                                            <span className="vis-card-desc">Yalnızca arkadaş listenizdeki kullanıcılar profilinizi tam görebilir.</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="vis-card-radio">
+                                                        {formData.portalVisibility === 'friends' && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    className={`profile-visibility-card ${formData.portalVisibility === 'private' ? 'active' : ''}`}
+                                                    onClick={() => setFormData(prev => ({ ...prev, portalVisibility: 'private' }))}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                >
+                                                    <div className="vis-card-left">
+                                                        <div className="vis-card-icon-box">
+                                                            <Lock size={18} />
+                                                        </div>
+                                                        <div className="vis-card-info">
+                                                            <span className="vis-card-title">Gizli Portal</span>
+                                                            <span className="vis-card-desc">Profiliniz kilitlidir, içerikleriniz yalnızca onayladığınız kullanıcılara gösterilir.</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="vis-card-radio">
+                                                        {formData.portalVisibility === 'private' && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
+                                        {/* Alerts */}
                                         {error && (
-                                            <div
-                                                className="error-message"
-                                                style={{ color: '#ff4444', marginTop: '12px' }}
-                                            >
-                                                {error}
+                                            <div className="profile-edit-alert error">
+                                                <AlertCircle size={16} className="profile-edit-alert-icon" />
+                                                <span>{error}</span>
                                             </div>
                                         )}
                                         {success && (
-                                            <div
-                                                className="success-message"
-                                                style={{ color: '#00c851', marginTop: '12px' }}
-                                            >
-                                                {success}
+                                            <div className="profile-edit-alert success">
+                                                <CheckCircle2 size={16} className="profile-edit-alert-icon" />
+                                                <span>{success}</span>
                                             </div>
                                         )}
                                     </div>
-                                </div>
+
+                                    <div className="profile-edit-modal-footer">
+                                        <button
+                                            type="button"
+                                            className="profile-edit-btn-cancel"
+                                            onClick={() => setEditing(false)}
+                                            disabled={loading}
+                                        >
+                                            İptal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="profile-edit-btn-save"
+                                            disabled={loading}
+                                        >
+                                            {loading ? (
+                                                <span className="profile-edit-btn-loading">
+                                                    <span className="profile-edit-spinner" />
+                                                    Kaydediliyor...
+                                                </span>
+                                            ) : (
+                                                'Değişiklikleri Kaydet'
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     )}
