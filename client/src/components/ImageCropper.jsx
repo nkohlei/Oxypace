@@ -13,9 +13,9 @@ import './ImageCropper.css';
  * ImageCropper - Oxypace Profesyonel Profil/Görsel Düzenleyici
  *
  * - Açık (Light) ve Koyu (Dark) tema desteği
- * - Kadrajın hemen altında dereceli kadran (graduated dial) ile rotasyon
- * - Alt kısımda konumlandırılmış ölçek (zoom) barı
- * - Hafif yumuşatılmış köşeler (asla pill/kapsül olmayan modern butonlar)
+ * - Kadrajın içinde, alt kısımda telefon tarzı minimal dereceli döndürme kadranı (iOS camera style dial)
+ * - Alt kısımda ölçek (zoom) barı ve hızlı araçlar
+ * - Dikdörtgen, hafif yumuşatılmış köşeler (asla kapsül/pill olmayan butonlar)
  * - Sürükleme, tekerlek zoom ve pinch-to-zoom desteği
  * - GIF dosyaları için kayıpsız doğrudan yükleme
  */
@@ -87,6 +87,10 @@ const ImageCropper = ({
     const dragStartRef = useRef({ x: 0, y: 0, initialOffsetX: 0, initialOffsetY: 0 });
     const pinchStartRef = useRef({ distance: 0, initialScale: 1 });
 
+    // Dereceli kadran (Ruler) sürükleme durumları
+    const [isRulerDragging, setIsRulerDragging] = useState(false);
+    const rulerDragRef = useRef({ startX: 0, startRotation: 0 });
+
     // Görseli yükle
     useEffect(() => {
         if (!image) return;
@@ -114,7 +118,6 @@ const ImageCropper = ({
     // Derece cinsinden rotasyon değiştirme
     const handleRotationChange = (newDeg) => {
         if (!imageObj) return;
-        // -180 ile 180 arasında normalleştir
         let normalized = Math.round(newDeg);
         while (normalized > 180) normalized -= 360;
         while (normalized < -180) normalized += 360;
@@ -233,9 +236,52 @@ const ImageCropper = ({
         return () => container.removeEventListener('wheel', handleWheel);
     }, [handleWheel]);
 
+    // Kadran (Ruler) Pointer Başlatma
+    const handleRulerPointerDown = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsRulerDragging(true);
+        rulerDragRef.current = {
+            startX: e.clientX || (e.touches && e.touches[0].clientX) || 0,
+            startRotation: rotation,
+        };
+    };
+
+    // Kadran Pointer Hareketi
+    useEffect(() => {
+        const handleRulerPointerMove = (e) => {
+            if (!isRulerDragging) return;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            if (typeof clientX !== 'number') return;
+
+            const deltaX = clientX - rulerDragRef.current.startX;
+            // Her 6px sürükleme = 1 derece
+            const degreesDelta = -deltaX / 6;
+            handleRotationChange(rulerDragRef.current.startRotation + degreesDelta);
+        };
+
+        const handleRulerPointerUp = () => {
+            setIsRulerDragging(false);
+        };
+
+        if (isRulerDragging) {
+            window.addEventListener('mousemove', handleRulerPointerMove);
+            window.addEventListener('mouseup', handleRulerPointerUp);
+            window.addEventListener('touchmove', handleRulerPointerMove, { passive: false });
+            window.addEventListener('touchend', handleRulerPointerUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleRulerPointerMove);
+            window.removeEventListener('mouseup', handleRulerPointerUp);
+            window.removeEventListener('touchmove', handleRulerPointerMove);
+            window.removeEventListener('touchend', handleRulerPointerUp);
+        };
+    }, [isRulerDragging]);
+
     // Fare Sürükleme Başlat
     const handleMouseDown = (e) => {
-        if (e.button !== 0 || !imageObj) return;
+        if (e.button !== 0 || !imageObj || isRulerDragging) return;
         e.preventDefault();
         setIsDragging(true);
         dragStartRef.current = {
@@ -248,7 +294,7 @@ const ImageCropper = ({
 
     // Dokunma Başlat (Tek parmak: Pan, Çift parmak: Pinch)
     const handleTouchStart = (e) => {
-        if (!imageObj) return;
+        if (!imageObj || isRulerDragging) return;
         if (e.touches.length === 1) {
             setIsDragging(true);
             dragStartRef.current = {
@@ -418,6 +464,26 @@ const ImageCropper = ({
     const maxScale = minScale * 4;
     const zoomPercent = Math.round((scale / minScale) * 100);
 
+    // Telefon kadranı için derece çizgilerini üret (-90° ile +90°)
+    const renderRulerTicks = () => {
+        const ticks = [];
+        const tickSpacing = 6; // px per degree
+        for (let deg = -90; deg <= 90; deg++) {
+            const isMajor = deg % 10 === 0;
+            const isMedium = deg % 5 === 0 && !isMajor;
+            ticks.push(
+                <div
+                    key={deg}
+                    className={`phone-ruler-tick ${isMajor ? 'tick-major' : isMedium ? 'tick-medium' : 'tick-minor'}`}
+                    style={{
+                        left: `calc(50% + ${deg * tickSpacing}px)`,
+                    }}
+                />
+            );
+        }
+        return ticks;
+    };
+
     return (
         <div className="cropper-overlay" onClick={(e) => e.stopPropagation()}>
             <div className={`cropper-modal ${mode === 'cover' ? 'cropper-modal-wide' : ''}`}>
@@ -486,135 +552,104 @@ const ImageCropper = ({
                                     <div className="cropper-grid-line grid-h2" />
                                 </div>
                             </div>
+
+                            {/* TELEFON TARZI DERECE DÖNDÜRME ALANI (İşaretlenen Alana Yerleştirildi) */}
+                            {!isGif && (
+                                <div
+                                    className="phone-rotation-dial-container"
+                                    onMouseDown={handleRulerPointerDown}
+                                    onTouchStart={handleRulerPointerDown}
+                                >
+                                    {/* Açı Göstergesi Rozeti */}
+                                    <div
+                                        className="phone-rotation-badge"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRotationChange(0);
+                                        }}
+                                        title="Sıfırla (0°)"
+                                    >
+                                        {rotation > 0 ? `+${rotation}` : rotation}°
+                                    </div>
+
+                                    {/* Derece Çizgileri Şeridi (İbre altına hareket eder) */}
+                                    <div className="phone-rotation-ruler-viewport">
+                                        <div
+                                            className="phone-rotation-ruler-track"
+                                            style={{
+                                                transform: `translateX(${-rotation * 6}px)`,
+                                            }}
+                                        >
+                                            {renderRulerTicks()}
+                                        </div>
+
+                                        {/* Sabit Merkez İbresi (Sarı/Beyaz Vurgu) */}
+                                        <div className="phone-rotation-needle" />
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
 
                 {/* Kontrol Paneli */}
                 <div className="cropper-controls-wrapper">
-                    {/* 1. DÖNDÜRME / DERECELİ KADRAN (Profil vizörünün hemen altında) */}
-                    {isGif ? (
-                        <div className="cropper-gif-notice">
-                            [!] HAREKETLİ GIF: ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR
-                        </div>
-                    ) : (
-                        <div className="cropper-control-row cropper-rotation-section">
-                            <div className="cropper-control-label">
-                                <span className="cropper-label-text">DÖNDÜRME / AÇI</span>
-                                <span className="cropper-val-badge">
-                                    {rotation > 0 ? `+${rotation}` : rotation}°
-                                </span>
-                            </div>
+                    {/* Hızlı Açı Butonları */}
+                    {!isGif && (
+                        <div className="cropper-tool-bar">
+                            <button
+                                type="button"
+                                className="cropper-tool-btn"
+                                onClick={() => handleRotate90('ccw')}
+                                title="Sola 90° Döndür"
+                                disabled={loading}
+                            >
+                                <RotateCcw size={14} strokeWidth={2.5} />
+                                <span>-90°</span>
+                            </button>
 
-                            {/* Dereceli Kadran / Cetvel (Graduated Angle Dial) */}
-                            <div className="cropper-ruler-wrapper">
-                                <button
-                                    type="button"
-                                    className="cropper-icon-btn cropper-step-btn"
-                                    onClick={() => handleRotationChange(rotation - 1)}
-                                    title="-1° İnce Ayar"
-                                    disabled={loading}
-                                >
-                                    -1°
-                                </button>
+                            <button
+                                type="button"
+                                className="cropper-tool-btn"
+                                onClick={() => handleRotate90('cw')}
+                                title="Sağa 90° Döndür"
+                                disabled={loading}
+                            >
+                                <RotateCw size={14} strokeWidth={2.5} />
+                                <span>+90°</span>
+                            </button>
 
-                                <div className="cropper-ruler-dial">
-                                    <input
-                                        type="range"
-                                        min={-180}
-                                        max={180}
-                                        step={1}
-                                        value={rotation}
-                                        onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
-                                        className="cropper-ruler-input"
-                                        disabled={loading}
-                                        aria-label="Döndürme Açısı"
-                                    />
-                                    {/* Dereceli Çizgiler & Etiketler */}
-                                    <div className="cropper-ruler-ticks" aria-hidden="true">
-                                        <span className="ruler-tick tick-major" style={{ left: '0%' }}>
-                                            <span className="tick-label">-180°</span>
-                                        </span>
-                                        <span className="ruler-tick tick-sub" style={{ left: '12.5%' }} />
-                                        <span className="ruler-tick tick-major" style={{ left: '25%' }}>
-                                            <span className="tick-label">-90°</span>
-                                        </span>
-                                        <span className="ruler-tick tick-sub" style={{ left: '37.5%' }} />
-                                        <span className="ruler-tick tick-center" style={{ left: '50%' }}>
-                                            <span className="tick-label">0°</span>
-                                        </span>
-                                        <span className="ruler-tick tick-sub" style={{ left: '62.5%' }} />
-                                        <span className="ruler-tick tick-major" style={{ left: '75%' }}>
-                                            <span className="tick-label">+90°</span>
-                                        </span>
-                                        <span className="ruler-tick tick-sub" style={{ left: '87.5%' }} />
-                                        <span className="ruler-tick tick-major" style={{ left: '100%' }}>
-                                            <span className="tick-label">+180°</span>
-                                        </span>
-                                    </div>
-                                </div>
+                            <button
+                                type="button"
+                                className="cropper-tool-btn"
+                                onClick={() => handleRotationChange(0)}
+                                title="Açıyı 0° Yap"
+                                disabled={loading || rotation === 0}
+                            >
+                                <Compass size={14} strokeWidth={2.5} />
+                                <span>0°</span>
+                            </button>
 
-                                <button
-                                    type="button"
-                                    className="cropper-icon-btn cropper-step-btn"
-                                    onClick={() => handleRotationChange(rotation + 1)}
-                                    title="+1° İnce Ayar"
-                                    disabled={loading}
-                                >
-                                    +1°
-                                </button>
-                            </div>
-
-                            {/* Hızlı Açı Butonları */}
-                            <div className="cropper-tool-bar">
-                                <button
-                                    type="button"
-                                    className="cropper-tool-btn"
-                                    onClick={() => handleRotate90('ccw')}
-                                    title="Sola 90° Döndür"
-                                    disabled={loading}
-                                >
-                                    <RotateCcw size={14} strokeWidth={2.5} />
-                                    <span>-90°</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="cropper-tool-btn"
-                                    onClick={() => handleRotate90('cw')}
-                                    title="Sağa 90° Döndür"
-                                    disabled={loading}
-                                >
-                                    <RotateCw size={14} strokeWidth={2.5} />
-                                    <span>+90°</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="cropper-tool-btn"
-                                    onClick={() => handleRotationChange(0)}
-                                    title="Açıyı 0° Yap"
-                                    disabled={loading || rotation === 0}
-                                >
-                                    <Compass size={14} strokeWidth={2.5} />
-                                    <span>0°</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="cropper-tool-btn cropper-tool-btn-reset"
-                                    onClick={handleReset}
-                                    title="Her Şeyi Sıfırla"
-                                    disabled={loading}
-                                >
-                                    <RefreshCw size={14} strokeWidth={2.5} />
-                                    <span>SIFIRLA</span>
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                className="cropper-tool-btn cropper-tool-btn-reset"
+                                onClick={handleReset}
+                                title="Her Şeyi Sıfırla"
+                                disabled={loading}
+                            >
+                                <RefreshCw size={14} strokeWidth={2.5} />
+                                <span>SIFIRLA</span>
+                            </button>
                         </div>
                     )}
 
-                    {/* 2. ÖLÇEK (ZOOM) BÖLÜMÜ (Aşağıda Konumlandırıldı) */}
+                    {isGif && (
+                        <div className="cropper-gif-notice">
+                            [!] HAREKETLİ GIF: ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR
+                        </div>
+                    )}
+
+                    {/* ÖLÇEK (ZOOM) BÖLÜMÜ (Aşağıda) */}
                     <div className="cropper-control-row cropper-zoom-section">
                         <div className="cropper-control-label">
                             <span className="cropper-label-text">ÖLÇEK</span>
