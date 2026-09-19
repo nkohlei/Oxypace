@@ -258,14 +258,14 @@
     }
 
     .search-container {
-        width: calc(100% - 12px) !important;
-        max-width: calc(100% - 12px) !important;
-        margin: 6px auto 12px auto !important;
-        padding: 12px 10px !important;
-        border-radius: 14px !important;
-        background: var(--glass-bg) !important;
-        border: 1px solid var(--border-subtle) !important;
-        box-shadow: var(--glass-shadow) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto 12px auto !important;
+        padding: 12px 14px !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         box-sizing: border-box !important;
     }
 
@@ -280,6 +280,7 @@
         border: none !important;
         border-bottom: none !important;
         background: transparent !important;
+        box-shadow: none !important;
     }
 
     .search-controls-row {
@@ -288,6 +289,7 @@
         align-items: stretch !important;
         gap: 8px !important;
         width: 100% !important;
+        background: transparent !important;
     }
 
     /* Mobilde geri tuşu ve arama bar'ı yan yana */
@@ -304,6 +306,10 @@
         display: flex !important;
         align-items: center !important;
         flex-shrink: 0 !important;
+    }
+
+    .title-with-back:empty {
+        display: none !important;
     }
 
     .search-title {
@@ -327,7 +333,7 @@
         box-shadow: none !important;
     }
 
-    /* Portallar, kişiler ve haritada göster butonu mecburi yan yana */
+    /* Portallar, kişiler ve harita butonu mecburi yan yana */
     .search-tabs-actions {
         display: flex !important;
         flex-direction: row !important;
@@ -342,9 +348,9 @@
     .map-search-btn {
         flex: 1 1 0% !important; /* Mecburi yan yana tam sığma */
         min-width: 0 !important;
-        height: 40px !important;
+        height: 35px !important; /* Küçültüldü */
         padding: 0 4px !important;
-        font-size: 0.82rem !important;
+        font-size: 0.78rem !important; /* Küçültüldü */
         border-radius: 6px !important;
         gap: 4px !important;
         white-space: nowrap !important;
@@ -353,7 +359,7 @@
 
     .search-map-btn span,
     .map-search-btn span {
-        font-size: 0.82rem !important;
+        font-size: 0.78rem !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
@@ -361,8 +367,8 @@
 
     .search-map-btn svg,
     .map-search-btn svg {
-        width: 15px !important;
-        height: 15px !important;
+        width: 13px !important;
+        height: 13px !important;
         flex-shrink: 0 !important;
     }
 
@@ -903,10 +909,20 @@
         gap: 4px !important;
     }
     .member-count {
-        gap: 4px !important;
-        font-size: 0.7rem !important;
+        gap: 3px !important;
+        font-size: 0.72rem !important;
         padding: 2px 6px !important;
         border-radius: 4px !important;
+    }
+    .member-count .member-count-text {
+        display: none !important;
+    }
+    .oxypace-privacy-pill {
+        padding: 2px 5px !important;
+        gap: 0 !important;
+    }
+    .oxypace-privacy-pill .privacy-pill-text {
+        display: none !important;
     }
     .status-dot {
         width: 6px !important;

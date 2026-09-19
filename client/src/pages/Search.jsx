@@ -137,7 +137,6 @@ const Search = () => {
                                             <polyline points="15 18 9 12 15 6" />
                                         </svg>
                                     </button>
-                                    <h1 className="search-title">Keşfet</h1>
                                 </div>
 
                                 <div className="oxypace-search-input-wrapper">
@@ -198,7 +197,7 @@ const Search = () => {
                                 <button
                                     className="search-map-btn"
                                     onClick={() => navigate('/map')}
-                                    title="Haritada Göster"
+                                    title="Harita"
                                 >
                                     <svg
                                         width="16"
@@ -214,7 +213,7 @@ const Search = () => {
                                         <line x1="8" y1="2" x2="8" y2="18" />
                                         <line x1="16" y1="6" x2="16" y2="22" />
                                     </svg>
-                                    <span>Haritada Göster</span>
+                                    <span>Harita</span>
                                 </button>
                             </div>
                         </div>
@@ -293,7 +292,7 @@ const Search = () => {
                                                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                                                                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                                                 </svg>
-                                                                <span>Gizli</span>
+                                                                <span className="privacy-pill-text">Gizli</span>
                                                             </span>
                                                         )}
                                                     </h3>
@@ -311,7 +310,7 @@ const Search = () => {
                                                                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                                             </svg>
                                                             <span>
-                                                                {portal.memberCount || 0} Üye
+                                                                {portal.memberCount || 0} <span className="member-count-text">Üye</span>
                                                             </span>
                                                         </div>
 
