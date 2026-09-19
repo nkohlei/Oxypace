@@ -1,5 +1,6 @@
 /**
  * cropperUtils.js - Profesyonel, kararlı ve merkez odaklı görsel kırpma motoru
+ * Derece cinsinden keyfi rotasyon (arbitrary degree rotation) desteği içerir.
  */
 
 /**
@@ -18,62 +19,75 @@ export function loadImage(src) {
 }
 
 /**
- * 90 derecelik rotasyon açısına göre etkin (rotated) boyutları döndürür
- * @param {number} width - Orijinal genişlik
- * @param {number} height - Orijinal yükseklik
- * @param {number} rotation - Derece (0, 90, 180, 270)
- * @returns {{width: number, height: number}}
- */
-export function getRotatedDimensions(width, height, rotation = 0) {
-    const normAngle = ((rotation % 360) + 360) % 360;
-    const is90or270 = normAngle === 90 || normAngle === 270;
-    return {
-        width: is90or270 ? height : width,
-        height: is90or270 ? width : height,
-    };
-}
-
-/**
- * Görselin kırpma alanını (cropSize) her iki eksende tamamen kaplaması için gereken asgari ölçeği hesaplar
+ * Belirtilen dereceye göre kırpma alanının görsel eksenlerindeki projeksiyonunu hesaplar
+ * ve görselin kırpma alanını (cropSize) tamamen kaplaması için gereken asgari ölçeği döndürür.
+ *
  * @param {number} naturalWidth - Orijinal genişlik
  * @param {number} naturalHeight - Orijinal yükseklik
  * @param {number} cropWidth - Kırpma alanı genişliği
  * @param {number} cropHeight - Kırpma alanı yüksekliği
- * @param {number} rotation - Derece (0, 90, 180, 270)
+ * @param {number} rotation - Derece cinsinden rotasyon açısı
  * @returns {number}
  */
 export function getMinScale(naturalWidth, naturalHeight, cropWidth, cropHeight, rotation = 0) {
-    const { width: effWidth, height: effHeight } = getRotatedDimensions(naturalWidth, naturalHeight, rotation);
-    if (!effWidth || !effHeight) return 1;
-    return Math.max(cropWidth / effWidth, cropHeight / effHeight);
+    if (!naturalWidth || !naturalHeight) return 1;
+
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.abs(Math.cos(rad));
+    const sin = Math.abs(Math.sin(rad));
+
+    // Görsel koordinatlarında kırpma kutusunun kapsayan kutusu (bounding box):
+    const requiredWidth = cropWidth * cos + cropHeight * sin;
+    const requiredHeight = cropWidth * sin + cropHeight * cos;
+
+    return Math.max(requiredWidth / naturalWidth, requiredHeight / naturalHeight);
 }
 
 /**
- * Görsel merkezinin kırpma alanı merkezine göre deplasmanını (offset),
- * görselin kırpma alanını terk etmeyeceği (boşluk kalmayacağı) sınırlar içinde tutar.
+ * Görsel merkezinin kırpma alanına göre deplasmanını (offset),
+ * istenen herhangi bir açıda (derece) kırpma kutusunun dışına taşmayacak şekilde sınırlar.
  *
- * @param {{x: number, y: number}} offset - İstenen deplasman
+ * @param {{x: number, y: number}} offset - Ekran koordinatlarında istenen deplasman
  * @param {number} naturalWidth - Orijinal görsel genişliği
  * @param {number} naturalHeight - Orijinal görsel yüksekliği
- * @param {number} scale - Geçerli zoom katsayısı
+ * @param {number} scale - Zoom katsayısı
  * @param {number} cropWidth - Kırpma alanı genişliği
  * @param {number} cropHeight - Kırpma alanı yüksekliği
- * @param {number} rotation - Derece (0, 90, 180, 270)
+ * @param {number} rotation - Derece cinsinden rotasyon açısı
  * @returns {{x: number, y: number}}
  */
 export function clampOffset(offset, naturalWidth, naturalHeight, scale, cropWidth, cropHeight, rotation = 0) {
-    const { width: effWidth, height: effHeight } = getRotatedDimensions(naturalWidth, naturalHeight, rotation);
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const absCos = Math.abs(cos);
+    const absSin = Math.abs(sin);
 
-    const renderedWidth = effWidth * scale;
-    const renderedHeight = effHeight * scale;
+    // Kırpma alanının görsel eksenlerindeki etkin boyutu
+    const boundingCropW = cropWidth * absCos + cropHeight * absSin;
+    const boundingCropH = cropWidth * absSin + cropHeight * absCos;
 
-    // Görsel kırpma alanından büyük veya eşit olduğunda serbest hareket payı:
-    const maxOffsetX = Math.max(0, (renderedWidth - cropWidth) / 2);
-    const maxOffsetY = Math.max(0, (renderedHeight - cropHeight) / 2);
+    const scaledW = naturalWidth * scale;
+    const scaledH = naturalHeight * scale;
+
+    const maxImgX = Math.max(0, (scaledW - boundingCropW) / 2);
+    const maxImgY = Math.max(0, (scaledH - boundingCropH) / 2);
+
+    // Ekran deplasmanını görsel koordinat sistemine dönüştür (R(-theta))
+    const imgOffsetX = offset.x * cos + offset.y * sin;
+    const imgOffsetY = -offset.x * sin + offset.y * cos;
+
+    // Görsel eksenlerinde sınırla
+    const clampedImgX = Math.min(Math.max(imgOffsetX, -maxImgX), maxImgX);
+    const clampedImgY = Math.min(Math.max(imgOffsetY, -maxImgY), maxImgY);
+
+    // Tekrar ekran koordinat sistemine dönüştür (R(theta))
+    const screenOffsetX = clampedImgX * cos - clampedImgY * sin;
+    const screenOffsetY = clampedImgX * sin + clampedImgY * cos;
 
     return {
-        x: Math.min(Math.max(offset.x, -maxOffsetX), maxOffsetX),
-        y: Math.min(Math.max(offset.y, -maxOffsetY), maxOffsetY),
+        x: screenOffsetX,
+        y: screenOffsetY,
     };
 }
 
@@ -113,8 +127,8 @@ export async function cropImage(image, cropSize, scale, offset, rotation = 0, ou
     ctx.translate(offset.x * k, offset.y * k);
 
     // Döndürmeyi uygula
-    const normAngle = ((rotation % 360) + 360) % 360;
-    ctx.rotate((normAngle * Math.PI) / 180);
+    const rad = (rotation * Math.PI) / 180;
+    ctx.rotate(rad);
 
     // Zoom ölçeğini uygula
     ctx.scale(scale * k, scale * k);

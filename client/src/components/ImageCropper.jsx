@@ -5,17 +5,18 @@ import {
     clampOffset,
     cropImage,
 } from '../utils/cropperUtils';
-import { X, RotateCcw, RotateCw, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { X, RotateCcw, RotateCw, ZoomIn, ZoomOut, RefreshCw, Compass } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
 import './ImageCropper.css';
 
 /**
- * ImageCropper - Oxypace Profesyonel & Agresif Profil/Görsel Düzenleyici
+ * ImageCropper - Oxypace Profesyonel Profil/Görsel Düzenleyici
  *
- * - Siyah-beyaz, keskin hatlı, agresif endüstriyel estetik (sıfır neon, sıfır yuvarlak buton).
- * - Merkez odaklı kararlı transformasyon motoru.
- * - Sürükleme, tekerlek zoom, pinch-to-zoom ve 90° adımlı rotasyon.
- * - Animasyonlu GIF dosyaları için doğrudan kayıpsız upload desteği.
+ * - Açık (Light) ve Koyu (Dark) tema desteği
+ * - Derece cinsinden (-180° ile +180°) hassas rotasyon ve 90° hızlı döndürme
+ * - Modern, ölçülü yumuşatılmış köşeler
+ * - Sürükleme, tekerlek zoom ve pinch-to-zoom desteği
+ * - GIF dosyaları için kayıpsız doğrudan yükleme
  */
 const ImageCropper = ({
     image,
@@ -78,7 +79,7 @@ const ImageCropper = ({
     const [scale, setScale] = useState(1);
     const [minScale, setMinScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const [rotation, setRotation] = useState(0);
+    const [rotation, setRotation] = useState(0); // Derece (-180 ile +180)
 
     // Sürükleme ve dokunma durumları
     const [isDragging, setIsDragging] = useState(false);
@@ -109,15 +110,17 @@ const ImageCropper = ({
             });
     }, [image, cropSize.width, cropSize.height]);
 
-    // Rotasyon değiştir (90 derecelik adımlarla)
-    const handleRotate = (direction) => {
+    // Derece cinsinden rotasyon değiştirme
+    const handleRotationChange = (newDeg) => {
         if (!imageObj) return;
-        const delta = direction === 'cw' ? 90 : -90;
-        const newRotation = ((rotation + delta) % 360 + 360) % 360;
+        // -180 ile 180 arasında normalleştir
+        let normalized = Math.round(newDeg);
+        while (normalized > 180) normalized -= 360;
+        while (normalized < -180) normalized += 360;
 
         const w = imageObj.naturalWidth || imageObj.width;
         const h = imageObj.naturalHeight || imageObj.height;
-        const newMin = getMinScale(w, h, cropSize.width, cropSize.height, newRotation);
+        const newMin = getMinScale(w, h, cropSize.width, cropSize.height, normalized);
         const newScale = Math.max(scale, newMin);
         const newOffset = clampOffset(
             offset,
@@ -126,16 +129,22 @@ const ImageCropper = ({
             newScale,
             cropSize.width,
             cropSize.height,
-            newRotation
+            normalized
         );
 
-        setRotation(newRotation);
+        setRotation(normalized);
         setMinScale(newMin);
         setScale(newScale);
         setOffset(newOffset);
     };
 
-    // Sıfırla
+    // Hızlı 90° döndürme
+    const handleRotate90 = (direction) => {
+        const delta = direction === 'cw' ? 90 : -90;
+        handleRotationChange(rotation + delta);
+    };
+
+    // Sıfırla (Ölçek, Açı ve Konum)
     const handleReset = () => {
         if (!imageObj) return;
         const w = imageObj.naturalWidth || imageObj.width;
@@ -225,7 +234,7 @@ const ImageCropper = ({
 
     // Fare Sürükleme Başlat
     const handleMouseDown = (e) => {
-        if (e.button !== 0 || !imageObj) return; // Sadece sol tık
+        if (e.button !== 0 || !imageObj) return;
         e.preventDefault();
         setIsDragging(true);
         dragStartRef.current = {
@@ -370,7 +379,6 @@ const ImageCropper = ({
 
         try {
             if (isGif) {
-                // GIF dosyası için kalite bozulmaması adına orijinal dosyayı doğrudan yükle
                 const uploadPurpose = mode === 'avatar' ? 'avatar' : 'cover';
                 const mediaKey = await uploadFile(file, uploadPurpose, portalId);
                 onComplete(mediaKey);
@@ -399,9 +407,8 @@ const ImageCropper = ({
     const getImageTransformStyle = () => {
         if (!imageObj) return {};
 
-        const normAngle = ((rotation % 360) + 360) % 360;
         return {
-            transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) rotate(${normAngle}deg) scale(${scale})`,
+            transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) rotate(${rotation}deg) scale(${scale})`,
             transformOrigin: 'center center',
             cursor: isDragging ? 'grabbing' : 'grab',
         };
@@ -413,7 +420,7 @@ const ImageCropper = ({
     return (
         <div className="cropper-overlay" onClick={(e) => e.stopPropagation()}>
             <div className={`cropper-modal ${mode === 'cover' ? 'cropper-modal-wide' : ''}`}>
-                {/* Header: Agresif & Keskin */}
+                {/* Header */}
                 <div className="cropper-header">
                     <div className="cropper-header-title-box">
                         <span className="cropper-header-tag">[ KADRAJ & DÜZENLEME ]</span>
@@ -470,18 +477,13 @@ const ImageCropper = ({
                                 <div className="cropper-reticle reticle-bl" />
                                 <div className="cropper-reticle reticle-br" />
 
-                                {/* Kılavuz Çapraz / Üçte Bir Çizgileri */}
+                                {/* Kılavuz Çizgileri */}
                                 <div className="cropper-grid-overlay">
                                     <div className="cropper-grid-line grid-v1" />
                                     <div className="cropper-grid-line grid-v2" />
                                     <div className="cropper-grid-line grid-h1" />
                                     <div className="cropper-grid-line grid-h2" />
                                 </div>
-                            </div>
-
-                            {/* Taktiksel Kullanım Bilgisi */}
-                            <div className="cropper-hint-badge">
-                                SÜRÜKLE: KONUMU AYARLA • TEKERLEK: YAKINLAŞTIR
                             </div>
                         </>
                     )}
@@ -490,13 +492,13 @@ const ImageCropper = ({
                 {/* Kontrol Paneli */}
                 <div className="cropper-controls-wrapper">
                     {/* Zoom Kontrol Barı */}
-                    <div className="cropper-zoom-section">
+                    <div className="cropper-control-row">
                         <div className="cropper-control-label">
                             <span>ÖLÇEK</span>
-                            <span className="cropper-zoom-val">{zoomPercent}%</span>
+                            <span className="cropper-val-badge">{zoomPercent}%</span>
                         </div>
 
-                        <div className="cropper-zoom-bar">
+                        <div className="cropper-slider-group">
                             <button
                                 type="button"
                                 className="cropper-icon-btn"
@@ -504,7 +506,7 @@ const ImageCropper = ({
                                 title="Uzaklaştır"
                                 disabled={scale <= minScale || loading}
                             >
-                                <ZoomOut size={16} strokeWidth={2.5} />
+                                <ZoomOut size={15} strokeWidth={2.5} />
                             </button>
 
                             <input
@@ -525,55 +527,107 @@ const ImageCropper = ({
                                 title="Yakınlaştır"
                                 disabled={scale >= maxScale || loading}
                             >
-                                <ZoomIn size={16} strokeWidth={2.5} />
+                                <ZoomIn size={15} strokeWidth={2.5} />
                             </button>
                         </div>
                     </div>
 
-                    {/* Araç Çubuğu: Rotasyon & Sıfırlama */}
+                    {/* Rotasyon / Açı Kontrolü (Derece Cinsinden) */}
                     {isGif ? (
                         <div className="cropper-gif-notice">
                             [!] HAREKETLİ GIF: ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR
                         </div>
                     ) : (
-                        <div className="cropper-tool-bar">
-                            <button
-                                type="button"
-                                className="cropper-tool-btn"
-                                onClick={() => handleRotate('ccw')}
-                                title="Sola 90° Döndür"
-                                disabled={loading}
-                            >
-                                <RotateCcw size={15} strokeWidth={2.5} />
-                                <span>90° SOLA</span>
-                            </button>
+                        <div className="cropper-control-row">
+                            <div className="cropper-control-label">
+                                <span>DÖNDÜRME (DERECE)</span>
+                                <span className="cropper-val-badge">{rotation}°</span>
+                            </div>
 
-                            <button
-                                type="button"
-                                className="cropper-tool-btn"
-                                onClick={() => handleRotate('cw')}
-                                title="Sağa 90° Döndür"
-                                disabled={loading}
-                            >
-                                <RotateCw size={15} strokeWidth={2.5} />
-                                <span>90° SAĞA</span>
-                            </button>
+                            <div className="cropper-slider-group">
+                                <button
+                                    type="button"
+                                    className="cropper-icon-btn"
+                                    onClick={() => handleRotationChange(rotation - 1)}
+                                    title="-1° Döndür"
+                                    disabled={loading}
+                                >
+                                    -1°
+                                </button>
 
-                            <button
-                                type="button"
-                                className="cropper-tool-btn cropper-tool-btn-reset"
-                                onClick={handleReset}
-                                title="Pozisyon ve Ölçeği Sıfırla"
-                                disabled={loading}
-                            >
-                                <RefreshCw size={15} strokeWidth={2.5} />
-                                <span>SIFIRLA</span>
-                            </button>
+                                <input
+                                    type="range"
+                                    min={-180}
+                                    max={180}
+                                    step={1}
+                                    value={rotation}
+                                    onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
+                                    className="zoom-slider rotation-slider"
+                                    disabled={loading}
+                                />
+
+                                <button
+                                    type="button"
+                                    className="cropper-icon-btn"
+                                    onClick={() => handleRotationChange(rotation + 1)}
+                                    title="+1° Döndür"
+                                    disabled={loading}
+                                >
+                                    +1°
+                                </button>
+                            </div>
+
+                            {/* Hızlı 90° ve Sıfırlama Butonları */}
+                            <div className="cropper-tool-bar">
+                                <button
+                                    type="button"
+                                    className="cropper-tool-btn"
+                                    onClick={() => handleRotate90('ccw')}
+                                    title="Sola 90° Döndür"
+                                    disabled={loading}
+                                >
+                                    <RotateCcw size={14} strokeWidth={2.5} />
+                                    <span>-90°</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="cropper-tool-btn"
+                                    onClick={() => handleRotate90('cw')}
+                                    title="Sağa 90° Döndür"
+                                    disabled={loading}
+                                >
+                                    <RotateCw size={14} strokeWidth={2.5} />
+                                    <span>+90°</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="cropper-tool-btn"
+                                    onClick={() => handleRotationChange(0)}
+                                    title="Açıyı 0° Yap"
+                                    disabled={loading || rotation === 0}
+                                >
+                                    <Compass size={14} strokeWidth={2.5} />
+                                    <span>0°</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="cropper-tool-btn cropper-tool-btn-reset"
+                                    onClick={handleReset}
+                                    title="Her Şeyi Sıfırla"
+                                    disabled={loading}
+                                >
+                                    <RefreshCw size={14} strokeWidth={2.5} />
+                                    <span>SIFIRLA</span>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Alt Aksiyonlar: Agresif Butonlar */}
+                {/* Alt Aksiyonlar */}
                 <div className="cropper-actions">
                     <button
                         type="button"
