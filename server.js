@@ -369,11 +369,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.2.6',
-        versionCode: 226,
+        latestVersion: '2.2.7',
+        versionCode: 227,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.2.6: İndirilecek video biçimi seçimi eklendi (Evrensel Galeri MP4 ve Orijinal Ham Biçim). Ayarlar üzerinden varsayılan biçim tercihi entegre edildi.',
+        changelog: 'Oxypace 2.2.7: Akıcı sekme geçişleri, global modal pop-in animasyonları, profil düzenlemeleri ve video indirme arayüz iyileştirmeleri.',
     });
 });
 
