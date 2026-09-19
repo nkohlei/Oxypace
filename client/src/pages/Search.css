@@ -51,28 +51,43 @@
     width: 100%;
 }
 
+.search-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .search-controls-row .oxypace-search-input-wrapper {
     flex: 1 1 auto;
-    min-width: 220px;
+    min-width: 0;
     max-width: none !important;
     border-radius: 6px !important; /* Hafif yumuşak köşeli - butonlarla aynı */
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input {
     border-radius: 6px !important; /* Hafif yumuşak köşeli */
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 [data-theme='light'] .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input {
-    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    border: none !important;
 }
 
 .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input:focus {
-    border-color: rgba(255, 255, 255, 0.24) !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 [data-theme='light'] .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input:focus {
-    border-color: rgba(0, 0, 0, 0.22) !important;
+    border: none !important;
+    outline: none !important;
 }
 
 .search-tabs-actions {
@@ -269,9 +284,19 @@
 
     .search-controls-row {
         display: flex !important;
-        flex-wrap: wrap !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    /* Mobilde geri tuşu ve arama bar'ı yan yana */
+    .search-input-group {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
         align-items: center !important;
-        gap: 10px !important;
+        gap: 6px !important;
         width: 100% !important;
     }
 
@@ -285,41 +310,60 @@
         display: none !important;
     }
 
-    .search-controls-row .oxypace-search-input-wrapper {
+    .search-input-group .oxypace-search-input-wrapper {
         flex: 1 1 auto !important;
         max-width: 100% !important;
         width: auto !important;
-        min-width: 140px !important;
+        min-width: 0 !important;
         border-radius: 6px !important;
+        border: none !important;
+        box-shadow: none !important;
     }
 
-    .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input {
+    .search-input-group .oxypace-search-input-wrapper input.oxypace-search-input {
         border-radius: 6px !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
     }
 
-    /* Buttons move below search bar when they don't fit, preserving their uncorrupted appearance */
+    /* Portallar, kişiler ve haritada göster butonu mecburi yan yana */
     .search-tabs-actions {
         display: flex !important;
-        flex-wrap: wrap !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
         align-items: center !important;
-        gap: 8px !important;
+        gap: 6px !important;
         width: 100% !important;
     }
 
     .search-filter-btn,
     .search-map-btn,
     .map-search-btn {
-        flex: 0 0 auto !important; /* Retain standard uncorrupted proportions */
-        height: 42px !important;
-        padding: 0 16px !important;
-        font-size: 0.92rem !important;
+        flex: 1 1 0% !important; /* Mecburi yan yana tam sığma */
+        min-width: 0 !important;
+        height: 40px !important;
+        padding: 0 4px !important;
+        font-size: 0.82rem !important;
         border-radius: 6px !important;
-        gap: 7px !important;
+        gap: 4px !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
     }
 
     .search-map-btn span,
     .map-search-btn span {
-        font-size: 0.92rem !important;
+        font-size: 0.82rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .search-map-btn svg,
+    .map-search-btn svg {
+        width: 15px !important;
+        height: 15px !important;
+        flex-shrink: 0 !important;
     }
 
     .search-mobile-back-btn {

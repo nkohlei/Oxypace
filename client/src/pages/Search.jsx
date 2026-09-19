@@ -119,67 +119,69 @@ const Search = () => {
                     {/* Search Header */}
                     <div className="search-header">
                         <div className="search-controls-row">
-                            <div className="title-with-back">
-                                <button 
-                                    className="mobile-back-btn-inline" 
-                                    onClick={() => navigate(-1)}
-                                    title="Geri"
-                                >
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        width="24"
-                                        height="24"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    >
-                                        <polyline points="15 18 9 12 15 6" />
-                                    </svg>
-                                </button>
-                                <h1 className="search-title">Keşfet</h1>
-                            </div>
-
-                            <div className="oxypace-search-input-wrapper">
-                                <svg
-                                    className="oxypace-search-icon"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                >
-                                    <circle cx="11" cy="11" r="8" />
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                                </svg>
-                                <input
-                                    type="text"
-                                    className="oxypace-search-input"
-                                    placeholder={activeTab === 'portals' ? 'Portal ara (isim veya açıklama)...' : 'Kişi ara (isim veya kullanıcı adı)...'}
-                                    value={query}
-                                    onChange={handleInputChange}
-                                />
-                                {query && (
-                                    <button
-                                        className="clear-btn"
-                                        onClick={() => {
-                                            setQuery('');
-                                            setSearched(false);
-                                            fetchPortals();
-                                        }}
-                                        title="Temizle"
+                            <div className="search-input-group">
+                                <div className="title-with-back">
+                                    <button 
+                                        className="mobile-back-btn-inline" 
+                                        onClick={() => navigate(-1)}
+                                        title="Geri"
                                     >
                                         <svg
                                             viewBox="0 0 24 24"
                                             fill="none"
                                             stroke="currentColor"
-                                            strokeWidth="2"
+                                            strokeWidth="1.5"
+                                            width="24"
+                                            height="24"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
                                         >
-                                            <line x1="18" y1="6" x2="6" y2="18" />
-                                            <line x1="6" y1="6" x2="18" y2="18" />
+                                            <polyline points="15 18 9 12 15 6" />
                                         </svg>
                                     </button>
-                                )}
+                                    <h1 className="search-title">Keşfet</h1>
+                                </div>
+
+                                <div className="oxypace-search-input-wrapper">
+                                    <svg
+                                        className="oxypace-search-icon"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                    >
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    </svg>
+                                    <input
+                                        type="text"
+                                        className="oxypace-search-input"
+                                        placeholder={activeTab === 'portals' ? 'Portal ara (isim veya açıklama)...' : 'Kişi ara (isim veya kullanıcı adı)...'}
+                                        value={query}
+                                        onChange={handleInputChange}
+                                    />
+                                    {query && (
+                                        <button
+                                            className="clear-btn"
+                                            onClick={() => {
+                                                setQuery('');
+                                                setSearched(false);
+                                                fetchPortals();
+                                            }}
+                                            title="Temizle"
+                                        >
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
+                                                <line x1="18" y1="6" x2="6" y2="18" />
+                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="search-tabs-actions">
