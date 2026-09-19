@@ -457,27 +457,89 @@ router.put('/me', protect, profileValidation, async (req, res) => {
     }
 });
 
+// Build flexible regex that accounts for Turkish diacritics
+function buildFuzzySearchRegex(str) {
+    const escaped = escapeRegex(str);
+    const map = {
+        'c': '[cçÇ]',
+        'ç': '[cçÇ]',
+        'g': '[gğĞ]',
+        'ğ': '[gğĞ]',
+        'i': '[iıİI]',
+        'ı': '[iıİI]',
+        'o': '[oöÖ]',
+        'ö': '[oöÖ]',
+        's': '[sşŞ]',
+        'ş': '[sşŞ]',
+        'u': '[uüÜ]',
+        'ü': '[uüÜ]',
+    };
+    return escaped.split('').map(ch => map[ch.toLowerCase()] || ch).join('');
+}
+
 // @route   GET /api/users/search
-// @desc    Search users by username
+// @desc    Search users by username and displayName with precision & similar ranking
 // @access  Private
 router.get('/search', protect, async (req, res) => {
     try {
-        const { q } = req.query;
-
-        if (!q || q.trim().length === 0) {
+        const rawQ = (req.query.q || '').trim();
+        if (!rawQ) {
             return res.json([]);
         }
 
+        const cleanQ = rawQ.replace(/^@/, '').trim();
+        if (!cleanQ) {
+            return res.json([]);
+        }
+
+        const fuzzyPattern = buildFuzzySearchRegex(cleanQ);
+        const tokens = cleanQ.split(/\s+/).filter(Boolean);
+
+        const orConditions = [
+            { username: { $regex: fuzzyPattern, $options: 'i' } },
+            { 'profile.displayName': { $regex: fuzzyPattern, $options: 'i' } },
+        ];
+
+        // If multi-word search, also match individual tokens
+        if (tokens.length > 1) {
+            tokens.forEach(tok => {
+                const tokPattern = buildFuzzySearchRegex(tok);
+                orConditions.push({ username: { $regex: tokPattern, $options: 'i' } });
+                orConditions.push({ 'profile.displayName': { $regex: tokPattern, $options: 'i' } });
+            });
+        }
+
         const users = await User.find({
-            username: { $regex: escapeRegex(q), $options: 'i' },
             _id: { $ne: req.user._id }, // Exclude current user
             isDeleted: { $ne: true }, // Exclude deleted users
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
+            $or: orConditions,
         })
             .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
-            .limit(20);
+            .limit(50);
 
-        res.json(users);
+        // Intelligent ranking: exact matches at top, followed by prefix and similar matches
+        const qLower = cleanQ.toLowerCase();
+        users.sort((a, b) => {
+            const aUser = (a.username || '').toLowerCase();
+            const bUser = (b.username || '').toLowerCase();
+            const aName = (a.profile?.displayName || '').toLowerCase();
+            const bName = (b.profile?.displayName || '').toLowerCase();
+
+            const score = (u, d) => {
+                if (u === qLower) return 100;
+                if (d === qLower) return 95;
+                if (u.startsWith(qLower)) return 80;
+                if (d.startsWith(qLower)) return 75;
+                if (u.includes(qLower)) return 60;
+                if (d.includes(qLower)) return 55;
+                return 10;
+            };
+
+            return score(bUser, bName) - score(aUser, aName);
+        });
+
+        res.json(users.slice(0, 30));
     } catch (error) {
         console.error('Search users error:', error);
         res.status(500).json({ message: 'Server error' });

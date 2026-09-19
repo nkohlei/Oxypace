@@ -118,81 +118,106 @@ const Search = () => {
                 <div className="search-container">
                     {/* Search Header */}
                     <div className="search-header">
-                        <div className="title-with-back">
-                            <button 
-                                className="mobile-back-btn-inline" 
-                                onClick={() => navigate(-1)}
-                            >
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    width="24"
-                                    height="24"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <polyline points="15 18 9 12 15 6" />
-                                </svg>
-                            </button>
-                            <h1 className="search-title">Keşfet</h1>
-                        </div>
-                        <div className="oxypace-search-input-wrapper">
-                            <svg
-                                className="oxypace-search-icon"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                            >
-                                <circle cx="11" cy="11" r="8" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                            <input
-                                type="text"
-                                className="oxypace-search-input"
-                                placeholder="Portal veya kişi ara..."
-                                value={query}
-                                onChange={handleInputChange}
-                            />
-                            {query && (
-                                <button
-                                    className="clear-btn"
-                                    onClick={() => {
-                                        setQuery('');
-                                        setSearched(false);
-                                        fetchPortals();
-                                    }}
+                        <div className="search-controls-row">
+                            <div className="title-with-back">
+                                <button 
+                                    className="mobile-back-btn-inline" 
+                                    onClick={() => navigate(-1)}
+                                    title="Geri"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
-                                        strokeWidth="2"
+                                        strokeWidth="1.5"
+                                        width="24"
+                                        height="24"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
                                     >
-                                        <line x1="18" y1="6" x2="6" y2="18" />
-                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                        <polyline points="15 18 9 12 15 6" />
                                     </svg>
                                 </button>
-                            )}
-                        </div>
-                    </div>
+                                <h1 className="search-title">Keşfet</h1>
+                            </div>
 
-                    {/* Modern Tabs */}
-                    <div className="modern-tabs">
-                        <button
-                            className={`modern-tab ${activeTab === 'portals' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('portals')}
-                        >
-                            Portallar
-                        </button>
-                        <button
-                            className={`modern-tab ${activeTab === 'users' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('users')}
-                        >
-                            Kişiler
-                        </button>
+                            <div className="oxypace-search-input-wrapper">
+                                <svg
+                                    className="oxypace-search-icon"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                >
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input
+                                    type="text"
+                                    className="oxypace-search-input"
+                                    placeholder={activeTab === 'portals' ? 'Portal ara (isim veya açıklama)...' : 'Kişi ara (isim veya kullanıcı adı)...'}
+                                    value={query}
+                                    onChange={handleInputChange}
+                                />
+                                {query && (
+                                    <button
+                                        className="clear-btn"
+                                        onClick={() => {
+                                            setQuery('');
+                                            setSearched(false);
+                                            fetchPortals();
+                                        }}
+                                        title="Temizle"
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <line x1="18" y1="6" x2="6" y2="18" />
+                                            <line x1="6" y1="6" x2="18" y2="18" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="search-tabs-actions">
+                                <button
+                                    className={`search-filter-btn ${activeTab === 'portals' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('portals')}
+                                >
+                                    Portallar
+                                </button>
+                                <button
+                                    className={`search-filter-btn ${activeTab === 'users' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('users')}
+                                >
+                                    Kişiler
+                                </button>
+                                <button
+                                    className="search-map-btn"
+                                    onClick={() => navigate('/map')}
+                                    title="Haritada Göster"
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.8"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                                        <line x1="8" y1="2" x2="8" y2="18" />
+                                        <line x1="16" y1="6" x2="16" y2="22" />
+                                    </svg>
+                                    <span>Haritada Göster</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Loading */}
@@ -341,7 +366,7 @@ const Search = () => {
                                                     padding: '8px 16px',
                                                     background: 'var(--primary-color)',
                                                     border: 'none',
-                                                    borderRadius: '4px',
+                                                    borderRadius: '6px',
                                                     color: 'white',
                                                     cursor: 'pointer',
                                                 }}

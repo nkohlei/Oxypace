@@ -48,41 +48,106 @@ router.post('/', protect, async (req, res) => {
     }
 });
 
+// Build flexible regex that accounts for Turkish diacritics
+function buildFuzzySearchRegex(str) {
+    const escaped = escapeRegex(str);
+    const map = {
+        'c': '[cçÇ]',
+        'ç': '[cçÇ]',
+        'g': '[gğĞ]',
+        'ğ': '[gğĞ]',
+        'i': '[iıİI]',
+        'ı': '[iıİI]',
+        'o': '[oöÖ]',
+        'ö': '[oöÖ]',
+        's': '[sşŞ]',
+        'ş': '[sşŞ]',
+        'u': '[uüÜ]',
+        'ü': '[uüÜ]',
+    };
+    return escaped.split('').map(ch => map[ch.toLowerCase()] || ch).join('');
+}
+
 // @desc    Get all portals (Search & Popular)
 // @route   GET /api/portals
 // @access  Public (Optional Auth)
 router.get('/', optionalProtect, async (req, res) => {
     try {
-        const keyword = req.query.keyword
-            ? {
-                name: {
-                    $regex: escapeRegex(req.query.keyword),
-                    $options: 'i',
-                },
+        let searchFilter = {};
+        const rawKeyword = (req.query.keyword || '').trim();
+
+        if (rawKeyword) {
+            const fuzzyPattern = buildFuzzySearchRegex(rawKeyword);
+            const tokens = rawKeyword.split(/\s+/).filter(Boolean);
+
+            const searchOr = [
+                { name: { $regex: fuzzyPattern, $options: 'i' } },
+                { description: { $regex: fuzzyPattern, $options: 'i' } },
+            ];
+
+            if (tokens.length > 1) {
+                tokens.forEach(tok => {
+                    const tokPattern = buildFuzzySearchRegex(tok);
+                    searchOr.push({ name: { $regex: tokPattern, $options: 'i' } });
+                    searchOr.push({ description: { $regex: tokPattern, $options: 'i' } });
+                });
             }
-            : {};
+
+            searchFilter.$or = searchOr;
+        }
 
         // Exclude portals where user is blocked and filter by privacy
         // Also exclude closed and NSFW portals from discovery/search
-        keyword.isNSFW = { $ne: true };
+        searchFilter.isNSFW = { $ne: true };
+        searchFilter.status = { $ne: 'closed' }; // Hide closed portals
+
         if (req.user) {
-            keyword.blockedUsers = { $ne: req.user._id };
-            keyword.status = { $ne: 'closed' }; // Hide closed portals
-            keyword.$or = [
+            searchFilter.blockedUsers = { $ne: req.user._id };
+            const privacyCondition = [
                 { privacy: 'public' },
                 { privacy: 'private' },
                 { privacy: 'restricted', members: req.user._id },
                 { privacy: 'restricted', allowedUsers: req.user._id }
             ];
+
+            if (searchFilter.$or) {
+                searchFilter.$and = [
+                    { $or: searchFilter.$or },
+                    { $or: privacyCondition }
+                ];
+                delete searchFilter.$or;
+            } else {
+                searchFilter.$or = privacyCondition;
+            }
         } else {
-            keyword.privacy = { $in: ['public', 'private'] };
-            keyword.status = { $ne: 'closed' }; // Hide closed portals
+            searchFilter.privacy = { $in: ['public', 'private'] };
         }
 
-        const portals = await Portal.find(keyword)
+        const portals = await Portal.find(searchFilter)
             .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status statusReason')
             .populate('members', 'isDeleted')
             .limit(100);
+
+        // Intelligent ranking for search results
+        if (rawKeyword) {
+            const kLower = rawKeyword.toLowerCase();
+            portals.sort((a, b) => {
+                const aName = (a.name || '').toLowerCase();
+                const bName = (b.name || '').toLowerCase();
+                const aDesc = (a.description || '').toLowerCase();
+                const bDesc = (b.description || '').toLowerCase();
+
+                const score = (name, desc) => {
+                    if (name === kLower) return 100;
+                    if (name.startsWith(kLower)) return 80;
+                    if (name.includes(kLower)) return 60;
+                    if (desc.includes(kLower)) return 40;
+                    return 10;
+                };
+
+                return score(bName, bDesc) - score(aName, aDesc);
+            });
+        }
 
         const userId = req.user?._id?.toString();
         const formattedPortals = portals.map((portal) => {
