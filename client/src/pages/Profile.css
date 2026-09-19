@@ -1164,6 +1164,14 @@
         padding: 0 16px;
     }
 
+    .profile-top-right-actions {
+        margin-bottom: 0 !important;
+    }
+
+    .profile-edit-trigger-btn {
+        margin-bottom: 0 !important;
+    }
+
     .user-details-info {
         padding: 0 16px 20px;
     }

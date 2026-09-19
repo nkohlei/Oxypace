@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Edit } from 'lucide-react';
 import './ProfileImageModal.css';
 
@@ -9,7 +10,7 @@ const ProfileImageModal = ({ isOpen, onClose, imageSrc, isOwnProfile, onEdit, us
 
     const hasValidImage = imageSrc && !imgError;
 
-    return (
+    const modalContent = (
         <div className="profile-image-modal-overlay" onClick={onClose}>
             <div className="profile-image-modal-content" onClick={(e) => e.stopPropagation()}>
                 <button className="profile-image-modal-close" onClick={onClose}>
@@ -46,6 +47,8 @@ const ProfileImageModal = ({ isOpen, onClose, imageSrc, isOwnProfile, onEdit, us
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };
 
 export default ProfileImageModal;
