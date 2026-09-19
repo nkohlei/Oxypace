@@ -1,7 +1,7 @@
 /* ==========================================================================
    ImageCropper.css - Oxypace Profesyonel & Dengeli Kırpma Arayüzü
    Tasarım: Açık/Koyu Tema Uyumu, Ölçülü Yumuşatılmış Köşeler (Asla Pill Değil),
-   Telefon Tarzı Minimal Dereceli Döndürme Alanı & Altta Ölçek Barı
+   Çakışmasız Telefon Tarzı Kadran & Mobilde Takılmayan Dokunmatik Butonlar
    ========================================================================== */
 
 /* Arka Plan Karartma & Konteyner */
@@ -57,6 +57,11 @@
 .cropper-icon-btn,
 .cropper-close-btn {
     border-radius: 6px !important;
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    touch-action: manipulation !important;
 }
 
 /* Header */
@@ -109,12 +114,6 @@
     padding: 0;
 }
 
-.cropper-close-btn:hover {
-    background: #ffffff;
-    color: #000000;
-    border-color: #ffffff !important;
-}
-
 /* Viewport / Kırpma Alanı */
 .cropper-container {
     position: relative;
@@ -147,10 +146,10 @@
     transform-origin: center center;
 }
 
-/* Kırpma Vizörü (Framing Aperture) */
+/* Kırpma Vizörü: Kadran ile çakışmayı önlemek için 24px yukarı dengelendi */
 .cropper-frame {
     position: absolute;
-    top: 50%;
+    top: calc(50% - 24px);
     left: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
@@ -302,9 +301,9 @@
     touch-action: none;
 }
 
-/* Açı Rozeti (Tıklayınca 0° Sıfırlar) */
+/* Açı Rozeti */
 .phone-rotation-badge {
-    background: rgba(18, 18, 20, 0.85);
+    background: rgba(18, 18, 20, 0.88);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -324,7 +323,6 @@
     background: #ffffff;
     color: #000000;
     border-color: #ffffff;
-    transform: scale(1.05);
 }
 
 /* Kadran Görünüm Alanı (Kenarları Şeffaflaşan Şerit) */
@@ -336,7 +334,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Kenarları şeffaflaştıran degrade maske */
     -webkit-mask-image: linear-gradient(to right, transparent, #000 20%, #000 80%, transparent);
     mask-image: linear-gradient(to right, transparent, #000 20%, #000 80%, transparent);
 }
@@ -374,7 +371,7 @@
     background: #ffffff;
 }
 
-/* Sabit Merkez İbresi (Sarı Vurgulu Telefon İbresi) */
+/* Sabit Merkez İbresi */
 .phone-rotation-needle {
     position: absolute;
     left: 50%;
@@ -382,7 +379,7 @@
     transform: translate(-50%, -50%);
     width: 2.5px;
     height: 22px;
-    background: #facc15; /* Canlı sarı iğne */
+    background: #facc15;
     border-radius: 2px;
     box-shadow: 0 0 6px rgba(250, 204, 21, 0.5);
     z-index: 10;
@@ -447,35 +444,14 @@
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     border-radius: 6px !important;
     color: #e4e4e7;
-    padding: 7px 10px;
+    padding: 8px 10px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     text-transform: uppercase;
     flex: 1;
-}
-
-.cropper-tool-btn:hover:not(:disabled) {
-    background: #27272a;
-    border-color: #ffffff !important;
-    color: #ffffff;
-}
-
-.cropper-tool-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.cropper-tool-btn-reset {
-    color: #a1a1aa;
-    background: #09090b;
-}
-
-.cropper-tool-btn-reset:hover:not(:disabled) {
-    color: #ffffff;
-    border-color: #ffffff !important;
 }
 
 /* ==========================================================================
@@ -493,29 +469,18 @@
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     border-radius: 6px !important;
     min-width: 32px;
-    height: 30px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     color: #e4e4e7;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     flex-shrink: 0;
     padding: 0 6px;
     font-size: 11px;
     font-weight: 700;
     font-family: monospace, inherit;
-}
-
-.cropper-icon-btn:hover:not(:disabled) {
-    background: #27272a;
-    border-color: #ffffff !important;
-    color: #ffffff;
-}
-
-.cropper-icon-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
 }
 
 /* Zoom Slider */
@@ -544,11 +509,6 @@
     transition: transform 0.1s ease, background-color 0.1s ease;
 }
 
-.zoom-slider::-webkit-slider-thumb:hover {
-    background: #e4e4e7;
-    transform: scale(1.15);
-}
-
 .zoom-slider::-moz-range-thumb {
     width: 14px;
     height: 14px;
@@ -557,11 +517,6 @@
     border: 1px solid #000000;
     cursor: ew-resize;
     box-shadow: none;
-}
-
-.zoom-slider::-moz-range-thumb:hover {
-    background: #e4e4e7;
-    transform: scale(1.15);
 }
 
 /* GIF Uyarısı */
@@ -591,27 +546,15 @@
 }
 
 .cropper-btn {
-    padding: 10px 22px;
+    padding: 11px 24px;
     border-radius: 6px !important;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     box-sizing: border-box;
-}
-
-.cropper-btn-cancel {
-    background: #121216;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    color: #a1a1aa;
-}
-
-.cropper-btn-cancel:hover:not(:disabled) {
-    background: #222228;
-    border-color: #ffffff !important;
-    color: #ffffff;
 }
 
 .cropper-btn-apply {
@@ -620,17 +563,80 @@
     color: #000000;
 }
 
-.cropper-btn-apply:hover:not(:disabled) {
-    background: #d4d4d8;
-    border-color: #d4d4d8 !important;
+/* ==========================================================================
+   HOVER & DOKUNMATİK TIKLAMA DAVRANIŞLARI (MOBİLDE TAKILI KALMAYI ÖNLER)
+   ========================================================================== */
+/* Hover Efektleri YALNIZCA gerçek fare kullanan cihazlarda çalışır */
+@media (hover: hover) and (pointer: fine) {
+    .cropper-close-btn:hover {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-color: #ffffff !important;
+    }
+    .cropper-tool-btn:hover:not(:disabled) {
+        background: #27272a !important;
+        border-color: #ffffff !important;
+        color: #ffffff !important;
+    }
+    .cropper-icon-btn:hover:not(:disabled) {
+        background: #27272a !important;
+        border-color: #ffffff !important;
+        color: #ffffff !important;
+    }
+    .cropper-btn-apply:hover:not(:disabled) {
+        background: #d4d4d8 !important;
+        border-color: #d4d4d8 !important;
+    }
+    .zoom-slider::-webkit-slider-thumb:hover {
+        background: #e4e4e7;
+        transform: scale(1.15);
+    }
+    .zoom-slider::-moz-range-thumb:hover {
+        background: #e4e4e7;
+        transform: scale(1.15);
+    }
+
+    /* Light Theme Hover */
+    :root[data-theme='light'] .cropper-close-btn:hover,
+    [data-theme='light'] .cropper-close-btn:hover {
+        background: #0f172a !important;
+        color: #ffffff !important;
+        border-color: #0f172a !important;
+    }
+    :root[data-theme='light'] .cropper-tool-btn:hover:not(:disabled),
+    [data-theme='light'] .cropper-tool-btn:hover:not(:disabled),
+    :root[data-theme='light'] .cropper-icon-btn:hover:not(:disabled),
+    [data-theme='light'] .cropper-icon-btn:hover:not(:disabled) {
+        background: #f1f5f9 !important;
+        border-color: #0f172a !important;
+        color: #0f172a !important;
+    }
+    :root[data-theme='light'] .cropper-btn-apply:hover:not(:disabled),
+    [data-theme='light'] .cropper-btn-apply:hover:not(:disabled) {
+        background: #1e293b !important;
+        border-color: #1e293b !important;
+    }
 }
 
-.cropper-btn-apply:disabled,
-.cropper-btn-cancel:disabled {
-    background: #18181b;
-    border-color: #27272a !important;
-    color: #52525b;
-    cursor: not-allowed;
+/* Dokunmatik cihazlarda tıklandığı an hafif basılma tepkisi (:active), sonrasında anında sıfırlanma */
+.cropper-modal button:active:not(:disabled),
+.cropper-tool-btn:active:not(:disabled),
+.cropper-icon-btn:active:not(:disabled),
+.cropper-btn-apply:active:not(:disabled) {
+    transform: scale(0.95) !important;
+    opacity: 0.8 !important;
+    transition: transform 0.05s ease !important;
+}
+
+/* Buton Disabled Durumu (Mavi arka plan veya hover kalıntısı oluşmaz) */
+.cropper-modal button:disabled,
+.cropper-tool-btn:disabled,
+.cropper-icon-btn:disabled,
+.cropper-btn-apply:disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 /* ==========================================================================
@@ -666,13 +672,6 @@
     color: #475569;
 }
 
-:root[data-theme='light'] .cropper-close-btn:hover,
-[data-theme='light'] .cropper-close-btn:hover {
-    background: #0f172a;
-    color: #ffffff;
-    border-color: #0f172a !important;
-}
-
 :root[data-theme='light'] .cropper-controls-wrapper,
 [data-theme='light'] .cropper-controls-wrapper {
     background: #f8fafc;
@@ -698,38 +697,11 @@
     color: #1e293b;
 }
 
-:root[data-theme='light'] .cropper-icon-btn:hover:not(:disabled),
-[data-theme='light'] .cropper-icon-btn:hover:not(:disabled) {
-    background: #f1f5f9;
-    border-color: #0f172a !important;
-    color: #0f172a;
-}
-
 :root[data-theme='light'] .cropper-tool-btn,
 [data-theme='light'] .cropper-tool-btn {
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.12) !important;
     color: #1e293b;
-}
-
-:root[data-theme='light'] .cropper-tool-btn:hover:not(:disabled),
-[data-theme='light'] .cropper-tool-btn:hover:not(:disabled) {
-    background: #f1f5f9;
-    border-color: #0f172a !important;
-    color: #0f172a;
-}
-
-:root[data-theme='light'] .cropper-tool-btn-reset,
-[data-theme='light'] .cropper-tool-btn-reset {
-    background: #f8fafc;
-    color: #64748b;
-}
-
-:root[data-theme='light'] .cropper-tool-btn-reset:hover:not(:disabled),
-[data-theme='light'] .cropper-tool-btn-reset:hover:not(:disabled) {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-color: #0f172a !important;
 }
 
 /* Light Mode: Zoom Slider */
@@ -744,20 +716,10 @@
     border: 1px solid #ffffff;
 }
 
-:root[data-theme='light'] .zoom-slider::-webkit-slider-thumb:hover,
-[data-theme='light'] .zoom-slider::-webkit-slider-thumb:hover {
-    background: #334155;
-}
-
 :root[data-theme='light'] .zoom-slider::-moz-range-thumb,
 [data-theme='light'] .zoom-slider::-moz-range-thumb {
     background: #0f172a;
     border: 1px solid #ffffff;
-}
-
-:root[data-theme='light'] .zoom-slider::-moz-range-thumb:hover,
-[data-theme='light'] .zoom-slider::-moz-range-thumb:hover {
-    background: #334155;
 }
 
 /* Light Mode: GIF Notice & Actions */
@@ -775,38 +737,11 @@
     border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-:root[data-theme='light'] .cropper-btn-cancel,
-[data-theme='light'] .cropper-btn-cancel {
-    background: #f1f5f9;
-    border: 1px solid rgba(0, 0, 0, 0.12) !important;
-    color: #475569;
-}
-
-:root[data-theme='light'] .cropper-btn-cancel:hover:not(:disabled),
-[data-theme='light'] .cropper-btn-cancel:hover:not(:disabled) {
-    background: #e2e8f0;
-    color: #0f172a;
-    border-color: #0f172a !important;
-}
-
 :root[data-theme='light'] .cropper-btn-apply,
 [data-theme='light'] .cropper-btn-apply {
     background: #0f172a;
     border: 1px solid #0f172a !important;
     color: #ffffff;
-}
-
-:root[data-theme='light'] .cropper-btn-apply:hover:not(:disabled),
-[data-theme='light'] .cropper-btn-apply:hover:not(:disabled) {
-    background: #1e293b;
-    border-color: #1e293b !important;
-}
-
-:root[data-theme='light'] .cropper-btn-apply:disabled,
-[data-theme='light'] .cropper-btn-cancel:disabled {
-    background: #f1f5f9;
-    border-color: #e2e8f0 !important;
-    color: #94a3b8;
 }
 
 /* Mobil Uyumluluk */
@@ -817,12 +752,10 @@
     }
 
     .cropper-container {
-        height: 310px;
+        height: 340px;
     }
 
     .cropper-actions {
-        flex-direction: column-reverse;
-        gap: 8px;
         padding: 12px 16px;
     }
 
@@ -833,11 +766,11 @@
     }
 
     .cropper-tool-bar {
-        flex-wrap: wrap;
+        gap: 5px;
     }
 
     .cropper-tool-btn {
-        font-size: 10px;
-        padding: 7px 8px;
+        font-size: 11px;
+        padding: 8px 6px;
     }
 }

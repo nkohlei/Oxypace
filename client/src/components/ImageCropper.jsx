@@ -14,8 +14,8 @@ import './ImageCropper.css';
  *
  * - Açık (Light) ve Koyu (Dark) tema desteği
  * - Kadrajın içinde, alt kısımda telefon tarzı kesintisiz ve sonsuz dereceli döndürme kadranı
- * - Alt kısımda ölçek (zoom) barı ve hızlı araçlar
- * - Dikdörtgen, hafif yumuşatılmış köşeler
+ * - Mobil uyumlu boyutlandırma ve çakışmasız vizör/kadran yerleşimi
+ * - Mobilde takılı kalmayan pürüzsüz dokunmatik butonlar
  * - Sürükleme, tekerlek zoom ve pinch-to-zoom desteği
  * - GIF dosyaları için kayıpsız doğrudan yükleme
  */
@@ -41,23 +41,24 @@ const ImageCropper = ({
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
 
-    // Kırpma vizörü boyutları
+    // Kırpma vizörü boyutları (Mobilde kadran ile çakışmayı önleyen dengeli boyutlar)
     const getCropSize = useCallback(() => {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 500;
         if (aspectRatio) {
             if (aspectRatio >= 1) {
-                const w = 260;
+                const w = isMobile ? 220 : 250;
                 return { width: w, height: Math.round(w / aspectRatio) };
             } else {
-                const h = 260;
+                const h = isMobile ? 220 : 250;
                 return { width: Math.round(h * aspectRatio), height: h };
             }
         }
         if (mode === 'avatar') {
-            return { width: 260, height: 260 };
+            return isMobile ? { width: 210, height: 210 } : { width: 250, height: 250 };
         } else if (mode === 'cover') {
-            return { width: 440, height: 195 }; // 2.25:1 aspect ratio
+            return isMobile ? { width: 320, height: 142 } : { width: 440, height: 195 };
         } else {
-            return { width: 320, height: 200 };
+            return isMobile ? { width: 270, height: 170 } : { width: 320, height: 200 };
         }
     }, [aspectRatio, mode]);
 
@@ -255,7 +256,6 @@ const ImageCropper = ({
             if (typeof clientX !== 'number') return;
 
             const deltaX = clientX - rulerDragRef.current.startX;
-            // Her 6px sürükleme = 1 derece
             const degreesDelta = -deltaX / 6;
             handleRotationChange(rulerDragRef.current.startRotation + degreesDelta);
         };
@@ -450,12 +450,12 @@ const ImageCropper = ({
         }
     };
 
-    // Görsel transform stili (Merkez odaklı)
+    // Görsel transform stili (Kadraj merkezi ile tam senkronize)
     const getImageTransformStyle = () => {
         if (!imageObj) return {};
 
         return {
-            transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) rotate(${rotation}deg) scale(${scale})`,
+            transform: `translate(calc(-50% + ${offset.x}px), calc(-50% - 24px + ${offset.y}px)) rotate(${rotation}deg) scale(${scale})`,
             transformOrigin: 'center center',
             cursor: isDragging ? 'grabbing' : 'grab',
         };
@@ -468,7 +468,7 @@ const ImageCropper = ({
     const renderRulerTicks = () => {
         const ticks = [];
         const tickSpacing = 6; // px per degree
-        const range = 40; // İbrenin sağı ve solu (toplam 80 derece genişlik)
+        const range = 40;
         const baseDeg = Math.round(rotation);
 
         for (let i = -range; i <= range; i++) {
@@ -536,7 +536,7 @@ const ImageCropper = ({
                                 />
                             )}
 
-                            {/* Taktiksel Odak Vizörü */}
+                            {/* Taktiksel Odak Vizörü (Kadran ile çakışmaması için yukarı dengelendi) */}
                             <div
                                 className={`cropper-frame ${mode === 'avatar' ? 'cropper-frame-circle' : 'cropper-frame-rect'}`}
                                 style={{
@@ -595,7 +595,7 @@ const ImageCropper = ({
 
                 {/* Kontrol Paneli */}
                 <div className="cropper-controls-wrapper">
-                    {/* Hızlı Açı Butonları */}
+                    {/* Hızlı Açı Butonları (0° butonu disabled edilmez, takılı kalmayı önler) */}
                     {!isGif && (
                         <div className="cropper-tool-bar">
                             <button
@@ -625,7 +625,7 @@ const ImageCropper = ({
                                 className="cropper-tool-btn"
                                 onClick={() => handleRotationChange(0)}
                                 title="Açıyı 0° Yap"
-                                disabled={loading || rotation === 0}
+                                disabled={loading}
                             >
                                 <Compass size={14} strokeWidth={2.5} />
                                 <span>0°</span>
@@ -693,7 +693,7 @@ const ImageCropper = ({
                     </div>
                 </div>
 
-                {/* Alt Aksiyonlar (İptal Butonu Kaldırıldı) */}
+                {/* Alt Aksiyonlar */}
                 <div className="cropper-actions">
                     <button
                         type="button"
