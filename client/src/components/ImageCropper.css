@@ -341,24 +341,19 @@
     mask-image: linear-gradient(to right, transparent, #000 20%, #000 80%, transparent);
 }
 
-/* Çizgilerin Hareket Ettiği Şerit */
+/* Çizgilerin Bulunduğu Şerit */
 .phone-rotation-ruler-track {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 0;
-    display: flex;
-    align-items: center;
-    will-change: transform;
+    inset: 0;
     pointer-events: none;
 }
 
 /* Çizgiler */
 .phone-ruler-tick {
     position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
     width: 1.5px;
-    transform: translateX(-50%);
     background: rgba(255, 255, 255, 0.35);
     border-radius: 1px;
 }

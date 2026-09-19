@@ -13,9 +13,9 @@ import './ImageCropper.css';
  * ImageCropper - Oxypace Profesyonel Profil/Görsel Düzenleyici
  *
  * - Açık (Light) ve Koyu (Dark) tema desteği
- * - Kadrajın içinde, alt kısımda telefon tarzı minimal dereceli döndürme kadranı (iOS camera style dial)
+ * - Kadrajın içinde, alt kısımda telefon tarzı kesintisiz ve sonsuz dereceli döndürme kadranı
  * - Alt kısımda ölçek (zoom) barı ve hızlı araçlar
- * - Dikdörtgen, hafif yumuşatılmış köşeler (asla kapsül/pill olmayan butonlar)
+ * - Dikdörtgen, hafif yumuşatılmış köşeler
  * - Sürükleme, tekerlek zoom ve pinch-to-zoom desteği
  * - GIF dosyaları için kayıpsız doğrudan yükleme
  */
@@ -464,19 +464,25 @@ const ImageCropper = ({
     const maxScale = minScale * 4;
     const zoomPercent = Math.round((scale / minScale) * 100);
 
-    // Telefon kadranı için derece çizgilerini üret (-90° ile +90°)
+    // Telefon kadranı için kesintisiz, sonsuz döngülü derece çizgilerini üret
     const renderRulerTicks = () => {
         const ticks = [];
         const tickSpacing = 6; // px per degree
-        for (let deg = -90; deg <= 90; deg++) {
-            const isMajor = deg % 10 === 0;
-            const isMedium = deg % 5 === 0 && !isMajor;
+        const range = 40; // İbrenin sağı ve solu (toplam 80 derece genişlik)
+        const baseDeg = Math.round(rotation);
+
+        for (let i = -range; i <= range; i++) {
+            const deg = baseDeg + i;
+            const absDeg = Math.abs(deg);
+            const isMajor = absDeg % 10 === 0;
+            const isMedium = absDeg % 5 === 0 && !isMajor;
+
             ticks.push(
                 <div
                     key={deg}
                     className={`phone-ruler-tick ${isMajor ? 'tick-major' : isMedium ? 'tick-medium' : 'tick-minor'}`}
                     style={{
-                        left: `calc(50% + ${deg * tickSpacing}px)`,
+                        left: `calc(50% + ${(deg - rotation) * tickSpacing}px)`,
                     }}
                 />
             );
@@ -553,7 +559,7 @@ const ImageCropper = ({
                                 </div>
                             </div>
 
-                            {/* TELEFON TARZI DERECE DÖNDÜRME ALANI (İşaretlenen Alana Yerleştirildi) */}
+                            {/* TELEFON TARZI KESİNTİSİZ DERECE DÖNDÜRME ALANI */}
                             {!isGif && (
                                 <div
                                     className="phone-rotation-dial-container"
@@ -572,18 +578,13 @@ const ImageCropper = ({
                                         {rotation > 0 ? `+${rotation}` : rotation}°
                                     </div>
 
-                                    {/* Derece Çizgileri Şeridi (İbre altına hareket eder) */}
+                                    {/* Kesintisiz Derece Çizgileri Şeridi */}
                                     <div className="phone-rotation-ruler-viewport">
-                                        <div
-                                            className="phone-rotation-ruler-track"
-                                            style={{
-                                                transform: `translateX(${-rotation * 6}px)`,
-                                            }}
-                                        >
+                                        <div className="phone-rotation-ruler-track">
                                             {renderRulerTicks()}
                                         </div>
 
-                                        {/* Sabit Merkez İbresi (Sarı/Beyaz Vurgu) */}
+                                        {/* Sabit Merkez İbresi */}
                                         <div className="phone-rotation-needle" />
                                     </div>
                                 </div>
@@ -649,7 +650,7 @@ const ImageCropper = ({
                         </div>
                     )}
 
-                    {/* ÖLÇEK (ZOOM) BÖLÜMÜ (Aşağıda) */}
+                    {/* ÖLÇEK (ZOOM) BÖLÜMÜ */}
                     <div className="cropper-control-row cropper-zoom-section">
                         <div className="cropper-control-label">
                             <span className="cropper-label-text">ÖLÇEK</span>
@@ -692,16 +693,8 @@ const ImageCropper = ({
                     </div>
                 </div>
 
-                {/* Alt Aksiyonlar */}
+                {/* Alt Aksiyonlar (İptal Butonu Kaldırıldı) */}
                 <div className="cropper-actions">
-                    <button
-                        type="button"
-                        className="cropper-btn cropper-btn-cancel"
-                        onClick={onCancel}
-                        disabled={processing}
-                    >
-                        İPTAL
-                    </button>
                     <button
                         type="button"
                         className="cropper-btn cropper-btn-apply"
