@@ -61,6 +61,39 @@ const Profile = () => {
     const [activeTab, setActiveTab] = useState('posts'); // Default tab - Posts first
     const [showUsernameGuide, setShowUsernameGuide] = useState(false);
     const [visibilityDropdownOpen, setVisibilityDropdownOpen] = useState(false);
+    const [initialFormData, setInitialFormData] = useState(null);
+    const [showConfirmClose, setShowConfirmClose] = useState(false);
+
+    const isProfileDirty = () => {
+        if (!initialFormData) return false;
+        return (
+            (formData.username || '') !== (initialFormData.username || '') ||
+            (formData.displayName || '') !== (initialFormData.displayName || '') ||
+            (formData.bio || '') !== (initialFormData.bio || '') ||
+            (formData.portalVisibility || 'public') !== (initialFormData.portalVisibility || 'public')
+        );
+    };
+
+    const handleCloseProfileModal = () => {
+        if (isProfileDirty()) {
+            setShowConfirmClose(true);
+        } else {
+            setEditing(false);
+            setShowConfirmClose(false);
+            setShowUsernameGuide(false);
+            setVisibilityDropdownOpen(false);
+        }
+    };
+
+    const handleConfirmDiscardProfile = () => {
+        setShowConfirmClose(false);
+        setEditing(false);
+        setShowUsernameGuide(false);
+        setVisibilityDropdownOpen(false);
+        if (initialFormData) {
+            setFormData(initialFormData);
+        }
+    };
 
     // Posts State
     const [userPosts, setUserPosts] = useState([]);
@@ -138,12 +171,14 @@ const Profile = () => {
         try {
             const response = await axios.get('/api/users/me');
             setProfileUser(response.data);
-            setFormData({
+            const initData = {
                 username: response.data.username || '',
                 displayName: response.data.profile?.displayName || '',
                 bio: response.data.profile?.bio || '',
                 portalVisibility: response.data.settings?.privacy?.portalVisibility || 'public',
-            });
+            };
+            setFormData(initData);
+            setInitialFormData(initData);
         } catch (err) {
             console.error('Failed to fetch my profile:', err);
         }
@@ -912,16 +947,19 @@ const Profile = () => {
                                         <button
                                             className="profile-edit-trigger-btn"
                                             onClick={() => {
-                                                setFormData({
+                                                const initData = {
                                                     username: profileUser?.username || currentUser?.username || '',
                                                     displayName: profileUser?.profile?.displayName || '',
                                                     bio: profileUser?.profile?.bio || '',
                                                     portalVisibility: profileUser?.settings?.privacy?.portalVisibility || 'public',
-                                                });
+                                                };
+                                                setFormData(initData);
+                                                setInitialFormData(initData);
                                                 setError('');
                                                 setSuccess('');
                                                 setShowUsernameGuide(false);
                                                 setVisibilityDropdownOpen(false);
+                                                setShowConfirmClose(false);
                                                 setEditing(true);
                                             }}
                                         >
@@ -1814,7 +1852,7 @@ const Profile = () => {
 
             {/* Modern Edit Profile Modal - Outside <main> to prevent stacking context & backdrop-filter clipping */}
             {editing && (
-                <div className="profile-edit-modal-overlay" onClick={() => setEditing(false)}>
+                <div className="profile-edit-modal-overlay" onClick={handleCloseProfileModal}>
                     <div className="profile-edit-modal-dialog" onClick={(e) => e.stopPropagation()}>
                         <div className="profile-edit-modal-header">
                             <div className="profile-edit-header-title-block">
@@ -1824,7 +1862,7 @@ const Profile = () => {
                             <button
                                 type="button"
                                 className="profile-edit-close-btn"
-                                onClick={() => setEditing(false)}
+                                onClick={handleCloseProfileModal}
                                 aria-label="Kapat"
                             >
                                 <X size={18} />
@@ -1834,7 +1872,7 @@ const Profile = () => {
                         <form onSubmit={handleSubmit} className="profile-edit-form">
                             <div className="profile-edit-modal-body">
                                 {/* Username Field */}
-                                <div className="profile-edit-field-group">
+                                <div className="profile-edit-field-group relative-anchor">
                                     <div className="profile-edit-field-header">
                                         <label htmlFor="input-username" className="profile-edit-field-label">
                                             <AtSign size={14} className="profile-edit-field-icon" />
@@ -1851,16 +1889,26 @@ const Profile = () => {
                                         </button>
                                     </div>
 
-                                    {/* Username Guide Accordion */}
+                                    {/* Floating Username Guide Popover (above window content) */}
                                     {showUsernameGuide && (
-                                        <div className="profile-username-guide-box">
-                                            <div className="guide-box-header">
-                                                <Info size={14} />
-                                                <span>KULLANICI ADI AYARLAMA KILAVUZU</span>
+                                        <div className="profile-username-guide-popover">
+                                            <div className="guide-popover-header">
+                                                <div className="guide-popover-title">
+                                                    <Info size={14} />
+                                                    <span>KULLANICI ADI AYARLAMA KILAVUZU</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="guide-popover-close"
+                                                    onClick={() => setShowUsernameGuide(false)}
+                                                    title="Kapat"
+                                                >
+                                                    <X size={13} />
+                                                </button>
                                             </div>
-                                            <ul className="guide-box-list">
+                                            <ul className="guide-popover-list">
                                                 <li><strong>3 - 30 karakter</strong> aralığında olmalıdır.</li>
-                                                <li>Yalnızca <strong>harf (a-z)</strong>, <strong>rakam (0-9)</strong> ve <strong>alt çizgi (_)</strong> içerebilir.</li>
+                                                <li>Yalnızca <strong>küçük harf (a-z)</strong>, <strong>rakam (0-9)</strong> ve <strong>alt çizgi (_)</strong> içerebilir.</li>
                                                 <li>Boşluk ve özel karakterler (@, #, !, ?, ., vb.) kullanılamaz.</li>
                                                 <li>Platform genelinde <strong>benzersiz</strong> olmalıdır.</li>
                                                 <li>Küfür, hakaret ve müstehcen ifadeler kesinlikle yasaktır.</li>
@@ -2049,14 +2097,6 @@ const Profile = () => {
 
                             <div className="profile-edit-modal-footer">
                                 <button
-                                    type="button"
-                                    className="profile-edit-btn-cancel"
-                                    onClick={() => setEditing(false)}
-                                    disabled={loading}
-                                >
-                                    İptal
-                                </button>
-                                <button
                                     type="submit"
                                     className="profile-edit-btn-save"
                                     disabled={loading}
@@ -2072,6 +2112,35 @@ const Profile = () => {
                                 </button>
                             </div>
                         </form>
+
+                        {/* Unsaved Changes Confirmation Dialog */}
+                        {showConfirmClose && (
+                            <div className="profile-confirm-overlay" onClick={() => setShowConfirmClose(false)}>
+                                <div className="profile-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+                                    <span className="profile-confirm-tag">[ UYARI ]</span>
+                                    <h3 className="profile-confirm-title">Düzenlemeler Kaybolacak</h3>
+                                    <p className="profile-confirm-desc">
+                                        Yaptığınız değişiklikler henüz kaydedilmedi. Pencereyi kapatırsanız tüm düzenlemeleriniz kaybolacak. Kapatmak istediğinizden emin misiniz?
+                                    </p>
+                                    <div className="profile-confirm-actions">
+                                        <button
+                                            type="button"
+                                            className="profile-confirm-btn-stay"
+                                            onClick={() => setShowConfirmClose(false)}
+                                        >
+                                            Düzenlemeye Devam Et
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="profile-confirm-btn-discard"
+                                            onClick={handleConfirmDiscardProfile}
+                                        >
+                                            Değişiklikleri Sil ve Kapat
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

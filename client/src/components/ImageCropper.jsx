@@ -82,6 +82,9 @@ const ImageCropper = ({
     const [minScale, setMinScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [rotation, setRotation] = useState(0); // Derece (-180 ile +180)
+    const [hasInteracted, setHasInteracted] = useState(false);
+    const [showConfirmClose, setShowConfirmClose] = useState(false);
+    const initialScaleRef = useRef(1);
 
     // Sürükleme ve dokunma durumları
     const [isDragging, setIsDragging] = useState(false);
@@ -106,8 +109,11 @@ const ImageCropper = ({
 
                 setMinScale(initialMin);
                 setScale(initialMin);
+                initialScaleRef.current = initialMin;
                 setOffset({ x: 0, y: 0 });
                 setRotation(0);
+                setHasInteracted(false);
+                setShowConfirmClose(false);
                 setLoading(false);
             })
             .catch((err) => {
@@ -119,6 +125,7 @@ const ImageCropper = ({
     // Derece cinsinden rotasyon değiştirme
     const handleRotationChange = (newDeg) => {
         if (!imageObj) return;
+        setHasInteracted(true);
         let normalized = Math.round(newDeg);
         while (normalized > 180) normalized -= 360;
         while (normalized < -180) normalized += 360;
@@ -160,11 +167,13 @@ const ImageCropper = ({
         setMinScale(initialMin);
         setScale(initialMin);
         setOffset({ x: 0, y: 0 });
+        setHasInteracted(false);
     };
 
     // Zoom slider değişimi
     const handleZoomSlider = (e) => {
         if (!imageObj) return;
+        setHasInteracted(true);
         const newScale = parseFloat(e.target.value);
         const w = imageObj.naturalWidth || imageObj.width;
         const h = imageObj.naturalHeight || imageObj.height;
@@ -185,6 +194,7 @@ const ImageCropper = ({
     // Adımlı Zoom
     const handleZoomStep = (factor) => {
         if (!imageObj) return;
+        setHasInteracted(true);
         const maxScale = minScale * 4;
         const newScale = Math.max(minScale, Math.min(maxScale, scale * factor));
         const w = imageObj.naturalWidth || imageObj.width;
@@ -201,6 +211,27 @@ const ImageCropper = ({
 
         setScale(newScale);
         setOffset(clamped);
+    };
+
+    const isCropperDirty = () => {
+        if (hasInteracted) return true;
+        if (rotation !== 0) return true;
+        if (Math.abs(scale - initialScaleRef.current) > 0.005) return true;
+        if (Math.abs(offset.x) > 1 || Math.abs(offset.y) > 1) return true;
+        return false;
+    };
+
+    const handleCloseRequest = () => {
+        if (isCropperDirty()) {
+            setShowConfirmClose(true);
+        } else {
+            onCancel();
+        }
+    };
+
+    const handleConfirmDiscard = () => {
+        setShowConfirmClose(false);
+        onCancel();
     };
 
     // Fare tekerleği ile zoom
@@ -338,6 +369,7 @@ const ImageCropper = ({
                 rotation
             );
             setOffset(clamped);
+            setHasInteracted(true);
         };
 
         const handleMouseUp = () => {
@@ -368,7 +400,9 @@ const ImageCropper = ({
                     rotation
                 );
                 setOffset(clamped);
+                setHasInteracted(true);
             } else if (e.touches.length === 2) {
+                setHasInteracted(true);
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const currentDist = Math.hypot(dx, dy);
@@ -503,7 +537,7 @@ const ImageCropper = ({
                     </div>
                     <button
                         className="cropper-close-btn"
-                        onClick={onCancel}
+                        onClick={handleCloseRequest}
                         aria-label="Kapat"
                         title="Kapat"
                     >
@@ -704,6 +738,35 @@ const ImageCropper = ({
                         {processing ? 'İŞLENİYOR...' : 'KAYDET VE UYGULA'}
                     </button>
                 </div>
+
+                {/* Unsaved Changes Confirmation Dialog */}
+                {showConfirmClose && (
+                    <div className="cropper-confirm-overlay" onClick={() => setShowConfirmClose(false)}>
+                        <div className="cropper-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+                            <span className="cropper-confirm-tag">[ UYARI ]</span>
+                            <h4 className="cropper-confirm-title">Düzenlemeler Kaybolacak</h4>
+                            <p className="cropper-confirm-desc">
+                                Görsel üzerinde yaptığınız değişiklikler henüz kaydedilmedi. Pencereyi kapatırsanız tüm düzenlemeleriniz kaybolacak. Kapatmak istediğinizden emin misiniz?
+                            </p>
+                            <div className="cropper-confirm-actions">
+                                <button
+                                    type="button"
+                                    className="cropper-confirm-btn-stay"
+                                    onClick={() => setShowConfirmClose(false)}
+                                >
+                                    Düzenlemeye Devam Et
+                                </button>
+                                <button
+                                    type="button"
+                                    className="cropper-confirm-btn-discard"
+                                    onClick={handleConfirmDiscard}
+                                >
+                                    Değişiklikleri Sil ve Kapat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
