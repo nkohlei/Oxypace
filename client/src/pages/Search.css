@@ -55,6 +55,24 @@
     flex: 1 1 auto;
     min-width: 220px;
     max-width: none !important;
+    border-radius: 6px !important; /* Hafif yumuşak köşeli - butonlarla aynı */
+}
+
+.search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input {
+    border-radius: 6px !important; /* Hafif yumuşak köşeli */
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme='light'] .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input {
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+.search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input:focus {
+    border-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+[data-theme='light'] .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input:focus {
+    border-color: rgba(0, 0, 0, 0.22) !important;
 }
 
 .search-tabs-actions {
@@ -253,7 +271,7 @@
         display: flex !important;
         flex-wrap: wrap !important;
         align-items: center !important;
-        gap: 8px !important;
+        gap: 10px !important;
         width: 100% !important;
     }
 
@@ -271,30 +289,37 @@
         flex: 1 1 auto !important;
         max-width: 100% !important;
         width: auto !important;
-        min-width: 120px !important;
+        min-width: 140px !important;
+        border-radius: 6px !important;
     }
 
+    .search-controls-row .oxypace-search-input-wrapper input.oxypace-search-input {
+        border-radius: 6px !important;
+    }
+
+    /* Buttons move below search bar when they don't fit, preserving their uncorrupted appearance */
     .search-tabs-actions {
         display: flex !important;
+        flex-wrap: wrap !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 8px !important;
         width: 100% !important;
     }
 
     .search-filter-btn,
     .search-map-btn,
     .map-search-btn {
-        flex: 1 1 0% !important;
-        height: 38px !important;
-        padding: 0 6px !important;
-        font-size: 0.82rem !important;
+        flex: 0 0 auto !important; /* Retain standard uncorrupted proportions */
+        height: 42px !important;
+        padding: 0 16px !important;
+        font-size: 0.92rem !important;
         border-radius: 6px !important;
-        gap: 4px !important;
+        gap: 7px !important;
     }
 
     .search-map-btn span,
     .map-search-btn span {
-        font-size: 0.82rem !important;
+        font-size: 0.92rem !important;
     }
 
     .search-mobile-back-btn {
