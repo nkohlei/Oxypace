@@ -14,10 +14,10 @@
 
 .download-modal-card {
   width: calc(100% - 32px);
-  max-width: 330px;
-  background: #141416;
-  border: 1px solid #27272a;
-  border-radius: 14px;
+  max-width: 380px;
+  background: #111215;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px !important; /* Hafif yumuşak kenarlı dikdörtgen */
   padding: 18px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
   animation: downloadScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -55,7 +55,7 @@
   color: #71717a;
   cursor: pointer;
   padding: 4px;
-  border-radius: 6px;
+  border-radius: 6px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,8 +73,8 @@
   gap: 6px;
   background: #09090b;
   padding: 4px;
-  border-radius: 10px;
-  border: 1px solid #27272a;
+  border-radius: 6px !important; /* Hafif yumuşak kenarlı dikdörtgen */
+  border: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 14px;
 }
 
@@ -86,7 +86,7 @@
   padding: 8px 10px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px !important; /* Hafif yumuşak kenarlı dikdörtgen */
   cursor: pointer;
   color: #a1a1aa;
   transition: all 0.15s ease;
@@ -96,19 +96,19 @@
 
 .format-tab-btn:hover {
   color: #f4f4f5;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .format-tab-btn.active {
   background: #27272a;
-  border-color: #3f3f46;
+  border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .format-tab-icon {
   flex-shrink: 0;
-  color: #60a5fa;
+  color: #e4e4e7;
 }
 
 .format-tab-btn:not(.active) .format-tab-icon {
@@ -151,10 +151,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  background: #1f1f23;
-  border: 1px solid #2e2e34;
-  border-radius: 8px;
+  padding: 11px 14px;
+  background: #18191d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px !important; /* Hafif yumuşak kenarlı dikdörtgen */
   color: #f4f4f5;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -163,15 +163,15 @@
 }
 
 .quality-option-btn:hover {
-  background: #27272a;
-  border-color: #3f3f46;
+  background: #222329;
+  border-color: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   transform: translateY(-1px);
 }
 
 .quality-option-btn:active {
   transform: translateY(0);
-  background: #1f1f23;
+  background: #18191d;
 }
 
 .opt-text-col {
@@ -196,10 +196,10 @@
   font-size: 9.5px;
   font-weight: 600;
   padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 4px !important; /* Hafif yumuşak köşeli */
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .opt-sublabel {
@@ -211,7 +211,7 @@
 .opt-resolution {
   font-size: 10.5px;
   font-weight: 600;
-  color: #52525b;
+  color: #71717a;
   font-family: monospace;
   letter-spacing: 0.2px;
 }
@@ -249,9 +249,9 @@
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  background: rgba(59, 130, 246, 0.06);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px !important;
   margin-bottom: 4px;
 }
 
