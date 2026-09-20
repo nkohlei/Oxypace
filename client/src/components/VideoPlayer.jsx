@@ -180,8 +180,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const activeVideoRef = useRef('A'); // 'A' | 'B' — ref not state to avoid re-render races
   const [activeVideo, setActiveVideo] = useState('A'); // only for styling
 
-  // Pending swap guard — prevents double swaps
+  // Pending swap guard & cleanup — prevents race conditions and lockups
   const swapPendingRef = useRef(false);
+  const swapIdRef = useRef(0);
+  const cleanupSwapRef = useRef(null);
 
   const globalMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -594,9 +596,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   }, [initHls]);
 
-  // Clean up HLS instance on unmount
+  // Clean up HLS instance and pending swap on unmount
   useEffect(() => {
     return () => {
+      if (cleanupSwapRef.current) {
+        cleanupSwapRef.current();
+        cleanupSwapRef.current = null;
+      }
       if (hlsInstanceRef.current) {
         hlsInstanceRef.current.destroy();
       }
@@ -676,102 +682,159 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [playbackRate]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // THE CORE: Instant quality swap using the dual-buffer strategy
-  // Active video keeps playing. We prepare inactive video in the background.
-  // Correct sequence:
-  //   1. Set src on inactive
-  //   2. On loadedmetadata → seek to LIVE active position (not snapshot)
-  //   3. On seeked → call play() so browser starts buffering from correct frame
-  //   4. On playing (real decoded frame) → swap with zero extra seeks
+  // THE CORE: Ultra-fast, zero time-drift quality swap using dual-buffer strategy
+  // Active video keeps playing smoothly while inactive video prepares in background.
+  // Kept strictly muted during prep to eliminate audio-pipeline contention.
+  // Swapped instantly upon frame availability (seeked/canplay) with exact live timestamp
+  // synchronization to completely eliminate backwards drift.
   // ─────────────────────────────────────────────────────────────────────────
   const initiateQualitySwap = useCallback((newSrc) => {
     const activeEl   = getActiveEl();
     const inactiveEl = getInactiveEl();
-    if (!activeEl || !inactiveEl) return;
+    if (!activeEl || !inactiveEl || !newSrc) return;
 
     // Already playing this src → nothing to do
     if (activeEl.src === newSrc || activeEl.currentSrc === newSrc) return;
 
-    // A swap is already in progress → ignore (prevents cascade)
-    if (swapPendingRef.current) {
-      console.log('[VideoPlayer] Swap already in progress, skipping.');
-      return;
+    // Cancel any previous swap in flight so latest choice applies immediately
+    if (cleanupSwapRef.current) {
+      cleanupSwapRef.current();
+      cleanupSwapRef.current = null;
     }
 
+    const swapId = ++swapIdRef.current;
     swapPendingRef.current = true;
 
     const wasPlaying = !activeEl.paused;
+    console.log(`[VideoPlayer] Fast swap to ${newSrc} (swap #${swapId}, wasPlaying=${wasPlaying})`);
 
-    console.log(`[VideoPlayer] Initiating swap to ${newSrc}, wasPlaying=${wasPlaying}`);
+    let isCleanedUp = false;
+    let safetyTimeout = null;
 
-    // ── Prepare inactive element ──────────────────────────────────────────
-    setVideoSource(inactiveEl, newSrc);
-    inactiveEl.muted = isMuted;
-    inactiveEl.volume = volume;
-    inactiveEl.playbackRate = playbackRate;
-    inactiveEl.loop  = true;
-    inactiveEl.preload = 'auto';
-    inactiveEl.setAttribute('playsinline', '');
-
-    // Step 1: metadata loaded → seek to where active video IS RIGHT NOW
-    const onMeta = () => {
-      inactiveEl.removeEventListener('loadedmetadata', onMeta);
-      const liveTime = activeEl.currentTime;
-      console.log(`[VideoPlayer] onMeta: seeking inactive to live time ${liveTime.toFixed(3)}s`);
-      inactiveEl.currentTime = liveTime;
-    };
-
-    // Step 2: seek completed → now start playing so browser renders frames
-    const onSeeked = () => {
-      inactiveEl.removeEventListener('seeked', onSeeked);
-      if (wasPlaying) {
-        inactiveEl.play().catch(() => {});
-      } else {
-        onPlaying();
+    const cleanup = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
+      if (safetyTimeout) {
+        clearTimeout(safetyTimeout);
+        safetyTimeout = null;
       }
-    };
-
-    // Step 3: real decoded frame is rendering → swap instantly, no extra seek
-    const onPlaying = () => {
-      inactiveEl.removeEventListener('playing', onPlaying);
+      inactiveEl.removeEventListener('loadedmetadata', onMeta);
+      inactiveEl.removeEventListener('seeked', onReady);
+      inactiveEl.removeEventListener('canplay', onReady);
+      inactiveEl.removeEventListener('loadeddata', onReady);
       inactiveEl.removeEventListener('error', onError);
+      if (cleanupSwapRef.current === cleanup) {
+        cleanupSwapRef.current = null;
+      }
+      swapPendingRef.current = false;
+    };
+    cleanupSwapRef.current = cleanup;
+
+    const executeSwap = () => {
+      if (isCleanedUp || swapIdRef.current !== swapId) return;
+      cleanup();
 
       const newId = getInactiveId();
-      console.log(`[VideoPlayer] Swap complete → now showing ${newId} at ${inactiveEl.currentTime.toFixed(3)}s`);
+      const liveNow = activeEl.currentTime;
+      const drift = liveNow - inactiveEl.currentTime;
 
-      // Update ref immediately (no async state lag)
+      // Ensure zero drift: synchronize inactiveEl to the exact live time of activeEl
+      if (Math.abs(drift) > 0.03) {
+        try {
+          inactiveEl.currentTime = liveNow;
+        } catch (e) {
+          console.warn('[VideoPlayer] Error syncing currentTime on swap:', e);
+        }
+      }
+
+      inactiveEl.muted = isMuted;
+      inactiveEl.volume = volume;
+      inactiveEl.playbackRate = activeEl.playbackRate || playbackRate;
+
+      if (wasPlaying && !activeEl.paused) {
+        inactiveEl.play().catch(() => {});
+      }
+
+      // Immediate swap of active element
       activeVideoRef.current = newId;
       setActiveVideo(newId);
 
-      // Pause the old active element
+      // Pause and mute old active element
       activeEl.pause();
-      // Register new one for scroll-center detection
+      activeEl.muted = true;
+
+      // Register new active element with scroll-center manager
       mountedVideos.delete(activeEl);
       mountedVideos.add(inactiveEl);
 
-      swapPendingRef.current = false;
+      console.log(`[VideoPlayer] Fast swap complete → ${newId} at ${liveNow.toFixed(3)}s (corrected drift: ${drift.toFixed(3)}s)`);
     };
 
-    // On error → abort swap, release guard
-    const onError = () => {
-      inactiveEl.removeEventListener('playing', onPlaying);
-      inactiveEl.removeEventListener('error', onError);
+    const onReady = () => {
+      if (isCleanedUp || swapIdRef.current !== swapId) return;
+      executeSwap();
+    };
+
+    const onMeta = () => {
+      if (isCleanedUp || swapIdRef.current !== swapId) return;
       inactiveEl.removeEventListener('loadedmetadata', onMeta);
-      inactiveEl.removeEventListener('seeked', onSeeked);
-      swapPendingRef.current = false;
-      console.warn('[VideoPlayer] Swap aborted due to load error on inactive element.');
+
+      const liveTime = activeEl.currentTime;
+
+      if (liveTime < 0.05) {
+        // At video beginning: no seek required
+        if (inactiveEl.readyState >= 2) {
+          executeSwap();
+        } else {
+          inactiveEl.addEventListener('canplay', onReady, { once: true });
+          inactiveEl.addEventListener('loadeddata', onReady, { once: true });
+        }
+      } else {
+        inactiveEl.addEventListener('seeked', onReady, { once: true });
+        try {
+          inactiveEl.currentTime = liveTime;
+        } catch (e) {
+          console.warn('[VideoPlayer] Error seeking inactive to live time:', e);
+          executeSwap();
+        }
+      }
     };
 
-    inactiveEl.addEventListener('loadedmetadata', onMeta);
-    inactiveEl.addEventListener('seeked', onSeeked);
-    inactiveEl.addEventListener('playing', onPlaying, { once: true });
+    const onError = (err) => {
+      if (isCleanedUp || swapIdRef.current !== swapId) return;
+      console.warn('[VideoPlayer] Quality swap aborted due to inactive element error:', err);
+      cleanup();
+    };
+
+    // Prepare inactive element: keep muted during background preparation
+    inactiveEl.muted = true;
+    inactiveEl.volume = volume;
+    inactiveEl.playbackRate = activeEl.playbackRate || playbackRate;
+    inactiveEl.loop = true;
+    inactiveEl.preload = 'auto';
+    inactiveEl.setAttribute('playsinline', '');
+
+    // Attach listeners before loading source
     inactiveEl.addEventListener('error', onError, { once: true });
 
-    // Trigger load (only for non-HLS since initHls handles HLS loading)
-    if (!isHls(newSrc)) {
-      inactiveEl.load();
+    if (inactiveEl.readyState >= 1 && (inactiveEl.src === newSrc || inactiveEl.currentSrc === newSrc)) {
+      onMeta();
+    } else {
+      inactiveEl.addEventListener('loadedmetadata', onMeta, { once: true });
+      setVideoSource(inactiveEl, newSrc);
     }
-  }, [isMuted, playbackRate, setVideoSource]);
+
+    // Safety timeout: prevents lockups if network stalls
+    safetyTimeout = setTimeout(() => {
+      if (isCleanedUp || swapIdRef.current !== swapId) return;
+      console.warn('[VideoPlayer] Swap safety timeout (3500ms) reached.');
+      if (inactiveEl.readyState >= 2) {
+        executeSwap();
+      } else {
+        cleanup();
+      }
+    }, 3500);
+  }, [isMuted, volume, playbackRate, setVideoSource]);
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
   const handleWaiting = useCallback(() => {
