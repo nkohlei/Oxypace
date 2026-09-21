@@ -618,28 +618,56 @@
 }
 
 .translation-toggle {
-    background: transparent;
-    border: none;
-    color: #f91880;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: #f91880 !important;
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
-    padding: 2px 0;
+    padding: 0 !important;
     margin-top: 4px;
     display: inline-flex;
     align-items: center;
-    transition: all 0.2s ease;
+    gap: 4px;
+    transition: color 0.18s ease, opacity 0.18s ease !important;
     opacity: 0.9;
+    transform: none !important;
+    -webkit-tap-highlight-color: transparent !important;
 }
 
-.translation-toggle:hover {
-    opacity: 1;
-    text-decoration: underline;
+.translation-toggle:hover,
+.translation-toggle:focus,
+.translation-toggle:focus-visible,
+.translation-toggle:active {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+    text-decoration: none !important;
+    transform: none !important;
+}
+
+[data-theme='light'] .translation-toggle:hover,
+[data-theme='light'] .translation-toggle:focus,
+[data-theme='light'] .translation-toggle:focus-visible,
+[data-theme='light'] .translation-toggle:active {
+    color: #0f172a !important;
 }
 
 .translation-toggle svg {
     width: 14px;
     height: 14px;
+    stroke: currentColor;
 }
 
 /* Mobile Post Card Optimizations */

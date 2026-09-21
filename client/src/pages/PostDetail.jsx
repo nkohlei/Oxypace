@@ -558,8 +558,11 @@ const PostDetail = () => {
                                     
                                     {shouldShowTranslation(post.content) && (
                                         <button className="pd-translate-btn" onClick={handleTranslate}>
-                                            <Globe size={14} />
-                                            {isTranslating ? 'Çevriliyor...' : isTranslated ? 'Orijinal' : 'Çevir'}
+                                            {isTranslating
+                                                ? 'Çevriliyor...'
+                                                : isTranslated
+                                                    ? 'Orijinalini gör'
+                                                    : 'Çevirisini gör'}
                                         </button>
                                     )}
                                 </div>

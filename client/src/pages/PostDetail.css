@@ -276,24 +276,56 @@
 }
 
 .pd-translate-btn {
-    margin-top: 10px;
+    margin-top: 6px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: none;
-    padding: 2px 0;
-    color: #f91880;
+    gap: 4px;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    color: #f91880 !important;
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.18s ease, opacity 0.18s ease !important;
     opacity: 0.9;
+    transform: none !important;
+    -webkit-tap-highlight-color: transparent !important;
 }
 
-.pd-translate-btn:hover {
-    opacity: 1;
-    text-decoration: underline;
+.pd-translate-btn:hover,
+.pd-translate-btn:focus,
+.pd-translate-btn:focus-visible,
+.pd-translate-btn:active {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+    text-decoration: none !important;
+    transform: none !important;
+}
+
+[data-theme='light'] .pd-translate-btn:hover,
+[data-theme='light'] .pd-translate-btn:focus,
+[data-theme='light'] .pd-translate-btn:focus-visible,
+[data-theme='light'] .pd-translate-btn:active {
+    color: #0f172a !important;
+}
+
+.pd-translate-btn svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
 }
 
 /* MEDIA SHOWCASE */
