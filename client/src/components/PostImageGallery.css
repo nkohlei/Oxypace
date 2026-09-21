@@ -234,29 +234,7 @@
     box-sizing: border-box;
 }
 
-.oxypace-lightbox-close-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 1000000;
-    transition: all 0.2s ease;
-}
 
-.oxypace-lightbox-close-btn:hover {
-    background: rgba(239, 68, 68, 0.8);
-    border-color: transparent;
-    transform: scale(1.1);
-}
 
 .oxypace-lightbox-main {
     width: 100%;

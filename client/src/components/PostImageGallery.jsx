@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import './PostImageGallery.css';
 
@@ -240,12 +240,14 @@ const LightboxModal = ({
     const initialPinchDistRef = useRef(0);
     const initialPinchScaleRef = useRef(1);
     const lastTapRef = useRef(0);
+    const hasDraggedRef = useRef(false);
 
     // Reset zoom when active image changes
     useEffect(() => {
         setScale(1);
         setPosition({ x: 0, y: 0 });
         setIsDragging(false);
+        hasDraggedRef.current = false;
     }, [currentIndex]);
 
     // Handle mouse wheel zoom centered on cursor
@@ -292,6 +294,7 @@ const LightboxModal = ({
     // Mouse drag / pan handlers
     const handleMouseDown = (e) => {
         if (e.button !== 0) return;
+        hasDraggedRef.current = false;
         if (scale <= 1) return;
         e.preventDefault();
         e.stopPropagation();
@@ -305,6 +308,9 @@ const LightboxModal = ({
         e.preventDefault();
         const deltaX = e.clientX - dragStartRef.current.x;
         const deltaY = e.clientY - dragStartRef.current.y;
+        if (Math.hypot(deltaX, deltaY) > 5) {
+            hasDraggedRef.current = true;
+        }
         setPosition({
             x: startPosRef.current.x + deltaX,
             y: startPosRef.current.y + deltaY,
@@ -313,6 +319,11 @@ const LightboxModal = ({
 
     const handleMouseUp = () => {
         setIsDragging(false);
+        if (hasDraggedRef.current) {
+            setTimeout(() => {
+                hasDraggedRef.current = false;
+            }, 100);
+        }
     };
 
     // Double click / Double tap to toggle zoom
@@ -345,6 +356,7 @@ const LightboxModal = ({
         if (e.touches.length === 2) {
             // Two fingers: Pinch to zoom
             isPinchingRef.current = true;
+            hasDraggedRef.current = true;
             setIsDragging(false);
             const dist = Math.hypot(
                 e.touches[0].clientX - e.touches[1].clientX,
@@ -353,6 +365,7 @@ const LightboxModal = ({
             initialPinchDistRef.current = dist;
             initialPinchScaleRef.current = scale;
         } else if (e.touches.length === 1) {
+            hasDraggedRef.current = false;
             // One finger: detect double tap or pan
             const now = Date.now();
             if (now - lastTapRef.current < 300) {
@@ -372,6 +385,7 @@ const LightboxModal = ({
 
     const handleTouchMove = (e) => {
         if (isPinchingRef.current && e.touches.length === 2) {
+            hasDraggedRef.current = true;
             e.preventDefault();
             const dist = Math.hypot(
                 e.touches[0].clientX - e.touches[1].clientX,
@@ -386,9 +400,12 @@ const LightboxModal = ({
                 }
             }
         } else if (isDragging && e.touches.length === 1 && scale > 1) {
-            e.preventDefault();
             const deltaX = e.touches[0].clientX - dragStartRef.current.x;
             const deltaY = e.touches[0].clientY - dragStartRef.current.y;
+            if (Math.hypot(deltaX, deltaY) > 5) {
+                hasDraggedRef.current = true;
+            }
+            e.preventDefault();
             setPosition({
                 x: startPosRef.current.x + deltaX,
                 y: startPosRef.current.y + deltaY,
@@ -402,6 +419,11 @@ const LightboxModal = ({
         }
         if (e.touches.length === 0) {
             setIsDragging(false);
+            if (hasDraggedRef.current) {
+                setTimeout(() => {
+                    hasDraggedRef.current = false;
+                }, 100);
+            }
             if (scale <= 1.05) {
                 setScale(1);
                 setPosition({ x: 0, y: 0 });
@@ -409,26 +431,39 @@ const LightboxModal = ({
         }
     };
 
+    // Close lightbox modal when tapping/clicking on empty space outside the image
+    const handleBackdropClick = (e) => {
+        // If a drag/pinch just finished, ignore the synthetic click
+        if (hasDraggedRef.current) {
+            hasDraggedRef.current = false;
+            return;
+        }
+
+        // If clicked on the image itself, do not close
+        if (imgRef.current && (e.target === imgRef.current || imgRef.current.contains(e.target))) {
+            return;
+        }
+
+        // If clicked on navigation or footer controls, do not close
+        if (e.target.closest && (e.target.closest('.oxypace-lightbox-nav-btn') || e.target.closest('.oxypace-lightbox-footer'))) {
+            return;
+        }
+
+        e.stopPropagation();
+        onClose(e);
+    };
+
     return ReactDOM.createPortal(
         <div
             className="oxypace-lightbox-backdrop"
-            onClick={scale > 1 ? () => { setScale(1); setPosition({ x: 0, y: 0 }); } : onClose}
+            onClick={handleBackdropClick}
         >
-            <div className="oxypace-lightbox-content" onClick={(e) => e.stopPropagation()}>
-                {/* Close Button */}
-                <button
-                    type="button"
-                    className="oxypace-lightbox-close-btn"
-                    onClick={onClose}
-                    title="Kapat (Esc)"
-                >
-                    <X size={24} />
-                </button>
-
+            <div className="oxypace-lightbox-content" onClick={handleBackdropClick}>
                 {/* Main Enlarge Image Display with Wheel & Touch Zoom */}
                 <div
                     ref={containerRef}
                     className={`oxypace-lightbox-main ${scale > 1 ? 'is-zoomed' : ''}`}
+                    onClick={handleBackdropClick}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
@@ -439,7 +474,6 @@ const LightboxModal = ({
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchEnd}
                     style={{
-                        cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
                         touchAction: 'none',
                     }}
                 >
@@ -449,11 +483,16 @@ const LightboxModal = ({
                         alt={`Büyütülmüş Görsel ${currentIndex + 1}`}
                         className="oxypace-lightbox-img"
                         draggable={false}
+                        onClick={(e) => {
+                            // Tapping or clicking on the image itself must never close the modal
+                            e.stopPropagation();
+                        }}
                         style={{
                             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
                             transition: isDragging || isPinchingRef.current ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
                             transformOrigin: 'center center',
                             willChange: 'transform',
+                            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
                         }}
                     />
                 </div>
@@ -465,6 +504,7 @@ const LightboxModal = ({
                             type="button"
                             className="oxypace-lightbox-nav-btn prev"
                             onClick={(e) => {
+                                e.stopPropagation();
                                 setScale(1);
                                 setPosition({ x: 0, y: 0 });
                                 onPrev(e);
@@ -477,6 +517,7 @@ const LightboxModal = ({
                             type="button"
                             className="oxypace-lightbox-nav-btn next"
                             onClick={(e) => {
+                                e.stopPropagation();
                                 setScale(1);
                                 setPosition({ x: 0, y: 0 });
                                 onNext(e);
@@ -487,7 +528,7 @@ const LightboxModal = ({
                         </button>
 
                         {/* Top/Bottom Counter and Thumbs */}
-                        <div className="oxypace-lightbox-footer">
+                        <div className="oxypace-lightbox-footer" onClick={(e) => e.stopPropagation()}>
                             <span className="oxypace-lightbox-counter">
                                 {currentIndex + 1} / {images.length}
                             </span>
@@ -497,7 +538,8 @@ const LightboxModal = ({
                                         key={idx}
                                         type="button"
                                         className={`oxypace-lightbox-thumb-btn ${idx === currentIndex ? 'active' : ''}`}
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             setScale(1);
                                             setPosition({ x: 0, y: 0 });
                                             onSelectIndex(idx);
