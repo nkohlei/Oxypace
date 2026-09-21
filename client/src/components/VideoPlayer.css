@@ -558,6 +558,66 @@
     .native-player-container.v16-scale {
         max-height: 260px; /* Enforce absolute mobile max-height */
     }
+
+    /* Tighter spacing between video buttons on mobile */
+    .native-controls-ui {
+        padding: 22px 10px 8px !important;
+    }
+
+    .native-left-controls {
+        gap: 6px !important;
+    }
+
+    .native-right-controls {
+        gap: 6px !important;
+    }
+
+    .native-time-display {
+        font-size: 11px !important;
+        gap: 2px !important;
+    }
+
+    .native-play-pause-btn,
+    .native-quality-btn,
+    .native-speed-text-btn,
+    .native-fullscreen-btn,
+    .native-skip-btn {
+        padding: 3px 2px !important;
+        font-size: 11.5px !important;
+    }
+
+    /* Narrower, compact in-video popup menus on mobile */
+    .native-quality-menu,
+    .native-speed-menu {
+        width: 86px !important;
+        padding: 3px 0 !important;
+        bottom: 34px !important;
+        border-radius: 7px !important;
+        max-height: 180px !important;
+        overflow-y: auto !important;
+        scrollbar-width: none !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75) !important;
+    }
+
+    .native-quality-menu::-webkit-scrollbar,
+    .native-speed-menu::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .native-quality-menu {
+        right: 44px !important;
+    }
+
+    .native-speed-menu {
+        right: 14px !important;
+    }
+
+    .quality-item,
+    .speed-item {
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+        gap: 4px !important;
+    }
 }
 
 /* Adjust mute button position in fullscreen to prevent overlap with status bar / notch */

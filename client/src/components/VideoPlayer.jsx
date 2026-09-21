@@ -209,6 +209,20 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [showProcessingInfo, setShowProcessingInfo] = useState(false);
   const processingInfoTimeoutRef = useRef(null);
 
+  // Close quality/speed menus when clicking outside
+  useEffect(() => {
+    if (!isQualityMenuOpen && !isSettingsOpen) return;
+    const handleOutsideClick = (e) => {
+      if (e.target.closest && (e.target.closest('.native-quality-menu') || e.target.closest('.native-speed-menu') || e.target.closest('.native-quality-btn') || e.target.closest('.native-speed-text-btn'))) {
+        return;
+      }
+      setIsQualityMenuOpen(false);
+      setIsSettingsOpen(false);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [isQualityMenuOpen, isSettingsOpen]);
+
   const toggleProcessingInfo = (e) => {
     e.stopPropagation();
     setShowProcessingInfo(prev => {

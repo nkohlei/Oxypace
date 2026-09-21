@@ -181,7 +181,13 @@
     justify-content: flex-start;
     border-radius: 16px;
     background: transparent;
-    overflow: hidden;
+    overflow: visible;
+}
+
+.post-media:has(.has-open-menu),
+.post-card:has(.has-open-menu) {
+    overflow: visible !important;
+    z-index: 1000 !important;
 }
 
 .post-media img,

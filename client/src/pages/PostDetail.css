@@ -352,10 +352,16 @@
 /* MEDIA SHOWCASE */
 .pd-media-showcase {
     border-radius: 20px;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     gap: 15px;
+}
+
+.pd-media-showcase:has(.has-open-menu),
+.pd-media-item:has(.has-open-menu) {
+    overflow: visible !important;
+    z-index: 1000 !important;
 }
 
 .pd-media-item img, .pd-media-item video {
