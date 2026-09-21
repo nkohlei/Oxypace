@@ -843,11 +843,20 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                         })()}
                     </p>
                     {post.content && shouldShowTranslation(post.content) && (
-                        <button
-                            className="translation-toggle"
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            className={`translation-toggle ${isTranslated ? 'translated' : ''}`}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleTranslate();
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleTranslate();
+                                }
                             }}
                         >
                             {isTranslating
@@ -855,7 +864,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                 : isTranslated
                                     ? 'Orijinalini gör'
                                     : 'Çevirisini gör'}
-                        </button>
+                        </span>
                     )}
                 </div>
 

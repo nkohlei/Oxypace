@@ -557,13 +557,24 @@ const PostDetail = () => {
                                     })()}
                                     
                                     {shouldShowTranslation(post.content) && (
-                                        <button className="pd-translate-btn" onClick={handleTranslate}>
+                                        <span
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`pd-translate-btn ${isTranslated ? 'translated' : ''}`}
+                                            onClick={handleTranslate}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleTranslate();
+                                                }
+                                            }}
+                                        >
                                             {isTranslating
                                                 ? 'Çevriliyor...'
                                                 : isTranslated
                                                     ? 'Orijinalini gör'
                                                     : 'Çevirisini gör'}
-                                        </button>
+                                        </span>
                                     )}
                                 </div>
                             )}

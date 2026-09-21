@@ -621,46 +621,67 @@
     background: transparent !important;
     background-color: transparent !important;
     background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    color: #f91880 !important;
+    color: #f91880 !important; /* Pembe: Orijinal post hali */
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
     padding: 0 !important;
-    margin-top: 4px;
+    margin: 4px 0 0 0 !important;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     transition: color 0.18s ease, opacity 0.18s ease !important;
-    opacity: 0.9;
+    opacity: 0.95;
     transform: none !important;
+    user-select: none;
     -webkit-tap-highlight-color: transparent !important;
 }
 
-.translation-toggle:hover,
-.translation-toggle:focus,
-.translation-toggle:focus-visible,
-.translation-toggle:active {
+/* Post çevrildiğinde mor renk */
+.translation-toggle.translated {
+    color: #a855f7 !important; /* Mor: Çevrilmiş post hali */
+}
+
+/* Sadece imleç üzerindeyken beyaz */
+.translation-toggle:hover {
     background: transparent !important;
     background-color: transparent !important;
     background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    color: #ffffff !important;
+    color: #ffffff !important; /* Beyaz: İmleç üzerindeyken */
     opacity: 1 !important;
     text-decoration: none !important;
     transform: none !important;
 }
 
-[data-theme='light'] .translation-toggle:hover,
-[data-theme='light'] .translation-toggle:focus,
-[data-theme='light'] .translation-toggle:focus-visible,
-[data-theme='light'] .translation-toggle:active {
+.translation-toggle:active,
+.translation-toggle:focus,
+.translation-toggle:focus-visible {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    text-decoration: none !important;
+}
+
+[data-theme='light'] .translation-toggle:hover {
     color: #0f172a !important;
 }
 
