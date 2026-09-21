@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, Image } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import './PostImageGallery.css';
 
@@ -100,22 +100,10 @@ export const PostImageGallery = ({ media, isOptimistic = false }) => {
     if (!isMultiple) {
         return (
             <>
-                <div
-                    className="gallery-single-image-wrapper"
-                    onClick={(e) => openLightbox(0, e)}
-                    title="Görseli büyüt"
-                >
-                    <img
-                        src={getImageUrl(images[0])}
-                        alt="Gönderi görseli"
-                        loading="lazy"
-                        decoding="async"
-                        className="gallery-image single-img"
-                    />
-                    <div className="gallery-zoom-hint">
-                        <ZoomIn size={16} />
-                    </div>
-                </div>
+                <SinglePostImage
+                    imgUrl={images[0]}
+                    onOpenLightbox={openLightbox}
+                />
 
                 {lightboxOpen && (
                     <LightboxModal
@@ -140,20 +128,12 @@ export const PostImageGallery = ({ media, isOptimistic = false }) => {
                 onScroll={handleScroll}
             >
                 {images.map((imgUrl, index) => (
-                    <div
+                    <CarouselSlide
                         key={index}
-                        className="post-gallery-slide"
-                        onClick={(e) => openLightbox(index, e)}
-                        title="Görseli büyütmek için tıkla"
-                    >
-                        <img
-                            src={getImageUrl(imgUrl)}
-                            alt={`Görsel ${index + 1}`}
-                            loading="lazy"
-                            decoding="async"
-                            className="gallery-image slide-img"
-                        />
-                    </div>
+                        imgUrl={imgUrl}
+                        index={index}
+                        onOpenLightbox={openLightbox}
+                    />
                 ))}
             </div>
 
@@ -211,6 +191,111 @@ export const PostImageGallery = ({ media, isOptimistic = false }) => {
                     onSelectIndex={setLightboxIndex}
                 />
             )}
+        </div>
+    );
+};
+
+/**
+ * Single image display with Twitter/X style reserved aspect-ratio skeleton frame
+ */
+const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [aspectRatio, setAspectRatio] = useState('16 / 9');
+    const imgRef = useRef(null);
+
+    useEffect(() => {
+        if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+            setIsLoaded(true);
+            const { naturalWidth, naturalHeight } = imgRef.current;
+            if (naturalWidth && naturalHeight) {
+                const ratio = naturalWidth / naturalHeight;
+                if (!isNaN(ratio)) {
+                    setAspectRatio(`${Math.max(0.8, Math.min(ratio, 2.2))}`);
+                }
+            }
+        }
+    }, [imgUrl]);
+
+    const handleLoad = (e) => {
+        setIsLoaded(true);
+        const { naturalWidth, naturalHeight } = e.target;
+        if (naturalWidth && naturalHeight) {
+            const ratio = naturalWidth / naturalHeight;
+            if (!isNaN(ratio)) {
+                setAspectRatio(`${Math.max(0.8, Math.min(ratio, 2.2))}`);
+            }
+        }
+    };
+
+    return (
+        <div
+            className={`gallery-single-image-wrapper ${isLoaded ? 'is-loaded' : 'is-loading'}`}
+            style={{ aspectRatio }}
+            onClick={(e) => isLoaded && onOpenLightbox(0, e)}
+            title={isLoaded ? 'Görseli büyüt' : undefined}
+        >
+            {!isLoaded && (
+                <div className="gallery-skeleton-placeholder">
+                    <div className="gallery-skeleton-shimmer" />
+                    <div className="gallery-skeleton-content">
+                        <Image size={32} className="gallery-skeleton-icon" />
+                    </div>
+                </div>
+            )}
+            <img
+                ref={imgRef}
+                src={getImageUrl(imgUrl)}
+                alt="Gönderi görseli"
+                loading="lazy"
+                decoding="async"
+                onLoad={handleLoad}
+                className={`gallery-image single-img ${isLoaded ? 'loaded' : 'loading'}`}
+            />
+            {isLoaded && (
+                <div className="gallery-zoom-hint">
+                    <ZoomIn size={16} />
+                </div>
+            )}
+        </div>
+    );
+};
+
+/**
+ * Multi image carousel slide with skeleton placeholder
+ */
+const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const imgRef = useRef(null);
+
+    useEffect(() => {
+        if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+            setIsLoaded(true);
+        }
+    }, [imgUrl]);
+
+    return (
+        <div
+            className={`post-gallery-slide ${isLoaded ? 'is-loaded' : 'is-loading'}`}
+            onClick={(e) => isLoaded && onOpenLightbox(index, e)}
+            title={isLoaded ? 'Görseli büyütmek için tıkla' : undefined}
+        >
+            {!isLoaded && (
+                <div className="gallery-skeleton-placeholder">
+                    <div className="gallery-skeleton-shimmer" />
+                    <div className="gallery-skeleton-content">
+                        <Image size={28} className="gallery-skeleton-icon" />
+                    </div>
+                </div>
+            )}
+            <img
+                ref={imgRef}
+                src={getImageUrl(imgUrl)}
+                alt={`Görsel ${index + 1}`}
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setIsLoaded(true)}
+                className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'loading'}`}
+            />
         </div>
     );
 };
