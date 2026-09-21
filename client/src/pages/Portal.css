@@ -486,11 +486,11 @@
 
 @media (max-width: 768px) {
     .portal-feed-container {
-        padding: 0 12px 20px 12px;
+        padding: 0 0 20px 0 !important;
     }
 
     .portal-feed-container.tanitim-feed-mode {
-        padding: 0 2px 20px 2px !important;
+        padding: 0 0 20px 0 !important;
     }
 
     .channel-top-bar .sub-header-back-circle {
@@ -514,16 +514,18 @@
 
     /* Channel top bar: modern glass style on mobile */
     .channel-top-bar {
-        width: calc(100% - 20px) !important;
+        width: 100% !important;
         min-width: unset !important;
-        border-radius: 16px !important;
-        margin: 10px 10px 6px 10px !important;
+        border-radius: 14px 14px 0 0 !important;
+        margin: 0 !important;
         background: var(--glass-bg) !important;
         backdrop-filter: blur(20px) saturate(160%) !important;
         -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
-        border: 1px solid var(--glass-border) !important;
-        box-shadow: var(--glass-shadow) !important;
-        height: 52px !important;
+        border: none !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        box-shadow: none !important;
+        height: 50px !important;
+        box-sizing: border-box !important;
     }
 
     /* Message input wrapper full bottom */
@@ -1157,6 +1159,11 @@
         transform: scale(0.9);
     }
 
+    /* Mobile slim side margins: brings header, compose bar and posts closer to outer frame without touching */
+    .channel-messages-area {
+        padding: 0 6px !important;
+    }
+
     .channel-top-bar {
         padding: 0 12px;
         height: 50px;
@@ -1167,39 +1174,89 @@
         border: none !important;
         border-bottom: 1px solid var(--border-subtle) !important;
         box-shadow: none !important;
+        box-sizing: border-box !important;
     }
 
     .discord-feed {
-        padding: 16px 12px;
+        padding: 6px 0 16px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .portal-feed-container {
+        padding: 6px 0 16px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .channel-input-area {
-        padding: 0 12px;
+        padding: 0 !important;
         margin: 6px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .channel-input-area .message-input-wrapper {
+        width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .portal-feed-container .post-card.twitter-layout {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .channel-input {
         font-size: 14px;
     }
-
-    .portal-feed-container {
-        padding: 6px 12px 12px 12px;
-    }
 }
 
 @media (max-width: 480px) {
+    .channel-messages-area {
+        padding: 0 5px !important;
+    }
+
     .channel-top-bar {
         height: 48px;
         padding: 0 8px;
+        width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
     }
 
     .discord-feed {
-        padding: 4px 8px 12px 8px;
+        padding: 4px 0 12px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .portal-feed-container {
+        padding: 4px 0 12px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .channel-input-area {
-        padding: 0 8px;
+        padding: 0 !important;
         margin: 6px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .channel-input-area .message-input-wrapper {
+        width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .portal-feed-container .post-card.twitter-layout {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 }
 
