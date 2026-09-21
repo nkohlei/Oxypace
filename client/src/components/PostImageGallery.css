@@ -259,11 +259,17 @@
 }
 
 .oxypace-lightbox-main {
-    max-width: 90vw;
-    max-height: 80vh;
+    width: 100%;
+    height: 100%;
+    max-width: 92vw;
+    max-height: 82vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .oxypace-lightbox-img {
@@ -273,18 +279,8 @@
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
     user-select: none;
-    animation: zoomImg 0.2s ease-out;
-}
-
-@keyframes zoomImg {
-    from {
-        transform: scale(0.95);
-        opacity: 0.8;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
+    -webkit-user-drag: none;
+    pointer-events: auto;
 }
 
 /* Lightbox Nav Arrows */
