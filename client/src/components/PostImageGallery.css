@@ -37,16 +37,20 @@
     object-fit: cover;
     display: block;
     opacity: 0;
-    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Only animate opacity; transform inside a backdrop-filter stacking context
+       forces an expensive GPU compositing pass on every frame — causes hover freeze */
+    transition: opacity 0.3s ease;
+    transform: translateZ(0);
+    will-change: opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .gallery-single-image-wrapper .gallery-image.single-img.loaded {
     opacity: 1;
 }
 
-.gallery-single-image-wrapper:hover .gallery-image.single-img.loaded {
-    transform: scale(1.012);
-}
+/* Removed: scale(1.012) hover was triggering full composite repass through backdrop-filter parent */
 
 .gallery-zoom-hint {
     position: absolute;
@@ -189,16 +193,20 @@
     object-fit: cover;
     display: block;
     opacity: 0;
-    transition: opacity 0.3s ease, filter 0.2s ease;
+    /* Only animate opacity — filter: brightness on hover inside a scroll container
+       causes full rasterization on every hover frame */
+    transition: opacity 0.3s ease;
+    transform: translateZ(0);
+    will-change: opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .post-gallery-slide .gallery-image.slide-img.loaded {
     opacity: 1;
 }
 
-.post-gallery-slide:hover .gallery-image.slide-img.loaded {
-    filter: brightness(1.03);
-}
+/* Removed: filter: brightness(1.03) hover — forced repaint/rasterize on every hover */
 
 /* Nav Arrows (Desktop and Touch) */
 .gallery-nav-btn {

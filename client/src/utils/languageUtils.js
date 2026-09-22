@@ -7,51 +7,45 @@
  * @param {string} text
  * @returns {boolean}
  */
+
+// Compiled once at module load — do NOT move inside the function (avoids re-creating
+// 21 RegExp objects on every PostCard render which contributed to hover jank).
+const ENGLISH_STOP_WORDS = [
+    /\bthe\b/,
+    /\band\b/,
+    /\bis\b/,
+    /\bare\b/,
+    /\bwas\b/,
+    /\bwere\b/,
+    /\bthis\b/,
+    /\bthat\b/,
+    /\bwith\b/,
+    /\bfrom\b/,
+    /\bhave\b/,
+    /\bhas\b/,
+    /\bfor\b/,
+    /\bnot\b/,
+    /\but\b/,
+    /\byou\b/,
+    /\bmy\b/,
+    /\bwe\b/,
+    /\bcan\b/,
+    /\bwill\b/,
+    /\babout\b/,
+    /\bthere\b/,
+];
+
+const TURKISH_CHARS = /[ğĞşŞıİöÖüÜçÇ]/;
+
 export const shouldShowTranslation = (text) => {
     if (!text) return false;
+
+    // If text has Turkish specific chars, definitely hide it.
+    if (TURKISH_CHARS.test(text)) return false;
 
     // Convert to lowercase for matching
     const lowerText = text.toLowerCase();
 
-    // Common English stop words (high frequency)
-    // Matches whole words only (\b)
-    const englishStopWords = [
-        /\bthe\b/,
-        /\band\b/,
-        /\bis\b/,
-        /\bare\b/,
-        /\bwas\b/,
-        /\bwere\b/,
-        /\bthis\b/,
-        /\bthat\b/,
-        /\bwith\b/,
-        /\bfrom\b/,
-        /\bhave\b/,
-        /\bhas\b/,
-        /\bfor\b/,
-        /\bnot\b/,
-        /\but\b/,
-        /\byou\b/,
-        /\bmy\b/,
-        /\bwe\b/,
-        /\bcan\b/,
-        /\bwill\b/,
-        /\babout\b/,
-        /\bthere\b/,
-    ];
-
     // Check if any English stop word exists
-    const hasEnglishWords = englishStopWords.some((regex) => regex.test(lowerText));
-
-    // Also check for absence of specific Turkish characters as a secondary check?
-    // No, user specifically said "English or other languages".
-    // If we just check for English words, we might miss "Hola como estas".
-    // But the user's specific request "English description...".
-    // Let's stick to the positive match for English words + simple length check.
-    // Very short texts might be ambiguous.
-
-    // If text has Turkish specific chars, definitely hide it.
-    const hasTurkishChars = /[ğĞşŞıİöÖüÜçÇ]/.test(text);
-
-    return hasEnglishWords && !hasTurkishChars;
+    return ENGLISH_STOP_WORDS.some((regex) => regex.test(lowerText));
 };
