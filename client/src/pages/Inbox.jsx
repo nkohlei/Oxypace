@@ -74,6 +74,40 @@ const Inbox = () => {
     const docInputRef = useRef(null);
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
+    const selectedUserRef = useRef(selectedUser);
+
+    useEffect(() => {
+        selectedUserRef.current = selectedUser;
+    }, [selectedUser]);
+
+    const markConversationAsRead = useCallback(async (targetUserId) => {
+        if (!targetUserId || isGhost) return;
+        const targetIdStr = String(targetUserId);
+        try {
+            if (socket) {
+                socket.emit('mark_messages_read', { senderId: targetIdStr });
+            }
+            await axios.put(`/api/messages/${targetIdStr}/read`);
+            useGlobalStore.getState().fetchUnreadMessagesCount();
+        } catch (err) {
+            console.error('Failed to mark conversation as read:', err);
+        }
+    }, [socket, isGhost]);
+
+    useEffect(() => {
+        if (selectedUser?._id) {
+            useGlobalStore.getState().setActiveChatUserId(selectedUser._id);
+            markConversationAsRead(selectedUser._id);
+        } else {
+            useGlobalStore.getState().setActiveChatUserId(null);
+        }
+    }, [selectedUser, markConversationAsRead]);
+
+    useEffect(() => {
+        return () => {
+            useGlobalStore.getState().setActiveChatUserId(null);
+        };
+    }, []);
 
     // Compute menu position from button's bounding rect
     const computeMenuPosition = useCallback(() => {
@@ -165,6 +199,7 @@ const Inbox = () => {
             const otherUserId = senderId === currentUserId ? recipientId : senderId;
 
             const existingIndex = prevConvs.findIndex(c => String(c.user?._id) === String(otherUserId));
+            const isCurrentlySelected = selectedUserRef.current && String(selectedUserRef.current._id) === String(otherUserId);
 
             if (existingIndex > -1) {
                 const existing = prevConvs[existingIndex];
@@ -174,14 +209,14 @@ const Inbox = () => {
                         ...message,
                         sender: typeof message.sender === 'object' ? message.sender : { _id: senderId }
                     },
-                    unreadCount: incrementUnread ? (existing.unreadCount || 0) + 1 : (existing.unreadCount || 0)
+                    unreadCount: isCurrentlySelected ? 0 : (incrementUnread ? (existing.unreadCount || 0) + 1 : (existing.unreadCount || 0))
                 };
                 const newConvs = [...prevConvs];
                 newConvs.splice(existingIndex, 1);
                 return [updatedConv, ...newConvs];
             } else {
                 const otherUserObj = senderId === currentUserId 
-                    ? (typeof message.recipient === 'object' ? message.recipient : selectedUser)
+                    ? (typeof message.recipient === 'object' ? message.recipient : selectedUserRef.current)
                     : (typeof message.sender === 'object' ? message.sender : null);
                 
                 if (!otherUserObj || !otherUserObj._id) return prevConvs;
@@ -192,12 +227,12 @@ const Inbox = () => {
                         ...message,
                         sender: typeof message.sender === 'object' ? message.sender : { _id: senderId }
                     },
-                    unreadCount: incrementUnread ? 1 : 0
+                    unreadCount: isCurrentlySelected ? 0 : (incrementUnread ? 1 : 0)
                 };
                 return [newConv, ...prevConvs];
             }
         });
-    }, [user._id, selectedUser]);
+    }, [user._id]);
 
     useEffect(() => {
         if (socket) {
@@ -205,11 +240,11 @@ const Inbox = () => {
                 const messageSenderId = String(message.sender?._id || message.sender);
                 const messageRecipientId = String(message.recipient?._id || message.recipient);
                 const currentUserId = String(user._id);
-                const selectedUserId = selectedUser ? String(selectedUser._id) : null;
+                const activeSelectedId = selectedUserRef.current ? String(selectedUserRef.current._id) : null;
 
                 const isForCurrentChat =
-                    (messageSenderId === selectedUserId && messageRecipientId === currentUserId) ||
-                    (messageSenderId === currentUserId && messageRecipientId === selectedUserId);
+                    (messageSenderId === activeSelectedId && messageRecipientId === currentUserId) ||
+                    (messageSenderId === currentUserId && messageRecipientId === activeSelectedId);
 
                 if (isForCurrentChat) {
                     setMessages((prev) => {
@@ -218,11 +253,29 @@ const Inbox = () => {
                         const filtered = prev.filter((m) => !m.isOptimistic || (m.content !== message.content && m.media !== message.media));
                         return [...filtered, message];
                     });
+
+                    // If message is from the other person in the active conversation, mark as read immediately!
+                    if (messageSenderId !== currentUserId) {
+                        markConversationAsRead(messageSenderId);
+                    }
                 }
 
-                const isUnread = messageSenderId !== currentUserId && (!selectedUser || String(selectedUser._id) !== messageSenderId);
+                const isUnread = messageSenderId !== currentUserId && (!activeSelectedId || activeSelectedId !== messageSenderId);
                 updateConversationInstant(message, isUnread);
                 fetchConversations();
+            };
+
+            const handleMessagesRead = ({ readerId }) => {
+                const activeSelectedId = selectedUserRef.current ? String(selectedUserRef.current._id) : null;
+                if (activeSelectedId && activeSelectedId === String(readerId)) {
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            String(msg.sender?._id || msg.sender) === String(user._id)
+                                ? { ...msg, read: true }
+                                : msg
+                        )
+                    );
+                }
             };
 
             const handleMessageDeleted = (id) => {
@@ -246,6 +299,7 @@ const Inbox = () => {
             socket.on('message', handleIncomingMessage);
             socket.on('newMessage', handleIncomingMessage);
             socket.on('messageSent', handleIncomingMessage);
+            socket.on('messagesRead', handleMessagesRead);
             socket.on('messageDeleted', handleMessageDeleted);
             socket.on('messageReaction', handleMessageReaction);
             socket.on('dm_typing_update', handleDmTypingUpdate);
@@ -254,12 +308,13 @@ const Inbox = () => {
                 socket.off('message', handleIncomingMessage);
                 socket.off('newMessage', handleIncomingMessage);
                 socket.off('messageSent', handleIncomingMessage);
+                socket.off('messagesRead', handleMessagesRead);
                 socket.off('messageDeleted', handleMessageDeleted);
                 socket.off('messageReaction', handleMessageReaction);
                 socket.off('dm_typing_update', handleDmTypingUpdate);
             };
         }
-    }, [socket, selectedUser, user._id, updateConversationInstant]);
+    }, [socket, selectedUser, user._id, updateConversationInstant, markConversationAsRead]);
 
     useLayoutEffect(() => {
         if (selectedUser) {
@@ -382,7 +437,14 @@ const Inbox = () => {
         try {
             const response = await axios.get('/api/messages/conversations');
             if (Array.isArray(response.data)) {
-                setConversations(response.data);
+                const activeId = selectedUserRef.current?._id ? String(selectedUserRef.current._id) : null;
+                const sanitized = response.data.map((conv) => {
+                    if (activeId && String(conv.user?._id) === activeId) {
+                        return { ...conv, unreadCount: 0 };
+                    }
+                    return conv;
+                });
+                setConversations(sanitized);
             } else {
                 setConversations([]);
             }
@@ -421,12 +483,19 @@ const Inbox = () => {
 
     const handleConversationClick = (conversation) => {
         setSelectedUser(conversation.user);
+        // Clear unread count immediately in UI
+        setConversations(prev => prev.map(c => 
+            String(c.user?._id) === String(conversation.user._id)
+                ? { ...c, unreadCount: 0 }
+                : c
+        ));
         setMessages([]);
         fetchMessages(conversation.user._id);
     };
 
     const handleBackToList = () => {
         setSelectedUser(null);
+        useGlobalStore.getState().setActiveChatUserId(null);
         setMessages([]);
     };
 

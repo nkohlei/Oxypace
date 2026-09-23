@@ -376,6 +376,13 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
                 { sender: otherUserId, recipient: currentUserId, read: false },
                 { read: true }
             );
+            await Notification.updateMany(
+                { sender: otherUserId, recipient: currentUserId, type: 'message', read: false },
+                { read: true }
+            );
+            req.app.get('io')?.to(otherUserId).emit('messagesRead', {
+                readerId: currentUserId.toString()
+            });
         }
 
         const otherUser = await User.findById(otherUserId).select('settings');
@@ -393,6 +400,35 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
         res.json(messagesToSend);
     } catch (error) {
         console.error('Get messages error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/messages/:userId/read
+// @desc    Mark conversation messages as read
+// @access  Private
+router.put('/:userId/read', protect, mongoIdValidation('userId'), async (req, res) => {
+    try {
+        const currentUserId = req.user._id;
+        const otherUserId = req.params.userId;
+
+        if (!req.user?.isGhost) {
+            await Message.updateMany(
+                { sender: otherUserId, recipient: currentUserId, read: false },
+                { read: true }
+            );
+            await Notification.updateMany(
+                { sender: otherUserId, recipient: currentUserId, type: 'message', read: false },
+                { read: true }
+            );
+            req.app.get('io')?.to(otherUserId).emit('messagesRead', {
+                readerId: currentUserId.toString()
+            });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Mark as read error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

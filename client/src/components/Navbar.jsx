@@ -113,8 +113,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         if (!socket) return;
 
         const handleNewNotification = (notification) => {
-            // Don't count own actions if they somehow come through
-            if (notification.sender._id !== user?._id) {
+            // Don't count own actions or messages/portal_posts which have their own badge systems
+            const senderId = notification?.sender?._id || notification?.sender;
+            if (
+                senderId !== user?._id &&
+                notification?.type !== 'message' &&
+                notification?.type !== 'portal_post'
+            ) {
                 setUnreadCount((prev) => prev + 1);
             }
         };

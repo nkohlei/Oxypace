@@ -182,6 +182,8 @@ export const useGlobalStore = create(
             },
 
             setUnreadMessagesCount: (count) => set({ unreadMessagesCount: count }),
+            activeChatUserId: null,
+            setActiveChatUserId: (userId) => set({ activeChatUserId: userId ? String(userId) : null }),
 
             fetchUnreadMessagesCount: async () => {
                 try {

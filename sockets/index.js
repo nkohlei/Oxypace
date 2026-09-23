@@ -1,5 +1,7 @@
 import { initializeVoiceHandler } from './voiceHandler.js';
 import User from '../models/User.js';
+import Message from '../models/Message.js';
+import Notification from '../models/Notification.js';
 import { savePresence, removePresence, getActivePresences } from '../services/presenceService.js';
 import { pubClient } from './redisAdapter.js';
 
@@ -456,6 +458,31 @@ export const initializeSocket = (io) => {
                     senderId,
                     isTyping
                 });
+            }
+        });
+
+        // Direct Message (DM) Mark As Read
+        socket.on('mark_messages_read', async ({ senderId }) => {
+            const currentUserId = socket.data?.userId || userSockets.get(socket.id);
+            if (!currentUserId || !senderId || socket.isGhost || socket.data?.isGhost) return;
+            try {
+                const strSenderId = String(senderId);
+                const strCurrentUserId = String(currentUserId);
+
+                await Message.updateMany(
+                    { sender: strSenderId, recipient: strCurrentUserId, read: false },
+                    { read: true }
+                );
+                await Notification.updateMany(
+                    { sender: strSenderId, recipient: strCurrentUserId, type: 'message', read: false },
+                    { read: true }
+                );
+
+                io.to(strSenderId).emit('messagesRead', {
+                    readerId: strCurrentUserId
+                });
+            } catch (err) {
+                console.error('Socket mark_messages_read error:', err);
             }
         });
 

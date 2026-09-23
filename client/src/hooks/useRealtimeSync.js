@@ -42,7 +42,17 @@ export const useRealtimeSync = () => {
         });
 
         socket.on('newMessage', (message) => {
+            const activeChatUserId = useGlobalStore.getState().activeChatUserId;
+            const senderId = String(message?.sender?._id || message?.sender || '');
+            // If the user is currently viewing the conversation with this sender, do not fetch unread count
+            if (activeChatUserId && String(activeChatUserId) === senderId) {
+                return;
+            }
             // Fetch updated unread messages count
+            useGlobalStore.getState().fetchUnreadMessagesCount();
+        });
+
+        socket.on('messagesRead', () => {
             useGlobalStore.getState().fetchUnreadMessagesCount();
         });
 
@@ -51,6 +61,7 @@ export const useRealtimeSync = () => {
             socket.off('global:user_updated');
             socket.off('global:portal_activity');
             socket.off('newMessage');
+            socket.off('messagesRead');
         };
     }, [socket, connected, addPostEvent, updatePostEvent, deletePostEvent, updateUserEvent, addUnreadPost, addUnreadChannelPost]);
 
