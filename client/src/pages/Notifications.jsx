@@ -7,6 +7,24 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { downloadFile } from '../utils/downloadHelper';
+import {
+    Heart,
+    MessageSquare,
+    Reply,
+    Quote,
+    UserPlus,
+    UserCheck,
+    UserX,
+    Mail,
+    Compass,
+    Mic,
+    Megaphone,
+    ShieldAlert,
+    Bell,
+    Users,
+    Download,
+    X,
+} from 'lucide-react';
 import './Notifications.css';
 import { useGlobalStore } from '../store/useGlobalStore';
 
@@ -265,7 +283,7 @@ const Notifications = () => {
                                     <polyline points="15 18 9 12 15 6" />
                                 </svg>
                             </button>
-                            <h1 className="gradient-title">Bildirimler</h1>
+                            <h1 className="notifications-title">Bildirimler</h1>
                         </div>
                         <div className="notifications-header-actions">
                             {notifications.length > 0 && !isGhost && (
@@ -369,18 +387,19 @@ const Notifications = () => {
                                                 </div>
                                             )}
                                             <div className={`notif-icon-badge ${notif.type}`}>
-                                                {notif.type === 'like' && '❤️'}
-                                                {notif.type === 'comment' && '💬'}
-                                                {notif.type === 'reply' && '↩️'}
-                                                {notif.type === 'quote' && '💬'}
-                                                {notif.type === 'follow' && '👤'}
-                                                {(notif.type === 'follow_request' || notif.type === 'friend_request') && '👤'}
-                                                {notif.type === 'message' && '✉️'}
-                                                {notif.type === 'portal_invite' && '🏰'}
-                                                {notif.type === 'portal_post' && '🏰'}
-                                                {notif.type === 'voice_invite' && '📞'}
-                                                {notif.type === 'system' && '📢'}
-                                                {(notif.type === 'security' || notif.type === 'security_silent') && '🛡️'}
+                                                {notif.type === 'like' && <Heart size={11} strokeWidth={2.5} fill="currentColor" />}
+                                                {notif.type === 'comment' && <MessageSquare size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'reply' && <Reply size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'quote' && <Quote size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'follow' && <UserPlus size={11} strokeWidth={2.5} />}
+                                                {(notif.type === 'follow_request' || notif.type === 'friend_request') && <UserPlus size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'friend_connected' && <UserCheck size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'follow_request_handled' && <UserX size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'message' && <Mail size={11} strokeWidth={2.5} />}
+                                                {(notif.type === 'portal_invite' || notif.type === 'portal_post') && <Compass size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'voice_invite' && <Mic size={11} strokeWidth={2.5} />}
+                                                {notif.type === 'system' && <Megaphone size={11} strokeWidth={2.5} />}
+                                                {(notif.type === 'security' || notif.type === 'security_silent') && <ShieldAlert size={11} strokeWidth={2.5} />}
                                             </div>
                                         </div>
 
@@ -399,7 +418,7 @@ const Notifications = () => {
                                                         {notif.type === 'quote' && ' gönderini alıntıladı.'}
                                                         {notif.type === 'follow' && ' seni takip etmeye başladı.'}
                                                         {(notif.type === 'follow_request' || notif.type === 'friend_request') && ' seninle tanışmak istiyor.'}
-                                                        {notif.type === 'friend_connected' && ' ile artık arkadaşsınız! 🤝'}
+                                                        {notif.type === 'friend_connected' && ' ile artık arkadaşsınız!'}
                                                         {notif.type === 'follow_request_handled' && ' tanışma isteği reddedildi.'}
                                                         {notif.type === 'message' && ' sana bir mesaj gönderdi.'}
                                                         {notif.type === 'portal_invite' && ' seni bir portala davet etti.'}
@@ -518,10 +537,10 @@ const Notifications = () => {
                         ) : (
                             <div className="empty-state">
                                 <div className="empty-icon">
-                                    {activeFilter === 'all' && '🔔'}
-                                    {activeFilter === 'quotes' && '💬'}
-                                    {activeFilter === 'friends' && '🤝'}
-                                    {activeFilter === 'system' && '📢'}
+                                    {activeFilter === 'all' && <Bell size={42} strokeWidth={1.5} />}
+                                    {activeFilter === 'quotes' && <Quote size={42} strokeWidth={1.5} />}
+                                    {activeFilter === 'friends' && <Users size={42} strokeWidth={1.5} />}
+                                    {activeFilter === 'system' && <Megaphone size={42} strokeWidth={1.5} />}
                                 </div>
                                 <h3>
                                     {activeFilter === 'all' && 'Bildirim yok'}
@@ -553,7 +572,11 @@ const Notifications = () => {
                         <div className="system-notif-modal-header">
                             <div className="system-notif-modal-header-left">
                                 <div className={`system-notif-modal-badge ${selectedSystemNotif.type}`}>
-                                    {selectedSystemNotif.type === 'system' ? '📢' : '🛡️'}
+                                    {selectedSystemNotif.type === 'system' ? (
+                                        <Megaphone size={18} strokeWidth={2} />
+                                    ) : (
+                                        <ShieldAlert size={18} strokeWidth={2} />
+                                    )}
                                 </div>
                                 <div className="system-notif-modal-header-info">
                                     <h3 className="system-notif-modal-title">
@@ -576,10 +599,7 @@ const Notifications = () => {
                                 onClick={() => setSelectedSystemNotif(null)}
                                 aria-label="Kapat"
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
+                                <X size={18} strokeWidth={2.2} />
                             </button>
                         </div>
 
@@ -609,11 +629,7 @@ const Notifications = () => {
                                             downloadFile(mediaUrl, filename);
                                         }}
                                     >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                            <polyline points="7 10 12 15 17 10" />
-                                            <line x1="12" y1="15" x2="12" y2="3" />
-                                        </svg>
+                                        <Download size={15} strokeWidth={2} />
                                         <span>Görseli İndir</span>
                                     </button>
                                 </div>
