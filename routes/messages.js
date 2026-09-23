@@ -169,6 +169,11 @@ router.post(
                 }
             }
 
+            const io = req.app.get('io');
+            const isRecipientActiveInChat = io?.isUserActiveInChatWith
+                ? io.isUserActiveInChatWith(recipientId, req.user._id.toString())
+                : false;
+
             const messageData = {
                 sender: req.user._id,
                 recipient: recipientId,
@@ -181,6 +186,7 @@ router.post(
                 sharedPost: postId,
                 sharedPortal: portalId,
                 replyTo: replyToId,
+                read: isRecipientActiveInChat ? true : false,
             };
 
             const message = await Message.create(messageData);
@@ -205,8 +211,14 @@ router.post(
                     populate: { path: 'sender', select: 'username profile.displayName' },
                 });
 
-            req.app.get('io').to(recipientId).emit('newMessage', populatedMessage);
-            req.app.get('io').to(req.user._id.toString()).emit('messageSent', populatedMessage);
+            if (io) {
+                io.to(recipientId).emit('newMessage', populatedMessage);
+                io.to(req.user._id.toString()).emit('messageSent', populatedMessage);
+
+                if (isRecipientActiveInChat) {
+                    io.to(req.user._id.toString()).emit('messagesRead', { readerId: recipientId });
+                }
+            }
 
             // Create Notification
             try {
@@ -232,10 +244,11 @@ router.post(
                     type: 'message',
                     content: notificationContent,
                     imageUrl: notificationImage,
+                    read: isRecipientActiveInChat ? true : false,
+                    skipPush: isRecipientActiveInChat ? true : false,
                 });
 
-                const io = req.app.get('io');
-                if (io) {
+                if (io && !isRecipientActiveInChat) {
                     const populatedNotif = await notification.populate(
                         'sender',
                         'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted'

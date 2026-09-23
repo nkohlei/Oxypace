@@ -60,6 +60,10 @@ const notificationSchema = new mongoose.Schema(
         imageUrl: {
             type: String,
         },
+        skipPush: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,
@@ -74,6 +78,8 @@ notificationSchema.pre('save', function (next) {
 notificationSchema.post('save', async function (doc) {
     // Only send push notification on initial creation
     if (!doc.wasNew) return;
+    // Skip if marked skipPush or already read (e.g. actively viewing chat)
+    if (doc.skipPush || doc.read) return;
 
     try {
         const User = mongoose.model('User');

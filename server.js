@@ -369,11 +369,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.0',
-        versionCode: 230,
+        latestVersion: '2.3.1',
+        versionCode: 231,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.0: Yüksek FPS tema geçişleri (GPU View Transitions), akıcı portal kanal-akış animasyonları ve performans iyileştirmeleri.',
+        changelog: 'Oxypace 2.3.1: Sohbet içi aktifken cihaz bildirimi engelleme, sohbete girildiğinde bildirimlerin otomatik temizlenmesi ve mesaj baloncuk aralıkları düzeltmesi.',
     });
 });
 

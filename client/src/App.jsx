@@ -103,6 +103,8 @@ import { useUI, UIProvider } from './context/UIContext';
 // Native Permission Helper
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { dismissDeliveredMessageNotifications } from './utils/notificationUtils';
+import { useGlobalStore } from './store/useGlobalStore';
 
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 
@@ -168,6 +170,29 @@ const requestNativePermissions = async () => {
 
         await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
             console.log('Push notification received in foreground:', notification);
+
+            // Check if this notification is for a chat/message
+            const notifType = notification.data?.type;
+            const notifSenderId = notification.data?.senderId || notification.data?.sender;
+            const notifUrl = notification.data?.url || notification.data?.route || '';
+
+            if (notifType === 'message' || notifUrl.includes('/inbox/') || notifUrl.includes('/messages/')) {
+                const activeChatUserId = useGlobalStore.getState().activeChatUserId;
+                const currentPath = window.location.pathname;
+
+                const isCurrentActiveChat =
+                    (activeChatUserId && notifSenderId && String(activeChatUserId) === String(notifSenderId)) ||
+                    (notifSenderId && currentPath.includes(`/inbox/${notifSenderId}`)) ||
+                    (notifUrl && currentPath === notifUrl);
+
+                if (isCurrentActiveChat) {
+                    console.log('🔇 Suppressing device notification because user is actively inside this conversation:', notifSenderId);
+                    if (notifSenderId) {
+                        dismissDeliveredMessageNotifications(notifSenderId);
+                    }
+                    return;
+                }
+            }
             
             const imageUrl = notification.data?.picture || notification.data?.image || notification.data?.bigPicture;
             const isVoiceInvite = notification.data?.type === 'voice_invite' || notification.title?.includes('Görüntülü');
@@ -289,6 +314,13 @@ const handleNotificationRoute = (data, actionId) => {
         }
     }
 
+    if (type === 'message' || destination?.includes('/inbox/') || destination?.includes('/messages/')) {
+        const senderId = data.senderId || data.sender || targetId;
+        if (senderId) {
+            dismissDeliveredMessageNotifications(senderId);
+        }
+    }
+
     if (destination) {
         safeMobileNavigate(destination);
     } else if (type === 'message' && targetId) {
@@ -332,6 +364,17 @@ const AppLayout = () => {
     const { socket, connected } = useSocket();
 
     const isLoggedIn = !!token;
+
+    // Auto-dismiss delivered device notifications when accessing chat conversation
+    useEffect(() => {
+        if (location.pathname.startsWith('/inbox/')) {
+            const parts = location.pathname.split('/');
+            const targetId = parts[2];
+            if (targetId) {
+                dismissDeliveredMessageNotifications(targetId);
+            }
+        }
+    }, [location.pathname]);
 
     // Gezinme (navigasyon) takibi ve 45 saniyelik heartbeat varlık bildirimi
     useEffect(() => {

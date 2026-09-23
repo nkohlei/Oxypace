@@ -15,6 +15,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { dismissDeliveredMessageNotifications } from '../utils/notificationUtils';
 import './Inbox.css';
 
 const formatDateDivider = (dateStr) => {
@@ -98,16 +99,32 @@ const Inbox = () => {
         if (selectedUser?._id) {
             useGlobalStore.getState().setActiveChatUserId(selectedUser._id);
             markConversationAsRead(selectedUser._id);
+            dismissDeliveredMessageNotifications(selectedUser._id);
+            if (socket) {
+                socket.emit('enter_conversation', { partnerId: selectedUser._id });
+            }
         } else {
             useGlobalStore.getState().setActiveChatUserId(null);
+            if (socket) {
+                socket.emit('leave_conversation');
+            }
         }
-    }, [selectedUser, markConversationAsRead]);
+
+        return () => {
+            if (socket) {
+                socket.emit('leave_conversation');
+            }
+        };
+    }, [selectedUser, markConversationAsRead, socket]);
 
     useEffect(() => {
         return () => {
             useGlobalStore.getState().setActiveChatUserId(null);
+            if (socket) {
+                socket.emit('leave_conversation');
+            }
         };
-    }, []);
+    }, [socket]);
 
     // Compute menu position from button's bounding rect
     const computeMenuPosition = useCallback(() => {
@@ -257,6 +274,7 @@ const Inbox = () => {
                     // If message is from the other person in the active conversation, mark as read immediately!
                     if (messageSenderId !== currentUserId) {
                         markConversationAsRead(messageSenderId);
+                        dismissDeliveredMessageNotifications(messageSenderId);
                     }
                 }
 
@@ -890,12 +908,18 @@ const Inbox = () => {
                                     </div>
                                 ) : (() => {
                                     let lastDateStr = null;
-                                    return messages.map((message) => {
+                                    return messages.map((message, index) => {
                                         const formattedDate = formatDateDivider(message.createdAt);
                                         const showDateDivider = formattedDate && formattedDate !== lastDateStr;
                                         if (showDateDivider) {
                                             lastDateStr = formattedDate;
                                         }
+
+                                        const isOwn = String(message.sender?._id || message.sender) === String(user._id);
+                                        const prevMessage = index > 0 ? messages[index - 1] : null;
+                                        const prevIsOwn = prevMessage ? String(prevMessage.sender?._id || prevMessage.sender) === String(user._id) : null;
+                                        const isSameSenderAsPrev = prevMessage && isOwn === prevIsOwn;
+                                        const isConsecutive = !showDateDivider && isSameSenderAsPrev;
 
                                         return (
                                             <React.Fragment key={message._id}>
@@ -906,7 +930,8 @@ const Inbox = () => {
                                                 )}
                                                 <MessageBubble
                                                     message={message}
-                                                    isOwn={String(message.sender?._id || message.sender) === String(user._id)}
+                                                    isOwn={isOwn}
+                                                    isConsecutive={isConsecutive}
                                                     onDelete={handleDeleteMessage}
                                                     onReply={handleReply}
                                                     onReact={handleReact}

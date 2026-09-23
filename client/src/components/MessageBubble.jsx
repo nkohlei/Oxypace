@@ -11,7 +11,7 @@ import './MessageBubble.css';
 
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 
-const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
+const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onReact }) => {
     const formatTime = (date) => {
         return new Date(date).toLocaleTimeString('tr-TR', {
             hour: '2-digit',
@@ -128,7 +128,7 @@ const MessageBubble = ({ message, isOwn, onDelete, onReply, onReact }) => {
     return (
         <>
             <div
-                className={`message-row ${isOwn ? 'own' : 'other'} ${showActionsMobile ? 'mobile-actions-visible' : ''}`}
+                className={`message-row ${isOwn ? 'own' : 'other'} ${isConsecutive ? 'consecutive' : ''} ${showActionsMobile ? 'mobile-actions-visible' : ''}`}
                 onClick={handleRowClick}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}

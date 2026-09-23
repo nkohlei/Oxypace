@@ -2,7 +2,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 14px;
+    margin-top: 8px;
     margin-bottom: 0;
     padding: 0;
     max-width: 100%;
@@ -17,10 +17,13 @@
     justify-content: flex-start;
 }
 
-/* Slim fixed gap between consecutive messages from SAME sender */
+/* Consecutive messages from SAME sender: very thin 2px spacing */
+.message-row.consecutive,
+.message-row.consecutive.own,
+.message-row.consecutive.other,
 .message-row.own + .message-row.own,
 .message-row.other + .message-row.other {
-    margin-top: 3px;
+    margin-top: 2px !important;
 }
 
 /* Margin right after date divider */

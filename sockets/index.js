@@ -39,6 +39,14 @@ export const initializeSocket = (io) => {
     const activeTypingPortals = new Map();
     // Global map of disconnect grace timers (userId -> setTimeout)
     const disconnectTimers = new Map();
+    // Store active chat partner per user (userId -> partnerId)
+    const activeConversations = new Map();
+
+    io.isUserActiveInChatWith = (userId, partnerId) => {
+        if (!userId || !partnerId) return false;
+        const currentPartner = activeConversations.get(String(userId));
+        return currentPartner && String(currentPartner) === String(partnerId);
+    };
 
     const getOnlineUserIds = async () => {
         let redisMembers = [];
@@ -257,6 +265,7 @@ export const initializeSocket = (io) => {
 
             activeUsersMap.delete(strUserId);
             userSockets.delete(socket.id);
+            activeConversations.delete(strUserId);
 
             if (pubClient) {
                 try {
@@ -326,6 +335,7 @@ export const initializeSocket = (io) => {
 
                         if (!isStillOnlineAnywhere) {
                             activeUsersMap.delete(strUserId);
+                            activeConversations.delete(strUserId);
                             console.log(`👋 User ${strUserId} is confirmed fully offline across entire cluster`);
 
                             // Clean up typing indicators in DMs for this user
@@ -483,6 +493,21 @@ export const initializeSocket = (io) => {
                 });
             } catch (err) {
                 console.error('Socket mark_messages_read error:', err);
+            }
+        });
+
+        // Direct Message (DM) Enter / Leave Active Conversation
+        socket.on('enter_conversation', ({ partnerId }) => {
+            const currentUserId = socket.data?.userId || userSockets.get(socket.id) || socket.user?._id;
+            if (currentUserId && partnerId) {
+                activeConversations.set(String(currentUserId), String(partnerId));
+            }
+        });
+
+        socket.on('leave_conversation', () => {
+            const currentUserId = socket.data?.userId || userSockets.get(socket.id) || socket.user?._id;
+            if (currentUserId) {
+                activeConversations.delete(String(currentUserId));
             }
         });
 
