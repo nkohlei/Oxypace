@@ -264,7 +264,7 @@ const ChannelSidebar = ({
                                         cursor: 'pointer',
                                         color: isActive ? 'white' : '#949ba4',
                                         backgroundColor: isActive ? '#3f4147' : 'transparent',
-                                        transition: 'all 0.1s',
+                                        transition: 'background-color 0.15s ease, color 0.15s ease',
                                     }}
                                 >
                                     <div

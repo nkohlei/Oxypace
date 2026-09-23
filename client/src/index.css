@@ -65,15 +65,34 @@
   --primary-color: var(--primary-cyan);
 }
 
-/* Smooth Theme Transition Class - Runs for 300ms on theme change */
-html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition: background-color calc(240ms * var(--motion-speed, 1)) ease,
-              border-color calc(240ms * var(--motion-speed, 1)) ease,
-              color calc(240ms * var(--motion-speed, 1)) ease,
-              box-shadow calc(240ms * var(--motion-speed, 1)) ease !important;
+/* Native High-FPS View Transitions for Theme Toggle */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.18s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Scoped Theme Transition Fallback - Only targets primary structural surfaces (Zero box-shadow / zero global wildcard lag) */
+html.theme-transitioning body,
+html.theme-transitioning #root,
+html.theme-transitioning .app-container,
+html.theme-transitioning .navbar,
+html.theme-transitioning .sub-header,
+html.theme-transitioning .portal-sidebar,
+html.theme-transitioning .channel-sidebar,
+html.theme-transitioning .discord-main-content,
+html.theme-transitioning .main-content-wrapper,
+html.theme-transitioning .post-card,
+html.theme-transitioning .comment-item,
+html.theme-transitioning .settings-container,
+html.theme-transitioning .modal-content,
+html.theme-transitioning .card,
+html.theme-transitioning input,
+html.theme-transitioning textarea,
+html.theme-transitioning button {
+  transition: background-color 0.16s ease,
+              border-color 0.16s ease,
+              color 0.16s ease !important;
 }
 
 /* Reusable High-FPS Motion Keyframes */

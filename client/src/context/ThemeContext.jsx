@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const ThemeContext = createContext(null);
 
@@ -25,31 +25,47 @@ export const ThemeProvider = ({ children }) => {
         localStorage.setItem('motion_speed', motionSpeed);
     }, [motionSpeed]);
 
-    // Apply theme changes with smooth morphing
+    const isFirstMount = useRef(true);
+
+    // Apply theme changes with smooth, high-FPS morphing
     useEffect(() => {
         const root = document.documentElement;
 
-        // Smooth transition class for color morphing
-        root.classList.add('theme-transitioning');
-        const timer = setTimeout(() => {
-            root.classList.remove('theme-transitioning');
-        }, 300);
+        const applyThemeClasses = () => {
+            if (isDark) {
+                root.classList.add('dark');
+                root.classList.remove('light');
+                root.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                localStorage.setItem('theme_mode', 'dark');
+            } else {
+                root.classList.remove('dark');
+                root.classList.add('light');
+                root.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                localStorage.setItem('theme_mode', 'light');
+            }
+        };
 
-        if (isDark) {
-            root.classList.add('dark');
-            root.classList.remove('light');
-            root.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
-            localStorage.setItem('theme_mode', 'dark');
-        } else {
-            root.classList.remove('dark');
-            root.classList.add('light');
-            root.setAttribute('data-theme', 'light');
-            localStorage.setItem('theme', 'light');
-            localStorage.setItem('theme_mode', 'light');
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            applyThemeClasses();
+            return;
         }
 
-        return () => clearTimeout(timer);
+        // Modern Chromium View Transitions API for 120 FPS native GPU crossfade
+        if (typeof document !== 'undefined' && document.startViewTransition) {
+            document.startViewTransition(() => {
+                applyThemeClasses();
+            });
+        } else {
+            root.classList.add('theme-transitioning');
+            applyThemeClasses();
+            const timer = setTimeout(() => {
+                root.classList.remove('theme-transitioning');
+            }, 180);
+            return () => clearTimeout(timer);
+        }
     }, [isDark]);
 
     const toggleTheme = () => {
