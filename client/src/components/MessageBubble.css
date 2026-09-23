@@ -2,7 +2,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 6px;
     margin-bottom: 0;
     padding: 0;
     max-width: 100%;
@@ -27,8 +27,9 @@
 }
 
 /* Margin right after date divider */
-.chat-date-divider + .message-row {
-    margin-top: 6px;
+.chat-date-divider + .message-row,
+.chat-date-divider + .message-row.consecutive {
+    margin-top: 10px !important;
 }
 
 /* Actions Spacing */
@@ -47,7 +48,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    animation: slideIn 0.2s ease;
 }
 
 .message-row.other .message-bubble {
@@ -79,12 +79,21 @@
     border-bottom-right-radius: 4px;
 }
 
+/* Consecutive connected corners (WhatsApp / Telegram style) */
+.message-row.consecutive.own .message-bubble.own .message-content {
+    border-top-right-radius: 4px !important;
+}
+
 /* Other Message Style - Neutral Dark/Light without Blue */
 .message-bubble.other .message-content {
     background: #222428;
     color: var(--text-primary);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-bottom-left-radius: 4px;
+}
+
+.message-row.consecutive.other .message-bubble.other .message-content {
+    border-top-left-radius: 4px !important;
 }
 
 [data-theme='light'] .message-bubble.other .message-content {

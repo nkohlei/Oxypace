@@ -170,9 +170,14 @@ router.post(
             }
 
             const io = req.app.get('io');
-            const isRecipientActiveInChat = io?.isUserActiveInChatWith
-                ? io.isUserActiveInChatWith(recipientId, req.user._id.toString())
-                : false;
+            let isRecipientActiveInChat = false;
+            if (io?.isUserActiveInChatWith) {
+                try {
+                    isRecipientActiveInChat = await io.isUserActiveInChatWith(recipientId, req.user._id.toString());
+                } catch (e) {
+                    isRecipientActiveInChat = false;
+                }
+            }
 
             const messageData = {
                 sender: req.user._id,

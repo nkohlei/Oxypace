@@ -15,7 +15,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
-import { dismissDeliveredMessageNotifications } from '../utils/notificationUtils';
+import { dismissDeliveredMessageNotifications, setActiveChatPartner } from '../utils/notificationUtils';
 import './Inbox.css';
 
 const formatDateDivider = (dateStr) => {
@@ -97,20 +97,24 @@ const Inbox = () => {
 
     useEffect(() => {
         if (selectedUser?._id) {
-            useGlobalStore.getState().setActiveChatUserId(selectedUser._id);
-            markConversationAsRead(selectedUser._id);
-            dismissDeliveredMessageNotifications(selectedUser._id);
+            const partnerId = String(selectedUser._id);
+            useGlobalStore.getState().setActiveChatUserId(partnerId);
+            markConversationAsRead(partnerId);
+            dismissDeliveredMessageNotifications(partnerId);
+            setActiveChatPartner(partnerId);
             if (socket) {
-                socket.emit('enter_conversation', { partnerId: selectedUser._id });
+                socket.emit('enter_conversation', { partnerId });
             }
         } else {
             useGlobalStore.getState().setActiveChatUserId(null);
+            setActiveChatPartner(null);
             if (socket) {
                 socket.emit('leave_conversation');
             }
         }
 
         return () => {
+            setActiveChatPartner(null);
             if (socket) {
                 socket.emit('leave_conversation');
             }
@@ -120,6 +124,7 @@ const Inbox = () => {
     useEffect(() => {
         return () => {
             useGlobalStore.getState().setActiveChatUserId(null);
+            setActiveChatPartner(null);
             if (socket) {
                 socket.emit('leave_conversation');
             }
@@ -908,6 +913,17 @@ const Inbox = () => {
                                     </div>
                                 ) : (() => {
                                     let lastDateStr = null;
+                                    const getSenderId = (m) => {
+                                        if (!m) return '';
+                                        const s = m.sender;
+                                        if (!s) return '';
+                                        if (typeof s === 'object') return String(s._id || s.id || '');
+                                        return String(s);
+                                    };
+
+                                    const partnerId = selectedUser ? String(selectedUser._id || selectedUser.id || '') : '';
+                                    const myId = user ? String(user._id || user.id || '') : '';
+
                                     return messages.map((message, index) => {
                                         const formattedDate = formatDateDivider(message.createdAt);
                                         const showDateDivider = formattedDate && formattedDate !== lastDateStr;
@@ -915,10 +931,30 @@ const Inbox = () => {
                                             lastDateStr = formattedDate;
                                         }
 
-                                        const isOwn = String(message.sender?._id || message.sender) === String(user._id);
+                                        const currentSenderId = getSenderId(message);
                                         const prevMessage = index > 0 ? messages[index - 1] : null;
-                                        const prevIsOwn = prevMessage ? String(prevMessage.sender?._id || prevMessage.sender) === String(user._id) : null;
-                                        const isSameSenderAsPrev = prevMessage && isOwn === prevIsOwn;
+                                        const prevSenderId = getSenderId(prevMessage);
+
+                                        let isOwn = false;
+                                        if (partnerId && currentSenderId) {
+                                            isOwn = currentSenderId !== partnerId;
+                                        } else if (myId && currentSenderId) {
+                                            isOwn = currentSenderId === myId;
+                                        }
+
+                                        let prevIsOwn = false;
+                                        if (partnerId && prevSenderId) {
+                                            prevIsOwn = prevSenderId !== partnerId;
+                                        } else if (myId && prevSenderId) {
+                                            prevIsOwn = prevSenderId === myId;
+                                        }
+
+                                        const isSameSenderAsPrev = Boolean(
+                                            prevMessage && (
+                                                (currentSenderId && prevSenderId && currentSenderId === prevSenderId) ||
+                                                (isOwn === prevIsOwn)
+                                            )
+                                        );
                                         const isConsecutive = !showDateDivider && isSameSenderAsPrev;
 
                                         return (

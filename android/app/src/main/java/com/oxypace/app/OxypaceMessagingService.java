@@ -95,12 +95,48 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
     }
 
+    public static void clearHistoryForSender(String senderId) {
+        if (senderId != null) {
+            messageHistory.remove(senderId.trim());
+        }
+    }
+
+    public static void clearAllHistory() {
+        messageHistory.clear();
+    }
+
     private void showMessageNotification(java.util.Map<String, String> data, RemoteMessage.Notification notif) {
-        String channelId = "oxypace_messages_v2";
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
+        String senderId = getOrDefault(data, "senderId", "default_sender").trim();
+        if ("default_sender".equals(senderId) || senderId.isEmpty()) {
+            String route = data.get("route");
+            if (route != null && route.contains("/inbox/")) {
+                String[] parts = route.split("/inbox/");
+                if (parts.length > 1 && !parts[1].isEmpty()) {
+                    senderId = parts[1].split("[/?#]")[0].trim();
+                }
+            }
+        }
+
+        // 🔇 CRITICAL SUPPRESSION CHECK:
+        // If the user is currently inside the app AND actively viewing/chatting with this exact partner,
+        // SUPPRESS the device notification completely! Do NOT wake screen, do NOT vibrate, do NOT play sound!
+        if (MainActivity.isAppForeground && MainActivity.activeChatPartnerId != null) {
+            String activePartner = MainActivity.activeChatPartnerId.trim();
+            if (activePartner.equalsIgnoreCase(senderId)) {
+                android.util.Log.d("OxypaceMsgService", "🔇 Suppressing device notification: user is actively chatting with " + senderId);
+                try {
+                    nm.cancel(Math.abs(senderId.hashCode()));
+                } catch (Exception ignored) {}
+                clearHistoryForSender(senderId);
+                return;
+            }
+        }
+
         wakeScreen();
+        String channelId = "oxypace_messages_v2";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 channelId, "Mesaj Bildirimleri", NotificationManager.IMPORTANCE_HIGH
@@ -122,7 +158,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             nm.createNotificationChannel(channel);
         }
 
-        String senderId = getOrDefault(data, "senderId", "default_sender");
         String senderName = getOrDefault(data, "senderName", getOrDefault(data, "title", notif != null ? notif.getTitle() : "Oxypace"));
         String senderUsername = getOrDefault(data, "senderUsername", "");
         String messageBody = getOrDefault(data, "body", notif != null ? notif.getBody() : "");

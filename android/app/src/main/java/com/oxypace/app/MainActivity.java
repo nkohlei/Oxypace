@@ -222,6 +222,63 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    public static volatile boolean isAppForeground = false;
+    public static volatile String activeChatPartnerId = null;
+
+    public static void clearChatNotification(Context context, String senderId) {
+        if (context == null || senderId == null || senderId.trim().isEmpty()) return;
+        try {
+            android.app.NotificationManager nm = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                int notifId = Math.abs(senderId.trim().hashCode());
+                nm.cancel(notifId);
+                android.util.Log.d("ChatNotification", "Cleared status bar notification for sender: " + senderId + " (id=" + notifId + ")");
+            }
+            OxypaceMessagingService.clearHistoryForSender(senderId.trim());
+        } catch (Exception e) {
+            android.util.Log.w("ChatNotification", "Error clearing notification: " + e.getMessage());
+        }
+    }
+
+    @CapacitorPlugin(name = "ChatNotificationManager")
+    public static class ChatNotificationManager extends com.getcapacitor.Plugin {
+        @PluginMethod
+        public void setActiveChatPartner(PluginCall call) {
+            String partnerId = call.getString("partnerId", null);
+            if (partnerId != null && (partnerId.trim().isEmpty() || partnerId.equalsIgnoreCase("null") || partnerId.equalsIgnoreCase("undefined"))) {
+                partnerId = null;
+            }
+            MainActivity.activeChatPartnerId = partnerId != null ? partnerId.trim() : null;
+            android.util.Log.d("ChatNotificationManager", "Active chat partner set to: " + MainActivity.activeChatPartnerId);
+
+            if (MainActivity.activeChatPartnerId != null) {
+                clearChatNotification(getContext(), MainActivity.activeChatPartnerId);
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void clearNotificationForSender(PluginCall call) {
+            String senderId = call.getString("senderId", null);
+            if (senderId != null && !senderId.trim().isEmpty()) {
+                clearChatNotification(getContext(), senderId.trim());
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void clearAllMessageNotifications(PluginCall call) {
+            try {
+                android.app.NotificationManager nm = (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    nm.cancelAll();
+                }
+                OxypaceMessagingService.clearAllHistory();
+            } catch (Exception ignored) {}
+            call.resolve();
+        }
+    }
+
     @CapacitorPlugin(name = "AuthSync")
     public static class AuthSync extends com.getcapacitor.Plugin {
         @PluginMethod
@@ -607,6 +664,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(DownloaderPlugin.class);
         registerPlugin(CallManager.class);
         registerPlugin(AuthSync.class);
+        registerPlugin(ChatNotificationManager.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
 
@@ -861,8 +919,18 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        isAppForeground = true;
+        if (activeChatPartnerId != null) {
+            clearChatNotification(this, activeChatPartnerId);
+        }
+    }
+
+    @Override
     public void onPause() {
         super.onPause();
+        isAppForeground = false;
         if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
             // Keep WebView active in background when in a call or PiP (WhatsApp style background persistence)
             try {

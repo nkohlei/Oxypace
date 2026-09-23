@@ -42,10 +42,24 @@ export const initializeSocket = (io) => {
     // Store active chat partner per user (userId -> partnerId)
     const activeConversations = new Map();
 
-    io.isUserActiveInChatWith = (userId, partnerId) => {
+    io.isUserActiveInChatWith = async (userId, partnerId) => {
         if (!userId || !partnerId) return false;
-        const currentPartner = activeConversations.get(String(userId));
-        return currentPartner && String(currentPartner) === String(partnerId);
+        const sUser = String(userId);
+        const sPartner = String(partnerId);
+        const currentPartner = activeConversations.get(sUser);
+        if (currentPartner && String(currentPartner) === sPartner) {
+            return true;
+        }
+        if (pubClient) {
+            try {
+                const redisPartner = await pubClient.get(`active_chat:${sUser}`);
+                if (redisPartner && String(redisPartner) === sPartner) {
+                    activeConversations.set(sUser, sPartner);
+                    return true;
+                }
+            } catch (e) {}
+        }
+        return false;
     };
 
     const getOnlineUserIds = async () => {
@@ -499,15 +513,29 @@ export const initializeSocket = (io) => {
         // Direct Message (DM) Enter / Leave Active Conversation
         socket.on('enter_conversation', ({ partnerId }) => {
             const currentUserId = socket.data?.userId || userSockets.get(socket.id) || socket.user?._id;
-            if (currentUserId && partnerId) {
-                activeConversations.set(String(currentUserId), String(partnerId));
+            const targetPartnerId = partnerId && typeof partnerId === 'object' ? (partnerId._id || partnerId.id) : partnerId;
+            if (currentUserId && targetPartnerId) {
+                const sUser = String(currentUserId);
+                const sPartner = String(targetPartnerId);
+                activeConversations.set(sUser, sPartner);
+                if (pubClient) {
+                    try {
+                        pubClient.set(`active_chat:${sUser}`, sPartner, 'EX', 86400);
+                    } catch (e) {}
+                }
             }
         });
 
         socket.on('leave_conversation', () => {
             const currentUserId = socket.data?.userId || userSockets.get(socket.id) || socket.user?._id;
             if (currentUserId) {
-                activeConversations.delete(String(currentUserId));
+                const sUser = String(currentUserId);
+                activeConversations.delete(sUser);
+                if (pubClient) {
+                    try {
+                        pubClient.del(`active_chat:${sUser}`);
+                    } catch (e) {}
+                }
             }
         });
 
