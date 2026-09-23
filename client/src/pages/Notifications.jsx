@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
+import { downloadFile } from '../utils/downloadHelper';
 import './Notifications.css';
 import { useGlobalStore } from '../store/useGlobalStore';
 
@@ -16,6 +18,7 @@ const Notifications = () => {
     const [error, setError] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
     const [handlingRequests, setHandlingRequests] = useState({}); // { [notifId]: 'accept' | 'decline' }
+    const [selectedSystemNotif, setSelectedSystemNotif] = useState(null);
     const { socket } = useSocket();
     const setUnreadNotificationsCount = useGlobalStore((state) => state.setUnreadNotificationsCount);
 
@@ -164,6 +167,36 @@ const Notifications = () => {
         }
     };
 
+    const handleOpenSystemNotification = async (notif) => {
+        setSelectedSystemNotif(notif);
+        if (!notif.read && !isGhost) {
+            try {
+                await axios.put(`/api/notifications/${notif._id}/read`);
+                setNotifications((prev) =>
+                    prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
+                );
+                const currentCount = useGlobalStore.getState().unreadNotificationsCount;
+                const newCount = Math.max(0, currentCount - 1);
+                setUnreadNotificationsCount(newCount);
+                useGlobalStore.getState().setUnreadNotificationsCount(newCount);
+            } catch (err) {
+                console.error('Failed to mark notification as read:', err);
+            }
+        }
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && selectedSystemNotif) {
+                setSelectedSystemNotif(null);
+            }
+        };
+        if (selectedSystemNotif) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedSystemNotif]);
+
     const formatDate = (date) => {
         const now = new Date();
         const notifDate = new Date(date);
@@ -282,6 +315,8 @@ const Notifications = () => {
                                 const senderName = notif.sender?.profile?.displayName || notif.sender?.username || 'Oxypace';
                                 const senderInitial = senderName ? senderName[0].toUpperCase() : 'O';
 
+                                const isSystemNotif = notif.type === 'system' || notif.type === 'security' || notif.type === 'security_silent';
+
                                 const targetUrl = 
                                     notif.type === 'security' || notif.type === 'security_silent'
                                         ? '/settings?section=devices'
@@ -297,11 +332,26 @@ const Notifications = () => {
                                                             ? `/profile/${notif.sender.username}`
                                                             : '#';
 
+                                const CardComponent = isSystemNotif ? 'div' : Link;
+                                const cardProps = isSystemNotif
+                                    ? {
+                                        role: 'button',
+                                        tabIndex: 0,
+                                        onClick: () => handleOpenSystemNotification(notif),
+                                        onKeyDown: (e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                handleOpenSystemNotification(notif);
+                                            }
+                                        },
+                                    }
+                                    : { to: targetUrl };
+
                                 return (
-                                    <Link
-                                        to={targetUrl}
+                                    <CardComponent
                                         key={notif._id}
-                                        className={`notification-item ${!notif.read ? 'unread' : ''}`}
+                                        className={`notification-item ${isSystemNotif ? 'system-notif-item' : ''} ${!notif.read ? 'unread' : ''}`}
+                                        {...cardProps}
                                     >
                                         <div className="notif-avatar">
                                             {notif.sender?.profile?.avatar ? (
@@ -462,7 +512,7 @@ const Notifications = () => {
                                                 </svg>
                                             </button>
                                         )}
-                                    </Link>
+                                    </CardComponent>
                                 );
                             })
                         ) : (
@@ -490,6 +540,111 @@ const Notifications = () => {
                     </div>
                 </div>
             </main>
+
+            {/* System Notification Detail Modal */}
+            {selectedSystemNotif && createPortal(
+                <div 
+                    className="system-notif-modal-overlay" 
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setSelectedSystemNotif(null);
+                    }}
+                >
+                    <div className="system-notif-modal-card" role="dialog" aria-modal="true">
+                        <div className="system-notif-modal-header">
+                            <div className="system-notif-modal-header-left">
+                                <div className={`system-notif-modal-badge ${selectedSystemNotif.type}`}>
+                                    {selectedSystemNotif.type === 'system' ? '📢' : '🛡️'}
+                                </div>
+                                <div className="system-notif-modal-header-info">
+                                    <h3 className="system-notif-modal-title">
+                                        {selectedSystemNotif.type === 'system' ? 'Sistem Bildirimi' : 'Güvenlik Bildirimi'}
+                                    </h3>
+                                    <span className="system-notif-modal-date">
+                                        {new Date(selectedSystemNotif.createdAt).toLocaleString('tr-TR', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                        })}
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                className="system-notif-modal-close"
+                                onClick={() => setSelectedSystemNotif(null)}
+                                aria-label="Kapat"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="system-notif-modal-body">
+                            {selectedSystemNotif.content && (
+                                <div className="system-notif-modal-text">
+                                    {selectedSystemNotif.content}
+                                </div>
+                            )}
+
+                            {(selectedSystemNotif.imageUrl || selectedSystemNotif.post?.media) && (
+                                <div className="system-notif-modal-media-box">
+                                    <div className="system-notif-modal-img-container">
+                                        <img
+                                            src={getImageUrl(selectedSystemNotif.imageUrl || selectedSystemNotif.post?.media)}
+                                            alt="Sistem Bildirim Görseli"
+                                            className="system-notif-modal-image"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="system-notif-download-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const mediaUrl = selectedSystemNotif.imageUrl || selectedSystemNotif.post?.media;
+                                            const filename = mediaUrl.split('/').pop() || `oxypace-sistem-${Date.now()}`;
+                                            downloadFile(mediaUrl, filename);
+                                        }}
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                            <polyline points="7 10 12 15 17 10" />
+                                            <line x1="12" y1="15" x2="12" y2="3" />
+                                        </svg>
+                                        <span>Görseli İndir</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="system-notif-modal-footer">
+                            {(selectedSystemNotif.type === 'security' || selectedSystemNotif.type === 'security_silent') && (
+                                <button
+                                    type="button"
+                                    className="system-notif-action-btn"
+                                    onClick={() => {
+                                        setSelectedSystemNotif(null);
+                                        navigate('/settings?section=devices');
+                                    }}
+                                >
+                                    Cihaz Yönetimi
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="system-notif-close-btn"
+                                onClick={() => setSelectedSystemNotif(null)}
+                            >
+                                Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
