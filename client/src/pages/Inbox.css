@@ -958,7 +958,7 @@
 
     /* Input area safe bottom padding */
     .message-form {
-        padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+        padding: 8px 12px calc(8px + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
         background: #000000;
         border-top: 1px solid var(--border-subtle);
     }

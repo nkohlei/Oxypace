@@ -44,6 +44,12 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-reflection: none;
 
+  /* Mobile Safe Area & Android Navigation Insets */
+  --system-nav-height: 0px;
+  --system-top-height: 0px;
+  --safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--system-nav-height, 0px));
+  --safe-area-top: max(env(safe-area-inset-top, 0px), var(--system-top-height, 0px));
+
   /* Layout */
   --nav-top-height: 50px;
 
@@ -93,6 +99,11 @@ html.theme-transitioning button {
   transition: background-color 0.16s ease,
               border-color 0.16s ease,
               color 0.16s ease !important;
+}
+
+/* Android 3-Button Navigation Adaptation */
+html.has-3button-nav {
+  --safe-area-bottom: max(var(--system-nav-height, 48px), 48px);
 }
 
 /* Reusable High-FPS Motion Keyframes */

@@ -297,21 +297,13 @@ export default function EarthSimulation() {
             <main style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
                 {/* Globe canvas — full area */}
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                    {isNativeApp ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.6)', padding: '24px', textAlign: 'center' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>public_off</span>
-                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>Mobil Uygulama Görünümü Devre Dışı</h2>
-                            <p style={{ fontSize: '14px', maxWidth: '300px' }}>Yüksek performans gerektiren 3D dünya simülasyonu, mobil uygulamada pil ve performans tasarrufu amacıyla devre dışı bırakılmıştır. Web sürümünden erişebilirsiniz.</p>
-                        </div>
-                    ) : (
-                        <EarthCanvas
-                            ref={earthCanvasRef}
-                            portals={portals}
-                            onPortalClick={handlePortalClick}
-                            activePortalSearch={activePortalSearch}
-                            onGlobeClick={() => setSidebarOpen(false)}
-                        />
-                    )}
+                    <EarthCanvas
+                        ref={earthCanvasRef}
+                        portals={portals}
+                        onPortalClick={handlePortalClick}
+                        activePortalSearch={activePortalSearch}
+                        onGlobeClick={() => setSidebarOpen(false)}
+                    />
                 </div>
 
 
@@ -1094,6 +1086,7 @@ export default function EarthSimulation() {
                         border-bottom: none;
                         border-right: none;
                         border-top: 1px solid rgba(255,255,255,0.1);
+                        padding-bottom: calc(16px + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
                     }
                     .map-portal-card-drawer.open {
                         transform: translateY(0);

@@ -396,7 +396,7 @@
 /* Lightbox Footer & Thumbnail Strip */
 .oxypace-lightbox-footer {
     position: absolute;
-    bottom: 16px;
+    bottom: calc(16px + var(--safe-area-bottom, max(env(safe-area-inset-bottom, 0px), var(--system-nav-height, 0px))));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -404,6 +404,11 @@
     align-items: center;
     gap: 8px;
     z-index: 1000000;
+    transition: bottom 0.25s ease;
+}
+
+html.has-3button-nav .oxypace-lightbox-footer {
+    bottom: calc(20px + var(--safe-area-bottom, 48px)) !important;
 }
 
 .oxypace-lightbox-counter {

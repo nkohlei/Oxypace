@@ -369,11 +369,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.2',
-        versionCode: 232,
+        latestVersion: '2.3.3',
+        versionCode: 233,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.2: Sohbet ekranında aktif mesajlaşırken cihaz bildirimlerinin tamamen engellenmesi, sohbete erişildiğinde bildirim çubuğunun otomatik temizlenmesi ve mesaj baloncuk aralıklarının mükemmelleştirilmesi.',
+        changelog: 'Oxypace 2.3.3: Android 3 tuşlu navigasyon tuşları ile ekran altı butonların çakışması tamamen giderildi, navigasyon türüne dinamik uyum sağlandı ve keşfet sayfasındaki 3D interaktif dünya haritası mobil uygulamada aktif edildi.',
     });
 });
 
