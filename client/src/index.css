@@ -47,8 +47,8 @@
   /* Mobile Safe Area & Android Navigation Insets */
   --system-nav-height: 0px;
   --system-top-height: 0px;
-  --safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--system-nav-height, 0px));
-  --safe-area-top: max(env(safe-area-inset-top, 0px), var(--system-top-height, 0px));
+  --safe-area-bottom: 0px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
 
   /* Layout */
   --nav-top-height: 50px;

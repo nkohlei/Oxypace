@@ -104,6 +104,12 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const { setMobileChannelOpen } = useUI();
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+        const scrollContainer = document.querySelector('.horizontal-layout-container') || document.querySelector('.discord-main-content');
+        if (scrollContainer) scrollContainer.scrollTop = 0;
+    }, []);
+
     const handleTriggerDocumentPiP = () => {
         if (Capacitor.isNativePlatform()) {
             CallManager.enterPiP().catch(err => console.warn('[CallManager] enterPiP error:', err));

@@ -369,11 +369,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.3',
-        versionCode: 233,
+        latestVersion: '2.3.4',
+        versionCode: 234,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.3: Android 3 tuşlu navigasyon tuşları ile ekran altı butonların çakışması tamamen giderildi, navigasyon türüne dinamik uyum sağlandı ve keşfet sayfasındaki 3D interaktif dünya haritası mobil uygulamada aktif edildi.',
+        changelog: 'Oxypace 2.3.4: 3 tuşlu navigasyon modunda portal menüsü ve mesajlaşma ekranı alt çakışmaları tamamen giderildi, canlı bağlantı odası tepe buton kayması düzeltildi, 3D dünya portal kartları minimal ve şık hale getirildi.',
     });
 });
 

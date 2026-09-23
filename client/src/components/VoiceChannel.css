@@ -652,7 +652,7 @@ html.has-3button-nav .vc-controls {
     /* Back button style positioned at the very top left */
     .vc-mobile-back-btn {
         position: absolute !important;
-        top: calc(15px + env(safe-area-inset-top, 0px)) !important;
+        top: 15px !important;
         left: 15px !important;
         width: 36px !important;
         height: 36px !important;
@@ -679,7 +679,7 @@ html.has-3button-nav .vc-controls {
     /* Position top-right controls at the very top right, stacked vertically */
     .vc-top-right-controls {
         position: absolute !important;
-        top: calc(15px + env(safe-area-inset-top, 0px)) !important;
+        top: 15px !important;
         right: 15px !important;
         display: flex !important;
         flex-direction: column !important;

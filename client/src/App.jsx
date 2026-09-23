@@ -78,21 +78,20 @@ if (typeof document !== 'undefined' && Capacitor.isNativePlatform()) {
         sysPlugin?.getInsets?.().then(res => {
             if (res) {
                 const navBottom = Math.round(res.navBottomDp || 0);
-                const statusTop = Math.round(res.statusBarTopDp || 0);
                 const is3Btn = !!res.is3ButtonNav;
-                const effectiveBottom = is3Btn ? Math.max(navBottom, 48) : navBottom;
+                const effectiveBottom = is3Btn ? Math.max(navBottom, 48) : 0;
                 const doc = document.documentElement;
                 if (doc) {
-                    doc.style.setProperty('--system-nav-height', `${effectiveBottom}px`);
-                    doc.style.setProperty('--system-top-height', `${statusTop}px`);
                     if (is3Btn) {
                         doc.classList.add('has-3button-nav');
                         doc.classList.remove('has-gesture-nav');
                         doc.style.setProperty('--safe-area-bottom', `${effectiveBottom}px`);
+                        doc.style.setProperty('--system-nav-height', `${effectiveBottom}px`);
                     } else {
                         doc.classList.remove('has-3button-nav');
                         doc.classList.add('has-gesture-nav');
-                        doc.style.setProperty('--safe-area-bottom', `max(env(safe-area-inset-bottom, 0px), ${navBottom}px)`);
+                        doc.style.setProperty('--safe-area-bottom', '0px');
+                        doc.style.setProperty('--system-nav-height', '0px');
                     }
                 }
             }

@@ -962,6 +962,21 @@
         background: #000000;
         border-top: 1px solid var(--border-subtle);
     }
+
+    /* 3-Button Navigation Adaptations (Only active on devices with 3-button navigation bars) */
+    html.has-3button-nav .conversations-view,
+    html.has-3button-nav .chat-view {
+        height: calc(100% - 12px - var(--safe-area-bottom, 48px)) !important;
+        margin-bottom: calc(6px + var(--safe-area-bottom, 48px)) !important;
+    }
+
+    html.has-3button-nav .conversations-list {
+        padding-bottom: calc(16px + var(--safe-area-bottom, 48px)) !important;
+    }
+
+    html.has-3button-nav .message-form {
+        padding-bottom: calc(10px + var(--safe-area-bottom, 48px)) !important;
+    }
 }
 
 /* Spinner & Loading States */

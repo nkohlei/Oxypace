@@ -177,6 +177,15 @@ body:has(.portal-sidebar) .app-wrapper {
     padding-bottom: 8px;
 }
 
+/* Adaptation for Android 3-Button Navigation Bar */
+html.has-3button-nav .portal-sidebar {
+    padding-bottom: calc(20px + var(--safe-area-bottom, 48px)) !important;
+}
+
+html.has-3button-nav .sidebar-bottom-actions {
+    padding-bottom: calc(12px + var(--safe-area-bottom, 48px)) !important;
+}
+
 .mobile-only-toggle {
     display: none !important;
 }

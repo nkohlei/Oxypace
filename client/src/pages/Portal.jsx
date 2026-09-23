@@ -1394,45 +1394,8 @@ const Portal = () => {
                                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                                     {/* Channel Content — Voice/Conference or Text Feed */}
                                     {isVoiceChannel ? (
-                                        /* Voice or Conference Channel */
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                            {isMobileView && (
-                                                <header className="channel-top-bar" style={{ flexShrink: 0 }}>
-                                                    <div className="channel-title-wrapper">
-                                                        <button 
-                                                            className="mobile-back-btn-inline" 
-                                                            onClick={() => setMobileChannelOpen(false)}
-                                                        >
-                                                            <svg
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="1.5"
-                                                                width="24"
-                                                                height="24"
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                            >
-                                                                <polyline points="15 18 9 12 15 6" />
-                                                            </svg>
-                                                        </button>
-                                                        <span className="hashtag" style={{ color: 'var(--primary-color)' }}>
-                                                            {channelType === 'voice' || channelType === 'conference' ? (
-                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary-color)' }}>
-                                                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                                                    <line x1="12" y1="19" x2="12" y2="23" />
-                                                                </svg>
-                                                            ) : channelType === 'image' ? (
-                                                                '🖼️'
-                                                            ) : '#'}
-                                                        </span>
-                                                        <h3 className="channel-name" style={{ color: 'var(--primary-color)' }}>
-                                                            {channelName}
-                                                        </h3>
-                                                    </div>
-                                                </header>
-                                            )}
+                                        /* Voice or Conference Channel - Live rooms provide their own fullscreen controls and back button */
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                                             <Suspense fallback={
                                                 <div className="skeleton-loader">
                                                     <p>Canlı bağlantı odası hazırlanıyor...</p>

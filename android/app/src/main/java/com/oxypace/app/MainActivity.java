@@ -690,48 +690,28 @@ public class MainActivity extends BridgeActivity {
         bridgeInstance = getBridge();
 
         // Dynamically detect system navigation bar mode (3-button vs gesture navigation) and safe-areas
-        checkAndApplySystemInsets();
         try {
-            ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (v, windowInsets) -> {
+            android.view.View decorView = getWindow().getDecorView();
+            decorView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
                 try {
-                    Insets navInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
-                    Insets statusInsets = windowInsets.getInsets(WindowInsetsCompat.Type.statusBars());
-                    Insets tappableInsets = windowInsets.getInsets(WindowInsetsCompat.Type.tappableElement());
+                    WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
+                    if (insets != null) {
+                        float density = getResources().getDisplayMetrics().density;
+                        if (density <= 0) density = 1.0f;
 
-                    float density = getResources().getDisplayMetrics().density;
-                    if (density <= 0) density = 1.0f;
+                        Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                        float navDp = navInsets.bottom / density;
 
-                    float navDp = navInsets.bottom / density;
-                    float statusDp = statusInsets.top / density;
-                    float tappableBottomDp = tappableInsets.bottom / density;
+                        boolean is3Btn = is3ButtonNavigation(this, navDp);
+                        sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : 0f;
+                        sIs3ButtonNav = is3Btn;
 
-                    int navMode = -1;
-                    try {
-                        navMode = Settings.Secure.getInt(getContentResolver(), "navigation_mode", -1);
-                    } catch (Exception ignored) {}
-
-                    boolean is3Btn;
-                    if (navMode == 0 || navMode == 1) {
-                        is3Btn = true;
-                    } else if (navMode == 2) {
-                        is3Btn = false;
-                    } else {
-                        is3Btn = (tappableBottomDp > 0) || (navDp >= 36.0f);
+                        applyInsetsToWebView();
                     }
-
-                    sNavBarBottomDp = (navDp > 0) ? navDp : (is3Btn ? 48.0f : 0f);
-                    sStatusBarTopDp = statusDp;
-                    sIs3ButtonNav = is3Btn;
-
-                    applyInsetsToWebView();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return ViewCompat.onApplyWindowInsets(v, windowInsets);
+                } catch (Exception ignored) {}
             });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception ignored) {}
+        checkAndApplySystemInsets();
 
         // Dismiss any orphaned call notification on app launch if not in active call
         try {
@@ -952,31 +932,65 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    public static boolean is3ButtonNavigation(android.content.Context context, float navDp) {
+        if (context == null) return false;
+        try {
+            android.content.ContentResolver cr = context.getContentResolver();
+
+            // 1. Samsung OneUI: navigation_bar_gesture_while_hidden
+            int samsungGesture = Settings.Global.getInt(cr, "navigation_bar_gesture_while_hidden", -1);
+            if (samsungGesture == 0) return true;
+            if (samsungGesture == 1) return false;
+
+            // 2. Xiaomi MIUI / HyperOS: force_fsg_nav_bar
+            int miuiFsg = Settings.Global.getInt(cr, "force_fsg_nav_bar", -1);
+            if (miuiFsg == 0) return true;
+            if (miuiFsg == 1) return false;
+
+            // 3. Vivo / Funtouch: navigation_gesture_on
+            int vivoGesture = Settings.Secure.getInt(cr, "navigation_gesture_on", -1);
+            if (vivoGesture == 0) return true;
+            if (vivoGesture == 1) return false;
+
+            // 4. Huawei / Honor: navigationbar_is_min
+            int huaweiNav = Settings.System.getInt(cr, "navigationbar_is_min", -1);
+            if (huaweiNav == 0) return true;
+            if (huaweiNav == 1) return false;
+
+            // 5. AOSP Standard: navigation_mode (0 = 3 button, 1 = 2 button, 2 = gesture)
+            int aospMode = Settings.Secure.getInt(cr, "navigation_mode", -1);
+            if (aospMode == 0 || aospMode == 1) return true;
+            if (aospMode == 2) return false;
+        } catch (Exception ignored) {}
+
+        // Fallback: If bottom nav insets are >= 40dp, it is definitely a 3-button bar (gesture bar is <= 20dp or 0dp)
+        return navDp >= 40.0f;
+    }
+
     public void applyInsetsToWebView() {
         runOnUiThread(() -> {
             try {
                 android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                 if (webView != null) {
                     final int navDp = Math.round(sNavBarBottomDp);
-                    final int statusDp = Math.round(sStatusBarTopDp);
                     final boolean is3Btn = sIs3ButtonNav;
-                    final int effectiveBottomDp = is3Btn ? Math.max(navDp, 48) : navDp;
+                    final int effectiveBottomDp = is3Btn ? Math.max(navDp, 48) : 0;
                     String script = "(function() {" +
                         "  try {" +
                         "    var doc = document.documentElement;" +
                         "    if (!doc) return;" +
-                        "    doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
-                        "    doc.style.setProperty('--system-top-height', '" + statusDp + "px');" +
                         "    if (" + is3Btn + ") {" +
                         "      doc.classList.add('has-3button-nav');" +
                         "      doc.classList.remove('has-gesture-nav');" +
                         "      doc.style.setProperty('--safe-area-bottom', '" + effectiveBottomDp + "px');" +
+                        "      doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
                         "    } else {" +
                         "      doc.classList.remove('has-3button-nav');" +
                         "      doc.classList.add('has-gesture-nav');" +
-                        "      doc.style.setProperty('--safe-area-bottom', 'max(env(safe-area-inset-bottom, 0px), " + navDp + "px)');" +
+                        "      doc.style.setProperty('--safe-area-bottom', '0px');" +
+                        "      doc.style.setProperty('--system-nav-height', '0px');" +
                         "    }" +
-                        "    window.__oxypaceSystemBars = { navBottom: " + effectiveBottomDp + ", statusTop: " + statusDp + ", is3ButtonNav: " + is3Btn + " };" +
+                        "    window.__oxypaceSystemBars = { navBottom: " + effectiveBottomDp + ", is3ButtonNav: " + is3Btn + " };" +
                         "    window.dispatchEvent(new CustomEvent('oxypace:systembars', { detail: window.__oxypaceSystemBars }));" +
                         "  } catch(e) {}" +
                         "})();";
@@ -991,30 +1005,17 @@ public class MainActivity extends BridgeActivity {
             float density = getResources().getDisplayMetrics().density;
             if (density <= 0) density = 1.0f;
 
-            int navMode = -1;
-            try {
-                navMode = Settings.Secure.getInt(getContentResolver(), "navigation_mode", -1);
-            } catch (Exception ignored) {}
-
-            int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
-            int resNavHeightPx = resourceId > 0 ? getResources().getDimensionPixelSize(resourceId) : 0;
-            float resNavHeightDp = resNavHeightPx / density;
-
-            if (navMode == 0 || navMode == 1) {
-                sIs3ButtonNav = true;
-                if (sNavBarBottomDp <= 0 && resNavHeightDp > 0) {
-                    sNavBarBottomDp = resNavHeightDp;
-                } else if (sNavBarBottomDp <= 0) {
-                    sNavBarBottomDp = 48.0f;
-                }
-            } else if (navMode == 2) {
-                sIs3ButtonNav = false;
-            } else {
-                if (resNavHeightDp >= 36.0f) {
-                    sIs3ButtonNav = true;
-                    sNavBarBottomDp = resNavHeightDp;
-                }
+            float navDp = 0f;
+            android.view.View decorView = getWindow().getDecorView();
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
+            if (insets != null) {
+                Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                navDp = navInsets.bottom / density;
             }
+
+            boolean is3Btn = is3ButtonNavigation(this, navDp);
+            sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : 0f;
+            sIs3ButtonNav = is3Btn;
 
             applyInsetsToWebView();
         } catch (Exception ignored) {}
