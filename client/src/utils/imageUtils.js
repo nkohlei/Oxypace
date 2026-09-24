@@ -67,9 +67,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
             return relativePath;
         }
 
-        // Apply optimization suffix (thumbnail/medium/lowres) if requested
+        // Apply optimization suffix (thumbnail/medium/lowres) if requested (avatars and banners only)
         if (sizeType && sizeType !== 'original') {
-            const isCustomUpload = relativePath.includes('avatars/') || relativePath.includes('banners/') || relativePath.includes('posts/') || relativePath.includes('uploads/');
+            const isCustomUpload = relativePath.includes('avatars/') || relativePath.includes('banners/');
             if (isCustomUpload && !relativePath.startsWith('data:') && !relativePath.startsWith('blob:')) {
                 let targetPath = relativePath.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
                 const pathParts = targetPath.split('?');
@@ -145,9 +145,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
             absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
-        // Apply optimization suffix (thumbnail/medium/lowres) if requested
+        // Apply optimization suffix (thumbnail/medium/lowres) if requested (avatars and banners only)
         if (sizeType && sizeType !== 'original') {
-            const isCustomUpload = absoluteUrl.includes('/avatars/') || absoluteUrl.includes('/banners/') || absoluteUrl.includes('/posts/') || absoluteUrl.includes('/r2-media/') || absoluteUrl.includes('/uploads/') || absoluteUrl.includes(r2Domain);
+            const isCustomUpload = absoluteUrl.includes('/avatars/') || absoluteUrl.includes('/banners/');
             if (isCustomUpload && !absoluteUrl.startsWith('data:') && !absoluteUrl.startsWith('blob:')) {
                 let targetUrl = absoluteUrl.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
                 const urlParts = targetUrl.split('?');

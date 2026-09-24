@@ -201,12 +201,12 @@
     z-index: 1000 !important;
 }
 
-.post-media img,
-.post-media video {
+.post-media > img,
+.post-media > video {
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 350px;
+    max-height: 600px;
     object-fit: contain;
     display: block;
     border-radius: 16px;

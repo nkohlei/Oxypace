@@ -51,26 +51,40 @@ async function processAndUploadFile(req, file) {
     let key = '';
 
     if (isImage) {
-        try {
-            let pipeline = sharp(file.buffer);
-            const metadata = await pipeline.metadata();
-            
-            // Limit max width to 1200px
-            if (metadata.width && metadata.width > 1200) {
-                pipeline = pipeline.resize({ width: 1200, withoutEnlargement: true });
-            }
-            
-            // Convert to webp with 75% quality
-            uploadBuffer = await pipeline.webp({ quality: 75 }).toBuffer();
-            contentType = 'image/webp';
-            key = `${folder}/${file.fieldname}-${uniqueSuffix}.webp`;
-            
-            file.mimetype = 'image/webp';
-            file.size = uploadBuffer.length;
-        } catch (err) {
-            console.error('Sharp optimization failed, uploading original image:', err);
-            const ext = path.extname(file.originalname).toLowerCase();
+        // If it's a post media upload (posts, portal posts, messages), ALWAYS PRESERVE 100% ORIGINAL QUALITY!
+        // Never downscale or lossy compress post images.
+        const isPostMedia = file.fieldname === 'media' || req.body?.purpose === 'post' || req.body?.purpose === 'message';
+
+        if (isPostMedia) {
+            const ext = path.extname(file.originalname || '').toLowerCase() || (file.mimetype === 'image/png' ? '.png' : (file.mimetype === 'image/webp' ? '.webp' : '.jpg'));
             key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+            uploadBuffer = file.buffer;
+            contentType = file.mimetype || 'image/jpeg';
+            file.mimetype = contentType;
+            file.size = uploadBuffer.length;
+        } else {
+            // For avatars/banners only: standard web optimization
+            try {
+                let pipeline = sharp(file.buffer);
+                const metadata = await pipeline.metadata();
+                
+                // Limit max width to 1200px
+                if (metadata.width && metadata.width > 1200) {
+                    pipeline = pipeline.resize({ width: 1200, withoutEnlargement: true });
+                }
+                
+                // Convert to webp with 85% quality
+                uploadBuffer = await pipeline.webp({ quality: 85 }).toBuffer();
+                contentType = 'image/webp';
+                key = `${folder}/${file.fieldname}-${uniqueSuffix}.webp`;
+                
+                file.mimetype = 'image/webp';
+                file.size = uploadBuffer.length;
+            } catch (err) {
+                console.error('Sharp optimization failed, uploading original image:', err);
+                const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+                key = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+            }
         }
         
         // Upload to R2

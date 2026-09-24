@@ -209,8 +209,8 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
             const { naturalWidth, naturalHeight } = imgRef.current;
             if (naturalWidth && naturalHeight) {
                 const ratio = naturalWidth / naturalHeight;
-                if (!isNaN(ratio)) {
-                    setAspectRatio(`${Math.max(0.8, Math.min(ratio, 2.2))}`);
+                if (!isNaN(ratio) && ratio > 0) {
+                    setAspectRatio(`${Math.max(0.5, Math.min(ratio, 3.0))}`);
                 }
             }
         }
@@ -221,8 +221,8 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
         const { naturalWidth, naturalHeight } = e.target;
         if (naturalWidth && naturalHeight) {
             const ratio = naturalWidth / naturalHeight;
-            if (!isNaN(ratio)) {
-                setAspectRatio(`${Math.max(0.8, Math.min(ratio, 2.2))}`);
+            if (!isNaN(ratio) && ratio > 0) {
+                setAspectRatio(`${Math.max(0.5, Math.min(ratio, 3.0))}`);
             }
         }
     };
