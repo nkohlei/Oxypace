@@ -1,0 +1,1026 @@
+/* ==========================================================================
+   MOBİL TASARIM BARINDIRMA (MOBILE DESIGN SHOWCASE & PROTOTYPE LAB)
+   Theme: Aggressive Monochromatic Black & White (Zero Blue/Cyan)
+   ========================================================================== */
+
+.mobile-showcase-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Outfit', sans-serif;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+   HEADER & TOP ACTION BAR
+   -------------------------------------------------------------------------- */
+.mobile-showcase-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 24px;
+    background: #090a0f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-showcase-title-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.mobile-showcase-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.08);
+}
+
+.mobile-showcase-title-area h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.mobile-showcase-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #8e8e93;
+}
+
+.mobile-showcase-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.mode-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #a1a1aa;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mode-tab-btn:hover {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.35);
+    background: #111218;
+}
+
+.mode-tab-btn.active {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.25);
+}
+
+/* --------------------------------------------------------------------------
+   TELEMETRY STRIP & QUICK ACTIONS
+   -------------------------------------------------------------------------- */
+.mobile-showcase-telemetry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 20px;
+    background: #040508;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.telemetry-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    color: #888888;
+}
+
+.telemetry-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: #0d0e14;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #e4e4e7;
+}
+
+.telemetry-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 6px #ffffff;
+    animation: blink 2s infinite ease-in-out;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.telemetry-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.telemetry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #d4d4d8;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.telemetry-btn:hover {
+    background: #181920;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.telemetry-btn.active {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   SIMULATOR WORKSPACE
+   -------------------------------------------------------------------------- */
+.simulator-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px 1fr;
+    gap: 24px;
+    align-items: start;
+    min-height: 860px;
+    padding: 24px 0;
+}
+
+@media (max-width: 1280px) {
+    .simulator-layout {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+}
+
+.simulator-sidebar-left,
+.simulator-sidebar-right {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+}
+
+@media (max-width: 1280px) {
+    .simulator-sidebar-left,
+    .simulator-sidebar-right {
+        max-width: 600px;
+    }
+}
+
+/* Cards inside inspector sidebars */
+.inspector-card {
+    background: #090a0f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.inspector-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 12px;
+}
+
+.inspector-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #ffffff;
+}
+
+.inspector-card-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #a1a1aa;
+    font-family: monospace;
+}
+
+/* Slide selector list */
+.slide-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.slide-picker-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #a1a1aa;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.slide-picker-item:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    background: #0c0d13;
+}
+
+.slide-picker-item.active {
+    background: #12131a;
+    border-color: #ffffff;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.06);
+}
+
+.slide-picker-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.slide-picker-num {
+    font-size: 11px;
+    font-family: monospace;
+    color: #71717a;
+}
+
+.slide-picker-item.active .slide-picker-num {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.slide-picker-name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   THE SMARTPHONE DEVICE MOCKUP
+   -------------------------------------------------------------------------- */
+.phone-viewport-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.smartphone-chassis {
+    position: relative;
+    width: 380px;
+    height: 780px;
+    background: #000000;
+    border-radius: 48px;
+    padding: 12px;
+    box-shadow: 
+        0 0 0 2px #26272b,
+        0 0 0 4px #121316,
+        0 25px 70px rgba(0, 0, 0, 0.9),
+        0 0 35px rgba(255, 255, 255, 0.04);
+    box-sizing: border-box;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+/* Side buttons */
+.smartphone-chassis::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 130px;
+    width: 3px;
+    height: 50px;
+    background: #2a2b30;
+    border-radius: 2px 0 0 2px;
+}
+
+.smartphone-chassis::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 170px;
+    width: 3px;
+    height: 65px;
+    background: #2a2b30;
+    border-radius: 0 2px 2px 0;
+}
+
+.phone-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    border-radius: 38px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Status Bar */
+.phone-status-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    padding: 0 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 50;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    pointer-events: none;
+}
+
+.phone-dynamic-island {
+    position: absolute;
+    top: 9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 95px;
+    height: 24px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+}
+
+.island-camera {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #0d0f14;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.island-sensor {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #090a0f;
+}
+
+.phone-status-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Home Indicator Bar */
+.phone-home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Screen Inner Content Wrapper */
+.phone-inner-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding-top: 48px;
+    padding-bottom: 24px;
+    height: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+}
+
+/* --------------------------------------------------------------------------
+   ONBOARDING SLIDES INTERIOR (MOBILE CONTENT)
+   -------------------------------------------------------------------------- */
+.onboarding-screen-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px 20px 20px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.onboarding-top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.onboarding-brand {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.onboarding-skip-btn {
+    background: none;
+    border: none;
+    color: #888888;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.onboarding-skip-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Visual Illustration Showcase Box */
+.onboarding-visual-stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 12px 0 16px;
+}
+
+.visual-orbit-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.orbit-lg {
+    width: 210px;
+    height: 210px;
+    animation: rotateSlow 24s linear infinite;
+}
+
+.orbit-md {
+    width: 150px;
+    height: 150px;
+    animation: rotateSlowReverse 18s linear infinite;
+}
+
+@keyframes rotateSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes rotateSlowReverse {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+
+.visual-core-center {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #1a1a24 0%, #000000 80%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.12);
+    z-index: 5;
+    position: relative;
+}
+
+.core-pulse {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    animation: corePulseAnim 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+@keyframes corePulseAnim {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.18); opacity: 0.1; }
+    100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* Feature Badge Tags on visual */
+.visual-floating-tag {
+    position: absolute;
+    padding: 4px 10px;
+    background: rgba(12, 13, 18, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #e4e4e7;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.tag-top-right {
+    top: 15px;
+    right: 15px;
+}
+
+.tag-bottom-left {
+    bottom: 20px;
+    left: 15px;
+}
+
+/* Text Content Area */
+.onboarding-text-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.onboarding-meta-label {
+    font-size: 11px;
+    font-family: monospace;
+    font-weight: 700;
+    color: #888888;
+    letter-spacing: 1px;
+}
+
+.onboarding-headline {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    text-transform: uppercase;
+}
+
+.onboarding-subtitle {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e4e4e7;
+}
+
+.onboarding-desc {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #8e8e93;
+}
+
+/* Feature Pills */
+.onboarding-pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.onboarding-pill {
+    padding: 3px 8px;
+    background: #0d0e14;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 10px;
+    color: #a1a1aa;
+}
+
+/* Bottom Controls */
+.onboarding-bottom-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.onboarding-indicators-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.indicator-dot.active {
+    width: 24px;
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.onboarding-nav-btns {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.onboarding-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.onboarding-back-btn:hover {
+    background: #181920;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.onboarding-primary-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.onboarding-primary-btn:hover {
+    background: #e4e4e7;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   UYGULAMA BEKLEME EKRANI (APP WAITING / SPLASH SCREEN PROTOTYPE)
+   -------------------------------------------------------------------------- */
+.waiting-screen-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30px 24px 20px;
+    height: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    background: radial-gradient(circle at 50% 40%, #0a0b12 0%, #000000 80%);
+}
+
+.waiting-top-telemetry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-family: monospace;
+    font-size: 10px;
+    color: #71717a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 8px;
+}
+
+.waiting-core-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin: auto 0;
+}
+
+.waiting-emblem-orbital {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emblem-ring-outer {
+    position: absolute;
+    inset: 0;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    animation: rotateSlow 15s linear infinite;
+}
+
+.emblem-ring-inner {
+    position: absolute;
+    inset: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+}
+
+.emblem-radar-sweep {
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 255, 255, 0.2) 60deg, transparent 90deg);
+    animation: rotateSlow 3s linear infinite;
+}
+
+.emblem-center-core {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #000000;
+    border: 1px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+}
+
+.waiting-title-block h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 5px;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.waiting-version-tag {
+    display: inline-block;
+    margin-top: 6px;
+    font-family: monospace;
+    font-size: 10px;
+    color: #888888;
+    letter-spacing: 1px;
+}
+
+/* Waiting Progress Console */
+.waiting-console-box {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.waiting-progress-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.waiting-progress-bar {
+    height: 100%;
+    background: #ffffff;
+    border-radius: 2px;
+    box-shadow: 0 0 10px #ffffff;
+    transition: width 0.3s ease-out;
+}
+
+.waiting-status-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-family: monospace;
+    color: #e4e4e7;
+}
+
+.waiting-terminal-lines {
+    padding: 8px 10px;
+    background: #050608;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 10px;
+    color: #888888;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 42px;
+}
+
+.waiting-terminal-line.active {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.waiting-bottom-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.waiting-restart-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    background: #0d0e14;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #e4e4e7;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.waiting-restart-btn:hover {
+    background: #181922;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   GRID / GALERİ GÖRÜNÜMÜ (MULTI-DEVICE MATRIX)
+   -------------------------------------------------------------------------- */
+.matrix-view-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.matrix-header-note {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: #090a0f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #a1a1aa;
+}
+
+.matrix-devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    justify-items: center;
+}
+
+.matrix-device-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 350px;
+}
+
+.matrix-card-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 12px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.matrix-phone-frame {
+    position: relative;
+    width: 100%;
+    height: 640px;
+    background: #000000;
+    border-radius: 36px;
+    padding: 10px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 0 2px #1c1d22;
+    box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   SPECIFICATIONS / DESIGN BLUEPRINT DRAWER
+   -------------------------------------------------------------------------- */
+.specs-view-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+.spec-token-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.spec-color-preview {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.spec-code-block {
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: #a1a1aa;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
