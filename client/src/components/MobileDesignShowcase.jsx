@@ -316,12 +316,12 @@ const MobileDesignShowcase = () => {
             const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
             globeGroup.add(atmosMesh);
 
-            // 3D Portal Pin Markers on surface
+            // 3D Portal Pin Markers on surface — nötr renkler, neon yok
             const portalsData = [
-                { name: 'İstanbul', lat: 41.0, lng: 28.9, color: 0x38bdf8 },
-                { name: 'Geneva CERN', lat: 46.2, lng: 6.1, color: 0xf59e0b },
-                { name: 'Tokyo', lat: 35.6, lng: 139.6, color: 0xa855f7 },
-                { name: 'San Francisco', lat: 37.7, lng: -122.4, color: 0x10b981 }
+                { lat: 41.0, lng: 28.9, color: 0xffffff },
+                { lat: 46.2, lng: 6.1,  color: 0xd4d4d4 },
+                { lat: 35.6, lng: 139.6, color: 0xffffff },
+                { lat: 37.7, lng: -122.4, color: 0xd4d4d4 }
             ];
 
             const markersGroup = new THREE.Group();
@@ -350,7 +350,7 @@ const MobileDesignShowcase = () => {
                     color: p.color,
                     side: THREE.DoubleSide,
                     transparent: true,
-                    opacity: 0.8
+                    opacity: 0.55
                 });
                 const ringMesh = new THREE.Mesh(ringGeo, ringMat);
                 ringMesh.position.copy(latLngToVector3(p.lat, p.lng, radius * 1.015));
@@ -407,49 +407,53 @@ const MobileDesignShowcase = () => {
         if (slideIndex === 0) {
             return (
                 <div className="orig-portal-card-mockup modern-portal-card">
-                    {/* Real SpaceX Banner directly from platform */}
+                    {/* Banner — birebir Search.jsx card-banner yapısı */}
                     <div
                         className="card-banner"
                         style={{
-                            backgroundImage: 'url(/oxypace-real-banner.png)',
-                            backgroundColor: '#000000',
-                            backgroundSize: 'contain',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat'
+                            background: 'url(/oxypace-real-banner.png) center/cover',
+                            backgroundColor: '#000000'
                         }}
                     />
 
-                    {/* Real Avatar: Overlapping squircle with Moon and Cowboy hat */}
+                    {/* Avatar — birebir Search.jsx card-icon-wrapper */}
                     <div className="card-icon-wrapper">
                         <img
                             src="/oxypace-real-avatar.png"
                             alt="Oxypace Global"
                             className="card-icon-img"
+                            width="72"
+                            height="72"
                         />
                     </div>
 
-                    {/* Content Body */}
+                    {/* card-body — birebir Search.jsx */}
                     <div className="card-body">
                         <h3 className="card-title">
-                            <span className="card-title-text">Oxypace Global</span>
-                            <CheckCircle2 size={16} strokeWidth={2.2} fill="#38bdf8" stroke="#ffffff" />
+                            Oxypace Global
+                            <CheckCircle2 size={18} strokeWidth={2.2} fill="#38bdf8" stroke="#ffffff" />
                             <span className="oxypace-privacy-pill private" title="Gizli Portal">
-                                <Lock size={10} />
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
                                 <span className="privacy-pill-text">Gizli</span>
                             </span>
                         </h3>
 
-                        <p className="card-desc">
-                            Bi portalcık
-                        </p>
+                        <p className="card-desc">Bi portalcık</p>
 
                         <div className="card-footer">
                             <div className="member-count">
-                                <Users size={12} style={{ opacity: 0.75 }} />
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
                                 <span>11 <span className="member-count-text">Üye</span></span>
                             </div>
-
-                            <button className="join-status-btn joined">
+                            <button className="join-status-btn joined" onClick={(e) => e.stopPropagation()}>
                                 Üyesiniz
                             </button>
                         </div>
@@ -640,19 +644,6 @@ const MobileDesignShowcase = () => {
             return (
                 <div className="orig-globe-mockup">
                     <MiniEarthCanvas themeMode={themeMode} />
-
-                    {/* Sadece dünyanın üzerine parlayan konum sembolleri */}
-                    <div className="globe-surface-pins-layer">
-                        <div className="globe-geo-pin pin-1" title="Konum İşaretçisi">
-                            <MapPin size={16} className="geo-pin-icon pulse-cyan" />
-                        </div>
-                        <div className="globe-geo-pin pin-2" title="Konum İşaretçisi">
-                            <MapPin size={14} className="geo-pin-icon pulse-amber" />
-                        </div>
-                        <div className="globe-geo-pin pin-3" title="Konum İşaretçisi">
-                            <MapPin size={15} className="geo-pin-icon pulse-emerald" />
-                        </div>
-                    </div>
                 </div>
             );
         }
