@@ -726,6 +726,7 @@
 .orig-portal-card-mockup.modern-portal-card {
     width: 100%;
     max-width: 295px;
+    height: auto !important;
     border-radius: 16px;
     overflow: hidden;
     display: flex;
@@ -1105,14 +1106,38 @@
     transform: scale(1.08);
 }
 
-.orig-post-card-mockup .post-video-mini-controls {
+.orig-post-card-mockup .post-video-bottom-bar {
     position: absolute;
-    bottom: 5px;
-    left: 6px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 100%);
+    padding: 6px 8px 5px;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 4px;
     z-index: 5;
+}
+
+.orig-post-card-mockup .post-video-scrub-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.orig-post-card-mockup .post-video-scrub-filled {
+    height: 100%;
+    background: #38bdf8;
+    box-shadow: 0 0 6px #38bdf8;
+    transition: width 0.2s linear;
+}
+
+.orig-post-card-mockup .post-video-ctrl-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .orig-post-card-mockup .mini-ctrl-btn {
@@ -1134,6 +1159,14 @@
     background: rgba(0, 0, 0, 0.95);
     border-color: #38bdf8;
     color: #38bdf8;
+}
+
+.orig-post-card-mockup .post-video-live-timer {
+    font-size: 8.5px !important;
+    font-family: monospace;
+    font-weight: 700;
+    color: #cbd5e1 !important;
+    margin-left: auto;
 }
 
 .orig-post-card-mockup .video-top-badges {
@@ -1363,102 +1396,79 @@
     box-shadow: 0 0 6px #ffffff;
 }
 
-.orig-watch-voice-strip {
+/* Watch Party voice member pill matching VoiceChannel.jsx */
+.orig-watch-party-mockup .watch-party-voice-members {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 6px 8px;
+    gap: 6px;
+    padding: 4px 6px;
     border-radius: 6px;
 }
 
-.theme-dark .orig-watch-voice-strip {
-    background: #11141e;
+.theme-dark .orig-watch-party-mockup .watch-party-voice-members {
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.theme-light .orig-watch-voice-strip {
+.theme-light .orig-watch-party-mockup .watch-party-voice-members {
     background: #f1f5f9;
     border: 1px solid #e2e8f0;
 }
 
-.orig-voice-avatars-row {
-    display: flex;
+.orig-watch-party-mockup .voice-member-chip {
+    display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
 }
 
-.orig-voice-avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: #1e293b;
-    border: 1.5px solid #38bdf8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+.orig-watch-party-mockup .voice-member-chip.speaking {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #22c55e;
 }
 
-.orig-voice-avatar img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
+.orig-watch-party-mockup .voice-member-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
     object-fit: cover;
 }
 
-.orig-voice-avatar.active-speaker {
-    border-color: #22c55e;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+.orig-watch-party-mockup .voice-speaking-wave {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    animation: pulseWave 1.4s infinite ease-in-out;
 }
 
-.orig-avatar-init {
-    font-size: 9.5px;
-    font-weight: 800;
-    color: #ffffff;
+@keyframes pulseWave {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.5; }
 }
 
-.orig-voice-count {
-    font-size: 9px !important;
-    font-family: monospace;
-    font-weight: 600;
-}
-
-.theme-dark .orig-voice-count {
-    color: #94a3b8 !important;
-}
-
-.theme-light .orig-voice-count {
-    color: #475569 !important;
-}
-
-.orig-voice-codec {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 9px !important;
-    font-family: monospace;
-    font-weight: 700;
-    color: #38bdf8 !important;
-}
-
-/* 4. ORIGINAL 3D GLOBE RADAR MAP (Matches EarthSimulation.jsx & EarthCanvas.jsx) */
+/* 4. ORIGINAL 3D GLOBE RADAR MAP (Matches EarthSimulation.jsx) */
 .orig-globe-mockup {
     width: 100%;
     max-width: 295px;
     height: 165px;
-    border-radius: 12px;
+    border-radius: 14px;
     position: relative;
     overflow: hidden;
     box-sizing: border-box;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 8px;
+    align-items: center;
+    justify-content: center;
     transition: all 0.25s ease;
 }
 
 .theme-dark .orig-globe-mockup {
-    background: #05070d;
+    background: #03050a;
     border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.65);
 }
@@ -1477,90 +1487,49 @@
     z-index: 1;
 }
 
-.orig-globe-marker-tag {
-    position: relative;
+.globe-surface-pins-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     z-index: 5;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 7px;
-    border-radius: 4px;
-    font-size: 9px !important;
-    font-family: monospace;
-    font-weight: 700;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 
-.theme-dark .orig-globe-marker-tag {
-    background: rgba(11, 15, 26, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ffffff !important;
-    backdrop-filter: blur(4px);
-}
-
-.theme-light .orig-globe-marker-tag {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #cbd5e1;
-    color: #0f172a !important;
-    backdrop-filter: blur(4px);
-}
-
-.marker-istanbul {
-    align-self: flex-start;
-    margin-top: 4px;
-    margin-left: 8px;
-    animation: pinBounce 3s infinite ease-in-out;
-}
-
-.marker-cern {
-    align-self: flex-end;
-    margin-right: 12px;
-    animation: pinBounce 3.2s infinite ease-in-out 0.5s;
-}
-
-.orig-marker-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-}
-
-.orig-marker-dot.pulse-cyan {
-    background: #38bdf8;
-    box-shadow: 0 0 8px #38bdf8;
-}
-
-.orig-marker-dot.pulse-amber {
-    background: #f59e0b;
-    box-shadow: 0 0 8px #f59e0b;
-}
-
-.orig-globe-telemetry-strip {
-    position: relative;
-    z-index: 5;
+.globe-geo-pin {
+    position: absolute;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 8.5px !important;
-    font-family: monospace;
-    font-weight: 700;
+    justify-content: center;
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7));
 }
 
-.theme-dark .orig-globe-telemetry-strip {
-    background: rgba(0, 0, 0, 0.7);
-    color: #94a3b8 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+.globe-geo-pin.pin-1 {
+    top: 28%;
+    left: 48%;
 }
 
-.theme-light .orig-globe-telemetry-strip {
-    background: rgba(255, 255, 255, 0.85);
-    color: #475569 !important;
-    border: 1px solid #cbd5e1;
+.globe-geo-pin.pin-2 {
+    top: 52%;
+    left: 36%;
 }
 
-.orig-globe-status {
-    color: #38bdf8 !important;
+.globe-geo-pin.pin-3 {
+    top: 42%;
+    left: 64%;
+}
+
+.geo-pin-icon.pulse-cyan {
+    color: #38bdf8;
+    animation: pinBounce 2.5s infinite ease-in-out;
+}
+
+.geo-pin-icon.pulse-amber {
+    color: #f59e0b;
+    animation: pinBounce 2.8s infinite ease-in-out 0.4s;
+}
+
+.geo-pin-icon.pulse-emerald {
+    color: #10b981;
+    animation: pinBounce 2.4s infinite ease-in-out 0.8s;
 }
 
 /* 5. ORIGINAL EVENT HORIZON CALCULATOR CARD (Matches blog/src/app/calculations/wormhole) */

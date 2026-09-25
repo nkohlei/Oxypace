@@ -121,15 +121,49 @@ const MobileDesignShowcase = () => {
     const [isPostMuted, setIsPostMuted] = useState(true);
     const postVideoRef = useRef(null);
 
+    const handleTogglePostPlay = (e) => {
+        if (e) e.stopPropagation();
+        setIsPostPlaying(prev => {
+            const nextState = !prev;
+            if (postVideoRef.current) {
+                if (nextState) {
+                    postVideoRef.current.play().catch(() => {
+                        if (postVideoRef.current) {
+                            postVideoRef.current.muted = true;
+                            setIsPostMuted(true);
+                            postVideoRef.current.play().catch(() => {});
+                        }
+                    });
+                } else {
+                    postVideoRef.current.pause();
+                }
+            }
+            return nextState;
+        });
+    };
+
+    // Reliable playback time progression
     useEffect(() => {
-        if (postVideoRef.current) {
-            if (isPostPlaying) {
-                postVideoRef.current.play().catch(() => {});
-            } else {
+        let timer = null;
+        if (isPostPlaying) {
+            timer = setInterval(() => {
+                setPostPlayTime(prev => (prev >= 234 ? 0 : prev + 1));
+            }, 1000);
+        }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [isPostPlaying]);
+
+    // Pause post video when changing slide
+    useEffect(() => {
+        if (currentSlide !== 1 && isPostPlaying) {
+            setIsPostPlaying(false);
+            if (postVideoRef.current) {
                 postVideoRef.current.pause();
             }
         }
-    }, [isPostPlaying]);
+    }, [currentSlide, isPostPlaying]);
 
     // Auto Play Interval
     useEffect(() => {
@@ -445,6 +479,10 @@ const MobileDesignShowcase = () => {
                                 </span>
                                 <span className="author-username">@oxypace</span>
                                 <span className="post-time">· 18 May</span>
+                                <span className="oxypace-privacy-pill public" title="Herkese Açık Gönderi" style={{ marginLeft: '4px' }}>
+                                    <Globe size={10} />
+                                    <span className="privacy-pill-text">Herkese Açık</span>
+                                </span>
                             </div>
                             <div className="post-action-buttons">
                                 <button className="post-action-btn" title="Gönderiyi Göster" aria-label="Gönderiyi Göster">
@@ -463,23 +501,26 @@ const MobileDesignShowcase = () => {
                         <div className="post-media-box">
                             <div 
                                 className="post-video-player-frame playable"
-                                onClick={() => setIsPostPlaying(prev => !prev)}
+                                onClick={handleTogglePostPlay}
                                 title={isPostPlaying ? "Videoyu Duraklat" : "Videoyu Oynat"}
                             >
                                 <video
                                     ref={postVideoRef}
                                     src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-                                    className={`post-real-video ${isPostPlaying ? 'visible' : 'hidden'}`}
+                                    className="post-real-video"
                                     playsInline
                                     loop
+                                    preload="auto"
                                     muted={isPostMuted}
+                                    onPlay={() => setIsPostPlaying(true)}
+                                    onPause={() => setIsPostPlaying(false)}
                                     onTimeUpdate={(e) => setPostPlayTime(e.target.currentTime)}
                                 />
 
                                 {!isPostPlaying && (
                                     <div className="video-poster-art">
                                         <div className="video-play-orb">
-                                            <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                                            <Play size={18} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
                                         </div>
                                     </div>
                                 )}
@@ -487,29 +528,45 @@ const MobileDesignShowcase = () => {
                                 <div className="video-top-badges">
                                     <span className="video-quality-tag">1080p 60fps</span>
                                     <span className="video-duration-tag">
-                                        {isPostPlaying 
-                                            ? `${Math.floor(postPlayTime / 60)}:${String(Math.floor(postPlayTime % 60)).padStart(2, '0')}` 
-                                            : '03:54'
-                                        }
+                                        {`${Math.floor(postPlayTime / 60)}:${String(Math.floor(postPlayTime % 60)).padStart(2, '0')} / 03:54`}
                                     </span>
                                 </div>
 
-                                {isPostPlaying && (
-                                    <div className="post-video-mini-controls" onClick={(e) => e.stopPropagation()}>
+                                <div className="post-video-bottom-bar" onClick={(e) => e.stopPropagation()}>
+                                    <div className="post-video-scrub-track">
+                                        <div 
+                                            className="post-video-scrub-filled" 
+                                            style={{ width: `${Math.min(100, (postPlayTime / 234) * 100)}%` }} 
+                                        />
+                                    </div>
+                                    <div className="post-video-ctrl-btns">
                                         <button 
+                                            type="button"
                                             className="mini-ctrl-btn" 
-                                            onClick={() => setIsPostPlaying(p => !p)}
+                                            onClick={handleTogglePostPlay}
+                                            title={isPostPlaying ? "Duraklat" : "Oynat"}
                                         >
                                             {isPostPlaying ? <Pause size={12} fill="#ffffff" /> : <Play size={12} fill="#ffffff" />}
                                         </button>
                                         <button 
+                                            type="button"
                                             className="mini-ctrl-btn" 
-                                            onClick={() => setIsPostMuted(m => !m)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsPostMuted(m => {
+                                                    if (postVideoRef.current) postVideoRef.current.muted = !m;
+                                                    return !m;
+                                                });
+                                            }}
+                                            title={isPostMuted ? "Sesi Aç" : "Sesi Kapat"}
                                         >
                                             {isPostMuted ? <Volume2 size={12} style={{ opacity: 0.5 }} /> : <Volume2 size={12} />}
                                         </button>
+                                        <span className="post-video-live-timer">
+                                            {isPostPlaying ? 'Oynatılıyor' : 'Tıkla & Oynat'}
+                                        </span>
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             <div className="post-video-id-badge">
@@ -524,11 +581,11 @@ const MobileDesignShowcase = () => {
             );
         }
 
-        // Şablon 3: Orijinal Canlı Watch Party & Senkronize Ses Odası (WatchPartyPlayer.jsx)
+        // Şablon 3: Orijinal Canlı Watch Party (WatchPartyPlayer.jsx)
         if (slideIndex === 2) {
             return (
                 <div className="orig-watch-party-mockup watch-party-player-wrapper">
-                    {/* Header Bar */}
+                    {/* Header Bar matching WatchPartyPlayer.jsx */}
                     <div className="watch-party-header">
                         <div className="watch-party-header-left">
                             <span className="watch-party-title">Birlikte Video İzle (HLS)</span>
@@ -540,48 +597,38 @@ const MobileDesignShowcase = () => {
                         </button>
                     </div>
 
-                    {/* Video Player Display */}
+                    {/* Native Video Player Container */}
                     <div className="watch-party-player-container">
-                        <div className="watch-party-scene-art">
-                            <div className="watch-party-media-title">
-                                <Play size={11} fill="#ffffff" />
-                                <span>Lord of the Rings - Senkronize Gösterim</span>
+                        <div className="watch-party-media-screen">
+                            <div className="watch-party-playing-tag">
+                                <Play size={10} fill="#ffffff" />
+                                <span>Lord of the Rings - Senkronize Yayın</span>
                             </div>
                         </div>
 
-                        {/* Native VOD Controls Bar */}
+                        {/* Native VOD Controls Bar matching WatchPartyPlayer.jsx */}
                         <div className="watch-party-vod-controls">
-                            <button className="watch-party-vod-btn">
-                                <Play size={11} fill="currentColor" />
+                            <button className="watch-party-vod-btn" title="Duraklat">
+                                <Pause size={12} fill="currentColor" />
                             </button>
                             <span className="watch-party-vod-time">
                                 01:24:18 / 03:54:00
                             </span>
                             <div className="watch-party-vod-progress-wrapper">
                                 <div className="watch-party-vod-track">
-                                    <div className="watch-party-vod-filled" />
+                                    <div className="watch-party-vod-filled" style={{ width: '36%' }} />
                                 </div>
                             </div>
+                            <Volume2 size={12} style={{ opacity: 0.8 }} />
                         </div>
                     </div>
 
-                    {/* Integrated Voice Strip */}
-                    <div className="orig-watch-voice-strip">
-                        <div className="orig-voice-avatars-row">
-                            <div className="orig-voice-avatar active-speaker" title="@oxypace (Konuşuyor)">
-                                <img src="/logo.png" alt="Oxypace" />
-                            </div>
-                            <div className="orig-voice-avatar" title="@alperen">
-                                <span className="orig-avatar-init">A</span>
-                            </div>
-                            <div className="orig-voice-avatar" title="@deniz">
-                                <span className="orig-avatar-init">D</span>
-                            </div>
-                            <span className="orig-voice-count">+12 dinleyici</span>
-                        </div>
-                        <div className="orig-voice-codec">
-                            <Volume2 size={11} />
-                            <span>128k Opus Kristal Ses</span>
+                    {/* Connected Voice Channel Strip matching VoiceChannel.jsx */}
+                    <div className="watch-party-voice-members">
+                        <div className="voice-member-chip speaking" title="@oxypace (Konuşuyor)">
+                            <img src="/oxypace-real-avatar.png" alt="Oxypace" className="voice-member-avatar" />
+                            <span className="voice-member-name">Oxypace</span>
+                            <span className="voice-speaking-wave" />
                         </div>
                     </div>
                 </div>
@@ -594,18 +641,17 @@ const MobileDesignShowcase = () => {
                 <div className="orig-globe-mockup">
                     <MiniEarthCanvas themeMode={themeMode} />
 
-                    <div className="orig-globe-marker-tag marker-istanbul">
-                        <span className="orig-marker-dot pulse-cyan" />
-                        <span className="orig-marker-label">#İSTANBUL (Oxypace HQ)</span>
-                    </div>
-                    <div className="orig-globe-marker-tag marker-cern">
-                        <span className="orig-marker-dot pulse-amber" />
-                        <span className="orig-marker-label">#CERN (Kuantum Lab)</span>
-                    </div>
-
-                    <div className="orig-globe-telemetry-strip">
-                        <span>LAT: 41.0082° N · LNG: 28.9784° E</span>
-                        <span className="orig-globe-status">3D KÜRESEL AĞ</span>
+                    {/* Sadece dünyanın üzerine parlayan konum sembolleri */}
+                    <div className="globe-surface-pins-layer">
+                        <div className="globe-geo-pin pin-1" title="Konum İşaretçisi">
+                            <MapPin size={16} className="geo-pin-icon pulse-cyan" />
+                        </div>
+                        <div className="globe-geo-pin pin-2" title="Konum İşaretçisi">
+                            <MapPin size={14} className="geo-pin-icon pulse-amber" />
+                        </div>
+                        <div className="globe-geo-pin pin-3" title="Konum İşaretçisi">
+                            <MapPin size={15} className="geo-pin-icon pulse-emerald" />
+                        </div>
                     </div>
                 </div>
             );
