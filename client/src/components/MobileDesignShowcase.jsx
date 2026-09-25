@@ -49,7 +49,9 @@ import {
     Send,
     Quote,
     MessageCircle,
-    Copy
+    Copy,
+    Maximize2,
+    X
 } from 'lucide-react';
 import './MobileDesignShowcase.css';
 
@@ -350,57 +352,54 @@ const MobileDesignShowcase = () => {
     // RENDER: 5 ADET ORİJİNAL PLATFORM GÖRÜNÜMÜ MOCKUP'I
     // --------------------------------------------------------------------------
     const renderOnboardingVisual = (slideIndex) => {
-        // Şablon 1: Orijinal Portal Kart Görünümü (PromotedPortalCard.jsx)
+        // Şablon 1: Orijinal Portal Kart Görünümü (modern-portal-card: Oxypace Global)
         if (slideIndex === 0) {
             return (
-                <div className="orig-portal-card-mockup">
-                    <div className="orig-portal-badge-bar">
-                        <span className="orig-portal-badge-tag">
-                            <Compass size={11} className="orig-badge-icon" />
-                            Öne Çıkan Portal
-                        </span>
-                        <span className="orig-portal-privacy-pill">
-                            <Globe size={10} /> Herkese Açık
+                <div className="orig-portal-card-mockup modern-portal-card">
+                    {/* Card Banner */}
+                    <div className="card-banner">
+                        <span className="card-banner-status">
+                            <span className="portal-banner-live-dot" />
+                            RESMİ TOPLULUK
                         </span>
                     </div>
 
-                    <div className="orig-portal-banner">
-                        <div className="orig-portal-banner-overlay" />
-                        <span className="orig-portal-members-float">
-                            <Users size={11} />
-                            <span>14.8k Üye · 412 Çevrimiçi</span>
-                        </span>
+                    {/* Overlapping Avatar */}
+                    <div className="card-icon-wrapper">
+                        <img
+                            src="/logo.png"
+                            alt="Oxypace Global"
+                            className="card-icon-img"
+                        />
                     </div>
 
-                    <div className="orig-portal-body">
-                        <div className="orig-portal-header">
-                            <div className="orig-portal-avatar-wrapper">
-                                <img
-                                    src="/logo.png"
-                                    alt="Kozmik Araştırmalar"
-                                    className="orig-portal-avatar-img"
-                                />
-                                <div className="orig-portal-verified-badge" title="Doğrulanmış Portal">
-                                    <ShieldCheck size={11} />
-                                </div>
-                            </div>
+                    {/* Card Body */}
+                    <div className="card-body">
+                        <h3 className="card-title">
+                            <span className="card-title-text">Oxypace Global</span>
+                            <span className="portal-verified-shield" title="Doğrulanmış Portal">
+                                <ShieldCheck size={14} fill="#38bdf8" color="#ffffff" />
+                            </span>
+                            <span className="oxypace-privacy-pill public" title="Herkese Açık Topluluk">
+                                <Globe size={10} />
+                                <span>Herkese Açık</span>
+                            </span>
+                        </h3>
 
-                            <div className="orig-portal-title-col">
-                                <div className="orig-portal-title-row">
-                                    <h4 className="orig-portal-name">Kozmik Araştırmalar</h4>
-                                </div>
-                                <span className="orig-portal-tag-pill">#BİLİM & UZAY</span>
-                            </div>
-                        </div>
-
-                        <p className="orig-portal-desc">
-                            Kozmoloji, görelilik ve kuantum mekaniği üzerine derin uzay araştırma topluluğu.
+                        <p className="card-desc">
+                            Platformun resmi ana topluluğu. Yeni güncellemeler, canlı odalar ve küresel iletişim ağı.
                         </p>
 
-                        <button className="orig-portal-join-btn">
-                            <Compass size={12} />
-                            <span>Portala Katıl</span>
-                        </button>
+                        <div className="card-footer">
+                            <div className="member-count">
+                                <span className="member-status-dot" />
+                                <span>14.820 <span className="member-count-text">Üye</span></span>
+                            </div>
+
+                            <button className="join-status-btn">
+                                Katıl
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -409,75 +408,59 @@ const MobileDesignShowcase = () => {
         // Şablon 2: Orijinal Post Görünümü (@oxypace kullanıcısının 6a722f8f987a926f80bc4497 ID'li gerçek postu)
         if (slideIndex === 1) {
             return (
-                <div className="orig-post-card-mockup">
-                    <div className="orig-post-left">
+                <div className="orig-post-card-mockup post-card">
+                    <div className="post-avatar-wrapper">
                         <img
                             src="/logo.png"
                             alt="Oxypace"
-                            className="orig-post-avatar-img"
+                            className="post-avatar-img"
                         />
                     </div>
 
-                    <div className="orig-post-right">
-                        <div className="orig-post-header-row">
-                            <div className="orig-post-header-left">
-                                <span className="orig-post-author-name">Oxypace</span>
-                                <span className="orig-post-verified-badge" title="Doğrulanmış Hesap">
+                    <div className="post-main-content">
+                        <div className="post-header-row">
+                            <div className="header-left">
+                                <span className="author-name">Oxypace</span>
+                                <span className="post-verified-badge" title="Doğrulanmış Hesap">
                                     <ShieldCheck size={13} fill="#38bdf8" color="#ffffff" />
                                 </span>
-                                <span className="orig-post-author-handle">@oxypace</span>
-                                <span className="orig-post-time">· 18 May</span>
+                                <span className="author-username">@oxypace</span>
+                                <span className="post-time">· 18 May</span>
                             </div>
-                            <button className="orig-post-more-btn" aria-label="Daha fazla">
-                                <MoreHorizontal size={14} />
-                            </button>
+                            <div className="post-action-buttons">
+                                <button className="post-action-btn" title="Gönderiyi Göster" aria-label="Gönderiyi Göster">
+                                    <Maximize2 size={13} />
+                                </button>
+                                <button className="post-action-btn" title="Daha Fazla" aria-label="Daha Fazla">
+                                    <MoreHorizontal size={14} />
+                                </button>
+                            </div>
                         </div>
 
-                        <p className="orig-post-text">
-                            Concerning Hobbits (Howard Shore) - Music Video - Lord of the Rings
-                        </p>
+                        <div className="post-content-text">
+                            <p>Concerning Hobbits (Howard Shore) - Music Video - Lord of the Rings</p>
+                        </div>
 
-                        <div className="orig-post-media-container">
-                            <div className="orig-post-video-player-mock">
-                                <div className="orig-video-poster-art">
-                                    <div className="orig-video-play-orb">
-                                        <Play size={15} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                        <div className="post-media-box">
+                            <div className="post-video-player-frame">
+                                <div className="video-poster-art">
+                                    <div className="video-play-orb">
+                                        <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
                                     </div>
                                 </div>
 
-                                <div className="orig-video-top-badges">
-                                    <span className="orig-video-quality-tag">1080p 60fps</span>
-                                    <span className="orig-video-duration-tag">03:54</span>
+                                <div className="video-top-badges">
+                                    <span className="video-quality-tag">1080p 60fps</span>
+                                    <span className="video-duration-tag">03:54</span>
                                 </div>
                             </div>
 
-                            <div className="orig-post-video-id-badge">
-                                <Film size={10} className="orig-video-id-icon" />
-                                <span className="orig-video-id-label">Video ID:</span>
-                                <code className="orig-video-id-val">6a722f8f987a926f80bc4497</code>
-                                <Copy size={10} className="orig-video-id-copy" />
+                            <div className="post-video-id-badge">
+                                <Film size={11} className="video-id-icon" />
+                                <span className="video-id-label">Video ID:</span>
+                                <code className="video-id-val">6a722f8f987a926f80bc4497</code>
+                                <Copy size={11} className="copy-icon" />
                             </div>
-                        </div>
-
-                        <div className="orig-post-actions-row">
-                            <button className="orig-action-btn">
-                                <MessageCircle size={13} />
-                                <span className="orig-action-count">48</span>
-                            </button>
-                            <button className="orig-action-btn">
-                                <Quote size={13} />
-                                <span className="orig-action-count">19</span>
-                            </button>
-                            <button className="orig-action-btn liked">
-                                <Heart size={13} fill="#f91880" color="#f91880" />
-                                <span className="orig-action-count" style={{ color: '#f91880' }}>342</span>
-                            </button>
-                            <button className="orig-action-btn">
-                                <Bookmark size={13} />
-                            </button>
-                            <button className="orig-action-btn">
-                                <Send size={13} />
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -487,35 +470,45 @@ const MobileDesignShowcase = () => {
         // Şablon 3: Orijinal Canlı Watch Party & Senkronize Ses Odası (WatchPartyPlayer.jsx)
         if (slideIndex === 2) {
             return (
-                <div className="orig-watch-party-mockup">
-                    <div className="orig-watch-screen">
-                        <div className="orig-watch-header-bar">
-                            <span className="orig-watch-live-pill">
-                                <span className="orig-live-dot" />
-                                CANLI WATCH PARTY
-                            </span>
-                            <span className="orig-watch-sync-pill">
-                                <Zap size={9} />
-                                TAM EŞ ZAMANLI (4ms)
-                            </span>
+                <div className="orig-watch-party-mockup watch-party-player-wrapper">
+                    {/* Header Bar */}
+                    <div className="watch-party-header">
+                        <div className="watch-party-header-left">
+                            <span className="watch-party-title">Birlikte Video İzle (HLS)</span>
+                            <span className="watch-party-live-badge-inline">Canlı</span>
                         </div>
+                        <button className="watch-party-stop-btn danger" title="Birlikte İzle Modunu Kapat">
+                            <X size={12} />
+                            <span>Bitir</span>
+                        </button>
+                    </div>
 
-                        <div className="orig-watch-scene-art">
-                            <div className="orig-watch-play-state">
-                                <Play size={12} fill="#ffffff" />
+                    {/* Video Player Display */}
+                    <div className="watch-party-player-container">
+                        <div className="watch-party-scene-art">
+                            <div className="watch-party-media-title">
+                                <Play size={11} fill="#ffffff" />
                                 <span>Lord of the Rings - Senkronize Gösterim</span>
                             </div>
                         </div>
 
-                        <div className="orig-watch-timeline">
-                            <span className="orig-time-text">01:24:18</span>
-                            <div className="orig-progress-track">
-                                <div className="orig-progress-fill" />
+                        {/* Native VOD Controls Bar */}
+                        <div className="watch-party-vod-controls">
+                            <button className="watch-party-vod-btn">
+                                <Play size={11} fill="currentColor" />
+                            </button>
+                            <span className="watch-party-vod-time">
+                                01:24:18 / 03:54:00
+                            </span>
+                            <div className="watch-party-vod-progress-wrapper">
+                                <div className="watch-party-vod-track">
+                                    <div className="watch-party-vod-filled" />
+                                </div>
                             </div>
-                            <span className="orig-time-text">03:54:00</span>
                         </div>
                     </div>
 
+                    {/* Integrated Voice Strip */}
                     <div className="orig-watch-voice-strip">
                         <div className="orig-voice-avatars-row">
                             <div className="orig-voice-avatar active-speaker" title="@oxypace (Konuşuyor)">
