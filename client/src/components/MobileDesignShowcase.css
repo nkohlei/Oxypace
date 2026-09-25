@@ -722,126 +722,93 @@
    THE 5 AUTHENTIC PLATFORM UI MOCKUP COMPONENTS
    -------------------------------------------------------------------------- */
 
-/* 1. ORIGINAL PORTAL CARD (Matches modern-portal-card: Oxypace Global) */
+/* 1. ORIGINAL PORTAL CARD (Exact modern-portal-card for Oxypace Global) */
 .orig-portal-card-mockup.modern-portal-card {
     width: 100%;
     max-width: 295px;
-    border-radius: 14px;
+    border-radius: 16px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     transition: all 0.25s ease;
     text-align: left;
-}
-
-.theme-dark .orig-portal-card-mockup.modern-portal-card {
-    background: #0b0d13;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.65);
+    background-color: #0e1015 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
 .theme-light .orig-portal-card-mockup.modern-portal-card {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    background-color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
 .orig-portal-card-mockup .card-banner {
     width: 100%;
-    height: 52px;
+    height: 80px;
     position: relative;
-    background: linear-gradient(135deg, #0e1e38 0%, #060b14 100%);
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding: 6px 10px;
+    background-color: #000000 !important;
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
     box-sizing: border-box;
-}
-
-.theme-light .orig-portal-card-mockup .card-banner {
-    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
-}
-
-.orig-portal-card-mockup .card-banner-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 8.5px !important;
-    font-family: monospace;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.65);
-    color: #38bdf8 !important;
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    backdrop-filter: blur(4px);
-}
-
-.theme-light .orig-portal-card-mockup .card-banner-status {
-    background: rgba(255, 255, 255, 0.85);
-    color: #0284c7 !important;
-    border: 1px solid #cbd5e1;
-}
-
-.portal-banner-live-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 6px #10b981;
 }
 
 .orig-portal-card-mockup .card-icon-wrapper {
     position: relative;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    margin-left: 12px;
-    margin-top: -20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    padding: 3px;
+    background-color: #0e1015 !important;
+    margin-left: 14px;
+    margin-top: -26px;
     z-index: 2;
     flex-shrink: 0;
+    box-shadow: none;
+}
+
+.theme-light .orig-portal-card-mockup .card-icon-wrapper {
+    background-color: #ffffff !important;
 }
 
 .orig-portal-card-mockup .card-icon-img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
     object-fit: cover;
-    background: #000000;
-    border: 2px solid #ffffff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
-}
-
-.theme-light .orig-portal-card-mockup .card-icon-img {
-    border-color: #ffffff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: block;
+    border: none;
+    box-shadow: none;
 }
 
 .orig-portal-card-mockup .card-body {
-    padding: 6px 12px 12px;
+    padding: 8px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     box-sizing: border-box;
+    background-color: #0e1015 !important;
+}
+
+.theme-light .orig-portal-card-mockup .card-body {
+    background-color: #ffffff !important;
 }
 
 .orig-portal-card-mockup .card-title {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 0 !important;
+    margin: 4px 0 2px 0 !important;
     padding: 0 !important;
     flex-wrap: wrap;
 }
 
 .orig-portal-card-mockup .card-title-text {
-    font-size: 13.5px !important;
-    font-weight: 800 !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
     letter-spacing: -0.2px;
-}
-
-.theme-dark .orig-portal-card-mockup .card-title-text {
     color: #ffffff !important;
 }
 
@@ -849,46 +816,31 @@
     color: #0f172a !important;
 }
 
-.orig-portal-card-mockup .portal-verified-shield {
-    display: inline-flex;
-    align-items: center;
-}
-
 .orig-portal-card-mockup .oxypace-privacy-pill {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    font-size: 9px !important;
+    gap: 4px;
+    font-size: 10.5px !important;
     font-weight: 600;
-    padding: 1.5px 6px;
-    border-radius: 4px;
-    margin-left: auto;
-}
-
-.theme-dark .orig-portal-card-mockup .oxypace-privacy-pill {
-    background: rgba(255, 255, 255, 0.08);
-    color: #cbd5e1 !important;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8 !important;
+    margin-left: 2px;
 }
 
 .theme-light .orig-portal-card-mockup .oxypace-privacy-pill {
-    background: #f1f5f9;
-    color: #475569 !important;
-    border: 1px solid #cbd5e1;
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #64748b !important;
 }
 
 .orig-portal-card-mockup .card-desc {
-    font-size: 11px !important;
+    font-size: 13px !important;
     line-height: 1.4 !important;
-    margin: 0 !important;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.theme-dark .orig-portal-card-mockup .card-desc {
-    color: #cbd5e1 !important;
+    margin: 2px 0 10px 0 !important;
+    color: #94a3b8 !important;
 }
 
 .theme-light .orig-portal-card-mockup .card-desc {
@@ -900,55 +852,48 @@
     align-items: center;
     justify-content: space-between;
     margin-top: 4px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.theme-light .orig-portal-card-mockup .card-footer {
-    border-top: 1px solid #e2e8f0;
+    padding-top: 0;
+    border-top: none;
 }
 
 .orig-portal-card-mockup .member-count {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 10.5px !important;
-    font-weight: 600;
-}
-
-.theme-dark .orig-portal-card-mockup .member-count {
+    font-size: 11.5px !important;
+    font-weight: 500;
     color: #94a3b8 !important;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 5px 9px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .theme-light .orig-portal-card-mockup .member-count {
+    background-color: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
     color: #64748b !important;
 }
 
-.member-status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #10b981;
-}
-
-.orig-portal-card-mockup .join-status-btn {
+.orig-portal-card-mockup .join-status-btn.joined {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 4px 14px !important;
+    padding: 6px 14px !important;
     border-radius: 6px !important;
-    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%) !important;
-    color: #090b10 !important;
-    font-size: 11px !important;
+    background-color: rgba(34, 197, 94, 0.1) !important;
+    color: #22c55e !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    border: 1px solid #ffffff !important;
-    cursor: pointer !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(34, 197, 94, 0.25) !important;
+    cursor: default !important;
+    box-shadow: none !important;
 }
 
-.orig-portal-card-mockup .join-status-btn:hover {
-    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
-    color: #000000 !important;
+.theme-light .orig-portal-card-mockup .join-status-btn.joined {
+    background-color: rgba(34, 197, 94, 0.12) !important;
+    color: #16a34a !important;
+    border-color: rgba(34, 197, 94, 0.3) !important;
 }
 
 /* 2. ORIGINAL POST CARD (Matches PostCard.jsx with @oxypace: NO LIKES, NO ACTIONS ROW) */
@@ -1104,27 +1049,47 @@
 
 .orig-post-card-mockup .post-video-player-frame {
     width: 100%;
-    height: 82px;
+    height: 92px;
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #091726 0%, #030712 100%);
+    background: #000000;
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+}
+
+.orig-post-card-mockup .post-real-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    position: absolute;
+    inset: 0;
+}
+
+.orig-post-card-mockup .post-real-video.hidden {
+    display: none;
+}
+
+.orig-post-card-mockup .post-real-video.visible {
+    display: block;
+    z-index: 2;
 }
 
 .orig-post-card-mockup .video-poster-art {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at center, rgba(30, 58, 138, 0.4) 0%, transparent 80%);
+    background: radial-gradient(circle at center, rgba(30, 58, 138, 0.4) 0%, transparent 80%), #040810;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1;
 }
 
 .orig-post-card-mockup .video-play-orb {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.65);
     border: 1px solid rgba(255, 255, 255, 0.35);
@@ -1133,6 +1098,42 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    transition: transform 0.18s ease;
+}
+
+.orig-post-card-mockup .video-play-orb:hover {
+    transform: scale(1.08);
+}
+
+.orig-post-card-mockup .post-video-mini-controls {
+    position: absolute;
+    bottom: 5px;
+    left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 5;
+}
+
+.orig-post-card-mockup .mini-ctrl-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #ffffff;
+    padding: 0;
+    transition: all 0.15s ease;
+}
+
+.orig-post-card-mockup .mini-ctrl-btn:hover {
+    background: rgba(0, 0, 0, 0.95);
+    border-color: #38bdf8;
+    color: #38bdf8;
 }
 
 .orig-post-card-mockup .video-top-badges {

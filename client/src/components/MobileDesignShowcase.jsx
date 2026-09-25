@@ -51,6 +51,7 @@ import {
     MessageCircle,
     Copy,
     Maximize2,
+    CheckCircle2,
     X
 } from 'lucide-react';
 import './MobileDesignShowcase.css';
@@ -113,6 +114,22 @@ const MobileDesignShowcase = () => {
 
     // Replay key for logo animation
     const [logoAnimKey, setLogoAnimKey] = useState(0);
+
+    // Interactive playable post video state
+    const [isPostPlaying, setIsPostPlaying] = useState(false);
+    const [postPlayTime, setPostPlayTime] = useState(0);
+    const [isPostMuted, setIsPostMuted] = useState(true);
+    const postVideoRef = useRef(null);
+
+    useEffect(() => {
+        if (postVideoRef.current) {
+            if (isPostPlaying) {
+                postVideoRef.current.play().catch(() => {});
+            } else {
+                postVideoRef.current.pause();
+            }
+        }
+    }, [isPostPlaying]);
 
     // Auto Play Interval
     useEffect(() => {
@@ -352,52 +369,54 @@ const MobileDesignShowcase = () => {
     // RENDER: 5 ADET ORİJİNAL PLATFORM GÖRÜNÜMÜ MOCKUP'I
     // --------------------------------------------------------------------------
     const renderOnboardingVisual = (slideIndex) => {
-        // Şablon 1: Orijinal Portal Kart Görünümü (modern-portal-card: Oxypace Global)
+        // Şablon 1: Orijinal Portal Kart Görünümü (Birebir modern-portal-card: Oxypace Global)
         if (slideIndex === 0) {
             return (
                 <div className="orig-portal-card-mockup modern-portal-card">
-                    {/* Card Banner */}
-                    <div className="card-banner">
-                        <span className="card-banner-status">
-                            <span className="portal-banner-live-dot" />
-                            RESMİ TOPLULUK
-                        </span>
-                    </div>
+                    {/* Real SpaceX Banner directly from platform */}
+                    <div
+                        className="card-banner"
+                        style={{
+                            backgroundImage: 'url(/oxypace-real-banner.png)',
+                            backgroundColor: '#000000',
+                            backgroundSize: 'contain',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat'
+                        }}
+                    />
 
-                    {/* Overlapping Avatar */}
+                    {/* Real Avatar: Overlapping squircle with Moon and Cowboy hat */}
                     <div className="card-icon-wrapper">
                         <img
-                            src="/logo.png"
+                            src="/oxypace-real-avatar.png"
                             alt="Oxypace Global"
                             className="card-icon-img"
                         />
                     </div>
 
-                    {/* Card Body */}
+                    {/* Content Body */}
                     <div className="card-body">
                         <h3 className="card-title">
                             <span className="card-title-text">Oxypace Global</span>
-                            <span className="portal-verified-shield" title="Doğrulanmış Portal">
-                                <ShieldCheck size={14} fill="#38bdf8" color="#ffffff" />
-                            </span>
-                            <span className="oxypace-privacy-pill public" title="Herkese Açık Topluluk">
-                                <Globe size={10} />
-                                <span>Herkese Açık</span>
+                            <CheckCircle2 size={16} strokeWidth={2.2} fill="#38bdf8" stroke="#ffffff" />
+                            <span className="oxypace-privacy-pill private" title="Gizli Portal">
+                                <Lock size={10} />
+                                <span className="privacy-pill-text">Gizli</span>
                             </span>
                         </h3>
 
                         <p className="card-desc">
-                            Platformun resmi ana topluluğu. Yeni güncellemeler, canlı odalar ve küresel iletişim ağı.
+                            Bi portalcık
                         </p>
 
                         <div className="card-footer">
                             <div className="member-count">
-                                <span className="member-status-dot" />
-                                <span>14.820 <span className="member-count-text">Üye</span></span>
+                                <Users size={12} style={{ opacity: 0.75 }} />
+                                <span>11 <span className="member-count-text">Üye</span></span>
                             </div>
 
-                            <button className="join-status-btn">
-                                Katıl
+                            <button className="join-status-btn joined">
+                                Üyesiniz
                             </button>
                         </div>
                     </div>
@@ -422,7 +441,7 @@ const MobileDesignShowcase = () => {
                             <div className="header-left">
                                 <span className="author-name">Oxypace</span>
                                 <span className="post-verified-badge" title="Doğrulanmış Hesap">
-                                    <ShieldCheck size={13} fill="#38bdf8" color="#ffffff" />
+                                    <CheckCircle2 size={14} strokeWidth={2.2} fill="#38bdf8" stroke="#ffffff" />
                                 </span>
                                 <span className="author-username">@oxypace</span>
                                 <span className="post-time">· 18 May</span>
@@ -442,17 +461,55 @@ const MobileDesignShowcase = () => {
                         </div>
 
                         <div className="post-media-box">
-                            <div className="post-video-player-frame">
-                                <div className="video-poster-art">
-                                    <div className="video-play-orb">
-                                        <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                            <div 
+                                className="post-video-player-frame playable"
+                                onClick={() => setIsPostPlaying(prev => !prev)}
+                                title={isPostPlaying ? "Videoyu Duraklat" : "Videoyu Oynat"}
+                            >
+                                <video
+                                    ref={postVideoRef}
+                                    src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+                                    className={`post-real-video ${isPostPlaying ? 'visible' : 'hidden'}`}
+                                    playsInline
+                                    loop
+                                    muted={isPostMuted}
+                                    onTimeUpdate={(e) => setPostPlayTime(e.target.currentTime)}
+                                />
+
+                                {!isPostPlaying && (
+                                    <div className="video-poster-art">
+                                        <div className="video-play-orb">
+                                            <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 <div className="video-top-badges">
                                     <span className="video-quality-tag">1080p 60fps</span>
-                                    <span className="video-duration-tag">03:54</span>
+                                    <span className="video-duration-tag">
+                                        {isPostPlaying 
+                                            ? `${Math.floor(postPlayTime / 60)}:${String(Math.floor(postPlayTime % 60)).padStart(2, '0')}` 
+                                            : '03:54'
+                                        }
+                                    </span>
                                 </div>
+
+                                {isPostPlaying && (
+                                    <div className="post-video-mini-controls" onClick={(e) => e.stopPropagation()}>
+                                        <button 
+                                            className="mini-ctrl-btn" 
+                                            onClick={() => setIsPostPlaying(p => !p)}
+                                        >
+                                            {isPostPlaying ? <Pause size={12} fill="#ffffff" /> : <Play size={12} fill="#ffffff" />}
+                                        </button>
+                                        <button 
+                                            className="mini-ctrl-btn" 
+                                            onClick={() => setIsPostMuted(m => !m)}
+                                        >
+                                            {isPostMuted ? <Volume2 size={12} style={{ opacity: 0.5 }} /> : <Volume2 size={12} />}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="post-video-id-badge">
