@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import {
     Smartphone,
     Layers,
@@ -41,7 +42,14 @@ import {
     Compass as CompassIcon,
     Search,
     MapPin,
-    Flame
+    Flame,
+    ShieldCheck,
+    MoreHorizontal,
+    Bookmark,
+    Send,
+    Quote,
+    MessageCircle,
+    Copy
 } from 'lucide-react';
 import './MobileDesignShowcase.css';
 
@@ -137,143 +145,454 @@ const MobileDesignShowcase = () => {
     };
 
     // --------------------------------------------------------------------------
-    // RENDER: 5 ADET ÖRNEKLEYİCİ VE ANİMASYONLU ŞABLON
+    // MINI 3D EARTH CANVAS (Three.js Realistic Earth Globe with Atmosphere & Pins)
+    // --------------------------------------------------------------------------
+    const MiniEarthCanvas = ({ themeMode: canvasTheme }) => {
+        const canvasRef = useRef(null);
+
+        useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            let animationFrameId;
+            const width = canvas.parentElement?.clientWidth || 290;
+            const height = canvas.parentElement?.clientHeight || 165;
+
+            // Scene & Camera
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+            camera.position.z = 2.45;
+
+            // WebGL Renderer
+            const renderer = new THREE.WebGLRenderer({
+                canvas,
+                alpha: true,
+                antialias: true,
+                powerPreference: 'low-power'
+            });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+            // Globe Group with axial tilt
+            const globeGroup = new THREE.Group();
+            globeGroup.rotation.z = 0.22;
+            scene.add(globeGroup);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, canvasTheme === 'light' ? 1.05 : 0.85);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
+            dirLight.position.set(3, 2, 4);
+            scene.add(dirLight);
+
+            // Earth Sphere Geometry
+            const radius = 0.88;
+            const sphereGeo = new THREE.SphereGeometry(radius, 48, 48);
+
+            // Procedural Canvas Texture fallback
+            const fallbackCanvas = document.createElement('canvas');
+            fallbackCanvas.width = 512;
+            fallbackCanvas.height = 256;
+            const fctx = fallbackCanvas.getContext('2d');
+            if (fctx) {
+                fctx.fillStyle = '#08254f';
+                fctx.fillRect(0, 0, 512, 256);
+                fctx.fillStyle = '#10522c';
+                fctx.beginPath();
+                fctx.ellipse(280, 100, 70, 45, 0, 0, Math.PI * 2);
+                fctx.fill();
+                fctx.beginPath();
+                fctx.ellipse(270, 160, 40, 50, 0.2, 0, Math.PI * 2);
+                fctx.fill();
+                fctx.beginPath();
+                fctx.ellipse(130, 90, 45, 35, -0.2, 0, Math.PI * 2);
+                fctx.fill();
+                fctx.beginPath();
+                fctx.ellipse(150, 170, 35, 55, 0.1, 0, Math.PI * 2);
+                fctx.fill();
+            }
+            const fallbackTexture = new THREE.CanvasTexture(fallbackCanvas);
+
+            const earthMaterial = new THREE.MeshStandardMaterial({
+                map: fallbackTexture,
+                roughness: 0.65,
+                metalness: 0.1
+            });
+
+            const earthMesh = new THREE.Mesh(sphereGeo, earthMaterial);
+            globeGroup.add(earthMesh);
+
+            // Load authentic high-res blue marble texture (matches EarthCanvas.jsx)
+            const loader = new THREE.TextureLoader();
+            loader.load(
+                '//unpkg.com/three-globe@2.24.0/example/img/earth-blue-marble.jpg',
+                (loadedTex) => {
+                    loadedTex.colorSpace = THREE.SRGBColorSpace;
+                    earthMaterial.map = loadedTex;
+                    earthMaterial.needsUpdate = true;
+                },
+                undefined,
+                () => {
+                    // Graceful fallback to procedural texture
+                }
+            );
+
+            // Atmospheric feather halo
+            const atmosGeo = new THREE.SphereGeometry(radius * 1.06, 32, 32);
+            const atmosMat = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 2.2);
+                        gl_FragColor = vec4(0.3, 0.65, 1.0, 1.0) * intensity * 1.6;
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                side: THREE.BackSide,
+                transparent: true,
+                depthWrite: false
+            });
+            const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
+            globeGroup.add(atmosMesh);
+
+            // 3D Portal Pin Markers on surface
+            const portalsData = [
+                { name: 'İstanbul', lat: 41.0, lng: 28.9, color: 0x38bdf8 },
+                { name: 'Geneva CERN', lat: 46.2, lng: 6.1, color: 0xf59e0b },
+                { name: 'Tokyo', lat: 35.6, lng: 139.6, color: 0xa855f7 },
+                { name: 'San Francisco', lat: 37.7, lng: -122.4, color: 0x10b981 }
+            ];
+
+            const markersGroup = new THREE.Group();
+            globeGroup.add(markersGroup);
+
+            const latLngToVector3 = (lat, lng, r) => {
+                const phi = (90 - lat) * (Math.PI / 180);
+                const theta = (lng + 180) * (Math.PI / 180);
+                return new THREE.Vector3(
+                    -(r * Math.sin(phi) * Math.cos(theta)),
+                    r * Math.cos(phi),
+                    r * Math.sin(phi) * Math.sin(theta)
+                );
+            };
+
+            portalsData.forEach((p) => {
+                const pos = latLngToVector3(p.lat, p.lng, radius * 1.01);
+                const pinGeo = new THREE.SphereGeometry(0.026, 16, 16);
+                const pinMat = new THREE.MeshBasicMaterial({ color: p.color });
+                const pinMesh = new THREE.Mesh(pinGeo, pinMat);
+                pinMesh.position.copy(pos);
+                markersGroup.add(pinMesh);
+
+                const ringGeo = new THREE.RingGeometry(0.038, 0.052, 24);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: p.color,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                ringMesh.position.copy(latLngToVector3(p.lat, p.lng, radius * 1.015));
+                ringMesh.lookAt(pos.clone().multiplyScalar(2));
+                markersGroup.add(ringMesh);
+            });
+
+            // Initial view facing Mediterranean / Europe / Istanbul
+            globeGroup.rotation.y = -Math.PI * 0.45;
+
+            // Animation loop
+            let lastTime = performance.now();
+            const animate = (currentTime) => {
+                animationFrameId = requestAnimationFrame(animate);
+                const delta = (currentTime - lastTime) / 1000;
+                lastTime = currentTime;
+
+                // Slow rotation
+                globeGroup.rotation.y += 0.28 * delta;
+
+                renderer.render(scene, camera);
+            };
+            animationFrameId = requestAnimationFrame(animate);
+
+            const handleResize = () => {
+                if (!canvas.parentElement) return;
+                const w = canvas.parentElement.clientWidth;
+                const h = canvas.parentElement.clientHeight;
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            };
+            window.addEventListener('resize', handleResize);
+
+            return () => {
+                window.removeEventListener('resize', handleResize);
+                cancelAnimationFrame(animationFrameId);
+                renderer.dispose();
+                sphereGeo.dispose();
+                earthMaterial.dispose();
+                atmosGeo.dispose();
+                atmosMat.dispose();
+            };
+        }, [canvasTheme]);
+
+        return <canvas ref={canvasRef} className="mini-earth-canvas" />;
+    };
+
+    // --------------------------------------------------------------------------
+    // RENDER: 5 ADET ORİJİNAL PLATFORM GÖRÜNÜMÜ MOCKUP'I
     // --------------------------------------------------------------------------
     const renderOnboardingVisual = (slideIndex) => {
-        // Şablon 1: Portal Kurma & Moderasyon Kartı
+        // Şablon 1: Orijinal Portal Kart Görünümü (PromotedPortalCard.jsx)
         if (slideIndex === 0) {
             return (
-                <div className="ui-mockup-portal-admin">
-                    <div className="ui-privacy-toggle-row">
-                        <span className="ui-privacy-pill active">
-                            <Lock size={10} />
-                            <span>Özel / Gizli</span>
+                <div className="orig-portal-card-mockup">
+                    <div className="orig-portal-badge-bar">
+                        <span className="orig-portal-badge-tag">
+                            <Compass size={11} className="orig-badge-icon" />
+                            Öne Çıkan Portal
                         </span>
-                        <span className="ui-privacy-pill inactive">
-                            <Globe size={10} />
-                            <span>Herkese Açık</span>
-                        </span>
-                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#94a3b8' }}>
-                            Moderatörlük: Tam Yetki
+                        <span className="orig-portal-privacy-pill">
+                            <Globe size={10} /> Herkese Açık
                         </span>
                     </div>
 
-                    <div className="ui-admin-portal-header">
-                        <h4 className="ui-admin-portal-title">Kozmik Araştırmalar Portalı</h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#cbd5e1' }}>
-                            <span className="telemetry-dot" style={{ width: '5px', height: '5px' }}></span>
-                            <span>286 Üye</span>
+                    <div className="orig-portal-banner">
+                        <div className="orig-portal-banner-overlay" />
+                        <span className="orig-portal-members-float">
+                            <Users size={11} />
+                            <span>14.8k Üye · 412 Çevrimiçi</span>
+                        </span>
+                    </div>
+
+                    <div className="orig-portal-body">
+                        <div className="orig-portal-header">
+                            <div className="orig-portal-avatar-wrapper">
+                                <img
+                                    src="/logo.png"
+                                    alt="Kozmik Araştırmalar"
+                                    className="orig-portal-avatar-img"
+                                />
+                                <div className="orig-portal-verified-badge" title="Doğrulanmış Portal">
+                                    <ShieldCheck size={11} />
+                                </div>
+                            </div>
+
+                            <div className="orig-portal-title-col">
+                                <div className="orig-portal-title-row">
+                                    <h4 className="orig-portal-name">Kozmik Araştırmalar</h4>
+                                </div>
+                                <span className="orig-portal-tag-pill">#BİLİM & UZAY</span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="ui-mod-badge-row">
-                        <span className="ui-mod-pill">🛡️ Moderasyon Masası</span>
-                        <span className="ui-mod-pill">👑 Rol Yönetimi</span>
-                        <span className="ui-mod-pill">🔒 Şifreli Giriş</span>
+                        <p className="orig-portal-desc">
+                            Kozmoloji, görelilik ve kuantum mekaniği üzerine derin uzay araştırma topluluğu.
+                        </p>
+
+                        <button className="orig-portal-join-btn">
+                            <Compass size={12} />
+                            <span>Portala Katıl</span>
+                        </button>
                     </div>
                 </div>
             );
         }
 
-        // Şablon 2: Kayıpsız Medya & Çoklu Format Paylaşım Kartı
+        // Şablon 2: Orijinal Post Görünümü (@oxypace kullanıcısının 6a722f8f987a926f80bc4497 ID'li gerçek postu)
         if (slideIndex === 1) {
             return (
-                <div className="ui-mockup-lossless-post">
-                    <div className="ui-format-tags-strip">
-                        <span>FORMATLAR: GÖRSEL · 4K VİDEO · PDF · GIF</span>
-                        <span style={{ color: '#ffffff' }}>YOUTUBE / X</span>
+                <div className="orig-post-card-mockup">
+                    <div className="orig-post-left">
+                        <img
+                            src="/logo.png"
+                            alt="Oxypace"
+                            className="orig-post-avatar-img"
+                        />
                     </div>
 
-                    <div className="ui-media-viewport-rich">
-                        <Sparkles size={30} style={{ opacity: 0.35, animation: 'blinkDot 3s infinite ease' }} />
-                        <div className="ui-lossless-seal">
-                            <Check size={11} strokeWidth={3} />
-                            <span>%100 Orijinal Kalite (Sıfır Sıkıştırma)</span>
+                    <div className="orig-post-right">
+                        <div className="orig-post-header-row">
+                            <div className="orig-post-header-left">
+                                <span className="orig-post-author-name">Oxypace</span>
+                                <span className="orig-post-verified-badge" title="Doğrulanmış Hesap">
+                                    <ShieldCheck size={13} fill="#38bdf8" color="#ffffff" />
+                                </span>
+                                <span className="orig-post-author-handle">@oxypace</span>
+                                <span className="orig-post-time">· 18 May</span>
+                            </div>
+                            <button className="orig-post-more-btn" aria-label="Daha fazla">
+                                <MoreHorizontal size={14} />
+                            </button>
                         </div>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#cbd5e1', padding: '0 4px' }}>
-                        <span>@oxypace · 4K Doğrudan İletim</span>
-                        <span>1.4k Beğeni · 64 Paylaşım</span>
+                        <p className="orig-post-text">
+                            Concerning Hobbits (Howard Shore) - Music Video - Lord of the Rings
+                        </p>
+
+                        <div className="orig-post-media-container">
+                            <div className="orig-post-video-player-mock">
+                                <div className="orig-video-poster-art">
+                                    <div className="orig-video-play-orb">
+                                        <Play size={15} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                                    </div>
+                                </div>
+
+                                <div className="orig-video-top-badges">
+                                    <span className="orig-video-quality-tag">1080p 60fps</span>
+                                    <span className="orig-video-duration-tag">03:54</span>
+                                </div>
+                            </div>
+
+                            <div className="orig-post-video-id-badge">
+                                <Film size={10} className="orig-video-id-icon" />
+                                <span className="orig-video-id-label">Video ID:</span>
+                                <code className="orig-video-id-val">6a722f8f987a926f80bc4497</code>
+                                <Copy size={10} className="orig-video-id-copy" />
+                            </div>
+                        </div>
+
+                        <div className="orig-post-actions-row">
+                            <button className="orig-action-btn">
+                                <MessageCircle size={13} />
+                                <span className="orig-action-count">48</span>
+                            </button>
+                            <button className="orig-action-btn">
+                                <Quote size={13} />
+                                <span className="orig-action-count">19</span>
+                            </button>
+                            <button className="orig-action-btn liked">
+                                <Heart size={13} fill="#f91880" color="#f91880" />
+                                <span className="orig-action-count" style={{ color: '#f91880' }}>342</span>
+                            </button>
+                            <button className="orig-action-btn">
+                                <Bookmark size={13} />
+                            </button>
+                            <button className="orig-action-btn">
+                                <Send size={13} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
         }
 
-        // Şablon 3: Canlı Watch Party & Kesintisiz Senkronize Ses
+        // Şablon 3: Orijinal Canlı Watch Party & Senkronize Ses Odası (WatchPartyPlayer.jsx)
         if (slideIndex === 2) {
             return (
-                <div className="ui-mockup-watch-party">
-                    <div className="ui-watch-video-screen">
-                        <div className="ui-watch-top-telemetry">
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <Tv size={11} />
-                                <span>CANLI WATCH PARTY</span>
+                <div className="orig-watch-party-mockup">
+                    <div className="orig-watch-screen">
+                        <div className="orig-watch-header-bar">
+                            <span className="orig-watch-live-pill">
+                                <span className="orig-live-dot" />
+                                CANLI WATCH PARTY
                             </span>
-                            <span className="ui-sync-badge">EŞ ZAMANLI 02:45</span>
+                            <span className="orig-watch-sync-pill">
+                                <Zap size={9} />
+                                TAM EŞ ZAMANLI (4ms)
+                            </span>
                         </div>
 
-                        <div className="ui-watch-progress-track">
-                            <div className="ui-watch-progress-fill"></div>
+                        <div className="orig-watch-scene-art">
+                            <div className="orig-watch-play-state">
+                                <Play size={12} fill="#ffffff" />
+                                <span>Lord of the Rings - Senkronize Gösterim</span>
+                            </div>
+                        </div>
+
+                        <div className="orig-watch-timeline">
+                            <span className="orig-time-text">01:24:18</span>
+                            <div className="orig-progress-track">
+                                <div className="orig-progress-fill" />
+                            </div>
+                            <span className="orig-time-text">03:54:00</span>
                         </div>
                     </div>
 
-                    <div className="ui-watch-audio-strip">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Volume2 size={13} />
-                            <span>Arka Planda Kesintisiz Kristal Ses</span>
+                    <div className="orig-watch-voice-strip">
+                        <div className="orig-voice-avatars-row">
+                            <div className="orig-voice-avatar active-speaker" title="@oxypace (Konuşuyor)">
+                                <img src="/logo.png" alt="Oxypace" />
+                            </div>
+                            <div className="orig-voice-avatar" title="@alperen">
+                                <span className="orig-avatar-init">A</span>
+                            </div>
+                            <div className="orig-voice-avatar" title="@deniz">
+                                <span className="orig-avatar-init">D</span>
+                            </div>
+                            <span className="orig-voice-count">+12 dinleyici</span>
                         </div>
-                        <span style={{ fontFamily: 'monospace', fontSize: '10px' }}>12ms · P2P</span>
+                        <div className="orig-voice-codec">
+                            <Volume2 size={11} />
+                            <span>128k Opus Kristal Ses</span>
+                        </div>
                     </div>
                 </div>
             );
         }
 
-        // Şablon 4: Yüksek Hızlı 3D Dünya Haritası ile Keşif
+        // Şablon 4: Orijinal 3D Dünya Haritası Görünümü (EarthSimulation.jsx)
         if (slideIndex === 3) {
             return (
-                <div className="ui-mockup-globe-3d">
-                    <div className="ui-globe-ring-outer"></div>
-                    <div className="ui-globe-ring-inner"></div>
+                <div className="orig-globe-mockup">
+                    <MiniEarthCanvas themeMode={themeMode} />
 
-                    {/* Animated Pulsing Location Pins */}
-                    <div className="ui-globe-pin pin-1">
-                        <MapPin size={10} />
-                        <span>#İSTANBUL</span>
+                    <div className="orig-globe-marker-tag marker-istanbul">
+                        <span className="orig-marker-dot pulse-cyan" />
+                        <span className="orig-marker-label">#İSTANBUL (Oxypace HQ)</span>
                     </div>
-                    <div className="ui-globe-pin pin-2">
-                        <MapPin size={10} />
-                        <span>#GENEVA-CERN</span>
+                    <div className="orig-globe-marker-tag marker-cern">
+                        <span className="orig-marker-dot pulse-amber" />
+                        <span className="orig-marker-label">#CERN (Kuantum Lab)</span>
                     </div>
 
-                    <div style={{ position: 'relative', zIndex: 5, textAlign: 'center' }}>
-                        <CompassIcon size={24} style={{ opacity: 0.8, animation: 'rotateSlow 10s linear infinite' }} />
-                        <span style={{ display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '1px', marginTop: '4px' }}>
-                            3D KÜRESEL KEŞİF
-                        </span>
+                    <div className="orig-globe-telemetry-strip">
+                        <span>LAT: 41.0082° N · LNG: 28.9784° E</span>
+                        <span className="orig-globe-status">3D KÜRESEL AĞ</span>
                     </div>
                 </div>
             );
         }
 
-        // Şablon 5: Event Horizon Bilim & Kuramsal Uzay Hesaplamaları
+        // Şablon 5: Orijinal Event Horizon / Bilimsel Hesaplama Görünümü
         return (
-            <div className="ui-mockup-event-horizon">
-                <div className="ui-eh-header-row">
-                    <span>EVENT HORIZON ARŞİVİ</span>
-                    <span>BİLİMSEL HESAPLAMALAR</span>
+            <div className="orig-eh-mockup">
+                <div className="orig-eh-header">
+                    <span className="orig-eh-badge">EVENT HORIZON // ARŞİV</span>
+                    <span className="orig-eh-sub">BİLİMSEL HESAPLAMA</span>
                 </div>
 
-                <div className="ui-eh-cosmic-viewport">
-                    <div className="ui-photon-ring"></div>
-                    <div className="ui-black-hole-core">
-                        <Sparkles size={16} />
+                <h4 className="orig-eh-title">Morris-Thorne Geçilebilir Solucan Deliği</h4>
+
+                <div className="orig-eh-equation-box">
+                    <code>ds² = -c²dt² + dr²/(1 - b(r)/r) + r²(dθ² + sin²θ dφ²)</code>
+                </div>
+
+                <div className="orig-eh-metrics-grid">
+                    <div className="orig-eh-metric-item">
+                        <span className="orig-metric-label">BOĞAZ ÇAPI (r₀)</span>
+                        <span className="orig-metric-val">1.00 km</span>
+                    </div>
+                    <div className="orig-eh-metric-item">
+                        <span className="orig-metric-label">EGZOTİK MADDE</span>
+                        <span className="orig-metric-val">τ₀ &lt; 0</span>
+                    </div>
+                    <div className="orig-eh-metric-item">
+                        <span className="orig-metric-label">GELGİT KUVVETİ</span>
+                        <span className="orig-metric-val">0.98 g</span>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10.5px', color: '#cbd5e1' }}>
-                    <span>🔬 Solucan Deliği Metriği</span>
-                    <span>🪐 Zaman Genişlemesi</span>
+                <div className="orig-eh-verified-pill">
+                    <Check size={11} strokeWidth={3} />
+                    <span>Stabil Morris-Thorne Çözümü Doğrulandı</span>
                 </div>
             </div>
         );
