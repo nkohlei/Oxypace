@@ -88,7 +88,7 @@ const MobileDesignShowcase = () => {
         if (isAutoPlay && viewMode === 'simulator') {
             timer = setInterval(() => {
                 setCurrentSlide((prev) => (prev >= 3 ? 0 : prev + 1));
-            }, 3600);
+            }, 3800);
         }
         return () => {
             if (timer) clearInterval(timer);
@@ -193,11 +193,11 @@ const MobileDesignShowcase = () => {
 
         return (
             <div className="onboarding-screen-wrapper">
-                {/* Top Nav */}
+                {/* Top Nav: Dual Logos (Emblem + Text logo) */}
                 <div className="onboarding-top-nav">
-                    <div className="onboarding-brand">
-                        <Sparkles size={14} />
-                        <span>OXYPACE</span>
+                    <div className="onboarding-brand-dual">
+                        <img src="/logo.png" alt="Oxypace Emblem" className="onboarding-brand-emblem" />
+                        <img src="/oxypace-text-logo2.webp" alt="Oxypace" className="onboarding-brand-text" />
                     </div>
                     <button
                         className="onboarding-skip-btn"
@@ -282,7 +282,7 @@ const MobileDesignShowcase = () => {
                     </button>
                 </div>
 
-                {/* Center Brand Identity: Animated Logo Lockup (Emblem + OXYPACE) */}
+                {/* Center Brand Identity: Reversible Animated Logo Lockup */}
                 <div className="welcome-center-brand">
                     <div className="welcome-brand-lockup" key={logoAnimKey}>
                         <img
@@ -297,7 +297,7 @@ const MobileDesignShowcase = () => {
                         />
                     </div>
 
-                    {/* Slogan: Minimal, Iconic Steve Jobs quote */}
+                    {/* Slogan: Minimal, Iconic Steve Jobs quote in Handwritten Cursive Style */}
                     <p className="welcome-slogan-quote">
                         "The people who are crazy enough to think they can change the world are the ones who do."
                     </p>
@@ -330,13 +330,14 @@ const MobileDesignShowcase = () => {
     };
 
     // --------------------------------------------------------------------------
-    // RENDER: DISPATCH TO CURRENT SCREEN
+    // RENDER: DISPATCH TO CURRENT SCREEN WITH SLIDE ANIMATION
     // --------------------------------------------------------------------------
     const renderScreenContent = (slideIndex) => {
-        if (slideIndex === 3) {
-            return renderWelcomeContent();
-        }
-        return renderOnboardingContent(slideIndex);
+        return (
+            <div key={slideIndex} className="slide-screen-animated">
+                {slideIndex === 3 ? renderWelcomeContent() : renderOnboardingContent(slideIndex)}
+            </div>
+        );
     };
 
     // --------------------------------------------------------------------------
@@ -367,7 +368,7 @@ const MobileDesignShowcase = () => {
                     </div>
                 </div>
 
-                {/* Screen Content */}
+                {/* Screen Content with slide animation */}
                 <div className="phone-inner-content">
                     {renderScreenContent(slideIdx)}
                 </div>
@@ -419,6 +420,7 @@ const MobileDesignShowcase = () => {
                         onClick={() => {
                             setViewMode('simulator');
                             setCurrentSlide(3);
+                            setLogoAnimKey((k) => k + 1);
                         }}
                     >
                         <Sparkles size={15} />
@@ -514,7 +516,10 @@ const MobileDesignShowcase = () => {
                                 {/* Screen 3: Welcome & Auth Main Screen */}
                                 <button
                                     className={`slide-picker-item ${currentSlide === 3 ? 'active' : ''}`}
-                                    onClick={() => setCurrentSlide(3)}
+                                    onClick={() => {
+                                        setCurrentSlide(3);
+                                        setLogoAnimKey((k) => k + 1);
+                                    }}
                                 >
                                     <div className="slide-picker-info">
                                         <span className="slide-picker-num">04 // ASIL EKRAN</span>
@@ -543,16 +548,16 @@ const MobileDesignShowcase = () => {
                                         <strong>Asıl Karşılama Sayfası:</strong> Tanıtım kartları bittiğinde kullanıcının oturum açmamışken karşılaştığı ilk ana ekran.
                                     </p>
                                     <p style={{ margin: '0 0 8px' }}>
-                                        <strong>Logo Animasyonu:</strong> Sayfa açıldığında emblem belirir ve yanına OXYPACE yazı logosu pürüzsüzce kayarak eklenir.
+                                        <strong>Geri Çekilmeli Logo Animasyonu:</strong> Önce ana amblem görünür; hemen ardından OXYPACE yazı logosu sağdan süzülerek belirir ve ardından geri çekilerek gizlenir, ana logo ortada kalır.
                                     </p>
                                     <p style={{ margin: 0 }}>
-                                        <strong>Slogan:</strong> <em>"The people who are crazy enough to think they can change the world are the ones who do."</em>
+                                        <strong>El Yazısı Slogan:</strong> Minimal ve zarif italik hat ile Steve Jobs alıntısı.
                                     </p>
                                 </div>
                             ) : (
                                 <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
                                     <p style={{ margin: '0 0 8px' }}>
-                                        <strong>Tanıtım Kartı:</strong> Mobil uygulamada ilk kez açılışta gösterilecek sadeleştirilmiş özellik tanıtımı.
+                                        <strong>Tanıtım Kartı:</strong> Sol üstte web sitemizin birebir çift logosu (amblem + yazı) yer alır.
                                     </p>
                                     <p style={{ margin: 0 }}>
                                         Platforma özel gerçek arayüz bileşenleri (Portallar, 4K Medya, Kristal Ses) temsil edilmiştir.
@@ -586,16 +591,16 @@ const MobileDesignShowcase = () => {
                                     </span>
                                 </div>
                                 <div className="spec-token-row">
-                                    <span>Buton Stili</span>
-                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Gümüşümsü Gradye (6px)</span>
+                                    <span>Sol Üst Köşe</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Birebir Çift Logo</span>
                                 </div>
                                 <div className="spec-token-row">
-                                    <span>Yazı Kontrastı</span>
-                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>%100 Okunabilir Koruma</span>
+                                    <span>Sayfa Geçişleri</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Animasyonlu Süzülme</span>
                                 </div>
                                 <div className="spec-token-row">
-                                    <span>Gereksiz Öğeler</span>
-                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Temizlendi</span>
+                                    <span>Logo Animasyonu</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Açıl &rarr; Göster &rarr; Gizlen</span>
                                 </div>
                             </div>
                         </div>
@@ -739,10 +744,13 @@ const MobileDesignShowcase = () => {
                         <pre className="spec-code-block">
 {`// Mobil Uygulama Açılış Zinciri (Onboarding -> Welcome)
 1. Onboarding Flow (3 Sade Kart)
+   ├── Sol Üst: Birebir Çift Logo (Emblem + OXYPACE)
+   ├── Geçişler: 0.36s Yumuşak Süzülme Animasyonu
    └── "Geç" veya "Başlayın" tıklandığında:
 2. Karşılama & İlk Giriş (Welcome Screen)
-   ├── Logo Animasyonu: [Emblem] + [OXYPACE]
-   ├── Slogan: "The people who are crazy enough to think they can change the world are the ones who do."
+   ├── Reversible Logo Animasyonu:
+   │   [Emblem belirir] -> [OXYPACE sağdan açılır] -> [OXYPACE geri çekilir] -> [Emblem ortada kalır]
+   ├── Slogan: "The people who are crazy enough to think they can change the world are the ones who do." (El Yazısı)
    ├── "Giriş Yap" (Gümüşümsü Buton) -> Auth
    └── "Hesap Oluştur" (Gümüş Çerçeve Buton) -> Kayıt`}
                         </pre>

@@ -2,13 +2,16 @@
    MOBİL TASARIM BARINDIRMA (MOBILE DESIGN SHOWCASE & PROTOTYPE LAB)
    Theme: Refined Monochromatic & Platinum/Silver
    Features: 
-     - No neon, no generic AI stock graphics
-     - Real Oxypace web UI representations (Portals, Lossless Media, Voice/Chat)
-     - Animated logo lockup (Emblem + OXYPACE typography)
-     - Minimal iconic slogan: "The people who are crazy enough to think they can change the world are the ones who do."
-     - Silver metallic buttons (matching platform's signature silver buttons)
-     - High-contrast protected typography for both Dark and Light themes
+     - Dual logos in onboarding top left (Emblem + Text logo)
+     - Animated logo lockup in Welcome screen:
+         Emblem appears -> Text logo slides out to right -> Pauses -> Slides back in & disappears -> Emblem remains centered
+     - Larger logos on Welcome screen
+     - Handwritten poetic slogan (Caveat / cursive)
+     - Smooth slide transition animation on every page change
+     - Platform signature silver metallic buttons
    ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Dancing+Script:wght@400;600&display=swap');
 
 .mobile-showcase-container {
     display: flex;
@@ -601,17 +604,41 @@
     box-sizing: border-box;
     position: relative;
     z-index: 20;
+    overflow: hidden;
 }
 
 /* --------------------------------------------------------------------------
-   ONBOARDING SCREENS (SADE, ZARİF, GERÇEK UI İÇERİKLERİ)
+   SMOOTH SLIDE TRANSITION ANIMATION FOR SCREEN CHANGES
+   -------------------------------------------------------------------------- */
+.slide-screen-animated {
+    animation: slideScreenIn 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+@keyframes slideScreenIn {
+    0% {
+        opacity: 0;
+        transform: translateX(28px) scale(0.985);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   ONBOARDING SCREENS WITH DUAL LOGO TOP LEFT
    -------------------------------------------------------------------------- */
 .onboarding-screen-wrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 14px 22px 18px;
+    padding: 12px 22px 18px;
     height: 100%;
     box-sizing: border-box;
 }
@@ -623,22 +650,27 @@
     margin-bottom: 6px;
 }
 
-.onboarding-brand {
-    font-size: 11px !important;
-    font-weight: 800 !important;
-    letter-spacing: 2.5px !important;
-    text-transform: uppercase !important;
-    display: flex;
+/* Exact Dual Logos: Emblem + OXYPACE text */
+.onboarding-brand-dual {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
-.theme-dark .onboarding-brand {
-    color: #ffffff !important;
+.onboarding-brand-emblem {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
 }
 
-.theme-light .onboarding-brand {
-    color: #0f172a !important;
+.onboarding-brand-text {
+    height: 15px;
+    width: auto;
+    object-fit: contain;
+}
+
+.theme-light .onboarding-brand-text {
+    filter: invert(1);
 }
 
 .onboarding-skip-btn {
@@ -670,19 +702,15 @@
     background: rgba(0, 0, 0, 0.05);
 }
 
-/* Authentic Stage UI Box (No Neon Circles) */
+/* Authentic Stage UI Box */
 .onboarding-visual-stage {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
-    margin: 8px 0 16px;
+    margin: 6px 0 14px;
 }
-
-/* --------------------------------------------------------------------------
-   AUTHENTIC UI MOCKUPS FOR ONBOARDING
-   -------------------------------------------------------------------------- */
 
 /* 1. Portal Card Preview */
 .ui-mockup-portal-card {
@@ -949,7 +977,6 @@
     color: #1e293b !important;
 }
 
-/* Metallic Silver Soundwave Bars (No neon!) */
 .ui-voice-waveform-row {
     display: flex;
     align-items: center;
@@ -989,7 +1016,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   CRISP & HIGH-CONTRAST TYPOGRAPHY (PROTECTED FROM EXTERNAL RULES)
+   CRISP & HIGH-CONTRAST TYPOGRAPHY
    -------------------------------------------------------------------------- */
 .onboarding-text-area {
     display: flex;
@@ -1157,7 +1184,7 @@
     gap: 8px !important;
     width: 100% !important;
     height: 46px !important;
-    border-radius: 6px !important; /* Net dikdörtgen, sadece 6px hafif kavisli köşe */
+    border-radius: 6px !important;
     background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%) !important;
     color: #090b10 !important;
     font-size: 14px !important;
@@ -1184,7 +1211,6 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Secondary Button (Minimalist Dark Silver Border) */
 .mobile-silver-secondary-btn {
     display: inline-flex !important;
     align-items: center !important;
@@ -1228,7 +1254,7 @@
 
 /* --------------------------------------------------------------------------
    KARŞILAMA & İLK GİRİŞ EKRANI (WELCOME & AUTH MAIN SCREEN)
-   Animated Logo Lockup (Emblem + OXYPACE typography) + Steve Jobs Slogan
+   Larger Logos, Reversible Slide Animation, and Handwritten Poetic Slogan
    -------------------------------------------------------------------------- */
 .welcome-screen-wrapper {
     flex: 1;
@@ -1236,19 +1262,18 @@
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 32px 22px 20px;
+    padding: 28px 22px 20px;
     height: 100%;
     box-sizing: border-box;
     text-align: center;
 }
 
-/* Center Identity: Animated Logo Lockup (No artificial boxes!) */
 .welcome-center-brand {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 18px;
     margin: auto 0;
     width: 100%;
 }
@@ -1258,56 +1283,78 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    height: 52px;
+    min-height: 80px;
+    position: relative;
 }
 
+/* Larger emblem (70px x 70px) */
 .welcome-emblem-img {
-    width: 46px;
-    height: 46px;
+    width: 70px;
+    height: 70px;
     object-fit: contain;
-    animation: emblemAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: emblemEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes emblemAppear {
+@keyframes emblemEntrance {
     0% { opacity: 0; transform: scale(0.8); }
     100% { opacity: 1; transform: scale(1); }
 }
 
+/* Larger text logo (38px height) with full roundtrip sequence:
+   Hidden -> Slides out from emblem to right -> Holds visible for 1.8s -> Slides back into emblem and hides -> Only emblem remains centered! */
 .welcome-text-logo-img {
-    height: 24px;
+    height: 38px;
     width: auto;
     object-fit: contain;
-    opacity: 0;
-    transform: translateX(-16px);
-    animation: textLogoSlideIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
+    overflow: hidden;
+    animation: textLogoRoundtrip 4.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .theme-light .welcome-text-logo-img {
     filter: invert(1);
 }
 
-@keyframes textLogoSlideIn {
-    0% {
+@keyframes textLogoRoundtrip {
+    /* 0 - 0.7s: Hidden while emblem appears */
+    0%, 15% {
         opacity: 0;
-        transform: translateX(-16px);
+        max-width: 0;
+        transform: translateX(-24px);
+        margin-left: 0;
     }
-    100% {
+    /* 1.2s: Slides out to the right beside emblem */
+    26% {
         opacity: 1;
+        max-width: 160px;
         transform: translateX(0);
+        margin-left: 14px;
+    }
+    /* 1.2s - 2.8s: Stays visible side-by-side */
+    62% {
+        opacity: 1;
+        max-width: 160px;
+        transform: translateX(0);
+        margin-left: 14px;
+    }
+    /* 3.6s+: Slides back into emblem and disappears! */
+    78%, 100% {
+        opacity: 0;
+        max-width: 0;
+        transform: translateX(-24px);
+        margin-left: 0;
     }
 }
 
-/* Minimalist Iconic Slogan Quote */
+/* Minimalist Poetic Slogan in Delicate Handwriting Style */
 .welcome-slogan-quote {
-    font-size: 13.5px !important;
-    font-style: italic !important;
-    line-height: 1.6 !important;
-    max-width: 310px !important;
+    font-family: 'Caveat', 'Dancing Script', 'Segoe Script', 'Brush Script MT', cursive !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+    max-width: 290px !important;
     margin: 0 auto !important;
     text-align: center !important;
-    letter-spacing: 0.2px !important;
-    font-weight: 400 !important;
+    letter-spacing: 0.3px !important;
 }
 
 .theme-dark .welcome-slogan-quote {
