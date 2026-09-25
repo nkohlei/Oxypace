@@ -33,34 +33,56 @@ import {
     MessageSquare,
     Heart,
     Share2,
-    Users
+    Users,
+    Video,
+    Tv,
+    FileText,
+    BookOpen,
+    Compass as CompassIcon,
+    Search,
+    MapPin,
+    Flame
 } from 'lucide-react';
 import './MobileDesignShowcase.css';
 
 // --------------------------------------------------------------------------
-// ONBOARDING SLIDES (GERÇEK OXYPACE PLATFORM TEMASINA UYGUN, SADE)
+// 5 ADET DETAYLI & SADE ONBOARDING TANITIM KARTI VERİSİ
 // --------------------------------------------------------------------------
 const ONBOARDING_SLIDES = [
     {
         id: 0,
-        step: '01 / 03',
-        title: 'EVRENSEL AĞ VE PORTALLAR',
-        subtitle: 'Sınırları Olmayan Bağımsız Topluluklar',
-        description: 'Bilim, teknoloji, felsefe ve sanat için tasarlanmış bağımsız portallara anında bağlanın. Kendi uzay üssünüzü kurun veya küresel ağa dahil olun.'
+        step: '01 / 05',
+        title: 'ÖZGÜR PORTALLAR & YÖNETİM',
+        subtitle: 'Gizli veya Herkese Açık Kendi Alanınızı Kurun',
+        description: 'Kendi standartlarınıza uygun topluluklar oluşturun. Gelişmiş moderasyon araçları, özel rol yetkilendirmeleri ve tam denetimle alanınızı özgürce ve güvenle yönetin.'
     },
     {
         id: 1,
-        step: '02 / 03',
-        title: 'KAYIPSIZ MEDYA & 4K İLETİM',
-        subtitle: 'Sıfır Sıkıştırma, Saf Görsel Netlik',
-        description: 'Paylaştığınız hiçbir fotoğraf veya video kaliteden ödün vermez. Akıllı doğrudan aktarım mimarisiyle her kare tam orijinal netliğinde sunulur.'
+        step: '02 / 05',
+        title: 'KAYIPSIZ PAYLAŞIM & ZENGİN MEDYA',
+        subtitle: 'Fotoğraf, Video, PDF, GIF, YouTube ve Twitter',
+        description: 'Paylaştığınız hiçbir medya sıkıştırılmaz; 4K videolar, RAW fotoğraflar ve PDF belgeler tam orijinal kalitesinde iletilir. YouTube ve Twitter bağlantıları zengin önizlemeyle sorunsuz açılır.'
     },
     {
         id: 2,
-        step: '03 / 03',
-        title: 'IŞIK HIZINDA GÜVENLİ İLETİŞİM',
-        subtitle: 'Uçtan Uca Korunan Özel Odalar',
-        description: 'Ultra düşük gecikmeli kristal sesli odalar, anlık mesajlaşma ve uçtan uca kriptografik gizlilik. Konuşmalarınız sadece hedef cihazlarda çözülür.'
+        step: '03 / 05',
+        title: 'EŞ ZAMANLI İZLEME (WATCH PARTY)',
+        subtitle: 'Birlikte Video, Film ve Yayın Deneyimi',
+        description: 'Popüler video platformlarının URL bağlantılarını kullanarak canlı odalarda arkadaşlarınızla anlık senkronizasyonla video ve yayın izleyin; arka planda kopmayan kristal sesle sohbet edin.'
+    },
+    {
+        id: 3,
+        step: '04 / 05',
+        title: '3D DÜNYA İLE KÜRESEL KEŞİF',
+        subtitle: 'Zevklerinize Uygun Portalları Haritada Keşfedin',
+        description: 'İlgi alanlarınıza, hobilerinize ve bilimsel konulara göre konumlandırılmış toplulukları yüksek hızlı 3D dünya haritası üzerinde coğrafi ve tematik olarak kolayca bulun.'
+    },
+    {
+        id: 4,
+        step: '05 / 05',
+        title: 'EVENT HORIZON BİLİM ARŞİVİ',
+        subtitle: 'Kuramsal Fizik, Uzay Hesaplamaları ve Fikirler',
+        description: 'Solucan deliklerinden zaman genişlemesine, astrofizikten derin felsefi yazılara kadar Oxypace\'in özgün uzay hesaplama araçlarına ve bilimsel yayınlarına doğrudan erişin.'
     }
 ];
 
@@ -72,8 +94,8 @@ const MobileDesignShowcase = () => {
     const [themeMode, setThemeMode] = useState('dark');
 
     // Simulator Active Screen:
-    // 0, 1, 2 = Onboarding Slides
-    // 3 = Asıl Karşılama & İlk Giriş Ekranı (Welcome Main Screen)
+    // 0, 1, 2, 3, 4 = 5 Onboarding Slides
+    // 5 = Asıl Karşılama & İlk Giriş Ekranı (Welcome Main Screen)
     const [currentSlide, setCurrentSlide] = useState(0);
 
     const [isAutoPlay, setIsAutoPlay] = useState(false);
@@ -87,8 +109,8 @@ const MobileDesignShowcase = () => {
         let timer = null;
         if (isAutoPlay && viewMode === 'simulator') {
             timer = setInterval(() => {
-                setCurrentSlide((prev) => (prev >= 3 ? 0 : prev + 1));
-            }, 3800);
+                setCurrentSlide((prev) => (prev >= 5 ? 0 : prev + 1));
+            }, 4200);
         }
         return () => {
             if (timer) clearInterval(timer);
@@ -96,7 +118,7 @@ const MobileDesignShowcase = () => {
     }, [isAutoPlay, viewMode]);
 
     const handleNextSlide = () => {
-        if (currentSlide < 3) {
+        if (currentSlide < 5) {
             setCurrentSlide(currentSlide + 1);
         } else {
             setCurrentSlide(0);
@@ -115,78 +137,150 @@ const MobileDesignShowcase = () => {
     };
 
     // --------------------------------------------------------------------------
-    // RENDER: AUTHENTIC UI ILLUSTRATIONS FOR ONBOARDING
+    // RENDER: 5 ADET ÖRNEKLEYİCİ VE ANİMASYONLU ŞABLON
     // --------------------------------------------------------------------------
     const renderOnboardingVisual = (slideIndex) => {
-        // Slide 0: Authentic Portal Card Preview
+        // Şablon 1: Portal Kurma & Moderasyon Kartı
         if (slideIndex === 0) {
             return (
-                <div className="ui-mockup-portal-card">
-                    <div className="ui-portal-card-top">
-                        <span className="ui-portal-tag">#KUANTUM-FIZIGI</span>
-                        <div className="ui-portal-status-online">
+                <div className="ui-mockup-portal-admin">
+                    <div className="ui-privacy-toggle-row">
+                        <span className="ui-privacy-pill active">
+                            <Lock size={10} />
+                            <span>Özel / Gizli</span>
+                        </span>
+                        <span className="ui-privacy-pill inactive">
+                            <Globe size={10} />
+                            <span>Herkese Açık</span>
+                        </span>
+                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#94a3b8' }}>
+                            Moderatörlük: Tam Yetki
+                        </span>
+                    </div>
+
+                    <div className="ui-admin-portal-header">
+                        <h4 className="ui-admin-portal-title">Kozmik Araştırmalar Portalı</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#cbd5e1' }}>
                             <span className="telemetry-dot" style={{ width: '5px', height: '5px' }}></span>
-                            <span>142 Çevrimiçi</span>
+                            <span>286 Üye</span>
                         </div>
                     </div>
-                    <h4 className="ui-portal-title">Derin Uzay & Evren Portalı</h4>
-                    <div className="ui-portal-channels-row">
-                        <span className="ui-portal-channel-pill">💬 #genel-tartisma</span>
-                        <span className="ui-portal-channel-pill">🎙️ Ses Odası (Aktif)</span>
+
+                    <div className="ui-mod-badge-row">
+                        <span className="ui-mod-pill">🛡️ Moderasyon Masası</span>
+                        <span className="ui-mod-pill">👑 Rol Yönetimi</span>
+                        <span className="ui-mod-pill">🔒 Şifreli Giriş</span>
                     </div>
                 </div>
             );
         }
 
-        // Slide 1: Authentic Lossless Media Post Preview
+        // Şablon 2: Kayıpsız Medya & Çoklu Format Paylaşım Kartı
         if (slideIndex === 1) {
             return (
-                <div className="ui-mockup-media-card">
-                    <div className="ui-media-author-bar">
-                        <div className="ui-media-avatar">OX</div>
-                        <div>
-                            <span className="ui-media-author-name">@oxypace</span>
-                            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Kayıpsız Medya Yayını</span>
+                <div className="ui-mockup-lossless-post">
+                    <div className="ui-format-tags-strip">
+                        <span>FORMATLAR: GÖRSEL · 4K VİDEO · PDF · GIF</span>
+                        <span style={{ color: '#ffffff' }}>YOUTUBE / X</span>
+                    </div>
+
+                    <div className="ui-media-viewport-rich">
+                        <Sparkles size={30} style={{ opacity: 0.35, animation: 'blinkDot 3s infinite ease' }} />
+                        <div className="ui-lossless-seal">
+                            <Check size={11} strokeWidth={3} />
+                            <span>%100 Orijinal Kalite (Sıfır Sıkıştırma)</span>
                         </div>
                     </div>
-                    <div className="ui-media-frame">
-                        <Sparkles size={28} style={{ opacity: 0.4 }} />
-                        <span className="ui-media-badge-4k">4K UHD · RAW</span>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#cbd5e1', padding: '0 4px' }}>
+                        <span>@oxypace · 4K Doğrudan İletim</span>
+                        <span>1.4k Beğeni · 64 Paylaşım</span>
                     </div>
                 </div>
             );
         }
 
-        // Slide 2: Authentic Voice Channel Waveform Preview
+        // Şablon 3: Canlı Watch Party & Kesintisiz Senkronize Ses
+        if (slideIndex === 2) {
+            return (
+                <div className="ui-mockup-watch-party">
+                    <div className="ui-watch-video-screen">
+                        <div className="ui-watch-top-telemetry">
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <Tv size={11} />
+                                <span>CANLI WATCH PARTY</span>
+                            </span>
+                            <span className="ui-sync-badge">EŞ ZAMANLI 02:45</span>
+                        </div>
+
+                        <div className="ui-watch-progress-track">
+                            <div className="ui-watch-progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <div className="ui-watch-audio-strip">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Volume2 size={13} />
+                            <span>Arka Planda Kesintisiz Kristal Ses</span>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: '10px' }}>12ms · P2P</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Şablon 4: Yüksek Hızlı 3D Dünya Haritası ile Keşif
+        if (slideIndex === 3) {
+            return (
+                <div className="ui-mockup-globe-3d">
+                    <div className="ui-globe-ring-outer"></div>
+                    <div className="ui-globe-ring-inner"></div>
+
+                    {/* Animated Pulsing Location Pins */}
+                    <div className="ui-globe-pin pin-1">
+                        <MapPin size={10} />
+                        <span>#İSTANBUL</span>
+                    </div>
+                    <div className="ui-globe-pin pin-2">
+                        <MapPin size={10} />
+                        <span>#GENEVA-CERN</span>
+                    </div>
+
+                    <div style={{ position: 'relative', zIndex: 5, textAlign: 'center' }}>
+                        <CompassIcon size={24} style={{ opacity: 0.8, animation: 'rotateSlow 10s linear infinite' }} />
+                        <span style={{ display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '1px', marginTop: '4px' }}>
+                            3D KÜRESEL KEŞİF
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Şablon 5: Event Horizon Bilim & Kuramsal Uzay Hesaplamaları
         return (
-            <div className="ui-mockup-voice-card">
-                <div className="ui-voice-header">
-                    <span className="ui-voice-title">
-                        <Volume2 size={15} />
-                        <span>Kristal Ses Odası</span>
-                    </span>
-                    <span className="ui-voice-ping">12ms · P2P</span>
+            <div className="ui-mockup-event-horizon">
+                <div className="ui-eh-header-row">
+                    <span>EVENT HORIZON ARŞİVİ</span>
+                    <span>BİLİMSEL HESAPLAMALAR</span>
                 </div>
-                {/* Silver Soundwave Visualizer Bars */}
-                <div className="ui-voice-waveform-row">
-                    {[14, 24, 32, 18, 36, 28, 20, 34, 16, 26, 38, 22, 18, 30, 26].map((h, i) => (
-                        <div
-                            key={i}
-                            className="ui-voice-bar"
-                            style={{ height: `${h}px` }}
-                        ></div>
-                    ))}
+
+                <div className="ui-eh-cosmic-viewport">
+                    <div className="ui-photon-ring"></div>
+                    <div className="ui-black-hole-core">
+                        <Sparkles size={16} />
+                    </div>
                 </div>
-                <div className="ui-encrypted-notice">
-                    <Lock size={12} />
-                    <span>Uçtan uca şifreli oturum aktif</span>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10.5px', color: '#cbd5e1' }}>
+                    <span>🔬 Solucan Deliği Metriği</span>
+                    <span>🪐 Zaman Genişlemesi</span>
                 </div>
             </div>
         );
     };
 
     // --------------------------------------------------------------------------
-    // RENDER: ONBOARDING SCREEN (0, 1, 2)
+    // RENDER: ONBOARDING SCREEN (0, 1, 2, 3, 4)
     // --------------------------------------------------------------------------
     const renderOnboardingContent = (slideIndex) => {
         const slide = ONBOARDING_SLIDES[slideIndex] || ONBOARDING_SLIDES[0];
@@ -201,14 +295,14 @@ const MobileDesignShowcase = () => {
                     </div>
                     <button
                         className="onboarding-skip-btn"
-                        onClick={() => setCurrentSlide(3)}
+                        onClick={() => setCurrentSlide(5)}
                         title="Tanıtımı geç ve ana karşılama sayfasına git"
                     >
                         Geç
                     </button>
                 </div>
 
-                {/* Authentic UI Illustration Stage */}
+                {/* Animated UI Illustration Stage */}
                 <div className="onboarding-visual-stage">
                     {renderOnboardingVisual(slideIndex)}
                 </div>
@@ -223,7 +317,7 @@ const MobileDesignShowcase = () => {
 
                 {/* Bottom Navigation & Actions */}
                 <div className="onboarding-bottom-actions">
-                    {/* Dots indicator */}
+                    {/* Dots indicator (5 Onboarding + 1 Welcome) */}
                     <div className="onboarding-indicators-row">
                         {ONBOARDING_SLIDES.map((_, dotIdx) => (
                             <div
@@ -234,8 +328,8 @@ const MobileDesignShowcase = () => {
                         ))}
                         {/* Dot for Welcome Main Screen */}
                         <div
-                            className={`indicator-dot ${currentSlide === 3 ? 'active' : ''}`}
-                            onClick={() => setCurrentSlide(3)}
+                            className={`indicator-dot ${currentSlide === 5 ? 'active' : ''}`}
+                            onClick={() => setCurrentSlide(5)}
                             title="Karşılama & İlk Giriş Ekranı"
                         ></div>
                     </div>
@@ -255,7 +349,7 @@ const MobileDesignShowcase = () => {
                             className="mobile-silver-primary-btn"
                             onClick={handleNextSlide}
                         >
-                            <span>{currentSlide === 2 ? 'Başlayın' : 'İleri'}</span>
+                            <span>{currentSlide === 4 ? 'Başlayın' : 'İleri'}</span>
                             <ChevronRight size={16} />
                         </button>
                     </div>
@@ -335,7 +429,7 @@ const MobileDesignShowcase = () => {
     const renderScreenContent = (slideIndex) => {
         return (
             <div key={slideIndex} className="slide-screen-animated">
-                {slideIndex === 3 ? renderWelcomeContent() : renderOnboardingContent(slideIndex)}
+                {slideIndex === 5 ? renderWelcomeContent() : renderOnboardingContent(slideIndex)}
             </div>
         );
     };
@@ -392,7 +486,7 @@ const MobileDesignShowcase = () => {
                     <div>
                         <h2>Mobil Tasarım Barındırma</h2>
                         <p className="mobile-showcase-subtitle">
-                            Mobil tanıtım sayfaları (Onboarding) ve Asıl Karşılama Ekranı (Logo & Slogan) prototip laboratuvarı.
+                            5 Özgün Tanıtım Sayfası (Onboarding) ve Asıl Karşılama Ekranı (Logo & Slogan) prototip laboratuvarı.
                         </p>
                     </div>
                 </div>
@@ -419,7 +513,7 @@ const MobileDesignShowcase = () => {
                         className={`mode-tab-btn ${viewMode === 'welcome' ? 'active' : ''}`}
                         onClick={() => {
                             setViewMode('simulator');
-                            setCurrentSlide(3);
+                            setCurrentSlide(5);
                             setLogoAnimKey((k) => k + 1);
                         }}
                     >
@@ -495,7 +589,7 @@ const MobileDesignShowcase = () => {
                                     <Layers size={14} />
                                     <span>Ekran Gezgini</span>
                                 </span>
-                                <span className="inspector-card-badge">4 EKRAN</span>
+                                <span className="inspector-card-badge">6 EKRAN</span>
                             </div>
 
                             <div className="slide-picker-list">
@@ -513,16 +607,16 @@ const MobileDesignShowcase = () => {
                                     </button>
                                 ))}
 
-                                {/* Screen 3: Welcome & Auth Main Screen */}
+                                {/* Screen 5: Welcome & Auth Main Screen */}
                                 <button
-                                    className={`slide-picker-item ${currentSlide === 3 ? 'active' : ''}`}
+                                    className={`slide-picker-item ${currentSlide === 5 ? 'active' : ''}`}
                                     onClick={() => {
-                                        setCurrentSlide(3);
+                                        setCurrentSlide(5);
                                         setLogoAnimKey((k) => k + 1);
                                     }}
                                 >
                                     <div className="slide-picker-info">
-                                        <span className="slide-picker-num">04 // ASIL EKRAN</span>
+                                        <span className="slide-picker-num">06 // ASIL EKRAN</span>
                                         <span className="slide-picker-name">Karşılama & İlk Giriş</span>
                                     </div>
                                     <span className="slide-picker-gateway-badge">ANA EKRAN</span>
@@ -538,11 +632,11 @@ const MobileDesignShowcase = () => {
                                     <span>Aktif Ekran Amacı</span>
                                 </span>
                                 <span className="inspector-card-badge">
-                                    {currentSlide === 3 ? 'ANA EKRAN' : `SLIDE ${currentSlide + 1}`}
+                                    {currentSlide === 5 ? 'ANA EKRAN' : `SLIDE ${currentSlide + 1}`}
                                 </span>
                             </div>
 
-                            {currentSlide === 3 ? (
+                            {currentSlide === 5 ? (
                                 <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
                                     <p style={{ margin: '0 0 8px' }}>
                                         <strong>Asıl Karşılama Sayfası:</strong> Tanıtım kartları bittiğinde kullanıcının oturum açmamışken karşılaştığı ilk ana ekran.
@@ -557,10 +651,10 @@ const MobileDesignShowcase = () => {
                             ) : (
                                 <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
                                     <p style={{ margin: '0 0 8px' }}>
-                                        <strong>Tanıtım Kartı:</strong> Sol üstte web sitemizin birebir çift logosu (amblem + yazı) yer alır.
+                                        <strong>{ONBOARDING_SLIDES[currentSlide]?.title}:</strong> {ONBOARDING_SLIDES[currentSlide]?.subtitle}
                                     </p>
                                     <p style={{ margin: 0 }}>
-                                        Platforma özel gerçek arayüz bileşenleri (Portallar, 4K Medya, Kristal Ses) temsil edilmiştir.
+                                        Platforma özel gerçek arayüz bileşenleri (Portal Yönetimi, 4K Kayıpsız Medya, Eş Zamanlı Watch Party, 3D Harita veya Event Horizon) canlı animasyonlu olarak temsil edilmiştir.
                                     </p>
                                 </div>
                             )}
@@ -589,6 +683,10 @@ const MobileDesignShowcase = () => {
                                     <span style={{ color: '#ffffff', fontWeight: 'bold' }}>
                                         {themeMode === 'dark' ? 'Karanlık (OLED & Gümüş)' : 'Aydınlık (Saf Beyaz & Gümüş)'}
                                     </span>
+                                </div>
+                                <div className="spec-token-row">
+                                    <span>Tanıtım Sayfası</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>5 Özel Şablon</span>
                                 </div>
                                 <div className="spec-token-row">
                                     <span>Sol Üst Köşe</span>
@@ -627,7 +725,7 @@ const MobileDesignShowcase = () => {
                                     className="mode-tab-btn active"
                                     style={{ justifyContent: 'center' }}
                                     onClick={() => {
-                                        setCurrentSlide(3);
+                                        setCurrentSlide(5);
                                         setLogoAnimKey((k) => k + 1);
                                     }}
                                 >
@@ -640,13 +738,13 @@ const MobileDesignShowcase = () => {
             )}
 
             {/* ----------------------------------------------------------------------
-               VIEW 2: MATRIX / GRID (ALL 4 DEVICES SIDE-BY-SIDE)
+               VIEW 2: MATRIX / GRID (ALL 6 DEVICES SIDE-BY-SIDE)
                ---------------------------------------------------------------------- */}
             {viewMode === 'matrix' && (
                 <div className="matrix-view-container">
                     <div className="matrix-header-note">
                         <span>
-                            Tüm prototip sayfaları (3 Tanıtım + Asıl Giriş Sayfası) yan yana listelenmiştir. Yukarıdaki butonla temayı Siyah veya Beyaz olarak eş zamanlı değiştirebilirsiniz.
+                            Tüm prototip sayfaları (5 Tanıtım + Asıl Giriş Sayfası) yan yana listelenmiştir. Yukarıdaki butonla temayı Siyah veya Beyaz olarak eş zamanlı değiştirebilirsiniz.
                         </span>
                         <span style={{ fontFamily: 'monospace', color: '#ffffff' }}>
                             TEMA: {themeMode.toUpperCase()}
@@ -654,7 +752,7 @@ const MobileDesignShowcase = () => {
                     </div>
 
                     <div className="matrix-devices-grid">
-                        {/* 3 Onboarding Cards */}
+                        {/* 5 Onboarding Cards */}
                         {ONBOARDING_SLIDES.map((slide, idx) => (
                             <div key={idx} className="matrix-device-card">
                                 <div className="matrix-card-label">
@@ -671,10 +769,10 @@ const MobileDesignShowcase = () => {
                             </div>
                         ))}
 
-                        {/* 4th Device: Asıl Karşılama & İlk Giriş Ekranı */}
+                        {/* 6th Device: Asıl Karşılama & İlk Giriş Ekranı */}
                         <div className="matrix-device-card">
                             <div className="matrix-card-label" style={{ borderColor: '#cbd5e1' }}>
-                                <span>KART 4: KARŞILAMA & GİRİŞ</span>
+                                <span>KART 6: KARŞILAMA & GİRİŞ</span>
                                 <span style={{ color: '#ffffff', fontWeight: 'bold' }}>ASIL EKRAN</span>
                             </div>
                             <div className={`matrix-phone-frame ${themeMode === 'light' ? 'theme-light' : 'theme-dark'}`}>
@@ -742,10 +840,13 @@ const MobileDesignShowcase = () => {
                         </div>
 
                         <pre className="spec-code-block">
-{`// Mobil Uygulama Açılış Zinciri (Onboarding -> Welcome)
-1. Onboarding Flow (3 Sade Kart)
-   ├── Sol Üst: Birebir Çift Logo (Emblem + OXYPACE)
-   ├── Geçişler: 0.36s Yumuşak Süzülme Animasyonu
+{`// Mobil Uygulama Açılış Zinciri (5 Onboarding -> Welcome)
+1. Onboarding Flow (5 Detaylı & Sade Kart)
+   ├── 01: Özgür Portallar & Tam Yetki Moderatörlük
+   ├── 02: Kayıpsız Medya (Görsel/Video/PDF/GIF/YouTube/X)
+   ├── 03: Canlı Oda & Eş Zamanlı Watch Party + Kesintisiz Ses
+   ├── 04: Yüksek Hızlı 3D Dünya Haritası ile Küresel Keşif
+   ├── 05: Event Horizon Bilim, Fizik & Uzay Hesaplamaları
    └── "Geç" veya "Başlayın" tıklandığında:
 2. Karşılama & İlk Giriş (Welcome Screen)
    ├── Reversible Logo Animasyonu:
