@@ -29,12 +29,16 @@ import {
     Moon,
     LogIn,
     UserPlus,
-    Compass as ExploreIcon
+    Volume2,
+    MessageSquare,
+    Heart,
+    Share2,
+    Users
 } from 'lucide-react';
 import './MobileDesignShowcase.css';
 
 // --------------------------------------------------------------------------
-// ONBOARDING SLIDES (SADE, ZARİF, ASIL KULLANILACAK İÇERİKLER)
+// ONBOARDING SLIDES (GERÇEK OXYPACE PLATFORM TEMASINA UYGUN, SADE)
 // --------------------------------------------------------------------------
 const ONBOARDING_SLIDES = [
     {
@@ -42,39 +46,26 @@ const ONBOARDING_SLIDES = [
         step: '01 / 03',
         title: 'EVRENSEL AĞ VE PORTALLAR',
         subtitle: 'Sınırları Olmayan Bağımsız Topluluklar',
-        description: 'Bilim, teknoloji, felsefe ve sanat için tasarlanmış bağımsız portallara anında bağlanın. Kendi uzay üssünüzü kurun veya küresel ağa dahil olun.',
-        icon: Globe
+        description: 'Bilim, teknoloji, felsefe ve sanat için tasarlanmış bağımsız portallara anında bağlanın. Kendi uzay üssünüzü kurun veya küresel ağa dahil olun.'
     },
     {
         id: 1,
         step: '02 / 03',
         title: 'KAYIPSIZ MEDYA & 4K İLETİM',
         subtitle: 'Sıfır Sıkıştırma, Saf Görsel Netlik',
-        description: 'Paylaştığınız hiçbir fotoğraf veya video kaliteden ödün vermez. Akıllı doğrudan aktarım mimarisiyle her piksel tam orijinal netliğinde sunulur.',
-        icon: Film
+        description: 'Paylaştığınız hiçbir fotoğraf veya video kaliteden ödün vermez. Akıllı doğrudan aktarım mimarisiyle her kare tam orijinal netliğinde sunulur.'
     },
     {
         id: 2,
         step: '03 / 03',
         title: 'IŞIK HIZINDA GÜVENLİ İLETİŞİM',
         subtitle: 'Uçtan Uca Korunan Özel Odalar',
-        description: 'Ultra düşük gecikmeli kristal sesli odalar, anlık mesajlaşma ve uçtan uca kriptografik gizlilik. Konuşmalarınız sadece hedef cihazlarda çözülür.',
-        icon: Lock
+        description: 'Ultra düşük gecikmeli kristal sesli odalar, anlık mesajlaşma ve uçtan uca kriptografik gizlilik. Konuşmalarınız sadece hedef cihazlarda çözülür.'
     }
 ];
 
-// --------------------------------------------------------------------------
-// WAITING SCREEN PROGRESS PHASES
-// --------------------------------------------------------------------------
-const WAITING_PHASES = [
-    { progress: 20, label: 'Çekirdek sistem ve yerel önbellek hazırlanıyor...' },
-    { progress: 50, label: 'Uçtan uca şifreleme anahtarları doğrulanıyor...' },
-    { progress: 80, label: 'Portallar ve veri tüneli senkronize ediliyor...' },
-    { progress: 100, label: 'Bağlantı hazır. Portala aktarılıyorsunuz...' }
-];
-
 const MobileDesignShowcase = () => {
-    // Mode tabs: 'simulator' | 'matrix' | 'welcome' | 'waiting' | 'specs'
+    // Mode tabs: 'simulator' | 'matrix' | 'welcome' | 'specs'
     const [viewMode, setViewMode] = useState('simulator');
     
     // Theme Mode: 'dark' (OLED Siyah & Gümüş) | 'light' (Saf Beyaz & Gümüş Gri)
@@ -82,24 +73,21 @@ const MobileDesignShowcase = () => {
 
     // Simulator Active Screen:
     // 0, 1, 2 = Onboarding Slides
-    // 3 = Asıl Karşılama & İlk Giriş Ekranı (Welcome / Auth Gateway Screen)
-    // 4 = Uygulama Bekleme Ekranı (Splash Loading Screen)
+    // 3 = Asıl Karşılama & İlk Giriş Ekranı (Welcome Main Screen)
     const [currentSlide, setCurrentSlide] = useState(0);
 
     const [isAutoPlay, setIsAutoPlay] = useState(false);
     const [deviceFrame, setDeviceFrame] = useState(true);
 
-    // Waiting Screen State
-    const [waitingProgress, setWaitingProgress] = useState(20);
-    const [waitingPhaseIndex, setWaitingPhaseIndex] = useState(0);
-    const [isWaitingSimActive, setIsWaitingSimActive] = useState(true);
+    // Replay key for logo animation
+    const [logoAnimKey, setLogoAnimKey] = useState(0);
 
     // Auto Play Interval
     useEffect(() => {
         let timer = null;
         if (isAutoPlay && viewMode === 'simulator') {
             timer = setInterval(() => {
-                setCurrentSlide((prev) => (prev >= 4 ? 0 : prev + 1));
+                setCurrentSlide((prev) => (prev >= 3 ? 0 : prev + 1));
             }, 3600);
         }
         return () => {
@@ -107,41 +95,8 @@ const MobileDesignShowcase = () => {
         };
     }, [isAutoPlay, viewMode]);
 
-    // Waiting Screen Progress Simulation
-    useEffect(() => {
-        let interval = null;
-        if ((currentSlide === 4 || viewMode === 'waiting') && isWaitingSimActive) {
-            setWaitingProgress(20);
-            setWaitingPhaseIndex(0);
-
-            interval = setInterval(() => {
-                setWaitingProgress((prev) => {
-                    if (prev >= 100) {
-                        clearInterval(interval);
-                        return 100;
-                    }
-                    const next = prev + 5;
-                    if (next >= 85) setWaitingPhaseIndex(3);
-                    else if (next >= 55) setWaitingPhaseIndex(2);
-                    else if (next >= 30) setWaitingPhaseIndex(1);
-                    return next;
-                });
-            }, 180);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [currentSlide, viewMode, isWaitingSimActive]);
-
-    const handleRestartWaiting = () => {
-        setWaitingProgress(10);
-        setWaitingPhaseIndex(0);
-        setIsWaitingSimActive(false);
-        setTimeout(() => setIsWaitingSimActive(true), 50);
-    };
-
     const handleNextSlide = () => {
-        if (currentSlide < 4) {
+        if (currentSlide < 3) {
             setCurrentSlide(currentSlide + 1);
         } else {
             setCurrentSlide(0);
@@ -154,12 +109,87 @@ const MobileDesignShowcase = () => {
         }
     };
 
+    // Replay logo animation
+    const handleReplayLogo = () => {
+        setLogoAnimKey((prev) => prev + 1);
+    };
+
     // --------------------------------------------------------------------------
-    // RENDER 1: ONBOARDING SCREEN CONTENT (0, 1, 2)
+    // RENDER: AUTHENTIC UI ILLUSTRATIONS FOR ONBOARDING
+    // --------------------------------------------------------------------------
+    const renderOnboardingVisual = (slideIndex) => {
+        // Slide 0: Authentic Portal Card Preview
+        if (slideIndex === 0) {
+            return (
+                <div className="ui-mockup-portal-card">
+                    <div className="ui-portal-card-top">
+                        <span className="ui-portal-tag">#KUANTUM-FIZIGI</span>
+                        <div className="ui-portal-status-online">
+                            <span className="telemetry-dot" style={{ width: '5px', height: '5px' }}></span>
+                            <span>142 Çevrimiçi</span>
+                        </div>
+                    </div>
+                    <h4 className="ui-portal-title">Derin Uzay & Evren Portalı</h4>
+                    <div className="ui-portal-channels-row">
+                        <span className="ui-portal-channel-pill">💬 #genel-tartisma</span>
+                        <span className="ui-portal-channel-pill">🎙️ Ses Odası (Aktif)</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Slide 1: Authentic Lossless Media Post Preview
+        if (slideIndex === 1) {
+            return (
+                <div className="ui-mockup-media-card">
+                    <div className="ui-media-author-bar">
+                        <div className="ui-media-avatar">OX</div>
+                        <div>
+                            <span className="ui-media-author-name">@oxypace</span>
+                            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Kayıpsız Medya Yayını</span>
+                        </div>
+                    </div>
+                    <div className="ui-media-frame">
+                        <Sparkles size={28} style={{ opacity: 0.4 }} />
+                        <span className="ui-media-badge-4k">4K UHD · RAW</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Slide 2: Authentic Voice Channel Waveform Preview
+        return (
+            <div className="ui-mockup-voice-card">
+                <div className="ui-voice-header">
+                    <span className="ui-voice-title">
+                        <Volume2 size={15} />
+                        <span>Kristal Ses Odası</span>
+                    </span>
+                    <span className="ui-voice-ping">12ms · P2P</span>
+                </div>
+                {/* Silver Soundwave Visualizer Bars */}
+                <div className="ui-voice-waveform-row">
+                    {[14, 24, 32, 18, 36, 28, 20, 34, 16, 26, 38, 22, 18, 30, 26].map((h, i) => (
+                        <div
+                            key={i}
+                            className="ui-voice-bar"
+                            style={{ height: `${h}px` }}
+                        ></div>
+                    ))}
+                </div>
+                <div className="ui-encrypted-notice">
+                    <Lock size={12} />
+                    <span>Uçtan uca şifreli oturum aktif</span>
+                </div>
+            </div>
+        );
+    };
+
+    // --------------------------------------------------------------------------
+    // RENDER: ONBOARDING SCREEN (0, 1, 2)
     // --------------------------------------------------------------------------
     const renderOnboardingContent = (slideIndex) => {
         const slide = ONBOARDING_SLIDES[slideIndex] || ONBOARDING_SLIDES[0];
-        const IconComponent = slide.icon;
 
         return (
             <div className="onboarding-screen-wrapper">
@@ -178,15 +208,9 @@ const MobileDesignShowcase = () => {
                     </button>
                 </div>
 
-                {/* Visual Illustration Showcase Box */}
+                {/* Authentic UI Illustration Stage */}
                 <div className="onboarding-visual-stage">
-                    <div className="visual-orbit-ring orbit-lg"></div>
-                    <div className="visual-orbit-ring orbit-md"></div>
-                    
-                    <div className="visual-core-center">
-                        <div className="core-pulse"></div>
-                        <IconComponent size={34} strokeWidth={1.8} />
-                    </div>
+                    {renderOnboardingVisual(slideIndex)}
                 </div>
 
                 {/* Text Content Area */}
@@ -208,17 +232,11 @@ const MobileDesignShowcase = () => {
                                 onClick={() => setCurrentSlide(dotIdx)}
                             ></div>
                         ))}
-                        {/* Dot for Welcome Gateway Screen */}
+                        {/* Dot for Welcome Main Screen */}
                         <div
                             className={`indicator-dot ${currentSlide === 3 ? 'active' : ''}`}
                             onClick={() => setCurrentSlide(3)}
                             title="Karşılama & İlk Giriş Ekranı"
-                        ></div>
-                        {/* Dot for Waiting Splash Screen */}
-                        <div
-                            className={`indicator-dot ${currentSlide === 4 ? 'active' : ''}`}
-                            onClick={() => setCurrentSlide(4)}
-                            title="Bekleme Ekranı"
                         ></div>
                     </div>
 
@@ -234,7 +252,7 @@ const MobileDesignShowcase = () => {
                         )}
                         
                         <button
-                            className="onboarding-primary-btn"
+                            className="mobile-silver-primary-btn"
                             onClick={handleNextSlide}
                         >
                             <span>{currentSlide === 2 ? 'Başlayın' : 'İleri'}</span>
@@ -247,64 +265,60 @@ const MobileDesignShowcase = () => {
     };
 
     // --------------------------------------------------------------------------
-    // RENDER 2: ASIL KARŞILAMA & İLK GİRİŞ EKRANI (WELCOME & AUTH GATEWAY)
-    // The screen user sees when not logged in, with Logo, Slogan, and Auth buttons
+    // RENDER: ASIL KARŞILAMA VE İLK GİRİŞ EKRANI (WELCOME & AUTH MAIN SCREEN)
     // --------------------------------------------------------------------------
     const renderWelcomeContent = () => {
         return (
             <div className="welcome-screen-wrapper">
-                {/* Subtle top indicator */}
-                <div className="welcome-top-badge">
-                    <span>OXYPACE NETWORK</span>
+                {/* Spacer / Replay animation trigger */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                    <button
+                        className="replay-logo-anim-btn"
+                        onClick={handleReplayLogo}
+                        title="Logo animasyonunu yeniden izle"
+                    >
+                        <RotateCcw size={11} />
+                        <span>Animasyonu Yeniden Oynat</span>
+                    </button>
                 </div>
 
-                {/* Center Brand Identity: Logo + Slogan */}
+                {/* Center Brand Identity: Animated Logo Lockup (Emblem + OXYPACE) */}
                 <div className="welcome-center-brand">
-                    <div className="welcome-logo-box">
+                    <div className="welcome-brand-lockup" key={logoAnimKey}>
                         <img
                             src="/logo.png"
-                            alt="Oxypace Logo"
-                            className="welcome-logo-img"
-                            onError={(e) => {
-                                e.target.style.display = 'none';
-                            }}
+                            alt="Oxypace Emblem"
+                            className="welcome-emblem-img"
                         />
-                        <Sparkles size={38} className="fallback-logo-icon" />
+                        <img
+                            src="/oxypace-text-logo2.webp"
+                            alt="OXYPACE"
+                            className="welcome-text-logo-img"
+                        />
                     </div>
 
-                    <div className="welcome-title-slogan">
-                        <h1 className="welcome-app-name">O X Y P A C E</h1>
-                        <h2 className="welcome-slogan">Evrenin Yeni İletişim Ağı</h2>
-                        <p className="welcome-desc">
-                            Merkeziyetsiz portallar, kayıpsız 4K medya akışı ve yüksek hızlı şifreli ses odaları.
-                        </p>
-                    </div>
+                    {/* Slogan: Minimal, Iconic Steve Jobs quote */}
+                    <p className="welcome-slogan-quote">
+                        "The people who are crazy enough to think they can change the world are the ones who do."
+                    </p>
                 </div>
 
-                {/* Gateway Action Buttons */}
+                {/* Gateway Action Buttons (No Misafir button!) */}
                 <div className="welcome-actions-group">
                     <button
-                        className="welcome-btn-primary"
-                        onClick={() => setCurrentSlide(4)}
-                        title="Giriş yapıldığında bekleme / yükleme ekranına geçer"
+                        className="mobile-silver-primary-btn"
+                        onClick={() => alert('Giriş ekranına yönlendiriliyorsunuz.')}
                     >
                         <LogIn size={16} />
                         <span>Giriş Yap</span>
                     </button>
 
                     <button
-                        className="welcome-btn-secondary"
-                        onClick={() => setCurrentSlide(4)}
+                        className="mobile-silver-secondary-btn"
+                        onClick={() => alert('Kayıt olma ekranına yönlendiriliyorsunuz.')}
                     >
                         <UserPlus size={16} />
                         <span>Hesap Oluştur</span>
-                    </button>
-
-                    <button
-                        className="welcome-btn-guest"
-                        onClick={() => setCurrentSlide(4)}
-                    >
-                        <span>Misafir Olarak Keşfet</span>
                     </button>
 
                     <p className="welcome-legal-text">
@@ -316,85 +330,11 @@ const MobileDesignShowcase = () => {
     };
 
     // --------------------------------------------------------------------------
-    // RENDER 3: UYGULAMA BEKLEME EKRANI (SPLASH LOADING PROTOTYPE)
-    // --------------------------------------------------------------------------
-    const renderWaitingContent = () => {
-        return (
-            <div className="waiting-screen-wrapper">
-                {/* Top status bar telemetry */}
-                <div className="waiting-top-telemetry">
-                    <span>OXYPACE // SECURE</span>
-                    <span>12ms</span>
-                </div>
-
-                {/* Central Emblem & Orbital Rings */}
-                <div className="waiting-core-stage">
-                    <div className="waiting-emblem-orbital">
-                        <div className="emblem-ring-outer"></div>
-                        <div className="emblem-ring-inner"></div>
-                        <div className="emblem-radar-sweep"></div>
-                        <div className="emblem-center-core">
-                            <Sparkles size={28} />
-                        </div>
-                    </div>
-
-                    <div className="waiting-title-block">
-                        <h3>O X Y P A C E</h3>
-                        <span className="waiting-version-tag">Evrenin Yeni İletişim Ağı</span>
-                    </div>
-                </div>
-
-                {/* Progress & Console Area */}
-                <div className="waiting-console-box">
-                    <div className="waiting-status-label">
-                        <span>Uygulama Başlatılıyor</span>
-                        <span>%{waitingProgress}</span>
-                    </div>
-
-                    <div className="waiting-progress-track">
-                        <div
-                            className="waiting-progress-bar"
-                            style={{ width: `${waitingProgress}%` }}
-                        ></div>
-                    </div>
-
-                    <div className="waiting-phase-text">
-                        {WAITING_PHASES[waitingPhaseIndex]?.label || 'Sistem hazır...'}
-                    </div>
-                </div>
-
-                {/* Bottom Action for Testing */}
-                <div className="waiting-bottom-actions">
-                    <button
-                        className="waiting-restart-btn"
-                        onClick={handleRestartWaiting}
-                        title="Yükleme simülasyonunu yeniden çalıştır"
-                    >
-                        <RotateCcw size={13} />
-                        <span>Yeniden Test Et</span>
-                    </button>
-                    <button
-                        className="waiting-restart-btn"
-                        onClick={() => setCurrentSlide(3)}
-                        title="Asıl karşılama sayfasına dön"
-                    >
-                        <ChevronLeft size={13} />
-                        <span>Giriş Sayfasına Dön</span>
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    // --------------------------------------------------------------------------
     // RENDER: DISPATCH TO CURRENT SCREEN
     // --------------------------------------------------------------------------
     const renderScreenContent = (slideIndex) => {
         if (slideIndex === 3) {
             return renderWelcomeContent();
-        }
-        if (slideIndex === 4) {
-            return renderWaitingContent();
         }
         return renderOnboardingContent(slideIndex);
     };
@@ -451,7 +391,7 @@ const MobileDesignShowcase = () => {
                     <div>
                         <h2>Mobil Tasarım Barındırma</h2>
                         <p className="mobile-showcase-subtitle">
-                            Mobil tanıtım sayfaları (Onboarding), Asıl Karşılama Ekranı (Logo & Slogan) ve Bekleme Ekranı (Splash) prototip denetleme laboratuvarı.
+                            Mobil tanıtım sayfaları (Onboarding) ve Asıl Karşılama Ekranı (Logo & Slogan) prototip laboratuvarı.
                         </p>
                     </div>
                 </div>
@@ -553,7 +493,7 @@ const MobileDesignShowcase = () => {
                                     <Layers size={14} />
                                     <span>Ekran Gezgini</span>
                                 </span>
-                                <span className="inspector-card-badge">5 EKRAN</span>
+                                <span className="inspector-card-badge">4 EKRAN</span>
                             </div>
 
                             <div className="slide-picker-list">
@@ -571,7 +511,7 @@ const MobileDesignShowcase = () => {
                                     </button>
                                 ))}
 
-                                {/* Screen 3: Welcome & Auth Gateway */}
+                                {/* Screen 3: Welcome & Auth Main Screen */}
                                 <button
                                     className={`slide-picker-item ${currentSlide === 3 ? 'active' : ''}`}
                                     onClick={() => setCurrentSlide(3)}
@@ -581,18 +521,6 @@ const MobileDesignShowcase = () => {
                                         <span className="slide-picker-name">Karşılama & İlk Giriş</span>
                                     </div>
                                     <span className="slide-picker-gateway-badge">ANA EKRAN</span>
-                                </button>
-
-                                {/* Screen 4: Splash Waiting */}
-                                <button
-                                    className={`slide-picker-item ${currentSlide === 4 ? 'active' : ''}`}
-                                    onClick={() => setCurrentSlide(4)}
-                                >
-                                    <div className="slide-picker-info">
-                                        <span className="slide-picker-num">05 // BEKLEME</span>
-                                        <span className="slide-picker-name">Uygulama Bekleme Ekranı</span>
-                                    </div>
-                                    <ChevronRight size={14} />
                                 </button>
                             </div>
                         </div>
@@ -605,7 +533,7 @@ const MobileDesignShowcase = () => {
                                     <span>Aktif Ekran Amacı</span>
                                 </span>
                                 <span className="inspector-card-badge">
-                                    {currentSlide === 3 ? 'ASIL EKRAN' : currentSlide === 4 ? 'SPLASH' : `SLIDE ${currentSlide + 1}`}
+                                    {currentSlide === 3 ? 'ANA EKRAN' : `SLIDE ${currentSlide + 1}`}
                                 </span>
                             </div>
 
@@ -615,19 +543,10 @@ const MobileDesignShowcase = () => {
                                         <strong>Asıl Karşılama Sayfası:</strong> Tanıtım kartları bittiğinde kullanıcının oturum açmamışken karşılaştığı ilk ana ekran.
                                     </p>
                                     <p style={{ margin: '0 0 8px' }}>
-                                        <strong>Bileşenler:</strong> Oxypace Logosu, <em>"Evrenin Yeni İletişim Ağı"</em> sloganı, <strong>Giriş Yap</strong>, <strong>Hesap Oluştur</strong> ve <strong>Misafir Girişi</strong> aksiyonları.
+                                        <strong>Logo Animasyonu:</strong> Sayfa açıldığında emblem belirir ve yanına OXYPACE yazı logosu pürüzsüzce kayarak eklenir.
                                     </p>
-                                    <p style={{ margin: 0, color: '#94a3b8' }}>
-                                        Herhangi bir butona tıklandığında uygulamanın bağlantı/bekleme sekansı test edilebilir.
-                                    </p>
-                                </div>
-                            ) : currentSlide === 4 ? (
-                                <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
-                                    <p style={{ margin: '0 0 8px' }}>
-                                        <strong>Bekleme Ekranı:</strong> Giriş yapıldığında veya uygulama ilk açıldığında yerel depolama ve tünel bağlantısı kurulurken gösterilen bekleme arayüzü.
-                                    </p>
-                                    <p style={{ margin: 0, color: '#94a3b8' }}>
-                                        Gümüşümsü orbital radar dalgası ve aşamalı yükleme sekansı barındırır.
+                                    <p style={{ margin: 0 }}>
+                                        <strong>Slogan:</strong> <em>"The people who are crazy enough to think they can change the world are the ones who do."</em>
                                     </p>
                                 </div>
                             ) : (
@@ -635,8 +554,8 @@ const MobileDesignShowcase = () => {
                                     <p style={{ margin: '0 0 8px' }}>
                                         <strong>Tanıtım Kartı:</strong> Mobil uygulamada ilk kez açılışta gösterilecek sadeleştirilmiş özellik tanıtımı.
                                     </p>
-                                    <p style={{ margin: 0, color: '#94a3b8' }}>
-                                        Gereksiz teknik kalabalıktan arındırılmış, gümüş/platin vurgulu ve odaklanmış tipografi.
+                                    <p style={{ margin: 0 }}>
+                                        Platforma özel gerçek arayüz bileşenleri (Portallar, 4K Medya, Kristal Ses) temsil edilmiştir.
                                     </p>
                                 </div>
                             )}
@@ -654,34 +573,34 @@ const MobileDesignShowcase = () => {
                             <div className="inspector-card-header">
                                 <span className="inspector-card-title">
                                     <Sun size={14} />
-                                    <span>Tema & Görünüm Denetimi</span>
+                                    <span>Görünüm & Tema Denetimi</span>
                                 </span>
                                 <span className="inspector-card-badge">{themeMode.toUpperCase()}</span>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 <div className="spec-token-row">
-                                    <span>Aktif Tema</span>
+                                    <span>Seçili Tema</span>
                                     <span style={{ color: '#ffffff', fontWeight: 'bold' }}>
                                         {themeMode === 'dark' ? 'Karanlık (OLED & Gümüş)' : 'Aydınlık (Saf Beyaz & Gümüş)'}
                                     </span>
                                 </div>
                                 <div className="spec-token-row">
-                                    <span>Gümüş/Platin Vurgular</span>
-                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Aktif</span>
+                                    <span>Buton Stili</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Gümüşümsü Gradye (6px)</span>
                                 </div>
                                 <div className="spec-token-row">
-                                    <span>Gereksiz Metin İzolasyonu</span>
-                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Tamamen Temizlendi</span>
+                                    <span>Yazı Kontrastı</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>%100 Okunabilir Koruma</span>
                                 </div>
                                 <div className="spec-token-row">
-                                    <span>Gerçek Cam Efekti</span>
-                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Doğal Yansıma</span>
+                                    <span>Gereksiz Öğeler</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Temizlendi</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Quick Navigation Shortcut Buttons */}
+                        {/* Quick Flow Shortcuts */}
                         <div className="inspector-card">
                             <div className="inspector-card-header">
                                 <span className="inspector-card-title">
@@ -693,23 +612,21 @@ const MobileDesignShowcase = () => {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <button
-                                    className="waiting-restart-btn"
+                                    className="mode-tab-btn"
+                                    style={{ justifyContent: 'center' }}
                                     onClick={() => setCurrentSlide(0)}
                                 >
                                     <span>1. Tanıtımları Baştan Başlat</span>
                                 </button>
                                 <button
-                                    className="waiting-restart-btn"
-                                    style={{ background: '#171924', borderColor: '#cbd5e1' }}
-                                    onClick={() => setCurrentSlide(3)}
+                                    className="mode-tab-btn active"
+                                    style={{ justifyContent: 'center' }}
+                                    onClick={() => {
+                                        setCurrentSlide(3);
+                                        setLogoAnimKey((k) => k + 1);
+                                    }}
                                 >
                                     <span>2. Asıl Karşılama Ekranına Git</span>
-                                </button>
-                                <button
-                                    className="waiting-restart-btn"
-                                    onClick={() => setCurrentSlide(4)}
-                                >
-                                    <span>3. Bekleme Ekranını Test Et</span>
                                 </button>
                             </div>
                         </div>
@@ -718,13 +635,13 @@ const MobileDesignShowcase = () => {
             )}
 
             {/* ----------------------------------------------------------------------
-               VIEW 2: MATRIX / GRID (ALL 5 DEVICES SIDE-BY-SIDE)
+               VIEW 2: MATRIX / GRID (ALL 4 DEVICES SIDE-BY-SIDE)
                ---------------------------------------------------------------------- */}
             {viewMode === 'matrix' && (
                 <div className="matrix-view-container">
                     <div className="matrix-header-note">
                         <span>
-                            Tüm prototip sayfaları (3 Tanıtım + Asıl Giriş Sayfası + Bekleme Ekranı) yan yana listelenmiştir. Yukarıdaki butonla temayı Siyah veya Beyaz olarak eş zamanlı değiştirebilirsiniz.
+                            Tüm prototip sayfaları (3 Tanıtım + Asıl Giriş Sayfası) yan yana listelenmiştir. Yukarıdaki butonla temayı Siyah veya Beyaz olarak eş zamanlı değiştirebilirsiniz.
                         </span>
                         <span style={{ fontFamily: 'monospace', color: '#ffffff' }}>
                             TEMA: {themeMode.toUpperCase()}
@@ -763,21 +680,6 @@ const MobileDesignShowcase = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {/* 5th Device: Bekleme Ekranı */}
-                        <div className="matrix-device-card">
-                            <div className="matrix-card-label">
-                                <span>KART 5: BEKLEME EKRANI</span>
-                                <span style={{ color: '#888888' }}>SPLASH</span>
-                            </div>
-                            <div className={`matrix-phone-frame ${themeMode === 'light' ? 'theme-light' : 'theme-dark'}`}>
-                                <div className={`phone-screen ${themeMode === 'light' ? 'theme-light' : 'theme-dark'}`}>
-                                    <div className="phone-inner-content">
-                                        {renderWaitingContent()}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             )}
@@ -812,24 +714,16 @@ const MobileDesignShowcase = () => {
 
                             <div className="spec-token-row">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className="spec-color-preview" style={{ background: '#cbd5e1' }}></div>
-                                    <span>--color-silver-light</span>
+                                    <div className="spec-color-preview" style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #cbd5e1 100%)' }}></div>
+                                    <span>--btn-silver-metallic</span>
                                 </div>
-                                <span>#cbd5e1 (Açık Gümüş)</span>
-                            </div>
-
-                            <div className="spec-token-row">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className="spec-color-preview" style={{ background: '#94a3b8' }}></div>
-                                    <span>--color-silver-medium</span>
-                                </div>
-                                <span>#94a3b8 (Platin Gri)</span>
+                                <span>#f8fafc &rarr; #cbd5e1 (Platform Butonu)</span>
                             </div>
 
                             <div className="spec-token-row">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div className="spec-color-preview" style={{ background: '#e2e8f0' }}></div>
-                                    <span>--color-titanium</span>
+                                    <span>--color-titanium-border</span>
                                 </div>
                                 <span>#e2e8f0 (Titanyum Kenarlık)</span>
                             </div>
@@ -843,15 +737,14 @@ const MobileDesignShowcase = () => {
                         </div>
 
                         <pre className="spec-code-block">
-{`// Mobil Uygulama Açılış Zinciri (Onboarding -> Welcome -> Splash)
+{`// Mobil Uygulama Açılış Zinciri (Onboarding -> Welcome)
 1. Onboarding Flow (3 Sade Kart)
-   └── "Geç" veya "Başlayın" tetiklenir
+   └── "Geç" veya "Başlayın" tıklandığında:
 2. Karşılama & İlk Giriş (Welcome Screen)
-   ├── "Giriş Yap" -> Auth Modal / Ekranı
-   ├── "Hesap Oluştur" -> Kayıt Ekranı
-   └── "Misafir Olarak Keşfet" -> Direkt Giriş
-3. Uygulama Bekleme Ekranı (Splash Loading)
-   └── Şifreli soket ve portallar bağlandığında ana arayüz açılır.`}
+   ├── Logo Animasyonu: [Emblem] + [OXYPACE]
+   ├── Slogan: "The people who are crazy enough to think they can change the world are the ones who do."
+   ├── "Giriş Yap" (Gümüşümsü Buton) -> Auth
+   └── "Hesap Oluştur" (Gümüş Çerçeve Buton) -> Kayıt`}
                         </pre>
                     </div>
                 </div>
