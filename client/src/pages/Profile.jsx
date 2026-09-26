@@ -22,6 +22,7 @@ import { extractFirstUrl } from '../utils/linkify';
 import PostImageGallery from '../components/PostImageGallery';
 import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
+import PortalInfoModal from '../components/PortalInfoModal';
 import { useSocket } from '../context/SocketContext';
 import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown } from 'lucide-react';
 import { validateProfileFields } from '../utils/profanityFilter';
@@ -48,6 +49,7 @@ const Profile = () => {
         }
     }, [socket, connected]);
     const [showReportModal, setShowReportModal] = useState(false);
+    const [selectedPortalForInfo, setSelectedPortalForInfo] = useState(null);
     const [formData, setFormData] = useState({
         username: '',
         displayName: '',
@@ -1554,7 +1556,7 @@ const Profile = () => {
                                                                     key={p._id}
                                                                     className="portal-item-card"
                                                                     onClick={() =>
-                                                                        navigate(`/portal/${p._id}`)
+                                                                        setSelectedPortalForInfo(p)
                                                                     }
                                                                 >
                                                                     <div className="p-avatar">
@@ -2204,6 +2206,24 @@ const Profile = () => {
                     targetId={profileUser._id}
                     targetName={profileUser.profile?.displayName || profileUser.username}
                     onClose={() => setShowReportModal(false)}
+                />
+            )}
+
+            {selectedPortalForInfo && (
+                <PortalInfoModal
+                    portal={selectedPortalForInfo}
+                    onClose={() => setSelectedPortalForInfo(null)}
+                    isMobile={window.innerWidth <= 768}
+                    onLeave={(leftPortalId) => {
+                        if (isOwnProfile) {
+                            setProfileUser((prev) => ({
+                                ...prev,
+                                portals: (prev?.portals || []).filter(
+                                    (item) => (item._id || item) !== leftPortalId
+                                ),
+                            }));
+                        }
+                    }}
                 />
             )}
         </div>

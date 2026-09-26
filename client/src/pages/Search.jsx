@@ -10,7 +10,7 @@ import UserBadges from '../components/UserBadges';
 import './Search.css';
 
 const Search = () => {
-    const { user } = useAuth(); // Auth context
+    const { user, updateUser } = useAuth(); // Auth context
     const [query, setQuery] = useState('');
     const [userResults, setUserResults] = useState([]);
     const [portalResults, setPortalResults] = useState([]);
@@ -91,9 +91,53 @@ const Search = () => {
                     return p;
                 })
             );
+            if (user && updateUser && res.data.status !== 'requested') {
+                const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                updateUser({
+                    ...user,
+                    joinedPortals: [...currentJoined, portalId],
+                });
+            }
         } catch (err) {
             console.error('Join failed:', err);
             alert(err.response?.data?.message || 'İşlem başarısız oldu.');
+        }
+    };
+
+    const handleLeavePortal = async (e, portalId, portalName) => {
+        e.stopPropagation();
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (!window.confirm(`"${portalName || 'Portal'}" portaldan ayrılmak istediğinize emin misiniz?`)) {
+            return;
+        }
+        try {
+            await axios.post(`/api/portals/${portalId}/leave`);
+            // Update local state to reflect change
+            setPortalResults((prev) =>
+                prev.map((p) => {
+                    if (p._id === portalId) {
+                        return {
+                            ...p,
+                            isMember: false,
+                            memberCount: Math.max(0, (p.memberCount || 1) - 1),
+                        };
+                    }
+                    return p;
+                })
+            );
+            if (user && updateUser) {
+                const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                updateUser({
+                    ...user,
+                    joinedPortals: currentJoined.filter((p) => (p?._id || p) !== portalId),
+                });
+            }
+        } catch (err) {
+            console.error('Leave failed:', err);
+            alert(err.response?.data?.message || 'Ayrılma işlemi başarısız oldu.');
         }
     };
 
@@ -316,10 +360,11 @@ const Search = () => {
 
                                                         {portal.isMember ? (
                                                             <button
-                                                                className="join-status-btn joined"
-                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="join-status-btn leave"
+                                                                onClick={(e) => handleLeavePortal(e, portal._id, portal.name)}
+                                                                title="Portaldan Ayrıl"
                                                             >
-                                                                Üyesiniz
+                                                                Ayrıl
                                                             </button>
                                                         ) : portal.isRequested ? (
                                                             <button

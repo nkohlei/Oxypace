@@ -709,6 +709,9 @@ router.post('/:id/leave', protect, mongoIdValidation('id'), async (req, res) => 
         portal.members = portal.members.filter(
             (memberId) => memberId.toString() !== req.user._id.toString()
         );
+        portal.admins = (portal.admins || []).filter(
+            (adminId) => adminId.toString() !== req.user._id.toString()
+        );
         await portal.save();
 
         await User.findByIdAndUpdate(req.user._id, {

@@ -2268,6 +2268,11 @@ const Portal = () => {
                     portal={portal}
                     onClose={() => setShowPortalInfo(false)}
                     isMobile={isMobileView}
+                    onLeave={() => {
+                        setShowPortalInfo(false);
+                        setIsMember(false);
+                        navigate('/');
+                    }}
                 />
             )}
         </div>

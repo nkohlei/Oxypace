@@ -1,16 +1,126 @@
-import React, { useState, useRef } from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X, ArrowUpRight, LogOut, UserPlus, ShieldCheck } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import './PortalInfoModal.css';
 
-const PortalInfoModal = ({ portal, onClose, isMobile }) => {
+const PortalInfoModal = ({ portal, onClose, isMobile, onLeave }) => {
+    const [portalData, setPortalData] = useState(portal || {});
+    const [leaving, setLeaving] = useState(false);
+    const [joining, setJoining] = useState(false);
     const [dragOffset, setDragOffset] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const touchStartY = useRef(0);
     const touchCurrentY = useRef(0);
 
-    if (!portal) return null;
+    const navigate = useNavigate();
+    const { user, updateUser } = useAuth();
+
+    useEffect(() => {
+        if (portal) {
+            setPortalData(portal);
+        }
+        let isMounted = true;
+        if (portal?._id) {
+            axios.get(`/api/portals/${portal._id}`)
+                .then((res) => {
+                    if (isMounted && res.data) {
+                        setPortalData((prev) => ({ ...prev, ...res.data }));
+                    }
+                })
+                .catch(() => {});
+        }
+        return () => {
+            isMounted = false;
+        };
+    }, [portal]);
+
+    if (!portal && !portalData?._id) return null;
+
+    const currentPortalId = (portalData?._id || portal?._id)?.toString();
+    const currentUserId = user?._id?.toString();
+
+    const isOwner = Boolean(
+        currentUserId &&
+        portalData?.owner &&
+        (portalData.owner?._id || portalData.owner)?.toString() === currentUserId
+    );
+
+    const isCurrentUserMember = Boolean(
+        currentUserId && (
+            isOwner ||
+            portalData?.isMember ||
+            (Array.isArray(user?.joinedPortals) &&
+                user.joinedPortals.some((p) => (p?._id || p)?.toString() === currentPortalId)) ||
+            (Array.isArray(portalData?.members) &&
+                portalData.members.some((m) => (m?._id || m)?.toString() === currentUserId))
+        )
+    );
+
+    const handleLeave = async () => {
+        if (!window.confirm(`"${portalData.name || 'Portal'}" portaldan ayrılmak istediğinize emin misiniz?`)) {
+            return;
+        }
+        setLeaving(true);
+        try {
+            await axios.post(`/api/portals/${currentPortalId}/leave`);
+            if (user && updateUser) {
+                const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                updateUser({
+                    ...user,
+                    joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== currentPortalId),
+                });
+            }
+            if (onLeave) {
+                onLeave(currentPortalId);
+            }
+            onClose();
+            if (window.location.pathname.includes(`/portal/${currentPortalId}`)) {
+                navigate('/');
+            }
+        } catch (err) {
+            console.error('Portaldan ayrılma hatası:', err);
+            alert(err.response?.data?.message || 'Portaldan ayrılırken bir hata oluştu');
+        } finally {
+            setLeaving(false);
+        }
+    };
+
+    const handleJoin = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        setJoining(true);
+        try {
+            const res = await axios.post(`/api/portals/${currentPortalId}/join`);
+            if (res.data.status === 'joined') {
+                if (user && updateUser) {
+                    const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                    updateUser({
+                        ...user,
+                        joinedPortals: [...currentJoined, portalData],
+                    });
+                }
+                setPortalData((prev) => ({
+                    ...prev,
+                    isMember: true,
+                    membersCount: (prev.membersCount || prev.members?.length || 0) + 1,
+                }));
+            } else if (res.data.status === 'requested') {
+                setPortalData((prev) => ({ ...prev, isRequested: true }));
+                alert('Üyelik isteğiniz iletildi.');
+            }
+        } catch (err) {
+            console.error('Katılma hatası:', err);
+            alert(err.response?.data?.message || 'Katılma işlemi başarısız oldu.');
+        } finally {
+            setJoining(false);
+        }
+    };
 
     const handleTouchStart = (e) => {
         touchStartY.current = e.touches[0].clientY;
@@ -40,14 +150,16 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
         setDragOffset(0);
     };
 
-    const formattedDate = new Date(portal.createdAt).toLocaleDateString('tr-TR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    const formattedDate = portalData.createdAt
+        ? new Date(portalData.createdAt).toLocaleDateString('tr-TR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+          })
+        : 'Belirtilmedi';
 
-    const isPrivate = portal.privacy === 'private' || portal.isPrivate === true;
-    const isRestricted = portal.privacy === 'restricted';
+    const isPrivate = portalData.privacy === 'private' || portalData.isPrivate === true;
+    const isRestricted = portalData.privacy === 'restricted';
 
     const getPrivacyInfo = () => {
         if (isPrivate) {
@@ -92,24 +204,38 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
         <div className="portal-info-container">
             <div className="portal-info-banner">
                 <img 
-                    src={portal.coverImage ? getImageUrl(portal.coverImage) : portal.banner ? getImageUrl(portal.banner) : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'} 
-                    alt={portal.name} 
+                    src={portalData.coverImage ? getImageUrl(portalData.coverImage) : portalData.banner ? getImageUrl(portalData.banner) : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'} 
+                    alt={portalData.name} 
                 />
                 <div className="portal-info-avatar-wrapper">
-                    <img src={getImageUrl(portal.avatar)} alt={portal.name} className="portal-info-avatar-img" />
+                    <img src={getImageUrl(portalData.avatar)} alt={portalData.name} className="portal-info-avatar-img" />
                 </div>
-                <button className="portal-info-close" onClick={onClose} aria-label="Kapat">
-                    <X size={20} />
-                </button>
+                <div className="portal-info-top-actions">
+                    <button 
+                        type="button"
+                        className="portal-info-go-btn"
+                        onClick={() => {
+                            onClose();
+                            navigate(`/portal/${currentPortalId}`);
+                        }}
+                        title="Portala Git"
+                    >
+                        <span>Git</span>
+                        <ArrowUpRight size={14} className="portal-go-icon" />
+                    </button>
+                    <button className="portal-info-close" onClick={onClose} aria-label="Kapat">
+                        <X size={18} />
+                    </button>
+                </div>
             </div>
 
             <div className="portal-info-content">
                 <div className="portal-info-header">
                     <h1>
-                        {portal.name}
-                        <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={20} />
+                        {portalData.name}
+                        <Badge type={portalData.isVerified ? 'verified' : portalData.badges?.[0]} size={20} />
                     </h1>
-                    <p className="portal-info-tagline">{portal.description || 'Bu portal için bir açıklama bulunmuyor.'}</p>
+                    <p className="portal-info-tagline">{portalData.description || 'Bu portal için bir açıklama bulunmuyor.'}</p>
                 </div>
 
                 <div className="portal-info-stats-grid">
@@ -123,7 +249,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                             </svg>
                         </div>
                         <div className="stat-data">
-                            <span className="stat-value">{portal.membersCount || portal.members?.length || 0}</span>
+                            <span className="stat-value">{portalData.membersCount || portalData.members?.length || 0}</span>
                             <span className="stat-label">Üye</span>
                         </div>
                     </div>
@@ -157,7 +283,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                                 <polyline points="9 12 11 14 15 10" />
                             </svg>
                         </div>
-                        <span>Durum: <strong>{portal.isVerified || (portal.badges && portal.badges.length > 0) ? 'Doğrulanmış Portal' : 'Standart Portal'}</strong></span>
+                        <span>Durum: <strong>{portalData.isVerified || (portalData.badges && portalData.badges.length > 0) ? 'Doğrulanmış Portal' : 'Standart Portal'}</strong></span>
                     </div>
                     <div className="detail-item">
                         <div className="detail-icon-pill">
@@ -168,8 +294,45 @@ const PortalInfoModal = ({ portal, onClose, isMobile }) => {
                                 <rect x="3" y="14" width="7" height="7" rx="1.5" />
                             </svg>
                         </div>
-                        <span>Kategori: <strong>{portal.category || 'Genel'}</strong></span>
+                        <span>Kategori: <strong>{portalData.category || 'Genel'}</strong></span>
                     </div>
+                </div>
+
+                {/* Footer Action Area */}
+                <div className="portal-info-footer-actions">
+                    {isCurrentUserMember ? (
+                        isOwner ? (
+                            <div className="portal-owner-indicator">
+                                <ShieldCheck size={16} />
+                                <span>Bu portalın kurucususunuz</span>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                className="portal-info-leave-btn"
+                                onClick={handleLeave}
+                                disabled={leaving}
+                                title="Portaldan Ayrıl"
+                            >
+                                <LogOut size={16} />
+                                <span>{leaving ? 'Ayrılınıyor...' : 'Portaldan Ayrıl'}</span>
+                            </button>
+                        )
+                    ) : portalData.isRequested ? (
+                        <div className="portal-requested-indicator">
+                            <span>Üyelik İsteği Gönderildi</span>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            className="portal-info-join-btn"
+                            onClick={handleJoin}
+                            disabled={joining}
+                        >
+                            <UserPlus size={16} />
+                            <span>{portalData.privacy === 'private' ? 'Üyelik İsteği Gönder' : 'Portala Katıl'}</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
