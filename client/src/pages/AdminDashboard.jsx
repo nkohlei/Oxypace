@@ -5,12 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History } from 'lucide-react';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
 import ImageCropper from '../components/ImageCropper';
 import MobileDesignShowcase from '../components/MobileDesignShowcase';
+import MobileVersionHistory from '../components/MobileVersionHistory';
 import { uploadFile } from '../utils/uploadUtils';
 import './AdminDashboard.css';
 
@@ -2810,6 +2811,14 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Smartphone size={18} /></span>
                             <span className="snav-label">Mobil Tasarım Barındırma</span>
                         </button>
+
+                        <button
+                            className={`sidebar-nav-item ${activeTab === 'mobile-versions' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('mobile-versions'); setSidebarOpen(false); }}
+                        >
+                            <span className="snav-icon"><History size={18} /></span>
+                            <span className="snav-label">Mobil Sürüm Günlüğü</span>
+                        </button>
                     </div>
 
                     {/* Category 4: Özel Görünürlük Şartı (Süper Admin) */}
@@ -2832,6 +2841,9 @@ const AdminDashboard = () => {
                 <div className="admin-content">
                 {activeTab === 'mobile-designs' && (
                     <MobileDesignShowcase />
+                )}
+                {activeTab === 'mobile-versions' && (
+                    <MobileVersionHistory />
                 )}
                 {activeTab === 'tourist-admin' && isOxypace && (
                     <div className="tourist-admin-container fade-in">
