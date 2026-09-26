@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import * as THREE from 'three';
+import React, { useState, useEffect } from 'react';
 import {
     Smartphone,
     Layers,
@@ -97,6 +96,42 @@ const ONBOARDING_SLIDES = [
     }
 ];
 
+// --------------------------------------------------------------------------
+// 5 ADET GERÇEK PLATFORM ÖRNEKLEYİCİ ŞABLON GÖRSELİ (Birebir Kullanıcı Ekran Görüntüleri)
+// --------------------------------------------------------------------------
+const AUTHENTIC_SHOWCASE_SLIDES = [
+    {
+        id: 0,
+        webp: '/onboarding-showcase/slide-1-portal.webp',
+        png: '/onboarding-showcase/slide-1-portal.png',
+        alt: 'Oxypace Global Portal Kartı'
+    },
+    {
+        id: 1,
+        webp: '/onboarding-showcase/slide-2-post.webp',
+        png: '/onboarding-showcase/slide-2-post.png',
+        alt: 'Kayıpsız Medya ve Video Post Paylaşımı'
+    },
+    {
+        id: 2,
+        webp: '/onboarding-showcase/slide-3-watch-party.webp',
+        png: '/onboarding-showcase/slide-3-watch-party.png',
+        alt: 'Eş Zamanlı İzleme (Watch Party) Canlı Oynatıcı'
+    },
+    {
+        id: 3,
+        webp: '/onboarding-showcase/slide-4-globe.webp',
+        png: '/onboarding-showcase/slide-4-globe.png',
+        alt: '3D Dünya Üzerinde Konumlu Portallar ve Keşif Haritası'
+    },
+    {
+        id: 4,
+        webp: '/onboarding-showcase/slide-5-event-horizon.webp',
+        png: '/onboarding-showcase/slide-5-event-horizon.png',
+        alt: 'Event Horizon Bilim, Fikir ve Kuramsal Hesaplamalar'
+    }
+];
+
 const MobileDesignShowcase = () => {
     // Mode tabs: 'simulator' | 'matrix' | 'welcome' | 'specs'
     const [viewMode, setViewMode] = useState('simulator');
@@ -114,56 +149,6 @@ const MobileDesignShowcase = () => {
 
     // Replay key for logo animation
     const [logoAnimKey, setLogoAnimKey] = useState(0);
-
-    // Interactive playable post video state
-    const [isPostPlaying, setIsPostPlaying] = useState(false);
-    const [postPlayTime, setPostPlayTime] = useState(0);
-    const [isPostMuted, setIsPostMuted] = useState(true);
-    const postVideoRef = useRef(null);
-
-    const handleTogglePostPlay = (e) => {
-        if (e) e.stopPropagation();
-        setIsPostPlaying(prev => {
-            const nextState = !prev;
-            if (postVideoRef.current) {
-                if (nextState) {
-                    postVideoRef.current.play().catch(() => {
-                        if (postVideoRef.current) {
-                            postVideoRef.current.muted = true;
-                            setIsPostMuted(true);
-                            postVideoRef.current.play().catch(() => {});
-                        }
-                    });
-                } else {
-                    postVideoRef.current.pause();
-                }
-            }
-            return nextState;
-        });
-    };
-
-    // Reliable playback time progression
-    useEffect(() => {
-        let timer = null;
-        if (isPostPlaying) {
-            timer = setInterval(() => {
-                setPostPlayTime(prev => (prev >= 234 ? 0 : prev + 1));
-            }, 1000);
-        }
-        return () => {
-            if (timer) clearInterval(timer);
-        };
-    }, [isPostPlaying]);
-
-    // Pause post video when changing slide
-    useEffect(() => {
-        if (currentSlide !== 1 && isPostPlaying) {
-            setIsPostPlaying(false);
-            if (postVideoRef.current) {
-                postVideoRef.current.pause();
-            }
-        }
-    }, [currentSlide, isPostPlaying]);
 
     // Auto Play Interval
     useEffect(() => {
@@ -198,481 +183,23 @@ const MobileDesignShowcase = () => {
     };
 
     // --------------------------------------------------------------------------
-    // MINI 3D EARTH CANVAS (Three.js Realistic Earth Globe with Atmosphere & Pins)
-    // --------------------------------------------------------------------------
-    const MiniEarthCanvas = ({ themeMode: canvasTheme }) => {
-        const canvasRef = useRef(null);
-
-        useEffect(() => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            let animationFrameId;
-            const width = canvas.parentElement?.clientWidth || 290;
-            const height = canvas.parentElement?.clientHeight || 165;
-
-            // Scene & Camera
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-            camera.position.z = 2.45;
-
-            // WebGL Renderer
-            const renderer = new THREE.WebGLRenderer({
-                canvas,
-                alpha: true,
-                antialias: true,
-                powerPreference: 'low-power'
-            });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-
-            // Globe Group with axial tilt
-            const globeGroup = new THREE.Group();
-            globeGroup.rotation.z = 0.22;
-            scene.add(globeGroup);
-
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, canvasTheme === 'light' ? 1.05 : 0.85);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
-            dirLight.position.set(3, 2, 4);
-            scene.add(dirLight);
-
-            // Earth Sphere Geometry
-            const radius = 0.88;
-            const sphereGeo = new THREE.SphereGeometry(radius, 48, 48);
-
-            // Procedural Canvas Texture fallback
-            const fallbackCanvas = document.createElement('canvas');
-            fallbackCanvas.width = 512;
-            fallbackCanvas.height = 256;
-            const fctx = fallbackCanvas.getContext('2d');
-            if (fctx) {
-                fctx.fillStyle = '#08254f';
-                fctx.fillRect(0, 0, 512, 256);
-                fctx.fillStyle = '#10522c';
-                fctx.beginPath();
-                fctx.ellipse(280, 100, 70, 45, 0, 0, Math.PI * 2);
-                fctx.fill();
-                fctx.beginPath();
-                fctx.ellipse(270, 160, 40, 50, 0.2, 0, Math.PI * 2);
-                fctx.fill();
-                fctx.beginPath();
-                fctx.ellipse(130, 90, 45, 35, -0.2, 0, Math.PI * 2);
-                fctx.fill();
-                fctx.beginPath();
-                fctx.ellipse(150, 170, 35, 55, 0.1, 0, Math.PI * 2);
-                fctx.fill();
-            }
-            const fallbackTexture = new THREE.CanvasTexture(fallbackCanvas);
-
-            const earthMaterial = new THREE.MeshStandardMaterial({
-                map: fallbackTexture,
-                roughness: 0.65,
-                metalness: 0.1
-            });
-
-            const earthMesh = new THREE.Mesh(sphereGeo, earthMaterial);
-            globeGroup.add(earthMesh);
-
-            // Load authentic high-res blue marble texture (matches EarthCanvas.jsx)
-            const loader = new THREE.TextureLoader();
-            loader.load(
-                '//unpkg.com/three-globe@2.24.0/example/img/earth-blue-marble.jpg',
-                (loadedTex) => {
-                    loadedTex.colorSpace = THREE.SRGBColorSpace;
-                    earthMaterial.map = loadedTex;
-                    earthMaterial.needsUpdate = true;
-                },
-                undefined,
-                () => {
-                    // Graceful fallback to procedural texture
-                }
-            );
-
-            // Atmospheric feather halo
-            const atmosGeo = new THREE.SphereGeometry(radius * 1.06, 32, 32);
-            const atmosMat = new THREE.ShaderMaterial({
-                vertexShader: `
-                    varying vec3 vNormal;
-                    void main() {
-                        vNormal = normalize(normalMatrix * normal);
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vNormal;
-                    void main() {
-                        float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 2.2);
-                        gl_FragColor = vec4(0.3, 0.65, 1.0, 1.0) * intensity * 1.6;
-                    }
-                `,
-                blending: THREE.AdditiveBlending,
-                side: THREE.BackSide,
-                transparent: true,
-                depthWrite: false
-            });
-            const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
-            globeGroup.add(atmosMesh);
-
-            // 3D Portal Pin Markers on surface — nötr renkler, neon yok
-            const portalsData = [
-                { lat: 41.0, lng: 28.9, color: 0xffffff },
-                { lat: 46.2, lng: 6.1,  color: 0xd4d4d4 },
-                { lat: 35.6, lng: 139.6, color: 0xffffff },
-                { lat: 37.7, lng: -122.4, color: 0xd4d4d4 }
-            ];
-
-            const markersGroup = new THREE.Group();
-            globeGroup.add(markersGroup);
-
-            const latLngToVector3 = (lat, lng, r) => {
-                const phi = (90 - lat) * (Math.PI / 180);
-                const theta = (lng + 180) * (Math.PI / 180);
-                return new THREE.Vector3(
-                    -(r * Math.sin(phi) * Math.cos(theta)),
-                    r * Math.cos(phi),
-                    r * Math.sin(phi) * Math.sin(theta)
-                );
-            };
-
-            portalsData.forEach((p) => {
-                const pos = latLngToVector3(p.lat, p.lng, radius * 1.01);
-                const pinGeo = new THREE.SphereGeometry(0.026, 16, 16);
-                const pinMat = new THREE.MeshBasicMaterial({ color: p.color });
-                const pinMesh = new THREE.Mesh(pinGeo, pinMat);
-                pinMesh.position.copy(pos);
-                markersGroup.add(pinMesh);
-
-                const ringGeo = new THREE.RingGeometry(0.038, 0.052, 24);
-                const ringMat = new THREE.MeshBasicMaterial({
-                    color: p.color,
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.55
-                });
-                const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-                ringMesh.position.copy(latLngToVector3(p.lat, p.lng, radius * 1.015));
-                ringMesh.lookAt(pos.clone().multiplyScalar(2));
-                markersGroup.add(ringMesh);
-            });
-
-            // Initial view facing Mediterranean / Europe / Istanbul
-            globeGroup.rotation.y = -Math.PI * 0.45;
-
-            // Animation loop
-            let lastTime = performance.now();
-            const animate = (currentTime) => {
-                animationFrameId = requestAnimationFrame(animate);
-                const delta = (currentTime - lastTime) / 1000;
-                lastTime = currentTime;
-
-                // Slow rotation
-                globeGroup.rotation.y += 0.28 * delta;
-
-                renderer.render(scene, camera);
-            };
-            animationFrameId = requestAnimationFrame(animate);
-
-            const handleResize = () => {
-                if (!canvas.parentElement) return;
-                const w = canvas.parentElement.clientWidth;
-                const h = canvas.parentElement.clientHeight;
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
-            };
-            window.addEventListener('resize', handleResize);
-
-            return () => {
-                window.removeEventListener('resize', handleResize);
-                cancelAnimationFrame(animationFrameId);
-                renderer.dispose();
-                sphereGeo.dispose();
-                earthMaterial.dispose();
-                atmosGeo.dispose();
-                atmosMat.dispose();
-            };
-        }, [canvasTheme]);
-
-        return <canvas ref={canvasRef} className="mini-earth-canvas" />;
-    };
-
-    // --------------------------------------------------------------------------
-    // RENDER: 5 ADET ORİJİNAL PLATFORM GÖRÜNÜMÜ MOCKUP'I
+    // RENDER: KULLANICININ VERDİĞİ GERÇEK VE ÖZGÜN PLATFORM ŞABLON GÖRSELLERİ
     // --------------------------------------------------------------------------
     const renderOnboardingVisual = (slideIndex) => {
-        // Şablon 1: Orijinal Portal Kart Görünümü (Birebir modern-portal-card: Oxypace Global)
-        if (slideIndex === 0) {
-            return (
-                <div className="orig-portal-card-mockup modern-portal-card">
-                    {/* Banner */}
-                    <div
-                        className="card-banner"
-                        style={{
-                            background: 'url(/oxypace-real-banner.png) center/cover',
-                            backgroundColor: '#000000'
-                        }}
-                    />
+        const item = AUTHENTIC_SHOWCASE_SLIDES[slideIndex] || AUTHENTIC_SHOWCASE_SLIDES[0];
 
-                    {/* Avatar */}
-                    <div className="card-icon-wrapper">
-                        <img
-                            src="/oxypace-real-avatar.png"
-                            alt="Oxypace Global"
-                            className="card-icon-img"
-                            width="72"
-                            height="72"
-                        />
-                    </div>
-
-                    <div className="card-body">
-                        <h3 className="card-title">
-                            Oxypace Global
-                            <CheckCircle2 size={18} strokeWidth={2.2} fill="#38bdf8" stroke="#ffffff" />
-                            <span className="oxypace-privacy-pill private" title="Gizli Portal">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                </svg>
-                                <span className="privacy-pill-text">Gizli</span>
-                            </span>
-                        </h3>
-
-                        <p className="card-desc">Bi portalcık</p>
-
-                        <div className="card-footer">
-                            <div className="member-count">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                                    <circle cx="9" cy="7" r="4" />
-                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                </svg>
-                                <span>11 <span className="member-count-text">Üye</span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        // Şablon 2: Orijinal Post Görünümü (@oxypace kullanıcısının 6a722f8f987a926f80bc4497 ID'li gerçek postu)
-        if (slideIndex === 1) {
-            return (
-                <div className="orig-post-card-mockup post-card">
-                    <div className="post-avatar-wrapper">
-                        <img
-                            src="/logo.png"
-                            alt="Oxypace"
-                            className="post-avatar-img"
-                        />
-                    </div>
-
-                    <div className="post-main-content">
-                        <div className="post-header-row">
-                            <div className="header-left">
-                                <span className="author-name">Oxypace</span>
-                                <span className="post-verified-badge" title="Doğrulanmış Hesap">
-                                    <CheckCircle2 size={14} strokeWidth={2.2} fill="#38bdf8" stroke="#ffffff" />
-                                </span>
-                                <span className="author-username">@oxypace</span>
-                                <span className="post-time">· 18 May</span>
-                            </div>
-                            <div className="post-action-buttons">
-                                <button className="post-action-btn" title="Gönderiyi Göster" aria-label="Gönderiyi Göster">
-                                    <Maximize2 size={13} />
-                                </button>
-                                <button className="post-action-btn" title="Daha Fazla" aria-label="Daha Fazla">
-                                    <MoreHorizontal size={14} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="post-content-text">
-                            <p>Concerning Hobbits (Howard Shore) - Music Video - Lord of the Rings</p>
-                        </div>
-
-                        <div className="post-media-box">
-                            <div 
-                                className="post-video-player-frame playable"
-                                onClick={handleTogglePostPlay}
-                                title={isPostPlaying ? "Videoyu Duraklat" : "Videoyu Oynat"}
-                            >
-                                <video
-                                    ref={postVideoRef}
-                                    src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-                                    className="post-real-video"
-                                    playsInline
-                                    loop
-                                    preload="auto"
-                                    muted={isPostMuted}
-                                    onPlay={() => setIsPostPlaying(true)}
-                                    onPause={() => setIsPostPlaying(false)}
-                                    onTimeUpdate={(e) => setPostPlayTime(e.target.currentTime)}
-                                />
-
-                                {!isPostPlaying && (
-                                    <div className="video-poster-art">
-                                        <div className="video-play-orb">
-                                            <Play size={18} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="video-top-badges">
-                                    <span className="video-quality-tag">1080p 60fps</span>
-                                    <span className="video-duration-tag">
-                                        {`${Math.floor(postPlayTime / 60)}:${String(Math.floor(postPlayTime % 60)).padStart(2, '0')} / 03:54`}
-                                    </span>
-                                </div>
-
-                                <div className="post-video-bottom-bar" onClick={(e) => e.stopPropagation()}>
-                                    <div className="post-video-scrub-track">
-                                        <div 
-                                            className="post-video-scrub-filled" 
-                                            style={{ width: `${Math.min(100, (postPlayTime / 234) * 100)}%` }} 
-                                        />
-                                    </div>
-                                    <div className="post-video-ctrl-btns">
-                                        <button 
-                                            type="button"
-                                            className="mini-ctrl-btn" 
-                                            onClick={handleTogglePostPlay}
-                                            title={isPostPlaying ? "Duraklat" : "Oynat"}
-                                        >
-                                            {isPostPlaying ? <Pause size={12} fill="#ffffff" /> : <Play size={12} fill="#ffffff" />}
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            className="mini-ctrl-btn" 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setIsPostMuted(m => {
-                                                    if (postVideoRef.current) postVideoRef.current.muted = !m;
-                                                    return !m;
-                                                });
-                                            }}
-                                            title={isPostMuted ? "Sesi Aç" : "Sesi Kapat"}
-                                        >
-                                            {isPostMuted ? <Volume2 size={12} style={{ opacity: 0.5 }} /> : <Volume2 size={12} />}
-                                        </button>
-                                        <span className="post-video-live-timer">
-                                            {isPostPlaying ? 'Oynatılıyor' : 'Tıkla & Oynat'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="post-video-id-badge">
-                                <Film size={11} className="video-id-icon" />
-                                <span className="video-id-label">Video ID:</span>
-                                <code className="video-id-val">6a722f8f987a926f80bc4497</code>
-                                <Copy size={11} className="copy-icon" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        // Şablon 3: Orijinal Canlı Watch Party (WatchPartyPlayer.jsx)
-        if (slideIndex === 2) {
-            return (
-                <div className="orig-watch-party-mockup watch-party-player-wrapper">
-                    {/* Header Bar matching WatchPartyPlayer.jsx */}
-                    <div className="watch-party-header">
-                        <div className="watch-party-header-left">
-                            <span className="watch-party-title">Birlikte Video İzle (HLS)</span>
-                            <span className="watch-party-live-badge-inline">Canlı</span>
-                        </div>
-                        <button className="watch-party-stop-btn danger" title="Birlikte İzle Modunu Kapat">
-                            <X size={12} />
-                            <span>Bitir</span>
-                        </button>
-                    </div>
-
-                    {/* Native Video Player Container */}
-                    <div className="watch-party-player-container">
-                        <div className="watch-party-media-screen">
-                            <div className="watch-party-playing-tag">
-                                <Play size={10} fill="#ffffff" />
-                                <span>Lord of the Rings - Senkronize Yayın</span>
-                            </div>
-                        </div>
-
-                        {/* Native VOD Controls Bar matching WatchPartyPlayer.jsx */}
-                        <div className="watch-party-vod-controls">
-                            <button className="watch-party-vod-btn" title="Duraklat">
-                                <Pause size={12} fill="currentColor" />
-                            </button>
-                            <span className="watch-party-vod-time">
-                                01:24:18 / 03:54:00
-                            </span>
-                            <div className="watch-party-vod-progress-wrapper">
-                                <div className="watch-party-vod-track">
-                                    <div className="watch-party-vod-filled" style={{ width: '36%' }} />
-                                </div>
-                            </div>
-                            <Volume2 size={12} style={{ opacity: 0.8 }} />
-                        </div>
-                    </div>
-
-                    {/* Connected Voice Channel Strip matching VoiceChannel.jsx */}
-                    <div className="watch-party-voice-members">
-                        <div className="voice-member-chip speaking" title="@oxypace (Konuşuyor)">
-                            <img src="/oxypace-real-avatar.png" alt="Oxypace" className="voice-member-avatar" />
-                            <span className="voice-member-name">Oxypace</span>
-                            <span className="voice-speaking-wave" />
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        // Şablon 4: Orijinal 3D Dünya Haritası Görünümü (EarthSimulation.jsx)
-        if (slideIndex === 3) {
-            return (
-                <div className="orig-globe-mockup">
-                    <MiniEarthCanvas themeMode={themeMode} />
-                </div>
-            );
-        }
-
-        // Şablon 5: Orijinal Event Horizon / Bilimsel Hesaplama Görünümü
         return (
-            <div className="orig-eh-mockup">
-                <div className="orig-eh-header">
-                    <span className="orig-eh-badge">EVENT HORIZON // ARŞİV</span>
-                    <span className="orig-eh-sub">BİLİMSEL HESAPLAMA</span>
-                </div>
-
-                <h4 className="orig-eh-title">Morris-Thorne Geçilebilir Solucan Deliği</h4>
-
-                <div className="orig-eh-equation-box">
-                    <code>ds² = -c²dt² + dr²/(1 - b(r)/r) + r²(dθ² + sin²θ dφ²)</code>
-                </div>
-
-                <div className="orig-eh-metrics-grid">
-                    <div className="orig-eh-metric-item">
-                        <span className="orig-metric-label">BOĞAZ ÇAPI (r₀)</span>
-                        <span className="orig-metric-val">1.00 km</span>
-                    </div>
-                    <div className="orig-eh-metric-item">
-                        <span className="orig-metric-label">EGZOTİK MADDE</span>
-                        <span className="orig-metric-val">τ₀ &lt; 0</span>
-                    </div>
-                    <div className="orig-eh-metric-item">
-                        <span className="orig-metric-label">GELGİT KUVVETİ</span>
-                        <span className="orig-metric-val">0.98 g</span>
-                    </div>
-                </div>
-
-                <div className="orig-eh-verified-pill">
-                    <Check size={11} strokeWidth={3} />
-                    <span>Stabil Morris-Thorne Çözümü Doğrulandı</span>
-                </div>
+            <div className={`authentic-showcase-wrapper slide-variant-${slideIndex}`}>
+                <picture>
+                    <source srcSet={item.webp} type="image/webp" />
+                    <img
+                        src={item.png}
+                        alt={item.alt}
+                        className="authentic-showcase-image"
+                        loading="eager"
+                        decoding="async"
+                    />
+                </picture>
             </div>
         );
     };
