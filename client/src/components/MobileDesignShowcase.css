@@ -806,6 +806,14 @@
     margin: 4px 0 2px 0 !important;
     padding: 0 !important;
     flex-wrap: wrap;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.2px;
+    color: #ffffff !important;
+}
+
+.theme-light .orig-portal-card-mockup .card-title {
+    color: #0f172a !important;
 }
 
 .orig-portal-card-mockup .card-title-text {

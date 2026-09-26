@@ -407,7 +407,7 @@ const MobileDesignShowcase = () => {
         if (slideIndex === 0) {
             return (
                 <div className="orig-portal-card-mockup modern-portal-card">
-                    {/* Banner — birebir Search.jsx card-banner yapısı */}
+                    {/* Banner */}
                     <div
                         className="card-banner"
                         style={{
@@ -416,7 +416,7 @@ const MobileDesignShowcase = () => {
                         }}
                     />
 
-                    {/* Avatar — birebir Search.jsx card-icon-wrapper */}
+                    {/* Avatar */}
                     <div className="card-icon-wrapper">
                         <img
                             src="/oxypace-real-avatar.png"
@@ -427,7 +427,6 @@ const MobileDesignShowcase = () => {
                         />
                     </div>
 
-                    {/* card-body — birebir Search.jsx */}
                     <div className="card-body">
                         <h3 className="card-title">
                             Oxypace Global
@@ -453,9 +452,6 @@ const MobileDesignShowcase = () => {
                                 </svg>
                                 <span>11 <span className="member-count-text">Üye</span></span>
                             </div>
-                            <button className="join-status-btn joined" onClick={(e) => e.stopPropagation()}>
-                                Üyesiniz
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -483,10 +479,6 @@ const MobileDesignShowcase = () => {
                                 </span>
                                 <span className="author-username">@oxypace</span>
                                 <span className="post-time">· 18 May</span>
-                                <span className="oxypace-privacy-pill public" title="Herkese Açık Gönderi" style={{ marginLeft: '4px' }}>
-                                    <Globe size={10} />
-                                    <span className="privacy-pill-text">Herkese Açık</span>
-                                </span>
                             </div>
                             <div className="post-action-buttons">
                                 <button className="post-action-btn" title="Gönderiyi Göster" aria-label="Gönderiyi Göster">
