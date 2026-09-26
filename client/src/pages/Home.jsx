@@ -10,6 +10,7 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import FloatingScrollTop from '../components/FloatingScrollTop';
+import MobileWelcomeFlow from '../components/MobileWelcomeFlow';
 import './Home.css';
 
 // Fisher-Yates shuffle
@@ -26,6 +27,10 @@ const Home = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
     const isNative = Capacitor.isNativePlatform();
+    const isMobilePreview = typeof window !== 'undefined' && (
+        new URLSearchParams(window.location.search).get('mobile') === 'true' ||
+        window.location.search.includes('welcome=true')
+    );
     const [publicPortals, setPublicPortals] = useState([]);
     const [scrollY, setScrollY] = useState(0);
     const [revealedSections, setRevealedSections] = useState(new Set());
@@ -229,74 +234,13 @@ const Home = () => {
         }
     ];
 
-    if (isNative) {
+    if (isNative || isMobilePreview) {
         // If still loading session or already logged in, do not render welcome screen to prevent flash
         if (loading || user) {
             return <div className="app-wrapper advanced-home native-mobile-welcome" style={{ background: '#000000' }} />;
         }
 
-        return (
-            <div className="app-wrapper advanced-home native-mobile-welcome">
-                <SEO
-                    title="Oxypace - Sosyal Medya Platformu"
-                    description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu."
-                />
-                <div className="native-hero-viewport">
-                    <div className="hero-gradient-glow"></div>
-                    <div className="hero-quote-animated">
-                        "The people who are crazy enough to think they can change the world are the ones who do."
-                    </div>
-                    <div className="hero-logo-mask-container">
-                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
-                    </div>
-
-                    {/* Pure Minimal Gateway - No Boxes, No Neon, Pure Logos + Silver Arrow */}
-                    <div className="native-pure-portals-row">
-                        {/* Oxypace Gateway */}
-                        <div className="native-pure-gateway-item" onClick={() => navigate('/login')}>
-                            <img src="/logo.png" alt="Oxypace" className="native-pure-logo-img" />
-                            <span className="native-silver-arrow">→</span>
-                        </div>
-
-                        {/* EVENT HORIZON Gateway */}
-                        <div className="native-pure-gateway-item" onClick={async () => {
-                            if (isNative) {
-                                try {
-                                    await Browser.open({
-                                        url: 'https://oxypace.com.tr/blog',
-                                        toolbarColor: '#060913',
-                                        presentationStyle: 'fullscreen'
-                                    });
-                                } catch (err) {
-                                    console.error('Failed to open EVENT HORIZON in browser:', err);
-                                    window.open('https://oxypace.com.tr/blog', '_system');
-                                }
-                            } else {
-                                window.location.href = '/blog';
-                            }
-                        }}>
-                            <div className="native-pure-eh-typography">
-                                <span className="eh-pure-line1">EVENT</span>
-                                <span className="eh-pure-line2">HORIZON</span>
-                            </div>
-                            <span className="native-silver-arrow">→</span>
-                        </div>
-                    </div>
-
-                    {/* Ultra-Minimal Footer */}
-                    <footer className="native-minimal-footer">
-                        <div className="native-footer-legal-row">
-                            <span onClick={() => navigate('/privacy')}>Gizlilik</span>
-                            <span className="native-footer-dot">•</span>
-                            <span onClick={() => navigate('/terms')}>Şartlar</span>
-                            <span className="native-footer-dot">•</span>
-                            <span onClick={() => navigate('/contact')}>İletişim</span>
-                        </div>
-                        <p className="native-footer-copyright">© {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
-                    </footer>
-                </div>
-            </div>
-        );
+        return <MobileWelcomeFlow />;
     }
 
     return (

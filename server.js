@@ -369,11 +369,11 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.5',
-        versionCode: 235,
+        latestVersion: '2.3.6',
+        versionCode: 236,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.5: Gönderi görsellerinde sıkıştırma ve kırpma kaldırılarak %100 orijinal kalite koruması sağlandı, mobil görsel deneyimi ve kararlılık artırıldı.',
+        changelog: 'Oxypace 2.3.6: Yeni özgün mobil karşılama ekranı, 5 adımlı interaktif tanıtım akışı, animasyonlu logo geçişleri ve portaldan ayrılma işlemleri entegre edildi.',
     });
 });
 

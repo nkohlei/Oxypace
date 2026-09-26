@@ -63,6 +63,7 @@ const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazyWithRetry(() => import('./pages/TermsOfService'));
 const Contact = lazyWithRetry(() => import('./pages/Contact'));
 const Portal = lazyWithRetry(() => import('./pages/Portal'));
+const MobileWelcomeFlow = lazyWithRetry(() => import('./components/MobileWelcomeFlow'));
 const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
 const EarthSimulation = lazyWithRetry(() => import('./pages/MapDirectory/EarthSimulation'));
 const Feedback = lazyWithRetry(() => import('./pages/Feedback'));
@@ -661,6 +662,7 @@ const AppLayout = () => {
                                 <Route path="/reset-password" element={<ResetPassword />} />
                                 <Route path="/verify-email" element={<VerifyEmail />} />
                                 <Route path="/onboarding" element={<Onboarding />} />
+                                <Route path="/welcome" element={<MobileWelcomeFlow />} />
                                 <Route path="/auth/process" element={<AuthProcess />} />
                                 <Route path="/auth/google/success" element={<GoogleCallback />} />
                                 <Route path="/privacy" element={<PrivacyPolicy />} />
