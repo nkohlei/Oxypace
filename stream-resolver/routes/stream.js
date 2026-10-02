@@ -17,6 +17,33 @@ const { fastResolve } = require('../services/fastScraper');
 const cacheService = require('../services/cacheService');
 const logger = require('../utils/logger');
 
+async function checkStreamLiveness(streamUrl, headers = {}) {
+  if (!streamUrl || typeof streamUrl !== 'string' || !streamUrl.startsWith('http')) return false;
+  const lower = streamUrl.toLowerCase();
+  if (lower.includes('filmakinesimp4') || lower.includes('blank.mp4') || lower.includes('playmix.uno')) return false;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const reqHeaders = {
+      'User-Agent': headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Range': 'bytes=0-100',
+    };
+    if (headers['referer']) reqHeaders['Referer'] = headers['referer'];
+    if (headers['origin']) reqHeaders['Origin'] = headers['origin'];
+
+    const res = await fetch(streamUrl, {
+      method: 'GET',
+      headers: reqHeaders,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return res.status === 200 || res.status === 206;
+  } catch {
+    return false;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -65,29 +92,43 @@ router.post(
     const cachedResult = cacheService.get(url);
     if (cachedResult) {
       const lowerCached = (cachedResult.streamUrl || '').toLowerCase();
-      if (lowerCached.endsWith('.vtt') || lowerCached.endsWith('.srt') || lowerCached.includes('/vtt/')) {
-        logger.warn(`[Route] 🧹 Geçersiz önbellek girdisi (.vtt) temizlendi: ${cachedResult.streamUrl}`);
+      if (
+        lowerCached.endsWith('.vtt') ||
+        lowerCached.endsWith('.srt') ||
+        lowerCached.includes('/vtt/') ||
+        lowerCached.includes('filmakinesimp4') ||
+        lowerCached.includes('blank.mp4') ||
+        lowerCached.includes('playmix.uno')
+      ) {
+        logger.warn(`[Route] 🧹 Geçersiz/stale önbellek girdisi temizlendi: ${cachedResult.streamUrl}`);
         cacheService.del(url);
       } else {
-        const resolvedIn = Date.now() - startTime;
-        logger.info(`[Route] ⚡ Önbellekten döndü (${resolvedIn}ms): ${cachedResult.streamUrl}`);
-        return res.status(200).json({
-          success: true,
-          status: 'success',
-          cached: true,
-          streamUrl:   cachedResult.streamUrl,
-          type:        cachedResult.type,
-          headers:     cachedResult.headers,
-          pageTitle:   cachedResult.pageTitle || '',
-          resolvedIn,
-          data: {
+        // Hızlı canlılık kontrolü (HEAD / GET Range < 1500ms)
+        const isAlive = await checkStreamLiveness(cachedResult.streamUrl, cachedResult.headers);
+        if (!isAlive) {
+          logger.warn(`[Route] ⚠️ Önbellekteki akış artık yanıt vermiyor (404/403/ölü): ${cachedResult.streamUrl}. Önbellekten siliniyor.`);
+          cacheService.del(url);
+        } else {
+          const resolvedIn = Date.now() - startTime;
+          logger.info(`[Route] ⚡ Canlı akış önbellekten döndü (${resolvedIn}ms): ${cachedResult.streamUrl}`);
+          return res.status(200).json({
+            success: true,
+            status: 'success',
+            cached: true,
             streamUrl:   cachedResult.streamUrl,
             type:        cachedResult.type,
             headers:     cachedResult.headers,
             pageTitle:   cachedResult.pageTitle || '',
-            resolvedIn
-          }
-        });
+            resolvedIn,
+            data: {
+              streamUrl:   cachedResult.streamUrl,
+              type:        cachedResult.type,
+              headers:     cachedResult.headers,
+              pageTitle:   cachedResult.pageTitle || '',
+              resolvedIn
+            }
+          });
+        }
       }
     }
 
@@ -116,9 +157,16 @@ router.post(
         });
       }
 
-      // Başarılı sonucu önbelleğe al (altyazı dosyalarını ASLA önbelleğe alma)
+      // Başarılı sonucu önbelleğe al (altyazı veya sahte şablon dosyalarını ASLA önbelleğe alma)
       const lowerRes = (result.streamUrl || '').toLowerCase();
-      if (!lowerRes.endsWith('.vtt') && !lowerRes.endsWith('.srt') && !lowerRes.includes('/vtt/')) {
+      if (
+        !lowerRes.endsWith('.vtt') &&
+        !lowerRes.endsWith('.srt') &&
+        !lowerRes.includes('/vtt/') &&
+        !lowerRes.includes('filmakinesimp4') &&
+        !lowerRes.includes('blank.mp4') &&
+        !lowerRes.includes('playmix.uno')
+      ) {
         cacheService.set(url, result);
       }
 

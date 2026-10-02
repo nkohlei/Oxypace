@@ -36,9 +36,15 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
   if (!isOpen) return null;
 
+  const sanitizeUrl = (rawUrl) => {
+    if (!rawUrl) return '';
+    return rawUrl.trim().replace(/^['"\(<]+|['"\)>]+$/g, '').trim();
+  };
+
   const validateUrl = (rawUrl) => {
-    if (!rawUrl) return false;
-    return /^https?:\/\/.+/i.test(rawUrl.trim());
+    const clean = sanitizeUrl(rawUrl);
+    if (!clean) return false;
+    return /^https?:\/\/.+/i.test(clean);
   };
 
   const handlePaste = async () => {
@@ -46,7 +52,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       if (navigator.clipboard && navigator.clipboard.readText) {
         const text = await navigator.clipboard.readText();
         if (text) {
-          setUrl(text.trim());
+          setUrl(sanitizeUrl(text));
           setErrorMsg(null);
         }
       }
@@ -57,14 +63,14 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
   const handleResolve = async (e) => {
     if (e) e.preventDefault();
-    const trimmedUrl = url.trim();
+    const cleanUrl = sanitizeUrl(url);
 
-    if (!trimmedUrl) {
+    if (!cleanUrl) {
       setErrorMsg('Lütfen bir film, dizi veya video sayfa bağlantısı girin.');
       return;
     }
 
-    if (!validateUrl(trimmedUrl)) {
+    if (!validateUrl(cleanUrl)) {
       setErrorMsg('Lütfen geçerli bir web bağlantısı (http:// veya https://) girin.');
       return;
     }
@@ -81,12 +87,12 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
     try {
       // 1. Direct stream URL bypass (.m3u8, .mp4, master.txt)
-      const lower = trimmedUrl.toLowerCase();
+      const lower = cleanUrl.toLowerCase();
       if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
         clearInterval(timerRef.current);
-        const playableUrl = formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(trimmedUrl)}`);
+        const playableUrl = formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(cleanUrl)}`);
         const result = {
-          streamUrl: trimmedUrl,
+          streamUrl: cleanUrl,
           playableStreamUrl: playableUrl,
           type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
           pageTitle: 'Doğrudan Akış Bağlantısı',
@@ -101,7 +107,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       const response = await axios.post(
         '/api/resolve-stream',
         {
-          url: trimmedUrl,
+          url: cleanUrl,
           timeout: 20000,
         },
         { timeout: 23000 }
@@ -110,6 +116,12 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       clearInterval(timerRef.current);
 
       if (response.data && response.data.success) {
+        const lowerRes = (response.data.streamUrl || '').toLowerCase();
+        if (lowerRes.includes('filmakinesimp4') || lowerRes.includes('playmix.uno') || lowerRes.includes('blank.mp4')) {
+          setErrorMsg('Bu kaynaktan geçerli bir video akışı çözülemedi. Lütfen sayfadaki alternatif bir oynatıcıyı (embed) deneyin.');
+          setIsResolving(false);
+          return;
+        }
         const resData = {
           ...response.data,
           playableStreamUrl: formatPlayableUrl(response.data.playableStreamUrl)
