@@ -405,6 +405,9 @@ const AppLayout = () => {
     useEffect(() => {
         if (isLoggedIn && socket && connected) {
             const sendUpdate = () => {
+                const isVoice = !!(useGlobalStore.getState().isVoiceActive || (typeof window !== 'undefined' && window.__isOxypaceVoiceActive));
+                const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+                if (isHidden && !isVoice) return;
                 socket.emit('presence_update', { path: location.pathname });
             };
 

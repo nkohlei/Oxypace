@@ -5,6 +5,7 @@ import { ConnectionState } from 'livekit-client';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { registerPlugin, Capacitor } from '@capacitor/core';
+import { useGlobalStore } from '../store/useGlobalStore';
 
 const CallManager = registerPlugin('CallManager');
 
@@ -174,6 +175,11 @@ export const VoiceProvider = ({ children }) => {
     const _setActiveRoom = (val) => {
         activeRoomRef.current = val;
         setActiveRoom(val);
+        const isLive = !!val;
+        useGlobalStore.getState().setIsVoiceActive(isLive);
+        if (typeof window !== 'undefined') {
+            window.__isOxypaceVoiceActive = isLive;
+        }
     };
 
     // roomDuration interval removed — was triggering full VoiceContext re-render every second.
@@ -233,6 +239,26 @@ export const VoiceProvider = ({ children }) => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, [activeRoom, connectionState]);
+
+    // Sync active live call state globally so background/foreground presence respects voice
+    useEffect(() => {
+        const isLiveCallActive = !!(activeRoomRef.current || activeRoom || connectionState === ConnectionState.Connected || connectionState === ConnectionState.Connecting);
+        useGlobalStore.getState().setIsVoiceActive(isLiveCallActive);
+        if (typeof window !== 'undefined') {
+            window.__isOxypaceVoiceActive = isLiveCallActive;
+        }
+
+        // If the call ends while the app is in the background, mark user offline immediately
+        if (!isLiveCallActive && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            if (socket && socket.connected) {
+                console.log('[Voice] Call ended while in background — sending app_background');
+                socket.emit('app_background');
+                if (Capacitor.isNativePlatform()) {
+                    socket.disconnect();
+                }
+            }
+        }
+    }, [activeRoom, connectionState, socket]);
 
     // WebRTC connection references
     const localStreamRef = useRef(null);

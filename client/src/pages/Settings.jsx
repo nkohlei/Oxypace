@@ -425,13 +425,11 @@ const Settings = () => {
         if (socket) {
             try {
                 socket.emit('logout');
+                socket.disconnect();
             } catch (e) {}
         }
-        // Sunucunun logout eventini işlemesi için 300ms bekle, sonra temizle
-        setTimeout(() => {
-            logout();
-            navigate('/login');
-        }, 300);
+        logout();
+        navigate('/login');
     };
 
     // Check for mobile/window width to adjust layout logic if needed

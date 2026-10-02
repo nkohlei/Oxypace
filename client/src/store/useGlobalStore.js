@@ -12,7 +12,9 @@ export const useGlobalStore = create(
             isMuted: true, // Default to muted for better initial experience
             usersCache: {},
             unreadMessagesCount: 0,
+            isVoiceActive: false,
 
+            setIsVoiceActive: (val) => set({ isVoiceActive: !!val }),
             setIsMuted: (val) => set({ isMuted: val }),
 
             addUnreadPost: (portalId, postId, channelId = null) => set((state) => {

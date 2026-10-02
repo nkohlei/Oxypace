@@ -65,7 +65,7 @@ export const initializeSocket = (io) => {
             // Gerçekten bağlı kullanıcı ID'lerini topla
             const trulyOnlineIds = new Set();
             for (const s of allSockets) {
-                if (s.data && s.data.userId && s.data.showOnlineStatus !== false && !s.data.isGhost) {
+                if (s.data && s.data.userId && s.data.showOnlineStatus !== false && !s.data.isGhost && !s.data.isBackground) {
                     trulyOnlineIds.add(String(s.data.userId));
                 }
             }
@@ -206,6 +206,7 @@ export const initializeSocket = (io) => {
             // ----------------------------------------------------------------
             socket.data.userId = strUserId;
             socket.data.isGhost = !!isGhost;
+            socket.data.isBackground = false;
             socket.isGhost = !!isGhost;
 
             userSockets.set(socket.id, strUserId);
@@ -325,6 +326,74 @@ export const initializeSocket = (io) => {
             socket.emit('getOnlineUsers', list);
         });
 
+        // Mobile / Web background state notification
+        socket.on('app_background', async () => {
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (!userId) return;
+            const strUserId = String(userId);
+            console.log(`📱 [Presence] User ${strUserId} entered background (no voice active) — marking offline`);
+
+            socket.data.isBackground = true;
+
+            // Check if user has ANY OTHER active foreground socket on the cluster
+            let hasOtherForegroundSocket = false;
+            try {
+                const allSockets = await io.fetchSockets();
+                hasOtherForegroundSocket = allSockets.some(s => 
+                    s.id !== socket.id &&
+                    s.data && 
+                    String(s.data.userId) === strUserId && 
+                    s.data.showOnlineStatus !== false && 
+                    !s.data.isGhost && 
+                    !s.data.isBackground
+                );
+            } catch (e) {
+                const userSocketsSet = activeUsersMap.get(strUserId);
+                hasOtherForegroundSocket = !!(userSocketsSet && userSocketsSet.size > 1);
+            }
+
+            if (!hasOtherForegroundSocket) {
+                activeUsersMap.delete(strUserId);
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('online_user_ids', strUserId);
+                    } catch (e) {}
+                }
+                const lastActive = new Date();
+                try {
+                    await User.findByIdAndUpdate(strUserId, { lastActive });
+                } catch (e) {}
+
+                io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
+                await broadcastGlobalOnlineUsers();
+            }
+        });
+
+        // Mobile / Web foreground state notification
+        socket.on('app_foreground', async () => {
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (!userId) return;
+            const strUserId = String(userId);
+            console.log(`📱 [Presence] User ${strUserId} returned to foreground — restoring online`);
+
+            socket.data.isBackground = false;
+
+            if (socket.data.showOnlineStatus !== false && !socket.data.isGhost) {
+                if (!activeUsersMap.has(strUserId)) {
+                    activeUsersMap.set(strUserId, new Set());
+                }
+                activeUsersMap.get(strUserId).add(socket.id);
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('hidden_user_ids', strUserId);
+                        await pubClient.sadd('online_user_ids', strUserId);
+                    } catch (e) {}
+                }
+                io.emit('user_status_change', { userId: strUserId, status: 'online' });
+                await broadcastGlobalOnlineUsers();
+            }
+        });
+
         // Immediate logout event to clear presence instantly
         socket.on('logout', async () => {
             const userId = socket.data?.userId || userSockets.get(socket.id);
@@ -340,6 +409,8 @@ export const initializeSocket = (io) => {
             activeUsersMap.delete(strUserId);
             userSockets.delete(socket.id);
             activeConversations.delete(strUserId);
+            socket.data.userId = null;
+            socket.leave(strUserId);
 
             if (pubClient) {
                 try {
@@ -401,7 +472,7 @@ export const initializeSocket = (io) => {
                         let isStillOnlineAnywhere = false;
                         try {
                             const allSockets = await io.fetchSockets();
-                            isStillOnlineAnywhere = allSockets.some(s => s.data && String(s.data.userId) === strUserId && s.data.showOnlineStatus !== false);
+                            isStillOnlineAnywhere = allSockets.some(s => s.data && String(s.data.userId) === strUserId && s.data.showOnlineStatus !== false && !s.data.isGhost && !s.data.isBackground);
                         } catch (err) {
                             const latestSet = activeUsersMap.get(strUserId);
                             isStillOnlineAnywhere = !!(latestSet && latestSet.size > 0);

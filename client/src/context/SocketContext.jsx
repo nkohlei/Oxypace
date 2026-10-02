@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 const SocketContext = createContext();
 
@@ -26,26 +27,21 @@ export const SocketProvider = ({ children }) => {
         navigateRef.current = navigate;
     }, [navigate]);
 
-    // userId'yi localStorage'da cache'le.
-    // Chrome açılınca veya sekme restore edilince auth API cevabı gelmeden önce
-    // socket bağlanabilir. userIdRef'i localStorage'daki önceki değerle başlatarak
-    // join'i anında gönderiyoruz — auth API'yı beklemeye gerek kalmıyor.
+    const userRef = useRef(user);
+    const authRef = useRef(isAuthenticated);
+    useEffect(() => {
+        userRef.current = user;
+        authRef.current = isAuthenticated;
+    }, [user, isAuthenticated]);
+
+    // Keep active userId in ref
     const cachedUserId = localStorage.getItem('_oxypace_uid');
     const userIdRef = useRef(cachedUserId || null);
-    useEffect(() => {
-        if (user?._id) {
-            const uid = String(user._id);
-            userIdRef.current = uid;
-            localStorage.setItem('_oxypace_uid', uid); // Bir sonraki açılış için cache
-        }
-        // Logout'ta cache'i temizleme — socket olmadan gereksiz
-    }, [user?._id]);
 
     const socketRef = useRef(null);
 
     // 1. Establish Socket Connection ONCE on mount
     useEffect(() => {
-        const isNative = Capacitor.isNativePlatform();
         let socketUrl = (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : 'http://localhost:5000'));
 
         if (socketUrl.endsWith('/api')) {
@@ -68,35 +64,44 @@ export const SocketProvider = ({ children }) => {
             timeout: 20000,
             withCredentials: true,
             secure: true,
+            autoConnect: !!(localStorage.getItem('token')), // Only connect if token exists
         });
 
         socketRef.current = newSocket;
         setSocket(newSocket);
 
-        const syncPresence = (forceJoin = false) => {
-            const uid = userIdRef.current || (user?._id ? String(user._id) : null);
-            if (!newSocket.connected) return; // Bağlı değilse socket.io kendi reconnect stratejisini yönetir
+        const isVoiceCallActive = () => {
+            return !!(
+                useGlobalStore.getState().isVoiceActive ||
+                (typeof window !== 'undefined' && window.__isOxypaceVoiceActive)
+            );
+        };
 
-            // Sekme arka planda veya gizliyse join göndermeyerek ghost-online önle
-            // forceJoin=true: yalnızca kullanıcı aktif olarak sayfaya döndüğünde
-            const isHidden = document.visibilityState === 'hidden';
-            if (isHidden && !forceJoin) {
-                // Sadece online listesini güncelle, join göndermeyerek presence sıfırlama
+        const syncPresence = (forceJoin = false) => {
+            // Do NOT join if unauthenticated
+            if (!authRef.current || !userRef.current?._id) return;
+            const uid = String(userRef.current._id);
+
+            if (!newSocket.connected) return;
+
+            const isVoice = isVoiceCallActive();
+            const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+
+            // If app is hidden/backgrounded and user is NOT in a voice call, DO NOT emit join!
+            if (isHidden && !isVoice && !forceJoin) {
                 newSocket.emit('get_online_users');
                 return;
             }
 
-            if (uid) {
-                const isGhost = !!localStorage.getItem('admin_backup_token');
-                newSocket.emit('join', uid, isGhost);
-                console.log(`[Socket] SyncPresence — joined: ${uid}`);
-            }
+            const isGhost = !!localStorage.getItem('admin_backup_token');
+            newSocket.emit('join', uid, isGhost);
             newSocket.emit('get_online_users');
+            console.log(`[Socket] SyncPresence — joined visible: ${uid} (voiceActive: ${isVoice})`);
         };
 
         newSocket.on('connect', () => {
             setConnected(true);
-            syncPresence();
+            syncPresence(true);
         });
 
         newSocket.on('disconnect', () => {
@@ -150,85 +155,152 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
-        // Mobil ve masaüstü tarayıcı yaşam döngüsü event'leri
-        // (Ekran kilidi açılınca, sekme öne gelince, ağ geri gelince, app arka plandan dönünce)
-        const handleLifecycleEvent = () => {
-            if (document.visibilityState === 'visible' || document.hasFocus()) {
-                // Kullanıcı aktif olarak geri döndüğünde forceJoin=true ile presence'ı geri al
-                syncPresence(true);
+        newSocket.io.on('reconnect', () => {
+            setConnected(true);
+            syncPresence(true);
+        });
+
+        // 📱 Background / Foreground Lifecycle Management
+        // When user minimizes or exits the app (even if it stays in RAM in background):
+        // If they are NOT in an active live voice room, they MUST NOT appear online!
+        const handleAppStateChange = (isActive) => {
+            const isVoice = isVoiceCallActive();
+            console.log(`📱 [Socket] App state changed — isActive: ${isActive}, isVoice: ${isVoice}`);
+
+            if (!isActive) {
+                // Entered background
+                if (!isVoice) {
+                    // Not in voice call -> mark offline immediately!
+                    if (newSocket.connected) {
+                        newSocket.emit('app_background');
+                        // On native platform (Android/iOS), disconnect socket to guarantee offline and save battery
+                        if (Capacitor.isNativePlatform()) {
+                            newSocket.disconnect();
+                        }
+                    }
+                } else {
+                    console.log('🎙️ [Socket] Preserving background connection because live voice call is active');
+                }
+            } else {
+                // Returned to foreground
+                if (authRef.current && userRef.current?._id) {
+                    if (!newSocket.connected) {
+                        newSocket.connect();
+                    } else {
+                        newSocket.emit('app_foreground');
+                        syncPresence(true);
+                    }
+                }
             }
         };
 
-        newSocket.io.on('reconnect', () => {
-            setConnected(true);
-            syncPresence(true); // Yeniden bağlandığında her zaman join gönder
-        });
+        // Listen for Native Capacitor App state changes (Android/iOS Home button, app switch, etc.)
+        let appStateListener = null;
+        if (Capacitor.isNativePlatform()) {
+            CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+                handleAppStateChange(isActive);
+            }).then(handle => {
+                appStateListener = handle;
+            }).catch(() => {});
+        }
 
-        document.addEventListener('visibilitychange', handleLifecycleEvent);
-        window.addEventListener('focus', handleLifecycleEvent);
-        window.addEventListener('pageshow', handleLifecycleEvent);
-        window.addEventListener('online', handleLifecycleEvent);
-        window.addEventListener('resume', handleLifecycleEvent);
+        // Listen for Web / PWA browser visibility changes
+        const handleVisibilityChange = () => {
+            handleAppStateChange(document.visibilityState === 'visible');
+        };
 
-        // Sekme/pencere/uygulama kapatılınca ghost-online oluşmasını engelle:
-        // beforeunload en güvenilir temizlik hook'udur (pagehide ile birlikte)
+        const handleWindowFocus = () => handleAppStateChange(true);
+        const handleWindowResume = () => handleAppStateChange(true);
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleWindowFocus);
+        window.addEventListener('pageshow', handleWindowFocus);
+        window.addEventListener('online', handleWindowFocus);
+        window.addEventListener('resume', handleWindowResume);
+
+        // Before window/tab close or reload
         const handleBeforeUnload = () => {
-            const uid = userIdRef.current;
-            if (newSocket.connected && uid) {
-                // Synchronous sendBeacon ile sunucuya logout bildirimi gönder
-                // (socket.emit yerine sendBeacon tercih edilir — daha güvenilir)
+            if (newSocket.connected && userRef.current?._id) {
                 try {
                     newSocket.emit('logout');
+                    newSocket.disconnect();
                 } catch (e) {}
             }
-            // Cache'i temizle — sonraki oturumda tanımsız uid ile join engellenir
             try { localStorage.removeItem('_oxypace_uid'); } catch (e) {}
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
-        // Mobil (iOS Safari, Android) için pagehide de dinle
         window.addEventListener('pagehide', handleBeforeUnload);
 
-        // Mobilde bağlantının uyumaması için 25 saniyelik periyodik canlılık nabzı (heartbeat).
-        // Arka planda olduğunda join gönderilmez, yalnızca bağlantı canlı tutulur.
+        // 25s Heartbeat — only pulses if active in foreground or in active voice call
         const heartbeatInterval = setInterval(() => {
-            syncPresence(); // syncPresence içindeki visibility kontrolü arka planı filtreler
+            const isVoice = isVoiceCallActive();
+            const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+            if (!isHidden || isVoice) {
+                syncPresence();
+            }
         }, 25000);
 
         return () => {
             clearInterval(heartbeatInterval);
-            document.removeEventListener('visibilitychange', handleLifecycleEvent);
-            window.removeEventListener('focus', handleLifecycleEvent);
-            window.removeEventListener('pageshow', handleLifecycleEvent);
-            window.removeEventListener('online', handleLifecycleEvent);
-            window.removeEventListener('resume', handleLifecycleEvent);
+            if (appStateListener && appStateListener.remove) {
+                appStateListener.remove();
+            }
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleWindowFocus);
+            window.removeEventListener('pageshow', handleWindowFocus);
+            window.removeEventListener('online', handleWindowFocus);
+            window.removeEventListener('resume', handleWindowResume);
             window.removeEventListener('beforeunload', handleBeforeUnload);
             window.removeEventListener('pagehide', handleBeforeUnload);
             newSocket.close();
         };
     }, []); // Only run on mount
 
-    // 2. Auth tamamlanınca veya kullanıcı değişince join gönder
+    // 2. React to Auth State Changes (Login / Logout)
     useEffect(() => {
         const s = socketRef.current || socket;
-        const uid = user?._id ? String(user._id) : userIdRef.current;
-        if (s && connected && uid) {
+        if (!s) return;
+
+        if (!isAuthenticated || !user?._id) {
+            // User LOGGED OUT or session invalid
+            userIdRef.current = null;
+            try { localStorage.removeItem('_oxypace_uid'); } catch (e) {}
+            if (s.connected) {
+                s.emit('logout');
+                s.disconnect();
+            }
+            setOnlineUsers([]);
+            return;
+        }
+
+        // User is LOGGED IN
+        const uid = String(user._id);
+        userIdRef.current = uid;
+        try { localStorage.setItem('_oxypace_uid', uid); } catch (e) {}
+
+        if (!s.connected) {
+            s.connect();
+        } else {
             const isGhost = !!localStorage.getItem('admin_backup_token');
             s.emit('join', uid, isGhost);
             s.emit('get_online_users');
             console.log(`[Socket] Auth ready — joined as ${uid}`);
         }
-    }, [socket, connected, isAuthenticated, user?._id]);
+    }, [socket, isAuthenticated, user?._id]);
 
-    // Aktif oturum açmış kullanıcı varsa ve socket bağlıysa,
-    // gizlilik ayarına (showOnlineStatus) göre kendi ID'sinin onlineUsers listesinde yer almasını sağla
-    // useMemo ile sarıldı: onlineUsers/user/connected değişmediğinde yeni array üretilmez
-    // ve tüm context consumer'ları gereksiz re-render almaz.
+    // Effective online users memo — only include self if app is visible OR active in a voice call
     const effectiveOnlineUsers = useMemo(() => {
         const set = new Set((onlineUsers || []).map(String));
         const showMyOnline = user?.settings?.privacy?.showOnlineStatus !== false;
-        if (user?._id && connected && showMyOnline) {
+        const isVoice = !!(
+            useGlobalStore.getState().isVoiceActive ||
+            (typeof window !== 'undefined' && window.__isOxypaceVoiceActive)
+        );
+        const isAppVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+
+        if (user?._id && connected && showMyOnline && (isAppVisible || isVoice)) {
             set.add(String(user._id));
-        } else if (user?._id && !showMyOnline) {
+        } else if (user?._id && (!showMyOnline || (!isAppVisible && !isVoice))) {
             set.delete(String(user._id));
         }
         return Array.from(set);
