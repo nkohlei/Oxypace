@@ -827,13 +827,15 @@ router.post('/validate-stream', auth, async (req, res) => {
         let reqOrigin = 'https://closeload.filmmakinesi.to';
 
         if (url.includes('/api/proxy')) {
-            // Already validated/proxied stream from HLS resolver (fast-path avoids slow CDN timeouts)
-            const isVod = req.body?.isLiveHint === false;
-            return res.json({
-                isLive: isVod ? false : (typeof req.body?.isLiveHint === 'boolean' ? req.body.isLiveHint : false),
-                type: isVod ? 'hls_vod' : 'hls_stream',
-                streamUrl: url
-            });
+            try {
+                const parsedProxy = new URL(url, 'http://localhost:5000');
+                const rawTarget = parsedProxy.searchParams.get('url');
+                if (rawTarget) targetFetchUrl = rawTarget;
+                const ref = parsedProxy.searchParams.get('referer');
+                if (ref) reqReferer = ref;
+                const orig = parsedProxy.searchParams.get('origin');
+                if (orig) reqOrigin = orig;
+            } catch (e) {}
         }
 
         const targetClean = targetFetchUrl.split('?')[0].split('#')[0].toLowerCase();

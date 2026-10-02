@@ -80,17 +80,6 @@ class CacheService {
   }
 
   /**
-   * Anahtarı sil
-   */
-  del(key) {
-    return this.cache.delete(key);
-  }
-
-  delete(key) {
-    return this.cache.delete(key);
-  }
-
-  /**
    * Önbelleği temizle
    */
   clear() {

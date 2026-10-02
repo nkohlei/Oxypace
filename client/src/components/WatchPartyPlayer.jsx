@@ -57,52 +57,20 @@ const loadDash = () => {
 
 const isHls = (url) => {
   if (!url) return false;
-  let checkUrl = url;
-  try {
-    if (url.includes('/api/proxy') || url.includes('url=')) {
-      const parsed = new URL(url, 'http://localhost');
-      const target = parsed.searchParams.get('url');
-      if (target) checkUrl = target;
-    }
-  } catch (e) {}
-
-  const cleanUrl = checkUrl.split('?')[0].split('#')[0].toLowerCase();
-  const lowerCheck = checkUrl.toLowerCase();
-  const lowerRaw = url.toLowerCase();
-
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-
-  return (
-    cleanUrl.endsWith('.m3u8') ||
-    cleanUrl.endsWith('.txt') ||
-    lowerCheck.includes('.m3u8') ||
-    lowerCheck.includes('/hls/') ||
-    lowerCheck.includes('master.txt') ||
-    lowerRaw.includes('.m3u8') ||
-    lowerRaw.includes('%2fhls%2f') ||
-    lowerRaw.includes('master.txt') ||
-    lowerRaw.includes('/api/proxy')
-  );
+  return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
 };
 
 const isDash = (url) => {
   if (!url) return false;
-  let checkUrl = url;
-  try {
-    if (url.includes('/api/proxy') || url.includes('url=')) {
-      const parsed = new URL(url, 'http://localhost');
-      const target = parsed.searchParams.get('url');
-      if (target) checkUrl = target;
-    }
-  } catch (e) {}
-
-  const cleanUrl = checkUrl.split('?')[0].split('#')[0].toLowerCase();
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-  return cleanUrl.endsWith('.mpd') || checkUrl.toLowerCase().includes('.mpd') || checkUrl.toLowerCase().includes('/dash/');
+  return cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
 };
 
 const isLiveStream = (url) => {
@@ -111,7 +79,7 @@ const isLiveStream = (url) => {
 
 const isPlayableExternalUrl = (url) => {
   if (!url) return false;
-  if (!url.startsWith('http') && !url.startsWith('/api/')) return false;
+  if (!url.startsWith('http')) return false;
   if (url.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev') || url.includes('/r2-media/')) {
     return false;
   }
@@ -229,29 +197,22 @@ const getProxiedUrl = (url) => {
     !!window.ipcRenderer
   );
   
-  const baseUrl = (isNative || isElectron || import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr') : '').replace(/\/$/, '');
-
-  // If already a relative proxy path
+  // If running inside Electron, bypass backend proxy entirely for HLS since local main process spoofing handles it
+  if (isElectron && (url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest'))) {
+    return url;
+  }
+  
+  const useAbsoluteUrl = isNative || isElectron;
+  const baseUrl = ((!useAbsoluteUrl && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
+  
   if (url.startsWith('/api/proxy') || url.startsWith('api/proxy')) {
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${baseUrl}${cleanPath}`;
   }
 
-  // If already an absolute URL pointing to /api/proxy
-  if (url.includes('/api/proxy')) {
-    return url;
-  }
+  if (!url.startsWith('http')) return url;
 
-  // If running inside Electron, bypass backend proxy entirely for direct HLS since local main process spoofing handles it
-  if (isElectron && (url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest'))) {
-    return url;
-  }
-
-  if (!url.startsWith('http')) {
-    return `${baseUrl}/${url.replace(/^\//, '')}`;
-  }
-
-  const isHlsStream = isHls(url) || url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest');
+  const isHlsStream = url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest');
   if (isHlsStream) {
     return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
   }
@@ -435,7 +396,7 @@ const WatchPartyPlayer = () => {
         if (!watchParty?.url || (!isLive && !isStream) || !videoRef.current) return;
 
         const video = videoRef.current;
-        const streamUrl = getProxiedUrl(watchParty.url);
+        const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
         const urlIsHls = isHls(watchParty.url) || watchParty.isLive;
         const urlIsDash = isDash(watchParty.url);
 
@@ -466,17 +427,7 @@ const WatchPartyPlayer = () => {
                         video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
                             setIsReady(true);
-                            if (watchParty?.isPlaying) {
-                                const playPromise = video.play();
-                                if (playPromise !== undefined) {
-                                    playPromise.catch(err => {
-                                        console.warn("Native HLS autoplay blocked, retrying muted:", err);
-                                        video.muted = true;
-                                        setLocalMuted(true);
-                                        video.play().catch(e => console.error(e));
-                                    });
-                                }
-                            }
+                            if (watchParty?.isPlaying) video.play().catch(err => console.warn("Native HLS autoplay blocked", err));
                         });
                         video.onerror = (e) => {
                             console.error("Native HLS playback error:", e);
@@ -513,15 +464,7 @@ const WatchPartyPlayer = () => {
                                 video.currentTime = initialStartTime;
                             }
                             if (watchParty?.isPlaying) {
-                                const playPromise = video.play();
-                                if (playPromise !== undefined) {
-                                    playPromise.catch(err => {
-                                        console.warn("Hls.js autoplay blocked by browser policy, falling back to muted playback:", err);
-                                        video.muted = true;
-                                        setLocalMuted(true);
-                                        video.play().catch(e => console.error("[WatchParty] Muted playback also failed:", e));
-                                    });
-                                }
+                                video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
                             }
                         });
 
@@ -732,19 +675,8 @@ const WatchPartyPlayer = () => {
         const video = videoRef.current;
         if (!video) return;
         if (watchParty?.isPlaying) {
-            video.pause();
             sendWatchPause(video.currentTime);
         } else {
-            // Trigger video.play() synchronously in user gesture to preserve browser transient activation
-            const playPromise = video.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(err => {
-                    console.warn("[WatchParty] Direct user play blocked, retrying muted:", err);
-                    video.muted = true;
-                    setLocalMuted(true);
-                    video.play().catch(e => console.error(e));
-                });
-            }
             sendWatchPlay(video.currentTime);
         }
     };
@@ -795,15 +727,7 @@ const WatchPartyPlayer = () => {
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
                 }, 2500);
-                const playPromise = video.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(err => {
-                        console.warn('[WatchParty] Auto-play resume blocked, trying muted:', err);
-                        video.muted = true;
-                        setLocalMuted(true);
-                        video.play().catch(e => console.error('[WatchParty] Muted resume also blocked:', e));
-                    });
-                }
+                video.play().catch(err => console.warn('[WatchParty] Auto-play resume catch:', err));
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             } else if (!watchParty.isPlaying && !video.paused) {
                 isSyncingRef.current = true;

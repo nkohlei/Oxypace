@@ -26,13 +26,11 @@ function validateUrl(req, res, next) {
     });
   }
 
-  // ── 2. Format Kontrolü & Temizleme ──────────────────────────────────────────
-
-  const cleanRawUrl = url.trim().replace(/^['"\(<]+|['"\)>]+$/g, '').trim();
+  // ── 2. Format Kontrolü ───────────────────────────────────────────────────────
 
   let parsed;
   try {
-    parsed = new URL(cleanRawUrl);
+    parsed = new URL(url.trim());
   } catch {
     return res.status(400).json({
       success: false,

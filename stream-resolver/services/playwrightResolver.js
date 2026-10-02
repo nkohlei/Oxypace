@@ -39,6 +39,7 @@ const STREAM_PATTERNS = [
   { regex: /rapidvid\.net.*\.m3u8/i,                  type: 'm3u8' },
   { regex: /closeload.*\.m3u8/i,                      type: 'm3u8' },
   { regex: /cdnimages.*\.txt/i,                       type: 'm3u8' },
+  { regex: /playmix.*\.txt/i,                         type: 'm3u8' },
   { regex: /\/vod\/.*\.m3u8/i,                         type: 'm3u8' },
   { regex: /rapidrame.*\.m3u8/i,                       type: 'm3u8' },
   { regex: /filemoon.*\.m3u8/i,                        type: 'm3u8' },
@@ -70,9 +71,7 @@ const IGNORE_PATTERNS = [
   /google-analytics\.com/i, /googletagmanager\.com/i, /doubleclick\.net/i,
   /facebook\.com\/tr/i,     /hotjar\.com/i,
   /fonts\.googleapis\.com/i,
-  /filmakinesimp4/i,            // Static theme JS template string
-  /playmix\.uno/i,              // Stale/fake sample stream host
-  /blank\.mp4/i,
+  /filmakinesimp4-f9gx1M12BwC/i, // Static theme JS template string
   /\/uploads\/malker\//i,       // Static site sample mp4
   /\/theme\/.*\.mp4/i,          // Theme sample mp4
   /\.css(\?.*)?$/i, /\.png(\?.*)?$/i, /\.jpg(\?.*)?$/i,

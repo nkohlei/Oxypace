@@ -377,7 +377,7 @@ async function fastResolve(targetUrl, options = {}) {
         const lowerStream = streamUrl.toLowerCase();
         const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
         const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
-        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('filmakinesimp4') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
+        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
           logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
           const { referer, origin } = determineRefererAndOrigin(streamUrl, '', targetUrl);
           return {
@@ -576,7 +576,7 @@ async function fastResolve(targetUrl, options = {}) {
           const lowerStream = streamUrl.toLowerCase();
           const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
           const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
-          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('filmakinesimp4') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
+          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
             const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
 

@@ -47,7 +47,7 @@ class BrowserPool {
     this.isInitializing = true;
     this.initPromise = (async () => {
       try {
-        const proxyServer = process.env.PROXY_SERVER || '';
+        const proxyServer = process.env.PROXY_SERVER || 'socks5://127.0.0.1:9050';
         const proxyUsername = process.env.PROXY_USERNAME;
         const proxyPassword = process.env.PROXY_PASSWORD;
 

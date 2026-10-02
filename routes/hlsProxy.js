@@ -4,13 +4,13 @@ import { validateSsrfUrl } from '../utils/security.js';
 
 const router = express.Router();
 
-// Rate limit for proxy endpoint — scaled to handle video streaming (manifests + .ts chunks)
+// Strict rate limit for the open proxy endpoint — prevents SSRF amplification / DoS
 const proxyLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10000,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Çok fazla proxy isteği. Lütfen daha sonra tekrar deneyin.' },
+    message: { error: 'Çok fazla proxy isteği. Lütfen 15 dakika sonra tekrar deneyin.' },
 });
 
 // GET /api/proxy
@@ -84,44 +84,10 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
       headers['Range'] = req.headers.range;
     }
 
-    let response = await fetch(targetUrl, {
+    const response = await fetch(targetUrl, {
       headers,
       cache: 'no-store',
     });
-
-    if (!response.ok && (response.status === 403 || response.status === 404)) {
-      let targetOrigin = '';
-      try { targetOrigin = new URL(targetUrl).origin; } catch {}
-
-      const fallbackReferers = [
-        targetOrigin ? `${targetOrigin}/` : '',
-        'https://closeload.filmmakinesi.to/',
-        'https://hdfilmcehennemi.mobi/',
-        'https://rapidvid.net/',
-        'https://vidmoly.to/',
-        '',
-      ];
-      for (const fbRef of fallbackReferers) {
-        if (fbRef === refererHeader) continue;
-        const fbHeaders = { ...headers };
-        if (fbRef) {
-          fbHeaders['Referer'] = fbRef;
-          try { fbHeaders['Origin'] = new URL(fbRef).origin; } catch {}
-        } else {
-          delete fbHeaders['Referer'];
-          delete fbHeaders['Origin'];
-        }
-        try {
-          const fbRes = await fetch(targetUrl, { headers: fbHeaders, cache: 'no-store' });
-          if (fbRes.ok) {
-            response = fbRes;
-            refererHeader = fbRef;
-            if (fbHeaders['Origin']) originHeader = fbHeaders['Origin'];
-            break;
-          }
-        } catch {}
-      }
-    }
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -310,16 +276,16 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL parametresi.' });
   }
 
-  const cleanUrl = url.trim().replace(/^['"\(<]+|['"\)>]+$/g, '').trim();
-  const lower = cleanUrl.toLowerCase();
+  const trimmedUrl = url.trim();
+  const lower = trimmedUrl.toLowerCase();
 
   // Instant fast-path for direct stream URLs (.m3u8, master.txt, .mp4)
   if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
-    const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
+    const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
     return res.status(200).json({
       success: true,
       status: 'success',
-      streamUrl: cleanUrl,
+      streamUrl: trimmedUrl,
       playableStreamUrl,
       type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
       headers: {},
@@ -343,7 +309,7 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ url: cleanUrl, timeout: fetchTimeout }),
+      body: JSON.stringify({ url: url.trim(), timeout: fetchTimeout }),
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -365,23 +331,6 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     const pageTitle = payload.pageTitle || data.pageTitle || '';
     const type = payload.type || data.type || 'm3u8';
     const resolvedIn = payload.resolvedIn || data.resolvedIn || 0;
-
-    // Reject known dummy/dead streams (e.g. filmakinesimp4, playmix.uno, blank.mp4)
-    const lowerStream = (streamUrl || '').toLowerCase();
-    if (
-      !streamUrl ||
-      lowerStream.includes('filmakinesimp4') ||
-      lowerStream.includes('playmix.uno') ||
-      lowerStream.includes('blank.mp4') ||
-      lowerStream.endsWith('.vtt') ||
-      lowerStream.endsWith('.srt')
-    ) {
-      return res.status(404).json({
-        success: false,
-        error: 'Bu sayfada geçerli bir video akışı tespit edilemedi. Lütfen alternatif bir oynatıcı bağlantısı veya embed linki deneyin.',
-        code: 'INVALID_STREAM',
-      });
-    }
 
     const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 
