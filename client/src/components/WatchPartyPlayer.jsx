@@ -57,20 +57,34 @@ const loadDash = () => {
 
 const isHls = (url) => {
   if (!url) return false;
-  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  let target = url;
+  if (url.includes('/api/proxy') && url.includes('url=')) {
+    try {
+      const parsed = new URL(url, 'https://dummy.com');
+      target = parsed.searchParams.get('url') || url;
+    } catch {}
+  }
+  const cleanUrl = target.split('?')[0].split('#')[0].toLowerCase();
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-  return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('master.txt') || url.includes('/api/proxy');
+  return cleanUrl.endsWith('.m3u8') || target.includes('.m3u8') || target.includes('/hls/') || target.includes('.txt') || target.includes('master.txt') || url.includes('/api/proxy');
 };
 
 const isDash = (url) => {
   if (!url) return false;
-  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  let target = url;
+  if (url.includes('/api/proxy') && url.includes('url=')) {
+    try {
+      const parsed = new URL(url, 'https://dummy.com');
+      target = parsed.searchParams.get('url') || url;
+    } catch {}
+  }
+  const cleanUrl = target.split('?')[0].split('#')[0].toLowerCase();
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-  return cleanUrl.endsWith('.mpd') || url.includes('.mpd') || url.includes('/dash/');
+  return cleanUrl.endsWith('.mpd') || target.includes('.mpd') || target.includes('/dash/');
 };
 
 const isLiveStream = (url) => {

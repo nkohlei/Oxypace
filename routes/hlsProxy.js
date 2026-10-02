@@ -1,6 +1,16 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { validateSsrfUrl } from '../utils/security.js';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+let fastResolve = null;
+try {
+  const scraper = require('../stream-resolver/services/fastScraper.js');
+  fastResolve = scraper.fastResolve;
+} catch (e) {
+  console.warn('[HLSProxy] fastScraper import warning:', e.message);
+}
 
 const router = express.Router();
 
@@ -45,7 +55,10 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
         if (targetObj.hostname.includes('playmix')) {
           originHeader = 'https://playmix.uno';
           refererHeader = 'https://playmix.uno/';
-        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop')) {
+        } else if (targetObj.hostname.includes('imagecdn') || targetObj.hostname.includes('rapidvid')) {
+          originHeader = 'https://rapidvid.org';
+          refererHeader = 'https://rapidvid.org/';
+        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop') || targetObj.hostname.includes('cyou')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
         } else if (targetObj.hostname.includes('hdfilmcehennemi')) {
@@ -54,9 +67,6 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
         } else if (targetObj.hostname.includes('closeload') || targetObj.hostname.includes('filmmakinesi')) {
           originHeader = 'https://closeload.filmmakinesi.to';
           refererHeader = 'https://closeload.filmmakinesi.to/';
-        } else if (targetObj.hostname.includes('rapidvid')) {
-          originHeader = 'https://rapidvid.net';
-          refererHeader = 'https://rapidvid.net/';
         } else if (targetObj.hostname.includes('bbstream')) {
           originHeader = 'https://bbstream.org';
           refererHeader = 'https://bbstream.org/';
@@ -99,6 +109,7 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
       const fallbackReferers = [
         'https://playmix.uno/',
         'https://hdfilmcehennemi.mobi/',
+        'https://rapidvid.org/',
         'https://closeload.filmmakinesi.to/',
         'https://rapidvid.net/',
         'https://vidmoly.to/',
@@ -203,6 +214,20 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
       manifestText = rewrittenLines.join('\n');
       const textEncoder = new TextEncoder();
       responseBody = textEncoder.encode(manifestText).buffer;
+    } else {
+      // Non-playlist binary segment (MPEG-TS, MP4, WebVTT, audio)
+      const firstBytes = new Uint8Array(responseBody.slice(0, 4));
+      if (firstBytes[0] === 0x47) {
+        // 0x47 is MPEG-TS sync byte. Video CDNs disguise video/audio chunks as .jpg (e.g. image000.jpg, imageaud1_0.jpg)
+        // with Content-Type: image/jpeg. We MUST override to video/mp2t so Hls.js/MSE decodes it without black screen!
+        contentType = 'video/mp2t';
+      } else if (lowerUrl.includes('.ts') || lowerUrl.includes('image') || lowerUrl.includes('segment')) {
+        if (contentType.startsWith('image/') || contentType.startsWith('text/')) {
+          contentType = 'video/mp2t';
+        }
+      } else if (lowerUrl.endsWith('.vtt') || lowerUrl.includes('/vtt/')) {
+        contentType = 'text/vtt';
+      }
     }
 
     const incomingOrigin = req.headers.origin;
@@ -253,6 +278,23 @@ router.get('/resolve', async (req, res) => {
 
   if (!pageUrl) {
     return res.status(400).json({ error: 'Missing "url" parameter' });
+  }
+
+  // Fast In-Process Resolver check
+  if (fastResolve) {
+    try {
+      const fastResult = await fastResolve(pageUrl, { timeout: 10000 });
+      if (fastResult && fastResult.streamUrl) {
+        return res.json({
+          success: true,
+          streamUrl: fastResult.streamUrl,
+          referer: fastResult.headers?.referer || pageUrl,
+          pageTitle: fastResult.pageTitle || '',
+        });
+      }
+    } catch (fastErr) {
+      // Continue fallback
+    }
   }
 
   try {
@@ -317,8 +359,8 @@ router.get('/resolve', async (req, res) => {
   }
 });
 
-// POST /api/resolve-stream (Stream Resolver Microservice Bridge)
-router.post('/resolve-stream', express.json(), async (req, res) => {
+// POST /api/resolve-stream (Stream Resolver Microservice Bridge & In-Process Resolver)
+router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
   const { url, timeout } = req.body || {};
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL parametresi.' });
@@ -343,11 +385,49 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     });
   }
 
+  const startTime = Date.now();
+  const fetchTimeout = Math.min(parseInt(timeout, 10) || 20000, 21000);
+
+  // 1. Primary: In-Process Fast Scraper (HDFilmCehennemi, FilmMakinesi, FullHDFilmİzlesene in 1-3s)
+  if (fastResolve) {
+    try {
+      const fastResult = await fastResolve(trimmedUrl, { timeout: Math.min(fetchTimeout, 15000) });
+      if (
+        fastResult &&
+        fastResult.streamUrl &&
+        !fastResult.streamUrl.includes('filmakinesimp4') &&
+        !fastResult.streamUrl.includes('blank.mp4')
+      ) {
+        let streamHeaders = fastResult.headers || {};
+        if (fastResult.streamUrl.includes('playmix') && (!streamHeaders.referer || !streamHeaders.referer.includes('playmix.uno'))) {
+          streamHeaders = { ...streamHeaders, referer: 'https://playmix.uno/', origin: 'https://playmix.uno' };
+        } else if (fastResult.streamUrl.includes('imagecdn') && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
+          streamHeaders = { ...streamHeaders, referer: 'https://rapidvid.org/', origin: 'https://rapidvid.org' };
+        }
+        const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(fastResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          streamUrl: fastResult.streamUrl,
+          playableStreamUrl,
+          type: fastResult.type || 'm3u8',
+          headers: streamHeaders,
+          pageTitle: fastResult.pageTitle || '',
+          cached: false,
+          resolvedIn: Date.now() - startTime,
+        });
+      }
+    } catch (fastErr) {
+      console.warn('[HLSProxy] In-process fastResolve warning:', fastErr.message);
+    }
+  }
+
+  // 2. Secondary: External Stream Resolver Microservice (Playwright Stealth fallback)
   const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
   const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
 
   try {
-    const fetchTimeout = Math.min(parseInt(timeout, 10) || 20000, 21000);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), fetchTimeout + 1000);
 
@@ -378,7 +458,7 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     let streamHeaders = payload.headers || data.headers || {};
     const pageTitle = payload.pageTitle || data.pageTitle || '';
     const type = payload.type || data.type || 'm3u8';
-    const resolvedIn = payload.resolvedIn || data.resolvedIn || 0;
+    const resolvedIn = payload.resolvedIn || data.resolvedIn || (Date.now() - startTime);
 
     if (streamUrl && (streamUrl.includes('filmakinesimp4') || streamUrl.includes('blank.mp4'))) {
       return res.status(404).json({
@@ -393,6 +473,12 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
         ...streamHeaders,
         referer: 'https://playmix.uno/',
         origin: 'https://playmix.uno'
+      };
+    } else if (streamUrl && streamUrl.includes('imagecdn') && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
+      streamHeaders = {
+        ...streamHeaders,
+        referer: 'https://rapidvid.org/',
+        origin: 'https://rapidvid.org'
       };
     }
 

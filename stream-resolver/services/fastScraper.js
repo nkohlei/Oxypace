@@ -187,47 +187,64 @@ function decodeDcFunction(html) {
  */
 function decodeRapidVid(html) {
   try {
-    // 1. Direct file: av('...') or _('...') function call in jwSetup.sources
-    const avMatch = html.match(/["']?file["']?\s*:\s*(?:av|_)\s*\(\s*['"]([^'"]+)['"]\s*\)/);
-    if (avMatch && avMatch[1]) {
-      const p8 = avMatch[1];
-      let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
-      let n = '';
-      for (let t = 0; t < e.length; t++) {
-        let a = 'K9L'[t % 3];
-        let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
-        n += String.fromCharCode(i);
+    const decryptPayload = (payloadStr) => {
+      if (!payloadStr) return null;
+      try {
+        const cleanStr = String(payloadStr).trim();
+        const reversed = cleanStr.split('').reverse().join('');
+        let e = atob(reversed);
+        let n = '';
+        for (let t = 0; t < e.length; t++) {
+          const a = 'K9L'[t % 3];
+          const i = e.charCodeAt(t) - ((a.charCodeAt(0) % 5) + 1);
+          n += String.fromCharCode(i);
+        }
+        return atob(n);
+      } catch (err) {
+        try {
+          const cleanStr = String(payloadStr).trim();
+          const reversed = cleanStr.split('').reverse().join('');
+          let e = Buffer.from(reversed, 'base64').toString('latin1');
+          let n = '';
+          for (let t = 0; t < e.length; t++) {
+            const a = 'K9L'[t % 3];
+            const i = e.charCodeAt(t) - ((a.charCodeAt(0) % 5) + 1);
+            n += String.fromCharCode(i);
+          }
+          return Buffer.from(n, 'base64').toString('utf8');
+        } catch {
+          return null;
+        }
       }
-      const decoded = Buffer.from(n, 'base64').toString('utf8');
-      if (decoded && typeof decoded === 'string' && decoded.startsWith('http')) {
-        logger.info(`[FastScraper] 🔓 RapidVid av() akışı başarıyla çözüldü: ${decoded}`);
-        return decoded;
+    };
+
+    // 1. window._p8 custom encrypted payload
+    const p8Match = html.match(/window\._p8\s*=\s*['"]([^'"]+)['"]/);
+    if (p8Match && p8Match[1]) {
+      const decodedJsonStr = decryptPayload(p8Match[1]);
+      if (decodedJsonStr) {
+        try {
+          const obj = JSON.parse(decodedJsonStr);
+          const stream = obj.cm || obj.tm || (obj.sources && obj.sources[0] && obj.sources[0].file) || obj.file;
+          if (stream && typeof stream === 'string' && stream.startsWith('http')) {
+            logger.info(`[FastScraper] 🔓 RapidVid _p8 akışı başarıyla çözüldü: ${stream}`);
+            return stream;
+          }
+        } catch (parseErr) {
+          if (decodedJsonStr.startsWith('http')) {
+            return decodedJsonStr;
+          }
+        }
       }
     }
 
-    // 2. window._p8 custom encrypted payload
-    const p8Match = html.match(/window\._p8\s*=\s*['"]([^'"]+)['"]/);
-    if (p8Match) {
-      const p8 = p8Match[1];
-      let e = Buffer.from(String(p8 || '').split('').reverse().join(''), 'base64').toString('latin1');
-      let n = '';
-      for (let t = 0; t < e.length; t++) {
-        let a = 'K9L'[t % 3];
-        let i = e.charCodeAt(t) - (a.charCodeAt(0) % 5 + 1);
-        n += String.fromCharCode(i);
-      }
-      const decodedJsonStr = Buffer.from(n, 'base64').toString('utf8');
-      try {
-        const obj = JSON.parse(decodedJsonStr);
-        const stream = obj.cm || obj.tm || (obj.sources && obj.sources[0] && obj.sources[0].file);
-        if (stream && typeof stream === 'string' && stream.startsWith('http')) {
-          logger.info(`[FastScraper] 🔓 RapidVid akışı başarıyla çözüldü: ${stream}`);
-          return stream;
-        }
-      } catch (parseErr) {
-        if (decodedJsonStr.startsWith('http')) {
-          return decodedJsonStr;
-        }
+    // 2. Direct file: av('...') or _('...') function call in jwSetup.sources
+    const avMatch = html.match(/["']?file["']?\s*:\s*(?:av|_)\s*\(\s*['"]([^'"]+)['"]\s*\)/);
+    if (avMatch && avMatch[1]) {
+      const decoded = decryptPayload(avMatch[1]);
+      if (decoded && typeof decoded === 'string' && decoded.startsWith('http')) {
+        logger.info(`[FastScraper] 🔓 RapidVid av() akışı başarıyla çözüldü: ${decoded}`);
+        return decoded;
       }
     }
   } catch (err) {
@@ -362,12 +379,12 @@ function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
   
   if (streamUrl.includes('playmix') || embedUrl.includes('playmix')) {
     referer = 'https://playmix.uno/';
+  } else if (streamUrl.includes('imagecdn') || streamUrl.includes('rapidvid') || embedUrl.includes('rapidvid') || targetUrl.includes('fullhdfilmizlesene')) {
+    referer = 'https://rapidvid.org/';
   } else if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
     referer = 'https://hdfilmcehennemi.mobi/';
   } else if (streamUrl.includes('closeload') || embedUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
     referer = 'https://closeload.filmmakinesi.to/';
-  } else if (streamUrl.includes('rapidvid') || embedUrl.includes('rapidvid') || targetUrl.includes('fullhdfilmizlesene')) {
-    referer = 'https://rapidvid.net/';
   } else if (streamUrl.includes('vidmoly') || embedUrl.includes('vidmoly')) {
     referer = 'https://vidmoly.to/';
   } else if (streamUrl.includes('vidoza') || embedUrl.includes('vidoza')) {
