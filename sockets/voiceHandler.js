@@ -110,6 +110,15 @@ export const initializeVoiceHandler = (io) => {
                 watchParty: activeWatchParty
             });
 
+            // Emit minimal channel active count update to portal channel listeners
+            const roomMatch = roomName && roomName.match(/^portal_([^_]+)_channel_(.+)$/);
+            if (roomMatch) {
+                const [, portalId, channelId] = roomMatch;
+                const count = participants ? participants.length : 0;
+                io.to(`portal:${portalId}`).emit('voice:channel-count-update', { portalId, channelId, count });
+                io.emit('voice:channel-count-update', { portalId, channelId, count });
+            }
+
             // Emit explicit join event only for genuine new participants (not socket reconnects)
             if (isNewJoin) {
                 io.to(`voice:${roomName}`).emit('voice:user-joined', {
@@ -515,6 +524,15 @@ async function removeParticipant(io, roomName, userId) {
         serverNow: Date.now(),
         watchParty: activeWatchParty
     });
+
+    // Emit minimal channel active count update to portal channel listeners
+    const roomMatch = roomName && roomName.match(/^portal_([^_]+)_channel_(.+)$/);
+    if (roomMatch) {
+        const [, portalId, channelId] = roomMatch;
+        const count = participants ? participants.length : 0;
+        io.to(`portal:${portalId}`).emit('voice:channel-count-update', { portalId, channelId, count });
+        io.emit('voice:channel-count-update', { portalId, channelId, count });
+    }
 
     // Emit explicit leave event exactly once
     io.to(`voice:${roomName}`).emit('voice:user-left', {

@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useUI } from '../context/UIContext';
 import InviteUserModal from './InviteUserModal';
 import Badge from './Badge';
@@ -8,10 +9,9 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useVoice } from '../context/VoiceContext';
 import { useSocket } from '../context/SocketContext';
 import RoomTimer from './RoomTimer';
-import { useEffect } from 'react';
 
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image } from 'lucide-react';
+import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image, Mic } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PortalInfoModal from './PortalInfoModal';
 
@@ -34,8 +34,9 @@ const ChannelSidebar = ({
     const setIsDesktopSidebarCollapsed = uiContext?.setIsDesktopSidebarCollapsed || (() => {});
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
-    const { roomStartTime, activeRoom } = useVoice();
-    const { onlineUsers } = useSocket();
+    const { roomStartTime, activeRoom, participants } = useVoice();
+    const { socket, onlineUsers } = useSocket();
+    const [voiceCounts, setVoiceCounts] = useState({});
 
     // Savunmacı ID çıkarma — populate edilmiş obje ya da raw string ID her ikisini de doğru işler.
     // portal.owner obje olduğunda String(portal.owner) → "[object Object]" olur, bu hatayı önler.
@@ -88,6 +89,69 @@ const ChannelSidebar = ({
             clearUnreadForChannel(currentChannel, portal._id);
         }
     }, [currentChannel, portal?._id, clearUnreadForChannel]);
+
+    // Canlı sesli / görüntülü odaların aktif katılımcı sayılarını çek ve güncelle
+    useEffect(() => {
+        if (!portal?._id || !portal?.channels?.length) return;
+
+        const voiceChannels = portal.channels.filter(ch => ch.type === 'voice' || ch.type === 'conference');
+        if (voiceChannels.length === 0) return;
+
+        let isMounted = true;
+        const fetchCounts = async () => {
+            try {
+                const results = await Promise.all(
+                    voiceChannels.map(async (ch) => {
+                        const chId = ch._id || ch.id;
+                        try {
+                            const res = await axios.get(`/api/voice/rooms/${portal._id}/${chId}/participants?t=${Date.now()}`);
+                            return { channelId: String(chId), count: res.data?.participants?.length || 0 };
+                        } catch {
+                            return { channelId: String(chId), count: 0 };
+                        }
+                    })
+                );
+                if (isMounted) {
+                    setVoiceCounts(prev => {
+                        const updated = { ...prev };
+                        results.forEach(r => {
+                            updated[r.channelId] = r.count;
+                        });
+                        return updated;
+                    });
+                }
+            } catch {
+                // Sessizce geç
+            }
+        };
+
+        fetchCounts();
+        const interval = setInterval(fetchCounts, 10000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [portal?._id, portal?.channels]);
+
+    // Socket üzerinden anlık kanal katılımcı sayısı güncellemelerini dinle
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleCountUpdate = (data) => {
+            if (!data || !data.channelId) return;
+            if (data.portalId && String(data.portalId) !== String(portal?._id)) return;
+            setVoiceCounts(prev => ({
+                ...prev,
+                [String(data.channelId)]: Number(data.count) || 0
+            }));
+        };
+
+        socket.on('voice:channel-count-update', handleCountUpdate);
+        return () => {
+            socket.off('voice:channel-count-update', handleCountUpdate);
+        };
+    }, [socket, portal?._id]);
 
     if (!portal) return null;
 
@@ -247,7 +311,13 @@ const ChannelSidebar = ({
                             const isActive = isSelected(channel.id);
                             const isAnnouncement =
                                 channel.type === 'announcement' || channel.name.includes('announcements');
-                            const isVoice = channel.type === 'voice';
+                            const isVoice = channel.type === 'voice' || channel.type === 'conference';
+
+                            // Aktif odada isek doğrudan yerel katılımcı sayısını al, değilse sunucu/socket sayısını kullan
+                            let activeCount = voiceCounts[String(channel.id)] ?? 0;
+                            if (activeRoom && String(activeRoom.channelId) === String(channel.id) && Array.isArray(participants)) {
+                                activeCount = participants.length;
+                            }
 
                             return (
                                 <div
@@ -276,7 +346,9 @@ const ChannelSidebar = ({
                                             justifyContent: 'center',
                                         }}
                                     >
-                                        {isVoice ? (
+                                        {channel.type === 'conference' ? (
+                                            <Mic size={20} strokeWidth={2} />
+                                        ) : channel.type === 'voice' ? (
                                             <Volume2 size={20} strokeWidth={2} />
                                         ) : isAnnouncement ? (
                                             <Megaphone size={20} strokeWidth={2.5} />
@@ -300,6 +372,12 @@ const ChannelSidebar = ({
                                     >
                                         {channel.name}
                                     </span>
+
+                                    {isVoice && (
+                                        <span className={`vc-channel-active-badge ${activeCount > 0 ? 'online' : 'idle'}`}>
+                                            {activeCount > 0 ? `${activeCount} aktif` : 'aktif yok'}
+                                        </span>
+                                    )}
 
                                     {!isActive && unreadPostsByChannel[channel.id]?.length > 0 && (
                                         <div
@@ -618,6 +696,46 @@ const ChannelSidebar = ({
             }
             .channel-item.active svg {
                 color: var(--primary-color);
+            }
+
+            /* ── Voice channel minimal active badge (no icons, purely minimal text) ── */
+            .vc-channel-active-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 600;
+                line-height: 1.2;
+                padding: 1px 6px;
+                border-radius: 4px;
+                white-space: nowrap;
+                user-select: none;
+                flex-shrink: 0;
+                margin-left: 2px;
+                letter-spacing: 0.01em;
+                transition: all 0.2s ease;
+            }
+            .vc-channel-active-badge.online {
+                background: rgba(34, 197, 94, 0.15);
+                color: #4ade80;
+                border: 1px solid rgba(34, 197, 94, 0.3);
+            }
+            .vc-channel-active-badge.idle {
+                background: rgba(255, 255, 255, 0.05);
+                color: var(--text-tertiary, #949ba4);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            [data-theme='light'] .vc-channel-active-badge.online,
+            body.light-theme .vc-channel-active-badge.online {
+                background: rgba(34, 197, 94, 0.12);
+                color: #16a34a;
+                border-color: rgba(34, 197, 94, 0.25);
+            }
+            [data-theme='light'] .vc-channel-active-badge.idle,
+            body.light-theme .vc-channel-active-badge.idle {
+                background: rgba(0, 0, 0, 0.05);
+                color: #64748b;
+                border-color: rgba(0, 0, 0, 0.08);
             }
 
             /* ── Scrollbar ── */
