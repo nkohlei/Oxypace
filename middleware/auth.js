@@ -19,6 +19,24 @@ export const protect = async (req, res, next) => {
                 return res.status(401).json({ message: 'User not found' });
             }
 
+            // CRIT-3: Token invalidation check — reject tokens issued before tokenValidFrom.
+            // tokenValidFrom is updated on password change, ban, or forced logout to
+            // instantly revoke all prior sessions without a token blacklist.
+            if (req.user.tokenValidFrom) {
+                const tokenIssuedAt = decoded.iat * 1000; // JWT iat is in seconds, convert to ms
+                if (tokenIssuedAt < req.user.tokenValidFrom.getTime()) {
+                    return res.status(401).json({ message: 'Session expired. Please log in again.' });
+                }
+            }
+
+            // Real-time ban check — even if token is cryptographically valid, block banned users immediately
+            if (req.user.isBanned) {
+                const banExpired = req.user.banExpiresAt && req.user.banExpiresAt < new Date();
+                if (!banExpired) {
+                    return res.status(403).json({ message: 'Hesabınız engellenmiştir.' });
+                }
+            }
+
             // Ghost Mode / Taklit Modu kısıtlaması (Read-Only)
             if (decoded.isGhost) {
                 req.user.isGhost = true;
@@ -36,16 +54,15 @@ export const protect = async (req, res, next) => {
 
             next();
         } catch (error) {
-            console.error('Auth Middleware Error:', error);
-
             // Differentiate between token errors and system errors (like DB connection)
             if (error.name === 'JsonWebTokenError') {
                 return res.status(401).json({ message: 'Not authorized, invalid token' });
             } else if (error.name === 'TokenExpiredError') {
                 return res.status(401).json({ message: 'Not authorized, token expired' });
             } else {
-                // Return actual system error for debugging (remove in prod if needed, but helpful now)
-                return res.status(500).json({ message: 'Auth System Error: ' + error.message });
+                // HIGH-1 fix: do NOT expose internal error details to the client
+                console.error('Auth Middleware Error:', error);
+                return res.status(500).json({ message: 'Authentication service error. Please try again later.' });
             }
         }
     }
@@ -63,10 +80,22 @@ export const optionalProtect = async (req, res, next) => {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = await User.findById(decoded.id).select('-password');
-            if (req.user && decoded.isGhost) {
-                req.user.isGhost = true;
-                if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
-                    return res.status(403).json({ message: 'Taklit modunda (Ghost Mode) yazma işlemleri kısıtlanmıştır.' });
+
+            if (req.user) {
+                // Token invalidation check for optional auth as well
+                if (req.user.tokenValidFrom) {
+                    const tokenIssuedAt = decoded.iat * 1000;
+                    if (tokenIssuedAt < req.user.tokenValidFrom.getTime()) {
+                        req.user = undefined; // Treat as unauthenticated
+                        return next();
+                    }
+                }
+
+                if (decoded.isGhost) {
+                    req.user.isGhost = true;
+                    if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+                        return res.status(403).json({ message: 'Taklit modunda (Ghost Mode) yazma işlemleri kısıtlanmıştır.' });
+                    }
                 }
             }
         } catch (error) {

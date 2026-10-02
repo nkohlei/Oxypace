@@ -1,15 +1,33 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
+import { validateSsrfUrl } from '../utils/security.js';
 
 const router = express.Router();
 
+// Strict rate limit for the open proxy endpoint — prevents SSRF amplification / DoS
+const proxyLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla proxy isteği. Lütfen 15 dakika sonra tekrar deneyin.' },
+});
+
 // GET /api/proxy
-router.get('/proxy', async (req, res) => {
+router.get('/proxy', proxyLimiter, async (req, res) => {
   const targetUrl = req.query.url;
   const referer = req.query.referer;
   const origin = req.query.origin;
 
   if (!targetUrl) {
     return res.status(400).json({ error: 'Missing "url" query parameter' });
+  }
+
+  // SSRF Protection: block private/reserved IP ranges and metadata endpoints
+  const ssrfCheck = validateSsrfUrl(targetUrl);
+  if (!ssrfCheck.safe) {
+    console.warn(`[SSRF Block] /api/proxy rejected: ${targetUrl} — ${ssrfCheck.reason}`);
+    return res.status(400).json({ error: 'Invalid or disallowed target URL' });
   }
 
   try {
@@ -139,11 +157,29 @@ router.get('/proxy', async (req, res) => {
       responseBody = textEncoder.encode(manifestText).buffer;
     }
 
+    const incomingOrigin = req.headers.origin;
+    let allowedCorsOrigin = null;
+    if (!incomingOrigin) {
+      // Direct / server-to-server / mobile webview
+      allowedCorsOrigin = '*';
+    } else if (
+      incomingOrigin.includes('localhost') ||
+      incomingOrigin.endsWith('.vercel.app') ||
+      incomingOrigin.endsWith('.netlify.app') ||
+      incomingOrigin.includes('oxypace') ||
+      incomingOrigin.startsWith('capacitor://') ||
+      incomingOrigin.startsWith('ionic://')
+    ) {
+      allowedCorsOrigin = incomingOrigin;
+    }
+
     const resHeaders = {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Content-Type': contentType,
     };
+    if (allowedCorsOrigin) {
+      resHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;
+    }
     if (response.headers.get('Content-Range')) {
       resHeaders['Content-Range'] = response.headers.get('Content-Range');
     }

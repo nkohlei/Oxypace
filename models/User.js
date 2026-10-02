@@ -321,6 +321,16 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        // Token invalidation anchor — any JWT issued before this date is rejected.
+        // Updated on password change, ban, or forced logout to instantly revoke all active sessions.
+        tokenValidFrom: {
+            type: Date,
+            default: null,
+        },
+        passwordChangedAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,
@@ -336,6 +346,9 @@ userSchema.pre('save', async function (next) {
     if (this.password) {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
+        // Record when password changed to invalidate prior tokens
+        this.passwordChangedAt = new Date();
+        this.tokenValidFrom = new Date();
     }
     next();
 });

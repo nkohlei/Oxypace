@@ -595,6 +595,8 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
         user.isBanned = true;
         user.banReason = reason || 'Topluluk kuralları ihlali';
         user.banExpiresAt = expiresAt ? new Date(expiresAt) : null;
+        // CRIT-3: Invalidate all existing tokens for this user immediately
+        user.tokenValidFrom = new Date();
 
         await user.save();
 

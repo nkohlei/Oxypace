@@ -3,6 +3,7 @@ import multer from 'multer';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import { profileValidation, mongoIdValidation } from '../middleware/validation.js';
 import { escapeRegex } from '../utils/security.js';
+import { getClientIp } from '../middleware/banCheck.js';
 import bcrypt from 'bcryptjs';
 
 import User from '../models/User.js';
@@ -570,7 +571,7 @@ router.post('/devices/save', protect, async (req, res) => {
         const user = await User.findById(req.user._id);
         if (!user.registeredDevices) user.registeredDevices = [];
 
-        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const incomingIP = getClientIp(req);
         const existingIndex = user.registeredDevices.findIndex(d => d.deviceId === deviceId);
 
         if (existingIndex >= 0) {

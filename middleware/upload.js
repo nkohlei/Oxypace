@@ -6,7 +6,84 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
+/**
+ * HIGH-2: Magic byte (file signature) verification.
+ * Rejects files whose binary content doesn't match their declared MIME type,
+ * preventing MIME spoofing attacks (e.g. PHP/script disguised as image/video).
+ *
+ * @param {Buffer} buffer - raw file buffer
+ * @param {string} mimetype - declared MIME type
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+function verifyMagicBytes(buffer, mimetype) {
+    if (!buffer || buffer.length < 4) return { valid: false, reason: 'File too small to verify' };
+
+    const b = buffer;
+
+    if (mimetype.startsWith('image/jpeg') || mimetype === 'image/jpg') {
+        // JPEG: FF D8 FF
+        if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return { valid: true };
+        return { valid: false, reason: 'File does not match JPEG signature' };
+    }
+
+    if (mimetype === 'image/png') {
+        // PNG: 89 50 4E 47
+        if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return { valid: true };
+        return { valid: false, reason: 'File does not match PNG signature' };
+    }
+
+    if (mimetype === 'image/gif') {
+        // GIF87a or GIF89a
+        const sig = buffer.slice(0, 6).toString('ascii');
+        if (sig === 'GIF87a' || sig === 'GIF89a') return { valid: true };
+        return { valid: false, reason: 'File does not match GIF signature' };
+    }
+
+    if (mimetype === 'image/webp') {
+        // RIFF....WEBP
+        if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46) {
+            const webpSig = buffer.slice(8, 12).toString('ascii');
+            if (webpSig === 'WEBP') return { valid: true };
+        }
+        return { valid: false, reason: 'File does not match WebP signature' };
+    }
+
+    if (mimetype === 'application/pdf') {
+        // %PDF-
+        const sig = buffer.slice(0, 5).toString('ascii');
+        if (sig === '%PDF-') return { valid: true };
+        return { valid: false, reason: 'File does not match PDF signature' };
+    }
+
+    if (mimetype.startsWith('video/')) {
+        // MP4/MOV: ftyp box at offset 4 (00 00 00 xx 66 74 79 70)
+        if (buffer.length >= 12) {
+            const ftyp = buffer.slice(4, 8).toString('ascii');
+            if (ftyp === 'ftyp') return { valid: true };
+        }
+        // MKV: 1A 45 DF A3
+        if (b[0] === 0x1A && b[1] === 0x45 && b[2] === 0xDF && b[3] === 0xA3) return { valid: true };
+        // AVI: RIFF....AVI
+        if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && buffer.length >= 12) {
+            const aviSig = buffer.slice(8, 11).toString('ascii');
+            if (aviSig === 'AVI') return { valid: true };
+        }
+        // WebM: 1A 45 DF A3 (same as MKV — already handled)
+        // FLV: 46 4C 56
+        if (b[0] === 0x46 && b[1] === 0x4C && b[2] === 0x56) return { valid: true };
+        // MPEG: 00 00 01 Bx
+        if (b[0] === 0x00 && b[1] === 0x00 && b[2] === 0x01) return { valid: true };
+        // Allow through with a warning for unrecognized video containers (e.g., TS streams)
+        console.warn(`[Upload] Unrecognized video magic bytes for MIME ${mimetype} — allowing through`);
+        return { valid: true };
+    }
+
+    // For any other MIME types not covered, allow through
+    return { valid: true };
+}
+
 const storage = multer.memoryStorage();
+
 
 const multerInstance = multer({
     storage: storage,
@@ -30,6 +107,13 @@ const multerInstance = multer({
 // Helper to optimize and upload a single file
 async function processAndUploadFile(req, file) {
     if (!file || !file.buffer) return;
+
+    // HIGH-2: Verify magic bytes before any processing — reject MIME spoofing
+    const magicCheck = verifyMagicBytes(file.buffer, file.mimetype);
+    if (!magicCheck.valid) {
+        console.warn(`[Upload] Magic byte mismatch for file "${file.originalname}" (${file.mimetype}): ${magicCheck.reason}`);
+        throw new Error(`Invalid file content: ${magicCheck.reason}`);
+    }
 
     const isImage = file.mimetype.startsWith('image/') && !file.mimetype.includes('gif');
     const isVideo = file.mimetype.startsWith('video/');

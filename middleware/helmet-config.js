@@ -24,6 +24,8 @@ export const helmetConfig = helmet({
             ],
             frameSrc: ["'self'", 'https://accounts.google.com'],
             objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'", 'https://accounts.google.com'],
             upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
         },
     },

@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import SystemSettings from '../models/SystemSettings.js';
 import BannedIP from '../models/BannedIP.js';
+import { getClientIp } from '../middleware/banCheck.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rate-limit.js';
 import {
@@ -94,7 +95,7 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
         }
 
         // Check Banned IP
-        const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const clientIP = getClientIp(req);
         const ipBan = await BannedIP.findOne({ ip: clientIP });
         if (ipBan) {
             if (!ipBan.expiresAt || new Date(ipBan.expiresAt) > new Date()) {
@@ -268,7 +269,7 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 
         // Device Registration & Security Notification Logic
         const { deviceId, deviceName, deviceType } = req.body;
-        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const incomingIP = getClientIp(req);
 
         if (!user.registeredDevices) {
             user.registeredDevices = [];
@@ -525,7 +526,7 @@ router.post('/google/validate', async (req, res) => {
 
             // Device Registration & Security Notification Logic for Google Login
             const { deviceId, deviceName, deviceType } = req.body;
-            const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+            const incomingIP = getClientIp(req);
 
             if (!user.registeredDevices) {
                 user.registeredDevices = [];
@@ -645,7 +646,7 @@ router.post('/google/complete', async (req, res) => {
 
         // Device Registration & Security Notification Logic for Google Complete Registration
         const { deviceId, deviceName, deviceType } = req.body;
-        const incomingIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const incomingIP = getClientIp(req);
 
         if (!user.registeredDevices) {
             user.registeredDevices = [];

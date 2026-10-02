@@ -3,12 +3,20 @@ import axios from 'axios';
 import ogs from 'open-graph-scraper-lite';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
+import { validateSsrfUrl } from '../utils/security.js';
 
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 
 const router = express.Router();
+
+// Whitelisted domains for proxy-image — only R2 CDN is permitted
+const PROXY_IMAGE_ALLOWLIST = [
+    'pub-094a78010abf4ebf9726834268946cb8.r2.dev',
+    'r2.dev',
+];
+
 
 // Simple in-memory cache
 const cache = new Map();
@@ -188,6 +196,13 @@ async function fetchInternalPreview(urlStr, baseUrl = '') {
  */
 async function fetchGenericPreview(originalUrl) {
     try {
+        // SSRF Protection: block requests to private/reserved IP ranges
+        const ssrfCheck = validateSsrfUrl(originalUrl);
+        if (!ssrfCheck.safe) {
+            console.warn(`[SSRF Block] fetchGenericPreview rejected: ${originalUrl} — ${ssrfCheck.reason}`);
+            return null;
+        }
+
         const { data: html } = await axios.get(originalUrl, {
             timeout: 15000,
             maxRedirects: 5,
@@ -501,6 +516,20 @@ router.get('/proxy-image', async (req, res) => {
     const imageUrl = req.query.url;
     if (!imageUrl) return res.status(400).send('URL is required');
 
+    // SSRF Protection: Only allow requests to the whitelisted R2 CDN domain
+    let parsedImageUrl;
+    try {
+        parsedImageUrl = new URL(imageUrl);
+    } catch {
+        return res.status(400).send('Invalid URL');
+    }
+
+    const isAllowed = PROXY_IMAGE_ALLOWLIST.some(domain => parsedImageUrl.hostname === domain || parsedImageUrl.hostname.endsWith('.' + domain));
+    if (!isAllowed) {
+        console.warn(`[SSRF Block] /proxy-image rejected hostname: ${parsedImageUrl.hostname}`);
+        return res.status(403).send('Disallowed image host');
+    }
+
     try {
         const response = await axios({
             method: 'get',
@@ -564,6 +593,13 @@ router.get('/thumbnail', async (req, res) => {
     }
 
     if (!imageUrl) return res.status(400).send('URL is required');
+
+    // SSRF Protection: validate thumbnail source URL
+    const thumbSsrfCheck = validateSsrfUrl(imageUrl);
+    if (!thumbSsrfCheck.safe) {
+        console.warn(`[SSRF Block] /thumbnail rejected: ${imageUrl} — ${thumbSsrfCheck.reason}`);
+        return res.status(400).send('Invalid or disallowed URL');
+    }
 
     try {
         const response = await axios({
