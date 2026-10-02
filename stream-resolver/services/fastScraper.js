@@ -299,7 +299,9 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
 function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
   let referer = targetUrl;
   
-  if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || streamUrl.includes('playmix') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
+  if (streamUrl.includes('playmix') || embedUrl.includes('playmix')) {
+    referer = 'https://playmix.uno/';
+  } else if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
     referer = 'https://hdfilmcehennemi.mobi/';
   } else if (streamUrl.includes('closeload') || embedUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
     referer = 'https://closeload.filmmakinesi.to/';

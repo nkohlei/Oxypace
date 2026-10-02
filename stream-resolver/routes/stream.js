@@ -214,7 +214,9 @@ router.get('/proxy', async (req, res) => {
         effectiveReferer = 'https://rapidvid.net/';
       } else if (targetUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
         effectiveReferer = 'https://closeload.filmmakinesi.to/';
-      } else if (targetUrl.includes('playmix') || targetUrl.includes('hdfilmcehennemi')) {
+      } else if (targetUrl.includes('playmix')) {
+        effectiveReferer = 'https://playmix.uno/';
+      } else if (targetUrl.includes('hdfilmcehennemi') || targetUrl.includes('cdnimages') || targetUrl.includes('shop')) {
         effectiveReferer = 'https://hdfilmcehennemi.mobi/';
       }
     }
@@ -235,9 +237,10 @@ router.get('/proxy', async (req, res) => {
     // Eğer ilk referer ile 403 veya 404 dönerse, alternatif Referer ile tekrar dene
     if (!response.ok && (response.status === 403 || response.status === 404)) {
       const fallbackReferers = [
-        'https://rapidvid.net/',
-        'https://closeload.filmmakinesi.to/',
+        'https://playmix.uno/',
         'https://hdfilmcehennemi.mobi/',
+        'https://closeload.filmmakinesi.to/',
+        'https://rapidvid.net/',
         '',
       ];
       for (const fbRef of fallbackReferers) {

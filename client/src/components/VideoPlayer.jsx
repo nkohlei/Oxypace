@@ -457,6 +457,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
     const baseUrl = (isNative || import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr') : '').replace(/\/$/, '');
 
+    if (url.includes('/api/proxy') || url.includes('/api/media/proxy-hls')) {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      const cleanPath = url.startsWith('/') ? url : `/${url}`;
+      return `${baseUrl}${cleanPath}`;
+    }
+
     if (url.startsWith('/api/proxy') || url.startsWith('api/proxy')) {
       const cleanPath = url.startsWith('/') ? url : `/${url}`;
       return `${baseUrl}${cleanPath}`;

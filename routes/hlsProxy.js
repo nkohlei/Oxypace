@@ -4,13 +4,13 @@ import { validateSsrfUrl } from '../utils/security.js';
 
 const router = express.Router();
 
-// Strict rate limit for the open proxy endpoint — prevents SSRF amplification / DoS
+// Scaled rate limit for proxy endpoint — handles high-frequency video streaming (.ts chunks and sub-playlists)
 const proxyLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50,
+    max: 20000,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Çok fazla proxy isteği. Lütfen 15 dakika sonra tekrar deneyin.' },
+    message: { error: 'Çok fazla proxy isteği. Lütfen daha sonra tekrar deneyin.' },
 });
 
 // GET /api/proxy
@@ -31,18 +31,32 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
   }
 
   try {
-    let originHeader = 'https://closeload.filmmakinesi.to';
-    let refererHeader = 'https://closeload.filmmakinesi.to/';
+    let originHeader = '';
+    let refererHeader = '';
 
     try {
       const targetObj = new URL(targetUrl);
-      if (!referer) {
-        if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop')) {
+      if (referer) {
+        refererHeader = referer;
+        try {
+          originHeader = new URL(referer).origin;
+        } catch {}
+      } else {
+        if (targetObj.hostname.includes('playmix')) {
+          originHeader = 'https://playmix.uno';
+          refererHeader = 'https://playmix.uno/';
+        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
         } else if (targetObj.hostname.includes('hdfilmcehennemi')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
+        } else if (targetObj.hostname.includes('closeload') || targetObj.hostname.includes('filmmakinesi')) {
+          originHeader = 'https://closeload.filmmakinesi.to';
+          refererHeader = 'https://closeload.filmmakinesi.to/';
+        } else if (targetObj.hostname.includes('rapidvid')) {
+          originHeader = 'https://rapidvid.net';
+          refererHeader = 'https://rapidvid.net/';
         } else if (targetObj.hostname.includes('bbstream')) {
           originHeader = 'https://bbstream.org';
           refererHeader = 'https://bbstream.org/';
@@ -55,15 +69,6 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
       // Ignore
     }
 
-    if (referer) {
-      refererHeader = referer;
-      try {
-        originHeader = new URL(referer).origin;
-      } catch (e) {
-        // Ignore
-      }
-    }
-
     if (origin) {
       originHeader = origin;
     }
@@ -73,21 +78,54 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       'Accept': '*/*',
       'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'cross-site',
-      'Origin': originHeader,
-      'Referer': refererHeader,
     };
+    if (refererHeader) headers['Referer'] = refererHeader;
+    if (originHeader) headers['Origin'] = originHeader;
 
     if (req.headers.range) {
       headers['Range'] = req.headers.range;
     }
 
-    const response = await fetch(targetUrl, {
+    let response = await fetch(targetUrl, {
       headers,
       cache: 'no-store',
     });
+
+    // If initial fetch gives 403 or 404, cycle through fallback referers
+    if (!response.ok && (response.status === 403 || response.status === 404)) {
+      let targetOrigin = '';
+      try { targetOrigin = new URL(targetUrl).origin; } catch {}
+
+      const fallbackReferers = [
+        'https://playmix.uno/',
+        'https://hdfilmcehennemi.mobi/',
+        'https://closeload.filmmakinesi.to/',
+        'https://rapidvid.net/',
+        'https://vidmoly.to/',
+        targetOrigin ? `${targetOrigin}/` : '',
+        '',
+      ];
+      for (const fbRef of fallbackReferers) {
+        if (fbRef === refererHeader) continue;
+        const fbHeaders = { ...headers };
+        if (fbRef) {
+          fbHeaders['Referer'] = fbRef;
+          try { fbHeaders['Origin'] = new URL(fbRef).origin; } catch {}
+        } else {
+          delete fbHeaders['Referer'];
+          delete fbHeaders['Origin'];
+        }
+        try {
+          const fbRes = await fetch(targetUrl, { headers: fbHeaders, cache: 'no-store' });
+          if (fbRes.ok) {
+            response = fbRes;
+            refererHeader = fbRef;
+            if (fbHeaders['Origin']) originHeader = fbHeaders['Origin'];
+            break;
+          }
+        } catch {}
+      }
+    }
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -104,8 +142,8 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
     const sampleHeader = new TextDecoder('utf-8').decode(responseBody.slice(0, 15));
     const isPlaylist =
       sampleHeader.includes('#EXTM3U') ||
-      lowerUrl.endsWith('.m3u8') ||
-      lowerUrl.endsWith('.txt') ||
+      lowerUrl.includes('.m3u8') ||
+      lowerUrl.includes('.txt') ||
       lowerUrl.includes('master.txt') ||
       contentType.includes('mpegurl') ||
       contentType.includes('m3u8');
@@ -115,9 +153,13 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
       const textDecoder = new TextDecoder('utf-8');
       let manifestText = textDecoder.decode(responseBody);
 
-      const protocol = req.protocol;
-      const host = req.get('host');
-      const reqOrigin = `${protocol}://${host}`;
+      const finalBaseUrl = response.url || targetUrl;
+      let baseUrlObj;
+      try {
+        baseUrlObj = new URL(finalBaseUrl);
+      } catch {
+        baseUrlObj = new URL(targetUrl);
+      }
 
       const lines = manifestText.split('\n');
       const rewrittenLines = lines.map((line) => {
@@ -128,10 +170,13 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
           if (trimmed.includes('URI="')) {
             return line.replace(/URI="([^"]+)"/g, (_, p1) => {
               try {
-                const absUrl = new URL(p1, targetUrl).href;
+                let absUrl = new URL(p1, finalBaseUrl).href;
+                if (!p1.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
+                  absUrl += baseUrlObj.search;
+                }
                 let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
-                if (referer) proxied += `&referer=${encodeURIComponent(referer)}`;
-                if (origin) proxied += `&origin=${encodeURIComponent(origin)}`;
+                if (refererHeader) proxied += `&referer=${encodeURIComponent(refererHeader)}`;
+                if (originHeader) proxied += `&origin=${encodeURIComponent(originHeader)}`;
                 return `URI="${proxied}"`;
               } catch {
                 return `URI="${p1}"`;
@@ -142,10 +187,13 @@ router.get('/proxy', proxyLimiter, async (req, res) => {
         }
 
         try {
-          const absUrl = new URL(trimmed, targetUrl).href;
+          let absUrl = new URL(trimmed, finalBaseUrl).href;
+          if (!trimmed.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
+            absUrl += baseUrlObj.search;
+          }
           let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
-          if (referer) proxied += `&referer=${encodeURIComponent(referer)}`;
-          if (origin) proxied += `&origin=${encodeURIComponent(origin)}`;
+          if (refererHeader) proxied += `&referer=${encodeURIComponent(refererHeader)}`;
+          if (originHeader) proxied += `&origin=${encodeURIComponent(originHeader)}`;
           return proxied;
         } catch {
           return line;
@@ -327,10 +375,18 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
 
     const payload = data.data || data;
     const streamUrl = payload.streamUrl || data.streamUrl;
-    const streamHeaders = payload.headers || data.headers || {};
+    let streamHeaders = payload.headers || data.headers || {};
     const pageTitle = payload.pageTitle || data.pageTitle || '';
     const type = payload.type || data.type || 'm3u8';
     const resolvedIn = payload.resolvedIn || data.resolvedIn || 0;
+
+    if (streamUrl && streamUrl.includes('playmix') && (!streamHeaders.referer || streamHeaders.referer.includes('hdfilmcehennemi.nl') || !streamHeaders.referer.includes('playmix.uno'))) {
+      streamHeaders = {
+        ...streamHeaders,
+        referer: 'https://playmix.uno/',
+        origin: 'https://playmix.uno'
+      };
+    }
 
     const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 

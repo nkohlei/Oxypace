@@ -61,7 +61,7 @@ const isHls = (url) => {
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-  return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/');
+  return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('master.txt') || url.includes('/api/proxy');
 };
 
 const isDash = (url) => {
@@ -205,6 +205,14 @@ const getProxiedUrl = (url) => {
   const useAbsoluteUrl = isNative || isElectron;
   const baseUrl = ((!useAbsoluteUrl && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
   
+  if (url.includes('/api/proxy') || url.includes('/api/media/proxy-hls')) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${cleanPath}`;
+  }
+
   if (url.startsWith('/api/proxy') || url.startsWith('api/proxy')) {
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${baseUrl}${cleanPath}`;
@@ -471,7 +479,7 @@ const WatchPartyPlayer = () => {
                         hls.on(Hls.Events.ERROR, (event, data) => {
                             if (data.fatal) {
                                 console.warn("Fatal Hls.js error encountered:", data);
-                                if (!useProxy) {
+                                if (!useProxy && !watchParty.url.includes('/api/proxy')) {
                                     console.log("[WatchPartyPlayer] Direct Hls.js failed. Falling back to CORS proxy...");
                                     setUseProxy(true);
                                 } else {
