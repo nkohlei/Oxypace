@@ -4,13 +4,13 @@ import { validateSsrfUrl } from '../utils/security.js';
 
 const router = express.Router();
 
-// Strict rate limit for the open proxy endpoint — prevents SSRF amplification / DoS
+// Rate limit for proxy endpoint — scaled to handle video streaming (manifests + .ts chunks)
 const proxyLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50,
+    max: 10000,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Çok fazla proxy isteği. Lütfen 15 dakika sonra tekrar deneyin.' },
+    message: { error: 'Çok fazla proxy isteği. Lütfen daha sonra tekrar deneyin.' },
 });
 
 // GET /api/proxy

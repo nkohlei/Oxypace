@@ -271,7 +271,7 @@ export const initializeVoiceHandler = (io) => {
             const now = Date.now();
             const watchPartyState = {
                 url,
-                isPlaying: false,
+                isPlaying: true,
                 currentTime: 0,
                 lastUpdated: now,
                 serverTimestamp: now,
