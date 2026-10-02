@@ -356,9 +356,11 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
     const isLive = !!watchParty?.isLive;
-    const isNativeVOD = isStream && !isLive;
+    // Live Stream engine is reserved strictly for real live broadcasts (continuous IPTV / live streams).
+    // All movies, series, and VOD streams use the standard, familiar VideoPlayer interface!
+    const isStream = isLive;
+    const isNativeVOD = false;
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -853,8 +855,8 @@ const WatchPartyPlayer = () => {
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="watch-party-title">{(isLive || isStream) ? (isNativeVOD ? 'Birlikte Video İzle (HLS)' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
-                    {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
+                    <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte Video İzle'}</span>
+                    {isLive && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
@@ -868,63 +870,25 @@ const WatchPartyPlayer = () => {
                 onMouseMove={triggerControlsTemporary}
                 onTouchStart={triggerControlsTemporary}
             >
-                
-                <video
-                    ref={videoRef}
-                    className={`watch-party-native-video ${(isLive || isStream) ? '' : 'hidden'}`}
-                    controls={false}
-                    playsInline
-                    webkit-playsinline="true"
-                    autoPlay
-                    muted={localMuted}
-                    onTimeUpdate={onTimeUpdate}
-                    onDurationChange={onDurationChange}
-                    onPlaying={onPlaying}
-                    onPause={onPaused}
-                />
-
-                {(isLive || isStream) && !isReady && !hasError && (
-                    <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
-                        <div className="pro-spinner" />
-                    </div>
-                )}
-
-                 {(isLive || isStream) && (
+                {isLive && (
                     <>
-                        {/* Native VOD Controls (Play/Pause, Time, Scrubber) */}
-                        {isNativeVOD && (
-                            <div 
-                                className="watch-party-vod-controls"
-                                style={{
-                                    opacity: controlsVisible ? 1 : 0,
-                                    pointerEvents: controlsVisible ? 'auto' : 'none',
-                                    transition: 'opacity 0.25s ease'
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <button 
-                                    className="watch-party-vod-btn" 
-                                    onClick={handleTogglePlayPause}
-                                    title={watchParty?.isPlaying ? "Duraklat" : "Oynat"}
-                                >
-                                    {watchParty?.isPlaying ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
-                                </button>
+                        <video
+                            ref={videoRef}
+                            className="watch-party-native-video"
+                            controls={false}
+                            playsInline
+                            webkit-playsinline="true"
+                            autoPlay
+                            muted={localMuted}
+                            onTimeUpdate={onTimeUpdate}
+                            onDurationChange={onDurationChange}
+                            onPlaying={onPlaying}
+                            onPause={onPaused}
+                        />
 
-                                <span className="watch-party-vod-time">
-                                    {formatTime(currentTime)} / {formatTime(duration)}
-                                </span>
-
-                                <div className="watch-party-vod-progress-wrapper">
-                                    <input 
-                                        type="range"
-                                        min="0"
-                                        max={duration > 0 ? duration : 100}
-                                        step="0.5"
-                                        value={currentTime || 0}
-                                        onChange={handleNativeScrub}
-                                        className="watch-party-vod-seekbar"
-                                    />
-                                </div>
+                        {!isReady && !hasError && (
+                            <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
+                                <div className="pro-spinner" />
                             </div>
                         )}
 
@@ -934,8 +898,7 @@ const WatchPartyPlayer = () => {
                             style={{
                                 opacity: controlsVisible ? 1 : 0,
                                 pointerEvents: controlsVisible ? 'auto' : 'none',
-                                transition: 'opacity 0.25s ease',
-                                bottom: isNativeVOD ? (window.innerWidth <= 768 ? '54px' : '58px') : undefined
+                                transition: 'opacity 0.25s ease'
                             }}
                             onMouseEnter={() => window.innerWidth > 768 && setVolumeOpen(true)}
                             onMouseLeave={() => window.innerWidth > 768 && setVolumeOpen(false)}
@@ -980,27 +943,24 @@ const WatchPartyPlayer = () => {
                                 gap: '8px',
                                 opacity: controlsVisible ? 1 : 0,
                                 pointerEvents: controlsVisible ? 'auto' : 'none',
-                                transition: 'opacity 0.25s ease',
-                                bottom: isNativeVOD ? (window.innerWidth <= 768 ? '54px' : '58px') : undefined
+                                transition: 'opacity 0.25s ease'
                             }}
                         >
-                            {!isNativeVOD && (
-                                <button 
-                                    className="watch-party-fullscreen-btn-modern"
-                                    onClick={() => {
-                                        const video = videoRef.current;
-                                        if (video && video.duration) {
-                                            const liveEdge = video.duration - 2;
-                                            const targetTime = Math.max(0, liveEdge);
-                                            video.currentTime = targetTime;
-                                            sendWatchSeek(targetTime);
-                                        }
-                                    }}
-                                    title="Yayını canlı sona getir / Odadaki herkesi eşitle"
-                                >
-                                    <RotateCw size={18} />
-                                </button>
-                            )}
+                            <button 
+                                className="watch-party-fullscreen-btn-modern"
+                                onClick={() => {
+                                    const video = videoRef.current;
+                                    if (video && video.duration) {
+                                        const liveEdge = video.duration - 2;
+                                        const targetTime = Math.max(0, liveEdge);
+                                        video.currentTime = targetTime;
+                                        sendWatchSeek(targetTime);
+                                    }
+                                }}
+                                title="Yayını canlı sona getir / Odadaki herkesi eşitle"
+                            >
+                                <RotateCw size={18} />
+                            </button>
                             <button 
                                 className="watch-party-fullscreen-btn-modern"
                                 onClick={toggleFullscreen}
@@ -1010,10 +970,10 @@ const WatchPartyPlayer = () => {
                             </button>
                         </div>
                     </>
-                 )}
+                )}
 
-                  {(!isLive && !isStream) && (
-                      isIframePlatform(watchParty?.url) ? (
+                {!isLive && (
+                    isIframePlatform(watchParty?.url) ? (
                          <iframe
                              src={getEmbedUrl(watchParty.url)}
                              width="100%"
@@ -1025,7 +985,7 @@ const WatchPartyPlayer = () => {
                              onLoad={() => setIsReady(true)}
                              referrerPolicy="strict-origin-when-cross-origin"
                          />
-                      ) : isPlatformUrl(watchParty?.url) ? (
+                    ) : isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
                             url={watchParty.url}
@@ -1048,7 +1008,7 @@ const WatchPartyPlayer = () => {
                         />
                     ) : (
                         <VideoPlayer
-                            src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
+                            src={isPlayableExternalUrl(watchParty?.url) ? getProxiedUrl(watchParty.url) : getImageUrl(watchParty?.url)}
                             watchParty={watchParty}
                             volume={volume}
                             muted={localMuted}

@@ -23,8 +23,8 @@ const proxyLimiter = rateLimit({
     message: { error: 'Çok fazla proxy isteği. Lütfen daha sonra tekrar deneyin.' },
 });
 
-// GET /api/proxy
-router.get('/proxy', proxyLimiter, async (req, res) => {
+// GET /api/proxy and /api/proxy-hls
+router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
   const targetUrl = req.query.url;
   const referer = req.query.referer;
   const origin = req.query.origin;
