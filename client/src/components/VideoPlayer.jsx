@@ -48,18 +48,8 @@ const loadHls = async () => {
 
 const isHls = (url) => {
   if (!url) return false;
-  let target = url;
-  if (url.includes('/api/proxy') && url.includes('url=')) {
-    try {
-      const parsed = new URL(url, 'https://dummy.com');
-      target = parsed.searchParams.get('url') || url;
-    } catch {}
-  }
-  const cleanUrl = target.split('?')[0].split('#')[0].toLowerCase();
-  if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
-    return false;
-  }
-  return cleanUrl.endsWith('.m3u8') || target.includes('.m3u8') || target.includes('/hls/') || target.includes('.txt') || target.includes('master.txt') || url.includes('/api/proxy') || url.includes('/proxy-hls');
+  const lowerUrl = url.toLowerCase();
+  return lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || lowerUrl.includes('/proxy-hls') || lowerUrl.includes('.txt') || lowerUrl.includes('manifest');
 };
 
 const findWorkingReferer = async (targetUrl) => {
@@ -208,7 +198,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [volumeSliderOpen, setVolumeSliderOpen] = useState(false);
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
-  const [hlsLevels, setHlsLevels] = useState([]);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -358,7 +347,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   // --- URL resolution helper to prevent double resolution/proxying ---
   const resolveVideoUrl = (url) => {
     if (!url) return '';
-    if (url.startsWith('http') || url.startsWith('/api/media/') || url.startsWith('/api/proxy') || url.startsWith('api/proxy') || url.startsWith('/r2-media/') || url.includes('/api/proxy')) {
+    if (url.startsWith('http') || url.startsWith('/api/media/') || url.startsWith('/r2-media/')) {
       return url;
     }
     return getImageUrl(url);
@@ -452,15 +441,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc]);
 
   const availableQualities = [{ value: 'auto', label: 'Oto' }];
-  if (hlsLevels && hlsLevels.length > 0) {
-    hlsLevels.forEach(lvl => availableQualities.push(lvl));
-  } else {
-    if (has2160) availableQualities.push({ value: '2160', label: '2160p' });
-    if (has1080) availableQualities.push({ value: '1080', label: '1080p' });
-    if (has720)  availableQualities.push({ value: '720',  label: '720p'  });
-    if (has360)  availableQualities.push({ value: '360',  label: '360p'  });
-    if (has144)  availableQualities.push({ value: '144',  label: '144p'  });
-  }
+  if (has2160) availableQualities.push({ value: '2160', label: '2160p' });
+  if (has1080) availableQualities.push({ value: '1080', label: '1080p' });
+  if (has720)  availableQualities.push({ value: '720',  label: '720p'  });
+  if (has360)  availableQualities.push({ value: '360',  label: '360p'  });
+  if (has144)  availableQualities.push({ value: '144',  label: '144p'  });
 
   // --- Helpers ---
   const getActiveEl  = () => (activeVideoRef.current === 'A' ? videoRefA : videoRefB).current;
@@ -485,11 +470,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       return `${baseUrl}${cleanPath}`;
     }
 
-    if (url.includes('/proxy-hls') || url.startsWith('/api/proxy') || url.startsWith('http://localhost') || url.startsWith('https://oxypac3.vercel.app')) {
+    if (url.includes('/proxy-hls') || url.startsWith('/api/media/proxy-hls') || url.startsWith('http://localhost') || url.startsWith('https://oxypac3.vercel.app')) {
       return url;
     }
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
+      return `${baseUrl}/api/media/proxy-hls?url=${encodeURIComponent(url)}`;
     }
     return url;
   }, []);
@@ -532,38 +517,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
         const hls = new HlsLib({
             enableWorker: true,
-            lowLatencyMode: false,
-            maxMaxBufferLength: 60,
-            maxBufferLength: 30,
-            maxBufferSize: 60 * 1000 * 1000,
-            backBufferLength: 30,
+            lowLatencyMode: true,
             xhrSetup: (xhr, requestUrl) => {
-              xhr.withCredentials = false;
               if (workingReferer) {
                 xhr.setRequestHeader('X-Target-Referer', workingReferer);
               }
             }
           });
           hls.on(HlsLib.Events.MANIFEST_PARSED, () => {
-            if (hls.levels && hls.levels.length > 1) {
-              const parsedLevels = hls.levels.map((lvl, idx) => ({
-                value: `${lvl.height || idx}`,
-                label: lvl.height ? `${lvl.height}p` : `Kalite ${idx + 1}`,
-                index: idx
-              }));
-              setHlsLevels(parsedLevels);
-            }
-
-            if (watchParty) {
-              if (onReady) onReady();
-              if (typeof watchParty.currentTime === 'number' && watchParty.currentTime > 0) {
-                videoEl.currentTime = watchParty.currentTime;
-              }
-              if (watchParty.isPlaying) {
-                videoEl.play().catch(e => console.warn('[VideoPlayer] Autoplay catch:', e));
-              }
-            }
-
             const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
             if (pref === 'lowest') {
               let lowestIdx = 0;
@@ -639,7 +600,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     } else {
       startPlayer();
     }
-  }, [user, getHlsProxyUrl, watchParty, onReady]);
+  }, [user, getHlsProxyUrl]);
 
   const setVideoSource = useCallback((el, url) => {
     if (!el) return;
@@ -930,18 +891,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setQualityMode(mode);
     setIsQualityMenuOpen(false);
 
-    if (hlsInstanceRef.current && hlsLevels && hlsLevels.length > 0) {
-      if (mode === 'auto') {
-        hlsInstanceRef.current.currentLevel = -1;
-      } else {
-        const found = hlsLevels.find(l => l.value === mode);
-        if (found) {
-          hlsInstanceRef.current.currentLevel = found.index;
-        }
-      }
-      return;
-    }
-
     let targetSrc = '';
     if      (mode === '2160') targetSrc = src2160;
     else if (mode === '1080') targetSrc = src1080;
@@ -951,7 +900,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else                      targetSrc = getBestSrc();
 
     if (targetSrc) initiateQualitySwap(targetSrc);
-  }, [src144, src360, src720, src1080, src2160, getBestSrc, initiateQualitySwap, hlsLevels]);
+  }, [src144, src360, src720, src1080, src2160, getBestSrc, initiateQualitySwap]);
 
   // ─── Network change listeners ─────────────────────────────────────────
   useEffect(() => {

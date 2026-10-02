@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import { registerPlugin, Capacitor } from '@capacitor/core';
@@ -356,11 +356,9 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
+    const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
     const isLive = !!watchParty?.isLive;
-    // Live Stream engine is reserved strictly for real live broadcasts (continuous IPTV / live streams).
-    // All movies, series, and VOD streams use the standard, familiar VideoPlayer interface!
-    const isStream = isLive;
-    const isNativeVOD = false;
+    const isNativeVOD = isStream && !isLive;
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -719,6 +717,35 @@ const WatchPartyPlayer = () => {
         }
     };
 
+    const handleSeekOffset = (offset) => {
+        const video = videoRef.current;
+        if (!video || !duration) return;
+        const target = Math.max(0, Math.min(duration, (video.currentTime || 0) + offset));
+        isSyncingRef.current = true;
+        lastProgrammaticSeekTimeRef.current = target;
+        video.currentTime = target;
+        setCurrentTime(target);
+        sendWatchSeek(target);
+        setTimeout(() => { isSyncingRef.current = false; }, 400);
+    };
+
+    const handleScrubClick = (e) => {
+        e.stopPropagation();
+        const video = videoRef.current;
+        if (!video || !duration) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const targetTime = frac * duration;
+        isSyncingRef.current = true;
+        lastProgrammaticSeekTimeRef.current = targetTime;
+        video.currentTime = targetTime;
+        setCurrentTime(targetTime);
+        sendWatchSeek(targetTime);
+        setTimeout(() => { isSyncingRef.current = false; }, 400);
+    };
+
+    const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
     // Native Video Synchronization Engine (Master Clock Smart Pacer)
     useEffect(() => {
         const video = videoRef.current;
@@ -855,8 +882,8 @@ const WatchPartyPlayer = () => {
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="watch-party-title">{isLive ? 'Birlikte Canlı Yayın İzle' : 'Birlikte Video İzle'}</span>
-                    {isLive && <span className="watch-party-live-badge-inline">Canlı</span>}
+                    <span className="watch-party-title">{(isLive || isStream) ? (isNativeVOD ? 'Birlikte Video İzle' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
+                    {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
@@ -870,110 +897,195 @@ const WatchPartyPlayer = () => {
                 onMouseMove={triggerControlsTemporary}
                 onTouchStart={triggerControlsTemporary}
             >
-                {isLive && (
-                    <>
-                        <video
-                            ref={videoRef}
-                            className="watch-party-native-video"
-                            controls={false}
-                            playsInline
-                            webkit-playsinline="true"
-                            autoPlay
-                            muted={localMuted}
-                            onTimeUpdate={onTimeUpdate}
-                            onDurationChange={onDurationChange}
-                            onPlaying={onPlaying}
-                            onPause={onPaused}
-                        />
+                
+                <video
+                    ref={videoRef}
+                    className={`watch-party-native-video ${(isLive || isStream) ? '' : 'hidden'}`}
+                    controls={false}
+                    playsInline
+                    webkit-playsinline="true"
+                    autoPlay
+                    muted={localMuted}
+                    onTimeUpdate={onTimeUpdate}
+                    onDurationChange={onDurationChange}
+                    onPlaying={onPlaying}
+                    onPause={onPaused}
+                />
 
-                        {!isReady && !hasError && (
-                            <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
-                                <div className="pro-spinner" />
+                {(isLive || isStream) && !isReady && !hasError && (
+                    <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
+                        <div className="pro-spinner" />
+                    </div>
+                )}
+
+                 {(isLive || isStream) && (
+                    <>
+                        {/* Modern Unified Oxypace Player Controls for VOD Movies */}
+                        {isNativeVOD && (
+                            <div 
+                                className="native-controls-ui is-always-visible"
+                                style={{
+                                    opacity: controlsVisible ? 1 : 0,
+                                    pointerEvents: controlsVisible ? 'auto' : 'none',
+                                    transition: 'opacity 0.25s ease'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="native-progress-area" onClick={handleScrubClick}>
+                                    <div className="native-progress-track">
+                                        <div className="native-progress-fill" style={{ width: `${progress}%` }}>
+                                            <div className="native-progress-thumb" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="native-bottom-row">
+                                    <div className="native-left-controls">
+                                        <button 
+                                            className="native-play-pause-btn" 
+                                            onClick={handleTogglePlayPause}
+                                            title={watchParty?.isPlaying ? "Duraklat" : "Oynat"}
+                                            aria-label="Oynat / Duraklat"
+                                        >
+                                            {watchParty?.isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                                        </button>
+
+                                        <div className="native-time-display">
+                                            <span>{formatTime(currentTime)}</span>
+                                            <span className="native-time-sep">/</span>
+                                            <span>{formatTime(duration)}</span>
+                                        </div>
+
+                                        <button className="native-skip-btn" onClick={() => handleSeekOffset(-10)} title="10 Saniye Geri">
+                                            <RotateCcw size={16} />
+                                        </button>
+                                        <button className="native-skip-btn" onClick={() => handleSeekOffset(10)} title="10 Saniye İleri">
+                                            <RotateCw size={16} />
+                                        </button>
+
+                                        <div className="native-volume-inline" onMouseLeave={() => setVolumeOpen(false)}>
+                                            <button 
+                                                className="native-volume-inline-btn" 
+                                                onClick={() => {
+                                                    setLocalMuted(!localMuted);
+                                                    setVolumeOpen(true);
+                                                }}
+                                                onMouseEnter={() => setVolumeOpen(true)}
+                                                title={localMuted ? "Sesi Aç" : "Sesi Kapat"}
+                                            >
+                                                {localMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                                            </button>
+                                            <input 
+                                                type="range" 
+                                                min="0" 
+                                                max="1" 
+                                                step="0.05" 
+                                                value={localMuted ? 0 : volume} 
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    setVolume(val);
+                                                    if (val > 0) setLocalMuted(false);
+                                                    else setLocalMuted(true);
+                                                }}
+                                                className={`native-volume-inline-slider ${!volumeOpen ? 'collapsed' : ''}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="native-right-controls">
+                                        <button 
+                                            className="native-fullscreen-btn" 
+                                            onClick={toggleFullscreen}
+                                            title="Tam Ekran"
+                                            aria-label="Tam Ekran Yap / Çık"
+                                        >
+                                            <Maximize size={18} />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        {/* Collapsible Vertical Volume Control */}
-                        <div 
-                            className="watch-party-volume-container-modern"
-                            style={{
-                                opacity: controlsVisible ? 1 : 0,
-                                pointerEvents: controlsVisible ? 'auto' : 'none',
-                                transition: 'opacity 0.25s ease'
-                            }}
-                            onMouseEnter={() => window.innerWidth > 768 && setVolumeOpen(true)}
-                            onMouseLeave={() => window.innerWidth > 768 && setVolumeOpen(false)}
-                        >
-                            {volumeOpen && (
-                                <div className="watch-party-volume-slider-wrapper">
-                                    <input 
-                                        type="range" 
-                                        min="0" 
-                                        max="1" 
-                                        step="0.05" 
-                                        value={localMuted ? 0 : volume} 
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            setVolume(val);
-                                            if (val > 0) setLocalMuted(false);
-                                            else setLocalMuted(true);
-                                        }}
-                                        className="watch-party-volume-slider-vertical"
-                                    />
+                        {/* Live Broadcast Floating Controls (Only shown for real live streams) */}
+                        {!isNativeVOD && (
+                            <>
+                                <div 
+                                    className="watch-party-volume-container-modern"
+                                    style={{
+                                        opacity: controlsVisible ? 1 : 0,
+                                        pointerEvents: controlsVisible ? 'auto' : 'none',
+                                        transition: 'opacity 0.25s ease'
+                                    }}
+                                    onMouseEnter={() => window.innerWidth > 768 && setVolumeOpen(true)}
+                                    onMouseLeave={() => window.innerWidth > 768 && setVolumeOpen(false)}
+                                >
+                                    {volumeOpen && (
+                                        <div className="watch-party-volume-slider-wrapper">
+                                            <input 
+                                                type="range" 
+                                                min="0" 
+                                                max="1" 
+                                                step="0.05" 
+                                                value={localMuted ? 0 : volume} 
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    setVolume(val);
+                                                    if (val > 0) setLocalMuted(false);
+                                                    else setLocalMuted(true);
+                                                }}
+                                                className="watch-party-volume-slider-vertical"
+                                            />
+                                        </div>
+                                    )}
+                                    <button 
+                                        className="watch-party-volume-btn-modern"
+                                        onClick={() => setLocalMuted(!localMuted)}
+                                        title={localMuted ? "Sesi Aç" : "Sesi Kapat"}
+                                    >
+                                        {localMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                                    </button>
                                 </div>
-                            )}
-                            <button 
-                                className="watch-party-volume-btn-modern"
-                                onClick={() => {
-                                    setLocalMuted(!localMuted);
-                                }}
-                                onDoubleClick={() => {
-                                    setLocalMuted(!localMuted);
-                                }}
-                                title={localMuted ? "Sesi Aç" : "Sesi Kapat"}
-                            >
-                                {localMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                            </button>
-                        </div>
 
-                        {/* Repositioned Fullscreen Button */}
-                        <div 
-                            className="watch-party-fullscreen-container-modern" 
-                            style={{ 
-                                display: 'flex', 
-                                gap: '8px',
-                                opacity: controlsVisible ? 1 : 0,
-                                pointerEvents: controlsVisible ? 'auto' : 'none',
-                                transition: 'opacity 0.25s ease'
-                            }}
-                        >
-                            <button 
-                                className="watch-party-fullscreen-btn-modern"
-                                onClick={() => {
-                                    const video = videoRef.current;
-                                    if (video && video.duration) {
-                                        const liveEdge = video.duration - 2;
-                                        const targetTime = Math.max(0, liveEdge);
-                                        video.currentTime = targetTime;
-                                        sendWatchSeek(targetTime);
-                                    }
-                                }}
-                                title="Yayını canlı sona getir / Odadaki herkesi eşitle"
-                            >
-                                <RotateCw size={18} />
-                            </button>
-                            <button 
-                                className="watch-party-fullscreen-btn-modern"
-                                onClick={toggleFullscreen}
-                                title="Tam Ekran"
-                            >
-                                <Maximize size={18} />
-                            </button>
-                        </div>
+                                <div 
+                                    className="watch-party-fullscreen-container-modern" 
+                                    style={{ 
+                                        display: 'flex', 
+                                        gap: '8px',
+                                        opacity: controlsVisible ? 1 : 0,
+                                        pointerEvents: controlsVisible ? 'auto' : 'none',
+                                        transition: 'opacity 0.25s ease'
+                                    }}
+                                >
+                                    <button 
+                                        className="watch-party-fullscreen-btn-modern"
+                                        onClick={() => {
+                                            const video = videoRef.current;
+                                            if (video && video.duration) {
+                                                const liveEdge = video.duration - 2;
+                                                const targetTime = Math.max(0, liveEdge);
+                                                video.currentTime = targetTime;
+                                                sendWatchSeek(targetTime);
+                                            }
+                                        }}
+                                        title="Yayını canlı sona getir / Odadaki herkesi eşitle"
+                                    >
+                                        <RotateCw size={18} />
+                                    </button>
+                                    <button 
+                                        className="watch-party-fullscreen-btn-modern"
+                                        onClick={toggleFullscreen}
+                                        title="Tam Ekran"
+                                    >
+                                        <Maximize size={18} />
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </>
-                )}
+                 )}
 
-                {!isLive && (
-                    isIframePlatform(watchParty?.url) ? (
+                  {(!isLive && !isStream) && (
+                      isIframePlatform(watchParty?.url) ? (
                          <iframe
                              src={getEmbedUrl(watchParty.url)}
                              width="100%"
@@ -985,7 +1097,7 @@ const WatchPartyPlayer = () => {
                              onLoad={() => setIsReady(true)}
                              referrerPolicy="strict-origin-when-cross-origin"
                          />
-                    ) : isPlatformUrl(watchParty?.url) ? (
+                      ) : isPlatformUrl(watchParty?.url) ? (
                         <ReactPlayer
                             ref={playerRef}
                             url={watchParty.url}
@@ -1008,7 +1120,7 @@ const WatchPartyPlayer = () => {
                         />
                     ) : (
                         <VideoPlayer
-                            src={isPlayableExternalUrl(watchParty?.url) ? getProxiedUrl(watchParty.url) : getImageUrl(watchParty?.url)}
+                            src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
                             watchParty={watchParty}
                             volume={volume}
                             muted={localMuted}
