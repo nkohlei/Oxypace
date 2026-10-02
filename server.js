@@ -186,9 +186,22 @@ import cookieParser from 'cookie-parser';
 app.use(helmetConfig); // Security headers
 app.use(cors(corsOptions));
 app.use(mongoSanitize()); // Prevent NoSQL injection
-// Rate limiting only for /api routes, NOT sitemap
+// Rate limiting only for standard /api routes, NOT sitemap, voice channels or media/proxy streams
 app.use('/api', (req, res, next) => {
     if (req.path.includes('sitemap.xml')) return next();
+    const url = req.originalUrl || req.url || '';
+    if (
+        url.startsWith('/api/proxy') ||
+        url.includes('/api/proxy') ||
+        url.startsWith('/api/media') ||
+        url.includes('/api/media') ||
+        url.startsWith('/api/voice') ||
+        url.includes('/api/voice') ||
+        url.startsWith('/api/resolve-stream') ||
+        url.startsWith('/api/resolve')
+    ) {
+        return next();
+    }
     return generalLimiter(req, res, next);
 });
 

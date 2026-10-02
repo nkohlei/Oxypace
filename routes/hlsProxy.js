@@ -380,6 +380,14 @@ router.post('/resolve-stream', express.json(), async (req, res) => {
     const type = payload.type || data.type || 'm3u8';
     const resolvedIn = payload.resolvedIn || data.resolvedIn || 0;
 
+    if (streamUrl && (streamUrl.includes('filmakinesimp4') || streamUrl.includes('blank.mp4'))) {
+      return res.status(404).json({
+        success: false,
+        error: 'Bu sayfada geçerli bir video akışı tespit edilemedi. Lütfen alternatif bir oynatıcı bağlantısı veya embed linki deneyin.',
+        code: 'INVALID_STREAM',
+      });
+    }
+
     if (streamUrl && streamUrl.includes('playmix') && (!streamHeaders.referer || streamHeaders.referer.includes('hdfilmcehennemi.nl') || !streamHeaders.referer.includes('playmix.uno'))) {
       streamHeaders = {
         ...streamHeaders,

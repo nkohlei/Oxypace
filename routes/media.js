@@ -838,6 +838,14 @@ router.post('/validate-stream', auth, async (req, res) => {
             } catch (e) {}
         }
 
+        if (targetFetchUrl.includes('playmix')) {
+            reqReferer = 'https://playmix.uno/';
+            reqOrigin = 'https://playmix.uno';
+        } else if (targetFetchUrl.includes('cdnimages') || targetFetchUrl.includes('shop') || targetFetchUrl.includes('hdfilmcehennemi')) {
+            reqReferer = 'https://hdfilmcehennemi.mobi/';
+            reqOrigin = 'https://hdfilmcehennemi.mobi';
+        }
+
         const targetClean = targetFetchUrl.split('?')[0].split('#')[0].toLowerCase();
         const isHls = targetClean.endsWith('.m3u8') || targetFetchUrl.includes('.m3u8') || targetFetchUrl.includes('/hls/') || targetClean.endsWith('.txt') || targetFetchUrl.includes('master.txt');
         const isDash = targetClean.endsWith('.mpd') || targetFetchUrl.includes('.mpd') || targetFetchUrl.includes('/dash/');

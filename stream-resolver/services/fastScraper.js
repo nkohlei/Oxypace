@@ -24,13 +24,66 @@ const FAST_STREAM_PATTERNS = [
  */
 function decodeDynamicObfuscation(html) {
   try {
-    const arrayCallRegex = /(?:var|let|const)\s+([a-zA-Z0-9_$]+)\s*=\s*([a-zA-Z0-9_$]+)\s*\(\s*(\[\s*(?:["'][^"']*["']\s*,\s*)*["'][^"']*["']\s*\])\s*\)\s*;/g;
-    let match;
     const scriptTags = html.match(/<script[\s\S]*?<\/script>/gi) || [];
+
+    // 1. High-priority: Detect JWPlayer actual source variable e.g. sources: [{file: yi9m, type: "hls"}]
+    const jwFileMatch =
+      html.match(/sources\s*:\s*\[\s*\{\s*file\s*:\s*([a-zA-Z0-9_$]+)/i) ||
+      html.match(/file\s*:\s*([a-zA-Z0-9_$]+)\s*,\s*type\s*:\s*["']hls["']/i);
+    const preferredVarName = jwFileMatch ? jwFileMatch[1] : null;
+
+    if (preferredVarName) {
+      for (const scriptTag of scriptTags) {
+        if (scriptTag.includes(preferredVarName)) {
+          const cleanScript = scriptTag.replace(/<\/?script[^>]*>/gi, '');
+          const sandbox = {
+            atob: (str) => Buffer.from(str, 'base64').toString('binary'),
+            btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
+            Math,
+            String,
+            Array,
+            parseInt,
+            parseFloat,
+            encodeURIComponent,
+            decodeURIComponent,
+            window: {},
+            document: { location: { protocol: 'https:' } },
+            location: { protocol: 'https:', hostname: '' },
+          };
+          try {
+            vm.createContext(sandbox);
+            const execCode = `${cleanScript}\n__stream_res__ = (typeof ${preferredVarName} !== 'undefined') ? ${preferredVarName} : null;`;
+            vm.runInContext(execCode, sandbox, { timeout: 1500 });
+            const decoded = sandbox.__stream_res__;
+            if (
+              decoded &&
+              typeof decoded === 'string' &&
+              (decoded.startsWith('http://') || decoded.startsWith('https://')) &&
+              !decoded.includes('filmakinesimp4') &&
+              !decoded.includes('blank.mp4')
+            ) {
+              logger.info(`[FastScraper] 🎯 JWPlayer ana oynatıcı değişkeni başarıyla çözüldü (${preferredVarName}): ${decoded}`);
+              return decoded;
+            }
+          } catch (e) {
+            // continue
+          }
+        }
+      }
+    }
+
+    // 2. Fallback: Parse obfuscated assignment calls funcName([...]) or funcName("...".split(...))
+    const arrayCallRegex = /(?:var|let|const)\s+([a-zA-Z0-9_$]+)\s*=\s*([a-zA-Z0-9_$]+)\s*\(([^;]+)\)\s*;/g;
+    let match;
 
     while ((match = arrayCallRegex.exec(html)) !== null) {
       const varName = match[1];
       const funcName = match[2];
+      const argStr = match[3];
+
+      if (!argStr.includes('[') && !argStr.includes('split') && !argStr.includes('atob')) {
+        continue;
+      }
 
       for (const scriptTag of scriptTags) {
         if (scriptTag.includes(`function ${funcName}`) || scriptTag.includes(`${funcName}=function`) || scriptTag.includes(`${funcName} = function`)) {
@@ -55,7 +108,15 @@ function decodeDynamicObfuscation(html) {
             const execCode = `${cleanScript}\n__stream_res__ = (typeof ${varName} !== 'undefined') ? ${varName} : null;`;
             vm.runInContext(execCode, sandbox, { timeout: 1500 });
             const decoded = sandbox.__stream_res__;
-            if (decoded && typeof decoded === 'string' && (decoded.startsWith('http://') || decoded.startsWith('https://'))) {
+            if (
+              decoded &&
+              typeof decoded === 'string' &&
+              (decoded.startsWith('http://') || decoded.startsWith('https://'))
+            ) {
+              if (decoded.includes('filmakinesimp4') || decoded.includes('blank.mp4')) {
+                logger.warn(`[FastScraper] ⚠️ Sahte/şablon akış tespit edildi, atlanıyor: ${decoded}`);
+                continue;
+              }
               logger.info(`[FastScraper] 🔓 VM dinamik dizi çözücü ile akış bulundu (${funcName}): ${decoded}`);
               return decoded;
             }
