@@ -73,18 +73,25 @@ export const SocketProvider = ({ children }) => {
         socketRef.current = newSocket;
         setSocket(newSocket);
 
-        const syncPresence = () => {
+        const syncPresence = (forceJoin = false) => {
             const uid = userIdRef.current || (user?._id ? String(user._id) : null);
-            if (newSocket.connected) {
-                if (uid) {
-                    const isGhost = !!localStorage.getItem('admin_backup_token');
-                    newSocket.emit('join', uid, isGhost);
-                    console.log(`[Socket] SyncPresence — joined: ${uid}`);
-                }
+            if (!newSocket.connected) return; // Bağlı değilse socket.io kendi reconnect stratejisini yönetir
+
+            // Sekme arka planda veya gizliyse join göndermeyerek ghost-online önle
+            // forceJoin=true: yalnızca kullanıcı aktif olarak sayfaya döndüğünde
+            const isHidden = document.visibilityState === 'hidden';
+            if (isHidden && !forceJoin) {
+                // Sadece online listesini güncelle, join göndermeyerek presence sıfırlama
                 newSocket.emit('get_online_users');
-            } else if (!newSocket.connected) {
-                newSocket.connect();
+                return;
             }
+
+            if (uid) {
+                const isGhost = !!localStorage.getItem('admin_backup_token');
+                newSocket.emit('join', uid, isGhost);
+                console.log(`[Socket] SyncPresence — joined: ${uid}`);
+            }
+            newSocket.emit('get_online_users');
         };
 
         newSocket.on('connect', () => {
@@ -147,13 +154,14 @@ export const SocketProvider = ({ children }) => {
         // (Ekran kilidi açılınca, sekme öne gelince, ağ geri gelince, app arka plandan dönünce)
         const handleLifecycleEvent = () => {
             if (document.visibilityState === 'visible' || document.hasFocus()) {
-                syncPresence();
+                // Kullanıcı aktif olarak geri döndüğünde forceJoin=true ile presence'ı geri al
+                syncPresence(true);
             }
         };
 
         newSocket.io.on('reconnect', () => {
             setConnected(true);
-            syncPresence();
+            syncPresence(true); // Yeniden bağlandığında her zaman join gönder
         });
 
         document.addEventListener('visibilitychange', handleLifecycleEvent);
@@ -161,12 +169,29 @@ export const SocketProvider = ({ children }) => {
         window.addEventListener('pageshow', handleLifecycleEvent);
         window.addEventListener('online', handleLifecycleEvent);
         window.addEventListener('resume', handleLifecycleEvent);
-        // NOTE: pointerdown removed — it was calling socket.emit('join') on every screen tap,
-        // flooding the server. The 25s heartbeat below handles reconnection sufficiently.
 
-        // Mobilde bağlantının uyumaması için 25 saniyelik periyodik canlılık nabzı (heartbeat)
+        // Sekme/pencere/uygulama kapatılınca ghost-online oluşmasını engelle:
+        // beforeunload en güvenilir temizlik hook'udur (pagehide ile birlikte)
+        const handleBeforeUnload = () => {
+            const uid = userIdRef.current;
+            if (newSocket.connected && uid) {
+                // Synchronous sendBeacon ile sunucuya logout bildirimi gönder
+                // (socket.emit yerine sendBeacon tercih edilir — daha güvenilir)
+                try {
+                    newSocket.emit('logout');
+                } catch (e) {}
+            }
+            // Cache'i temizle — sonraki oturumda tanımsız uid ile join engellenir
+            try { localStorage.removeItem('_oxypace_uid'); } catch (e) {}
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        // Mobil (iOS Safari, Android) için pagehide de dinle
+        window.addEventListener('pagehide', handleBeforeUnload);
+
+        // Mobilde bağlantının uyumaması için 25 saniyelik periyodik canlılık nabzı (heartbeat).
+        // Arka planda olduğunda join gönderilmez, yalnızca bağlantı canlı tutulur.
         const heartbeatInterval = setInterval(() => {
-            syncPresence();
+            syncPresence(); // syncPresence içindeki visibility kontrolü arka planı filtreler
         }, 25000);
 
         return () => {
@@ -176,6 +201,8 @@ export const SocketProvider = ({ children }) => {
             window.removeEventListener('pageshow', handleLifecycleEvent);
             window.removeEventListener('online', handleLifecycleEvent);
             window.removeEventListener('resume', handleLifecycleEvent);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('pagehide', handleBeforeUnload);
             newSocket.close();
         };
     }, []); // Only run on mount

@@ -42,6 +42,66 @@ export const initializeSocket = (io) => {
     // Store active chat partner per user (userId -> partnerId)
     const activeConversations = new Map();
 
+    // ── Redis Ghost-Online Temizleyici ──────────────────────────────────────
+    // Her 2 dakikada bir Redis'teki online_user_ids set'ini gerçek socket'larla
+    // karşılaştırır. Aktif socket'ı olmayan kullanıcıları online set'inden siler.
+    // Bu sayede sunucu restart, ağ kopuklukları veya disconnect event kayıplarından
+    // kaynaklanan hayalet online durumları otomatik olarak temizlenir.
+    const reconcileOnlineUsersWithRedis = async () => {
+        if (!pubClient) return;
+        try {
+            const redisOnlineIds = await pubClient.smembers('online_user_ids');
+            if (!redisOnlineIds || redisOnlineIds.length === 0) return;
+
+            // Cluster genelinde tüm aktif socket'ları sorgula
+            let allSockets = [];
+            try {
+                allSockets = await io.fetchSockets();
+            } catch (err) {
+                console.warn('[Reconcile] fetchSockets failed, skipping this cycle:', err.message);
+                return;
+            }
+
+            // Gerçekten bağlı kullanıcı ID'lerini topla
+            const trulyOnlineIds = new Set();
+            for (const s of allSockets) {
+                if (s.data && s.data.userId && s.data.showOnlineStatus !== false && !s.data.isGhost) {
+                    trulyOnlineIds.add(String(s.data.userId));
+                }
+            }
+
+            // Redis'te olup gerçekte bağlı olmayan (hayalet) kayıtları temizle
+            const ghostIds = redisOnlineIds.filter(id => !trulyOnlineIds.has(String(id)));
+            if (ghostIds.length > 0) {
+                console.log(`[Reconcile] Cleaning ${ghostIds.length} ghost online user(s) from Redis:`, ghostIds);
+                const pipeline = pubClient.pipeline();
+                ghostIds.forEach(id => pipeline.srem('online_user_ids', id));
+                await pipeline.exec();
+
+                // Her ghost için offline bildirgesi yayınla
+                for (const ghostId of ghostIds) {
+                    io.emit('user_status_change', { userId: ghostId, status: 'offline', lastActive: new Date() });
+                }
+
+                // Güncellenmiş listeyi tüm clientlara yayınla
+                const updatedList = await pubClient.smembers('online_user_ids');
+                const hiddenMembers = await pubClient.smembers('hidden_user_ids');
+                const hiddenSet = new Set((hiddenMembers || []).map(String));
+                const cleanList = (updatedList || []).filter(id => !hiddenSet.has(String(id)));
+                io.emit('getOnlineUsers', cleanList);
+            }
+        } catch (err) {
+            console.error('[Reconcile] Error during Redis online_user_ids reconciliation:', err);
+        }
+    };
+    // 2 dakikada bir çalıştır (sunucu başladıktan 30 saniye sonra ilk kez)
+    setTimeout(() => {
+        reconcileOnlineUsersWithRedis();
+        setInterval(reconcileOnlineUsersWithRedis, 2 * 60 * 1000);
+    }, 30000);
+    // ───────────────────────────────────────────────────────────────────────
+
+
     io.isUserActiveInChatWith = async (userId, partnerId) => {
         if (!userId || !partnerId) return false;
         const sUser = String(userId);

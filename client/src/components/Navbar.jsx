@@ -167,10 +167,12 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                 socket.emit('logout');
             } catch (e) {}
         }
-        logout();
+        // Sunucunun logout eventini işlemesi için 300ms bekle, sonra temizle
+        // Bu sayede ghost-online oluşması engellenir
         setTimeout(() => {
+            logout();
             window.location.replace('/');
-        }, 50);
+        }, 300);
     };
 
     const handleLogoClick = (e) => {
