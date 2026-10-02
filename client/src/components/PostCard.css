@@ -121,6 +121,9 @@
     gap: 8px;
 }
 
+.post-header-left,
+.post-card .header-left,
+.post-header-row .header-left,
 .header-left {
     display: flex;
     align-items: center;

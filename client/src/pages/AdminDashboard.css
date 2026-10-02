@@ -475,11 +475,11 @@
     margin-bottom: 0;
 }
 
-.label {
+.request-card .label {
     color: var(--text-secondary);
 }
 
-.badge-pill {
+.request-card .badge-pill {
     background: var(--primary-color);
     color: white;
     padding: 2px 8px;
@@ -2747,13 +2747,13 @@
     margin: 0 0 10px 0;
 }
 
-.results-grid {
+.tourist-admin-container .results-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 10px;
 }
 
-.result-user-card {
+.tourist-admin-container .result-user-card {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -2765,29 +2765,29 @@
     transition: all 0.2s ease;
 }
 
-.result-user-card:hover {
+.tourist-admin-container .result-user-card:hover {
     background: rgba(255, 255, 255, 0.06);
     border-color: #555;
 }
 
-.result-user-card.selected {
+.tourist-admin-container .result-user-card.selected {
     background: rgba(29, 155, 240, 0.1);
     border-color: #1d9bf0;
 }
 
-.avatar-mini {
+.tourist-admin-container .avatar-mini {
     width: 32px;
     height: 32px;
     border-radius: 50%;
 }
 
-.user-info-mini {
+.tourist-admin-container .user-info-mini {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-.user-info-mini strong {
+.tourist-admin-container .user-info-mini strong {
     font-size: 13px;
     color: #fff;
     white-space: nowrap;
@@ -2795,12 +2795,12 @@
     text-overflow: ellipsis;
 }
 
-.user-info-mini span {
+.tourist-admin-container .user-info-mini span {
     font-size: 11px;
     color: #888;
 }
 
-.assignment-details-form {
+.tourist-admin-container .assignment-details-form {
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px dashed rgba(255, 255, 255, 0.1);
@@ -2809,7 +2809,7 @@
     gap: 16px;
 }
 
-.selected-user-banner {
+.tourist-admin-container .selected-user-banner {
     display: flex;
     justify-content: space-between;
     background: rgba(29, 155, 240, 0.05);
@@ -2819,63 +2819,63 @@
     font-size: 14px;
 }
 
-.selected-user-banner span {
+.tourist-admin-container .selected-user-banner span {
     color: #888;
 }
 
-.selected-user-banner strong {
+.tourist-admin-container .selected-user-banner strong {
     color: #1d9bf0;
 }
 
-.tourist-admins-table-wrapper {
+.tourist-admin-container .tourist-admins-table-wrapper {
     overflow-x: auto;
 }
 
-.tourist-table {
+.tourist-admin-container .tourist-table {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
 }
 
-.tourist-table th, .tourist-table td {
+.tourist-admin-container .tourist-table th, .tourist-admin-container .tourist-table td {
     padding: 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 13px;
 }
 
-.tourist-table th {
+.tourist-admin-container .tourist-table th {
     color: #888;
     font-weight: 600;
 }
 
-.table-user-cell {
+.tourist-admin-container .table-user-cell {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.avatar-table {
+.tourist-admin-container .avatar-table {
     width: 36px;
     height: 36px;
     border-radius: 50%;
 }
 
-.user-info-table {
+.tourist-admin-container .user-info-table {
     display: flex;
     flex-direction: column;
 }
 
-.user-info-table strong {
+.tourist-admin-container .user-info-table strong {
     color: #fff;
     font-size: 13px;
 }
 
-.user-info-table span {
+.tourist-admin-container .user-info-table span {
     color: #888;
     font-size: 11px;
 }
 
-.time-left-badge {
+.tourist-admin-container .time-left-badge {
     background: rgba(245, 158, 11, 0.15);
     color: #fbbf24;
     border: 1px solid rgba(245, 158, 11, 0.25);
@@ -2885,7 +2885,7 @@
     font-size: 12px;
 }
 
-.btn-revoke-tourist {
+.tourist-admin-container .btn-revoke-tourist {
     background: rgba(239, 68, 68, 0.12);
     color: #f87171;
     border: 1px solid rgba(239, 68, 68, 0.2);
@@ -2896,7 +2896,7 @@
     transition: all 0.2s;
 }
 
-.btn-revoke-tourist:hover {
+.tourist-admin-container .btn-revoke-tourist:hover {
     background: #ef4444;
     color: #fff;
     border-color: #ef4444;
@@ -3385,18 +3385,19 @@
 }
 
 /* ==========================================================================
-   LIGHT THEME ADAPTATION FOR ADMIN DASHBOARD
+   LIGHT THEME ADAPTATION FOR ADMIN DASHBOARD (Strictly Scoped)
    ========================================================================== */
 
-:root[data-theme="light"],
-[data-theme="light"],
-html.light,
-body.light {
-    /* Main Layout & Backgrounds */
-    .admin-layout {
-        background: #f8fafc !important;
-        color: #0f172a !important;
-    }
+:root[data-theme="light"] .admin-layout,
+[data-theme="light"] .admin-layout,
+html.light .admin-layout,
+body.light .admin-layout,
+:root[data-theme="light"] .admin-dashboard,
+[data-theme="light"] .admin-dashboard,
+html.light .admin-dashboard,
+body.light .admin-dashboard {
+    background: #f8fafc !important;
+    color: #0f172a !important;
 
     .admin-sidebar {
         background: #ffffff !important;
@@ -3587,34 +3588,6 @@ body.light {
         color: #ef4444 !important;
     }
 
-    /* Modals & Overlays */
-    .modal-content-modern,
-    .blog-modal-wide {
-        background: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
-        color: #0f172a !important;
-    }
-
-    .modal-header-modern {
-        border-bottom: 1px solid #e2e8f0 !important;
-    }
-
-    .modal-title-wrap h3,
-    .modal-title-wrap h2 {
-        color: #0f172a !important;
-    }
-
-    .modal-title-wrap p,
-    .badge-help-text {
-        color: #64748b !important;
-    }
-
-    .modal-footer-modern {
-        border-top: 1px solid #e2e8f0 !important;
-        background: #f8fafc !important;
-    }
-
     /* Blog Editor & Preview */
     .editor-rich-toolbar {
         background: #f1f5f9 !important;
@@ -3654,6 +3627,61 @@ body.light {
 
     .badge-label {
         color: #334155 !important;
+    }
+}
+
+/* Modals & Overlays light theme adaptation */
+:root[data-theme="light"] .modal-overlay-modern,
+[data-theme="light"] .modal-overlay-modern,
+html.light .modal-overlay-modern,
+body.light .modal-overlay-modern,
+:root[data-theme="light"] .admin-layout .modal-overlay-modern,
+[data-theme="light"] .admin-layout .modal-overlay-modern {
+    .modal-content-modern,
+    .blog-modal-wide {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+        color: #0f172a !important;
+    }
+
+    .modal-header-modern {
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    .modal-title-wrap h3,
+    .modal-title-wrap h2 {
+        color: #0f172a !important;
+    }
+
+    .modal-title-wrap p,
+    .badge-help-text {
+        color: #64748b !important;
+    }
+
+    .modal-footer-modern {
+        border-top: 1px solid #e2e8f0 !important;
+        background: #f8fafc !important;
+    }
+
+    .reason-input-modern,
+    input,
+    textarea,
+    select {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    .btn-modern-ghost {
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    .btn-modern-primary {
+        background: #0284c7 !important;
+        color: #ffffff !important;
     }
 }
 

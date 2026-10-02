@@ -585,7 +585,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     </div>
                 )}
                 <div className="post-header-row">
-                    <div className="header-left">
+                    <div className="post-header-left header-left">
                         <Link
                             to={`/profile/${author.username}`}
                             className="header-info-link"

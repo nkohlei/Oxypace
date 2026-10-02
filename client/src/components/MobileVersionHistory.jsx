@@ -554,7 +554,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                         <div>
                             <div className="mvh-badge-track">
                                 <span className="mvh-status-pill live">
-                                    <span className="live-ping" />
+                                    <span className="mvh-live-ping" />
                                     CANLI DERLEME TAKİBİ
                                 </span>
                                 <span className="mvh-version-chip">
@@ -594,56 +594,56 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                 {/* Metrics Stats Grid */}
                 <div className="mvh-metrics-grid">
                     <div className="mvh-metric-box">
-                        <div className="metric-icon-wrap cyan">
+                        <div className="mvh-metric-icon-wrap cyan">
                             <Smartphone size={18} />
                         </div>
-                        <div className="metric-info">
-                            <span className="metric-label">Aktif Kararlı Sürüm</span>
-                            <div className="metric-val-row">
-                                <span className="metric-value">{latestActive.version}</span>
-                                <span className="metric-sub-tag">Güncel</span>
+                        <div className="mvh-metric-info">
+                            <span className="mvh-metric-label">Aktif Kararlı Sürüm</span>
+                            <div className="mvh-metric-val-row">
+                                <span className="mvh-metric-value">{latestActive.version}</span>
+                                <span className="mvh-metric-sub-tag">Güncel</span>
                             </div>
-                            <span className="metric-desc">Yayın: {latestActive.releaseDate}</span>
+                            <span className="mvh-metric-desc">Yayın: {latestActive.releaseDate}</span>
                         </div>
                     </div>
 
                     <div className="mvh-metric-box">
-                        <div className="metric-icon-wrap emerald">
+                        <div className="mvh-metric-icon-wrap emerald">
                             <Package size={18} />
                         </div>
-                        <div className="metric-info">
-                            <span className="metric-label">Kayıtlı Sürüm Sayısı</span>
-                            <div className="metric-val-row">
-                                <span className="metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
+                        <div className="mvh-metric-info">
+                            <span className="mvh-metric-label">Kayıtlı Sürüm Sayısı</span>
+                            <div className="mvh-metric-val-row">
+                                <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="metric-desc">v2.0.0 → v2.3.6 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.3.6 Gelişim Süreci</span>
                         </div>
                     </div>
 
                     <div className="mvh-metric-box">
-                        <div className="metric-icon-wrap purple">
+                        <div className="mvh-metric-icon-wrap purple">
                             <Cpu size={18} />
                         </div>
-                        <div className="metric-info">
-                            <span className="metric-label">APK Mimarisi & Boyut</span>
-                            <div className="metric-val-row">
-                                <span className="metric-value">49.8 MB</span>
-                                <span className="metric-sub-tag save">-42% Opt.</span>
+                        <div className="mvh-metric-info">
+                            <span className="mvh-metric-label">APK Mimarisi & Boyut</span>
+                            <div className="mvh-metric-val-row">
+                                <span className="mvh-metric-value">49.8 MB</span>
+                                <span className="mvh-metric-sub-tag save">-42% Opt.</span>
                             </div>
-                            <span className="metric-desc">ARM64-v8a Standart Paket</span>
+                            <span className="mvh-metric-desc">ARM64-v8a Standart Paket</span>
                         </div>
                     </div>
 
                     <div className="mvh-metric-box">
-                        <div className="metric-icon-wrap orange">
+                        <div className="mvh-metric-icon-wrap orange">
                             <ShieldCheck size={18} />
                         </div>
-                        <div className="metric-info">
-                            <span className="metric-label">Platform Desteği</span>
-                            <div className="metric-val-row">
-                                <span className="metric-value">Android 10 - 15</span>
+                        <div className="mvh-metric-info">
+                            <span className="mvh-metric-label">Platform Desteği</span>
+                            <div className="mvh-metric-val-row">
+                                <span className="mvh-metric-value">Android 10 - 15</span>
                             </div>
-                            <span className="metric-desc">API 29 - 35 (FGS & Insets Uyumlu)</span>
+                            <span className="mvh-metric-desc">API 29 - 35 (FGS & Insets Uyumlu)</span>
                         </div>
                     </div>
                 </div>
@@ -675,14 +675,14 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                 <div className="mvh-filter-pills">
                     <button
                         type="button"
-                        className={`filter-pill ${selectedCategory === 'all' ? 'active' : ''}`}
+                        className={`mvh-filter-pill ${selectedCategory === 'all' ? 'active' : ''}`}
                         onClick={() => setSelectedCategory('all')}
                     >
                         Tümü ({MOBILE_VERSIONS_DATA.length})
                     </button>
                     <button
                         type="button"
-                        className={`filter-pill ${selectedCategory === 'feature' ? 'active' : ''}`}
+                        className={`mvh-filter-pill ${selectedCategory === 'feature' ? 'active' : ''}`}
                         onClick={() => setSelectedCategory('feature')}
                     >
                         <Sparkles size={13} />
@@ -690,7 +690,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                     </button>
                     <button
                         type="button"
-                        className={`filter-pill ${selectedCategory === 'fix' ? 'active' : ''}`}
+                        className={`mvh-filter-pill ${selectedCategory === 'fix' ? 'active' : ''}`}
                         onClick={() => setSelectedCategory('fix')}
                     >
                         <Zap size={13} />
@@ -698,7 +698,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                     </button>
                     <button
                         type="button"
-                        className={`filter-pill ${selectedCategory === 'infrastructure' ? 'active' : ''}`}
+                        className={`mvh-filter-pill ${selectedCategory === 'infrastructure' ? 'active' : ''}`}
                         onClick={() => setSelectedCategory('infrastructure')}
                     >
                         <Cpu size={13} />
@@ -706,7 +706,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                     </button>
                     <button
                         type="button"
-                        className={`filter-pill ${selectedCategory === 'perf' ? 'active' : ''}`}
+                        className={`mvh-filter-pill ${selectedCategory === 'perf' ? 'active' : ''}`}
                         onClick={() => setSelectedCategory('perf')}
                     >
                         <Layers size={13} />
@@ -738,7 +738,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                     <div className="mvh-view-toggle">
                         <button
                             type="button"
-                            className={`toggle-btn ${viewMode === 'timeline' ? 'active' : ''}`}
+                            className={`mvh-toggle-btn ${viewMode === 'timeline' ? 'active' : ''}`}
                             onClick={() => setViewMode('timeline')}
                             title="Zaman Tüneli Görünümü"
                         >
@@ -747,7 +747,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                         </button>
                         <button
                             type="button"
-                            className={`toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                            className={`mvh-toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
                             onClick={() => setViewMode('cards')}
                             title="Kompakt Kart Görünümü"
                         >
@@ -761,7 +761,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
             {/* 3. VERSION TIMELINE / CARDS CONTENT */}
             {filteredVersions.length === 0 ? (
                 <div className="mvh-empty-state">
-                    <History size={40} className="empty-icon" />
+                    <History size={40} className="mvh-empty-icon" />
                     <h3>Eşleşen sürüm bulunamadı</h3>
                     <p>Arama terimini veya seçtiğiniz kategori filtresini değiştirip tekrar deneyin.</p>
                     <button
@@ -774,7 +774,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                 </div>
             ) : (
                 <div className={`mvh-content-wrapper view-${viewMode}`}>
-                    {viewMode === 'timeline' && <div className="timeline-spine-line" />}
+                    {viewMode === 'timeline' && <div className="mvh-timeline-spine-line" />}
 
                     {filteredVersions.map((item, index) => {
                         const isExpanded = !!expandedVersions[item.version];
@@ -787,8 +787,8 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             >
                                 {/* Timeline Node Marker */}
                                 {viewMode === 'timeline' && (
-                                    <div className="timeline-node">
-                                        <div className={`node-dot ${isLatest ? 'pulsing' : ''}`}>
+                                    <div className="mvh-timeline-node">
+                                        <div className={`mvh-node-dot ${isLatest ? 'pulsing' : ''}`}>
                                             {isLatest ? <Sparkles size={12} /> : <GitCommit size={12} />}
                                         </div>
                                     </div>
@@ -798,18 +798,18 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                                 <div className="mvh-card-inner">
                                     {/* Card Header */}
                                     <div className="mvh-card-header" onClick={() => toggleExpand(item.version)}>
-                                        <div className="header-left">
-                                            <div className="version-pill-group">
-                                                <span className={`version-tag ${isLatest ? 'latest' : ''}`}>
+                                        <div className="mvh-header-left">
+                                            <div className="mvh-version-pill-group">
+                                                <span className={`mvh-version-tag ${isLatest ? 'latest' : ''}`}>
                                                     {item.version}
                                                 </span>
                                                 {isLatest && (
-                                                    <span className="badge-active-release">
+                                                    <span className="mvh-badge-active-release">
                                                         <CheckCircle2 size={12} />
                                                         <span>AKTİF SÜRÜM</span>
                                                     </span>
                                                 )}
-                                                <span className={`category-tag ${item.category}`}>
+                                                <span className={`mvh-category-tag ${item.category}`}>
                                                     {item.category === 'feature' && 'YENİ ÖZELLİK'}
                                                     {item.category === 'fix' && 'HATA ONARIMI'}
                                                     {item.category === 'perf' && 'PERFORMANS'}
@@ -818,29 +818,29 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                                                 </span>
                                             </div>
 
-                                            <h3 className="version-title">{item.title}</h3>
+                                            <h3 className="mvh-version-title">{item.title}</h3>
                                         </div>
 
-                                        <div className="header-right" onClick={(e) => e.stopPropagation()}>
-                                            <div className="version-meta-tags">
-                                                <span className="meta-tag date" title="Derleme Tarihi">
+                                        <div className="mvh-header-right" onClick={(e) => e.stopPropagation()}>
+                                            <div className="mvh-version-meta-tags">
+                                                <span className="mvh-meta-tag date" title="Derleme Tarihi">
                                                     <Calendar size={12} />
                                                     <span>{item.releaseDate}</span>
                                                 </span>
                                                 <span
-                                                    className="meta-tag commit"
+                                                    className="mvh-meta-tag commit"
                                                     title="Commit kodunu kopyala"
                                                     onClick={() => handleCopyCommit(item.commitHash, item.version)}
                                                 >
                                                     <GitCommit size={12} />
                                                     <code>#{item.commitHash}</code>
                                                     {copiedVersion === item.version ? (
-                                                        <Check size={11} className="copy-state success" />
+                                                        <Check size={11} className="mvh-copy-state success" />
                                                     ) : (
-                                                        <Copy size={11} className="copy-state" />
+                                                        <Copy size={11} className="mvh-copy-state" />
                                                     )}
                                                 </span>
-                                                <span className="meta-tag apk" title="Paket Boyutu">
+                                                <span className="mvh-meta-tag apk" title="Paket Boyutu">
                                                     <Package size={12} />
                                                     <span>{item.apkSize}</span>
                                                 </span>
@@ -848,7 +848,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
 
                                             <button
                                                 type="button"
-                                                className="btn-toggle-expand"
+                                                className="mvh-btn-toggle-expand"
                                                 onClick={() => toggleExpand(item.version)}
                                                 title={isExpanded ? 'Detayları Daralt' : 'Detayları Göster'}
                                                 aria-label={isExpanded ? 'Detayları Daralt' : 'Detayları Göster'}
@@ -859,13 +859,13 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                                     </div>
 
                                     {/* Summary Line */}
-                                    <p className="version-summary">{item.summary}</p>
+                                    <p className="mvh-version-summary">{item.summary}</p>
 
                                     {/* Highlights Row */}
-                                    <div className="version-highlights-chips">
+                                    <div className="mvh-version-highlights-chips">
                                         {item.highlights.map((h, hIdx) => (
-                                            <span key={hIdx} className="highlight-chip">
-                                                <CheckCircle2 size={11} className="chip-check" />
+                                            <span key={hIdx} className="mvh-highlight-chip">
+                                                <CheckCircle2 size={11} className="mvh-chip-check" />
                                                 <span>{h}</span>
                                             </span>
                                         ))}
@@ -873,17 +873,17 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
 
                                     {/* Expanded Step-by-Step Details */}
                                     {isExpanded && (
-                                        <div className="version-expanded-body">
+                                        <div className="mvh-version-expanded-body">
                                             {/* Detailed Changes List */}
                                             <div className="changes-section">
-                                                <h4 className="changes-section-title">
+                                                <h4 className="mvh-changes-section-title">
                                                     <Zap size={14} />
                                                     <span>Adım Adım Yapılan Değişiklikler ({item.changes.length})</span>
                                                 </h4>
-                                                <ul className="changes-list">
+                                                <ul className="mvh-changes-list">
                                                     {item.changes.map((c, cIdx) => (
-                                                        <li key={cIdx} className={`change-item type-${c.type}`}>
-                                                            <span className={`change-type-badge ${c.type}`}>
+                                                        <li key={cIdx} className={`mvh-change-item type-${c.type}`}>
+                                                            <span className={`mvh-change-type-badge ${c.type}`}>
                                                                 {c.type === 'feat' && 'ÖZELLİK'}
                                                                 {c.type === 'fix' && 'ONARIM'}
                                                                 {c.type === 'ui' && 'ARAYÜZ'}
@@ -891,31 +891,31 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                                                                 {c.type === 'build' && 'DERLEME'}
                                                                 {c.type === 'infra' && 'ALTYAPI'}
                                                             </span>
-                                                            <span className="change-text">{c.text}</span>
+                                                            <span className="mvh-change-text">{c.text}</span>
                                                         </li>
                                                     ))}
                                                 </ul>
                                             </div>
 
                                             {/* Technical Specs Footer Strip */}
-                                            <div className="tech-specs-strip">
-                                                <div className="spec-item">
-                                                    <span className="spec-label">Hedef Android SDK:</span>
-                                                    <code className="spec-val">{item.targetSdk}</code>
+                                            <div className="mvh-tech-specs-strip">
+                                                <div className="mvh-spec-item">
+                                                    <span className="mvh-spec-label">Hedef Android SDK:</span>
+                                                    <code className="mvh-spec-val">{item.targetSdk}</code>
                                                 </div>
-                                                <div className="spec-item">
-                                                    <span className="spec-label">Mimari:</span>
-                                                    <code className="spec-val">{item.architecture}</code>
+                                                <div className="mvh-spec-item">
+                                                    <span className="mvh-spec-label">Mimari:</span>
+                                                    <code className="mvh-spec-val">{item.architecture}</code>
                                                 </div>
-                                                <div className="spec-item">
-                                                    <span className="spec-label">Versiyon Kodu:</span>
-                                                    <code className="spec-val">{item.versionCode}</code>
+                                                <div className="mvh-spec-item">
+                                                    <span className="mvh-spec-label">Versiyon Kodu:</span>
+                                                    <code className="mvh-spec-val">{item.versionCode}</code>
                                                 </div>
-                                                <div className="spec-item affected-files">
-                                                    <span className="spec-label">Kritik Dosyalar:</span>
-                                                    <div className="files-pill-row">
+                                                <div className="mvh-spec-item affected-files">
+                                                    <span className="mvh-spec-label">Kritik Dosyalar:</span>
+                                                    <div className="mvh-files-pill-row">
                                                         {item.affectedFiles.map((f, fIdx) => (
-                                                            <span key={fIdx} className="file-pill" title={f}>
+                                                            <span key={fIdx} className="mvh-file-pill" title={f}>
                                                                 <FileCode size={11} />
                                                                 <span>{f.split('/').pop()}</span>
                                                             </span>
@@ -937,13 +937,13 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                 <div className="mvh-modal-overlay" onClick={() => setShowExportModal(false)}>
                     <div className="mvh-modal-card" onClick={(e) => e.stopPropagation()}>
                         <div className="mvh-modal-header">
-                            <div className="modal-title-left">
-                                <Share2 size={20} className="modal-icon" />
+                            <div className="mvh-modal-title-left">
+                                <Share2 size={20} className="mvh-modal-icon" />
                                 <h3>Sürüm Notlarını Dışa Aktar</h3>
                             </div>
                             <button
                                 type="button"
-                                className="modal-close-btn"
+                                className="mvh-modal-close-btn"
                                 onClick={() => setShowExportModal(false)}
                             >
                                 ✕
@@ -953,14 +953,14 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                         <div className="mvh-modal-tabs">
                             <button
                                 type="button"
-                                className={`modal-tab ${exportFormat === 'markdown' ? 'active' : ''}`}
+                                className={`mvh-modal-tab ${exportFormat === 'markdown' ? 'active' : ''}`}
                                 onClick={() => setExportFormat('markdown')}
                             >
                                 Markdown (GitHub Releases)
                             </button>
                             <button
                                 type="button"
-                                className={`modal-tab ${exportFormat === 'json' ? 'active' : ''}`}
+                                className={`mvh-modal-tab ${exportFormat === 'json' ? 'active' : ''}`}
                                 onClick={() => setExportFormat('json')}
                             >
                                 JSON Formatı
@@ -971,7 +971,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <textarea
                                 readOnly
                                 value={exportContent}
-                                className="export-textarea"
+                                className="mvh-export-textarea"
                                 rows={14}
                             />
                         </div>
