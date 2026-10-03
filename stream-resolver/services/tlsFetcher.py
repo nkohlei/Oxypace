@@ -12,6 +12,9 @@ def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None):
         headers['Referer'] = referer
     if '?do=' in url or 'getVideo' in url:
         headers['X-Requested-With'] = 'XMLHttpRequest'
+    elif 'hdfilmcehennemi' in url and 'search' in url:
+        headers['x-requested-with'] = 'fetch'
+        headers['Accept'] = 'application/json, text/plain, */*'
 
     proxies = None
     if use_proxy:

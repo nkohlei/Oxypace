@@ -4,9 +4,14 @@ import { validateSsrfUrl } from '../utils/security.js';
 import { createRequire } from 'module';
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const execFileAsync = promisify(execFile);
 const CURL_BIN = process.platform === 'win32' ? 'curl.exe' : 'curl';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const require = createRequire(import.meta.url);
 let fastResolve = null;
@@ -61,30 +66,78 @@ function decodeHtmlEntities(str) {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
 }
 
+// Python curl_cffi TLS impersonator (available on server)
+function fetchWithTlsImpersonator(url, referer = '') {
+  return new Promise((resolve) => {
+    const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
+    execFile('python3', [scriptPath, url, referer], { timeout: 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+      if (err || !stdout || stdout.length === 0) {
+        return resolve('');
+      }
+      resolve(stdout);
+    });
+  });
+}
+
 // Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
 async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
-  const args = [
-    '-s',
-    '-L',
-    '--max-time', String(timeoutSec),
-    '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    ...headers.flatMap(h => ['-H', h]),
-    url
-  ];
-  const { stdout } = await execFileAsync(CURL_BIN, args);
-  return stdout;
+  // 1. Direct curl execution
+  try {
+    const args = [
+      '-s',
+      '-L',
+      '--max-time', String(timeoutSec),
+      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+      ...headers.flatMap(h => ['-H', h]),
+      url
+    ];
+    const { stdout } = await execFileAsync(CURL_BIN, args);
+    if (stdout && stdout.length > 200 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+      return stdout;
+    }
+  } catch (e) {}
+
+  // 2. Try via Tor SOCKS5 if active (port 9050 on Linux server)
+  try {
+    const argsTor = [
+      '-s',
+      '-L',
+      '--socks5-hostname', '127.0.0.1:9050',
+      '--max-time', String(timeoutSec + 2),
+      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+      ...headers.flatMap(h => ['-H', h]),
+      url
+    ];
+    const { stdout } = await execFileAsync(CURL_BIN, argsTor);
+    if (stdout && stdout.length > 200 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+      return stdout;
+    }
+  } catch (e) {}
+
+  // 3. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
+  try {
+    const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || '';
+    const tlsHtml = await fetchWithTlsImpersonator(url, ref);
+    if (tlsHtml && tlsHtml.length > 100) {
+      return tlsHtml;
+    }
+  } catch (e) {}
+
+  return '';
 }
 
 // Direct curl fetch for binary data (images/posters)
 async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
-  return new Promise((resolve, reject) => {
+  const runCurl = (useTor = false) => new Promise((resolve, reject) => {
     const args = [
       '-s',
       '-L',
       '--max-time', String(timeoutSec),
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     ];
+    if (useTor) args.push('--socks5-hostname', '127.0.0.1:9050');
     if (referer) args.push('-H', `Referer: ${referer}`);
     args.push(url);
 
@@ -100,6 +153,16 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
       }
     });
   });
+
+  try {
+    return await runCurl(false);
+  } catch (directErr) {
+    try {
+      return await runCurl(true);
+    } catch (torErr) {
+      throw torErr;
+    }
+  }
 }
 
 const router = express.Router();
