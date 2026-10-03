@@ -314,6 +314,7 @@ const WatchPartyPlayer = () => {
     const [hlsSubtitleTracks, setHlsSubtitleTracks] = useState([]);
     const [activeSubtitleId, setActiveSubtitleId] = useState('off'); // 'off' | 'hls-0' | 'ext-0' | 'custom-0'
     const [customSubtitles, setCustomSubtitles] = useState([]);
+    const customSubtitlesRef = useRef([]);
     const [discoveredSubtitles, setDiscoveredSubtitles] = useState([]);
     const [activeCueText, setActiveCueText] = useState('');
     const parsedCuesRef = useRef([]);
@@ -854,7 +855,7 @@ const WatchPartyPlayer = () => {
         const cues = [];
         if (!rawText) return cues;
         const blocks = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\n+/);
-        const timeRegex = /(?:(\d{2}):)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(?:(\d{2}):)?(\d{2}):(\d{2})[,.](\d{3})/;
+        const timeRegex = /(?:(\d{1,3}):)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(?:(\d{1,3}):)?(\d{2}):(\d{2})[,.](\d{3})/;
 
         for (const block of blocks) {
             const lines = block.trim().split('\n');
@@ -880,7 +881,8 @@ const WatchPartyPlayer = () => {
 
                 const start = parseSeconds(match[1], match[2], match[3], match[4]);
                 const end = parseSeconds(match[5], match[6], match[7], match[8]);
-                const text = lines.slice(timeLineIndex + 1).join('\n').trim();
+                const rawLines = lines.slice(timeLineIndex + 1).join('\n');
+                const text = rawLines.replace(/<\/?[^>]+(>|$)/g, '').trim();
 
                 if (text && end > start) {
                     cues.push({ start, end, text });
@@ -899,7 +901,7 @@ const WatchPartyPlayer = () => {
         try {
             let vttContent = '';
             if (option.type === 'custom') {
-                const customSub = customSubtitles[option.index];
+                const customSub = customSubtitlesRef.current[option.index] || customSubtitles[option.index];
                 if (customSub && customSub.rawContent) {
                     vttContent = customSub.rawContent;
                 } else if (customSub && customSub.file) {
@@ -909,7 +911,9 @@ const WatchPartyPlayer = () => {
             } else if (option.type === 'ext') {
                 const sub = allProviderSubtitles[option.index];
                 if (sub) {
-                    const targetUrl = sub.file && sub.file.startsWith('http') ? sub.file : (sub.playableUrl || sub.file);
+                    const targetUrl = sub.playableUrl
+                        ? sub.playableUrl
+                        : (sub.file && sub.file.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(sub.file)}` : sub.file);
                     const res = await fetch(targetUrl);
                     vttContent = await res.text();
                 }
@@ -934,7 +938,8 @@ const WatchPartyPlayer = () => {
         }
         if (activeSubtitleId.startsWith('custom-')) {
             const idx = parseInt(activeSubtitleId.replace('custom-', ''), 10);
-            return customSubtitles[idx]?.label ? customSubtitles[idx].label.slice(0, 8) : 'Özel';
+            const sub = customSubtitlesRef.current[idx] || customSubtitles[idx];
+            return sub?.label ? sub.label.slice(0, 8) : 'Özel';
         }
         return 'Altyazı';
     };
@@ -945,13 +950,27 @@ const WatchPartyPlayer = () => {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            let content = event.target.result;
+            let content = '';
+            const buffer = event.target.result;
+            try {
+                const decoderUtf8 = new TextDecoder('utf-8', { fatal: true });
+                content = decoderUtf8.decode(buffer);
+            } catch (err) {
+                try {
+                    // Fallback to Turkish Windows-1254 ANSI encoding for Turkish .srt files
+                    const decoderTr = new TextDecoder('windows-1254');
+                    content = decoderTr.decode(buffer);
+                } catch {
+                    content = new TextDecoder().decode(buffer);
+                }
+            }
+
             if (file.name.toLowerCase().endsWith('.srt')) {
                 content = 'WEBVTT\n\n' + content.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
             }
             const blob = new Blob([content], { type: 'text/vtt;charset=utf-8' });
             const blobUrl = URL.createObjectURL(blob);
-            const newIndex = customSubtitles.length;
+            const newIndex = customSubtitlesRef.current.length;
             const newSub = {
                 file: blobUrl,
                 playableUrl: blobUrl,
@@ -960,13 +979,24 @@ const WatchPartyPlayer = () => {
                 lang: 'tr',
                 isBlob: true
             };
-            setCustomSubtitles(prev => [...prev, newSub]);
 
-            setTimeout(() => {
-                handleSelectSubtitleTrack({ type: 'custom', index: newIndex });
-            }, 100);
+            const updatedList = [...customSubtitlesRef.current, newSub];
+            customSubtitlesRef.current = updatedList;
+            setCustomSubtitles(updatedList);
+
+            // Instantly activate cues and overlay!
+            parsedCuesRef.current = parseSubtitleCues(content);
+            setActiveSubtitleId(`custom-${newIndex}`);
+            if (hlsInstanceRef.current) {
+                hlsInstanceRef.current.subtitleTrack = -1;
+            }
+            if (videoRef.current && videoRef.current.textTracks) {
+                for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                    videoRef.current.textTracks[i].mode = 'disabled';
+                }
+            }
         };
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
         e.target.value = '';
     };
 

@@ -807,15 +807,8 @@ router.post('/detect-subtitles', (req, res, next) => (req.body ? next() : expres
       const embedId = embedMatch[1];
       const embedUrl = `https://hdfilmcehennemi.mobi/video/embed/${embedId}/`;
       try {
-        const fetchRes = await fetch(embedUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': 'https://www.hdfilmcehennemi.nl/',
-          },
-          signal: AbortSignal.timeout(6000),
-        });
-        if (fetchRes.ok) {
-          const html = await fetchRes.text();
+        const html = await fetchWithCurl(embedUrl, ['Referer: https://www.hdfilmcehennemi.nl/'], 8);
+        if (html && html.length > 200) {
           const { extractSubtitles } = require('../stream-resolver/services/fastScraper');
           if (extractSubtitles) {
             const found = extractSubtitles(html, 'https://hdfilmcehennemi.mobi/');
