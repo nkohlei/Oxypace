@@ -79,6 +79,28 @@ function fetchWithTlsImpersonator(url, referer = '') {
   });
 }
 
+function isBlockedOrChallenge(text) {
+  if (!text || typeof text !== 'string') return true;
+  if (text.length < 300) return true;
+  // Eğer sayfa zengin içerikliyse ve film blokları içeriyorsa asla engelli değildir
+  if (text.length > 3000 && (text.includes('class="film') || text.includes('film-title') || text.includes('poster') || text.includes('<title>'))) {
+    const lower = text.toLowerCase();
+    if (!lower.includes('<title>just a moment...</title>') && 
+        !lower.includes('<title>attention required! | cloudflare</title>') && 
+        !(lower.includes('<title>404 not found</title>') && lower.includes('nginx'))) {
+      return false;
+    }
+  }
+  const lower = text.toLowerCase();
+  if (lower.includes('<title>just a moment...</title>')) return true;
+  if (lower.includes('<title>attention required! | cloudflare</title>')) return true;
+  if (lower.includes('<title>404 not found</title>') && lower.includes('nginx')) return true;
+  if (lower.includes('error code: 1005') || lower.includes('error code: 444') || lower.includes('error code: 403')) return true;
+  if (lower.includes('403 forbidden') && text.length < 2000) return true;
+  if (lower.includes('cf-browser-verification')) return true;
+  return false;
+}
+
 // Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
 async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   // 1. Direct curl execution
@@ -93,7 +115,7 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
       url
     ];
     const { stdout } = await execFileAsync(CURL_BIN, args);
-    if (stdout && stdout.length > 200 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+    if (!isBlockedOrChallenge(stdout)) {
       return stdout;
     }
   } catch (e) {}
@@ -111,7 +133,7 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
       url
     ];
     const { stdout } = await execFileAsync(CURL_BIN, argsTor);
-    if (stdout && stdout.length > 200 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+    if (!isBlockedOrChallenge(stdout)) {
       return stdout;
     }
   } catch (e) {}
@@ -120,7 +142,7 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   try {
     const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || '';
     const tlsHtml = await fetchWithTlsImpersonator(url, ref);
-    if (tlsHtml && tlsHtml.length > 100) {
+    if (!isBlockedOrChallenge(tlsHtml)) {
       return tlsHtml;
     }
   } catch (e) {}
@@ -733,10 +755,13 @@ const SEARCH_CACHE_TTL = 30 * 60 * 1000;
  * FullHDFilmİzlesene doğrudan arama (Önce Doğrudan Curl, sonra ScraperAPI fallback)
  */
 async function searchFullHDFilm(query) {
-  // 1. Doğrudan Curl (Cloudflare TLS fingerprinting atlatır, 200ms)
+  // 1. Python TLS Chrome 124 + Tor ile Doğrudan Hızlı Arama
   try {
     const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
-    const html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
+    let html = await fetchWithTlsImpersonator(targetUrl, 'https://www.fullhdfilmizlesene.now/');
+    if (!html || isBlockedOrChallenge(html)) {
+      html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
+    }
     
     const results = [];
     const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
@@ -817,11 +842,15 @@ async function searchHDFilmCehennemi(query) {
   // 1. Doğrudan Curl Ajax API (JSON, afiş ve tam başlıklarla 200ms)
   try {
     const targetUrl = `https://www.hdfilmcehennemi.nl/search/?q=${encodeURIComponent(query)}`;
-    const raw = await fetchWithCurl(targetUrl, [
+    let raw = await fetchWithCurl(targetUrl, [
       'Referer: https://www.hdfilmcehennemi.nl/',
       'x-requested-with: fetch',
       'Accept: application/json, text/plain, */*'
     ], 5);
+
+    if (!raw || !raw.startsWith('{')) {
+      raw = await fetchWithTlsImpersonator(targetUrl, 'https://www.hdfilmcehennemi.nl/');
+    }
 
     const json = JSON.parse(raw);
     const results = [];
