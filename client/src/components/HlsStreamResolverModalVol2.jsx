@@ -229,6 +229,20 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     }
   };
 
+  const getProviderLogo = (providerKey) => {
+    if (providerKey === 'hdfilmcehennemi') return '/providers/hdfilmcehennemi.png';
+    if (providerKey === 'filmmakinesi') return '/providers/filmmakinesi.png';
+    return '/providers/fullhdfilmizlesene.png';
+  };
+
+  const getSafePosterUrl = (posterUrl, providerKey) => {
+    if (!posterUrl) return null;
+    if (providerKey === 'hdfilmcehennemi' && !posterUrl.startsWith('/api/proxy') && !posterUrl.startsWith('data:')) {
+      return `/api/proxy?url=${encodeURIComponent(posterUrl)}&referer=${encodeURIComponent('https://www.hdfilmcehennemi.nl/')}`;
+    }
+    return posterUrl;
+  };
+
   // Filtered results by provider
   const filteredResults = searchResults.filter(item => {
     if (activeProviderFilter === 'all') return true;
@@ -237,6 +251,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
   const hdfCount = searchResults.filter(r => r.providerKey === 'hdfilmcehennemi').length;
   const fhfCount = searchResults.filter(r => r.providerKey === 'fullhdfilmizlesene').length;
+  const fmCount = searchResults.filter(r => r.providerKey === 'filmmakinesi').length;
 
   const modalContent = (
     <div className="vol2-resolver-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -318,7 +333,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                   </h4>
                   <p className="vol2-result-url-sub">{resolvedData.streamUrl}</p>
                 </div>
-                <CheckCircle2 size={22} color="#3fb950" style={{ flexShrink: 0 }} />
+                <CheckCircle2 size={20} color="#ffffff" style={{ flexShrink: 0 }} />
               </div>
 
               <div className="vol2-result-meta">
@@ -328,7 +343,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                   <span className="vol2-meta-tag">{resolvedData.resolvedIn} ms</span>
                 )}
                 {selectedMovie?.provider && (
-                  <span className={`vol2-provider-pill ${selectedMovie.providerKey}`}>
+                  <span className="vol2-meta-tag">
                     {selectedMovie.provider}
                   </span>
                 )}
@@ -399,7 +414,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
               {searchResults.length === 0 && !isSearching && !searchError && (
                 <div className="vol2-suggestions-section">
                   <div className="vol2-suggestions-label">
-                    <Sparkles size={13} color="#58a6ff" />
+                    <Sparkles size={13} color="#ffffff" />
                     <span>Popüler Aramalar</span>
                   </div>
                   <div className="vol2-suggestions-chips">
@@ -458,6 +473,15 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                         FullHDFilmİzlesene ({fhfCount})
                       </button>
                     )}
+                    {fmCount > 0 && (
+                      <button
+                        type="button"
+                        className={`vol2-filter-chip filmmakinesi ${activeProviderFilter === 'filmmakinesi' ? 'active' : ''}`}
+                        onClick={() => setActiveProviderFilter('filmmakinesi')}
+                      >
+                        FilmMakinesi ({fmCount})
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -465,44 +489,59 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
               {/* Search Results Grid */}
               {filteredResults.length > 0 && (
                 <div className="vol2-results-grid">
-                  {filteredResults.map((movie, idx) => (
-                    <div 
-                      key={`${movie.url}-${idx}`} 
-                      className="vol2-movie-card"
-                      onClick={() => handleMovieSelect(movie)}
-                      title={`${movie.title} (${movie.provider}) - Oynatmak için tıkla`}
-                    >
-                      <div className="vol2-movie-poster-wrap">
-                        {movie.poster ? (
-                          <img 
-                            src={movie.poster} 
-                            alt={movie.title} 
-                            className="vol2-movie-poster"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <div className="vol2-poster-fallback" style={{ display: movie.poster ? 'none' : 'flex' }}>
-                          <Film size={28} />
-                        </div>
-                        <div className="vol2-card-hover-overlay">
-                          <div className="vol2-card-play-btn">
-                            <Play size={16} fill="currentColor" />
+                  {filteredResults.map((movie, idx) => {
+                    const safePoster = getSafePosterUrl(movie.poster, movie.providerKey);
+                    return (
+                      <div 
+                        key={`${movie.url}-${idx}`} 
+                        className="vol2-movie-card"
+                        onClick={() => handleMovieSelect(movie)}
+                        title={`${movie.title} (${movie.provider}) - Oynatmak için tıkla`}
+                      >
+                        <div className="vol2-movie-poster-wrap">
+                          {safePoster ? (
+                            <img 
+                              src={safePoster} 
+                              alt={movie.title} 
+                              className="vol2-movie-poster"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                if (e.currentTarget.nextElementSibling) {
+                                  e.currentTarget.nextElementSibling.style.display = 'flex';
+                                }
+                              }}
+                            />
+                          ) : null}
+                          <div className="vol2-poster-fallback" style={{ display: safePoster ? 'none' : 'flex' }}>
+                            <Film size={26} strokeWidth={1.5} />
+                            <span className="vol2-fallback-text">{movie.title}</span>
                           </div>
-                          <span>Oynat</span>
+                          <div className="vol2-card-hover-overlay">
+                            <div className="vol2-card-play-btn">
+                              <Play size={16} fill="currentColor" />
+                            </div>
+                            <span>Oynat</span>
+                          </div>
+                        </div>
+
+                        {/* Ek'te verilen etiket (Provider Badge) */}
+                        <div className="vol2-card-provider-badge-wrap">
+                          <img 
+                            src={getProviderLogo(movie.providerKey)} 
+                            alt={movie.provider} 
+                            className="vol2-card-provider-logo"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        <div className="vol2-movie-details">
+                          <h5 className="vol2-movie-title">{movie.title}</h5>
                         </div>
                       </div>
-                      <div className="vol2-movie-details">
-                        <span className={`vol2-provider-pill ${movie.providerKey}`}>
-                          {movie.provider}
-                        </span>
-                        <h5 className="vol2-movie-title">{movie.title}</h5>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

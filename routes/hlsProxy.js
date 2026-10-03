@@ -589,18 +589,71 @@ async function searchHDFilmCehennemiDDG(query) {
       }
       const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/hdfilmcehennemi/i, '').replace(/[-–|]/g, ' ').trim();
       if (actualUrl.includes('hdfilmcehennemi.nl') && !actualUrl.endsWith('.nl/') && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+        let poster = null;
+        try {
+          const parsed = new URL(actualUrl);
+          const slug = parsed.pathname.replace(/\/+$/, '').split('/').pop();
+          if (slug) {
+            const cleanSlug = slug.replace(/-hdf.*$/i, '');
+            poster = `https://www.hdfilmcehennemi.nl/images/thumb/poster/${cleanSlug}.webp`;
+          }
+        } catch {}
+
         results.push({
           provider: 'HDFilmCehennemi',
           providerKey: 'hdfilmcehennemi',
           title: title,
           url: actualUrl,
-          poster: null,
+          poster: poster,
         });
       }
     }
     return results.slice(0, 8);
   } catch (err) {
     console.warn('[HLSProxy] searchHDFilmCehennemiDDG warning:', err.message);
+    return [];
+  }
+}
+
+/**
+ * FilmMakinesi arama (DuckDuckGo + ScraperAPI köprüsü)
+ */
+async function searchFilmMakinesi(query) {
+  const apiKey = 'dd731ac1103c696ebe32ad67ba329a0e';
+  const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:filmmakinesi.to ' + query + ' izle')}`;
+  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
+  
+  try {
+    const res = await fetch(proxyUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const results = [];
+    const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+    for (const m of matches) {
+      const rawHref = m[1];
+      const titleHtml = m[2];
+      let actualUrl = rawHref;
+      const uddgMatch = rawHref.match(/uddg=([^&]+)/);
+      if (uddgMatch) {
+        actualUrl = decodeURIComponent(uddgMatch[1]);
+      }
+      const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/filmmakinesi/i, '').replace(/[-–|]/g, ' ').trim();
+      if (actualUrl.includes('filmmakinesi.to') && (actualUrl.includes('/film/') || !actualUrl.endsWith('.to/')) && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+        results.push({
+          provider: 'FilmMakinesi',
+          providerKey: 'filmmakinesi',
+          title: title,
+          url: actualUrl,
+          poster: null,
+        });
+      }
+    }
+    return results.slice(0, 6);
+  } catch (err) {
+    console.warn('[HLSProxy] searchFilmMakinesi warning:', err.message);
     return [];
   }
 }
@@ -627,11 +680,12 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     });
   }
 
-  // 2. Hızlı Dahili Çoklu Arama (ScraperAPI ile FullHDFilmİzlesene + HDFilmCehennemi)
+  // 2. Hızlı Dahili Çoklu Arama (FullHDFilmİzlesene + HDFilmCehennemi + FilmMakinesi)
   try {
-    const [fhfSettled, hdfSettled] = await Promise.allSettled([
+    const [fhfSettled, hdfSettled, fmSettled] = await Promise.allSettled([
       searchFullHDFilm(trimmedQuery),
       searchHDFilmCehennemiDDG(trimmedQuery),
+      searchFilmMakinesi(trimmedQuery),
     ]);
 
     const combined = [];
@@ -641,8 +695,21 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     if (hdfSettled.status === 'fulfilled' && Array.isArray(hdfSettled.value)) {
       combined.push(...hdfSettled.value);
     }
+    if (fmSettled.status === 'fulfilled' && Array.isArray(fmSettled.value)) {
+      combined.push(...fmSettled.value);
+    }
 
     if (combined.length > 0) {
+      // Afiş eşleştirme: Eğer FilmMakinesi veya HDFilmCehennemi için afiş yoksa, aynı aramadaki FullHDFilmİzlesene afişini paylaş
+      const posterCandidate = combined.find(m => m.poster)?.poster || null;
+      if (posterCandidate) {
+        for (const item of combined) {
+          if (!item.poster) {
+            item.poster = posterCandidate;
+          }
+        }
+      }
+
       // Tekilleştir
       const seen = new Set();
       const uniqueResults = combined.filter(item => {
