@@ -781,6 +781,77 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
   }
 });
 
+// POST /api/detect-subtitles
+// Auto-detects subtitles from active stream or target page if subtitles were not originally attached
+router.post('/detect-subtitles', (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
+  try {
+    const { streamUrl, pageUrl, title } = req.body || {};
+    if (!streamUrl && !pageUrl) {
+      return res.status(400).json({ success: false, error: 'streamUrl veya pageUrl gereklidir.' });
+    }
+
+    const rawUrl = streamUrl ? decodeURIComponent(streamUrl) : '';
+    const subtitles = [];
+    const seen = new Set();
+
+    const addSub = (file, label, kind = 'subtitles') => {
+      if (!file || seen.has(file)) return;
+      seen.add(file);
+      const playableUrl = `/api/proxy?url=${encodeURIComponent(file)}`;
+      subtitles.push({ file, playableUrl, label, kind });
+    };
+
+    // 1. Detect embed ID in stream URL e.g. -IYxdhPkkxn2.mp4 or -fgvP8tldQUR.mp4
+    const embedMatch = rawUrl.match(/-([a-zA-Z0-9_-]{8,16})\.mp4/i) || rawUrl.match(/\/embed\/([a-zA-Z0-9_-]{8,16})/i);
+    if (embedMatch && embedMatch[1]) {
+      const embedId = embedMatch[1];
+      const embedUrl = `https://hdfilmcehennemi.mobi/video/embed/${embedId}/`;
+      try {
+        const fetchRes = await fetch(embedUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://www.hdfilmcehennemi.nl/',
+          },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (fetchRes.ok) {
+          const html = await fetchRes.text();
+          const { extractSubtitles } = require('../stream-resolver/services/fastScraper');
+          if (extractSubtitles) {
+            const found = extractSubtitles(html, 'https://hdfilmcehennemi.mobi/');
+            for (const s of found) {
+              addSub(s.file, s.label, s.kind);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. If pageUrl is available and subtitles are still empty, inspect pageUrl
+    if (subtitles.length === 0 && pageUrl && pageUrl.startsWith('http')) {
+      try {
+        const { fastResolve } = require('../stream-resolver/services/fastScraper');
+        if (fastResolve) {
+          const resolved = await fastResolve(pageUrl, { timeout: 8000 });
+          if (resolved && resolved.subtitles && resolved.subtitles.length > 0) {
+            for (const s of resolved.subtitles) {
+              addSub(s.file, s.label, s.kind);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    return res.status(200).json({
+      success: true,
+      subtitles,
+      count: subtitles.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // In-process search cache (30 minutes TTL)
 const inProcessSearchCache = new Map();
 const SEARCH_CACHE_TTL = 30 * 60 * 1000;

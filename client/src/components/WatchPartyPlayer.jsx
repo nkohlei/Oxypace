@@ -314,10 +314,43 @@ const WatchPartyPlayer = () => {
     const [hlsSubtitleTracks, setHlsSubtitleTracks] = useState([]);
     const [activeSubtitleId, setActiveSubtitleId] = useState('off'); // 'off' | 'hls-0' | 'ext-0' | 'custom-0'
     const [customSubtitles, setCustomSubtitles] = useState([]);
+    const [discoveredSubtitles, setDiscoveredSubtitles] = useState([]);
+    const [activeCueText, setActiveCueText] = useState('');
+    const parsedCuesRef = useRef([]);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
     const audioMenuRef = useRef(null);
     const subMenuRef = useRef(null);
     const customFileInputRef = useRef(null);
+
+    const allProviderSubtitles = (watchParty?.subtitles && watchParty.subtitles.length > 0)
+        ? watchParty.subtitles
+        : discoveredSubtitles;
+
+    // Auto-detect subtitles from stream or page if not originally attached
+    useEffect(() => {
+        if (!watchParty?.url) {
+            setDiscoveredSubtitles([]);
+            return;
+        }
+        if (watchParty.subtitles && watchParty.subtitles.length > 0) return;
+
+        let isCancelled = false;
+        fetch('/api/detect-subtitles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ streamUrl: watchParty.url, title: watchParty.title })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!isCancelled && data.success && data.subtitles && data.subtitles.length > 0) {
+                console.log(`[WatchPartyPlayer] 🎯 Yayından otomatik altyazılar yakalandı (${data.subtitles.length}):`, data.subtitles);
+                setDiscoveredSubtitles(data.subtitles);
+            }
+        })
+        .catch(() => {});
+
+        return () => { isCancelled = true; };
+    }, [watchParty?.url]);
 
     // Close audio and subtitle menus when clicking outside
     useEffect(() => {
@@ -758,7 +791,16 @@ const WatchPartyPlayer = () => {
 
     const onTimeUpdate = () => {
         if (!videoRef.current) return;
-        setCurrentTime(videoRef.current.currentTime);
+        const cur = videoRef.current.currentTime;
+        setCurrentTime(cur);
+
+        // Update custom subtitle overlay cue
+        if (parsedCuesRef.current && parsedCuesRef.current.length > 0) {
+            const active = parsedCuesRef.current.find(c => cur >= c.start && cur <= c.end);
+            setActiveCueText(active ? active.text : '');
+        } else if (activeSubtitleId === 'off') {
+            if (activeCueText) setActiveCueText('');
+        }
     };
 
     const onDurationChange = () => {
@@ -808,6 +850,78 @@ const WatchPartyPlayer = () => {
         return isShort ? (track.label || track.name || 'Altyazı').slice(0, 10) : (track.label || track.name || `Altyazı ${idx + 1}`);
     };
 
+    const parseSubtitleCues = (rawText) => {
+        const cues = [];
+        if (!rawText) return cues;
+        const blocks = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\n+/);
+        const timeRegex = /(?:(\d{2}):)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(?:(\d{2}):)?(\d{2}):(\d{2})[,.](\d{3})/;
+
+        for (const block of blocks) {
+            const lines = block.trim().split('\n');
+            let timeLineIndex = -1;
+            let match = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                match = lines[i].match(timeRegex);
+                if (match) {
+                    timeLineIndex = i;
+                    break;
+                }
+            }
+
+            if (timeLineIndex !== -1 && match) {
+                const parseSeconds = (h, m, s, ms) => {
+                    const hours = h ? parseInt(h, 10) : 0;
+                    const mins = parseInt(m, 10);
+                    const secs = parseInt(s, 10);
+                    const millis = parseInt(ms, 10);
+                    return hours * 3600 + mins * 60 + secs + millis / 1000;
+                };
+
+                const start = parseSeconds(match[1], match[2], match[3], match[4]);
+                const end = parseSeconds(match[5], match[6], match[7], match[8]);
+                const text = lines.slice(timeLineIndex + 1).join('\n').trim();
+
+                if (text && end > start) {
+                    cues.push({ start, end, text });
+                }
+            }
+        }
+        return cues;
+    };
+
+    const loadSubtitleTrackText = async (option) => {
+        if (option.type === 'off') {
+            parsedCuesRef.current = [];
+            setActiveCueText('');
+            return;
+        }
+        try {
+            let vttContent = '';
+            if (option.type === 'custom') {
+                const customSub = customSubtitles[option.index];
+                if (customSub && customSub.rawContent) {
+                    vttContent = customSub.rawContent;
+                } else if (customSub && customSub.file) {
+                    const res = await fetch(customSub.file);
+                    vttContent = await res.text();
+                }
+            } else if (option.type === 'ext') {
+                const sub = allProviderSubtitles[option.index];
+                if (sub) {
+                    const targetUrl = sub.file && sub.file.startsWith('http') ? sub.file : (sub.playableUrl || sub.file);
+                    const res = await fetch(targetUrl);
+                    vttContent = await res.text();
+                }
+            }
+            if (vttContent) {
+                parsedCuesRef.current = parseSubtitleCues(vttContent);
+            }
+        } catch (err) {
+            console.warn("[WatchPartyPlayer] Altyazı ayrıştırma hatası:", err);
+        }
+    };
+
     const getActiveSubtitleButtonLabel = () => {
         if (activeSubtitleId === 'off') return 'Altyazı';
         if (activeSubtitleId.startsWith('hls-')) {
@@ -816,7 +930,7 @@ const WatchPartyPlayer = () => {
         }
         if (activeSubtitleId.startsWith('ext-')) {
             const idx = parseInt(activeSubtitleId.replace('ext-', ''), 10);
-            return formatSubtitleLabel((watchParty?.subtitles || [])[idx], idx, true);
+            return formatSubtitleLabel(allProviderSubtitles[idx], idx, true);
         }
         if (activeSubtitleId.startsWith('custom-')) {
             const idx = parseInt(activeSubtitleId.replace('custom-', ''), 10);
@@ -841,6 +955,7 @@ const WatchPartyPlayer = () => {
             const newSub = {
                 file: blobUrl,
                 playableUrl: blobUrl,
+                rawContent: content,
                 label: file.name.replace(/\.(srt|vtt)$/i, '').slice(0, 24),
                 lang: 'tr',
                 isBlob: true
@@ -864,6 +979,7 @@ const WatchPartyPlayer = () => {
     };
 
     const handleSelectSubtitleTrack = (option) => {
+        loadSubtitleTrackText(option);
         if (option.type === 'off') {
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
@@ -890,7 +1006,7 @@ const WatchPartyPlayer = () => {
             }
             if (videoRef.current && videoRef.current.textTracks) {
                 for (let i = 0; i < videoRef.current.textTracks.length; i++) {
-                    videoRef.current.textTracks[i].mode = (i === option.index) ? 'showing' : 'disabled';
+                    videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
             setActiveSubtitleId(`ext-${option.index}`);
@@ -899,10 +1015,8 @@ const WatchPartyPlayer = () => {
                 hlsInstanceRef.current.subtitleTrack = -1;
             }
             if (videoRef.current && videoRef.current.textTracks) {
-                const extOffset = (watchParty?.subtitles || []).length;
-                const targetIdx = extOffset + option.index;
                 for (let i = 0; i < videoRef.current.textTracks.length; i++) {
-                    videoRef.current.textTracks[i].mode = (i === targetIdx) ? 'showing' : 'disabled';
+                    videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
             setActiveSubtitleId(`custom-${option.index}`);
@@ -1136,7 +1250,7 @@ const WatchPartyPlayer = () => {
                     onPlaying={onPlaying}
                     onPause={onPaused}
                 >
-                    {(watchParty?.subtitles || []).map((sub, idx) => (
+                    {allProviderSubtitles.map((sub, idx) => (
                         <track
                             key={`sub-track-${idx}-${sub.file || sub.playableUrl}`}
                             src={sub.file && sub.file.startsWith('http') ? sub.file : getProxiedUrl(sub.playableUrl || sub.file)}
@@ -1157,6 +1271,17 @@ const WatchPartyPlayer = () => {
                         />
                     ))}
                 </video>
+
+                {/* Netflix-Grade Pro Subtitle Overlay */}
+                {activeCueText && (
+                    <div className={`watch-party-subtitle-overlay ${controlsVisible ? 'controls-shown' : 'controls-hidden'}`}>
+                        <div className="watch-party-subtitle-box">
+                            {activeCueText.split('\n').map((line, i) => (
+                                <span key={i} className="watch-party-sub-line">{line}</span>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {(isLive || isStream) && !isReady && !hasError && (
                     <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
@@ -1337,7 +1462,7 @@ const WatchPartyPlayer = () => {
                                                         })}
 
                                                         {/* Yayın Sağlayıcısından Gelen WebVTT Altyazılar */}
-                                                        {(watchParty?.subtitles || []).map((sub, i) => {
+                                                        {allProviderSubtitles.map((sub, i) => {
                                                             const isSelected = activeSubtitleId === `ext-${i}`;
                                                             return (
                                                                 <button
@@ -1371,7 +1496,7 @@ const WatchPartyPlayer = () => {
                                                         })}
 
                                                         {/* Otomatik Altyazı Yoksa Bilgilendirme */}
-                                                        {hlsSubtitleTracks.length === 0 && (!watchParty?.subtitles || watchParty.subtitles.length === 0) && customSubtitles.length === 0 && (
+                                                        {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
                                                             <div className="native-track-empty-note">
                                                                 Bu kaynakta otomatik altyazı yok
                                                             </div>

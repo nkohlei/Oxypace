@@ -789,4 +789,4 @@ async function fastResolve(targetUrl, options = {}) {
   }
 }
 
-module.exports = { fastResolve, determineRefererAndOrigin };
+module.exports = { fastResolve, determineRefererAndOrigin, extractSubtitles };
