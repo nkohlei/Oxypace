@@ -439,35 +439,51 @@ function extractSubtitles(html, baseUrl = '') {
   const seenFiles = new Set();
   if (!html || typeof html !== 'string') return subtitles;
 
+  // 1. JWPlayer tracks array: tracks: [ { file: "...", label: "...", kind: "captions" }, ... ]
   try {
-    // 1. JWPlayer tracks array: tracks: [ { file: "...", label: "...", kind: "captions" }, ... ]
     const tracksMatch = html.match(/tracks\s*:\s*(\[[^\]]+\])/i);
     if (tracksMatch && tracksMatch[1]) {
-      const trackObjRegex = /\{\s*["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt)[^"']*)["']\s*,\s*["']?label["']?\s*:\s*["']([^"']+)["']/gi;
-      let tm;
-      while ((tm = trackObjRegex.exec(tracksMatch[1])) !== null) {
-        let file = tm[1].replace(/\\/g, '');
-        let label = tm[2].trim();
-        if (baseUrl && !file.startsWith('http')) {
-          try { file = new URL(file, baseUrl).href; } catch {}
+      try {
+        const parsed = JSON.parse(tracksMatch[1]);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item && item.file && (item.file.includes('.vtt') || item.file.includes('.srt') || item.kind === 'captions' || item.kind === 'subtitles')) {
+              let file = item.file.replace(/\\/g, '');
+              let label = item.label || 'Altyazı';
+              if (baseUrl && !file.startsWith('http')) {
+                try { file = new URL(file, baseUrl).href; } catch {}
+              }
+              if (!seenFiles.has(file)) {
+                seenFiles.add(file);
+                subtitles.push({
+                  file,
+                  label,
+                  kind: item.kind || 'subtitles',
+                  default: Boolean(item.default),
+                });
+              }
+            }
+          }
         }
-        if (!seenFiles.has(file)) {
-          seenFiles.add(file);
-          subtitles.push({ file, label, kind: 'subtitles' });
-        }
-      }
-
-      const trackObjRegex2 = /\{\s*["']?label["']?\s*:\s*["']([^"']+)["']\s*,\s*["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt)[^"']*)["']/gi;
-      let tm2;
-      while ((tm2 = trackObjRegex2.exec(tracksMatch[1])) !== null) {
-        let label = tm2[1].trim();
-        let file = tm2[2].replace(/\\/g, '');
-        if (baseUrl && !file.startsWith('http')) {
-          try { file = new URL(file, baseUrl).href; } catch {}
-        }
-        if (!seenFiles.has(file)) {
-          seenFiles.add(file);
-          subtitles.push({ file, label, kind: 'subtitles' });
+      } catch (jsonErr) {
+        // Fallback regex if unquoted keys
+        const itemRegex = /\{([^}]+)\}/g;
+        let im;
+        while ((im = itemRegex.exec(tracksMatch[1])) !== null) {
+          const body = im[1];
+          const fileM = body.match(/["']?file["']?\s*:\s*["']([^"']+)["']/i);
+          const labelM = body.match(/["']?label["']?\s*:\s*["']([^"']+)["']/i);
+          if (fileM && fileM[1]) {
+            let file = fileM[1].replace(/\\/g, '');
+            let label = labelM ? labelM[1].trim() : 'Altyazı';
+            if (baseUrl && !file.startsWith('http')) {
+              try { file = new URL(file, baseUrl).href; } catch {}
+            }
+            if (!seenFiles.has(file) && (file.includes('.vtt') || file.includes('.srt'))) {
+              seenFiles.add(file);
+              subtitles.push({ file, label, kind: 'subtitles' });
+            }
+          }
         }
       }
     }
@@ -496,18 +512,23 @@ function extractSubtitles(html, baseUrl = '') {
     }
   } catch (e) {}
 
-  // 3. Standalone .vtt URLs
+  // 3. Standalone .vtt or .srt URLs (cleaning escaped slashes \/ -> /)
   try {
-    const vttRegex = /(https?:\/\/[^"'\s\\<>]+\.vtt(?:[^"'\s\\<>]*)?)/gi;
+    const cleanHtml = html.replace(/\\\//g, '/');
+    const vttRegex = /(https?:\/\/[^"'\s<>]+\.(?:vtt|srt)(?:[^"'\s<>]*)?)/gi;
     let vm;
-    while ((vm = vttRegex.exec(html)) !== null) {
-      const file = vm[1].replace(/\\/g, '');
+    while ((vm = vttRegex.exec(cleanHtml)) !== null) {
+      const file = vm[1];
       if (!seenFiles.has(file) && !file.includes('thumbnail') && !file.includes('sprite')) {
         seenFiles.add(file);
         let label = 'Altyazı';
         const lower = file.toLowerCase();
-        if (lower.includes('tur') || lower.includes('tr') || lower.includes('turkce')) label = 'Türkçe Altyazı';
-        else if (lower.includes('eng') || lower.includes('en') || lower.includes('english')) label = 'İngilizce Altyazı';
+        if (lower.includes('tur') || lower.includes('-tr-') || lower.includes('turkce')) label = 'Türkçe Altyazı';
+        else if (lower.includes('eng') || lower.includes('-en-') || lower.includes('english')) label = 'İngilizce Altyazı';
+        else if (lower.includes('forced')) label = 'Zorunlu Altyazı';
+        else if (lower.includes('fra') || lower.includes('-fr-')) label = 'Fransızca Altyazı';
+        else if (lower.includes('ger') || lower.includes('-de-')) label = 'Almanca Altyazı';
+        else if (lower.includes('esp') || lower.includes('-es-')) label = 'İspanyolca Altyazı';
         subtitles.push({ file, label, kind: 'subtitles' });
       }
     }

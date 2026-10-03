@@ -754,4 +754,50 @@
     }
 }
 
+/* Subtitle Cues & Custom Upload Styling */
+.watch-party-native-video::cue {
+    background-color: rgba(0, 0, 0, 0.78) !important;
+    color: #ffffff !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 1.12rem !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.8) !important;
+    padding: 3px 10px !important;
+    border-radius: 4px !important;
+}
+
+.native-track-empty-note {
+    padding: 8px 12px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    text-align: center;
+}
+
+.native-track-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 0;
+}
+
+.native-track-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.native-track-upload-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+
 
