@@ -266,7 +266,7 @@ export const initializeVoiceHandler = (io) => {
         });
 
         // ─── Watch Party (YouTube / Stream Sync) ───
-        socket.on('voice:watch-start', async ({ roomName, url, isLive }) => {
+        socket.on('voice:watch-start', async ({ roomName, url, isLive, subtitles, title }) => {
             if (!roomName) return;
             const now = Date.now();
             const watchPartyState = {
@@ -276,6 +276,8 @@ export const initializeVoiceHandler = (io) => {
                 lastUpdated: now,
                 serverTimestamp: now,
                 isLive: !!isLive,
+                subtitles: Array.isArray(subtitles) ? subtitles : [],
+                title: title || '',
                 senderId: socket.userId
             };
             const roomData = voiceRooms.get(roomName);

@@ -432,9 +432,110 @@ function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
 }
 
 /**
+ * Extracts WebVTT/SRT subtitles from HTML and script contexts
+ */
+function extractSubtitles(html, baseUrl = '') {
+  const subtitles = [];
+  const seenFiles = new Set();
+  if (!html || typeof html !== 'string') return subtitles;
+
+  try {
+    // 1. JWPlayer tracks array: tracks: [ { file: "...", label: "...", kind: "captions" }, ... ]
+    const tracksMatch = html.match(/tracks\s*:\s*(\[[^\]]+\])/i);
+    if (tracksMatch && tracksMatch[1]) {
+      const trackObjRegex = /\{\s*["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt)[^"']*)["']\s*,\s*["']?label["']?\s*:\s*["']([^"']+)["']/gi;
+      let tm;
+      while ((tm = trackObjRegex.exec(tracksMatch[1])) !== null) {
+        let file = tm[1].replace(/\\/g, '');
+        let label = tm[2].trim();
+        if (baseUrl && !file.startsWith('http')) {
+          try { file = new URL(file, baseUrl).href; } catch {}
+        }
+        if (!seenFiles.has(file)) {
+          seenFiles.add(file);
+          subtitles.push({ file, label, kind: 'subtitles' });
+        }
+      }
+
+      const trackObjRegex2 = /\{\s*["']?label["']?\s*:\s*["']([^"']+)["']\s*,\s*["']?file["']?\s*:\s*["']([^"']+\.(?:vtt|srt)[^"']*)["']/gi;
+      let tm2;
+      while ((tm2 = trackObjRegex2.exec(tracksMatch[1])) !== null) {
+        let label = tm2[1].trim();
+        let file = tm2[2].replace(/\\/g, '');
+        if (baseUrl && !file.startsWith('http')) {
+          try { file = new URL(file, baseUrl).href; } catch {}
+        }
+        if (!seenFiles.has(file)) {
+          seenFiles.add(file);
+          subtitles.push({ file, label, kind: 'subtitles' });
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. HTML5 <track> tags: <track src="..." label="..." kind="subtitles" srclang="tr">
+  try {
+    const trackTagRegex = /<track\b[^>]*>/gi;
+    let ttm;
+    while ((ttm = trackTagRegex.exec(html)) !== null) {
+      const tag = ttm[0];
+      const srcMatch = tag.match(/src=["']([^"']+)["']/i);
+      const labelMatch = tag.match(/label=["']([^"']+)["']/i);
+      const langMatch = tag.match(/srclang=["']([^"']+)["']/i);
+      if (srcMatch && srcMatch[1]) {
+        let file = srcMatch[1].replace(/\\/g, '');
+        let label = labelMatch ? labelMatch[1] : (langMatch ? langMatch[1].toUpperCase() : 'Altyazı');
+        if (baseUrl && !file.startsWith('http')) {
+          try { file = new URL(file, baseUrl).href; } catch {}
+        }
+        if (!seenFiles.has(file)) {
+          seenFiles.add(file);
+          subtitles.push({ file, label, kind: 'subtitles' });
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 3. Standalone .vtt URLs
+  try {
+    const vttRegex = /(https?:\/\/[^"'\s\\<>]+\.vtt(?:[^"'\s\\<>]*)?)/gi;
+    let vm;
+    while ((vm = vttRegex.exec(html)) !== null) {
+      const file = vm[1].replace(/\\/g, '');
+      if (!seenFiles.has(file) && !file.includes('thumbnail') && !file.includes('sprite')) {
+        seenFiles.add(file);
+        let label = 'Altyazı';
+        const lower = file.toLowerCase();
+        if (lower.includes('tur') || lower.includes('tr') || lower.includes('turkce')) label = 'Türkçe Altyazı';
+        else if (lower.includes('eng') || lower.includes('en') || lower.includes('english')) label = 'İngilizce Altyazı';
+        subtitles.push({ file, label, kind: 'subtitles' });
+      }
+    }
+  } catch (e) {}
+
+  return subtitles;
+}
+
+function buildResult(streamUrl, embedUrl, targetUrl, type, pageTitle, searchCorpus = '') {
+  const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
+  const subtitles = extractSubtitles(searchCorpus, embedUrl || targetUrl);
+  return {
+    streamUrl,
+    type: type || (streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8'),
+    headers: {
+      referer,
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      origin,
+    },
+    pageTitle: pageTitle || 'Film / Dizi Akışı',
+    subtitles,
+  };
+}
+
+/**
  * @param {string} targetUrl
  * @param {{ timeout?: number }} [options]
- * @returns {Promise<{ streamUrl: string, type: string, headers: any, pageTitle: string } | null>}
+ * @returns {Promise<{ streamUrl: string, type: string, headers: any, pageTitle: string, subtitles: any[] } | null>}
  */
 async function fastResolve(targetUrl, options = {}) {
   try {
@@ -458,17 +559,7 @@ async function fastResolve(targetUrl, options = {}) {
     // 1. Check dynamic obfuscated or dc_ decoded stream in main page
     const decodedFromMain = decodeDynamicObfuscation(html) || decodeDcFunction(html);
     if (decodedFromMain) {
-      const { referer, origin } = determineRefererAndOrigin(decodedFromMain, '', targetUrl);
-      return {
-        streamUrl: decodedFromMain,
-        type: 'm3u8',
-        headers: {
-          referer,
-          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          origin,
-        },
-        pageTitle,
-      };
+      return buildResult(decodedFromMain, '', targetUrl, 'm3u8', pageTitle, html);
     }
 
     // 2. Direct stream pattern in main page
@@ -481,17 +572,7 @@ async function fastResolve(targetUrl, options = {}) {
         const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
         if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
           logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
-          const { referer, origin } = determineRefererAndOrigin(streamUrl, '', targetUrl);
-          return {
-            streamUrl,
-            type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
-            headers: {
-              referer,
-              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              origin,
-            },
-            pageTitle,
-          };
+          return buildResult(streamUrl, '', targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, html);
         }
       }
     }
@@ -585,17 +666,7 @@ async function fastResolve(targetUrl, options = {}) {
       if (embedUrl.includes('rapidvid') || embedHtml.includes('_p8')) {
         const rapidStream = decodeRapidVid(embedHtml);
         if (rapidStream) {
-          const { referer, origin } = determineRefererAndOrigin(rapidStream, embedUrl, targetUrl);
-          return {
-            streamUrl: rapidStream,
-            type: rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
-            headers: {
-              referer,
-              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              origin,
-            },
-            pageTitle: pageTitle || 'Film / Dizi Akışı',
-          };
+          return buildResult(rapidStream, embedUrl, targetUrl, rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
         }
       }
 
@@ -609,17 +680,7 @@ async function fastResolve(targetUrl, options = {}) {
             const foundDirectStream = videoData.securedLink || videoData.videoSource;
             if (foundDirectStream) {
               logger.info(`[FastScraper] 🎯 API üzerinden doğrudan stream bulundu: ${foundDirectStream}`);
-              const { referer, origin } = determineRefererAndOrigin(foundDirectStream, embedUrl, targetUrl);
-              return {
-                streamUrl: foundDirectStream,
-                type: foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
-                headers: {
-                  referer,
-                  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                  origin,
-                },
-                pageTitle: pageTitle || 'Film / Dizi Akışı',
-              };
+              return buildResult(foundDirectStream, embedUrl, targetUrl, foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, videoDataRaw);
             }
             if (videoData.videoSrc) {
               logger.info(`[FastScraper] 🎯 Nested videoSrc bulundu: ${videoData.videoSrc}`);
@@ -634,17 +695,7 @@ async function fastResolve(targetUrl, options = {}) {
       // Check dynamic obfuscation or dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix, HDFilmCehennemi)
       const decodedStream = decodeDynamicObfuscation(embedHtml) || decodeDcFunction(embedHtml);
       if (decodedStream) {
-        const { referer, origin } = determineRefererAndOrigin(decodedStream, embedUrl, targetUrl);
-        return {
-          streamUrl: decodedStream,
-          type: decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8',
-          headers: {
-            referer,
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            origin,
-          },
-          pageTitle: pageTitle || 'Film / Dizi Akışı',
-        };
+        return buildResult(decodedStream, embedUrl, targetUrl, decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
       }
 
       // Check unpacked JS / Packer eval
@@ -655,17 +706,7 @@ async function fastResolve(targetUrl, options = {}) {
           searchCorpus += '\n' + unpacked;
           const unpackedDecoded = decodeDynamicObfuscation(unpacked) || decodeDcFunction(unpacked);
           if (unpackedDecoded) {
-            const { referer, origin } = determineRefererAndOrigin(unpackedDecoded, embedUrl, targetUrl);
-            return {
-              streamUrl: unpackedDecoded,
-              type: 'm3u8',
-              headers: {
-                referer,
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                origin,
-              },
-              pageTitle: pageTitle || 'Film / Dizi Akışı',
-            };
+            return buildResult(unpackedDecoded, embedUrl, targetUrl, 'm3u8', pageTitle, searchCorpus);
           }
         }
       }
@@ -680,18 +721,7 @@ async function fastResolve(targetUrl, options = {}) {
           const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
           if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
-            const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
-
-            return {
-              streamUrl,
-              type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
-              headers: {
-                referer,
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                origin,
-              },
-              pageTitle: pageTitle || 'Film / Dizi Akışı',
-            };
+            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
           }
         }
       }
@@ -703,17 +733,7 @@ async function fastResolve(targetUrl, options = {}) {
         const lowerStream = streamUrl.toLowerCase();
         if (!lowerStream.endsWith('.js') && !lowerStream.endsWith('.vtt')) {
           logger.info(`[FastScraper] ✅ Değişken atamasından akış bulundu: ${streamUrl}`);
-          const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
-          return {
-            streamUrl,
-            type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
-            headers: {
-              referer,
-              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              origin,
-            },
-            pageTitle: pageTitle || 'Film / Dizi Akışı',
-          };
+          return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
         }
       }
 
@@ -735,17 +755,7 @@ async function fastResolve(targetUrl, options = {}) {
 
           if (!isIgnored) {
             logger.info(`[FastScraper] ✅ JSON config içinden akış bulundu: ${streamUrl}`);
-            const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
-            return {
-              streamUrl,
-              type: streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8',
-              headers: {
-                referer,
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                origin,
-              },
-              pageTitle: pageTitle || 'Film / Dizi Akışı',
-            };
+            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
           }
         }
       }

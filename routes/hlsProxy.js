@@ -285,9 +285,15 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       lowerUrl.includes('/images/thumb/poster/') || 
       lowerUrl.includes('/poster/');
 
-    // If initial fetch gives 403 or 404, try curl directly for images or cycle through fallback referers
+    const isSubtitleFile = 
+      lowerUrl.endsWith('.vtt') || 
+      lowerUrl.endsWith('.srt') || 
+      lowerUrl.includes('/vtt/') || 
+      lowerUrl.includes('/subtitles/');
+
+    // If initial fetch gives 403 or 404, try curl directly for images/subtitles or cycle through fallback referers
     if (!response.ok && (response.status === 403 || response.status === 404)) {
-      if (isPosterOrImage) {
+      if (isPosterOrImage || isSubtitleFile) {
         try {
           let posterReferer = refererHeader;
           if (!posterReferer) {
@@ -295,16 +301,22 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
             else if (targetUrl.includes('fullhdfilmizlesene')) posterReferer = 'https://www.fullhdfilmizlesene.now/';
             else if (targetUrl.includes('filmmakinesi')) posterReferer = 'https://filmmakinesi.to/';
           }
-          const imgBuffer = await fetchBinaryWithCurl(targetUrl, posterReferer, 8);
-          if (imgBuffer && imgBuffer.length > 100) {
+          const buf = await fetchBinaryWithCurl(targetUrl, posterReferer, 8);
+          if (buf && buf.length > 10) {
+            if (isSubtitleFile) {
+              res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+              return res.end(buf);
+            }
             const mime = lowerUrl.endsWith('.png') ? 'image/png' :
                          (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) ? 'image/jpeg' :
                          'image/webp';
             res.setHeader('Content-Type', mime);
             res.setHeader('Cache-Control', 'public, max-age=86400');
-            return res.end(imgBuffer);
+            return res.end(buf);
           }
-        } catch (curlImgErr) {
+        } catch (curlErr) {
           // If curl failed, try ScraperAPI fallback only if a valid key is available
           const apiKey = getValidScraperApiKey();
           if (apiKey) {
@@ -648,6 +660,15 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
         }
         const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(fastResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 
+        const proxiedSubtitles = (fastResult.subtitles || []).map(sub => {
+          const subFile = sub.file;
+          const playableUrl = `/api/proxy?url=${encodeURIComponent(subFile)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+          return {
+            ...sub,
+            playableUrl,
+          };
+        });
+
         return res.status(200).json({
           success: true,
           status: 'success',
@@ -656,6 +677,7 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
           type: fastResult.type || 'm3u8',
           headers: streamHeaders,
           pageTitle: fastResult.pageTitle || '',
+          subtitles: proxiedSubtitles,
           cached: false,
           resolvedIn: Date.now() - startTime,
         });
@@ -734,6 +756,7 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
       type,
       headers: streamHeaders,
       pageTitle,
+      subtitles: payload.subtitles || data.subtitles || [],
       cached: Boolean(data.cached),
       resolvedIn,
     });
@@ -1024,6 +1047,54 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     });
   }
 
+// Film başlıklarını tekilleştirmek için normalize eden fonksiyon
+function normalizeMovieTitleForDedup(title) {
+  if (!title) return '';
+  let str = title.toLowerCase();
+  const removeWords = [
+    'türkçe dublaj', 'turkce dublaj', 'türkçe altyazı', 'turkce altyazi',
+    'altyazılı', 'altyazili', 'dublaj', 'dual', 'tr-en', 'full hd', '1080p',
+    '720p', '4k', 'uhd', 'hd', 'izle', 'filmi', 'film'
+  ];
+  str = str.replace(/[()[\]{}_,.:;!?\\/|\-–—+&]/g, ' ');
+  for (const w of removeWords) {
+    const reg = new RegExp('(^|\\s+)' + w + '(\\s+|$)', 'gi');
+    while (reg.test(str)) {
+      str = str.replace(reg, ' ');
+    }
+  }
+  return str.replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
+// Her film sağlayıcısı (site) için aynı filmden sadece 1 sonuç bırakır
+function deduplicateMovieResults(movies) {
+  const map = new Map();
+
+  for (const item of movies) {
+    if (!item.url) continue;
+    const norm = normalizeMovieTitleForDedup(item.title);
+    const provider = item.providerKey || item.provider || 'default';
+    const key = `${provider}:${norm || item.title.trim().toLowerCase()}`;
+
+    if (!map.has(key)) {
+      map.set(key, { ...item });
+    } else {
+      const existing = map.get(key);
+      const isNewDual = /dublaj|dual/i.test(item.title);
+      const isExistingDual = /dublaj|dual/i.test(existing.title);
+      if (!isExistingDual && isNewDual) {
+        existing.url = item.url;
+        existing.title = item.title;
+      }
+      if (!existing.poster && item.poster) {
+        existing.poster = item.poster;
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
   // 2. Hızlı Dahili Çoklu Arama (FullHDFilmİzlesene + HDFilmCehennemi + FilmMakinesi)
   try {
     const [fhfSettled, hdfSettled, fmSettled] = await Promise.allSettled([
@@ -1054,13 +1125,8 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
         }
       }
 
-      // Tekilleştir
-      const seen = new Set();
-      const uniqueResults = combined.filter(item => {
-        if (!item.url || seen.has(item.url)) return false;
-        seen.add(item.url);
-        return true;
-      });
+      // Tekilleştir: Her film sitesi için aynı filmden sadece 1 sonuç listelenir (Dublaj/Altyazı birleşik)
+      const uniqueResults = deduplicateMovieResults(combined);
 
       inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: uniqueResults });
       return res.status(200).json({

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw, Search, Film } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw, Search, Film, Headphones, Languages, Check } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -235,7 +235,7 @@ const getProxiedUrl = (url) => {
 
   if (!url.startsWith('http')) return url;
 
-  const isHlsStream = url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest');
+  const isHlsStream = url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest') || url.includes('.vtt') || url.includes('.srt');
   if (isHlsStream) {
     return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
   }
@@ -306,6 +306,30 @@ const WatchPartyPlayer = () => {
     const [dimensions, setDimensions] = useState({ width: null, height: null });
     const isResizingRef = useRef(false);
     const isUserActionCooldownRef = useRef(0);
+
+    // Audio & Subtitle Track States
+    const [audioTracks, setAudioTracks] = useState([]);
+    const [currentAudioTrack, setCurrentAudioTrack] = useState(0);
+    const [isAudioMenuOpen, setIsAudioMenuOpen] = useState(false);
+    const [hlsSubtitleTracks, setHlsSubtitleTracks] = useState([]);
+    const [activeSubtitleId, setActiveSubtitleId] = useState('off'); // 'off' | 'hls-0' | 'ext-0'
+    const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
+    const audioMenuRef = useRef(null);
+    const subMenuRef = useRef(null);
+
+    // Close audio and subtitle menus when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (audioMenuRef.current && !audioMenuRef.current.contains(e.target)) {
+                setIsAudioMenuOpen(false);
+            }
+            if (subMenuRef.current && !subMenuRef.current.contains(e.target)) {
+                setIsSubMenuOpen(false);
+            }
+        };
+        document.addEventListener('pointerdown', handleClickOutside);
+        return () => document.removeEventListener('pointerdown', handleClickOutside);
+    }, []);
 
     // Switch Android audio routing to media mode for rich, full-fidelity stereo sound while video plays
     useEffect(() => {
@@ -391,6 +415,12 @@ const WatchPartyPlayer = () => {
         setHasError(false);
         setIsReady(false);
         setUseProxy(false);
+        setAudioTracks([]);
+        setCurrentAudioTrack(0);
+        setIsAudioMenuOpen(false);
+        setHlsSubtitleTracks([]);
+        setActiveSubtitleId('off');
+        setIsSubMenuOpen(false);
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
         prevIsPlayingRef.current = false;
@@ -487,8 +517,51 @@ const WatchPartyPlayer = () => {
                         hls.loadSource(streamUrl);
                         hls.attachMedia(video);
                         
+                        const updateAudio = () => {
+                            if (hls && hls.audioTracks && hls.audioTracks.length > 0) {
+                                setAudioTracks([...hls.audioTracks]);
+                                if (typeof hls.audioTrack === 'number' && hls.audioTrack >= 0) {
+                                    setCurrentAudioTrack(hls.audioTrack);
+                                }
+                            }
+                        };
+                        const updateSubs = () => {
+                            if (hls && hls.subtitleTracks) {
+                                setHlsSubtitleTracks([...hls.subtitleTracks]);
+                            }
+                        };
+
+                        hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (event, data) => {
+                            if (data.audioTracks && data.audioTracks.length > 0) {
+                                setAudioTracks([...data.audioTracks]);
+                                if (typeof hls.audioTrack === 'number' && hls.audioTrack >= 0) {
+                                    setCurrentAudioTrack(hls.audioTrack);
+                                }
+                            }
+                        });
+
+                        hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (event, data) => {
+                            if (typeof data.id === 'number') {
+                                setCurrentAudioTrack(data.id);
+                            }
+                        });
+
+                        hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (event, data) => {
+                            if (data.subtitleTracks) {
+                                setHlsSubtitleTracks([...data.subtitleTracks]);
+                            }
+                        });
+
+                        hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (event, data) => {
+                            if (typeof data.id === 'number' && data.id >= 0) {
+                                setActiveSubtitleId(`hls-${data.id}`);
+                            }
+                        });
+
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
                             setIsReady(true);
+                            updateAudio();
+                            updateSubs();
                             if (isNativeVOD && initialStartTime > 0) {
                                 video.currentTime = initialStartTime;
                             }
@@ -697,6 +770,82 @@ const WatchPartyPlayer = () => {
 
     const onPaused = () => {
         setIsNativePlaying(false);
+    };
+
+    // Label formatters for Audio and Subtitles
+    const formatAudioLabel = (track, idx, isShort = false) => {
+        if (!track) return isShort ? 'Ses' : `Ses ${idx + 1}`;
+        const name = (track.name || '').toLowerCase();
+        const lang = (track.lang || '').toLowerCase();
+        if (name.includes('turk') || lang === 'tr' || lang === 'tur' || name === 'tr') {
+            return isShort ? 'Dublaj' : 'Türkçe Dublaj';
+        }
+        if (name.includes('orig') || name.includes('eng') || lang === 'en' || lang === 'eng' || name === 'en') {
+            return isShort ? 'Orijinal' : 'Orijinal Ses (İngilizce)';
+        }
+        if (name.includes('ger') || lang === 'de') return isShort ? 'Almanca' : 'Almanca Ses';
+        if (name.includes('fra') || lang === 'fr') return isShort ? 'Fransızca' : 'Fransızca Ses';
+        if (name.includes('esp') || lang === 'es') return isShort ? 'İspanyolca' : 'İspanyolca Ses';
+        return isShort ? (track.name ? track.name.slice(0, 10) : 'Ses') : (track.name || `Ses ${idx + 1}`);
+    };
+
+    const formatSubtitleLabel = (track, idx, isShort = false) => {
+        if (!track) return isShort ? 'Altyazı' : `Altyazı ${idx + 1}`;
+        const name = (track.name || track.label || '').toLowerCase();
+        const lang = (track.lang || track.srcLang || '').toLowerCase();
+        if (name.includes('turk') || lang === 'tr' || lang === 'tur' || name === 'tr') {
+            return isShort ? 'Türkçe' : 'Türkçe Altyazı';
+        }
+        if (name.includes('eng') || lang === 'en' || lang === 'eng' || name === 'en') {
+            return isShort ? 'İngilizce' : 'İngilizce Altyazı';
+        }
+        if (name.includes('ger') || lang === 'de') return isShort ? 'Almanca' : 'Almanca Altyazı';
+        if (name.includes('fra') || lang === 'fr') return isShort ? 'Fransızca' : 'Fransızca Altyazı';
+        if (name.includes('forced')) return isShort ? 'Zorunlu' : 'Türkçe (Zorunlu / Forced)';
+        return isShort ? (track.label || track.name || 'Altyazı').slice(0, 10) : (track.label || track.name || `Altyazı ${idx + 1}`);
+    };
+
+    const handleSelectAudioTrack = (trackId) => {
+        if (hlsInstanceRef.current) {
+            hlsInstanceRef.current.audioTrack = trackId;
+            setCurrentAudioTrack(trackId);
+        }
+        setIsAudioMenuOpen(false);
+    };
+
+    const handleSelectSubtitleTrack = (option) => {
+        if (option.type === 'off') {
+            if (hlsInstanceRef.current) {
+                hlsInstanceRef.current.subtitleTrack = -1;
+            }
+            if (videoRef.current && videoRef.current.textTracks) {
+                for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                    videoRef.current.textTracks[i].mode = 'disabled';
+                }
+            }
+            setActiveSubtitleId('off');
+        } else if (option.type === 'hls') {
+            if (hlsInstanceRef.current) {
+                hlsInstanceRef.current.subtitleTrack = option.id;
+            }
+            if (videoRef.current && videoRef.current.textTracks) {
+                for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                    videoRef.current.textTracks[i].mode = 'disabled';
+                }
+            }
+            setActiveSubtitleId(`hls-${option.id}`);
+        } else if (option.type === 'ext') {
+            if (hlsInstanceRef.current) {
+                hlsInstanceRef.current.subtitleTrack = -1;
+            }
+            if (videoRef.current && videoRef.current.textTracks) {
+                for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                    videoRef.current.textTracks[i].mode = (i === option.index) ? 'showing' : 'disabled';
+                }
+            }
+            setActiveSubtitleId(`ext-${option.index}`);
+        }
+        setIsSubMenuOpen(false);
     };
 
     const handleTogglePlayPause = (e) => {
@@ -918,12 +1067,24 @@ const WatchPartyPlayer = () => {
                     playsInline
                     webkit-playsinline="true"
                     autoPlay={false}
+                    crossOrigin="anonymous"
                     muted={localMuted}
                     onTimeUpdate={onTimeUpdate}
                     onDurationChange={onDurationChange}
                     onPlaying={onPlaying}
                     onPause={onPaused}
-                />
+                >
+                    {(watchParty?.subtitles || []).map((sub, idx) => (
+                        <track
+                            key={`sub-track-${idx}-${sub.file || sub.playableUrl}`}
+                            src={getProxiedUrl(sub.playableUrl || sub.file)}
+                            kind="subtitles"
+                            label={sub.label || `Altyazı ${idx + 1}`}
+                            srcLang={sub.lang || 'tr'}
+                            default={false}
+                        />
+                    ))}
+                </video>
 
                 {(isLive || isStream) && !isReady && !hasError && (
                     <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.7)', zIndex: 10 }}>
@@ -1006,6 +1167,124 @@ const WatchPartyPlayer = () => {
                                     </div>
 
                                     <div className="native-right-controls">
+                                        {/* Ses Seçeneği (Dublaj / Orijinal) */}
+                                        {audioTracks.length > 0 && (
+                                            <div className="native-track-container" ref={audioMenuRef}>
+                                                <button
+                                                    className={`native-track-btn ${isAudioMenuOpen ? 'active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setIsAudioMenuOpen(prev => !prev);
+                                                        setIsSubMenuOpen(false);
+                                                    }}
+                                                    title="Ses / Dublaj Seçeneği"
+                                                    aria-label="Ses / Dublaj Seçeneği"
+                                                >
+                                                    <Headphones size={15} />
+                                                    <span className="native-track-text-label">
+                                                        {formatAudioLabel(audioTracks[currentAudioTrack] || audioTracks[0], currentAudioTrack, true)}
+                                                    </span>
+                                                </button>
+                                                {isAudioMenuOpen && (
+                                                    <div className="native-track-dropdown" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="native-track-dropdown-header">
+                                                            <Headphones size={13} />
+                                                            <span>Ses Parçası</span>
+                                                        </div>
+                                                        <div className="native-track-dropdown-list">
+                                                            {audioTracks.map((track, i) => {
+                                                                const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                                return (
+                                                                    <button
+                                                                        key={`aud-${track.id}-${i}`}
+                                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => handleSelectAudioTrack(track.id !== undefined ? track.id : i)}
+                                                                    >
+                                                                        <span className="native-track-item-check">
+                                                                            {isSelected ? <Check size={14} /> : null}
+                                                                        </span>
+                                                                        <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Altyazı Seçeneği */}
+                                        {(hlsSubtitleTracks.length > 0 || (watchParty?.subtitles && watchParty.subtitles.length > 0)) && (
+                                            <div className="native-track-container" ref={subMenuRef}>
+                                                <button
+                                                    className={`native-track-btn ${isSubMenuOpen ? 'active' : ''} ${activeSubtitleId !== 'off' ? 'has-active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setIsSubMenuOpen(prev => !prev);
+                                                        setIsAudioMenuOpen(false);
+                                                    }}
+                                                    title="Altyazı Seçeneği"
+                                                    aria-label="Altyazı Seçeneği"
+                                                >
+                                                    <Languages size={15} />
+                                                    <span className="native-track-text-label">
+                                                        {activeSubtitleId === 'off' ? 'Altyazı' : 'Altyazı'}
+                                                    </span>
+                                                </button>
+                                                {isSubMenuOpen && (
+                                                    <div className="native-track-dropdown" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="native-track-dropdown-header">
+                                                            <Languages size={13} />
+                                                            <span>Altyazı</span>
+                                                        </div>
+                                                        <div className="native-track-dropdown-list">
+                                                            <button
+                                                                className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
+                                                                onClick={() => handleSelectSubtitleTrack({ type: 'off' })}
+                                                            >
+                                                                <span className="native-track-item-check">
+                                                                    {activeSubtitleId === 'off' ? <Check size={14} /> : null}
+                                                                </span>
+                                                                <span className="native-track-item-name">Kapalı</span>
+                                                            </button>
+
+                                                            {hlsSubtitleTracks.map((track, i) => {
+                                                                const isSelected = activeSubtitleId === `hls-${track.id}`;
+                                                                return (
+                                                                    <button
+                                                                        key={`hls-sub-${track.id}-${i}`}
+                                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => handleSelectSubtitleTrack({ type: 'hls', id: track.id })}
+                                                                    >
+                                                                        <span className="native-track-item-check">
+                                                                            {isSelected ? <Check size={14} /> : null}
+                                                                        </span>
+                                                                        <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+
+                                                            {(watchParty?.subtitles || []).map((sub, i) => {
+                                                                const isSelected = activeSubtitleId === `ext-${i}`;
+                                                                return (
+                                                                    <button
+                                                                        key={`ext-sub-${i}`}
+                                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => handleSelectSubtitleTrack({ type: 'ext', index: i })}
+                                                                    >
+                                                                        <span className="native-track-item-check">
+                                                                            {isSelected ? <Check size={14} /> : null}
+                                                                        </span>
+                                                                        <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <button 
                                             className="native-fullscreen-btn" 
                                             onClick={toggleFullscreen}
@@ -1154,8 +1433,8 @@ const WatchPartyPlayer = () => {
             <HlsStreamResolverModalVol2
                 isOpen={isFilmSearchModalOpen}
                 onClose={() => setIsFilmSearchModalOpen(false)}
-                onStartWatchParty={(streamUrl) => {
-                    startWatchParty(streamUrl, false);
+                onStartWatchParty={(streamUrl, isLive, subtitles, title) => {
+                    startWatchParty(streamUrl, isLive, subtitles, title);
                 }}
             />
         </div>

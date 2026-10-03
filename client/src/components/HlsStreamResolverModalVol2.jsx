@@ -154,7 +154,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         // Auto start in room if triggered from search card
         if (movieMeta && onStartWatchParty) {
           setTimeout(() => {
-            onStartWatchParty(playableUrl);
+            onStartWatchParty(playableUrl, false, [], movieMeta?.title || 'Doğrudan Akış');
             onClose();
           }, 400);
         }
@@ -184,7 +184,12 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         // Auto start in room if selected directly from search
         if (movieMeta && onStartWatchParty) {
           setTimeout(() => {
-            onStartWatchParty(resData.playableStreamUrl);
+            onStartWatchParty(
+              resData.playableStreamUrl,
+              false,
+              resData.subtitles || [],
+              resData.pageTitle || movieMeta?.title || ''
+            );
             onClose();
           }, 400);
         }
@@ -222,7 +227,12 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
   const handleStartInRoom = () => {
     if (!resolvedData?.playableStreamUrl) return;
     if (onStartWatchParty) {
-      onStartWatchParty(formatPlayableUrl(resolvedData.playableStreamUrl));
+      onStartWatchParty(
+        formatPlayableUrl(resolvedData.playableStreamUrl),
+        false,
+        resolvedData.subtitles || [],
+        resolvedData.pageTitle || selectedMovie?.title || ''
+      );
       onClose();
     }
   };
