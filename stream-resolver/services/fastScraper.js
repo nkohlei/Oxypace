@@ -294,6 +294,8 @@ function unpackJs(packedJs) {
 }
 
 const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 const path = require('path');
 
 /**
@@ -339,6 +341,26 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
   }
 
+  // 1.5. Doğrudan Curl İsteği (Cloudflare TLS fingerprinting atlatır)
+  try {
+    const curlBin = process.platform === 'win32' ? 'curl.exe' : 'curl';
+    const curlArgs = [
+      '-s', '-L', '--max-time', '6',
+      '-A', headers['User-Agent'],
+      '-H', `Accept: ${headers['Accept']}`,
+      '-H', `Accept-Language: ${headers['Accept-Language']}`,
+    ];
+    if (referer) curlArgs.push('-H', `Referer: ${referer}`);
+    curlArgs.push(targetUrl);
+    const { stdout } = await execFileAsync(curlBin, curlArgs);
+    if (stdout && stdout.length > 500 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+      logger.info(`[FastScraper] ⚡ Curl ile sayfa başarıyla çekildi (${stdout.length} byte): ${targetUrl}`);
+      return stdout;
+    }
+  } catch (curlErr) {
+    // continue
+  }
+
   // 2. Doğrudan İstek Denemesi
   try {
     const res = await fetch(targetUrl, { headers, redirect: 'follow' });
@@ -359,7 +381,7 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
       const res = await fetch(proxyUrl, { headers });
       if (res.ok) {
         const text = await res.text();
-        if (text && text.length > 200 && !text.includes('Request failed. You will not be charged')) {
+        if (text && text.length > 200 && !text.includes('Request failed. You will not be charged') && !text.includes('exhausted')) {
           return text;
         }
       }

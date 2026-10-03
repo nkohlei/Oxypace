@@ -40,6 +40,9 @@ capacitor.config.json.local
 blog/node_modules/
 blog/.next/
 blog/out/
+
+# Scratch & temp
+scratch/
 blog/.git/
 
 client/src/blog_app/

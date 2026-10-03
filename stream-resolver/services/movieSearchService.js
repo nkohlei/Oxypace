@@ -124,6 +124,37 @@ async function searchMovies(rawQuery) {
           logger.warn(`[MovieSearch] FullHDFilmİzlesene arama uyarısı: ${fhfErr.message}`);
         }
 
+        // 3. FilmMakinesi Arama
+        try {
+          logger.info(`[MovieSearch] FilmMakinesi taranıyor: "${query}"`);
+          const fmSearchUrl = `https://filmmakinesi.to/arama/?s=${encodeURIComponent(query)}`;
+          await page.goto(fmSearchUrl, { timeout: 12000, waitUntil: 'domcontentloaded' });
+
+          const fmItems = await page.$$eval('a.item', els => els.map(e => {
+            const title = e.getAttribute('data-title') || e.innerText;
+            const href = e.getAttribute('href');
+            const img = e.querySelector('img');
+            const poster = img?.getAttribute('src') || img?.getAttribute('data-src');
+            return {
+              url: href ? (href.startsWith('http') ? href : `https://filmmakinesi.to${href.startsWith('/') ? '' : '/'}${href}`) : null,
+              title: title?.trim(),
+              poster: poster ? (poster.startsWith('http') ? poster : `https://filmmakinesi.to${poster.startsWith('/') ? '' : '/'}${poster}`) : null
+            };
+          }).filter(x => x.url && x.title));
+
+          for (const item of fmItems) {
+            allResults.push({
+              provider: 'FilmMakinesi',
+              providerKey: 'filmmakinesi',
+              title: item.title,
+              url: item.url,
+              poster: item.poster
+            });
+          }
+        } catch (fmErr) {
+          logger.warn(`[MovieSearch] FilmMakinesi arama uyarısı: ${fmErr.message}`);
+        }
+
       } finally {
         if (page) await page.close().catch(() => {});
       }

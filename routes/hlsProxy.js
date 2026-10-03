@@ -2,6 +2,11 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { validateSsrfUrl } from '../utils/security.js';
 import { createRequire } from 'module';
+import { execFile, spawn } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+const CURL_BIN = process.platform === 'win32' ? 'curl.exe' : 'curl';
 
 const require = createRequire(import.meta.url);
 let fastResolve = null;
@@ -17,6 +22,84 @@ try {
   inProcessMovieSearch = searchSvc.searchMovies;
 } catch (e) {
   console.warn('[HLSProxy] movieSearchService import warning:', e.message);
+}
+
+// Track exhausted ScraperAPI keys to avoid waiting or failing on dead quotas
+const exhaustedScraperKeys = new Set();
+function getValidScraperApiKey() {
+  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || '')
+    .split(',')
+    .map(k => k.trim())
+    .filter(Boolean);
+  for (const k of envKeys) {
+    if (!exhaustedScraperKeys.has(k)) return k;
+  }
+  return null;
+}
+
+// Decode HTML entities (e.g. &ccedil;, &uuml;, &ouml;, &amp;)
+function decodeHtmlEntities(str) {
+  if (!str) return '';
+  return str
+    .replace(/&ccedil;/gi, 'ç')
+    .replace(/&Ccedil;/gi, 'Ç')
+    .replace(/&ouml;/gi, 'ö')
+    .replace(/&Ouml;/gi, 'Ö')
+    .replace(/&uuml;/gi, 'ü')
+    .replace(/&Uuml;/gi, 'Ü')
+    .replace(/&thorn;/gi, 'ş')
+    .replace(/&THORN;/gi, 'Ş')
+    .replace(/&eth;/gi, 'ğ')
+    .replace(/&ETH;/gi, 'Ğ')
+    .replace(/&yacute;/gi, 'ı')
+    .replace(/&Yacute;/gi, 'İ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
+}
+
+// Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
+async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
+  const args = [
+    '-s',
+    '-L',
+    '--max-time', String(timeoutSec),
+    '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    ...headers.flatMap(h => ['-H', h]),
+    url
+  ];
+  const { stdout } = await execFileAsync(CURL_BIN, args);
+  return stdout;
+}
+
+// Direct curl fetch for binary data (images/posters)
+async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-s',
+      '-L',
+      '--max-time', String(timeoutSec),
+      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    ];
+    if (referer) args.push('-H', `Referer: ${referer}`);
+    args.push(url);
+
+    const child = spawn(CURL_BIN, args);
+    const chunks = [];
+    child.stdout.on('data', chunk => chunks.push(chunk));
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code === 0 && chunks.length > 0) {
+        resolve(Buffer.concat(chunks));
+      } else {
+        reject(new Error(`curl exited with code ${code}`));
+      }
+    });
+  });
 }
 
 const router = express.Router();
@@ -117,17 +200,40 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       lowerUrl.includes('/images/thumb/poster/') || 
       lowerUrl.includes('/poster/');
 
-    // If initial fetch gives 403 or 404, try ScraperAPI for images or cycle through fallback referers
+    // If initial fetch gives 403 or 404, try curl directly for images or cycle through fallback referers
     if (!response.ok && (response.status === 403 || response.status === 404)) {
       if (isPosterOrImage) {
         try {
-          const apiKey = process.env.SCRAPERAPI_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
-          const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-          const sRes = await fetch(sApiUrl, { cache: 'no-store' });
-          if (sRes.ok) {
-            response = sRes;
+          let posterReferer = refererHeader;
+          if (!posterReferer) {
+            if (targetUrl.includes('hdfilmcehennemi')) posterReferer = 'https://www.hdfilmcehennemi.nl/';
+            else if (targetUrl.includes('fullhdfilmizlesene')) posterReferer = 'https://www.fullhdfilmizlesene.now/';
+            else if (targetUrl.includes('filmmakinesi')) posterReferer = 'https://filmmakinesi.to/';
           }
-        } catch (e) {}
+          const imgBuffer = await fetchBinaryWithCurl(targetUrl, posterReferer, 8);
+          if (imgBuffer && imgBuffer.length > 100) {
+            const mime = lowerUrl.endsWith('.png') ? 'image/png' :
+                         (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) ? 'image/jpeg' :
+                         'image/webp';
+            res.setHeader('Content-Type', mime);
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.end(imgBuffer);
+          }
+        } catch (curlImgErr) {
+          // If curl failed, try ScraperAPI fallback only if a valid key is available
+          const apiKey = getValidScraperApiKey();
+          if (apiKey) {
+            try {
+              const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+              const sRes = await fetch(sApiUrl, { cache: 'no-store' });
+              if (sRes.ok) {
+                response = sRes;
+              } else if (sRes.status === 403) {
+                exhaustedScraperKeys.add(apiKey);
+              }
+            } catch (e) {}
+          }
+        }
       }
 
       if (!response.ok) {
@@ -168,14 +274,18 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     }
 
     if (!response.ok && isPosterOrImage) {
-      try {
-        const apiKey = process.env.SCRAPERAPI_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
-        const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-        const sRes = await fetch(sApiUrl, { cache: 'no-store' });
-        if (sRes.ok) {
-          response = sRes;
-        }
-      } catch (e) {}
+      const apiKey = getValidScraperApiKey();
+      if (apiKey) {
+        try {
+          const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+          const sRes = await fetch(sApiUrl, { cache: 'no-store' });
+          if (sRes.ok) {
+            response = sRes;
+          } else if (sRes.status === 403) {
+            exhaustedScraperKeys.add(apiKey);
+          }
+        } catch (e) {}
+      }
     }
 
     if (!response.ok) {
@@ -557,20 +667,13 @@ const inProcessSearchCache = new Map();
 const SEARCH_CACHE_TTL = 30 * 60 * 1000;
 
 /**
- * FullHDFilmİzlesene doğrudan arama (ScraperAPI veya doğrudan fetch)
+ * FullHDFilmİzlesene doğrudan arama (Önce Doğrudan Curl, sonra ScraperAPI fallback)
  */
 async function searchFullHDFilm(query) {
-  const apiKey = 'dd731ac1103c696ebe32ad67ba329a0e';
-  const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
-  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-  
+  // 1. Doğrudan Curl (Cloudflare TLS fingerprinting atlatır, 200ms)
   try {
-    const res = await fetch(proxyUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(9000),
-    });
-    if (!res.ok) return [];
-    const html = await res.text();
+    const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
+    const html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
     
     const results = [];
     const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
@@ -589,113 +692,222 @@ async function searchFullHDFilm(query) {
         results.push({
           provider: 'FullHDFilmİzlesene',
           providerKey: 'fullhdfilmizlesene',
-          title: titleMatch[1].trim(),
+          title: decodeHtmlEntities(titleMatch[1].trim()),
           url: linkMatch[1],
           poster: poster,
         });
       }
     }
-    return results;
+    if (results.length > 0) return results;
   } catch (err) {
-    console.warn('[HLSProxy] searchFullHDFilm warning:', err.message);
-    return [];
+    // continue to fallback
   }
+
+  // 2. ScraperAPI Fallback (Sadece geçerli, kotası bitmemiş anahtar varsa)
+  const apiKey = getValidScraperApiKey();
+  if (apiKey) {
+    try {
+      const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+      if (res.status === 403) {
+        exhaustedScraperKeys.add(apiKey);
+        return [];
+      }
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results = [];
+      const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
+      let match;
+      while ((match = filmBlockRegex.exec(html)) !== null) {
+        const block = match[1];
+        const linkMatch = block.match(/href="(https:\/\/www\.fullhdfilmizlesene\.now\/film\/[^"]+)"/i);
+        const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
+        const posterMatch = block.match(/srcset="(https:\/\/img\.fullhdfilmizlesene\.now\/poster\/[^\s"]+)/i) || 
+                            block.match(/data-src="([^"]+)"/i) || 
+                            block.match(/src="([^"]+)"/i);
+        if (linkMatch && titleMatch) {
+          let poster = posterMatch ? posterMatch[1] : null;
+          if (poster && poster.startsWith('data:')) poster = null;
+          results.push({
+            provider: 'FullHDFilmİzlesene',
+            providerKey: 'fullhdfilmizlesene',
+            title: decodeHtmlEntities(titleMatch[1].trim()),
+            url: linkMatch[1],
+            poster: poster,
+          });
+        }
+      }
+      return results;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
 }
 
 /**
- * HDFilmCehennemi arama (DuckDuckGo + ScraperAPI köprüsü)
+ * HDFilmCehennemi doğrudan arama (Önce Doğrudan Curl Ajax, sonra DuckDuckGo/ScraperAPI fallback)
  */
-async function searchHDFilmCehennemiDDG(query) {
-  const apiKey = 'dd731ac1103c696ebe32ad67ba329a0e';
-  const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:hdfilmcehennemi.nl ' + query)}`;
-  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
-  
+async function searchHDFilmCehennemi(query) {
+  // 1. Doğrudan Curl Ajax API (JSON, afiş ve tam başlıklarla 200ms)
   try {
-    const res = await fetch(proxyUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(9000),
-    });
-    if (!res.ok) return [];
-    const html = await res.text();
-    const results = [];
-    const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
-    for (const m of matches) {
-      const rawHref = m[1];
-      const titleHtml = m[2];
-      let actualUrl = rawHref;
-      const uddgMatch = rawHref.match(/uddg=([^&]+)/);
-      if (uddgMatch) {
-        actualUrl = decodeURIComponent(uddgMatch[1]);
-      }
-      const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/hdfilmcehennemi/i, '').replace(/[-–|]/g, ' ').trim();
-      if (actualUrl.includes('hdfilmcehennemi.nl') && !actualUrl.endsWith('.nl/') && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
-        let poster = null;
-        try {
-          const parsed = new URL(actualUrl);
-          const slug = parsed.pathname.replace(/\/+$/, '').split('/').pop();
-          if (slug) {
-            const cleanSlug = slug.replace(/-hdf.*$/i, '');
-            poster = `https://www.hdfilmcehennemi.nl/images/thumb/poster/${cleanSlug}.webp`;
-          }
-        } catch {}
+    const targetUrl = `https://www.hdfilmcehennemi.nl/search/?q=${encodeURIComponent(query)}`;
+    const raw = await fetchWithCurl(targetUrl, [
+      'Referer: https://www.hdfilmcehennemi.nl/',
+      'x-requested-with: fetch',
+      'Accept: application/json, text/plain, */*'
+    ], 5);
 
-        results.push({
-          provider: 'HDFilmCehennemi',
-          providerKey: 'hdfilmcehennemi',
-          title: title,
-          url: actualUrl,
-          poster: poster,
-        });
+    const json = JSON.parse(raw);
+    const results = [];
+    if (json && Array.isArray(json.results)) {
+      for (const itemHtml of json.results) {
+        const urlMatch = itemHtml.match(/href="([^"]+)"/);
+        const titleMatch = itemHtml.match(/<h4 class="title">([^<]+)<\/h4>/i) || itemHtml.match(/alt="([^"]+)"/);
+        const posterMatch = itemHtml.match(/src="([^"]+)"/);
+        if (urlMatch && urlMatch[1]) {
+          const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
+          results.push({
+            provider: 'HDFilmCehennemi',
+            providerKey: 'hdfilmcehennemi',
+            title: decodeHtmlEntities(rawTitle),
+            url: urlMatch[1],
+            poster: posterMatch ? posterMatch[1] : null,
+          });
+        }
       }
     }
-    return results.slice(0, 8);
+    if (results.length > 0) return results.slice(0, 8);
   } catch (err) {
-    console.warn('[HLSProxy] searchHDFilmCehennemiDDG warning:', err.message);
-    return [];
+    // continue to fallback
   }
+
+  // 2. DuckDuckGo + ScraperAPI Fallback (Sadece geçerli anahtar varsa)
+  const apiKey = getValidScraperApiKey();
+  if (apiKey) {
+    try {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:hdfilmcehennemi.nl ' + query)}`;
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
+      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+      if (res.status === 403) {
+        exhaustedScraperKeys.add(apiKey);
+        return [];
+      }
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results = [];
+      const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      for (const m of matches) {
+        const rawHref = m[1];
+        const titleHtml = m[2];
+        let actualUrl = rawHref;
+        const uddgMatch = rawHref.match(/uddg=([^&]+)/);
+        if (uddgMatch) {
+          actualUrl = decodeURIComponent(uddgMatch[1]);
+        }
+        const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/hdfilmcehennemi/i, '').replace(/[-–|]/g, ' ').trim();
+        if (actualUrl.includes('hdfilmcehennemi.nl') && !actualUrl.endsWith('.nl/') && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+          let poster = null;
+          try {
+            const parsed = new URL(actualUrl);
+            const slug = parsed.pathname.replace(/\/+$/, '').split('/').pop();
+            if (slug) {
+              const cleanSlug = slug.replace(/-hdf.*$/i, '');
+              poster = `https://www.hdfilmcehennemi.nl/images/thumb/poster/${cleanSlug}.webp`;
+            }
+          } catch {}
+
+          results.push({
+            provider: 'HDFilmCehennemi',
+            providerKey: 'hdfilmcehennemi',
+            title: decodeHtmlEntities(title),
+            url: actualUrl,
+            poster: poster,
+          });
+        }
+      }
+      return results.slice(0, 8);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
 }
 
 /**
- * FilmMakinesi arama (DuckDuckGo + ScraperAPI köprüsü)
+ * FilmMakinesi doğrudan arama (Önce Doğrudan Curl, sonra DDG/ScraperAPI fallback)
  */
 async function searchFilmMakinesi(query) {
-  const apiKey = 'dd731ac1103c696ebe32ad67ba329a0e';
-  const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:filmmakinesi.to ' + query + ' izle')}`;
-  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
-  
+  // 1. Doğrudan Curl (filmmakinesi.to/arama/?s=, afiş ve başlıklarla 200ms)
   try {
-    const res = await fetch(proxyUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(9000),
-    });
-    if (!res.ok) return [];
-    const html = await res.text();
+    const targetUrl = `https://filmmakinesi.to/arama/?s=${encodeURIComponent(query)}`;
+    const html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
     const results = [];
-    const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
-    for (const m of matches) {
-      const rawHref = m[1];
-      const titleHtml = m[2];
-      let actualUrl = rawHref;
-      const uddgMatch = rawHref.match(/uddg=([^&]+)/);
-      if (uddgMatch) {
-        actualUrl = decodeURIComponent(uddgMatch[1]);
-      }
-      const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/filmmakinesi/i, '').replace(/[-–|]/g, ' ').trim();
-      if (actualUrl.includes('filmmakinesi.to') && (actualUrl.includes('/film/') || !actualUrl.endsWith('.to/')) && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
-        results.push({
-          provider: 'FilmMakinesi',
-          providerKey: 'filmmakinesi',
-          title: title,
-          url: actualUrl,
-          poster: null,
-        });
-      }
+    const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"/gi;
+    let match;
+    while ((match = itemRegex.exec(html)) !== null) {
+      const href = match[1];
+      const title = match[2];
+      const poster = match[3];
+      const fullUrl = href.startsWith('http') ? href : `https://filmmakinesi.to${href.startsWith('/') ? '' : '/'}${href}`;
+      const fullPoster = poster.startsWith('http') ? poster : `https://filmmakinesi.to${poster.startsWith('/') ? '' : '/'}${poster}`;
+      results.push({
+        provider: 'FilmMakinesi',
+        providerKey: 'filmmakinesi',
+        title: decodeHtmlEntities(title.trim()),
+        url: fullUrl,
+        poster: fullPoster,
+      });
     }
-    return results.slice(0, 6);
+    if (results.length > 0) return results.slice(0, 8);
   } catch (err) {
-    console.warn('[HLSProxy] searchFilmMakinesi warning:', err.message);
-    return [];
+    // continue to fallback
   }
+
+  // 2. DuckDuckGo + ScraperAPI Fallback (Sadece geçerli anahtar varsa)
+  const apiKey = getValidScraperApiKey();
+  if (apiKey) {
+    try {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:filmmakinesi.to ' + query + ' izle')}`;
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
+      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+      if (res.status === 403) {
+        exhaustedScraperKeys.add(apiKey);
+        return [];
+      }
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results = [];
+      const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      for (const m of matches) {
+        const rawHref = m[1];
+        const titleHtml = m[2];
+        let actualUrl = rawHref;
+        const uddgMatch = rawHref.match(/uddg=([^&]+)/);
+        if (uddgMatch) {
+          actualUrl = decodeURIComponent(uddgMatch[1]);
+        }
+        const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/filmmakinesi/i, '').replace(/[-–|]/g, ' ').trim();
+        if (actualUrl.includes('filmmakinesi.to') && (actualUrl.includes('/film/') || !actualUrl.endsWith('.to/')) && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+          results.push({
+            provider: 'FilmMakinesi',
+            providerKey: 'filmmakinesi',
+            title: decodeHtmlEntities(title),
+            url: actualUrl,
+            poster: null,
+          });
+        }
+      }
+      return results.slice(0, 6);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
 }
 
 // GET/POST /api/search-movies and /search-movies
@@ -724,7 +936,7 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
   try {
     const [fhfSettled, hdfSettled, fmSettled] = await Promise.allSettled([
       searchFullHDFilm(trimmedQuery),
-      searchHDFilmCehennemiDDG(trimmedQuery),
+      searchHDFilmCehennemi(trimmedQuery),
       searchFilmMakinesi(trimmedQuery),
     ]);
 
