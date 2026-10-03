@@ -14,6 +14,7 @@ const { rateLimiter } = require('../middleware/rateLimiter');
 const { apiKeyAuth } = require('../middleware/auth');
 const { resolveStreamUrl } = require('../services/playwrightResolver');
 const { fastResolve } = require('../services/fastScraper');
+const { searchMovies } = require('../services/movieSearchService');
 const cacheService = require('../services/cacheService');
 const logger = require('../utils/logger');
 
@@ -327,6 +328,31 @@ router.get('/proxy', async (req, res) => {
   } catch (err) {
     logger.error(`[Proxy] Error fetching ${targetUrl}: ${err.message}`);
     return res.status(500).send('Proxy internal error');
+  }
+});
+
+// GET/POST /api/search-movies
+router.all('/search-movies', async (req, res) => {
+  const query = req.query.q || req.body?.query || req.body?.q || '';
+  if (!query || typeof query !== 'string' || query.trim().length < 2) {
+    return res.status(400).json({ success: false, error: 'Arama terimi en az 2 karakter olmalıdır.', results: [] });
+  }
+
+  try {
+    const results = await searchMovies(query);
+    return res.status(200).json({
+      success: true,
+      query: query.trim(),
+      count: results.length,
+      results
+    });
+  } catch (err) {
+    logger.error(`[SearchMovies] Hata: ${err.message}`);
+    return res.status(500).json({
+      success: false,
+      error: 'Film araması sırasında bir hata oluştu.',
+      results: []
+    });
   }
 });
 

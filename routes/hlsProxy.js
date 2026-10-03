@@ -5,11 +5,18 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 let fastResolve = null;
+let inProcessMovieSearch = null;
 try {
   const scraper = require('../stream-resolver/services/fastScraper.js');
   fastResolve = scraper.fastResolve;
 } catch (e) {
   console.warn('[HLSProxy] fastScraper import warning:', e.message);
+}
+try {
+  const searchSvc = require('../stream-resolver/services/movieSearchService.js');
+  inProcessMovieSearch = searchSvc.searchMovies;
+} catch (e) {
+  console.warn('[HLSProxy] movieSearchService import warning:', e.message);
 }
 
 const router = express.Router();
@@ -501,6 +508,64 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
       success: false,
       error: isTimeout ? 'Çözümleyici mikroservisi zaman aşımına uğradı.' : `Mikroservis bağlantı hatası: ${err.message}`,
       code: isTimeout ? 'TIMEOUT' : 'RESOLVER_UNAVAILABLE',
+    });
+  }
+});
+
+// GET/POST /api/search-movies
+router.all('/search-movies', async (req, res) => {
+  const query = req.query.q || req.body?.query || req.body?.q || '';
+  if (!query || typeof query !== 'string' || query.trim().length < 2) {
+    return res.status(400).json({ success: false, error: 'Arama terimi en az 2 karakter olmalıdır.', results: [] });
+  }
+
+  const trimmedQuery = query.trim();
+
+  // 1. In-process search
+  if (inProcessMovieSearch) {
+    try {
+      const results = await inProcessMovieSearch(trimmedQuery);
+      if (results && results.length > 0) {
+        return res.status(200).json({
+          success: true,
+          query: trimmedQuery,
+          count: results.length,
+          results
+        });
+      }
+    } catch (err) {
+      console.warn('[HLSProxy] In-process movie search error:', err.message);
+    }
+  }
+
+  // 2. Microservice bridge
+  const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
+  const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 16000);
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
+
+    const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/search-movies?q=${encodeURIComponent(trimmedQuery)}`, {
+      method: 'GET',
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    const data = await microResponse.json().catch(() => null);
+    if (microResponse.ok && data) {
+      return res.status(200).json(data);
+    }
+    return res.status(microResponse.status || 500).json(data || { success: false, error: 'Arama servisi yanıt vermedi.', results: [] });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: `Film arama servisi hatası: ${err.message}`,
+      results: []
     });
   }
 });

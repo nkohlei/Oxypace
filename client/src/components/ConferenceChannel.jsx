@@ -674,6 +674,18 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                         >
                                             Başlat
                                         </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                setIsHlsVol2ModalOpen(true);
+                                                setIsWatchInputOpen(false);
+                                            }}
+                                            className="chat-send-btn glass-btn"
+                                            style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(88, 166, 255, 0.2)', border: '1px solid rgba(88, 166, 255, 0.4)', color: '#58a6ff' }}
+                                            title="Entegre Film Arama ve Çözümleyici (Vol 2)"
+                                        >
+                                            <Film size={13} color="#58a6ff" /> Film Ara
+                                        </button>
                                         {!!window.desktopAPI && (
                                             <button 
                                                 type="button"
@@ -754,6 +766,17 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                             style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
                                         >
                                             <Radio size={14} /> HLS Oynatıcı
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                setIsHlsVol2ModalOpen(true);
+                                                setIsLiveWatchInputOpen(false);
+                                            }}
+                                            className="chat-send-btn glass-btn active"
+                                            style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(88, 166, 255, 0.25)', border: '1px solid rgba(88, 166, 255, 0.5)', color: '#58a6ff' }}
+                                            title="Entegre Film Arama ve Oynatıcı (Vol 2)"
+                                        >
+                                            <Film size={13} /> Film Ara
                                         </button>
                                     </div>
                                 )}

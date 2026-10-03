@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw, Search, Film } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
+import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import { registerPlugin, Capacitor } from '@capacitor/core';
 import './WatchPartyPlayer.css';
 
@@ -245,6 +246,7 @@ const getProxiedUrl = (url) => {
 const WatchPartyPlayer = () => {
     const { 
         watchParty, 
+        startWatchParty,
         stopWatchParty, 
         sendWatchPlay, 
         sendWatchPause, 
@@ -272,6 +274,7 @@ const WatchPartyPlayer = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [isNativePlaying, setIsNativePlaying] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
+    const [isFilmSearchModalOpen, setIsFilmSearchModalOpen] = useState(false);
     const controlsTimeoutRef = useRef(null);
 
     const toggleControls = (e) => {
@@ -886,6 +889,14 @@ const WatchPartyPlayer = () => {
                     {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button 
+                        className="watch-party-stop-btn glass-btn" 
+                        onClick={() => setIsFilmSearchModalOpen(true)} 
+                        title="Yeni Film Ara ve Oynat"
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(88, 166, 255, 0.15)', borderColor: 'rgba(88, 166, 255, 0.35)', color: '#58a6ff' }}
+                    >
+                        <Search size={14} /> <span>Film Ara</span>
+                    </button>
                     <button className="watch-party-stop-btn glass-btn danger" onClick={stopWatchParty} title="Birlikte İzle Modunu Kapat">
                         <X size={16} /> <span>Bitir</span>
                     </button>
@@ -1137,6 +1148,14 @@ const WatchPartyPlayer = () => {
                     )
                 )}
             </div>
+
+            <HlsStreamResolverModalVol2
+                isOpen={isFilmSearchModalOpen}
+                onClose={() => setIsFilmSearchModalOpen(false)}
+                onStartWatchParty={(streamUrl) => {
+                    startWatchParty(streamUrl, false);
+                }}
+            />
         </div>
     );
 };
