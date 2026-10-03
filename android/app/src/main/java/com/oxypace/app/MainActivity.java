@@ -699,16 +699,41 @@ public class MainActivity extends BridgeActivity {
                         float density = getResources().getDisplayMetrics().density;
                         if (density <= 0) density = 1.0f;
 
+                        Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+                        float statusDp = statusInsets.top / density;
+                        sStatusBarTopDp = Math.max(statusDp, 0f);
+
                         Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
                         float navDp = navInsets.bottom / density;
 
                         boolean is3Btn = is3ButtonNavigation(this, navDp);
-                        sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : 0f;
+                        sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : (navDp > 0 ? navDp : 0f);
                         sIs3ButtonNav = is3Btn;
 
                         applyInsetsToWebView();
                     }
                 } catch (Exception ignored) {}
+            });
+
+            ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
+                try {
+                    float density = getResources().getDisplayMetrics().density;
+                    if (density <= 0) density = 1.0f;
+
+                    Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+                    float statusDp = statusInsets.top / density;
+                    sStatusBarTopDp = Math.max(statusDp, 0f);
+
+                    Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                    float navDp = navInsets.bottom / density;
+
+                    boolean is3Btn = is3ButtonNavigation(this, navDp);
+                    sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : (navDp > 0 ? navDp : 0f);
+                    sIs3ButtonNav = is3Btn;
+
+                    applyInsetsToWebView();
+                } catch (Exception ignored) {}
+                return insets;
             });
         } catch (Exception ignored) {}
         checkAndApplySystemInsets();
@@ -973,12 +998,15 @@ public class MainActivity extends BridgeActivity {
                 android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                 if (webView != null) {
                     final int navDp = Math.round(sNavBarBottomDp);
+                    final int statusDp = Math.round(sStatusBarTopDp);
                     final boolean is3Btn = sIs3ButtonNav;
-                    final int effectiveBottomDp = is3Btn ? Math.max(navDp, 48) : 0;
+                    final int effectiveBottomDp = is3Btn ? Math.max(navDp, 48) : navDp;
                     String script = "(function() {" +
                         "  try {" +
                         "    var doc = document.documentElement;" +
                         "    if (!doc) return;" +
+                        "    doc.style.setProperty('--safe-area-top', '" + statusDp + "px');" +
+                        "    doc.style.setProperty('--system-top-height', '" + statusDp + "px');" +
                         "    if (" + is3Btn + ") {" +
                         "      doc.classList.add('has-3button-nav');" +
                         "      doc.classList.remove('has-gesture-nav');" +
@@ -987,10 +1015,10 @@ public class MainActivity extends BridgeActivity {
                         "    } else {" +
                         "      doc.classList.remove('has-3button-nav');" +
                         "      doc.classList.add('has-gesture-nav');" +
-                        "      doc.style.setProperty('--safe-area-bottom', '0px');" +
-                        "      doc.style.setProperty('--system-nav-height', '0px');" +
+                        "      doc.style.setProperty('--safe-area-bottom', '" + effectiveBottomDp + "px');" +
+                        "      doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
                         "    }" +
-                        "    window.__oxypaceSystemBars = { navBottom: " + effectiveBottomDp + ", is3ButtonNav: " + is3Btn + " };" +
+                        "    window.__oxypaceSystemBars = { navBottom: " + effectiveBottomDp + ", statusBarTop: " + statusDp + ", is3ButtonNav: " + is3Btn + " };" +
                         "    window.dispatchEvent(new CustomEvent('oxypace:systembars', { detail: window.__oxypaceSystemBars }));" +
                         "  } catch(e) {}" +
                         "})();";
@@ -1006,15 +1034,19 @@ public class MainActivity extends BridgeActivity {
             if (density <= 0) density = 1.0f;
 
             float navDp = 0f;
+            float statusDp = 0f;
             android.view.View decorView = getWindow().getDecorView();
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
             if (insets != null) {
+                Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+                statusDp = statusInsets.top / density;
                 Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
                 navDp = navInsets.bottom / density;
             }
 
+            sStatusBarTopDp = Math.max(statusDp, 0f);
             boolean is3Btn = is3ButtonNavigation(this, navDp);
-            sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : 0f;
+            sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : (navDp > 0 ? navDp : 0f);
             sIs3ButtonNav = is3Btn;
 
             applyInsetsToWebView();

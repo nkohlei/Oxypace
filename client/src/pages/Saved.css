@@ -40,6 +40,7 @@
 .saved-posts {
     display: flex;
     flex-direction: column;
+    padding-bottom: max(24px, calc(16px + var(--safe-area-bottom, 0px)));
 }
 
 .loading-container {

@@ -1087,15 +1087,7 @@
 
     /* 3-Button Navigation Adaptations for Channel Sidebar */
     html.has-3button-nav .channel-sidebar {
-        padding-bottom: calc(28px + var(--safe-area-bottom, 48px)) !important;
-    }
-
-    html.has-3button-nav .cs-panel--userbar {
-        margin-bottom: calc(12px + var(--safe-area-bottom, 48px)) !important;
-    }
-
-    html.has-3button-nav .cs-footer-copyright {
-        padding-bottom: calc(12px + var(--safe-area-bottom, 48px)) !important;
+        padding-bottom: calc(20px + var(--safe-area-bottom, 48px)) !important;
     }
 
     /* When a channel is selected — hide the sidebar, show fullscreen feed */

@@ -701,7 +701,7 @@
         width: 60px;
         /* Narrow strip */
         min-width: 60px;
-        padding: calc(16px + env(safe-area-inset-top, 0px)) 8px 16px 8px;
+        padding: calc(16px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 8px 16px 8px;
         align-items: center;
         background-color: var(--bg-secondary);
         border-right: 1px solid var(--border-subtle);
@@ -748,12 +748,12 @@
 
     /* Content Area Adjustment */
     .settings-content {
-        padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 80px 20px;
+        padding: calc(20px + var(--safe-area-top, env(safe-area-inset-top, 0px))) 20px max(80px, calc(40px + var(--safe-area-bottom, 0px))) 20px;
         width: 100%;
     }
 
     .close-settings-btn {
-        top: calc(10px + env(safe-area-inset-top, 0px));
+        top: calc(10px + var(--safe-area-top, env(safe-area-inset-top, 0px)));
         right: 10px;
         width: 40px;
         height: 40px;

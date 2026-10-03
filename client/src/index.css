@@ -47,8 +47,8 @@
   /* Mobile Safe Area & Android Navigation Insets */
   --system-nav-height: 0px;
   --system-top-height: 0px;
-  --safe-area-bottom: 0px;
-  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: max(var(--system-nav-height, 0px), env(safe-area-inset-bottom, 0px));
+  --safe-area-top: max(var(--system-top-height, 0px), env(safe-area-inset-top, 0px));
 
   /* Layout */
   --nav-top-height: 50px;
@@ -101,9 +101,12 @@ html.theme-transitioning button {
               color 0.16s ease !important;
 }
 
-/* Android 3-Button Navigation Adaptation */
+/* Android 3-Button & Gesture Navigation Adaptation */
 html.has-3button-nav {
   --safe-area-bottom: max(var(--system-nav-height, 48px), 48px);
+}
+html.has-gesture-nav {
+  --safe-area-bottom: max(var(--system-nav-height, 0px), env(safe-area-inset-bottom, 0px));
 }
 
 /* Reusable High-FPS Motion Keyframes */
@@ -619,8 +622,8 @@ body.native-app .navbar {
 }
 @media (max-width: 768px) {
   body.native-app .navbar {
-    height: calc(56px + env(safe-area-inset-top, 0px)) !important;
-    min-height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    height: calc(56px + var(--safe-area-top, env(safe-area-inset-top, 0px))) !important;
+    min-height: calc(56px + var(--safe-area-top, env(safe-area-inset-top, 0px))) !important;
   }
 }
 
