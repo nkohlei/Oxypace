@@ -1139,7 +1139,7 @@ const WatchPartyPlayer = () => {
                     {(watchParty?.subtitles || []).map((sub, idx) => (
                         <track
                             key={`sub-track-${idx}-${sub.file || sub.playableUrl}`}
-                            src={getProxiedUrl(sub.playableUrl || sub.file)}
+                            src={sub.file && sub.file.startsWith('http') ? sub.file : getProxiedUrl(sub.playableUrl || sub.file)}
                             kind="subtitles"
                             label={sub.label || `Altyazı ${idx + 1}`}
                             srcLang={sub.lang || 'tr'}

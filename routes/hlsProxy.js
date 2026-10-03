@@ -316,6 +316,17 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
             res.setHeader('Cache-Control', 'public, max-age=86400');
             return res.end(buf);
           }
+          if (isSubtitleFile) {
+            try {
+              const tlsText = await fetchWithTlsImpersonator(targetUrl, posterReferer);
+              if (tlsText && tlsText.length > 10 && !isBlockedOrChallenge(tlsText)) {
+                res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader('Cache-Control', 'public, max-age=86400');
+                return res.end(tlsText);
+              }
+            } catch (tlsErr) {}
+          }
         } catch (curlErr) {
           // If curl failed, try ScraperAPI fallback only if a valid key is available
           const apiKey = getValidScraperApiKey();
