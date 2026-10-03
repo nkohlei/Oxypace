@@ -895,7 +895,7 @@ const WatchPartyPlayer = () => {
                         className="watch-party-stop-btn glass-btn" 
                         onClick={() => setIsFilmSearchModalOpen(true)} 
                         title="Yeni Film Ara ve Oynat"
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(88, 166, 255, 0.15)', borderColor: 'rgba(88, 166, 255, 0.35)', color: '#58a6ff' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.2)', color: '#f4f4f5' }}
                     >
                         <Search size={14} /> <span>Film Ara</span>
                     </button>

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 import { 
   X, Film, Play, Link2, AlertCircle, CheckCircle2, 
-  Clipboard, ArrowRight, Search, Sparkles, Tv, Layers
+  Clipboard, ArrowRight, Search, Tv, Layers
 } from 'lucide-react';
 import './HlsStreamResolverModalVol2.css';
 
@@ -18,8 +18,6 @@ const formatPlayableUrl = (relativeOrAbsoluteUrl) => {
   const cleanPath = relativeOrAbsoluteUrl.startsWith('/') ? relativeOrAbsoluteUrl : `/${relativeOrAbsoluteUrl}`;
   return `${baseUrl}${cleanPath}`;
 };
-
-const POPULAR_SUGGESTIONS = ['Matrix', 'Yüzüklerin Efendisi', 'Interstellar', 'Batman', 'Gladyatör'];
 
 export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty }) => {
   // Tab state: 'search' (default) | 'manual'
@@ -410,30 +408,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 </button>
               </form>
 
-              {/* Suggestions chips when no search has been made */}
-              {searchResults.length === 0 && !isSearching && !searchError && (
-                <div className="vol2-suggestions-section">
-                  <div className="vol2-suggestions-label">
-                    <Sparkles size={13} color="#ffffff" />
-                    <span>Popüler Aramalar</span>
-                  </div>
-                  <div className="vol2-suggestions-chips">
-                    {POPULAR_SUGGESTIONS.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        className="vol2-chip"
-                        onClick={() => {
-                          setSearchQuery(item);
-                          handleSearch(item);
-                        }}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Search Error */}
               {searchError && (
