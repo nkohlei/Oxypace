@@ -89,7 +89,10 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         setSearchError(response.data?.error || 'Arama sırasında bir hata oluştu.');
       }
     } catch (err) {
-      const msg = err.response?.data?.error || err.message;
+      let msg = err.response?.data?.error || err.message;
+      if (typeof msg === 'string' && (msg.includes('Endpoint bulunamadı') || msg.includes('NOT_FOUND') || msg.includes('404'))) {
+        msg = 'Film arama servisi şu anda güncelleniyor. Lütfen birkaç saniye sonra tekrar deneyin veya film bağlantısını "Link Yapıştır" sekmesinden doğrudan girin.';
+      }
       setSearchError(msg || 'Film arama servisine bağlanılamadı. Lütfen tekrar deneyin.');
     } finally {
       setIsSearching(false);

@@ -331,8 +331,8 @@ router.get('/proxy', async (req, res) => {
   }
 });
 
-// GET/POST /api/search-movies
-router.all('/search-movies', async (req, res) => {
+// GET/POST /api/search-movies and /search-movies
+router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
   const query = req.query.q || req.body?.query || req.body?.q || '';
   if (!query || typeof query !== 'string' || query.trim().length < 2) {
     return res.status(400).json({ success: false, error: 'Arama terimi en az 2 karakter olmalıdır.', results: [] });

@@ -57,8 +57,8 @@ app.use((req, res, next) => {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-// API rotaları
-app.use('/api', streamRoutes);
+// API rotaları (/api ve root altında erişilebilir)
+app.use(['/api', '/'], streamRoutes);
 
 /**
  * GET /health

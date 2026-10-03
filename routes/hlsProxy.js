@@ -512,20 +512,163 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
   }
 });
 
-// GET/POST /api/search-movies
-router.all('/search-movies', async (req, res) => {
+// In-process search cache (30 minutes TTL)
+const inProcessSearchCache = new Map();
+const SEARCH_CACHE_TTL = 30 * 60 * 1000;
+
+/**
+ * FullHDFilmİzlesene doğrudan arama (ScraperAPI veya doğrudan fetch)
+ */
+async function searchFullHDFilm(query) {
+  const apiKey = 'dd731ac1103c696ebe32ad67ba329a0e';
+  const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
+  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+  
+  try {
+    const res = await fetch(proxyUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    
+    const results = [];
+    const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
+    let match;
+    while ((match = filmBlockRegex.exec(html)) !== null) {
+      const block = match[1];
+      const linkMatch = block.match(/href="(https:\/\/www\.fullhdfilmizlesene\.now\/film\/[^"]+)"/i);
+      const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
+      const posterMatch = block.match(/srcset="(https:\/\/img\.fullhdfilmizlesene\.now\/poster\/[^\s"]+)/i) || 
+                          block.match(/data-src="([^"]+)"/i) || 
+                          block.match(/src="([^"]+)"/i);
+      
+      if (linkMatch && titleMatch) {
+        let poster = posterMatch ? posterMatch[1] : null;
+        if (poster && poster.startsWith('data:')) poster = null;
+        results.push({
+          provider: 'FullHDFilmİzlesene',
+          providerKey: 'fullhdfilmizlesene',
+          title: titleMatch[1].trim(),
+          url: linkMatch[1],
+          poster: poster,
+        });
+      }
+    }
+    return results;
+  } catch (err) {
+    console.warn('[HLSProxy] searchFullHDFilm warning:', err.message);
+    return [];
+  }
+}
+
+/**
+ * HDFilmCehennemi arama (DuckDuckGo + ScraperAPI köprüsü)
+ */
+async function searchHDFilmCehennemiDDG(query) {
+  const apiKey = 'dd731ac1103c696ebe32ad67ba329a0e';
+  const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:hdfilmcehennemi.nl ' + query)}`;
+  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
+  
+  try {
+    const res = await fetch(proxyUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const results = [];
+    const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+    for (const m of matches) {
+      const rawHref = m[1];
+      const titleHtml = m[2];
+      let actualUrl = rawHref;
+      const uddgMatch = rawHref.match(/uddg=([^&]+)/);
+      if (uddgMatch) {
+        actualUrl = decodeURIComponent(uddgMatch[1]);
+      }
+      const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/hdfilmcehennemi/i, '').replace(/[-–|]/g, ' ').trim();
+      if (actualUrl.includes('hdfilmcehennemi.nl') && !actualUrl.endsWith('.nl/') && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+        results.push({
+          provider: 'HDFilmCehennemi',
+          providerKey: 'hdfilmcehennemi',
+          title: title,
+          url: actualUrl,
+          poster: null,
+        });
+      }
+    }
+    return results.slice(0, 8);
+  } catch (err) {
+    console.warn('[HLSProxy] searchHDFilmCehennemiDDG warning:', err.message);
+    return [];
+  }
+}
+
+// GET/POST /api/search-movies and /search-movies
+router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
   const query = req.query.q || req.body?.query || req.body?.q || '';
   if (!query || typeof query !== 'string' || query.trim().length < 2) {
     return res.status(400).json({ success: false, error: 'Arama terimi en az 2 karakter olmalıdır.', results: [] });
   }
 
   const trimmedQuery = query.trim();
+  const cacheKey = trimmedQuery.toLowerCase();
 
-  // 1. In-process search
+  // 1. Önbellek kontrolü
+  const cached = inProcessSearchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+    return res.status(200).json({
+      success: true,
+      query: trimmedQuery,
+      count: cached.results.length,
+      results: cached.results,
+      cached: true,
+    });
+  }
+
+  // 2. Hızlı Dahili Çoklu Arama (ScraperAPI ile FullHDFilmİzlesene + HDFilmCehennemi)
+  try {
+    const [fhfSettled, hdfSettled] = await Promise.allSettled([
+      searchFullHDFilm(trimmedQuery),
+      searchHDFilmCehennemiDDG(trimmedQuery),
+    ]);
+
+    const combined = [];
+    if (fhfSettled.status === 'fulfilled' && Array.isArray(fhfSettled.value)) {
+      combined.push(...fhfSettled.value);
+    }
+    if (hdfSettled.status === 'fulfilled' && Array.isArray(hdfSettled.value)) {
+      combined.push(...hdfSettled.value);
+    }
+
+    if (combined.length > 0) {
+      // Tekilleştir
+      const seen = new Set();
+      const uniqueResults = combined.filter(item => {
+        if (!item.url || seen.has(item.url)) return false;
+        seen.add(item.url);
+        return true;
+      });
+
+      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: uniqueResults });
+      return res.status(200).json({
+        success: true,
+        query: trimmedQuery,
+        count: uniqueResults.length,
+        results: uniqueResults,
+      });
+    }
+  } catch (fastSearchErr) {
+    console.warn('[HLSProxy] Fast search error:', fastSearchErr.message);
+  }
+
+  // 3. Playwright tabanlı dahili arama (varsa)
   if (inProcessMovieSearch) {
     try {
       const results = await inProcessMovieSearch(trimmedQuery);
       if (results && results.length > 0) {
+        inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results });
         return res.status(200).json({
           success: true,
           query: trimmedQuery,
@@ -538,18 +681,19 @@ router.all('/search-movies', async (req, res) => {
     }
   }
 
-  // 2. Microservice bridge
-  const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
+  // 4. Mikroservis köprüsü (Stream Resolver Microservice)
+  const rawResolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
+  const cleanResolverUrl = rawResolverUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
   const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 16000);
+    const timer = setTimeout(() => controller.abort(), 12000);
 
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['x-api-key'] = apiKey;
 
-    const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/search-movies?q=${encodeURIComponent(trimmedQuery)}`, {
+    const microResponse = await fetch(`${cleanResolverUrl}/api/search-movies?q=${encodeURIComponent(trimmedQuery)}`, {
       method: 'GET',
       headers,
       signal: controller.signal,
@@ -557,17 +701,21 @@ router.all('/search-movies', async (req, res) => {
     clearTimeout(timer);
 
     const data = await microResponse.json().catch(() => null);
-    if (microResponse.ok && data) {
+    if (microResponse.ok && data && Array.isArray(data.results) && data.results.length > 0) {
+      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: data.results });
       return res.status(200).json(data);
     }
-    return res.status(microResponse.status || 500).json(data || { success: false, error: 'Arama servisi yanıt vermedi.', results: [] });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: `Film arama servisi hatası: ${err.message}`,
-      results: []
-    });
+    console.warn('[HLSProxy] Microservice movie search error:', err.message);
   }
+
+  // Hiçbir sonuç bulunamazsa da 404 DEĞİL, 200 ile boş dizi döner (UI bozulmaz)
+  return res.status(200).json({
+    success: true,
+    query: trimmedQuery,
+    count: 0,
+    results: []
+  });
 });
 
 export default router;
