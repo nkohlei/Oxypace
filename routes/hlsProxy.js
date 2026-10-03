@@ -108,41 +108,74 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       cache: 'no-store',
     });
 
-    // If initial fetch gives 403 or 404, cycle through fallback referers
-    if (!response.ok && (response.status === 403 || response.status === 404)) {
-      let targetOrigin = '';
-      try { targetOrigin = new URL(targetUrl).origin; } catch {}
+    const lowerUrl = targetUrl.toLowerCase();
+    const isPosterOrImage = 
+      lowerUrl.endsWith('.webp') || 
+      lowerUrl.endsWith('.jpg') || 
+      lowerUrl.endsWith('.jpeg') || 
+      lowerUrl.endsWith('.png') || 
+      lowerUrl.includes('/images/thumb/poster/') || 
+      lowerUrl.includes('/poster/');
 
-      const fallbackReferers = [
-        'https://playmix.uno/',
-        'https://hdfilmcehennemi.mobi/',
-        'https://rapidvid.org/',
-        'https://closeload.filmmakinesi.to/',
-        'https://rapidvid.net/',
-        'https://vidmoly.to/',
-        targetOrigin ? `${targetOrigin}/` : '',
-        '',
-      ];
-      for (const fbRef of fallbackReferers) {
-        if (fbRef === refererHeader) continue;
-        const fbHeaders = { ...headers };
-        if (fbRef) {
-          fbHeaders['Referer'] = fbRef;
-          try { fbHeaders['Origin'] = new URL(fbRef).origin; } catch {}
-        } else {
-          delete fbHeaders['Referer'];
-          delete fbHeaders['Origin'];
-        }
+    // If initial fetch gives 403 or 404, try ScraperAPI for images or cycle through fallback referers
+    if (!response.ok && (response.status === 403 || response.status === 404)) {
+      if (isPosterOrImage) {
         try {
-          const fbRes = await fetch(targetUrl, { headers: fbHeaders, cache: 'no-store' });
-          if (fbRes.ok) {
-            response = fbRes;
-            refererHeader = fbRef;
-            if (fbHeaders['Origin']) originHeader = fbHeaders['Origin'];
-            break;
+          const apiKey = process.env.SCRAPERAPI_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
+          const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+          const sRes = await fetch(sApiUrl, { cache: 'no-store' });
+          if (sRes.ok) {
+            response = sRes;
           }
-        } catch {}
+        } catch (e) {}
       }
+
+      if (!response.ok) {
+        let targetOrigin = '';
+        try { targetOrigin = new URL(targetUrl).origin; } catch {}
+
+        const fallbackReferers = [
+          'https://playmix.uno/',
+          'https://hdfilmcehennemi.mobi/',
+          'https://rapidvid.org/',
+          'https://closeload.filmmakinesi.to/',
+          'https://rapidvid.net/',
+          'https://vidmoly.to/',
+          targetOrigin ? `${targetOrigin}/` : '',
+          '',
+        ];
+        for (const fbRef of fallbackReferers) {
+          if (fbRef === refererHeader) continue;
+          const fbHeaders = { ...headers };
+          if (fbRef) {
+            fbHeaders['Referer'] = fbRef;
+            try { fbHeaders['Origin'] = new URL(fbRef).origin; } catch {}
+          } else {
+            delete fbHeaders['Referer'];
+            delete fbHeaders['Origin'];
+          }
+          try {
+            const fbRes = await fetch(targetUrl, { headers: fbHeaders, cache: 'no-store' });
+            if (fbRes.ok) {
+              response = fbRes;
+              refererHeader = fbRef;
+              if (fbHeaders['Origin']) originHeader = fbHeaders['Origin'];
+              break;
+            }
+          } catch {}
+        }
+      }
+    }
+
+    if (!response.ok && isPosterOrImage) {
+      try {
+        const apiKey = process.env.SCRAPERAPI_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
+        const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+        const sRes = await fetch(sApiUrl, { cache: 'no-store' });
+        if (sRes.ok) {
+          response = sRes;
+        }
+      } catch (e) {}
     }
 
     if (!response.ok) {
@@ -154,7 +187,6 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     let responseBody = await response.arrayBuffer();
 
     let contentType = response.headers.get('Content-Type') || 'application/x-mpegURL';
-    const lowerUrl = targetUrl.toLowerCase();
 
     // Check if body starts with #EXTM3U
     const sampleHeader = new TextDecoder('utf-8').decode(responseBody.slice(0, 15));
@@ -222,13 +254,18 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       const textEncoder = new TextEncoder();
       responseBody = textEncoder.encode(manifestText).buffer;
     } else {
-      // Non-playlist binary segment (MPEG-TS, MP4, WebVTT, audio)
+      // Non-playlist binary segment (MPEG-TS, MP4, WebVTT, audio) or image
       const firstBytes = new Uint8Array(responseBody.slice(0, 4));
-      if (firstBytes[0] === 0x47) {
+      if (isPosterOrImage) {
+        if (lowerUrl.endsWith('.webp')) contentType = 'image/webp';
+        else if (lowerUrl.endsWith('.png')) contentType = 'image/png';
+        else if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) contentType = 'image/jpeg';
+        else if (!contentType.startsWith('image/')) contentType = 'image/jpeg';
+      } else if (firstBytes[0] === 0x47) {
         // 0x47 is MPEG-TS sync byte. Video CDNs disguise video/audio chunks as .jpg (e.g. image000.jpg, imageaud1_0.jpg)
         // with Content-Type: image/jpeg. We MUST override to video/mp2t so Hls.js/MSE decodes it without black screen!
         contentType = 'video/mp2t';
-      } else if (lowerUrl.includes('.ts') || lowerUrl.includes('image') || lowerUrl.includes('segment')) {
+      } else if (lowerUrl.includes('.ts') || lowerUrl.includes('segment') || (lowerUrl.includes('image') && !isPosterOrImage)) {
         if (contentType.startsWith('image/') || contentType.startsWith('text/')) {
           contentType = 'video/mp2t';
         }
@@ -257,6 +294,9 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Content-Type': contentType,
     };
+    if (isPosterOrImage) {
+      resHeaders['Cache-Control'] = 'public, max-age=86400, immutable';
+    }
     if (allowedCorsOrigin) {
       resHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;
     }

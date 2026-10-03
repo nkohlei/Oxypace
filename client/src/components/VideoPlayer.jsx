@@ -311,19 +311,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         return;
       }
 
-      // 3. When Playing: Continuous Smart Pacer
-      // Play geçiş guard aktifken hard seek yapma — playbackRate ile yumuşak düzelt
-      if (!playTransitionGuardActive && (forceImmediate || absDrift > 2.0)) {
+      // 3. When Playing: Maintain solid 1.0x playback rate to avoid pitch warble/flutter
+      if (!playTransitionGuardActive && (forceImmediate || absDrift > 3.0)) {
         isSyncingRef.current = true;
         lastProgrammaticSeekTimeRef.current = targetTime;
         el.currentTime = targetTime;
         el.playbackRate = 1.0;
         setTimeout(() => { isSyncingRef.current = false; }, 400);
-      } else if (drift > 0.25) {
-        el.playbackRate = 1.05;
-      } else if (drift < -0.25) {
-        el.playbackRate = 0.95;
-      } else if (absDrift <= 0.12) {
+      } else {
         if (el.playbackRate !== 1.0) {
           el.playbackRate = 1.0;
         }

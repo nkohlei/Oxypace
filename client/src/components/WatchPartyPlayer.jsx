@@ -305,6 +305,7 @@ const WatchPartyPlayer = () => {
     const [volumeOpen, setVolumeOpen] = useState(false);
     const [dimensions, setDimensions] = useState({ width: null, height: null });
     const isResizingRef = useRef(false);
+    const isUserActionCooldownRef = useRef(0);
 
     // Switch Android audio routing to media mode for rich, full-fidelity stereo sound while video plays
     useEffect(() => {
@@ -377,6 +378,9 @@ const WatchPartyPlayer = () => {
         if (videoRef.current) {
             videoRef.current.volume = volume;
             videoRef.current.muted = localMuted;
+            videoRef.current.preservesPitch = true;
+            if ('webkitPreservesPitch' in videoRef.current) videoRef.current.webkitPreservesPitch = true;
+            if ('mozPreservesPitch' in videoRef.current) videoRef.current.mozPreservesPitch = true;
         }
         localStorage.setItem('watchPartyVolume', volume.toString());
         localStorage.setItem('watchPartyMuted', localMuted.toString());
@@ -557,7 +561,7 @@ const WatchPartyPlayer = () => {
                 dashPlayerRef.current = null;
             }
         };
-    }, [watchParty?.url, reconnectCount, useProxy, isStream, watchParty?.isPlaying]);
+    }, [watchParty?.url, reconnectCount, useProxy, isStream, isLive]);
 
     // Standard Video Polling (only for non-live files)
     useEffect(() => {
@@ -699,9 +703,15 @@ const WatchPartyPlayer = () => {
         if (e) e.stopPropagation();
         const video = videoRef.current;
         if (!video) return;
+        
+        // 1.5s cooldown lock to prevent sync loop from overriding user click
+        isUserActionCooldownRef.current = Date.now() + 1500;
+        
         if (watchParty?.isPlaying) {
+            video.pause();
             sendWatchPause(video.currentTime);
         } else {
+            video.play().catch(err => console.warn('[WatchParty] Play click error:', err));
             sendWatchPlay(video.currentTime);
         }
     };
@@ -764,6 +774,9 @@ const WatchPartyPlayer = () => {
         const alignNativeVideo = (isStateTrigger = false) => {
             if (!video || !watchParty) return;
 
+            // If user recently interacted with Play/Pause button, respect their action and do not override
+            if (Date.now() < isUserActionCooldownRef.current) return;
+
             const serverNow = getServerNow();
             const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
             const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
@@ -775,7 +788,6 @@ const WatchPartyPlayer = () => {
             // 1. Play / Pause State Synchronization
             if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
-                // Yeni play geçişi → guard aktif et
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
@@ -792,8 +804,6 @@ const WatchPartyPlayer = () => {
             }
 
             // 2. When Paused: Keep exactly aligned
-            // Threshold 0.5s: pause esnasında kullanıcılar arası 0.5s’den fazla fark tolere etme.
-            // Önceki 2.0s threshold çok genişti — bu fark play sonrası görünür desync'e yol açıyordu.
             if (!watchParty.isPlaying) {
                 video.playbackRate = 1.0;
                 if (absDrift > 0.5) {
@@ -805,23 +815,15 @@ const WatchPartyPlayer = () => {
                 return;
             }
 
-            // 3. When Playing: Seamless drift correction without jumping forward on resume.
-            // During play transition guard period (first 2.5s), only use playbackRate correction.
-            // Only hard seek if drift is huge (> 4.0s) OR guard period has ended.
-            if (absDrift > 4.0 && !playTransitionGuardActive) {
+            // 3. When Playing: Strictly lock playbackRate to 1.0 to eliminate any audio pitch drift/warping.
+            // Only perform a clean seek if drift is severe (> 3.5s).
+            if (absDrift > 3.5 && !playTransitionGuardActive) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 video.currentTime = targetTime;
                 video.playbackRate = 1.0;
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
-            } else if (drift > 0.4) {
-                // Slightly behind master clock -> speed up imperceptibly
-                video.playbackRate = 1.05;
-            } else if (drift < -0.4) {
-                // Slightly ahead of master clock -> slow down imperceptibly
-                video.playbackRate = 0.95;
-            } else if (absDrift <= 0.2) {
-                // In sync -> normal playback speed
+            } else {
                 if (video.playbackRate !== 1.0) {
                     video.playbackRate = 1.0;
                 }
@@ -915,7 +917,7 @@ const WatchPartyPlayer = () => {
                     controls={false}
                     playsInline
                     webkit-playsinline="true"
-                    autoPlay
+                    autoPlay={false}
                     muted={localMuted}
                     onTimeUpdate={onTimeUpdate}
                     onDurationChange={onDurationChange}
