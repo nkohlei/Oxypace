@@ -177,14 +177,20 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
   });
 
   try {
-    return await runCurl(false);
-  } catch (directErr) {
-    try {
-      return await runCurl(true);
-    } catch (torErr) {
-      throw torErr;
+    const directBuf = await runCurl(false);
+    if (directBuf && directBuf.length > 0 && !isBlockedOrChallenge(directBuf.toString('utf8', 0, 500))) {
+      return directBuf;
     }
-  }
+  } catch (directErr) {}
+
+  try {
+    const torBuf = await runCurl(true);
+    if (torBuf && torBuf.length > 0 && !isBlockedOrChallenge(torBuf.toString('utf8', 0, 500))) {
+      return torBuf;
+    }
+  } catch (torErr) {}
+
+  return null;
 }
 
 const router = express.Router();
