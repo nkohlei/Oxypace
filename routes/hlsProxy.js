@@ -103,7 +103,19 @@ function isBlockedOrChallenge(text) {
 
 // Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
 async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
-  // 1. Direct curl execution
+  // 1. For HDFilmCehennemi, direct curl gets 403 on Oracle Cloud datacenter IP.
+  // Use Python TLS Impersonator first (Chrome 124 TLS fingerprint).
+  if (url.includes('hdfilmcehennemi')) {
+    try {
+      const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || 'https://www.hdfilmcehennemi.nl/';
+      const tlsHtml = await fetchWithTlsImpersonator(url, ref);
+      if (!isBlockedOrChallenge(tlsHtml)) {
+        return tlsHtml;
+      }
+    } catch (e) {}
+  }
+
+  // 2. Direct curl execution
   try {
     const args = [
       '-s',
@@ -120,7 +132,7 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
     }
   } catch (e) {}
 
-  // 2. Try via Tor SOCKS5 if active (port 9050 on Linux server)
+  // 3. Try via Tor SOCKS5 if active (port 9050 on Linux server)
   try {
     const argsTor = [
       '-s',
@@ -138,7 +150,7 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
     }
   } catch (e) {}
 
-  // 3. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
+  // 4. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
   try {
     const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || '';
     const tlsHtml = await fetchWithTlsImpersonator(url, ref);
@@ -663,6 +675,13 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
   if (fastResolve) {
     try {
       const fastResult = await fastResolve(trimmedUrl, { timeout: Math.min(fetchTimeout, 15000) });
+      if (fastResult && fastResult.isTakedown) {
+        return res.status(451).json({
+          success: false,
+          error: fastResult.error || 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.',
+          code: 'LEGAL_TAKEDOWN',
+        });
+      }
       if (
         fastResult &&
         fastResult.streamUrl &&
@@ -943,17 +962,16 @@ async function searchFullHDFilm(query) {
  * HDFilmCehennemi doğrudan arama (Önce Doğrudan Curl Ajax, sonra DuckDuckGo/ScraperAPI fallback)
  */
 async function searchHDFilmCehennemi(query) {
-  // 1. Doğrudan Curl Ajax API (JSON, afiş ve tam başlıklarla 200ms)
+  // 1. Python TLS Impersonator on Ajax API (direct JSON, posters and titles in ~1s)
   try {
     const targetUrl = `https://www.hdfilmcehennemi.nl/search/?q=${encodeURIComponent(query)}`;
-    let raw = await fetchWithCurl(targetUrl, [
-      'Referer: https://www.hdfilmcehennemi.nl/',
-      'x-requested-with: fetch',
-      'Accept: application/json, text/plain, */*'
-    ], 5);
-
+    let raw = await fetchWithTlsImpersonator(targetUrl, 'https://www.hdfilmcehennemi.nl/');
     if (!raw || !raw.startsWith('{')) {
-      raw = await fetchWithTlsImpersonator(targetUrl, 'https://www.hdfilmcehennemi.nl/');
+      raw = await fetchWithCurl(targetUrl, [
+        'Referer: https://www.hdfilmcehennemi.nl/',
+        'x-requested-with: fetch',
+        'Accept: application/json, text/plain, */*'
+      ], 6);
     }
 
     const json = JSON.parse(raw);
@@ -965,12 +983,20 @@ async function searchHDFilmCehennemi(query) {
         const posterMatch = itemHtml.match(/src="([^"]+)"/);
         if (urlMatch && urlMatch[1]) {
           const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
+          let finalUrl = urlMatch[1].trim();
+          if (!finalUrl.startsWith('http')) {
+            finalUrl = `https://www.hdfilmcehennemi.nl${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
+          }
+          let finalPoster = posterMatch ? posterMatch[1].trim() : null;
+          if (finalPoster && !finalPoster.startsWith('http')) {
+            finalPoster = `https://www.hdfilmcehennemi.nl${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
+          }
           results.push({
             provider: 'HDFilmCehennemi',
             providerKey: 'hdfilmcehennemi',
             title: decodeHtmlEntities(rawTitle),
-            url: urlMatch[1],
-            poster: posterMatch ? posterMatch[1] : null,
+            url: finalUrl,
+            poster: finalPoster,
           });
         }
       }

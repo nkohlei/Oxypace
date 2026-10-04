@@ -261,7 +261,7 @@ function unpackJs(packedJs) {
   try {
     let cursor = 0;
     while (cursor < packedJs.length) {
-      const evalIdx = packedJs.indexOf('eval(function(p,a,c,k,e,', cursor);
+      const evalIdx = packedJs.indexOf('eval(function(p,a,c,k,e', cursor);
       if (evalIdx === -1) break;
 
       let depth = 1;
@@ -291,6 +291,47 @@ function unpackJs(packedJs) {
     // ignore
   }
   return output;
+}
+
+/**
+ * Executes unpacked JavaScript in an isolated VM sandbox to extract stream variables
+ * e.g. Rapidrame / rplayer: sources: [{file: rle}] where rle is computed by an unpacked function
+ */
+function extractStreamFromUnpackedJs(unpackedJs, outerHtml = '') {
+  if (!unpackedJs || typeof unpackedJs !== 'string') return null;
+  try {
+    const sandbox = {
+      atob: (s) => Buffer.from(s, 'base64').toString('binary'),
+      btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
+      String,
+      Math,
+      Array,
+      parseInt,
+      parseFloat,
+      window: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(unpackedJs, sandbox, { timeout: 2000 });
+
+    const targetVarMatch = outerHtml.match(/sources\s*:\s*\[\s*\{\s*file\s*:\s*([a-zA-Z0-9_$]+)/);
+    if (targetVarMatch && targetVarMatch[1]) {
+      const varName = targetVarMatch[1];
+      const val = sandbox[varName];
+      if (typeof val === 'string' && val.startsWith('http') && (val.includes('.m3u8') || val.includes('.mp4') || val.includes('master'))) {
+        return val;
+      }
+    }
+
+    for (const key of Object.keys(sandbox)) {
+      const val = sandbox[key];
+      if (typeof val === 'string' && val.startsWith('http') && (val.includes('.m3u8') || val.includes('.mp4') || val.includes('master'))) {
+        return val;
+      }
+    }
+  } catch (e) {
+    logger.debug(`[FastScraper] extractStreamFromUnpackedJs error: ${e.message}`);
+  }
+  return null;
 }
 
 const { execFile } = require('child_process');
@@ -403,7 +444,7 @@ function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
     referer = 'https://playmix.uno/';
   } else if (streamUrl.includes('imagecdn') || streamUrl.includes('rapidvid') || embedUrl.includes('rapidvid') || targetUrl.includes('fullhdfilmizlesene')) {
     referer = 'https://rapidvid.org/';
-  } else if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi')) {
+  } else if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || streamUrl.includes('rapidrame') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi') || embedUrl.includes('rapidrame') || embedUrl.includes('rplayer')) {
     referer = 'https://hdfilmcehennemi.mobi/';
   } else if (streamUrl.includes('closeload') || embedUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
     referer = 'https://closeload.filmmakinesi.to/';
@@ -573,6 +614,22 @@ async function fastResolve(targetUrl, options = {}) {
     const html = await fetchHtmlWithBypass(targetUrl, mainReferer);
     if (!html) return null;
 
+    // HTTP 451 DMCA / Legal Takedown check
+    if (html.includes('451 - Yasal Nedenlerle') || html.includes('Yasal Nedenlerle Erisime Kapali')) {
+      logger.warn(`[FastScraper] ⛔ Telif takedown: ${targetUrl}`);
+      return { error: 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.', isTakedown: true };
+    }
+
+    // Series index auto-navigation (/dizi/)
+    if (targetUrl.includes('/dizi/') && !targetUrl.includes('/bolum-')) {
+      const epMatch = html.match(/href="([^"]*\/dizi\/[^"]+\/sezon-\d+\/bolum-\d+\/?)"/i) || html.match(/href="([^"]*(?:sezon-1\/bolum-1|bolum-1)[^"]*)"/i);
+      if (epMatch && epMatch[1]) {
+        let epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], targetUrl).href;
+        logger.info(`[FastScraper] 📺 Dizi sayfası tespit edildi, 1. bölüme yönlendiriliyor: ${epUrl}`);
+        return await fastResolve(epUrl, options);
+      }
+    }
+
     // Extract Title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
@@ -721,10 +778,15 @@ async function fastResolve(targetUrl, options = {}) {
 
       // Check unpacked JS / Packer eval
       let searchCorpus = embedHtml;
-      if (embedHtml.includes('eval(function(p,a,c,k,e,') || embedHtml.includes('eval(function(')) {
+      if (embedHtml.includes('eval(function(p,a,c,k,e') || embedHtml.includes('eval(function(')) {
         const unpacked = unpackJs(embedHtml);
         if (unpacked) {
           searchCorpus += '\n' + unpacked;
+          const vmStream = extractStreamFromUnpackedJs(unpacked, embedHtml);
+          if (vmStream) {
+            logger.info(`[FastScraper] 🔓 Unpacked VM stream bulundu: ${vmStream}`);
+            return buildResult(vmStream, embedUrl, targetUrl, vmStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+          }
           const unpackedDecoded = decodeDynamicObfuscation(unpacked) || decodeDcFunction(unpacked);
           if (unpackedDecoded) {
             return buildResult(unpackedDecoded, embedUrl, targetUrl, 'm3u8', pageTitle, searchCorpus);
