@@ -745,7 +745,12 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
     const data = await microResponse.json().catch(() => null);
 
     if (!microResponse.ok || !data || (!data.success && data.status !== 'success')) {
-      const errMsg = data?.error?.message || data?.error || 'Stream çözülemedi veya kaynak bulunamadı.';
+      let errMsg = data?.error?.message || data?.error || 'Stream çözülemedi veya kaynak bulunamadı.';
+      if (trimmedUrl.includes('fullhdfilmizlesene')) {
+        errMsg = 'Bu film FullHDFilmİzlesene üzerinde harici bot korumalı bir oynatıcıda (VidMoxy vb.) barındırılıyor. Lütfen arama listesindeki HDFilmCehennemi alternatifini seçerek açmayı deneyin.';
+      } else if (trimmedUrl.includes('filmmakinesi')) {
+        errMsg = 'FilmMakinesi şu anda Cloudflare veri merkezi engeli (Error 1005) uyguladığı için yayın çözümlenemedi. Lütfen HDFilmCehennemi veya FullHDFilmİzlesene alternatifini seçin.';
+      }
       return res.status(microResponse.status || 500).json({
         success: false,
         error: errMsg,
