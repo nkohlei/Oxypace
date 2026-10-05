@@ -27,15 +27,75 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.3.6)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.3.8)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.3.8',
+        versionCode: 238,
+        releaseDate: '5 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Tam Güvenlik Kalkanı, R8/ProGuard Obfuscation & Kriptografik İmza Doğrulaması',
+        summary: 'APK tersine mühendislik ve modifiye risklerine karşı 5 katmanlı sıfır-risk güvenlik kalkanı kuruldu: R8/ProGuard kod karıştırma, bellek içi SHA-256 APK imza doğrulaması, anti-debugging koruması, sistem-seviyesi SSL Pinning/Network Security Config ve adb yedekleme engeli.',
+        category: 'security',
+        apkSize: '48.5 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'R8 / ProGuard tam kod gizleme ve kaynak küçültme (minifyEnabled + shrinkResources)',
+            'SHA-256 Keystore imza doğrulaması (yetkisiz yeniden paketleme anında kendini kapatır)',
+            'Anti-debugging & Dinamik analiz tespiti (tersine mühendisliği bloke eder)',
+            'Network Security Config & SSL Pinning (Man-in-the-Middle ve proxy dinlemeleri engellendi)',
+            'android:allowBackup="false" (ADB ve yerel veri çıkarma zafiyetleri kapatıldı)'
+        ],
+        changes: [
+            { type: 'security', text: 'MainActivity.java içerisinde SHA-256 release keystore parmak izi ile dinamik imza doğrulaması devreye alındı.' },
+            { type: 'security', text: 'network_security_config.xml entegre edilerek kullanıcı sertifikaları reddedildi, sadece sistem CA yetkilileri geçerli kılındı.' },
+            { type: 'security', text: 'R8 derleyicisi aktif edilerek tüm Java sınıfları, değişkenleri ve metotları karıştırıldı (obfuscation).' },
+            { type: 'security', text: 'Hata ayıklayıcı (Debugger) tespiti eklendi; Frida/GDB bağlantılarında işlem anında sonlandırılır.' },
+            { type: 'build', text: 'Android Release APK derlemesi tamamlandı, dist-mobile optimize edildi.' }
+        ],
+        affectedFiles: [
+            'android/app/src/main/java/com/oxypace/app/MainActivity.java',
+            'android/app/src/main/res/xml/network_security_config.xml',
+            'android/app/src/main/AndroidManifest.xml',
+            'android/app/build.gradle',
+            'android/app/proguard-rules.pro'
+        ]
+    },
+    {
+        version: 'v2.3.7',
+        versionCode: 237,
+        releaseDate: '2 Ekim 2026',
+        commitHash: '0c76594',
+        status: 'stable',
+        title: 'Ekran Çakışma Önleme, Evrensel Safe-Area & Watch Party HLS Vol2',
+        summary: 'Farklı telefon ekranlarında oluşan durum çubuğu ve 3 tuşlu gezinme çubuğu çakışmaları kökten çözüldü, tüm cihaz modelleri için dinamik insets motoru kuruldu.',
+        category: 'fix',
+        apkSize: '49.8 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Evrensel Safe-Area Motoru (Gesture & 3-Button navigasyon dinamik uyumu)',
+            'Watch Party HLS yayın çözücü Vol2 kararlılığı',
+            'Sanal klavye açılışlarında zıplama ve taşmaların önlenmesi'
+        ],
+        changes: [
+            { type: 'ui', text: 'Tüm Android ekranlarında durum çubuğu ve gezinme çubuğu çakışmaları sıfırlandı.' },
+            { type: 'fix', text: 'Watch Party HLS oynatıcı tamponlama ve senkronizasyon optimizasyonu yapıldı.' }
+        ],
+        affectedFiles: [
+            'android/app/src/main/java/com/oxypace/app/MainActivity.java',
+            'client/src/App.css'
+        ]
+    },
     {
         version: 'v2.3.6',
         versionCode: 236,
         releaseDate: '26 Eylül 2026',
         commitHash: '5653b00',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        status: 'stable',
         title: '5 Aşamalı Onboarding Akışı, Özgün Şablon Ekranları & Steve Jobs Karşılama Geçidi',
         summary: 'Mobil uygulamaya tam donanımlı 5 aşamalı interaktif tanıtım akışı entegre edildi. Tanıtımda sahte/sentetik kodlar yerine birebir gerçek platform ekran görüntüleri yerleştirildi ve Steve Jobs imzalı karşılama geçidiyle tamamlandı.',
         category: 'feature',
@@ -452,7 +512,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.3.6': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.3.8': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
@@ -563,7 +623,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             </div>
                             <h1 className="mvh-title">Mobil Sürüm Günlüğü & Changelog</h1>
                             <p className="mvh-subtitle">
-                                Oxypace Android istemcisinin v2.0.0'dan v2.3.6'ya kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
+                                Oxypace Android istemcisinin v2.0.0'dan v2.3.8'e kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
                             </p>
                         </div>
                     </div>
@@ -616,7 +676,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <div className="mvh-metric-val-row">
                                 <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="mvh-metric-desc">v2.0.0 → v2.3.6 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.3.8 Gelişim Süreci</span>
                         </div>
                     </div>
 

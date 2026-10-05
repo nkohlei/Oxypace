@@ -4,7 +4,7 @@ import './Footer.css';
 
 // Vite injects the version from package.json via define in vite.config
 // Fallback to the current release tag if env var is unavailable.
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.1.6';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '2.3.8';
 
 const Footer = () => {
     return (

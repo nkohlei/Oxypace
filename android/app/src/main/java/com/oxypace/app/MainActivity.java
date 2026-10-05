@@ -678,8 +678,81 @@ public class MainActivity extends BridgeActivity {
         return activityInstance;
     }
 
+    private static final String EXPECTED_RELEASE_SHA256 = "2867299FC89AB8ADC85D0F803AA32A85BFE7CE03FBD8DD28BF808E5BEAA45A17";
+
+    private void verifyAppIntegrity() {
+        try {
+            boolean isDebuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+            if (isDebuggable) {
+                // Allow debug builds for local testing
+                return;
+            }
+
+            // 1. Anti-Debugger check
+            if (android.os.Debug.isDebuggerConnected() || android.os.Debug.waitingForDebugger()) {
+                android.util.Log.e("Security", "Debugger detected. Terminating process.");
+                finishAffinity();
+                System.exit(0);
+                return;
+            }
+
+            // 2. Cryptographic signature verification check
+            String currentCertSha256 = null;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                android.content.pm.PackageInfo packageInfo = getPackageManager().getPackageInfo(
+                    getPackageName(),
+                    android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                );
+                if (packageInfo != null && packageInfo.signingInfo != null) {
+                    android.content.pm.Signature[] signatures = packageInfo.signingInfo.getApkContentsSigners();
+                    if (signatures != null && signatures.length > 0) {
+                        currentCertSha256 = computeSha256(signatures[0].toByteArray());
+                    }
+                }
+            } else {
+                @SuppressWarnings("deprecation")
+                android.content.pm.PackageInfo packageInfo = getPackageManager().getPackageInfo(
+                    getPackageName(),
+                    android.content.pm.PackageManager.GET_SIGNATURES
+                );
+                if (packageInfo != null && packageInfo.signatures != null && packageInfo.signatures.length > 0) {
+                    currentCertSha256 = computeSha256(packageInfo.signatures[0].toByteArray());
+                }
+            }
+
+            if (currentCertSha256 == null || !currentCertSha256.equalsIgnoreCase(EXPECTED_RELEASE_SHA256)) {
+                android.util.Log.e("Security", "Tamper detected: Invalid signature! Terminating process.");
+                finishAffinity();
+                System.exit(0);
+                return;
+            }
+        } catch (Throwable e) {
+            android.util.Log.e("Security", "Integrity check failed: " + e.getMessage());
+            boolean isDebuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+            if (!isDebuggable) {
+                finishAffinity();
+                System.exit(0);
+            }
+        }
+    }
+
+    private static String computeSha256(byte[] data) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02X", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        verifyAppIntegrity();
         activityInstance = this;
         registerPlugin(DownloaderPlugin.class);
         registerPlugin(CallManager.class);

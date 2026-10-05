@@ -382,11 +382,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.7',
-        versionCode: 237,
+        latestVersion: '2.3.8',
+        versionCode: 238,
+        minSupportedVersionCode: 238,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.7: Watch Party HLS yayın çözücü Vol2, dinamik çentik/durum çubuğu uyumluluğu, tüm telefon ekranlarında kusursuz safe-area ve arayüz hizalaması, klavye ve gezinme çubuğu çakışma gidermeleri.',
+        changelog: 'Oxypace 2.3.8: Sıfır-Risk Güvenlik Kalkanı, R8/ProGuard kod karıştırma, imza doğrulaması ve anti-tamper koruması, sıkılaştırılmış SSL/Ağ güvenliği ve performans optimizasyonları.',
     });
 });
 
