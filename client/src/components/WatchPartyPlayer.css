@@ -74,6 +74,187 @@
     color: #ffffff;
 }
 
+.watch-party-header-track-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    z-index: 120;
+}
+
+.native-unified-btn-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.native-unified-icon-slash {
+    opacity: 0.5;
+    font-size: 10px;
+    margin: 0 1px;
+}
+
+/* Minimalist Floating Track & Subtitle Popover */
+.native-unified-dropdown-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 240px;
+    max-width: 90vw;
+    background: rgba(18, 18, 24, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: popoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popoverFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.native-unified-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.native-unified-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px;
+    border-radius: 8px;
+}
+
+.native-unified-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.native-unified-tab-btn:hover {
+    color: #ffffff;
+}
+
+.native-unified-tab-btn.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.native-unified-single-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+}
+
+.native-unified-popover-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.native-unified-popover-close-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.native-unified-popover-body {
+    display: flex;
+    flex-direction: column;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.native-track-dropdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.native-track-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 11.5px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.native-track-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.native-track-dropdown-item.active {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+.native-track-item-check {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #38bdf8;
+}
+
+.native-track-item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .watch-party-player-container {
     position: relative;
     flex: 1;
