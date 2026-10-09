@@ -397,6 +397,27 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
     return (
         <div className="vc-container glass-container">
+            {isMobile && (
+                <button 
+                    className="vc-mobile-back-btn" 
+                    onClick={onBack || (() => window.history.back())} 
+                    title="Geri"
+                    aria-label="Geri"
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        width="24"
+                        height="24"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                </button>
+            )}
             <div className="vc-top-right-controls">
                 {isAdmin && (
                     <button className={`vc-ctrl-btn ${isListenersOpen ? 'active' : ''}`} onClick={() => { setIsListenersOpen(!isListenersOpen); setIsChatOpen(false); setIsSettingsOpen(false); }}>

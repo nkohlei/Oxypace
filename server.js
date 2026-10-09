@@ -382,12 +382,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.8',
-        versionCode: 238,
-        minSupportedVersionCode: 238,
+        latestVersion: '2.3.9',
+        versionCode: 239,
+        minSupportedVersionCode: 239,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.8: Sıfır-Risk Güvenlik Kalkanı, R8/ProGuard kod karıştırma, imza doğrulaması ve anti-tamper koruması, sıkılaştırılmış SSL/Ağ güvenliği ve performans optimizasyonları.',
+        changelog: 'Oxypace 2.3.9: Canlı sesli/görüntülü odalarda bildirim ve durum çubuğu güvenli alan (safe-area) hizalaması, çentik ve durum çubuğu çakışma önlemleri, Watch Party mobil oynatıcı ve ses geliştirmeleri.',
     });
 });
 

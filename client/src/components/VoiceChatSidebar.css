@@ -1,10 +1,10 @@
 /* VoiceChatSidebar.css */
 .voice-chat-sidebar {
     position: absolute;
-    right: 16px;
-    top: 24px;
+    right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px));
+    top: max(20px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
     /* Removed header spacing, so stretch to top */
-    bottom: 96px;
+    bottom: max(96px, calc(var(--safe-area-bottom, var(--system-nav-height, env(safe-area-inset-bottom, 0px))) + 80px));
     /* Keep space for bottom controls */
     width: 300px;
     display: flex;
@@ -221,4 +221,16 @@
 .chat-bubble-wrapper.remote .chat-link {
     color: #60a5fa;
     /* Light blue for the dark remote background */
+}
+
+@media (max-width: 768px) {
+    .voice-chat-sidebar {
+        top: max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
+        right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
+        left: max(12px, calc(env(safe-area-inset-left, 0px) + 12px));
+        width: auto;
+        bottom: max(96px, calc(var(--safe-area-bottom, var(--system-nav-height, env(safe-area-inset-bottom, 0px))) + 80px));
+        max-width: 100%;
+        border-radius: 20px;
+    }
 }

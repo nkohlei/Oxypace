@@ -27,15 +27,49 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.3.8)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.3.9)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.3.9',
+        versionCode: 239,
+        releaseDate: '9 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Canlı Oda Safe-Area Hizalaması, Çentik & Bildirim Çubuğu Koruması, Watch Party Yenilikleri',
+        summary: 'Canlı sesli/görüntülü odalarda (VoiceChannel ve ConferenceChannel) yer alan üst gezinme ve kontrol butonlarının telefonların bildirim ve durum çubukları (status bar / notch / camera cutout) ile çakışması kökten giderildi. Ek olarak Watch Party mobil oynatıcı ses seviyesi kaydırıcısı, çift dokunuşla sarma ve altyazı geliştirmeleri dahil edildi.',
+        category: 'fix',
+        apkSize: '78.3 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Canlı oda butonları için dinamik durum çubuğu güvenli alanı (Safe-Area Top)',
+            'Geri dönüş butonu ve oda içi kontroller için çentik & kamera deliği koruması',
+            'Seminer ve konferans salonlarına mobil geri dönüş butonu entegrasyonu',
+            'Oda içi sohbet çekmecesi (VoiceChatSidebar) için mobil tam ekran safe-area uyumu',
+            'Watch Party mobil oynatıcı ses kaydırıcı butonu, çift dokunma ile hızlı sarma ve altyazı optimizasyonları'
+        ],
+        changes: [
+            { type: 'ui', text: 'VoiceChannel ve ConferenceChannel bileşenlerinde üst kontroller (vc-mobile-back-btn, vc-top-right-controls, vc-lobby-back-btn) max(16px, calc(safe-area-top + 14px)) formülüyle cihaz durum çubuğunun güvenli altına taşındı.' },
+            { type: 'feat', text: 'ConferenceChannel mobil görünümüne hızlı çıkış sağlayan yuvarlak minimalist geri butonu eklendi.' },
+            { type: 'ui', text: 'VoiceChatSidebar mobil ekranlarda ekranın tüm genişliğine ve safe-area sınırlarına uygun dinamik çekmeceye dönüştürüldü.' },
+            { type: 'feat', text: 'Watch Party mobil oynatıcısına buton içi ses seviyesi kaydırıcısı ve çift tıklama ile 10 sn ileri/geri sarma entegre edildi.' },
+            { type: 'build', text: 'Android Release APK derlemesi yapıldı, dist-mobile optimize edildi.' }
+        ],
+        affectedFiles: [
+            'client/src/components/VoiceChannel.css',
+            'client/src/components/VoiceChatSidebar.css',
+            'client/src/components/ConferenceChannel.jsx',
+            'client/src/components/WatchPartyPlayer.jsx',
+            'client/src/components/WatchPartyPlayer.css'
+        ]
+    },
     {
         version: 'v2.3.8',
         versionCode: 238,
         releaseDate: '5 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '20a08aa',
+        status: 'stable',
         title: 'Tam Güvenlik Kalkanı, R8/ProGuard Obfuscation & Kriptografik İmza Doğrulaması',
         summary: 'APK tersine mühendislik ve modifiye risklerine karşı 5 katmanlı sıfır-risk güvenlik kalkanı kuruldu: R8/ProGuard kod karıştırma, bellek içi SHA-256 APK imza doğrulaması, anti-debugging koruması, sistem-seviyesi SSL Pinning/Network Security Config ve adb yedekleme engeli.',
         category: 'security',
@@ -512,7 +546,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.3.8': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.3.9': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
@@ -623,7 +657,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             </div>
                             <h1 className="mvh-title">Mobil Sürüm Günlüğü & Changelog</h1>
                             <p className="mvh-subtitle">
-                                Oxypace Android istemcisinin v2.0.0'dan v2.3.8'e kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
+                                Oxypace Android istemcisinin v2.0.0'dan v2.3.9'a kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
                             </p>
                         </div>
                     </div>
@@ -676,7 +710,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <div className="mvh-metric-val-row">
                                 <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="mvh-metric-desc">v2.0.0 → v2.3.8 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.3.9 Gelişim Süreci</span>
                         </div>
                     </div>
 

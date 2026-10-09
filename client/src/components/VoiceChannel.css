@@ -552,8 +552,8 @@ html.has-3button-nav .vc-controls {
 /* Top Right controls */
 .vc-top-right-controls {
     position: absolute;
-    top: 24px;
-    right: 24px;
+    top: max(20px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
+    right: max(20px, calc(env(safe-area-inset-right, 0px) + 20px));
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -649,18 +649,18 @@ html.has-3button-nav .vc-controls {
         background: transparent !important;
     }
 
-    /* Back button style positioned at the very top left */
+    /* Back button style positioned at the very top left with safe-area spacing */
     .vc-mobile-back-btn {
         position: absolute !important;
-        top: 15px !important;
-        left: 15px !important;
-        width: 36px !important;
-        height: 36px !important;
+        top: max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) !important;
+        left: max(16px, calc(env(safe-area-inset-left, 0px) + 16px)) !important;
+        width: 38px !important;
+        height: 38px !important;
         border-radius: 50% !important;
-        background: rgba(0, 0, 0, 0.4) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         color: white !important;
         display: flex !important;
         align-items: center !important;
@@ -668,19 +668,22 @@ html.has-3button-nav .vc-controls {
         z-index: 1200 !important;
         cursor: pointer !important;
         pointer-events: auto !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+        -webkit-tap-highlight-color: transparent !important;
     }
 
     [data-theme='light'] .vc-mobile-back-btn {
-        background: rgba(255, 255, 255, 0.8) !important;
-        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        background: rgba(255, 255, 255, 0.85) !important;
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
         color: var(--text-primary, #0d0e12) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
     }
 
-    /* Position top-right controls at the very top right, stacked vertically */
+    /* Position top-right controls with status bar / notch safe-area offset */
     .vc-top-right-controls {
         position: absolute !important;
-        top: 15px !important;
-        right: 15px !important;
+        top: max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) !important;
+        right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)) !important;
         display: flex !important;
         flex-direction: column !important;
         gap: 8px !important;
@@ -1371,8 +1374,8 @@ html.has-3button-nav .vc-controls {
 
 .vc-lobby-back-btn {
     position: absolute;
-    top: 16px;
-    left: 16px;
+    top: max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
+    left: max(16px, calc(env(safe-area-inset-left, 0px) + 16px));
     width: 38px;
     height: 38px;
     border-radius: 50%;
