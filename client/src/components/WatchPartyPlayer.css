@@ -732,8 +732,252 @@
     text-overflow: ellipsis;
 }
 
+/* Track Button Groups */
+.native-desktop-track-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.native-mobile-track-button {
+    display: none;
+    position: relative;
+}
+
+/* Minimalist Unified Mobile Modal */
+.native-unified-track-modal {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: 0;
+    width: 250px;
+    max-width: calc(100vw - 32px);
+    background: rgba(14, 14, 18, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.88), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    z-index: 1000;
+    animation: trackDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: bottom right;
+}
+
+.native-unified-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 8px;
+}
+
+.native-unified-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    flex: 1;
+}
+
+.native-unified-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 6px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.native-unified-tab-btn.active {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.native-unified-single-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #ffffff;
+    padding-left: 4px;
+}
+
+.native-unified-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.native-unified-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+.native-unified-modal-body {
+    padding: 4px 0;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+/* YouTube Mobile Style Double Tap Seek Overlay */
+.yt-double-tap-feedback {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 48%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 50;
+    overflow: hidden;
+    animation: ytFadeOut 0.65s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+.yt-double-tap-feedback.left {
+    left: 0;
+    border-top-right-radius: 50% 100%;
+    border-bottom-right-radius: 50% 100%;
+    background: radial-gradient(circle at left center, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 60%, transparent 85%);
+}
+
+.yt-double-tap-feedback.right {
+    right: 0;
+    border-top-left-radius: 50% 100%;
+    border-bottom-left-radius: 50% 100%;
+    background: radial-gradient(circle at right center, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 60%, transparent 85%);
+}
+
+.yt-double-tap-ripple {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.85);
+    animation: ytRipplePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.yt-double-tap-arrows {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #ffffff;
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.8));
+}
+
+.yt-double-tap-arrows span {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@keyframes ytRipplePop {
+    0% {
+        opacity: 0;
+        transform: scale(0.65);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes ytFadeOut {
+    0% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 0.9;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
+    /* Hide 10s skip buttons on mobile view */
+    .native-skip-btn.desktop-only {
+        display: none !important;
+    }
+
+    /* Hide desktop separate track buttons on mobile */
+    .native-desktop-track-buttons {
+        display: none !important;
+    }
+
+    /* Show single mobile unified track button */
+    .native-mobile-track-button {
+        display: flex !important;
+        align-items: center;
+    }
+
+    /* Optimize bottom row spacing for mobile screens */
+    .native-left-controls {
+        gap: 8px !important;
+    }
+
+    .native-right-controls {
+        gap: 8px !important;
+    }
+
+    .native-time-display {
+        font-size: 11px !important;
+        gap: 3px !important;
+    }
+
+    .native-volume-inline-slider {
+        width: 55px;
+    }
+
+    .native-volume-inline-slider.collapsed {
+        width: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    .native-unified-btn {
+        height: 28px;
+        padding: 0 8px;
+        gap: 5px;
+        font-size: 11px;
+    }
+
     .native-track-btn {
         height: 25px;
         padding: 0 6px;
@@ -743,7 +987,7 @@
 
     .native-track-text-label {
         font-size: 10px;
-        max-width: 46px;
+        max-width: 70px;
         overflow: hidden;
         text-overflow: ellipsis;
     }

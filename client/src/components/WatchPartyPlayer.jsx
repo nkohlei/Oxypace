@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
-import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw, Search, Film, Headphones, Languages, Check, Upload } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw, Search, Film, Headphones, Languages, Check, Upload, SlidersHorizontal } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -277,11 +277,19 @@ const WatchPartyPlayer = () => {
     const [isFilmSearchModalOpen, setIsFilmSearchModalOpen] = useState(false);
     const controlsTimeoutRef = useRef(null);
 
-    const toggleControls = (e) => {
-        if (e && e.target && (e.target.closest('button') || e.target.closest('input') || e.target.closest('.watch-party-header') || e.target.closest('.watch-party-volume-container-modern') || e.target.closest('.watch-party-fullscreen-container-modern'))) {
-            return;
-        }
-        setControlsVisible(prev => !prev);
+    // Double-tap Seek & Single-tap Controls Toggle System (YouTube Mobile Standard)
+    const [doubleTapFeedback, setDoubleTapFeedback] = useState({ visible: false, side: null, key: 0 });
+    const lastTapTimeRef = useRef(0);
+    const lastTapXRef = useRef(0);
+    const singleTapTimerRef = useRef(null);
+    const doubleTapFeedbackTimerRef = useRef(null);
+
+    const triggerDoubleTapFeedback = (side) => {
+        if (doubleTapFeedbackTimerRef.current) clearTimeout(doubleTapFeedbackTimerRef.current);
+        setDoubleTapFeedback({ visible: true, side, key: Date.now() });
+        doubleTapFeedbackTimerRef.current = setTimeout(() => {
+            setDoubleTapFeedback({ visible: false, side: null, key: 0 });
+        }, 650);
     };
 
     const triggerControlsTemporary = () => {
@@ -303,6 +311,27 @@ const WatchPartyPlayer = () => {
         return saved !== null ? parseFloat(saved) : 0.5; // Default to 50% (0.5)
     });
     const [volumeOpen, setVolumeOpen] = useState(false);
+    const volumeContainerRef = useRef(null);
+    const volumeTimeoutRef = useRef(null);
+
+    const scheduleVolumeAutoClose = () => {
+        if (volumeTimeoutRef.current) clearTimeout(volumeTimeoutRef.current);
+        volumeTimeoutRef.current = setTimeout(() => {
+            setVolumeOpen(false);
+        }, 3200);
+    };
+
+    const toggleVolume = (e) => {
+        if (e) e.stopPropagation();
+        if (!volumeOpen) {
+            setVolumeOpen(true);
+            scheduleVolumeAutoClose();
+        } else {
+            setLocalMuted(!localMuted);
+            scheduleVolumeAutoClose();
+        }
+    };
+
     const [dimensions, setDimensions] = useState({ width: null, height: null });
     const isResizingRef = useRef(false);
     const isUserActionCooldownRef = useRef(0);
@@ -322,6 +351,19 @@ const WatchPartyPlayer = () => {
     const audioMenuRef = useRef(null);
     const subMenuRef = useRef(null);
     const customFileInputRef = useRef(null);
+
+    // Mobile Unified Audio & Subtitle Modal
+    const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
+    const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
+    const unifiedMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (audioTracks.length > 0 && unifiedTab !== 'subs') {
+            setUnifiedTab('audio');
+        } else if (audioTracks.length === 0) {
+            setUnifiedTab('subs');
+        }
+    }, [audioTracks.length]);
 
     const allProviderSubtitles = (watchParty?.subtitles && watchParty.subtitles.length > 0)
         ? watchParty.subtitles
@@ -353,7 +395,7 @@ const WatchPartyPlayer = () => {
         return () => { isCancelled = true; };
     }, [watchParty?.url]);
 
-    // Close audio and subtitle menus when clicking outside
+    // Close audio, subtitle, unified menus and volume when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (audioMenuRef.current && !audioMenuRef.current.contains(e.target)) {
@@ -362,9 +404,24 @@ const WatchPartyPlayer = () => {
             if (subMenuRef.current && !subMenuRef.current.contains(e.target)) {
                 setIsSubMenuOpen(false);
             }
+            if (unifiedMenuRef.current && !unifiedMenuRef.current.contains(e.target)) {
+                setIsUnifiedMenuOpen(false);
+            }
+            if (volumeContainerRef.current && !volumeContainerRef.current.contains(e.target)) {
+                setVolumeOpen(false);
+            }
         };
         document.addEventListener('pointerdown', handleClickOutside);
         return () => document.removeEventListener('pointerdown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+            if (volumeTimeoutRef.current) clearTimeout(volumeTimeoutRef.current);
+            if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+            if (doubleTapFeedbackTimerRef.current) clearTimeout(doubleTapFeedbackTimerRef.current);
+        };
     }, []);
 
     // Switch Android audio routing to media mode for rich, full-fidelity stereo sound while video plays
@@ -1112,6 +1169,79 @@ const WatchPartyPlayer = () => {
         setTimeout(() => { isSyncingRef.current = false; }, 400);
     };
 
+    const handlePlayerSurfaceClick = (e) => {
+        if (
+            e.target.closest('button') || 
+            e.target.closest('input') || 
+            e.target.closest('.native-controls-ui') || 
+            e.target.closest('.watch-party-header') || 
+            e.target.closest('.watch-party-volume-container-modern') || 
+            e.target.closest('.watch-party-fullscreen-container-modern') ||
+            e.target.closest('.native-track-dropdown') ||
+            e.target.closest('.native-unified-track-modal')
+        ) {
+            return;
+        }
+
+        const now = Date.now();
+        const rect = containerRef.current?.getBoundingClientRect() || e.currentTarget.getBoundingClientRect();
+        const tapX = e.clientX - rect.left;
+        const width = rect.width;
+        const timeDiff = now - lastTapTimeRef.current;
+        const isDoubleTap = timeDiff < 320 && Math.abs(tapX - lastTapXRef.current) < 120;
+
+        if (isDoubleTap) {
+            // Cancel single tap toggle so controls DO NOT flicker
+            if (singleTapTimerRef.current) {
+                clearTimeout(singleTapTimerRef.current);
+                singleTapTimerRef.current = null;
+            }
+            lastTapTimeRef.current = 0;
+
+            // Double Tap Action: Seek 10 seconds (YouTube Style)
+            if (tapX < width * 0.45) {
+                handleSeekOffset(-10);
+                triggerDoubleTapFeedback('left');
+            } else if (tapX > width * 0.55) {
+                handleSeekOffset(10);
+                triggerDoubleTapFeedback('right');
+            } else {
+                if (tapX < width * 0.5) {
+                    handleSeekOffset(-10);
+                    triggerDoubleTapFeedback('left');
+                } else {
+                    handleSeekOffset(10);
+                    triggerDoubleTapFeedback('right');
+                }
+            }
+
+            if (controlsVisible) {
+                if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+                controlsTimeoutRef.current = setTimeout(() => {
+                    setControlsVisible(false);
+                }, 4000);
+            }
+        } else {
+            lastTapTimeRef.current = now;
+            lastTapXRef.current = tapX;
+
+            if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+            singleTapTimerRef.current = setTimeout(() => {
+                setControlsVisible(prev => {
+                    const nextState = !prev;
+                    if (nextState) {
+                        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+                        controlsTimeoutRef.current = setTimeout(() => {
+                            setControlsVisible(false);
+                        }, 4000);
+                    }
+                    return nextState;
+                });
+                singleTapTimerRef.current = null;
+            }, 260);
+        }
+    };
+
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     // Native Video Synchronization Engine (Master Clock Smart Pacer)
@@ -1261,10 +1391,32 @@ const WatchPartyPlayer = () => {
             </div>
             <div 
                 className="watch-party-player-container"
-                onClick={toggleControls}
+                onClick={handlePlayerSurfaceClick}
                 onMouseMove={triggerControlsTemporary}
-                onTouchStart={triggerControlsTemporary}
             >
+                {/* YouTube Style Double Tap Seek Overlay */}
+                {doubleTapFeedback.visible && (
+                    <div 
+                        key={doubleTapFeedback.key}
+                        className={`yt-double-tap-feedback ${doubleTapFeedback.side}`}
+                    >
+                        <div className="yt-double-tap-ripple">
+                            <div className="yt-double-tap-arrows">
+                                {doubleTapFeedback.side === 'left' ? (
+                                    <>
+                                        <RotateCcw size={28} />
+                                        <span>-10 sn</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <RotateCw size={28} />
+                                        <span>+10 sn</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
                 <video
                     ref={videoRef}
@@ -1357,20 +1509,21 @@ const WatchPartyPlayer = () => {
                                             <span>{formatTime(duration)}</span>
                                         </div>
 
-                                        <button className="native-skip-btn" onClick={() => handleSeekOffset(-10)} title="10 Saniye Geri">
+                                        <button className="native-skip-btn desktop-only" onClick={() => handleSeekOffset(-10)} title="10 Saniye Geri">
                                             <RotateCcw size={16} />
                                         </button>
-                                        <button className="native-skip-btn" onClick={() => handleSeekOffset(10)} title="10 Saniye İleri">
+                                        <button className="native-skip-btn desktop-only" onClick={() => handleSeekOffset(10)} title="10 Saniye İleri">
                                             <RotateCw size={16} />
                                         </button>
 
-                                        <div className="native-volume-inline" onMouseLeave={() => setVolumeOpen(false)}>
+                                        <div 
+                                            className="native-volume-inline" 
+                                            ref={volumeContainerRef}
+                                            onMouseLeave={() => setVolumeOpen(false)}
+                                        >
                                             <button 
                                                 className="native-volume-inline-btn" 
-                                                onClick={() => {
-                                                    setLocalMuted(!localMuted);
-                                                    setVolumeOpen(true);
-                                                }}
+                                                onClick={toggleVolume}
                                                 onMouseEnter={() => setVolumeOpen(true)}
                                                 title={localMuted ? "Sesi Aç" : "Sesi Kapat"}
                                             >
@@ -1387,167 +1540,355 @@ const WatchPartyPlayer = () => {
                                                     setVolume(val);
                                                     if (val > 0) setLocalMuted(false);
                                                     else setLocalMuted(true);
+                                                    scheduleVolumeAutoClose();
                                                 }}
+                                                onTouchStart={() => scheduleVolumeAutoClose()}
                                                 className={`native-volume-inline-slider ${!volumeOpen ? 'collapsed' : ''}`}
                                             />
                                         </div>
                                     </div>
 
                                     <div className="native-right-controls">
-                                        {/* Ses Seçeneği (Dublaj / Orijinal) */}
-                                        {audioTracks.length > 0 && (
-                                            <div className="native-track-container" ref={audioMenuRef}>
+                                        {/* Desktop Separate Track Buttons */}
+                                        <div className="native-desktop-track-buttons">
+                                            {/* Ses Seçeneği (Dublaj / Orijinal) */}
+                                            {audioTracks.length > 0 && (
+                                                <div className="native-track-container" ref={audioMenuRef}>
+                                                    <button
+                                                        className={`native-track-btn ${isAudioMenuOpen ? 'active' : ''}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setIsAudioMenuOpen(prev => !prev);
+                                                            setIsSubMenuOpen(false);
+                                                        }}
+                                                        title="Ses / Dublaj Seçeneği"
+                                                        aria-label="Ses / Dublaj Seçeneği"
+                                                    >
+                                                        <Headphones size={15} />
+                                                        <span className="native-track-text-label">
+                                                            {formatAudioLabel(audioTracks[currentAudioTrack] || audioTracks[0], currentAudioTrack, true)}
+                                                        </span>
+                                                    </button>
+                                                    {isAudioMenuOpen && (
+                                                        <div className="native-track-dropdown" onClick={(e) => e.stopPropagation()}>
+                                                            <div className="native-track-dropdown-header">
+                                                                <Headphones size={13} />
+                                                                <span>Ses Parçası</span>
+                                                            </div>
+                                                            <div className="native-track-dropdown-list">
+                                                                {audioTracks.map((track, i) => {
+                                                                    const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                                    return (
+                                                                        <button
+                                                                            key={`aud-${track.id}-${i}`}
+                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                            onClick={() => handleSelectAudioTrack(track.id !== undefined ? track.id : i)}
+                                                                        >
+                                                                            <span className="native-track-item-check">
+                                                                                {isSelected ? <Check size={14} /> : null}
+                                                                            </span>
+                                                                            <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Altyazı Seçeneği (Her Zaman Görünür) */}
+                                            <div className="native-track-container" ref={subMenuRef}>
                                                 <button
-                                                    className={`native-track-btn ${isAudioMenuOpen ? 'active' : ''}`}
+                                                    className={`native-track-btn ${isSubMenuOpen ? 'active' : ''} ${activeSubtitleId !== 'off' ? 'has-active' : ''}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setIsAudioMenuOpen(prev => !prev);
-                                                        setIsSubMenuOpen(false);
+                                                        setIsSubMenuOpen(prev => !prev);
+                                                        setIsAudioMenuOpen(false);
                                                     }}
-                                                    title="Ses / Dublaj Seçeneği"
-                                                    aria-label="Ses / Dublaj Seçeneği"
+                                                    title="Altyazı Seçenekleri"
+                                                    aria-label="Altyazı Seçenekleri"
                                                 >
-                                                    <Headphones size={15} />
+                                                    <Languages size={15} />
                                                     <span className="native-track-text-label">
-                                                        {formatAudioLabel(audioTracks[currentAudioTrack] || audioTracks[0], currentAudioTrack, true)}
+                                                        {getActiveSubtitleButtonLabel()}
                                                     </span>
                                                 </button>
-                                                {isAudioMenuOpen && (
+                                                {isSubMenuOpen && (
                                                     <div className="native-track-dropdown" onClick={(e) => e.stopPropagation()}>
                                                         <div className="native-track-dropdown-header">
-                                                            <Headphones size={13} />
-                                                            <span>Ses Parçası</span>
+                                                            <Languages size={13} />
+                                                            <span>Altyazı Seçenekleri</span>
                                                         </div>
                                                         <div className="native-track-dropdown-list">
-                                                            {audioTracks.map((track, i) => {
-                                                                const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                            <button
+                                                                className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
+                                                                onClick={() => handleSelectSubtitleTrack({ type: 'off' })}
+                                                            >
+                                                                <span className="native-track-item-check">
+                                                                    {activeSubtitleId === 'off' ? <Check size={14} /> : null}
+                                                                </span>
+                                                                <span className="native-track-item-name">Kapalı</span>
+                                                            </button>
+
+                                                            {/* Hls.js İçerisindeki Altyazı Parçaları */}
+                                                            {hlsSubtitleTracks.map((track, i) => {
+                                                                const isSelected = activeSubtitleId === `hls-${track.id}`;
                                                                 return (
                                                                     <button
-                                                                        key={`aud-${track.id}-${i}`}
+                                                                        key={`hls-sub-${track.id}-${i}`}
                                                                         className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                        onClick={() => handleSelectAudioTrack(track.id !== undefined ? track.id : i)}
+                                                                        onClick={() => handleSelectSubtitleTrack({ type: 'hls', id: track.id })}
                                                                     >
                                                                         <span className="native-track-item-check">
                                                                             {isSelected ? <Check size={14} /> : null}
                                                                         </span>
-                                                                        <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                                        <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
                                                                     </button>
                                                                 );
                                                             })}
+
+                                                            {/* Yayın Sağlayıcısından Gelen WebVTT Altyazılar */}
+                                                            {allProviderSubtitles.map((sub, i) => {
+                                                                const isSelected = activeSubtitleId === `ext-${i}`;
+                                                                return (
+                                                                    <button
+                                                                        key={`ext-sub-${i}`}
+                                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => handleSelectSubtitleTrack({ type: 'ext', index: i })}
+                                                                    >
+                                                                        <span className="native-track-item-check">
+                                                                            {isSelected ? <Check size={14} /> : null}
+                                                                        </span>
+                                                                        <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+
+                                                            {/* Kullanıcının Yüklediği Özel Altyazılar */}
+                                                            {customSubtitles.map((sub, i) => {
+                                                                const isSelected = activeSubtitleId === `custom-${i}`;
+                                                                return (
+                                                                    <button
+                                                                        key={`custom-sub-${i}`}
+                                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => handleSelectSubtitleTrack({ type: 'custom', index: i })}
+                                                                    >
+                                                                        <span className="native-track-item-check">
+                                                                            {isSelected ? <Check size={14} /> : null}
+                                                                        </span>
+                                                                        <span className="native-track-item-name">{sub.label}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+
+                                                            {/* Otomatik Altyazı Yoksa Bilgilendirme */}
+                                                            {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
+                                                                <div className="native-track-empty-note">
+                                                                    Bu kaynakta otomatik altyazı yok
+                                                                </div>
+                                                            )}
                                                         </div>
+
+                                                        <div className="native-track-divider" />
+                                                        <label 
+                                                            className="native-track-upload-btn" 
+                                                            title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
+                                                        >
+                                                            <Upload size={13} />
+                                                            <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
+                                                            <input
+                                                                ref={customFileInputRef}
+                                                                type="file"
+                                                                accept=".srt,.vtt"
+                                                                style={{ display: 'none' }}
+                                                                onChange={handleCustomSubtitleUpload}
+                                                            />
+                                                        </label>
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
+                                        </div>
 
-                                        {/* Altyazı Seçeneği (Her Zaman Görünür) */}
-                                        <div className="native-track-container" ref={subMenuRef}>
+                                        {/* Mobile Unified Minimalist Track Button & Modal */}
+                                        <div className="native-mobile-track-button" ref={unifiedMenuRef}>
                                             <button
-                                                className={`native-track-btn ${isSubMenuOpen ? 'active' : ''} ${activeSubtitleId !== 'off' ? 'has-active' : ''}`}
+                                                className={`native-track-btn native-unified-btn ${isUnifiedMenuOpen ? 'active' : ''} ${activeSubtitleId !== 'off' ? 'has-active' : ''}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setIsSubMenuOpen(prev => !prev);
+                                                    setIsUnifiedMenuOpen(prev => !prev);
                                                     setIsAudioMenuOpen(false);
+                                                    setIsSubMenuOpen(false);
                                                 }}
-                                                title="Altyazı Seçenekleri"
-                                                aria-label="Altyazı Seçenekleri"
+                                                title="Ses ve Altyazı Seçenekleri"
+                                                aria-label="Ses ve Altyazı Seçenekleri"
                                             >
-                                                <Languages size={15} />
+                                                <SlidersHorizontal size={15} />
                                                 <span className="native-track-text-label">
-                                                    {getActiveSubtitleButtonLabel()}
+                                                    {audioTracks.length > 0 ? 'Ses / Altyazı' : 'Altyazı'}
                                                 </span>
                                             </button>
-                                            {isSubMenuOpen && (
-                                                <div className="native-track-dropdown" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="native-track-dropdown-header">
-                                                        <Languages size={13} />
-                                                        <span>Altyazı Seçenekleri</span>
-                                                    </div>
-                                                    <div className="native-track-dropdown-list">
-                                                        <button
-                                                            className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
-                                                            onClick={() => handleSelectSubtitleTrack({ type: 'off' })}
+
+                                            {isUnifiedMenuOpen && (
+                                                <div className="native-unified-track-modal" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="native-unified-modal-header">
+                                                        {audioTracks.length > 0 ? (
+                                                            <div className="native-unified-tabs">
+                                                                <button
+                                                                    type="button"
+                                                                    className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
+                                                                    onClick={() => setUnifiedTab('audio')}
+                                                                >
+                                                                    <Headphones size={13} />
+                                                                    <span>Ses / Dublaj</span>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
+                                                                    onClick={() => setUnifiedTab('subs')}
+                                                                >
+                                                                    <Languages size={13} />
+                                                                    <span>Altyazı</span>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="native-unified-single-title">
+                                                                <Languages size={14} />
+                                                                <span>Altyazı Seçenekleri</span>
+                                                            </div>
+                                                        )}
+                                                        <button 
+                                                            type="button"
+                                                            className="native-unified-close-btn"
+                                                            onClick={() => setIsUnifiedMenuOpen(false)}
+                                                            aria-label="Kapat"
                                                         >
-                                                            <span className="native-track-item-check">
-                                                                {activeSubtitleId === 'off' ? <Check size={14} /> : null}
-                                                            </span>
-                                                            <span className="native-track-item-name">Kapalı</span>
+                                                            <X size={14} />
                                                         </button>
+                                                    </div>
 
-                                                        {/* Hls.js İçerisindeki Altyazı Parçaları */}
-                                                        {hlsSubtitleTracks.map((track, i) => {
-                                                            const isSelected = activeSubtitleId === `hls-${track.id}`;
-                                                            return (
+                                                    <div className="native-unified-modal-body">
+                                                        {unifiedTab === 'audio' && audioTracks.length > 0 && (
+                                                            <div className="native-track-dropdown-list">
+                                                                {audioTracks.map((track, i) => {
+                                                                    const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                                    return (
+                                                                        <button
+                                                                            key={`m-aud-${track.id}-${i}`}
+                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                            onClick={() => {
+                                                                                handleSelectAudioTrack(track.id !== undefined ? track.id : i);
+                                                                                setIsUnifiedMenuOpen(false);
+                                                                            }}
+                                                                        >
+                                                                            <span className="native-track-item-check">
+                                                                                {isSelected ? <Check size={14} /> : null}
+                                                                            </span>
+                                                                            <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+
+                                                        {(unifiedTab === 'subs' || audioTracks.length === 0) && (
+                                                            <div className="native-track-dropdown-list">
                                                                 <button
-                                                                    key={`hls-sub-${track.id}-${i}`}
-                                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                    onClick={() => handleSelectSubtitleTrack({ type: 'hls', id: track.id })}
+                                                                    className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
+                                                                    onClick={() => {
+                                                                        handleSelectSubtitleTrack({ type: 'off' });
+                                                                        setIsUnifiedMenuOpen(false);
+                                                                    }}
                                                                 >
                                                                     <span className="native-track-item-check">
-                                                                        {isSelected ? <Check size={14} /> : null}
+                                                                        {activeSubtitleId === 'off' ? <Check size={14} /> : null}
                                                                     </span>
-                                                                    <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
+                                                                    <span className="native-track-item-name">Kapalı</span>
                                                                 </button>
-                                                            );
-                                                        })}
 
-                                                        {/* Yayın Sağlayıcısından Gelen WebVTT Altyazılar */}
-                                                        {allProviderSubtitles.map((sub, i) => {
-                                                            const isSelected = activeSubtitleId === `ext-${i}`;
-                                                            return (
-                                                                <button
-                                                                    key={`ext-sub-${i}`}
-                                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                    onClick={() => handleSelectSubtitleTrack({ type: 'ext', index: i })}
+                                                                {hlsSubtitleTracks.map((track, i) => {
+                                                                    const isSelected = activeSubtitleId === `hls-${track.id}`;
+                                                                    return (
+                                                                        <button
+                                                                            key={`m-hls-sub-${track.id}-${i}`}
+                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                            onClick={() => {
+                                                                                handleSelectSubtitleTrack({ type: 'hls', id: track.id });
+                                                                                setIsUnifiedMenuOpen(false);
+                                                                            }}
+                                                                        >
+                                                                            <span className="native-track-item-check">
+                                                                                {isSelected ? <Check size={14} /> : null}
+                                                                            </span>
+                                                                            <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+
+                                                                {allProviderSubtitles.map((sub, i) => {
+                                                                    const isSelected = activeSubtitleId === `ext-${i}`;
+                                                                    return (
+                                                                        <button
+                                                                            key={`m-ext-sub-${i}`}
+                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                            onClick={() => {
+                                                                                handleSelectSubtitleTrack({ type: 'ext', index: i });
+                                                                                setIsUnifiedMenuOpen(false);
+                                                                            }}
+                                                                        >
+                                                                            <span className="native-track-item-check">
+                                                                                {isSelected ? <Check size={14} /> : null}
+                                                                            </span>
+                                                                            <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+
+                                                                {customSubtitles.map((sub, i) => {
+                                                                    const isSelected = activeSubtitleId === `custom-${i}`;
+                                                                    return (
+                                                                        <button
+                                                                            key={`m-custom-sub-${i}`}
+                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                            onClick={() => {
+                                                                                handleSelectSubtitleTrack({ type: 'custom', index: i });
+                                                                                setIsUnifiedMenuOpen(false);
+                                                                            }}
+                                                                        >
+                                                                            <span className="native-track-item-check">
+                                                                                {isSelected ? <Check size={14} /> : null}
+                                                                            </span>
+                                                                            <span className="native-track-item-name">{sub.label}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+
+                                                                {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
+                                                                    <div className="native-track-empty-note">
+                                                                        Bu kaynakta otomatik altyazı yok
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="native-track-divider" />
+                                                                <label 
+                                                                    className="native-track-upload-btn" 
+                                                                    title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
                                                                 >
-                                                                    <span className="native-track-item-check">
-                                                                        {isSelected ? <Check size={14} /> : null}
-                                                                    </span>
-                                                                    <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
-                                                                </button>
-                                                            );
-                                                        })}
-
-                                                        {/* Kullanıcının Yüklediği Özel Altyazılar */}
-                                                        {customSubtitles.map((sub, i) => {
-                                                            const isSelected = activeSubtitleId === `custom-${i}`;
-                                                            return (
-                                                                <button
-                                                                    key={`custom-sub-${i}`}
-                                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                    onClick={() => handleSelectSubtitleTrack({ type: 'custom', index: i })}
-                                                                >
-                                                                    <span className="native-track-item-check">
-                                                                        {isSelected ? <Check size={14} /> : null}
-                                                                    </span>
-                                                                    <span className="native-track-item-name">{sub.label}</span>
-                                                                </button>
-                                                            );
-                                                        })}
-
-                                                        {/* Otomatik Altyazı Yoksa Bilgilendirme */}
-                                                        {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
-                                                            <div className="native-track-empty-note">
-                                                                Bu kaynakta otomatik altyazı yok
+                                                                    <Upload size={13} />
+                                                                    <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
+                                                                    <input
+                                                                        type="file"
+                                                                        accept=".srt,.vtt"
+                                                                        style={{ display: 'none' }}
+                                                                        onChange={(e) => {
+                                                                            handleCustomSubtitleUpload(e);
+                                                                            setIsUnifiedMenuOpen(false);
+                                                                        }}
+                                                                    />
+                                                                </label>
                                                             </div>
                                                         )}
                                                     </div>
-
-                                                    <div className="native-track-divider" />
-                                                    <label 
-                                                        className="native-track-upload-btn" 
-                                                        title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
-                                                    >
-                                                        <Upload size={13} />
-                                                        <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
-                                                        <input
-                                                            ref={customFileInputRef}
-                                                            type="file"
-                                                            accept=".srt,.vtt"
-                                                            style={{ display: 'none' }}
-                                                            onChange={handleCustomSubtitleUpload}
-                                                        />
-                                                    </label>
                                                 </div>
                                             )}
                                         </div>
