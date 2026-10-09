@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
-import { X, Volume2, VolumeX, Maximize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Minimize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -385,6 +385,29 @@ const WatchPartyPlayer = () => {
     const audioMenuRef = useRef(null);
     const subMenuRef = useRef(null);
     const customFileInputRef = useRef(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const fsEl = document.fullscreenElement || 
+                         document.webkitFullscreenElement || 
+                         document.mozFullScreenElement || 
+                         document.msFullscreenElement;
+            setIsFullscreen(!!fsEl && (fsEl === containerRef.current || containerRef.current?.contains(fsEl)));
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+        };
+    }, []);
 
     // Mobile Unified Audio & Subtitle Modal
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
@@ -867,12 +890,27 @@ const WatchPartyPlayer = () => {
     const toggleFullscreen = () => {
         const container = containerRef.current;
         if (!container) return;
-        if (!document.fullscreenElement) {
-            container.requestFullscreen().catch(err => {
-                console.error("Error attempting to enable fullscreen:", err);
-            });
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        if (!fsEl) {
+            const req = container.requestFullscreen || container.webkitRequestFullscreen || container.mozRequestFullScreen || container.msRequestFullscreen;
+            if (req) {
+                req.call(container).then(() => {
+                    if (window.screen?.orientation?.lock) {
+                        window.screen.orientation.lock('landscape').catch(() => {});
+                    }
+                }).catch(err => {
+                    console.error("Error attempting to enable fullscreen:", err);
+                });
+            }
         } else {
-            document.exitFullscreen();
+            const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+            if (exit) {
+                exit.call(document).then(() => {
+                    if (window.screen?.orientation?.unlock) {
+                        window.screen.orientation.unlock();
+                    }
+                }).catch(() => {});
+            }
         }
     };
 
@@ -1459,15 +1497,16 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div className="watch-party-player-wrapper" ref={containerRef}>
-            <div 
-                className="watch-party-header"
-                style={{
-                    opacity: controlsVisible ? 1 : 0,
-                    pointerEvents: controlsVisible ? 'auto' : 'none',
-                    transition: 'opacity 0.25s ease'
-                }}
-            >
+        <div className={`watch-party-player-wrapper ${isFullscreen ? 'is-fullscreen' : ''}`} ref={containerRef}>
+            {!isFullscreen && (
+                <div 
+                    className="watch-party-header"
+                    style={{
+                        opacity: controlsVisible ? 1 : 0,
+                        pointerEvents: controlsVisible ? 'auto' : 'none',
+                        transition: 'opacity 0.25s ease'
+                    }}
+                >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="watch-party-title">{(isLive || isStream) ? (isNativeVOD ? 'Birlikte Video İzle' : 'Birlikte Canlı Yayın İzle') : 'Birlikte İzle (URL)'}</span>
                     {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
@@ -1681,6 +1720,7 @@ const WatchPartyPlayer = () => {
                     </button>
                 </div>
             </div>
+            )}
             <div 
                 className="watch-party-player-container"
                 onClick={handlePlayerSurfaceClick}
@@ -1845,10 +1885,10 @@ const WatchPartyPlayer = () => {
                                         <button 
                                             className="native-fullscreen-btn" 
                                             onClick={toggleFullscreen}
-                                            title="Tam Ekran"
+                                            title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
                                             aria-label="Tam Ekran Yap / Çık"
                                         >
-                                            <Maximize size={18} />
+                                            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                                         </button>
                                     </div>
                                 </div>
@@ -1923,9 +1963,9 @@ const WatchPartyPlayer = () => {
                                     <button 
                                         className="watch-party-fullscreen-btn-modern"
                                         onClick={toggleFullscreen}
-                                        title="Tam Ekran"
+                                        title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
                                     >
-                                        <Maximize size={18} />
+                                        {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                                     </button>
                                 </div>
                             </>

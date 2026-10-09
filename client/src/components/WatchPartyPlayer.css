@@ -23,6 +23,47 @@
     flex-shrink: 0;
 }
 
+/* Fullscreen mode: completely hide the top header bar and maximize view */
+.watch-party-player-wrapper:fullscreen,
+.watch-party-player-wrapper:-webkit-full-screen,
+.watch-party-player-wrapper.is-fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.watch-party-player-wrapper:fullscreen .watch-party-player-container,
+.watch-party-player-wrapper:-webkit-full-screen .watch-party-player-container,
+.watch-party-player-wrapper.is-fullscreen .watch-party-player-container {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+}
+
+.watch-party-player-wrapper:fullscreen .watch-party-header,
+.watch-party-player-wrapper:-webkit-full-screen .watch-party-header,
+.watch-party-player-wrapper.is-fullscreen .watch-party-header,
+:fullscreen .watch-party-header,
+:-webkit-full-screen .watch-party-header {
+    display: none !important;
+}
+
+/* Also hide top bar in mobile landscape orientation (horizontal rotation) */
+@media (orientation: landscape) and (max-height: 550px) {
+    .watch-party-player-wrapper .watch-party-header,
+    .watch-party-player-wrapper.is-fullscreen .watch-party-header,
+    .watch-party-player-wrapper:fullscreen .watch-party-header {
+        display: none !important;
+    }
+}
+
 .watch-party-title {
     font-size: 14px;
     font-weight: 600;
