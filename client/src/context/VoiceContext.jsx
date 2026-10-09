@@ -200,6 +200,7 @@ export const VoiceProvider = ({ children }) => {
 
     // Watch Party State
     const [watchParty, setWatchParty] = useState(null);
+    const [watchStopVoteStatus, setWatchStopVoteStatus] = useState(null);
 
     // Switch native Android audio routing:
     // When a Watch Party video is playing, switch to media mode (MODE_NORMAL + speakerphone) for full-fidelity rich sound.
@@ -970,6 +971,7 @@ export const VoiceProvider = ({ children }) => {
         setChatMessages([]);
         setPinnedParticipant(null);
         setWatchParty(null);
+        setWatchStopVoteStatus(null);
         setIsChatOpen(false);
         setUnreadCount(0);
         setErrorMsg('');
@@ -1226,6 +1228,15 @@ export const VoiceProvider = ({ children }) => {
 
         const handleWatchStop = () => {
             setWatchParty(null);
+            setWatchStopVoteStatus(null);
+        };
+
+        const handleWatchStopVoteStatus = (status) => {
+            setWatchStopVoteStatus(status);
+        };
+
+        const handleWatchStopVoteClear = () => {
+            setWatchStopVoteStatus(null);
         };
 
         socket.on('voice:participants', handleParticipants);
@@ -1237,6 +1248,8 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:watch-pause', handleWatchPause);
         socket.on('voice:watch-seek', handleWatchSeek);
         socket.on('voice:watch-stop', handleWatchStop);
+        socket.on('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
+        socket.on('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
 
         return () => {
             socket.off('voice:participants', handleParticipants);
@@ -1248,6 +1261,8 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:watch-pause', handleWatchPause);
             socket.off('voice:watch-seek', handleWatchSeek);
             socket.off('voice:watch-stop', handleWatchStop);
+            socket.off('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
+            socket.off('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
         };
     }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList, safeEmit]);
 
@@ -2146,8 +2161,23 @@ export const VoiceProvider = ({ children }) => {
 
     const sendWatchSeek = useCallback((time) => {
         if (activeRoom) {
-            // Same rationale: server broadcast (io.to) handles state update for sender too.
             safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
+            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: Date.now(), serverTimestamp: Date.now() } : null);
+        }
+    }, [activeRoom, safeEmit]);
+
+    const sendWatchStopVote = useCallback(() => {
+        if (activeRoom) {
+            const uId = user?._id?.toString();
+            const uName = user?.profile?.displayName || user?.username || 'Kullanıcı';
+            safeEmit('voice:watch-stop-vote', { roomName: activeRoom.roomName, userId: uId, username: uName });
+        }
+    }, [activeRoom, safeEmit, user]);
+
+    const sendWatchStopCancel = useCallback(() => {
+        if (activeRoom) {
+            safeEmit('voice:watch-stop-cancel', { roomName: activeRoom.roomName });
+            setWatchStopVoteStatus(null);
         }
     }, [activeRoom, safeEmit]);
 
@@ -2288,6 +2318,9 @@ export const VoiceProvider = ({ children }) => {
         watchParty,
         startWatchParty,
         stopWatchParty,
+        watchStopVoteStatus,
+        sendWatchStopVote,
+        sendWatchStopCancel,
         sendWatchPlay,
         sendWatchPause,
         sendWatchSeek,

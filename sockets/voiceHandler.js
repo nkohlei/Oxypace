@@ -379,14 +379,72 @@ export const initializeVoiceHandler = (io) => {
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
                 roomData.watchParty = null;
+                roomData.watchStopVotes = null;
             }
             if (pubClient) {
                 try {
                     await pubClient.del(`voiceroom:${roomName}:watchparty`);
                 } catch (err) {}
             }
+            io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
             io.to(`voice:${roomName}`).emit('voice:watch-stop');
             console.log(`[Watch Party] stopped in ${roomName}`);
+        });
+
+        socket.on('voice:watch-stop-vote', async ({ roomName, userId, username }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (!roomData || !roomData.watchParty) return;
+
+            const uId = String(userId || socket._voiceUserId || socket.id);
+            const uName = username || socket.username || 'Bir kullanıcı';
+
+            if (!roomData.watchStopVotes) {
+                roomData.watchStopVotes = new Set();
+            }
+            roomData.watchStopVotes.add(uId);
+
+            let participantCount = roomData.participants ? roomData.participants.size : 1;
+            if (pubClient) {
+                try {
+                    const keys = await pubClient.hkeys(`voiceroom:${roomName}`);
+                    if (keys && keys.length > 0) {
+                        participantCount = keys.length;
+                    }
+                } catch (e) {}
+            }
+
+            const requiredVotes = Math.max(1, Math.min(2, participantCount));
+            console.log(`[Watch Party] Stop vote in ${roomName} from ${uName} (${roomData.watchStopVotes.size}/${requiredVotes})`);
+
+            if (roomData.watchStopVotes.size >= requiredVotes) {
+                roomData.watchParty = null;
+                roomData.watchStopVotes = null;
+                if (pubClient) {
+                    try {
+                        await pubClient.del(`voiceroom:${roomName}:watchparty`);
+                    } catch (err) {}
+                }
+                io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
+                io.to(`voice:${roomName}`).emit('voice:watch-stop');
+                console.log(`[Watch Party] stopped in ${roomName} after consensus`);
+            } else {
+                io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-status', {
+                    voters: Array.from(roomData.watchStopVotes),
+                    required: requiredVotes,
+                    requesterName: uName,
+                    requesterId: uId
+                });
+            }
+        });
+
+        socket.on('voice:watch-stop-cancel', ({ roomName }) => {
+            if (!roomName) return;
+            const roomData = voiceRooms.get(roomName);
+            if (roomData) {
+                roomData.watchStopVotes = null;
+            }
+            io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
         });
 
         // ─── High-Precision NTP Clock Sync ───
