@@ -274,6 +274,11 @@ const WatchPartyPlayer = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [isNativePlaying, setIsNativePlaying] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
+    const controlsVisibleRef = useRef(true);
+    useEffect(() => {
+        controlsVisibleRef.current = controlsVisible;
+    }, [controlsVisible]);
+
     const [isFilmSearchModalOpen, setIsFilmSearchModalOpen] = useState(false);
     const controlsTimeoutRef = useRef(null);
 
@@ -296,8 +301,17 @@ const WatchPartyPlayer = () => {
         setControlsVisible(true);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         controlsTimeoutRef.current = setTimeout(() => {
-            setControlsVisible(false);
-        }, 4000);
+            if (!isUnifiedMenuOpenRef.current) {
+                setControlsVisible(false);
+            }
+        }, 4500);
+    };
+
+    const handleContainerMouseMove = (e) => {
+        if (e && (e.pointerType === 'touch' || (window.matchMedia && !window.matchMedia('(pointer: fine)').matches))) {
+            return;
+        }
+        triggerControlsTemporary();
     };
 
     const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth <= 768 || !!window.Capacitor?.isNativePlatform?.());
@@ -356,6 +370,10 @@ const WatchPartyPlayer = () => {
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
     const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
     const unifiedMenuRef = useRef(null);
+    const isUnifiedMenuOpenRef = useRef(false);
+    useEffect(() => {
+        isUnifiedMenuOpenRef.current = isUnifiedMenuOpen;
+    }, [isUnifiedMenuOpen]);
 
     useEffect(() => {
         if (audioTracks.length > 0 && unifiedTab !== 'subs') {
@@ -1178,7 +1196,8 @@ const WatchPartyPlayer = () => {
             e.target.closest('.watch-party-volume-container-modern') || 
             e.target.closest('.watch-party-fullscreen-container-modern') ||
             e.target.closest('.native-track-dropdown') ||
-            e.target.closest('.native-unified-track-modal')
+            e.target.closest('.native-unified-track-modal') ||
+            e.target.closest('.native-unified-track-backdrop')
         ) {
             return;
         }
@@ -1215,11 +1234,13 @@ const WatchPartyPlayer = () => {
                 }
             }
 
-            if (controlsVisible) {
+            if (controlsVisibleRef.current) {
                 if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
                 controlsTimeoutRef.current = setTimeout(() => {
-                    setControlsVisible(false);
-                }, 4000);
+                    if (!isUnifiedMenuOpenRef.current) {
+                        setControlsVisible(false);
+                    }
+                }, 4500);
             }
         } else {
             lastTapTimeRef.current = now;
@@ -1227,16 +1248,21 @@ const WatchPartyPlayer = () => {
 
             if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
             singleTapTimerRef.current = setTimeout(() => {
-                setControlsVisible(prev => {
-                    const nextState = !prev;
-                    if (nextState) {
-                        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-                        controlsTimeoutRef.current = setTimeout(() => {
+                const currentlyShown = controlsVisibleRef.current;
+                if (currentlyShown) {
+                    // Tap hides controls immediately
+                    setControlsVisible(false);
+                    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+                } else {
+                    // Tap shows controls and keeps them visible for 4.5 seconds
+                    setControlsVisible(true);
+                    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+                    controlsTimeoutRef.current = setTimeout(() => {
+                        if (!isUnifiedMenuOpenRef.current) {
                             setControlsVisible(false);
-                        }, 4000);
-                    }
-                    return nextState;
-                });
+                        }
+                    }, 4500);
+                }
                 singleTapTimerRef.current = null;
             }, 260);
         }
@@ -1392,7 +1418,7 @@ const WatchPartyPlayer = () => {
             <div 
                 className="watch-party-player-container"
                 onClick={handlePlayerSurfaceClick}
-                onMouseMove={triggerControlsTemporary}
+                onMouseMove={handleContainerMouseMove}
             >
                 {/* YouTube Style Double Tap Seek Overlay */}
                 {doubleTapFeedback.visible && (
@@ -1440,6 +1466,7 @@ const WatchPartyPlayer = () => {
                             label={sub.label || `Altyazı ${idx + 1}`}
                             srcLang={sub.lang || 'tr'}
                             default={false}
+                            crossOrigin="anonymous"
                         />
                     ))}
                     {customSubtitles.map((sub, idx) => (
@@ -1461,6 +1488,187 @@ const WatchPartyPlayer = () => {
                             {activeCueText.split('\n').map((line, i) => (
                                 <span key={i} className="watch-party-sub-line">{line}</span>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Minimalist Unified Mobile Audio & Subtitle Modal - Rendered Directly Over The Video */}
+                {isUnifiedMenuOpen && (
+                    <div 
+                        className="native-unified-track-backdrop" 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsUnifiedMenuOpen(false);
+                        }}
+                    >
+                        <div 
+                            className="native-unified-track-modal" 
+                            ref={unifiedMenuRef} 
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="native-unified-modal-header">
+                                {audioTracks.length > 0 ? (
+                                    <div className="native-unified-tabs">
+                                        <button
+                                            type="button"
+                                            className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
+                                            onClick={() => setUnifiedTab('audio')}
+                                        >
+                                            <Headphones size={13} />
+                                            <span>Ses / Dublaj</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
+                                            onClick={() => setUnifiedTab('subs')}
+                                        >
+                                            <Languages size={13} />
+                                            <span>Altyazı</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="native-unified-single-title">
+                                        <Languages size={15} />
+                                        <span>Altyazı Seçenekleri</span>
+                                    </div>
+                                )}
+                                <button 
+                                    type="button"
+                                    className="native-unified-close-btn"
+                                    onClick={() => setIsUnifiedMenuOpen(false)}
+                                    aria-label="Kapat"
+                                >
+                                    <X size={15} />
+                                </button>
+                            </div>
+
+                            <div className="native-unified-modal-body">
+                                {unifiedTab === 'audio' && audioTracks.length > 0 && (
+                                    <div className="native-track-dropdown-list">
+                                        {audioTracks.map((track, i) => {
+                                            const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                            return (
+                                                <button
+                                                    key={`m-aud-${track.id}-${i}`}
+                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        handleSelectAudioTrack(track.id !== undefined ? track.id : i);
+                                                        setIsUnifiedMenuOpen(false);
+                                                    }}
+                                                >
+                                                    <span className="native-track-item-check">
+                                                        {isSelected ? <Check size={14} /> : null}
+                                                    </span>
+                                                    <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {(unifiedTab === 'subs' || audioTracks.length === 0) && (
+                                    <div className="native-track-dropdown-list">
+                                        <button
+                                            className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
+                                            onClick={() => {
+                                                handleSelectSubtitleTrack({ type: 'off' });
+                                                setIsUnifiedMenuOpen(false);
+                                            }}
+                                        >
+                                            <span className="native-track-item-check">
+                                                {activeSubtitleId === 'off' ? <Check size={14} /> : null}
+                                            </span>
+                                            <span className="native-track-item-name">Kapalı</span>
+                                        </button>
+
+                                        {/* Hls.js İçerisindeki Altyazı Parçaları */}
+                                        {hlsSubtitleTracks.map((track, i) => {
+                                            const isSelected = activeSubtitleId === `hls-${track.id}`;
+                                            return (
+                                                <button
+                                                    key={`m-hls-sub-${track.id}-${i}`}
+                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        handleSelectSubtitleTrack({ type: 'hls', id: track.id });
+                                                        setIsUnifiedMenuOpen(false);
+                                                    }}
+                                                >
+                                                    <span className="native-track-item-check">
+                                                        {isSelected ? <Check size={14} /> : null}
+                                                    </span>
+                                                    <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
+                                                </button>
+                                            );
+                                        })}
+
+                                        {/* Yayın Sağlayıcısından Gelen WebVTT Altyazılar */}
+                                        {allProviderSubtitles.map((sub, i) => {
+                                            const isSelected = activeSubtitleId === `ext-${i}`;
+                                            return (
+                                                <button
+                                                    key={`m-ext-sub-${i}`}
+                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        handleSelectSubtitleTrack({ type: 'ext', index: i });
+                                                        setIsUnifiedMenuOpen(false);
+                                                    }}
+                                                >
+                                                    <span className="native-track-item-check">
+                                                        {isSelected ? <Check size={14} /> : null}
+                                                    </span>
+                                                    <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
+                                                </button>
+                                            );
+                                        })}
+
+                                        {/* Kullanıcının Yüklediği Özel Altyazılar */}
+                                        {customSubtitles.map((sub, i) => {
+                                            const isSelected = activeSubtitleId === `custom-${i}`;
+                                            return (
+                                                <button
+                                                    key={`m-custom-sub-${i}`}
+                                                    className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        handleSelectSubtitleTrack({ type: 'custom', index: i });
+                                                        setIsUnifiedMenuOpen(false);
+                                                    }}
+                                                >
+                                                    <span className="native-track-item-check">
+                                                        {isSelected ? <Check size={14} /> : null}
+                                                    </span>
+                                                    <span className="native-track-item-name">{sub.label}</span>
+                                                </button>
+                                            );
+                                        })}
+
+                                        {/* Otomatik Altyazı Yoksa */}
+                                        {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
+                                            <div className="native-track-empty-note">
+                                                Bu kaynakta otomatik altyazı yok
+                                            </div>
+                                        )}
+
+                                        <div className="native-track-divider" />
+                                        <label 
+                                            className="native-track-upload-btn" 
+                                            title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
+                                        >
+                                            <Upload size={13} />
+                                            <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
+                                            <input
+                                                ref={customFileInputRef}
+                                                type="file"
+                                                accept=".srt,.vtt"
+                                                style={{ display: 'none' }}
+                                                onChange={(e) => {
+                                                    handleCustomSubtitleUpload(e);
+                                                    setIsUnifiedMenuOpen(false);
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1710,8 +1918,8 @@ const WatchPartyPlayer = () => {
                                             </div>
                                         </div>
 
-                                        {/* Mobile Unified Minimalist Track Button & Modal */}
-                                        <div className="native-mobile-track-button" ref={unifiedMenuRef}>
+                                        {/* Mobile Unified Minimalist Track Button */}
+                                        <div className="native-mobile-track-button">
                                             <button
                                                 className={`native-track-btn native-unified-btn ${isUnifiedMenuOpen ? 'active' : ''} ${activeSubtitleId !== 'off' ? 'has-active' : ''}`}
                                                 onClick={(e) => {
@@ -1719,178 +1927,21 @@ const WatchPartyPlayer = () => {
                                                     setIsUnifiedMenuOpen(prev => !prev);
                                                     setIsAudioMenuOpen(false);
                                                     setIsSubMenuOpen(false);
+                                                    triggerControlsTemporary();
                                                 }}
                                                 title="Ses ve Altyazı Seçenekleri"
                                                 aria-label="Ses ve Altyazı Seçenekleri"
                                             >
-                                                <SlidersHorizontal size={15} />
-                                                <span className="native-track-text-label">
-                                                    {audioTracks.length > 0 ? 'Ses / Altyazı' : 'Altyazı'}
-                                                </span>
+                                                {audioTracks.length > 0 ? (
+                                                    <div className="native-unified-btn-icons">
+                                                        <Headphones size={13} />
+                                                        <span className="native-unified-icon-slash">/</span>
+                                                        <Languages size={13} />
+                                                    </div>
+                                                ) : (
+                                                    <Languages size={16} />
+                                                )}
                                             </button>
-
-                                            {isUnifiedMenuOpen && (
-                                                <div className="native-unified-track-modal" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="native-unified-modal-header">
-                                                        {audioTracks.length > 0 ? (
-                                                            <div className="native-unified-tabs">
-                                                                <button
-                                                                    type="button"
-                                                                    className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
-                                                                    onClick={() => setUnifiedTab('audio')}
-                                                                >
-                                                                    <Headphones size={13} />
-                                                                    <span>Ses / Dublaj</span>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
-                                                                    onClick={() => setUnifiedTab('subs')}
-                                                                >
-                                                                    <Languages size={13} />
-                                                                    <span>Altyazı</span>
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="native-unified-single-title">
-                                                                <Languages size={14} />
-                                                                <span>Altyazı Seçenekleri</span>
-                                                            </div>
-                                                        )}
-                                                        <button 
-                                                            type="button"
-                                                            className="native-unified-close-btn"
-                                                            onClick={() => setIsUnifiedMenuOpen(false)}
-                                                            aria-label="Kapat"
-                                                        >
-                                                            <X size={14} />
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="native-unified-modal-body">
-                                                        {unifiedTab === 'audio' && audioTracks.length > 0 && (
-                                                            <div className="native-track-dropdown-list">
-                                                                {audioTracks.map((track, i) => {
-                                                                    const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
-                                                                    return (
-                                                                        <button
-                                                                            key={`m-aud-${track.id}-${i}`}
-                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                            onClick={() => {
-                                                                                handleSelectAudioTrack(track.id !== undefined ? track.id : i);
-                                                                                setIsUnifiedMenuOpen(false);
-                                                                            }}
-                                                                        >
-                                                                            <span className="native-track-item-check">
-                                                                                {isSelected ? <Check size={14} /> : null}
-                                                                            </span>
-                                                                            <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-
-                                                        {(unifiedTab === 'subs' || audioTracks.length === 0) && (
-                                                            <div className="native-track-dropdown-list">
-                                                                <button
-                                                                    className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
-                                                                    onClick={() => {
-                                                                        handleSelectSubtitleTrack({ type: 'off' });
-                                                                        setIsUnifiedMenuOpen(false);
-                                                                    }}
-                                                                >
-                                                                    <span className="native-track-item-check">
-                                                                        {activeSubtitleId === 'off' ? <Check size={14} /> : null}
-                                                                    </span>
-                                                                    <span className="native-track-item-name">Kapalı</span>
-                                                                </button>
-
-                                                                {hlsSubtitleTracks.map((track, i) => {
-                                                                    const isSelected = activeSubtitleId === `hls-${track.id}`;
-                                                                    return (
-                                                                        <button
-                                                                            key={`m-hls-sub-${track.id}-${i}`}
-                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                            onClick={() => {
-                                                                                handleSelectSubtitleTrack({ type: 'hls', id: track.id });
-                                                                                setIsUnifiedMenuOpen(false);
-                                                                            }}
-                                                                        >
-                                                                            <span className="native-track-item-check">
-                                                                                {isSelected ? <Check size={14} /> : null}
-                                                                            </span>
-                                                                            <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
-                                                                        </button>
-                                                                    );
-                                                                })}
-
-                                                                {allProviderSubtitles.map((sub, i) => {
-                                                                    const isSelected = activeSubtitleId === `ext-${i}`;
-                                                                    return (
-                                                                        <button
-                                                                            key={`m-ext-sub-${i}`}
-                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                            onClick={() => {
-                                                                                handleSelectSubtitleTrack({ type: 'ext', index: i });
-                                                                                setIsUnifiedMenuOpen(false);
-                                                                            }}
-                                                                        >
-                                                                            <span className="native-track-item-check">
-                                                                                {isSelected ? <Check size={14} /> : null}
-                                                                            </span>
-                                                                            <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
-                                                                        </button>
-                                                                    );
-                                                                })}
-
-                                                                {customSubtitles.map((sub, i) => {
-                                                                    const isSelected = activeSubtitleId === `custom-${i}`;
-                                                                    return (
-                                                                        <button
-                                                                            key={`m-custom-sub-${i}`}
-                                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                            onClick={() => {
-                                                                                handleSelectSubtitleTrack({ type: 'custom', index: i });
-                                                                                setIsUnifiedMenuOpen(false);
-                                                                            }}
-                                                                        >
-                                                                            <span className="native-track-item-check">
-                                                                                {isSelected ? <Check size={14} /> : null}
-                                                                            </span>
-                                                                            <span className="native-track-item-name">{sub.label}</span>
-                                                                        </button>
-                                                                    );
-                                                                })}
-
-                                                                {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
-                                                                    <div className="native-track-empty-note">
-                                                                        Bu kaynakta otomatik altyazı yok
-                                                                    </div>
-                                                                )}
-
-                                                                <div className="native-track-divider" />
-                                                                <label 
-                                                                    className="native-track-upload-btn" 
-                                                                    title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
-                                                                >
-                                                                    <Upload size={13} />
-                                                                    <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
-                                                                    <input
-                                                                        type="file"
-                                                                        accept=".srt,.vtt"
-                                                                        style={{ display: 'none' }}
-                                                                        onChange={(e) => {
-                                                                            handleCustomSubtitleUpload(e);
-                                                                            setIsUnifiedMenuOpen(false);
-                                                                        }}
-                                                                    />
-                                                                </label>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
 
                                         <button 
