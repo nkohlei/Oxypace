@@ -124,6 +124,7 @@ const io = new Server(httpServer, {
     transports: ['polling', 'websocket'],
     pingTimeout: 30000,
     pingInterval: 25000,
+    maxHttpBufferSize: 5e6, // 5MB buffer for subtitle files and payloads
 });
 global.io = io;
 

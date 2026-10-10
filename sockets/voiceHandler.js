@@ -374,6 +374,52 @@ export const initializeVoiceHandler = (io) => {
             console.log(`[Watch Party] seek event in ${roomName} to time: ${time}`);
         });
 
+        // ─── Watch Party Subtitle Sync (Tüm Odada Altyazı Eşitleme) ───
+        socket.on('voice:watch-subtitle', async ({ roomName, subtitle }) => {
+            if (!roomName || !subtitle) return;
+            const now = Date.now();
+            const roomData = voiceRooms.get(roomName);
+            if (roomData && roomData.watchParty) {
+                roomData.watchParty.activeSubtitle = subtitle;
+                if (!Array.isArray(roomData.watchParty.sharedSubtitles)) {
+                    roomData.watchParty.sharedSubtitles = [];
+                }
+                const existingIdx = roomData.watchParty.sharedSubtitles.findIndex(s => s.label === subtitle.label);
+                if (existingIdx >= 0) {
+                    roomData.watchParty.sharedSubtitles[existingIdx] = subtitle;
+                } else {
+                    roomData.watchParty.sharedSubtitles.push(subtitle);
+                }
+                roomData.watchParty.lastUpdated = now;
+            }
+            if (pubClient) {
+                try {
+                    const currentStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
+                    if (currentStr) {
+                        const wp = JSON.parse(currentStr);
+                        wp.activeSubtitle = subtitle;
+                        if (!Array.isArray(wp.sharedSubtitles)) {
+                            wp.sharedSubtitles = [];
+                        }
+                        const existingIdx = wp.sharedSubtitles.findIndex(s => s.label === subtitle.label);
+                        if (existingIdx >= 0) {
+                            wp.sharedSubtitles[existingIdx] = subtitle;
+                        } else {
+                            wp.sharedSubtitles.push(subtitle);
+                        }
+                        wp.lastUpdated = now;
+                        await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
+                    }
+                } catch (err) {}
+            }
+            io.to(`voice:${roomName}`).emit('voice:watch-subtitle', {
+                subtitle,
+                senderId: socket.userId,
+                senderName: socket.username || ''
+            });
+            console.log(`[Watch Party] subtitle synchronized in ${roomName}: "${subtitle.label}" by ${socket.userId}`);
+        });
+
         // ─── Watch Party Stop Consensus System (Strict 2-Person Approval) ───
         socket.on('voice:watch-stop', async ({ roomName }) => {
             if (!roomName) return;

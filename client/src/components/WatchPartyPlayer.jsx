@@ -252,6 +252,7 @@ const WatchPartyPlayer = () => {
         sendWatchPlay, 
         sendWatchPause, 
         sendWatchSeek,
+        sendWatchSubtitle,
         getServerNow,
         participants,
         watchStopVoteStatus,
@@ -418,6 +419,7 @@ const WatchPartyPlayer = () => {
     const [activeCueText, setActiveCueText] = useState('');
     const activeCueTextRef = useRef('');
     const parsedCuesRef = useRef([]);
+    const [subSyncNotice, setSubSyncNotice] = useState(null);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
     const audioMenuRef = useRef(null);
     const subMenuRef = useRef(null);
@@ -1326,6 +1328,98 @@ const WatchPartyPlayer = () => {
         }
     };
 
+    // ─── Otomatik Oda Altyazı Eşitlemesi (Tüm Odada Altyazıyı Senkronize Eder) ───
+    useEffect(() => {
+        if (!watchParty?.activeSubtitle) return;
+        const incomingSub = watchParty.activeSubtitle;
+
+        if (incomingSub.type === 'off') {
+            parsedCuesRef.current = [];
+            activeCueTextRef.current = '';
+            setActiveCueText('');
+            setActiveSubtitleId('off');
+            return;
+        }
+
+        if (!incomingSub.rawContent) return;
+
+        // Halihazırda bu altyazı aktifse tekrar yükleme yapma
+        if (activeSubtitleId.startsWith('custom-') && parsedCuesRef.current.length > 0) {
+            const currentSub = customSubtitlesRef.current.find(s => s.rawContent === incomingSub.rawContent);
+            if (currentSub) return;
+        }
+
+        let existingIdx = customSubtitlesRef.current.findIndex(
+            s => s.label === incomingSub.label && s.rawContent === incomingSub.rawContent
+        );
+
+        if (existingIdx === -1) {
+            const blob = new Blob([incomingSub.rawContent], { type: 'text/vtt;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+            const addedSub = {
+                ...incomingSub,
+                file: blobUrl,
+                playableUrl: blobUrl,
+                isBlob: true
+            };
+            existingIdx = customSubtitlesRef.current.length;
+            const updatedList = [...customSubtitlesRef.current, addedSub];
+            customSubtitlesRef.current = updatedList;
+            setCustomSubtitles(updatedList);
+        }
+
+        parsedCuesRef.current = parseSubtitleCues(incomingSub.rawContent);
+        setActiveSubtitleId(`custom-${existingIdx}`);
+
+        if (hlsInstanceRef.current) {
+            hlsInstanceRef.current.subtitleTrack = -1;
+        }
+        if (videoRef.current && videoRef.current.textTracks) {
+            for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                videoRef.current.textTracks[i].mode = 'disabled';
+            }
+        }
+
+        // Anlık geçerli cue'yu ekrana yansıt
+        const vid = videoRef.current;
+        if (vid) {
+            const curTime = vid.currentTime;
+            const matchingCue = parsedCuesRef.current.find(c => curTime >= c.start && curTime <= c.end);
+            setActiveCueText(matchingCue ? matchingCue.text : '');
+        }
+
+        if (watchParty.lastSubActionName) {
+            setSubSyncNotice(`${watchParty.lastSubActionName} altyazı ayarladı: ${incomingSub.label}`);
+            setTimeout(() => setSubSyncNotice(null), 4000);
+        }
+    }, [watchParty?.activeSubtitle]);
+
+    // Paylaşılan tüm oda altyazılarını listeye ekle
+    useEffect(() => {
+        if (!Array.isArray(watchParty?.sharedSubtitles) || watchParty.sharedSubtitles.length === 0) return;
+        const currentList = [...customSubtitlesRef.current];
+        let hasNew = false;
+        watchParty.sharedSubtitles.forEach(sharedSub => {
+            if (!sharedSub.rawContent) return;
+            const exists = currentList.some(s => s.label === sharedSub.label && s.rawContent === sharedSub.rawContent);
+            if (!exists) {
+                const blob = new Blob([sharedSub.rawContent], { type: 'text/vtt;charset=utf-8' });
+                const blobUrl = URL.createObjectURL(blob);
+                currentList.push({
+                    ...sharedSub,
+                    file: blobUrl,
+                    playableUrl: blobUrl,
+                    isBlob: true
+                });
+                hasNew = true;
+            }
+        });
+        if (hasNew) {
+            customSubtitlesRef.current = currentList;
+            setCustomSubtitles(currentList);
+        }
+    }, [watchParty?.sharedSubtitles]);
+
     const getActiveSubtitleButtonLabel = () => {
         if (activeSubtitleId === 'off') return 'Altyazı';
         if (activeSubtitleId.startsWith('hls-')) {
@@ -1396,6 +1490,11 @@ const WatchPartyPlayer = () => {
                 }
             }
             setTimeout(onTimeUpdate, 50);
+
+            // ODA EŞİTLEMESİ: Herhangi bir kullanıcı yüklediğinde tüm odada aktif et!
+            if (sendWatchSubtitle) {
+                sendWatchSubtitle(newSub);
+            }
         };
         reader.readAsArrayBuffer(file);
         e.target.value = '';
@@ -1424,6 +1523,9 @@ const WatchPartyPlayer = () => {
             activeCueTextRef.current = '';
             setActiveCueText('');
             setActiveSubtitleId('off');
+            if (sendWatchSubtitle) {
+                sendWatchSubtitle({ type: 'off', label: 'Kapalı' });
+            }
         } else if (option.type === 'hls') {
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = option.id;
@@ -1456,6 +1558,10 @@ const WatchPartyPlayer = () => {
                 }
             }
             setActiveSubtitleId(`custom-${option.index}`);
+            const selectedCustomSub = customSubtitlesRef.current[option.index] || customSubtitles[option.index];
+            if (selectedCustomSub && selectedCustomSub.rawContent && sendWatchSubtitle) {
+                sendWatchSubtitle(selectedCustomSub);
+            }
             setTimeout(onTimeUpdate, 100);
         }
         setIsSubMenuOpen(false);
@@ -2091,6 +2197,13 @@ const WatchPartyPlayer = () => {
                             <Play size={24} fill="currentColor" />
                             <span>Yayını Başlat</span>
                         </button>
+                    </div>
+                )}
+
+                {/* Oda İçi Altyazı Eşitleme Bildirim Rozeti */}
+                {subSyncNotice && (
+                    <div className="watch-party-sub-sync-toast">
+                        <span>💬 {subSyncNotice}</span>
                     </div>
                 )}
 

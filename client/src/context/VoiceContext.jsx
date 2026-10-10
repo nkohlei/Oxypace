@@ -1239,6 +1239,28 @@ export const VoiceProvider = ({ children }) => {
             setWatchStopVoteStatus(null);
         };
 
+        const handleWatchSubtitle = ({ subtitle, senderId, senderName }) => {
+            setWatchParty(prev => {
+                if (!prev) return null;
+                const sharedList = Array.isArray(prev.sharedSubtitles) ? [...prev.sharedSubtitles] : [];
+                if (subtitle && subtitle.label) {
+                    const existingIdx = sharedList.findIndex(s => s.label === subtitle.label);
+                    if (existingIdx >= 0) {
+                        sharedList[existingIdx] = subtitle;
+                    } else {
+                        sharedList.push(subtitle);
+                    }
+                }
+                return {
+                    ...prev,
+                    activeSubtitle: subtitle,
+                    sharedSubtitles: sharedList,
+                    lastSubActionBy: senderId,
+                    lastSubActionName: senderName
+                };
+            });
+        };
+
         socket.on('voice:participants', handleParticipants);
         socket.on('voice:user-joined', handleUserJoined);
         socket.on('voice:user-left', handleUserLeft);
@@ -1247,6 +1269,7 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:watch-play', handleWatchPlay);
         socket.on('voice:watch-pause', handleWatchPause);
         socket.on('voice:watch-seek', handleWatchSeek);
+        socket.on('voice:watch-subtitle', handleWatchSubtitle);
         socket.on('voice:watch-stop', handleWatchStop);
         socket.on('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
         socket.on('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
@@ -1260,6 +1283,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:watch-play', handleWatchPlay);
             socket.off('voice:watch-pause', handleWatchPause);
             socket.off('voice:watch-seek', handleWatchSeek);
+            socket.off('voice:watch-subtitle', handleWatchSubtitle);
             socket.off('voice:watch-stop', handleWatchStop);
             socket.off('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
             socket.off('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
@@ -2166,6 +2190,35 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, safeEmit]);
 
+    const sendWatchSubtitle = useCallback((subtitle) => {
+        if (activeRoom && subtitle) {
+            safeEmit('voice:watch-subtitle', { 
+                roomName: activeRoom.roomName, 
+                subtitle: {
+                    label: subtitle.label || 'Altyazı',
+                    rawContent: subtitle.rawContent,
+                    lang: subtitle.lang || 'tr',
+                    file: subtitle.file || ''
+                }
+            });
+            setWatchParty(prev => {
+                if (!prev) return null;
+                const sharedList = Array.isArray(prev.sharedSubtitles) ? [...prev.sharedSubtitles] : [];
+                const existingIdx = sharedList.findIndex(s => s.label === subtitle.label);
+                if (existingIdx >= 0) {
+                    sharedList[existingIdx] = subtitle;
+                } else {
+                    sharedList.push(subtitle);
+                }
+                return {
+                    ...prev,
+                    activeSubtitle: subtitle,
+                    sharedSubtitles: sharedList
+                };
+            });
+        }
+    }, [activeRoom, safeEmit]);
+
     const sendWatchStopVote = useCallback(() => {
         if (activeRoom) {
             const uId = user?._id?.toString();
@@ -2324,6 +2377,7 @@ export const VoiceProvider = ({ children }) => {
         sendWatchPlay,
         sendWatchPause,
         sendWatchSeek,
+        sendWatchSubtitle,
         getServerNow,
         serverOffsetRef,
         isChatOpen,
