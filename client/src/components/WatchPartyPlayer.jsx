@@ -413,6 +413,10 @@ const WatchPartyPlayer = () => {
     const [isAudioMenuOpen, setIsAudioMenuOpen] = useState(false);
     const [hlsSubtitleTracks, setHlsSubtitleTracks] = useState([]);
     const [activeSubtitleId, setActiveSubtitleId] = useState('off'); // 'off' | 'hls-0' | 'ext-0' | 'custom-0'
+    const activeSubtitleIdRef = useRef('off');
+    useEffect(() => {
+        activeSubtitleIdRef.current = activeSubtitleId;
+    }, [activeSubtitleId]);
     const [customSubtitles, setCustomSubtitles] = useState([]);
     const customSubtitlesRef = useRef([]);
     const [discoveredSubtitles, setDiscoveredSubtitles] = useState([]);
@@ -815,6 +819,10 @@ const WatchPartyPlayer = () => {
         setIsAudioMenuOpen(false);
         setHlsSubtitleTracks([]);
         setActiveSubtitleId('off');
+        activeSubtitleIdRef.current = 'off';
+        parsedCuesRef.current = [];
+        activeCueTextRef.current = '';
+        setActiveCueText('');
         setIsSubMenuOpen(false);
         lastProgrammaticSeekTimeRef.current = null;
         lastPolledTimeRef.current = null;
@@ -1165,12 +1173,11 @@ const WatchPartyPlayer = () => {
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    const onTimeUpdate = () => {
+    const syncCurrentSubtitleCue = useCallback(() => {
         if (!videoRef.current) return;
-        const cur = videoRef.current.currentTime;
-        setCurrentTime(cur);
+        const cur = videoRef.current.currentTime || 0;
 
-        if (activeSubtitleId === 'off') {
+        if (activeSubtitleIdRef.current === 'off') {
             if (activeCueTextRef.current) {
                 activeCueTextRef.current = '';
                 setActiveCueText('');
@@ -1204,6 +1211,13 @@ const WatchPartyPlayer = () => {
                 setActiveCueText(foundText);
             }
         }
+    }, []);
+
+    const onTimeUpdate = () => {
+        if (!videoRef.current) return;
+        const cur = videoRef.current.currentTime;
+        setCurrentTime(cur);
+        syncCurrentSubtitleCue();
     };
 
     const onDurationChange = () => {
@@ -1337,16 +1351,17 @@ const WatchPartyPlayer = () => {
             parsedCuesRef.current = [];
             activeCueTextRef.current = '';
             setActiveCueText('');
+            activeSubtitleIdRef.current = 'off';
             setActiveSubtitleId('off');
             return;
         }
 
         if (!incomingSub.rawContent) return;
 
-        // Halihazırda bu altyazı aktifse tekrar yükleme yapma
-        if (activeSubtitleId.startsWith('custom-') && parsedCuesRef.current.length > 0) {
-            const currentSub = customSubtitlesRef.current.find(s => s.rawContent === incomingSub.rawContent);
-            if (currentSub) return;
+        // Halihazırda bu altyazı aktifse ve cues doluysa tekrar işlem yapma
+        if (activeSubtitleIdRef.current.startsWith('custom-') && parsedCuesRef.current.length > 0) {
+            const currentSub = customSubtitlesRef.current.find(s => s.label === incomingSub.label && s.rawContent === incomingSub.rawContent);
+            if (currentSub && activeCueTextRef.current) return;
         }
 
         let existingIdx = customSubtitlesRef.current.findIndex(
@@ -1369,6 +1384,7 @@ const WatchPartyPlayer = () => {
         }
 
         parsedCuesRef.current = parseSubtitleCues(incomingSub.rawContent);
+        activeSubtitleIdRef.current = `custom-${existingIdx}`;
         setActiveSubtitleId(`custom-${existingIdx}`);
 
         if (hlsInstanceRef.current) {
@@ -1381,18 +1397,15 @@ const WatchPartyPlayer = () => {
         }
 
         // Anlık geçerli cue'yu ekrana yansıt
-        const vid = videoRef.current;
-        if (vid) {
-            const curTime = vid.currentTime;
-            const matchingCue = parsedCuesRef.current.find(c => curTime >= c.start && curTime <= c.end);
-            setActiveCueText(matchingCue ? matchingCue.text : '');
-        }
+        syncCurrentSubtitleCue();
+        setTimeout(syncCurrentSubtitleCue, 50);
+        setTimeout(syncCurrentSubtitleCue, 200);
 
         if (watchParty.lastSubActionName) {
             setSubSyncNotice(`${watchParty.lastSubActionName} altyazı ayarladı: ${incomingSub.label}`);
             setTimeout(() => setSubSyncNotice(null), 4000);
         }
-    }, [watchParty?.activeSubtitle]);
+    }, [watchParty?.activeSubtitle, syncCurrentSubtitleCue]);
 
     // Paylaşılan tüm oda altyazılarını listeye ekle
     useEffect(() => {
@@ -1480,6 +1493,7 @@ const WatchPartyPlayer = () => {
 
             // Instantly activate cues and overlay!
             parsedCuesRef.current = parseSubtitleCues(content);
+            activeSubtitleIdRef.current = `custom-${newIndex}`;
             setActiveSubtitleId(`custom-${newIndex}`);
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
@@ -1489,7 +1503,8 @@ const WatchPartyPlayer = () => {
                     videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
-            setTimeout(onTimeUpdate, 50);
+            syncCurrentSubtitleCue();
+            setTimeout(syncCurrentSubtitleCue, 50);
 
             // ODA EŞİTLEMESİ: Herhangi bir kullanıcı yüklediğinde tüm odada aktif et!
             if (sendWatchSubtitle) {
@@ -1522,6 +1537,7 @@ const WatchPartyPlayer = () => {
             parsedCuesRef.current = [];
             activeCueTextRef.current = '';
             setActiveCueText('');
+            activeSubtitleIdRef.current = 'off';
             setActiveSubtitleId('off');
             if (sendWatchSubtitle) {
                 sendWatchSubtitle({ type: 'off', label: 'Kapalı' });
@@ -1535,8 +1551,9 @@ const WatchPartyPlayer = () => {
                     videoRef.current.textTracks[i].mode = (i === option.id) ? 'hidden' : 'disabled';
                 }
             }
+            activeSubtitleIdRef.current = `hls-${option.id}`;
             setActiveSubtitleId(`hls-${option.id}`);
-            setTimeout(onTimeUpdate, 100);
+            setTimeout(syncCurrentSubtitleCue, 100);
         } else if (option.type === 'ext') {
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
@@ -1546,8 +1563,31 @@ const WatchPartyPlayer = () => {
                     videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
+            activeSubtitleIdRef.current = `ext-${option.index}`;
             setActiveSubtitleId(`ext-${option.index}`);
-            setTimeout(onTimeUpdate, 100);
+            const sub = allProviderSubtitles[option.index];
+            if (sub && sendWatchSubtitle) {
+                (async () => {
+                    let vtt = sub.rawContent;
+                    if (!vtt && (sub.file || sub.playableUrl)) {
+                        try {
+                            const targetUrl = sub.playableUrl
+                                ? sub.playableUrl
+                                : (sub.file && sub.file.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(sub.file)}` : sub.file);
+                            const res = await fetch(targetUrl);
+                            vtt = await res.text();
+                        } catch (err) {}
+                    }
+                    if (vtt) {
+                        sendWatchSubtitle({
+                            label: sub.label || `Altyazı ${option.index + 1}`,
+                            rawContent: vtt,
+                            lang: sub.lang || 'tr'
+                        });
+                    }
+                })();
+            }
+            setTimeout(syncCurrentSubtitleCue, 100);
         } else if (option.type === 'custom') {
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
@@ -1557,12 +1597,13 @@ const WatchPartyPlayer = () => {
                     videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
+            activeSubtitleIdRef.current = `custom-${option.index}`;
             setActiveSubtitleId(`custom-${option.index}`);
             const selectedCustomSub = customSubtitlesRef.current[option.index] || customSubtitles[option.index];
             if (selectedCustomSub && selectedCustomSub.rawContent && sendWatchSubtitle) {
                 sendWatchSubtitle(selectedCustomSub);
             }
-            setTimeout(onTimeUpdate, 100);
+            setTimeout(syncCurrentSubtitleCue, 100);
         }
         setIsSubMenuOpen(false);
     };

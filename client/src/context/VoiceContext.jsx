@@ -1240,10 +1240,14 @@ export const VoiceProvider = ({ children }) => {
         };
 
         const handleWatchSubtitle = ({ subtitle, senderId, senderName }) => {
+            console.log(`[VoiceContext] handleWatchSubtitle event received: "${subtitle?.label}" from "${senderName}"`);
             setWatchParty(prev => {
-                if (!prev) return null;
+                if (!prev) {
+                    console.warn('[VoiceContext] handleWatchSubtitle: watchParty state is currently null');
+                    return null;
+                }
                 const sharedList = Array.isArray(prev.sharedSubtitles) ? [...prev.sharedSubtitles] : [];
-                if (subtitle && subtitle.label) {
+                if (subtitle && subtitle.type !== 'off' && subtitle.label) {
                     const existingIdx = sharedList.findIndex(s => s.label === subtitle.label);
                     if (existingIdx >= 0) {
                         sharedList[existingIdx] = subtitle;
@@ -2191,33 +2195,43 @@ export const VoiceProvider = ({ children }) => {
     }, [activeRoom, safeEmit]);
 
     const sendWatchSubtitle = useCallback((subtitle) => {
-        if (activeRoom && subtitle) {
+        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
+        if (roomName && subtitle) {
+            const subPayload = {
+                type: subtitle.type || (subtitle.rawContent ? 'custom' : 'off'),
+                label: subtitle.label || 'Altyazı',
+                rawContent: subtitle.rawContent || '',
+                lang: subtitle.lang || 'tr',
+                file: subtitle.file || ''
+            };
+            console.log(`[VoiceContext] Emitting voice:watch-subtitle to ${roomName}:`, subPayload.label);
             safeEmit('voice:watch-subtitle', { 
-                roomName: activeRoom.roomName, 
-                subtitle: {
-                    label: subtitle.label || 'Altyazı',
-                    rawContent: subtitle.rawContent,
-                    lang: subtitle.lang || 'tr',
-                    file: subtitle.file || ''
-                }
+                roomName, 
+                subtitle: subPayload
             });
             setWatchParty(prev => {
                 if (!prev) return null;
                 const sharedList = Array.isArray(prev.sharedSubtitles) ? [...prev.sharedSubtitles] : [];
-                const existingIdx = sharedList.findIndex(s => s.label === subtitle.label);
-                if (existingIdx >= 0) {
-                    sharedList[existingIdx] = subtitle;
-                } else {
-                    sharedList.push(subtitle);
+                if (subPayload.type !== 'off' && subPayload.label) {
+                    const existingIdx = sharedList.findIndex(s => s.label === subPayload.label);
+                    if (existingIdx >= 0) {
+                        sharedList[existingIdx] = subPayload;
+                    } else {
+                        sharedList.push(subPayload);
+                    }
                 }
                 return {
                     ...prev,
-                    activeSubtitle: subtitle,
-                    sharedSubtitles: sharedList
+                    activeSubtitle: subPayload,
+                    sharedSubtitles: sharedList,
+                    lastSubActionBy: user?._id || user?.id,
+                    lastSubActionName: user?.username || 'Siz'
                 };
             });
+        } else {
+            console.warn('[VoiceContext] sendWatchSubtitle skipped: missing roomName or subtitle', { roomName, subtitle });
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, watchParty, safeEmit, user]);
 
     const sendWatchStopVote = useCallback(() => {
         if (activeRoom) {

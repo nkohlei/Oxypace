@@ -85,6 +85,8 @@ export const initializeVoiceHandler = (io) => {
             if (!socket._voiceRooms) socket._voiceRooms = new Set();
             socket._voiceRooms.add(roomName);
             socket._voiceUserId = sUserId;
+            socket.userId = sUserId;
+            socket.username = username;
 
             // Get active watchParty from Redis to ensure new users joining do not wipe out active streams
             let activeWatchParty = roomData.watchParty || null;
@@ -270,6 +272,7 @@ export const initializeVoiceHandler = (io) => {
             if (!roomName) return;
             const now = Date.now();
             const watchPartyState = {
+                roomName,
                 url,
                 isPlaying: false,
                 currentTime: 0,
@@ -378,46 +381,61 @@ export const initializeVoiceHandler = (io) => {
         socket.on('voice:watch-subtitle', async ({ roomName, subtitle }) => {
             if (!roomName || !subtitle) return;
             const now = Date.now();
+            const sId = socket.userId || socket._voiceUserId || '';
+            const sName = socket.username || '';
+
             const roomData = voiceRooms.get(roomName);
-            if (roomData && roomData.watchParty) {
+            if (roomData) {
+                if (!roomData.watchParty) {
+                    roomData.watchParty = { roomName, lastUpdated: now };
+                }
                 roomData.watchParty.activeSubtitle = subtitle;
                 if (!Array.isArray(roomData.watchParty.sharedSubtitles)) {
                     roomData.watchParty.sharedSubtitles = [];
                 }
-                const existingIdx = roomData.watchParty.sharedSubtitles.findIndex(s => s.label === subtitle.label);
-                if (existingIdx >= 0) {
-                    roomData.watchParty.sharedSubtitles[existingIdx] = subtitle;
-                } else {
-                    roomData.watchParty.sharedSubtitles.push(subtitle);
+                if (subtitle.label && subtitle.rawContent) {
+                    const existingIdx = roomData.watchParty.sharedSubtitles.findIndex(s => s.label === subtitle.label);
+                    if (existingIdx >= 0) {
+                        roomData.watchParty.sharedSubtitles[existingIdx] = subtitle;
+                    } else {
+                        roomData.watchParty.sharedSubtitles.push(subtitle);
+                    }
                 }
                 roomData.watchParty.lastUpdated = now;
             }
             if (pubClient) {
                 try {
+                    let wp = {};
                     const currentStr = await pubClient.get(`voiceroom:${roomName}:watchparty`);
                     if (currentStr) {
-                        const wp = JSON.parse(currentStr);
-                        wp.activeSubtitle = subtitle;
-                        if (!Array.isArray(wp.sharedSubtitles)) {
-                            wp.sharedSubtitles = [];
-                        }
+                        try { wp = JSON.parse(currentStr); } catch (e) {}
+                    }
+                    wp.roomName = roomName;
+                    wp.activeSubtitle = subtitle;
+                    if (!Array.isArray(wp.sharedSubtitles)) {
+                        wp.sharedSubtitles = [];
+                    }
+                    if (subtitle.label && subtitle.rawContent) {
                         const existingIdx = wp.sharedSubtitles.findIndex(s => s.label === subtitle.label);
                         if (existingIdx >= 0) {
                             wp.sharedSubtitles[existingIdx] = subtitle;
                         } else {
                             wp.sharedSubtitles.push(subtitle);
                         }
-                        wp.lastUpdated = now;
-                        await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
                     }
-                } catch (err) {}
+                    wp.lastUpdated = now;
+                    await pubClient.set(`voiceroom:${roomName}:watchparty`, JSON.stringify(wp));
+                } catch (err) {
+                    console.error('[Watch Party Subtitle] Redis error:', err);
+                }
             }
             io.to(`voice:${roomName}`).emit('voice:watch-subtitle', {
+                roomName,
                 subtitle,
-                senderId: socket.userId,
-                senderName: socket.username || ''
+                senderId: sId,
+                senderName: sName
             });
-            console.log(`[Watch Party] subtitle synchronized in ${roomName}: "${subtitle.label}" by ${socket.userId}`);
+            console.log(`[Watch Party] subtitle synchronized in ${roomName}: "${subtitle.label}" by ${sName || sId}`);
         });
 
         // ─── Watch Party Stop Consensus System (Strict 2-Person Approval) ───
