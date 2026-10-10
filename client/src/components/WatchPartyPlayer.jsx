@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
-import { X, Volume2, VolumeX, Maximize, Minimize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film } from 'lucide-react';
+import { X, Volume2, VolumeX, Maximize, Minimize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film, Sliders, Type, MoveVertical } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -446,9 +446,74 @@ const WatchPartyPlayer = () => {
         };
     }, []);
 
+    // Customizable Subtitle Appearance States (Size & Position)
+    const [subSizeScale, setSubSizeScale] = useState(() => {
+        const saved = localStorage.getItem('watchPartySubScale');
+        return saved !== null ? parseFloat(saved) : 1.0; // 1.0 = 100% standard
+    });
+    const [subBottomPercent, setSubBottomPercent] = useState(() => {
+        const saved = localStorage.getItem('watchPartySubBottomPercent');
+        return saved !== null ? parseFloat(saved) : 4; // 4% = standard lower-third
+    });
+    const [isDraggingSub, setIsDraggingSub] = useState(false);
+    const isDraggingSubRef = useRef(false);
+    const dragStartYRef = useRef(0);
+    const dragStartBottomPercentRef = useRef(4);
+
+    const handleUpdateSubSize = (scale) => {
+        const clamped = Math.max(0.6, Math.min(1.8, Math.round(scale * 100) / 100));
+        setSubSizeScale(clamped);
+        localStorage.setItem('watchPartySubScale', clamped.toString());
+    };
+
+    const handleUpdateSubBottom = (percent) => {
+        const clamped = Math.max(2, Math.min(88, Math.round(percent)));
+        setSubBottomPercent(clamped);
+        localStorage.setItem('watchPartySubBottomPercent', clamped.toString());
+    };
+
+    const handleSubDragStart = (e) => {
+        if (e.target.closest('button') || e.target.closest('input')) return;
+        e.stopPropagation();
+        isDraggingSubRef.current = true;
+        setIsDraggingSub(true);
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        dragStartYRef.current = clientY;
+        dragStartBottomPercentRef.current = subBottomPercent;
+
+        const onDragMove = (moveEvt) => {
+            if (!isDraggingSubRef.current) return;
+            const curY = moveEvt.touches ? moveEvt.touches[0].clientY : moveEvt.clientY;
+            const deltaY = dragStartYRef.current - curY; // Dragging upwards increases bottom offset
+            const containerHeight = (containerRef.current ? containerRef.current.offsetHeight : window.innerHeight) || 400;
+            const deltaPercent = (deltaY / containerHeight) * 100;
+            const nextPercent = Math.max(2, Math.min(88, Math.round(dragStartBottomPercentRef.current + deltaPercent)));
+            setSubBottomPercent(nextPercent);
+        };
+
+        const onDragEnd = () => {
+            if (!isDraggingSubRef.current) return;
+            isDraggingSubRef.current = false;
+            setIsDraggingSub(false);
+            window.removeEventListener('mousemove', onDragMove);
+            window.removeEventListener('mouseup', onDragEnd);
+            window.removeEventListener('touchmove', onDragMove);
+            window.removeEventListener('touchend', onDragEnd);
+            setSubBottomPercent(prev => {
+                localStorage.setItem('watchPartySubBottomPercent', prev.toString());
+                return prev;
+            });
+        };
+
+        window.addEventListener('mousemove', onDragMove);
+        window.addEventListener('mouseup', onDragEnd);
+        window.addEventListener('touchmove', onDragMove, { passive: false });
+        window.addEventListener('touchend', onDragEnd);
+    };
+
     // Mobile Unified Audio & Subtitle Modal
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
-    const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
+    const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs' | 'style'
     const unifiedMenuRef = useRef(null);
     const isUnifiedMenuOpenRef = useRef(false);
     useEffect(() => {
@@ -456,9 +521,9 @@ const WatchPartyPlayer = () => {
     }, [isUnifiedMenuOpen]);
 
     useEffect(() => {
-        if (audioTracks.length > 0 && unifiedTab !== 'subs') {
+        if (audioTracks.length > 0 && unifiedTab !== 'subs' && unifiedTab !== 'style') {
             setUnifiedTab('audio');
-        } else if (audioTracks.length === 0) {
+        } else if (audioTracks.length === 0 && unifiedTab === 'audio') {
             setUnifiedTab('subs');
         }
     }, [audioTracks.length]);
@@ -1617,8 +1682,8 @@ const WatchPartyPlayer = () => {
                             {isUnifiedMenuOpen && (
                                 <div className="native-unified-dropdown-popover" onClick={(e) => e.stopPropagation()}>
                                     <div className="native-unified-popover-header">
-                                        {audioTracks.length > 0 ? (
-                                            <div className="native-unified-tabs">
+                                        <div className="native-unified-tabs">
+                                            {audioTracks.length > 0 && (
                                                 <button
                                                     type="button"
                                                     className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
@@ -1627,21 +1692,25 @@ const WatchPartyPlayer = () => {
                                                     <Headphones size={12} />
                                                     <span>Ses</span>
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
-                                                    onClick={() => setUnifiedTab('subs')}
-                                                >
-                                                    <Languages size={12} />
-                                                    <span>Altyazı</span>
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="native-unified-single-title">
-                                                <Languages size={13} />
+                                            )}
+                                            <button
+                                                type="button"
+                                                className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
+                                                onClick={() => setUnifiedTab('subs')}
+                                            >
+                                                <Languages size={12} />
                                                 <span>Altyazı</span>
-                                            </div>
-                                        )}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`native-unified-tab-btn ${unifiedTab === 'style' ? 'active' : ''}`}
+                                                onClick={() => setUnifiedTab('style')}
+                                                title="Altyazı Boyut ve Konum Ayarları"
+                                            >
+                                                <Sliders size={12} />
+                                                <span>Görünüm</span>
+                                            </button>
+                                        </div>
                                         <button 
                                             type="button" 
                                             className="native-unified-popover-close-btn"
@@ -1676,7 +1745,7 @@ const WatchPartyPlayer = () => {
                                             </div>
                                         )}
 
-                                        {(unifiedTab === 'subs' || audioTracks.length === 0) && (
+                                        {unifiedTab === 'subs' && (
                                             <div className="native-track-dropdown-list">
                                                 <button
                                                     className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
@@ -1772,6 +1841,115 @@ const WatchPartyPlayer = () => {
                                                         }}
                                                     />
                                                 </label>
+                                            </div>
+                                        )}
+
+                                        {unifiedTab === 'style' && (
+                                            <div className="native-sub-style-panel">
+                                                {/* Canlı Önizleme */}
+                                                <div className="native-sub-preview-box">
+                                                    <span 
+                                                        className="native-sub-preview-text"
+                                                        style={{
+                                                            fontSize: `${13 * subSizeScale}px`
+                                                        }}
+                                                    >
+                                                        Örnek Altyazı / Sample Subtitle
+                                                    </span>
+                                                </div>
+
+                                                {/* Boyut Ayarı */}
+                                                <div className="native-sub-setting-group">
+                                                    <div className="native-sub-setting-header">
+                                                        <span className="native-sub-setting-title">
+                                                            <Type size={12} />
+                                                            Yazı Boyutu
+                                                        </span>
+                                                        <span className="native-sub-setting-val">%{Math.round(subSizeScale * 100)}</span>
+                                                    </div>
+                                                    
+                                                    <div className="native-sub-preset-pills">
+                                                        {[
+                                                            { label: 'Küçük', scale: 0.8 },
+                                                            { label: 'Normal', scale: 1.0 },
+                                                            { label: 'Büyük', scale: 1.25 },
+                                                            { label: 'Ekstra', scale: 1.5 }
+                                                        ].map(p => (
+                                                            <button
+                                                                key={p.label}
+                                                                type="button"
+                                                                className={`native-sub-pill ${Math.abs(subSizeScale - p.scale) < 0.05 ? 'active' : ''}`}
+                                                                onClick={() => handleUpdateSubSize(p.scale)}
+                                                            >
+                                                                {p.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <input 
+                                                        type="range"
+                                                        min="0.6"
+                                                        max="1.8"
+                                                        step="0.05"
+                                                        value={subSizeScale}
+                                                        onChange={(e) => handleUpdateSubSize(parseFloat(e.target.value))}
+                                                        className="native-sub-slider"
+                                                    />
+                                                </div>
+
+                                                {/* Konum / Dikey Yükseklik Ayarı */}
+                                                <div className="native-sub-setting-group">
+                                                    <div className="native-sub-setting-header">
+                                                        <span className="native-sub-setting-title">
+                                                            <MoveVertical size={12} />
+                                                            Dikey Konum
+                                                        </span>
+                                                        <span className="native-sub-setting-val">%{subBottomPercent}</span>
+                                                    </div>
+
+                                                    <div className="native-sub-preset-pills">
+                                                        {[
+                                                            { label: 'Altta', percent: 4 },
+                                                            { label: 'Rahat', percent: 14 },
+                                                            { label: 'Orta', percent: 45 },
+                                                            { label: 'Üstte', percent: 82 }
+                                                        ].map(p => (
+                                                            <button
+                                                                key={p.label}
+                                                                type="button"
+                                                                className={`native-sub-pill ${Math.abs(subBottomPercent - p.percent) <= 3 ? 'active' : ''}`}
+                                                                onClick={() => handleUpdateSubBottom(p.percent)}
+                                                            >
+                                                                {p.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <input 
+                                                        type="range"
+                                                        min="2"
+                                                        max="88"
+                                                        step="1"
+                                                        value={subBottomPercent}
+                                                        onChange={(e) => handleUpdateSubBottom(parseInt(e.target.value, 10))}
+                                                        className="native-sub-slider"
+                                                    />
+                                                    <div className="native-sub-drag-hint">
+                                                        💡 Altyazıyı ekranda doğrudan parmağınızla/fareyle tutarak da istediğiniz yüksekliğe sürükleyebilirsiniz.
+                                                    </div>
+                                                </div>
+
+                                                <button 
+                                                    type="button"
+                                                    className="native-sub-reset-btn"
+                                                    onClick={() => {
+                                                        handleUpdateSubSize(1.0);
+                                                        handleUpdateSubBottom(4);
+                                                    }}
+                                                >
+                                                    <RotateCcw size={11} />
+                                                    <span>Varsayılana Sıfırla</span>
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -1893,12 +2071,36 @@ const WatchPartyPlayer = () => {
                     </div>
                 )}
 
-                {/* Netflix-Grade Pro Subtitle Overlay */}
+                {/* Netflix-Grade Pro Subtitle Overlay (Resizable, Positionable & Draggable) */}
                 {activeCueText && (
-                    <div className={`watch-party-subtitle-overlay ${controlsVisible ? 'controls-shown' : 'controls-hidden'}`}>
+                    <div 
+                        className={`watch-party-subtitle-overlay ${controlsVisible ? 'controls-shown' : 'controls-hidden'} ${isDraggingSub ? 'is-dragging' : ''}`}
+                        style={{
+                            bottom: controlsVisible 
+                                ? `calc(${subBottomPercent}% + 28px)` 
+                                : `${subBottomPercent}%`
+                        }}
+                        onMouseDown={handleSubDragStart}
+                        onTouchStart={handleSubDragStart}
+                        title="Altyazıyı yukarı/aşağı sürükleyebilirsiniz"
+                    >
                         <div className="watch-party-subtitle-box">
+                            {isDraggingSub && (
+                                <div className="watch-party-sub-drag-indicator">
+                                    <span>↕ %{subBottomPercent}</span>
+                                </div>
+                            )}
                             {activeCueText.split('\n').map((line, i) => (
-                                <span key={i} className="watch-party-sub-line">{line}</span>
+                                <span 
+                                    key={i} 
+                                    className="watch-party-sub-line"
+                                    style={{
+                                        fontSize: `calc(clamp(12.5px, 2.3cqw, 20px) * ${subSizeScale})`,
+                                        lineHeight: 1.35
+                                    }}
+                                >
+                                    {line}
+                                </span>
                             ))}
                         </div>
                     </div>
