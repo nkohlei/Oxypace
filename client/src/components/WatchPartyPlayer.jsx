@@ -446,30 +446,68 @@ const WatchPartyPlayer = () => {
         };
     }, []);
 
-    // Customizable Subtitle Appearance States (Size & Position)
+    // Customizable Subtitle Appearance States (Size, Position, Color, Background, Shadow, Font)
     const [subSizeScale, setSubSizeScale] = useState(() => {
         const saved = localStorage.getItem('watchPartySubScale');
-        return saved !== null ? parseFloat(saved) : 1.0; // 1.0 = 100% standard
+        return saved !== null ? parseFloat(saved) : 1.0;
     });
     const [subBottomPercent, setSubBottomPercent] = useState(() => {
         const saved = localStorage.getItem('watchPartySubBottomPercent');
-        return saved !== null ? parseFloat(saved) : 4; // 4% = standard lower-third
+        return saved !== null ? parseFloat(saved) : 6;
+    });
+    const [subColor, setSubColor] = useState(() => {
+        return localStorage.getItem('watchPartySubColor') || '#ffffff';
+    });
+    const [subBg, setSubBg] = useState(() => {
+        return localStorage.getItem('watchPartySubBg') || 'none';
+    });
+    const [subShadow, setSubShadow] = useState(() => {
+        return localStorage.getItem('watchPartySubShadow') || 'deep';
+    });
+    const [subFont, setSubFont] = useState(() => {
+        return localStorage.getItem('watchPartySubFont') || 'sans';
     });
     const [isDraggingSub, setIsDraggingSub] = useState(false);
     const isDraggingSubRef = useRef(false);
     const dragStartYRef = useRef(0);
-    const dragStartBottomPercentRef = useRef(4);
+    const dragStartBottomPercentRef = useRef(6);
 
-    const handleUpdateSubSize = (scale) => {
-        const clamped = Math.max(0.6, Math.min(1.8, Math.round(scale * 100) / 100));
-        setSubSizeScale(clamped);
-        localStorage.setItem('watchPartySubScale', clamped.toString());
-    };
+    // Real-time synchronization with Settings & other tabs
+    useEffect(() => {
+        const handleSyncSubSettings = () => {
+            const s = localStorage.getItem('watchPartySubScale');
+            const b = localStorage.getItem('watchPartySubBottomPercent');
+            const c = localStorage.getItem('watchPartySubColor');
+            const bg = localStorage.getItem('watchPartySubBg');
+            const sh = localStorage.getItem('watchPartySubShadow');
+            const f = localStorage.getItem('watchPartySubFont');
+            if (s !== null) {
+                const parsed = parseFloat(s);
+                if (!isNaN(parsed)) setSubSizeScale(parsed);
+            }
+            if (b !== null) {
+                const parsed = parseFloat(b);
+                if (!isNaN(parsed)) setSubBottomPercent(parsed);
+            }
+            if (c) setSubColor(c);
+            if (bg) setSubBg(bg);
+            if (sh) setSubShadow(sh);
+            if (f) setSubFont(f);
+        };
+        handleSyncSubSettings();
+        window.addEventListener('watchparty:subtitles-updated', handleSyncSubSettings);
+        window.addEventListener('storage', handleSyncSubSettings);
+        return () => {
+            window.removeEventListener('watchparty:subtitles-updated', handleSyncSubSettings);
+            window.removeEventListener('storage', handleSyncSubSettings);
+        };
+    }, []);
 
     const handleUpdateSubBottom = (percent) => {
         const clamped = Math.max(2, Math.min(88, Math.round(percent)));
         setSubBottomPercent(clamped);
         localStorage.setItem('watchPartySubBottomPercent', clamped.toString());
+        window.dispatchEvent(new CustomEvent('watchparty:subtitles-updated'));
     };
 
     const handleSubDragStart = (e) => {
@@ -501,6 +539,7 @@ const WatchPartyPlayer = () => {
             window.removeEventListener('touchend', onDragEnd);
             setSubBottomPercent(prev => {
                 localStorage.setItem('watchPartySubBottomPercent', prev.toString());
+                window.dispatchEvent(new CustomEvent('watchparty:subtitles-updated'));
                 return prev;
             });
         };
@@ -511,9 +550,50 @@ const WatchPartyPlayer = () => {
         window.addEventListener('touchend', onDragEnd);
     };
 
+    const getShadowStyle = (shadowType) => {
+        switch (shadowType) {
+            case 'strong':
+                return '0 0 4px #000, 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.95)';
+            case 'glow':
+                return '0 0 10px rgba(56, 189, 248, 0.85), 0 0 4px #000, 1px 1px 2px #000, -1px -1px 2px #000';
+            case 'clean':
+                return '0 1px 2px rgba(0,0,0,0.85)';
+            case 'deep':
+            default:
+                return '0 0 3px #000, 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000, 0 2px 5px rgba(0,0,0,0.95)';
+        }
+    };
+
+    const getBgStyle = (bgType) => {
+        switch (bgType) {
+            case 'semi':
+                return 'rgba(0, 0, 0, 0.65)';
+            case 'box':
+                return 'rgba(0, 0, 0, 0.92)';
+            case 'blur':
+                return 'rgba(10, 10, 15, 0.75)';
+            case 'none':
+            default:
+                return 'transparent';
+        }
+    };
+
+    const getFontFamily = (fontType) => {
+        switch (fontType) {
+            case 'matrix':
+            case 'mono':
+                return 'Consolas, "SF Mono", monospace';
+            case 'serif':
+                return 'Georgia, "Times New Roman", serif';
+            case 'sans':
+            default:
+                return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        }
+    };
+
     // Mobile Unified Audio & Subtitle Modal
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
-    const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs' | 'style'
+    const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
     const unifiedMenuRef = useRef(null);
     const isUnifiedMenuOpenRef = useRef(false);
     useEffect(() => {
@@ -521,7 +601,7 @@ const WatchPartyPlayer = () => {
     }, [isUnifiedMenuOpen]);
 
     useEffect(() => {
-        if (audioTracks.length > 0 && unifiedTab !== 'subs' && unifiedTab !== 'style') {
+        if (audioTracks.length > 0 && unifiedTab !== 'subs') {
             setUnifiedTab('audio');
         } else if (audioTracks.length === 0 && unifiedTab === 'audio') {
             setUnifiedTab('subs');
@@ -1701,15 +1781,6 @@ const WatchPartyPlayer = () => {
                                                 <Languages size={12} />
                                                 <span>Altyazı</span>
                                             </button>
-                                            <button
-                                                type="button"
-                                                className={`native-unified-tab-btn ${unifiedTab === 'style' ? 'active' : ''}`}
-                                                onClick={() => setUnifiedTab('style')}
-                                                title="Altyazı Boyut ve Konum Ayarları"
-                                            >
-                                                <Sliders size={12} />
-                                                <span>Görünüm</span>
-                                            </button>
                                         </div>
                                         <button 
                                             type="button" 
@@ -1844,114 +1915,7 @@ const WatchPartyPlayer = () => {
                                             </div>
                                         )}
 
-                                        {unifiedTab === 'style' && (
-                                            <div className="native-sub-style-panel">
-                                                {/* Canlı Önizleme */}
-                                                <div className="native-sub-preview-box">
-                                                    <span 
-                                                        className="native-sub-preview-text"
-                                                        style={{
-                                                            fontSize: `${13 * subSizeScale}px`
-                                                        }}
-                                                    >
-                                                        Örnek Altyazı / Sample Subtitle
-                                                    </span>
-                                                </div>
 
-                                                {/* Boyut Ayarı */}
-                                                <div className="native-sub-setting-group">
-                                                    <div className="native-sub-setting-header">
-                                                        <span className="native-sub-setting-title">
-                                                            <Type size={12} />
-                                                            Yazı Boyutu
-                                                        </span>
-                                                        <span className="native-sub-setting-val">%{Math.round(subSizeScale * 100)}</span>
-                                                    </div>
-                                                    
-                                                    <div className="native-sub-preset-pills">
-                                                        {[
-                                                            { label: 'Küçük', scale: 0.8 },
-                                                            { label: 'Normal', scale: 1.0 },
-                                                            { label: 'Büyük', scale: 1.25 },
-                                                            { label: 'Ekstra', scale: 1.5 }
-                                                        ].map(p => (
-                                                            <button
-                                                                key={p.label}
-                                                                type="button"
-                                                                className={`native-sub-pill ${Math.abs(subSizeScale - p.scale) < 0.05 ? 'active' : ''}`}
-                                                                onClick={() => handleUpdateSubSize(p.scale)}
-                                                            >
-                                                                {p.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-
-                                                    <input 
-                                                        type="range"
-                                                        min="0.6"
-                                                        max="1.8"
-                                                        step="0.05"
-                                                        value={subSizeScale}
-                                                        onChange={(e) => handleUpdateSubSize(parseFloat(e.target.value))}
-                                                        className="native-sub-slider"
-                                                    />
-                                                </div>
-
-                                                {/* Konum / Dikey Yükseklik Ayarı */}
-                                                <div className="native-sub-setting-group">
-                                                    <div className="native-sub-setting-header">
-                                                        <span className="native-sub-setting-title">
-                                                            <MoveVertical size={12} />
-                                                            Dikey Konum
-                                                        </span>
-                                                        <span className="native-sub-setting-val">%{subBottomPercent}</span>
-                                                    </div>
-
-                                                    <div className="native-sub-preset-pills">
-                                                        {[
-                                                            { label: 'Altta', percent: 4 },
-                                                            { label: 'Rahat', percent: 14 },
-                                                            { label: 'Orta', percent: 45 },
-                                                            { label: 'Üstte', percent: 82 }
-                                                        ].map(p => (
-                                                            <button
-                                                                key={p.label}
-                                                                type="button"
-                                                                className={`native-sub-pill ${Math.abs(subBottomPercent - p.percent) <= 3 ? 'active' : ''}`}
-                                                                onClick={() => handleUpdateSubBottom(p.percent)}
-                                                            >
-                                                                {p.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-
-                                                    <input 
-                                                        type="range"
-                                                        min="2"
-                                                        max="88"
-                                                        step="1"
-                                                        value={subBottomPercent}
-                                                        onChange={(e) => handleUpdateSubBottom(parseInt(e.target.value, 10))}
-                                                        className="native-sub-slider"
-                                                    />
-                                                    <div className="native-sub-drag-hint">
-                                                        💡 Altyazıyı ekranda doğrudan parmağınızla/fareyle tutarak da istediğiniz yüksekliğe sürükleyebilirsiniz.
-                                                    </div>
-                                                </div>
-
-                                                <button 
-                                                    type="button"
-                                                    className="native-sub-reset-btn"
-                                                    onClick={() => {
-                                                        handleUpdateSubSize(1.0);
-                                                        handleUpdateSubBottom(4);
-                                                    }}
-                                                >
-                                                    <RotateCcw size={11} />
-                                                    <span>Varsayılana Sıfırla</span>
-                                                </button>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             )}
@@ -2095,7 +2059,15 @@ const WatchPartyPlayer = () => {
                                     key={i} 
                                     className="watch-party-sub-line"
                                     style={{
-                                        fontSize: `calc(clamp(12.5px, 2.3cqw, 20px) * ${subSizeScale})`,
+                                        fontSize: `calc(clamp(13px, 2.4cqw, 22px) * ${subSizeScale})`,
+                                        color: subColor,
+                                        textShadow: getShadowStyle(subShadow),
+                                        backgroundColor: getBgStyle(subBg),
+                                        fontFamily: getFontFamily(subFont),
+                                        padding: subBg !== 'none' ? '3px 10px' : '0',
+                                        borderRadius: subBg !== 'none' ? '6px' : '0',
+                                        backdropFilter: subBg === 'blur' ? 'blur(6px)' : 'none',
+                                        WebkitBackdropFilter: subBg === 'blur' ? 'blur(6px)' : 'none',
                                         lineHeight: 1.35
                                     }}
                                 >

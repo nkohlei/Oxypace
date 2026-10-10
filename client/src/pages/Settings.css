@@ -2079,3 +2079,627 @@ input:checked + .slider::before {
         display: none !important;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CANLI ODA "BİRLİKTE İZLE" ALTYAZI GÖRÜNÜM DÜZENLEME STÜDYOSU (PRO ENGINE)
+   Tasarım: Avatar Cropper / Pro Studio temalı agresif, detaylı ve sinematik UI
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.wp-studio-wrapper {
+    background: #09090c;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    padding: 22px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.wp-studio-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 16px;
+}
+
+.wp-studio-header-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 260px;
+}
+
+.wp-studio-badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #38bdf8;
+    font-family: var(--font-geist-mono, monospace);
+    text-transform: uppercase;
+}
+
+.wp-studio-main-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.wp-studio-sub-desc {
+    margin: 0;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.5;
+}
+
+.wp-studio-header-sync-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    padding: 6px 12px;
+    border-radius: 20px;
+    color: #34d399;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    font-family: var(--font-geist-mono, monospace);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+    align-self: center;
+}
+
+.wp-studio-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b989;
+    box-shadow: 0 0 8px #10b989;
+    animation: wpPulseDot 1.8s infinite;
+}
+
+@keyframes wpPulseDot {
+    0%, 100% { opacity: 0.5; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ─── SİNEMATİK ÖNİZLEME VİZÖRÜ (VIEWPORT) ─── */
+.wp-studio-viewport-card {
+    position: relative;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.wp-studio-viewport-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: rgba(13, 14, 18, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+
+.wp-studio-hud-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-geist-mono, monospace);
+    font-size: 11px;
+}
+
+.wp-studio-rec-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+.wp-studio-hud-text {
+    font-weight: 700;
+    color: #e4e4e7;
+    letter-spacing: 0.05em;
+}
+
+.wp-studio-hud-aspect {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 9.5px;
+    color: #a1a1aa;
+    font-weight: 600;
+}
+
+.wp-studio-hud-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wp-studio-hud-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #d4d4d8;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wp-studio-hud-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.wp-studio-hud-btn.active {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+
+/* Surface screen */
+.wp-studio-screen {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2.35 / 1;
+    min-height: 240px;
+    max-height: 480px;
+    background: #000000;
+    overflow: hidden;
+    user-select: none;
+    cursor: default;
+    container-type: inline-size;
+}
+
+@media (max-width: 650px) {
+    .wp-studio-screen {
+        aspect-ratio: 16 / 9;
+        min-height: 200px;
+    }
+}
+
+.wp-studio-screen.is-dragging {
+    cursor: grabbing !important;
+}
+
+.wp-studio-screen-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+    filter: brightness(0.96) contrast(1.04);
+}
+
+.wp-studio-vignette-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, 0.6) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.5) 100%);
+}
+
+/* Guide Lines */
+.wp-studio-guides-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.wp-guide-line {
+    position: absolute;
+    background: rgba(56, 189, 248, 0.15);
+}
+
+.wp-guide-line.horizontal {
+    left: 0;
+    right: 0;
+    height: 1px;
+}
+
+.wp-guide-line.horizontal.one-third { top: 33.33%; }
+.wp-guide-line.horizontal.two-thirds { top: 66.66%; }
+
+.wp-guide-line.vertical {
+    top: 0;
+    bottom: 0;
+    width: 1px;
+}
+
+.wp-guide-line.vertical.one-third { left: 33.33%; }
+.wp-guide-line.vertical.two-thirds { left: 66.66%; }
+
+.wp-guide-safe-area {
+    position: absolute;
+    inset: 6% 8%;
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    pointer-events: none;
+}
+
+.wp-guide-reticle {
+    position: absolute;
+    font-size: 14px;
+    font-weight: 300;
+    color: rgba(56, 189, 248, 0.4);
+    font-family: monospace;
+    line-height: 1;
+}
+
+.wp-guide-reticle.top-left { top: 8px; left: 10px; }
+.wp-guide-reticle.top-right { top: 8px; right: 10px; }
+.wp-guide-reticle.bottom-left { bottom: 8px; left: 10px; }
+.wp-guide-reticle.bottom-right { bottom: 8px; right: 10px; }
+
+/* Draggable Subtitle Box inside Viewport */
+.wp-studio-sub-overlay {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 820px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    z-index: 50;
+    transition: bottom 0.12s ease;
+    touch-action: none;
+}
+
+.wp-studio-sub-overlay:hover .wp-studio-sub-box {
+    outline: 1.5px dashed rgba(56, 189, 248, 0.7);
+    outline-offset: 4px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.wp-studio-sub-overlay:hover .wp-studio-sub-drag-tag,
+.wp-studio-sub-overlay.dragging .wp-studio-sub-drag-tag {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.wp-studio-sub-overlay.dragging {
+    cursor: grabbing !important;
+    transition: none !important;
+}
+
+.wp-studio-sub-overlay.dragging .wp-studio-sub-box {
+    outline: 1.5px solid #38bdf8;
+    outline-offset: 4px;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+}
+
+.wp-studio-sub-box {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: background 0.15s ease, outline 0.15s ease;
+}
+
+.wp-studio-sub-drag-tag {
+    opacity: 0;
+    transform: translateY(3px);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.6);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: 0.04em;
+    font-family: var(--font-geist-mono, monospace);
+    margin-bottom: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.wp-studio-sub-text {
+    font-weight: 600;
+    letter-spacing: 0.25px;
+    text-align: center;
+    word-break: break-word;
+    user-select: none;
+    transition: font-size 0.12s ease, color 0.15s ease;
+}
+
+.wp-studio-drag-tip {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    right: 12px;
+    pointer-events: none;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    text-shadow: 0 1px 3px #000;
+}
+
+.wp-studio-saved-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.9);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 6px 12px;
+    letter-spacing: 0.02em;
+    animation: fadeInSlide 0.2s ease;
+}
+
+/* ─── PRO STUDIO CONTROLS GRID ─── */
+.wp-studio-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.wp-studio-panel {
+    background: #111217;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-sizing: border-box;
+}
+
+.wp-studio-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wp-studio-panel-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.wp-studio-val-badge {
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #38bdf8;
+    font-family: var(--font-geist-mono, monospace);
+}
+
+.wp-studio-slider-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.wp-studio-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.wp-studio-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.wp-studio-range::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+}
+
+.wp-studio-pills-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.wp-studio-pill-btn {
+    flex: 1;
+    min-width: 50px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 5px 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.wp-studio-pill-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.wp-studio-pill-btn.active {
+    background: rgba(56, 189, 248, 0.22);
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+/* Colors row */
+.wp-studio-colors-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.wp-studio-color-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wp-studio-color-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.wp-studio-color-pill.active {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.wp-color-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Options Grid for shadows & backgrounds */
+.wp-studio-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.wp-studio-choice-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 7px 9px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wp-studio-choice-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.wp-studio-choice-btn.active {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+.wp-choice-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.wp-choice-sub {
+    font-size: 9.5px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Fonts row */
+.wp-studio-fonts-row {
+    display: flex;
+    gap: 6px;
+}
+
+/* Sample input */
+.wp-studio-sample-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.wp-studio-sample-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.wp-studio-sample-input {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #ffffff;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.wp-studio-sample-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
