@@ -1745,7 +1745,7 @@
 .watch-party-subtitle-overlay.is-dragging .watch-party-subtitle-box {
     outline: 1.5px dashed rgba(255, 255, 255, 0.6);
     outline-offset: 4px;
-    border-radius: 4px;
+    border-radius: 0px !important;
     background: rgba(0, 0, 0, 0.5) !important;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -1758,7 +1758,7 @@
     background: #09090b;
     border: 1px solid rgba(255, 255, 255, 0.35);
     padding: 3px 8px;
-    border-radius: 4px;
+    border-radius: 0px !important;
     font-size: 10px;
     font-weight: 700;
     color: #ffffff;

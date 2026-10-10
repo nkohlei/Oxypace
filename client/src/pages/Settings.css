@@ -2082,20 +2082,29 @@ input:checked + .slider::before {
 
 /* ══════════════════════════════════════════════════════════════════════════════
    CANLI ODA "BİRLİKTE İZLE" ALTYAZI GÖRÜNÜM MODÜLÜ (MONOKROM SİYAH & BEYAZ)
-   Sıkı Kurallar: Sadece Siyah/Beyaz, Kompakt Boyut, Dikdörtgen Hafif Kavisli Butonlar
+   Sıkı Kurallar: Sadece Siyah/Beyaz Tema, FOTONUN TAM HALİ (2.42:1 Tam Boyut),
+   KESİN DİKDÖRTGEN BUTONLAR (border-radius: 0px), Diğer Ayarlar Temizlendi.
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .wp-mono-studio {
     background: #09090b;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0px !important;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 14px;
     box-sizing: border-box;
     width: 100%;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.wp-mono-studio *,
+.wp-mono-studio button,
+.wp-mono-studio input,
+.wp-mono-studio span,
+.wp-mono-studio div {
+    border-radius: 0px !important;
 }
 
 .wp-mono-header {
@@ -2148,7 +2157,7 @@ input:checked + .slider::before {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.16);
     padding: 4px 10px;
-    border-radius: 4px;
+    border-radius: 0px !important;
     color: #ffffff;
     font-size: 10px;
     font-weight: 700;
@@ -2159,19 +2168,19 @@ input:checked + .slider::before {
 .wp-mono-tag-dot {
     width: 6px;
     height: 6px;
-    border-radius: 2px;
+    border-radius: 0px !important;
     background: #ffffff;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
 }
 
-/* ─── KOMPAKT ÖNİZLEME VİZÖRÜ ─── */
+/* ─── SİNEMATİK TAM KARE ÖNİZLEME (FOTONUN TAM HALİ - KESİNTİSİZ) ─── */
 .wp-mono-viewport {
     position: relative;
     background: #000000;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 0px !important;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
     display: flex;
     flex-direction: column;
 }
@@ -2180,29 +2189,29 @@ input:checked + .slider::before {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 12px;
-    background: rgba(14, 14, 16, 0.95);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 14px;
+    background: rgba(14, 14, 16, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 10;
 }
 
 .wp-mono-hud-info {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 11px;
 }
 
 .wp-mono-hud-dot {
     width: 6px;
     height: 6px;
-    border-radius: 2px;
+    border-radius: 0px !important;
     background: #ffffff;
 }
 
 .wp-mono-hud-name {
-    font-weight: 600;
-    color: #e4e4e7;
+    font-weight: 700;
+    color: #f4f4f5;
     letter-spacing: 0.03em;
 }
 
@@ -2212,21 +2221,20 @@ input:checked + .slider::before {
     gap: 6px;
 }
 
+/* Tam kare sinema ekranı: 1024x424 en boy oranıyla fotonun tamamı eksiksiz görünür */
 .wp-mono-screen {
     position: relative;
     width: 100%;
-    height: 195px;
+    max-width: 940px;
+    margin: 0 auto;
+    aspect-ratio: 1024 / 424;
+    height: auto !important;
     background: #000000;
     overflow: hidden;
     user-select: none;
     cursor: default;
     container-type: inline-size;
-}
-
-@media (max-width: 650px) {
-    .wp-mono-screen {
-        height: 165px;
-    }
+    border-radius: 0px !important;
 }
 
 .wp-mono-screen.is-dragging {
@@ -2238,17 +2246,11 @@ input:checked + .slider::before {
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     pointer-events: none;
-    filter: brightness(0.95) contrast(1.05);
-}
-
-.wp-mono-vignette {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 18%, transparent 82%, rgba(0,0,0,0.55) 100%);
+    filter: brightness(0.98) contrast(1.04);
+    border-radius: 0px !important;
 }
 
 .wp-mono-guides {
@@ -2259,7 +2261,7 @@ input:checked + .slider::before {
 
 .wp-mono-guide-line {
     position: absolute;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .wp-mono-guide-line.h-top { top: 33.33%; left: 0; right: 0; height: 1px; }
@@ -2270,7 +2272,7 @@ input:checked + .slider::before {
 .wp-mono-safe-box {
     position: absolute;
     inset: 6% 8%;
-    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
     pointer-events: none;
 }
 
@@ -2279,7 +2281,7 @@ input:checked + .slider::before {
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
-    max-width: 760px;
+    max-width: 780px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -2290,9 +2292,9 @@ input:checked + .slider::before {
 }
 
 .wp-mono-sub-overlay:hover .wp-mono-sub-box {
-    outline: 1.5px dashed rgba(255, 255, 255, 0.5);
+    outline: 1px dashed rgba(255, 255, 255, 0.7);
     outline-offset: 3px;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.35);
 }
 
 .wp-mono-sub-overlay:hover .wp-mono-drag-badge,
@@ -2309,7 +2311,7 @@ input:checked + .slider::before {
 .wp-mono-sub-overlay.dragging .wp-mono-sub-box {
     outline: 1.5px solid #ffffff;
     outline-offset: 3px;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.65);
 }
 
 .wp-mono-sub-box {
@@ -2319,7 +2321,7 @@ input:checked + .slider::before {
     align-items: center;
     gap: 3px;
     padding: 3px 8px;
-    border-radius: 4px;
+    border-radius: 0px !important;
     transition: background 0.15s ease, outline 0.15s ease;
 }
 
@@ -2330,8 +2332,8 @@ input:checked + .slider::before {
     align-items: center;
     gap: 4px;
     background: #000000;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 0px !important;
     padding: 2px 7px;
     font-size: 9px;
     font-weight: 700;
@@ -2360,7 +2362,7 @@ input:checked + .slider::before {
     pointer-events: none;
     text-align: center;
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.5);
     text-shadow: 0 1px 2px #000000;
 }
 
@@ -2373,26 +2375,26 @@ input:checked + .slider::before {
     color: #000000;
     font-size: 11px;
     font-weight: 700;
-    padding: 5px 10px;
+    padding: 6px 10px;
     letter-spacing: 0.02em;
-    animation: fadeInSlide 0.2s ease;
+    border-radius: 0px !important;
 }
 
-/* ─── PANELLER VE DİKDÖRTGEN BUTONLAR (TAMAMEN MONOKROM) ─── */
+/* ─── PANELLER VE KESİN DİKDÖRTGEN BUTONLAR (SIFIR KAVİS) ─── */
 .wp-mono-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 10px;
 }
 
 .wp-mono-panel {
-    background: #121216;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 4px;
+    background: #111115;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0px !important;
     padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 10px;
     box-sizing: border-box;
 }
 
@@ -2415,9 +2417,9 @@ input:checked + .slider::before {
 
 .wp-mono-val-box {
     background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    padding: 2px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 0px !important;
+    padding: 2px 7px;
     font-size: 10.5px;
     font-weight: 700;
     color: #ffffff;
@@ -2428,8 +2430,8 @@ input:checked + .slider::before {
     appearance: none;
     width: 100%;
     height: 4px;
-    background: rgba(255, 255, 255, 0.16);
-    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 0px !important;
     outline: none;
     cursor: pointer;
 }
@@ -2439,15 +2441,24 @@ input:checked + .slider::before {
     appearance: none;
     width: 13px;
     height: 13px;
-    border-radius: 3px;
+    border-radius: 0px !important;
     background: #ffffff;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
     cursor: pointer;
     transition: transform 0.12s ease;
 }
 
+.wp-mono-slider::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 0px !important;
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+}
+
 .wp-mono-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.15);
 }
 
 .wp-mono-btn-row {
@@ -2457,17 +2468,17 @@ input:checked + .slider::before {
     flex-wrap: wrap;
 }
 
-/* Dikdörtgen Butonlar - Sadece Köşeleri Azıcık Kıvrımlı */
+/* TAM DİKDÖRTGEN BUTONLAR - KAVİSSİZ (border-radius: 0px !important) */
 .wp-mono-rect-btn {
     flex: 1;
     min-width: 44px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 4px;
-    color: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 0px !important;
+    color: rgba(255, 255, 255, 0.8);
     font-size: 10.5px;
     font-weight: 600;
-    padding: 5px 8px;
+    padding: 6px 8px;
     text-align: center;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -2479,27 +2490,28 @@ input:checked + .slider::before {
 }
 
 .wp-mono-rect-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.14);
     color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.35) !important;
 }
 
 .wp-mono-rect-btn.active {
-    background: #ffffff;
-    border-color: #ffffff;
-    color: #000000;
+    background: #ffffff !important;
+    border-color: #ffffff !important;
+    color: #000000 !important;
     font-weight: 700;
 }
 
 .wp-mono-swatch {
     width: 10px;
     height: 10px;
-    border-radius: 2px;
+    border-radius: 0px !important;
     border: 1px solid #000000;
     box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
 }
 
-/* Seçenek Kart Butonları */
+/* Seçenek Kart Butonları - Tam Dikdörtgen */
 .wp-mono-choice-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2512,31 +2524,31 @@ input:checked + .slider::before {
     align-items: flex-start;
     gap: 2px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 0px !important;
+    padding: 7px 9px;
     text-align: left;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .wp-mono-card-btn:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.28) !important;
 }
 
 .wp-mono-card-btn.active {
-    background: #ffffff;
-    border-color: #ffffff;
+    background: #ffffff !important;
+    border-color: #ffffff !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .wp-mono-card-btn.active .wp-mono-card-label {
-    color: #000000;
+    color: #000000 !important;
 }
 
 .wp-mono-card-btn.active .wp-mono-card-sub {
-    color: rgba(0, 0, 0, 0.65);
+    color: rgba(0, 0, 0, 0.65) !important;
 }
 
 .wp-mono-card-label {
@@ -2565,9 +2577,9 @@ input:checked + .slider::before {
 }
 
 .wp-mono-text-input {
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 0px !important;
     padding: 6px 9px;
     font-size: 11.5px;
     color: #ffffff;
@@ -2576,5 +2588,5 @@ input:checked + .slider::before {
 }
 
 .wp-mono-text-input:focus {
-    border-color: #ffffff;
+    border-color: #ffffff !important;
 }

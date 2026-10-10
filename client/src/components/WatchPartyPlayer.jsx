@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
@@ -446,6 +446,62 @@ const WatchPartyPlayer = () => {
         };
     }, []);
 
+    // Film Frame Bounds Tracking (Siyah Barları Altyazı Konumlandırmasından Tamamen Dışlar)
+    const [filmBounds, setFilmBounds] = useState({ bottomOffset: 0, filmHeight: 0, filmWidth: 0 });
+    const updateFilmBounds = useCallback(() => {
+        const video = videoRef.current;
+        const container = containerRef.current;
+        if (!container) return;
+
+        const cW = container.clientWidth;
+        const cH = container.clientHeight;
+        if (!cW || !cH) return;
+
+        const vW = (video && video.videoWidth > 0) ? video.videoWidth : 16;
+        const vH = (video && video.videoHeight > 0) ? video.videoHeight : 9;
+        const videoAspect = vW / vH;
+        const containerAspect = cW / cH;
+
+        let filmWidth = cW;
+        let filmHeight = cH;
+        let bottomOffset = 0;
+
+        if (containerAspect < videoAspect) {
+            // Letterbox: Üstte ve altta siyah barlar var. Film görüntüsü ortalanır.
+            filmHeight = cW / videoAspect;
+            bottomOffset = (cH - filmHeight) / 2;
+        } else {
+            // Pillarbox: Solda ve sağda siyah barlar var.
+            filmWidth = cH * videoAspect;
+            bottomOffset = 0;
+        }
+
+        setFilmBounds({
+            bottomOffset: Math.max(0, Math.round(bottomOffset)),
+            filmHeight: Math.max(1, Math.round(filmHeight)),
+            filmWidth: Math.max(1, Math.round(filmWidth))
+        });
+    }, []);
+
+    useEffect(() => {
+        updateFilmBounds();
+        const container = containerRef.current;
+        let ro = null;
+        if (container && window.ResizeObserver) {
+            ro = new ResizeObserver(() => {
+                updateFilmBounds();
+            });
+            ro.observe(container);
+        }
+        window.addEventListener('resize', updateFilmBounds);
+        document.addEventListener('fullscreenchange', updateFilmBounds);
+        return () => {
+            if (ro) ro.disconnect();
+            window.removeEventListener('resize', updateFilmBounds);
+            document.removeEventListener('fullscreenchange', updateFilmBounds);
+        };
+    }, [updateFilmBounds]);
+
     // Customizable Subtitle Appearance States (Size, Position, Color, Background, Shadow, Font)
     const [subSizeScale, setSubSizeScale] = useState(() => {
         const saved = localStorage.getItem('watchPartySubScale');
@@ -523,8 +579,8 @@ const WatchPartyPlayer = () => {
             if (!isDraggingSubRef.current) return;
             const curY = moveEvt.touches ? moveEvt.touches[0].clientY : moveEvt.clientY;
             const deltaY = dragStartYRef.current - curY; // Dragging upwards increases bottom offset
-            const containerHeight = (containerRef.current ? containerRef.current.offsetHeight : window.innerHeight) || 400;
-            const deltaPercent = (deltaY / containerHeight) * 100;
+            const activeFilmHeight = (filmBounds.filmHeight > 0) ? filmBounds.filmHeight : (containerRef.current ? containerRef.current.offsetHeight : 400);
+            const deltaPercent = (deltaY / activeFilmHeight) * 100;
             const nextPercent = Math.max(2, Math.min(88, Math.round(dragStartBottomPercentRef.current + deltaPercent)));
             setSubBottomPercent(nextPercent);
         };
@@ -1938,6 +1994,7 @@ const WatchPartyPlayer = () => {
             </div>
             )}
             <div 
+                ref={containerRef}
                 className="watch-party-player-container"
                 onClick={handlePlayerSurfaceClick}
                 onMouseMove={handleContainerMouseMove}
@@ -1978,6 +2035,8 @@ const WatchPartyPlayer = () => {
                     autoPlay={false}
                     crossOrigin="anonymous"
                     muted={localMuted}
+                    onLoadedMetadata={updateFilmBounds}
+                    onResize={updateFilmBounds}
                     onTimeUpdate={onTimeUpdate}
                     onDurationChange={onDurationChange}
                     onPlaying={onPlaying}
@@ -2035,12 +2094,15 @@ const WatchPartyPlayer = () => {
                     </div>
                 )}
 
-                {/* Netflix-Grade Pro Subtitle Overlay (Resizable, Positionable & Draggable) */}
+                {/* Netflix-Grade Pro Subtitle Overlay (Film Görüntüsüne Göre Kusursuz Konumlandırma) */}
                 {activeCueText && (
                     <div 
                         className={`watch-party-subtitle-overlay ${isDraggingSub ? 'is-dragging' : ''}`}
                         style={{
-                            bottom: `${subBottomPercent}%`
+                            bottom: filmBounds.filmHeight > 0 
+                                ? `${filmBounds.bottomOffset + Math.round(filmBounds.filmHeight * (subBottomPercent / 100))}px`
+                                : `${subBottomPercent}%`,
+                            maxWidth: filmBounds.filmWidth > 0 ? `${Math.min(filmBounds.filmWidth * 0.94, 860)}px` : '90%'
                         }}
                         onMouseDown={handleSubDragStart}
                         onTouchStart={handleSubDragStart}
@@ -2063,7 +2125,7 @@ const WatchPartyPlayer = () => {
                                         backgroundColor: getBgStyle(subBg),
                                         fontFamily: getFontFamily(subFont),
                                         padding: subBg !== 'none' ? '3px 10px' : '0',
-                                        borderRadius: subBg !== 'none' ? '6px' : '0',
+                                        borderRadius: '0px',
                                         backdropFilter: subBg === 'blur' ? 'blur(6px)' : 'none',
                                         WebkitBackdropFilter: subBg === 'blur' ? 'blur(6px)' : 'none',
                                         lineHeight: 1.35
