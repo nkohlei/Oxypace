@@ -294,12 +294,48 @@ const WatchPartyPlayer = () => {
     };
     const handleConfirmStop = () => {
         setIsStopConfirmOpen(false);
-        const activeHumanCount = (participants || []).filter(p => !p.identity?.endsWith('-screen')).length;
-        if (activeHumanCount <= 1) {
-            stopWatchParty();
-        } else {
-            sendWatchStopVote();
+        // Doğrudan oylama gönderilir; backend odada tek kişi varsa anında kapatır, birden fazla kişi varsa 2 kişilik onay süreci başlatır!
+        sendWatchStopVote();
+    };
+
+    // Unmute & Mobile Autoplay Helper System
+    const [needsUnmutePrompt, setNeedsUnmutePrompt] = useState(false);
+    const [needsInteractionPrompt, setNeedsInteractionPrompt] = useState(false);
+
+    const safePlay = async (targetVideo = videoRef.current) => {
+        if (!targetVideo) return;
+        try {
+            await targetVideo.play();
+            setNeedsInteractionPrompt(false);
+            if (!targetVideo.muted && !localMuted) {
+                setNeedsUnmutePrompt(false);
+            }
+        } catch (err) {
+            console.warn('[WatchPartyPlayer] Direct play blocked (likely mobile autoplay policy):', err);
+            // Mobilde sesli otomatik oynatma engellendiyse hemen muted olarak oynatmayı dene (mobil tarayıcılar muted'a izin verir)
+            try {
+                targetVideo.muted = true;
+                setLocalMuted(true);
+                await targetVideo.play();
+                // Video oynamaya başladı, kullanıcıya sesi açması için şık bir dokunma bannerı göster
+                setNeedsUnmutePrompt(true);
+                setNeedsInteractionPrompt(false);
+                console.log('[WatchPartyPlayer] Successfully recovered with muted autoplay on mobile.');
+            } catch (mutedErr) {
+                console.warn('[WatchPartyPlayer] Muted play also blocked by device, requiring tap:', mutedErr);
+                setNeedsInteractionPrompt(true);
+            }
         }
+    };
+
+    const handleUserUnmuteAction = () => {
+        if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.play().catch(() => {});
+        }
+        setLocalMuted(false);
+        setNeedsUnmutePrompt(false);
+        setNeedsInteractionPrompt(false);
     };
 
     // Double-tap Seek & Single-tap Controls Toggle System (YouTube Mobile Standard)
@@ -642,7 +678,7 @@ const WatchPartyPlayer = () => {
                         video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
                             setIsReady(true);
-                            if (watchParty?.isPlaying) video.play().catch(err => console.warn("Native HLS autoplay blocked", err));
+                            if (watchParty?.isPlaying) safePlay(video);
                         });
                         video.onerror = (e) => {
                             console.error("Native HLS playback error:", e);
@@ -723,7 +759,7 @@ const WatchPartyPlayer = () => {
                                 video.currentTime = initialStartTime;
                             }
                             if (watchParty?.isPlaying) {
-                                video.play().catch(err => console.warn("Hls.js autoplay blocked", err));
+                                safePlay(video);
                             }
                         });
 
@@ -1373,6 +1409,9 @@ const WatchPartyPlayer = () => {
 
             if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
             singleTapTimerRef.current = setTimeout(() => {
+                if (needsUnmutePrompt || needsInteractionPrompt) {
+                    handleUserUnmuteAction();
+                }
                 const currentlyShown = controlsVisibleRef.current;
                 if (currentlyShown) {
                     // Tap hides controls immediately
@@ -1429,7 +1468,7 @@ const WatchPartyPlayer = () => {
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
                 }, 2500);
-                video.play().catch(err => console.warn('[WatchParty] Auto-play resume catch:', err));
+                safePlay(video);
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             } else if (!watchParty.isPlaying && !video.paused) {
                 isSyncingRef.current = true;
@@ -1791,6 +1830,9 @@ const WatchPartyPlayer = () => {
                     controls={false}
                     playsInline
                     webkit-playsinline="true"
+                    x5-playsinline="true"
+                    x5-video-player-type="h5"
+                    preload="auto"
                     autoPlay={false}
                     crossOrigin="anonymous"
                     muted={localMuted}
@@ -1821,6 +1863,35 @@ const WatchPartyPlayer = () => {
                         />
                     ))}
                 </video>
+
+                {/* Mobile Autoplay & Unmute Quick Prompts */}
+                {needsUnmutePrompt && (
+                    <div 
+                        className="watch-party-unmute-badge"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserUnmuteAction();
+                        }}
+                    >
+                        <Volume2 size={16} className="unmute-badge-icon" />
+                        <span>Sesi Açmak İçin Dokunun</span>
+                    </div>
+                )}
+
+                {needsInteractionPrompt && (
+                    <div 
+                        className="watch-party-play-trigger-overlay"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserUnmuteAction();
+                        }}
+                    >
+                        <button type="button" className="watch-party-play-trigger-btn">
+                            <Play size={24} fill="currentColor" />
+                            <span>Yayını Başlat</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Netflix-Grade Pro Subtitle Overlay */}
                 {activeCueText && (
@@ -2114,68 +2185,74 @@ const WatchPartyPlayer = () => {
             )}
 
             {/* Minimum 2 Kullanıcı Konsensüs Oylama Modalı */}
-            {watchStopVoteStatus && (
-                <div className="watch-party-consensus-backdrop">
-                    <div className="watch-party-consensus-card" onClick={(e) => e.stopPropagation()}>
-                        <div className="watch-party-consensus-header">
-                            <div className="watch-party-consensus-title-wrap">
-                                <Film size={18} className="watch-party-consensus-info-icon" />
-                                <h4>Birlikte İzleme Kapatma Onayı</h4>
+            {watchStopVoteStatus && (() => {
+                const currentUserId = user?._id?.toString();
+                const hasCurrentVoted = (watchStopVoteStatus.voters || []).some(v => String(v) === currentUserId) || 
+                                        (watchStopVoteStatus.requesterId && String(watchStopVoteStatus.requesterId) === currentUserId);
+
+                return (
+                    <div className="watch-party-consensus-backdrop">
+                        <div className="watch-party-consensus-card" onClick={(e) => e.stopPropagation()}>
+                            <div className="watch-party-consensus-header">
+                                <div className="watch-party-consensus-title-wrap">
+                                    <Film size={18} className="watch-party-consensus-info-icon" />
+                                    <h4>Birlikte İzleme Kapatma Onayı</h4>
+                                </div>
+                                <span className="watch-party-consensus-badge">
+                                    {watchStopVoteStatus.voters?.length || 0} / {watchStopVoteStatus.required} Onay
+                                </span>
                             </div>
-                            <span className="watch-party-consensus-badge">
-                                {watchStopVoteStatus.voters?.length || 0} / {watchStopVoteStatus.required} Onay
-                            </span>
-                        </div>
-                        <div className="watch-party-consensus-body">
-                            {watchStopVoteStatus.voters?.includes(user?._id?.toString()) ? (
-                                <p>
-                                    Kapatma onayınız alındı ({watchStopVoteStatus.voters?.length}/{watchStopVoteStatus.required}).
-                                    <br />
-                                    <span className="watch-party-consensus-hint">
-                                        Birlikte izlemenin sonlandırılması için başka bir kullanıcının onayı bekleniyor...
-                                    </span>
-                                </p>
-                            ) : (
-                                <p>
-                                    <strong>{watchStopVoteStatus.requesterName}</strong> birlikte izlemeyi sonlandırmak istiyor.
-                                    <br />
-                                    <span className="watch-party-consensus-hint">
-                                        Sonlandırma için en az {watchStopVoteStatus.required} kullanıcı onayı gereklidir. Onaylıyor musunuz?
-                                    </span>
-                                </p>
-                            )}
-                        </div>
-                        <div className="watch-party-consensus-actions">
-                            {watchStopVoteStatus.voters?.includes(user?._id?.toString()) ? (
-                                <button 
-                                    type="button" 
-                                    className="glass-btn secondary" 
-                                    onClick={() => sendWatchStopCancel()}
-                                >
-                                    İsteği İptal Et
-                                </button>
-                            ) : (
-                                <>
+                            <div className="watch-party-consensus-body">
+                                {hasCurrentVoted ? (
+                                    <p>
+                                        Kapatma onayınız alındı ({watchStopVoteStatus.voters?.length || 1}/{watchStopVoteStatus.required}).
+                                        <br />
+                                        <span className="watch-party-consensus-hint">
+                                            Birlikte izlemenin sonlandırılması için odadan en az bir kullanıcının daha onayı bekleniyor...
+                                        </span>
+                                    </p>
+                                ) : (
+                                    <p>
+                                        <strong>{watchStopVoteStatus.requesterName}</strong> birlikte izlemeyi sonlandırmak istiyor.
+                                        <br />
+                                        <span className="watch-party-consensus-hint">
+                                            Kapatma işleminin gerçekleşmesi için sizin onayınız gerekiyor (en az {watchStopVoteStatus.required} kullanıcı onayı).
+                                        </span>
+                                    </p>
+                                )}
+                            </div>
+                            <div className="watch-party-consensus-actions">
+                                {hasCurrentVoted ? (
                                     <button 
                                         type="button" 
                                         className="glass-btn secondary" 
                                         onClick={() => sendWatchStopCancel()}
                                     >
-                                        Reddet
+                                        İsteği İptal Et
                                     </button>
-                                    <button 
-                                        type="button" 
-                                        className="glass-btn danger-confirm" 
-                                        onClick={() => sendWatchStopVote()}
-                                    >
-                                        Onayla ve Bitir
-                                    </button>
-                                </>
-                            )}
+                                ) : (
+                                    <>
+                                        <button 
+                                            type="button" 
+                                            className="glass-btn secondary" 
+                                            onClick={() => sendWatchStopCancel()}
+                                        >
+                                            İzlemeye Devam Et (Reddet)
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="glass-btn danger-confirm" 
+                                            onClick={() => sendWatchStopVote()}
+                                        >
+                                            Kapatmayı Onayla (2/2)
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 };
@@ -2194,11 +2271,13 @@ export const GlobalWatchPartyWrapper = () => {
             const placeholder = document.getElementById('watch-party-portal-placeholder') || document.getElementById('watch-party-portal-target');
             if (placeholder) {
                 const rect = placeholder.getBoundingClientRect();
+                const validWidth = rect.width > 0 ? rect.width : (placeholder.parentElement?.offsetWidth || window.innerWidth);
+                const validHeight = rect.height > 0 ? rect.height : Math.round((validWidth * 9) / 16);
                 setCoords({
                     top: rect.top,
                     left: rect.left,
-                    width: rect.width,
-                    height: rect.height,
+                    width: validWidth,
+                    height: validHeight,
                     display: 'block'
                 });
             } else {
