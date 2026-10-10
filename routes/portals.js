@@ -726,14 +726,17 @@ router.post('/:id/leave', protect, mongoIdValidation('id'), async (req, res) => 
 
 router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
-        const { name, description, privacy, allowedUsers, location, showOnMap } = req.body;
+        const { name, description, privacy, allowedUsers, location, showOnMap, liveRoomSettings } = req.body;
         const portal = await Portal.findById(req.params.id);
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
         }
 
-        if (portal.owner.toString() !== req.user._id.toString()) {
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isAdmin = isOwner || (Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString()));
+
+        if (!isAdmin) {
             return res.status(403).json({ message: 'Not authorized to update this portal' });
         }
 
@@ -748,6 +751,12 @@ router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
         }
         if (showOnMap !== undefined) {
             portal.showOnMap = showOnMap;
+        }
+        if (liveRoomSettings !== undefined) {
+            portal.liveRoomSettings = {
+                ...(portal.liveRoomSettings?.toObject?.() || portal.liveRoomSettings || {}),
+                ...liveRoomSettings
+            };
         }
 
         await portal.save();

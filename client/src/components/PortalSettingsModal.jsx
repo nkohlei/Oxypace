@@ -4,7 +4,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
 
-import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight } from 'lucide-react';
+import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio } from 'lucide-react';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({
@@ -75,6 +75,12 @@ const PortalSettingsModal = ({
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [actionProcessing, setActionProcessing] = useState(false);
 
+    // --- Live Room Settings State ---
+    const [liveRoomSettings, setLiveRoomSettings] = useState({
+        watchPartyConsensusRule: portal.liveRoomSettings?.watchPartyConsensusRule || 'all'
+    });
+    const [liveRoomSaveStatus, setLiveRoomSaveStatus] = useState(null); // 'success' | 'error' | null
+
     // Sync location data when portal prop changes
     useEffect(() => {
         setLocationData({
@@ -84,6 +90,12 @@ const PortalSettingsModal = ({
         });
         setShowOnMap(portal.showOnMap || false);
     }, [portal._id]);
+
+    useEffect(() => {
+        setLiveRoomSettings({
+            watchPartyConsensusRule: portal.liveRoomSettings?.watchPartyConsensusRule || 'all'
+        });
+    }, [portal.liveRoomSettings]);
 
     const handleLocationSearch = async (query) => {
         setLocationSearch(query);
@@ -342,6 +354,25 @@ const PortalSettingsModal = ({
             alert('Ayarlar kaydedildi');
         } catch (err) {
             alert('Kaydetme hatası: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveLiveRoomSettings = async () => {
+        if (!isAdmin) return;
+        setLoading(true);
+        setLiveRoomSaveStatus(null);
+        try {
+            const res = await axios.put(`/api/portals/${portal._id}`, {
+                liveRoomSettings
+            });
+            onUpdate(res.data);
+            setLiveRoomSaveStatus('success');
+            setTimeout(() => setLiveRoomSaveStatus(null), 3000);
+        } catch (err) {
+            setLiveRoomSaveStatus('error');
+            alert('Canlı oda ayarları kaydedilemedi: ' + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
@@ -614,6 +645,17 @@ const PortalSettingsModal = ({
                         <MapPin size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
                         <span className="tab-label">Konum</span>
                     </div>
+
+                    {isAdmin && (
+                        <div
+                            className={`settings-tab ${activeTab === 'live_rooms' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('live_rooms')}
+                            title="Canlı Oda Ayarları"
+                        >
+                            <Radio size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
+                            <span className="tab-label">Canlı Oda Ayarları</span>
+                        </div>
+                    )}
 
                     {isOwner && (
                         <div
@@ -1733,6 +1775,109 @@ const PortalSettingsModal = ({
                                         }}
                                     >
                                         🗑️ PORTALI GERİ DÖNÜLMEZ ŞEKİLDE SİL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'live_rooms' && (
+                        <div className="animate-fade-in live-rooms-settings-pane">
+                            <h2 className="settings-title">Canlı Oda Ayarları</h2>
+                            <p className="settings-desc">
+                                Portal içindeki sesli kanallarda birlikte izleme ve canlı oda kurallarını yönetin.
+                            </p>
+
+                            <div className="live-rooms-card">
+                                <div className="live-rooms-card-header">
+                                    <h3 className="live-rooms-card-title">Birlikte İzleme Kapatma Onay Kuralı</h3>
+                                    <p className="live-rooms-card-subtitle">
+                                        Birlikte video izleme modu aktifken, videoyu kapatmak için gereken minimum katılımcı onay sayısını veya konsensüs şartını belirleyin.
+                                    </p>
+                                </div>
+
+                                <div className="live-rooms-options-list">
+                                    {[
+                                        {
+                                            id: 'all',
+                                            title: 'Odadaki Tüm Katılımcıların Onayı (%100)',
+                                            badge: 'Varsayılan',
+                                            desc: 'Birlikte izlemenin kapatılması için o anda odadaki aktif tüm katılımcıların onayı istenir. Odadaki herkes onaylamadan video kapanmaz.'
+                                        },
+                                        {
+                                            id: 'majority',
+                                            title: 'Salt Çoğunluk (%50+)',
+                                            badge: 'Demokratik',
+                                            desc: 'Odadaki aktif kullanıcı sayısının yarısından fazlası (salt çoğunluk) onay verdiğinde video kapatılır.'
+                                        },
+                                        {
+                                            id: '2',
+                                            title: 'En Az 2 Kişi Onayı',
+                                            badge: null,
+                                            desc: 'Odada kaç kişi olursa olsun, kapatma işlemini başlatan dahil en az 2 kullanıcının onayı ile video kapatılır.'
+                                        },
+                                        {
+                                            id: '3',
+                                            title: 'En Az 3 Kişi Onayı',
+                                            badge: null,
+                                            desc: 'Odadaki katılımcılardan en az 3 kullanıcının onayı ile birlikte izleme sonlandırılır.'
+                                        },
+                                        {
+                                            id: '4',
+                                            title: 'En Az 4 Kişi Onayı',
+                                            badge: null,
+                                            desc: 'Kalabalık odalar için en az 4 kullanıcının onayı aranır.'
+                                        },
+                                        {
+                                            id: '1',
+                                            title: 'Doğrudan Kapatma (Tek Kişi)',
+                                            badge: 'Onaysız',
+                                            desc: 'Konsensüs aranmaz. Kapatma butonuna basan herhangi bir kullanıcı videoyu anında herkes için kapatabilir.'
+                                        }
+                                    ].map((option) => {
+                                        const isSelected = (liveRoomSettings.watchPartyConsensusRule || 'all') === option.id;
+                                        return (
+                                            <div
+                                                key={option.id}
+                                                className={`live-rooms-option-row ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => setLiveRoomSettings(prev => ({
+                                                    ...prev,
+                                                    watchPartyConsensusRule: option.id
+                                                }))}
+                                            >
+                                                <div className="live-rooms-radio-box">
+                                                    <div className={`live-rooms-radio-inner ${isSelected ? 'active' : ''}`} />
+                                                </div>
+                                                <div className="live-rooms-option-content">
+                                                    <div className="live-rooms-option-top">
+                                                        <span className="live-rooms-option-label">{option.title}</span>
+                                                        {option.badge && (
+                                                            <span className="live-rooms-badge">{option.badge}</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="live-rooms-option-text">{option.desc}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="live-rooms-footer">
+                                    <div className="live-rooms-status-area">
+                                        {liveRoomSaveStatus === 'success' && (
+                                            <span className="live-rooms-status success">✓ Değişiklikler başarıyla kaydedildi.</span>
+                                        )}
+                                        {liveRoomSaveStatus === 'error' && (
+                                            <span className="live-rooms-status error">✕ Kaydedilirken hata oluştu.</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="live-rooms-submit-btn"
+                                        onClick={handleSaveLiveRoomSettings}
+                                        disabled={loading}
+                                    >
+                                        {loading ? 'KAYDEDİLİYOR...' : 'AYARLARI KAYDET'}
                                     </button>
                                 </div>
                             </div>

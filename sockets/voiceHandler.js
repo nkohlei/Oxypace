@@ -13,6 +13,7 @@
 //    ["roomA", { participants: Map<userId, data>, startedAt: timestamp }]
 // ])
 import { pubClient } from './redisAdapter.js';
+import Portal from '../models/Portal.js';
 
 // Track voice channel participants: roomName -> Map<userId, { socketId, username, avatar }>
 // Structure:
@@ -438,7 +439,143 @@ export const initializeVoiceHandler = (io) => {
             console.log(`[Watch Party] subtitle synchronized in ${roomName}: "${subtitle.label}" by ${sName || sId}`);
         });
 
-        // ─── Watch Party Stop Consensus System (Strict 2-Person Approval) ───
+        // Helper: Fetch room consensus rule from Portal settings (defaults to 'all')
+        const getRoomConsensusRule = async (roomName) => {
+            const roomMatch = roomName && roomName.match(/^portal_([^_]+)_channel_(.+)$/);
+            if (roomMatch) {
+                const portalId = roomMatch[1];
+                try {
+                    const portal = await Portal.findById(portalId).select('liveRoomSettings').lean();
+                    if (portal?.liveRoomSettings?.watchPartyConsensusRule) {
+                        return portal.liveRoomSettings.watchPartyConsensusRule;
+                    }
+                } catch (err) {
+                    console.error('[Watch Party Consensus] Error fetching portal settings:', err);
+                }
+            }
+            return 'all'; // Varsayılan sistem: Odadaki herkesin (%100) onayı
+        };
+
+        const calculateRequiredVotes = (consensusRule, totalActive) => {
+            if (totalActive <= 1) return 1;
+            if (consensusRule === '1') return 1;
+            if (consensusRule === 'majority') return Math.max(1, Math.floor(totalActive / 2) + 1);
+            if (consensusRule === 'all') return totalActive;
+            const num = parseInt(consensusRule, 10);
+            return isNaN(num) ? totalActive : Math.min(totalActive, Math.max(1, num));
+        };
+
+        const cleanupWatchParty = async (roomName) => {
+            const roomData = voiceRooms.get(roomName);
+            if (roomData) {
+                if (roomData.watchStopTimer) {
+                    clearTimeout(roomData.watchStopTimer);
+                    roomData.watchStopTimer = null;
+                }
+                roomData.watchParty = null;
+                roomData.watchStopVotes = null;
+            }
+            if (pubClient) {
+                try {
+                    await pubClient.del(`voiceroom:${roomName}:watchparty`);
+                    await pubClient.del(`voiceroom:${roomName}:stopvotes`);
+                    await pubClient.del(`voiceroom:${roomName}:stopvotereq`);
+                } catch (err) {}
+            }
+            io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
+            io.to(`voice:${roomName}`).emit('voice:watch-stop');
+        };
+
+        const handleWatchStopVoteLogic = async (roomName, uId, uName, totalActiveUsers, requiredVotes) => {
+            const roomData = voiceRooms.get(roomName);
+            if (!roomData || !roomData.watchParty) return;
+
+            const voteItem = JSON.stringify({
+                userId: uId,
+                socketId: socket.id,
+                username: uName
+            });
+
+            if (!roomData.watchStopVotes) {
+                roomData.watchStopVotes = new Set();
+            }
+            roomData.watchStopVotes.add(voteItem);
+
+            let votesList = Array.from(roomData.watchStopVotes).map(v => {
+                try { return JSON.parse(v); } catch (e) { return null; }
+            }).filter(Boolean);
+
+            if (pubClient) {
+                try {
+                    await pubClient.sadd(`voiceroom:${roomName}:stopvotes`, voteItem);
+                    const redisVotes = await pubClient.smembers(`voiceroom:${roomName}:stopvotes`);
+                    if (redisVotes && redisVotes.length > 0) {
+                        votesList = redisVotes.map(v => {
+                            try { return JSON.parse(v); } catch (e) { return null; }
+                        }).filter(Boolean);
+                    }
+                    const currentReq = await pubClient.get(`voiceroom:${roomName}:stopvotereq`);
+                    if (!currentReq) {
+                        await pubClient.set(`voiceroom:${roomName}:stopvotereq`, JSON.stringify({ requesterName: uName, requesterId: uId }));
+                    }
+                } catch (err) {
+                    console.error('[Watch Party Stop Vote] Redis error:', err);
+                }
+            }
+
+            // Determine unique vote count (handles both separate users and multi-tab test sessions)
+            const uniqueSockets = new Set(votesList.map(v => v.socketId));
+            const uniqueUsers = new Set(votesList.map(v => v.userId).filter(Boolean));
+            const voteCount = Math.max(uniqueUsers.size, uniqueSockets.size);
+
+            console.log(`[Watch Party] Stop vote in ${roomName} from ${uName} (${voteCount}/${requiredVotes} required)`);
+
+            if (voteCount >= requiredVotes) {
+                await cleanupWatchParty(roomName);
+                console.log(`[Watch Party] stopped in ${roomName} after consensus reached (${voteCount}/${requiredVotes} votes)`);
+            } else {
+                if (roomData.watchStopTimer) clearTimeout(roomData.watchStopTimer);
+                roomData.watchStopTimer = setTimeout(async () => {
+                    const rData = voiceRooms.get(roomName);
+                    if (rData) {
+                        rData.watchStopVotes = null;
+                        rData.watchStopTimer = null;
+                    }
+                    if (pubClient) {
+                        try {
+                            await pubClient.del(`voiceroom:${roomName}:stopvotes`);
+                            await pubClient.del(`voiceroom:${roomName}:stopvotereq`);
+                        } catch (e) {}
+                    }
+                    io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
+                    console.log(`[Watch Party] Stop vote timed out in ${roomName}`);
+                }, 45000);
+
+                let reqName = uName;
+                let reqId = uId;
+                if (pubClient) {
+                    try {
+                        const rStr = await pubClient.get(`voiceroom:${roomName}:stopvotereq`);
+                        if (rStr) {
+                            const rObj = JSON.parse(rStr);
+                            reqName = rObj.requesterName || reqName;
+                            reqId = rObj.requesterId || reqId;
+                        }
+                    } catch (e) {}
+                }
+
+                io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-status', {
+                    voters: votesList.map(v => v.userId || v.socketId),
+                    voterSockets: votesList.map(v => v.socketId),
+                    voteCount,
+                    required: requiredVotes,
+                    requesterName: reqName,
+                    requesterId: reqId
+                });
+            }
+        };
+
+        // ─── Watch Party Stop Consensus System (Configurable & Cluster-Safe) ───
         socket.on('voice:watch-stop', async ({ roomName }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
@@ -455,91 +592,28 @@ export const initializeVoiceHandler = (io) => {
                     }
                 } catch (e) {}
             }
-            const totalActive = Math.max(participantCount, socketCount);
+            const totalActive = Math.max(participantCount, socketCount, 1);
+            const consensusRule = await getRoomConsensusRule(roomName);
+            const requiredVotes = calculateRequiredVotes(consensusRule, totalActive);
 
-            // If more than 1 user is in the room, direct closing is strictly forbidden!
-            // Route to consensus voting requiring at least 2 users.
-            if (totalActive > 1) {
-                const uId = String(socket._voiceUserId || socket.userId || socket.id);
+            if (totalActive > 1 && requiredVotes > 1) {
+                const uId = String(socket.userId || socket._voiceUserId || socket.id);
                 const uName = socket.username || 'Bir kullanıcı';
                 socket.emit('voice:watch-stop-vote-redirect');
-                // Trigger vote on behalf of the user
-                handleWatchStopVoteLogic(roomName, uId, uName, totalActive);
+                await handleWatchStopVoteLogic(roomName, uId, uName, totalActive, requiredVotes);
                 return;
             }
 
-            // Exactly 1 user in room: allow immediate close
-            if (roomData.watchStopTimer) {
-                clearTimeout(roomData.watchStopTimer);
-                roomData.watchStopTimer = null;
-            }
-            roomData.watchParty = null;
-            roomData.watchStopVotes = null;
-            if (pubClient) {
-                try {
-                    await pubClient.del(`voiceroom:${roomName}:watchparty`);
-                } catch (err) {}
-            }
-            io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
-            io.to(`voice:${roomName}`).emit('voice:watch-stop');
-            console.log(`[Watch Party] Solo user closed watchParty in ${roomName}`);
+            await cleanupWatchParty(roomName);
+            console.log(`[Watch Party] Direct stop executed in ${roomName} (requiredVotes: ${requiredVotes})`);
         });
-
-        const handleWatchStopVoteLogic = async (roomName, uId, uName, totalActiveUsers) => {
-            const roomData = voiceRooms.get(roomName);
-            if (!roomData || !roomData.watchParty) return;
-
-            if (!roomData.watchStopVotes) {
-                roomData.watchStopVotes = new Set();
-            }
-            roomData.watchStopVotes.add(uId);
-
-            // Strict rule: If multiple people in room, at least 2 approvals required (1 initiator + 1 approver)
-            const requiredVotes = totalActiveUsers <= 1 ? 1 : 2;
-            console.log(`[Watch Party] Stop vote in ${roomName} from ${uName} (${roomData.watchStopVotes.size}/${requiredVotes})`);
-
-            if (roomData.watchStopVotes.size >= requiredVotes) {
-                if (roomData.watchStopTimer) {
-                    clearTimeout(roomData.watchStopTimer);
-                    roomData.watchStopTimer = null;
-                }
-                roomData.watchParty = null;
-                roomData.watchStopVotes = null;
-                if (pubClient) {
-                    try {
-                        await pubClient.del(`voiceroom:${roomName}:watchparty`);
-                    } catch (err) {}
-                }
-                io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
-                io.to(`voice:${roomName}`).emit('voice:watch-stop');
-                console.log(`[Watch Party] stopped in ${roomName} after consensus (${requiredVotes} votes)`);
-            } else {
-                // Set 35 second timeout for vote consensus
-                if (roomData.watchStopTimer) clearTimeout(roomData.watchStopTimer);
-                roomData.watchStopTimer = setTimeout(() => {
-                    if (roomData && roomData.watchStopVotes) {
-                        roomData.watchStopVotes = null;
-                        roomData.watchStopTimer = null;
-                        io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
-                        console.log(`[Watch Party] Stop vote timed out in ${roomName}`);
-                    }
-                }, 35000);
-
-                io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-status', {
-                    voters: Array.from(roomData.watchStopVotes),
-                    required: requiredVotes,
-                    requesterName: uName,
-                    requesterId: uId
-                });
-            }
-        };
 
         socket.on('voice:watch-stop-vote', async ({ roomName, userId, username }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (!roomData || !roomData.watchParty) return;
 
-            const uId = String(userId || socket._voiceUserId || socket.id);
+            const uId = String(userId || socket.userId || socket._voiceUserId || socket.id);
             const uName = username || socket.username || 'Bir kullanıcı';
 
             let participantCount = roomData.participants ? roomData.participants.size : 0;
@@ -553,12 +627,14 @@ export const initializeVoiceHandler = (io) => {
                     }
                 } catch (e) {}
             }
-            const totalActive = Math.max(participantCount, socketCount);
+            const totalActive = Math.max(participantCount, socketCount, 1);
+            const consensusRule = await getRoomConsensusRule(roomName);
+            const requiredVotes = calculateRequiredVotes(consensusRule, totalActive);
 
-            handleWatchStopVoteLogic(roomName, uId, uName, totalActive);
+            await handleWatchStopVoteLogic(roomName, uId, uName, totalActive, requiredVotes);
         });
 
-        socket.on('voice:watch-stop-cancel', ({ roomName }) => {
+        socket.on('voice:watch-stop-cancel', async ({ roomName }) => {
             if (!roomName) return;
             const roomData = voiceRooms.get(roomName);
             if (roomData) {
@@ -567,6 +643,12 @@ export const initializeVoiceHandler = (io) => {
                     roomData.watchStopTimer = null;
                 }
                 roomData.watchStopVotes = null;
+            }
+            if (pubClient) {
+                try {
+                    await pubClient.del(`voiceroom:${roomName}:stopvotes`);
+                    await pubClient.del(`voiceroom:${roomName}:stopvotereq`);
+                } catch (e) {}
             }
             io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
             console.log(`[Watch Party] Stop vote cancelled in ${roomName}`);

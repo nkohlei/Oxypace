@@ -2166,10 +2166,11 @@ export const VoiceProvider = ({ children }) => {
     }, [activeRoom, safeEmit]);
 
     const stopWatchParty = useCallback(() => {
-        if (activeRoom) {
-            safeEmit('voice:watch-stop', { roomName: activeRoom.roomName });
+        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
+        if (roomName) {
+            safeEmit('voice:watch-stop', { roomName });
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, watchParty, safeEmit]);
 
     const sendWatchPlay = useCallback((time) => {
         if (activeRoom) {
@@ -2234,19 +2235,21 @@ export const VoiceProvider = ({ children }) => {
     }, [activeRoom, watchParty, safeEmit, user]);
 
     const sendWatchStopVote = useCallback(() => {
-        if (activeRoom) {
-            const uId = user?._id?.toString();
+        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
+        if (roomName) {
+            const uId = user?._id?.toString() || user?.id?.toString();
             const uName = user?.profile?.displayName || user?.username || 'Kullanıcı';
-            safeEmit('voice:watch-stop-vote', { roomName: activeRoom.roomName, userId: uId, username: uName });
+            safeEmit('voice:watch-stop-vote', { roomName, userId: uId, username: uName });
         }
-    }, [activeRoom, safeEmit, user]);
+    }, [activeRoom, watchParty, safeEmit, user]);
 
     const sendWatchStopCancel = useCallback(() => {
-        if (activeRoom) {
-            safeEmit('voice:watch-stop-cancel', { roomName: activeRoom.roomName });
+        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
+        if (roomName) {
+            safeEmit('voice:watch-stop-cancel', { roomName });
             setWatchStopVoteStatus(null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, watchParty, safeEmit]);
 
     // Trigger update on state change
     useEffect(() => {
@@ -2399,7 +2402,8 @@ export const VoiceProvider = ({ children }) => {
         unreadCount,
         setUnreadCount,
         userVolume,
-        setUserVolume
+        setUserVolume,
+        socket
     };
 
     return (

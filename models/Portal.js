@@ -158,6 +158,13 @@ const portalSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        liveRoomSettings: {
+            watchPartyConsensusRule: {
+                type: String,
+                enum: ['all', 'majority', '1', '2', '3', '4'],
+                default: 'all',
+            },
+        },
     },
     {
         timestamps: true,

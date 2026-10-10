@@ -257,7 +257,8 @@ const WatchPartyPlayer = () => {
         participants,
         watchStopVoteStatus,
         sendWatchStopVote,
-        sendWatchStopCancel
+        sendWatchStopCancel,
+        socket
     } = useVoice();
     const { user } = useAuth();
 
@@ -2572,11 +2573,21 @@ const WatchPartyPlayer = () => {
                 </div>
             )}
 
-            {/* Minimum 2 Kullanıcı Konsensüs Oylama Modalı */}
+            {/* Minimum Konsensüs Oylama Modalı */}
             {watchStopVoteStatus && (() => {
-                const currentUserId = user?._id?.toString();
-                const hasCurrentVoted = (watchStopVoteStatus.voters || []).some(v => String(v) === currentUserId) || 
-                                        (watchStopVoteStatus.requesterId && String(watchStopVoteStatus.requesterId) === currentUserId);
+                const currentUserId = user?._id?.toString() || user?.id?.toString();
+                const currentSocketId = socket?.id;
+                const votersList = Array.isArray(watchStopVoteStatus.voters) ? watchStopVoteStatus.voters : [];
+                const reqId = watchStopVoteStatus.requesterId ? String(watchStopVoteStatus.requesterId) : null;
+
+                const hasCurrentVoted = votersList.some(v => 
+                    String(v) === currentUserId || (currentSocketId && String(v) === currentSocketId)
+                ) || (reqId && (
+                    reqId === currentUserId || (currentSocketId && reqId === currentSocketId)
+                ));
+
+                const currentApprovals = Math.max(votersList.length, reqId ? 1 : 0);
+                const requiredApprovals = watchStopVoteStatus.required || 2;
 
                 return (
                     <div className="watch-party-consensus-backdrop">
@@ -2587,24 +2598,26 @@ const WatchPartyPlayer = () => {
                                     <h4>Birlikte İzleme Kapatma Onayı</h4>
                                 </div>
                                 <span className="watch-party-consensus-badge">
-                                    {watchStopVoteStatus.voters?.length || 0} / {watchStopVoteStatus.required} Onay
+                                    {currentApprovals} / {requiredApprovals} Onay
                                 </span>
                             </div>
                             <div className="watch-party-consensus-body">
                                 {hasCurrentVoted ? (
                                     <p>
-                                        Kapatma onayınız alındı ({watchStopVoteStatus.voters?.length || 1}/{watchStopVoteStatus.required}).
+                                        Kapatma onayınız alındı ({currentApprovals}/{requiredApprovals}).
                                         <br />
                                         <span className="watch-party-consensus-hint">
-                                            Birlikte izlemenin sonlandırılması için odadan en az bir kullanıcının daha onayı bekleniyor...
+                                            {requiredApprovals > currentApprovals 
+                                                ? `Birlikte izlemenin sonlandırılması için odadan ${requiredApprovals - currentApprovals} kullanıcının daha onayı bekleniyor...`
+                                                : 'Kapatma işlemi tamamlanıyor...'}
                                         </span>
                                     </p>
                                 ) : (
                                     <p>
-                                        <strong>{watchStopVoteStatus.requesterName}</strong> birlikte izlemeyi sonlandırmak istiyor.
+                                        <strong>{watchStopVoteStatus.requesterName || 'Bir kullanıcı'}</strong> birlikte izlemeyi sonlandırmak istiyor.
                                         <br />
                                         <span className="watch-party-consensus-hint">
-                                            Kapatma işleminin gerçekleşmesi için sizin onayınız gerekiyor (en az {watchStopVoteStatus.required} kullanıcı onayı).
+                                            Kapatma işleminin gerçekleşmesi için sizin onayınız gerekiyor (en az {requiredApprovals} kullanıcı onayı).
                                         </span>
                                     </p>
                                 )}
@@ -2632,7 +2645,7 @@ const WatchPartyPlayer = () => {
                                             className="glass-btn danger-confirm" 
                                             onClick={() => sendWatchStopVote()}
                                         >
-                                            Kapatmayı Onayla (2/2)
+                                            Kapatmayı Onayla ({Math.min(requiredApprovals, currentApprovals + 1)}/{requiredApprovals})
                                         </button>
                                     </>
                                 )}
