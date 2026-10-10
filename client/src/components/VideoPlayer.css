@@ -522,8 +522,9 @@
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
 }
 
-/* Smart auto-hide controls style */
-.controls-hidden {
+/* Smart auto-hide controls style scoped to native player controls only */
+.native-controls-ui.controls-hidden,
+.native-mute-toggle.controls-hidden {
     opacity: 0 !important;
     pointer-events: none !important;
 }

@@ -555,7 +555,7 @@ const WatchPartyPlayer = () => {
             case 'strong':
                 return '0 0 4px #000, 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.95)';
             case 'glow':
-                return '0 0 10px rgba(56, 189, 248, 0.85), 0 0 4px #000, 1px 1px 2px #000, -1px -1px 2px #000';
+                return '0 0 12px rgba(255, 255, 255, 0.8), 0 0 4px #000, 1px 1px 2px #000, -1px -1px 2px #000';
             case 'clean':
                 return '0 1px 2px rgba(0,0,0,0.85)';
             case 'deep':
@@ -2038,11 +2038,9 @@ const WatchPartyPlayer = () => {
                 {/* Netflix-Grade Pro Subtitle Overlay (Resizable, Positionable & Draggable) */}
                 {activeCueText && (
                     <div 
-                        className={`watch-party-subtitle-overlay ${controlsVisible ? 'controls-shown' : 'controls-hidden'} ${isDraggingSub ? 'is-dragging' : ''}`}
+                        className={`watch-party-subtitle-overlay ${isDraggingSub ? 'is-dragging' : ''}`}
                         style={{
-                            bottom: controlsVisible 
-                                ? `calc(${subBottomPercent}% + 28px)` 
-                                : `${subBottomPercent}%`
+                            bottom: `${subBottomPercent}%`
                         }}
                         onMouseDown={handleSubDragStart}
                         onTouchStart={handleSubDragStart}
