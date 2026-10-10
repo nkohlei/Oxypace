@@ -380,6 +380,7 @@ const WatchPartyPlayer = () => {
     const customSubtitlesRef = useRef([]);
     const [discoveredSubtitles, setDiscoveredSubtitles] = useState([]);
     const [activeCueText, setActiveCueText] = useState('');
+    const activeCueTextRef = useRef('');
     const parsedCuesRef = useRef([]);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
     const audioMenuRef = useRef(null);
@@ -930,12 +931,39 @@ const WatchPartyPlayer = () => {
         const cur = videoRef.current.currentTime;
         setCurrentTime(cur);
 
-        // Update custom subtitle overlay cue
+        if (activeSubtitleId === 'off') {
+            if (activeCueTextRef.current) {
+                activeCueTextRef.current = '';
+                setActiveCueText('');
+            }
+            return;
+        }
+
+        // 1. Check parsed cues first (custom uploaded or external vtt)
         if (parsedCuesRef.current && parsedCuesRef.current.length > 0) {
             const active = parsedCuesRef.current.find(c => cur >= c.start && cur <= c.end);
-            setActiveCueText(active ? active.text : '');
-        } else if (activeSubtitleId === 'off') {
-            if (activeCueText) setActiveCueText('');
+            const text = active ? active.text : '';
+            if (text !== activeCueTextRef.current) {
+                activeCueTextRef.current = text;
+                setActiveCueText(text);
+            }
+            return;
+        }
+
+        // 2. Fallback to native textTracks activeCues (HLS or browser track)
+        if (videoRef.current.textTracks && videoRef.current.textTracks.length > 0) {
+            let foundText = '';
+            for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                const tt = videoRef.current.textTracks[i];
+                if ((tt.mode === 'showing' || tt.mode === 'hidden') && tt.activeCues && tt.activeCues.length > 0) {
+                    foundText = Array.from(tt.activeCues).map(c => c.text).join('\n');
+                    break;
+                }
+            }
+            if (foundText !== activeCueTextRef.current) {
+                activeCueTextRef.current = foundText;
+                setActiveCueText(foundText);
+            }
         }
     };
 
@@ -1130,6 +1158,7 @@ const WatchPartyPlayer = () => {
                     videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
+            setTimeout(onTimeUpdate, 50);
         };
         reader.readAsArrayBuffer(file);
         e.target.value = '';
@@ -1154,6 +1183,9 @@ const WatchPartyPlayer = () => {
                     videoRef.current.textTracks[i].mode = 'disabled';
                 }
             }
+            parsedCuesRef.current = [];
+            activeCueTextRef.current = '';
+            setActiveCueText('');
             setActiveSubtitleId('off');
         } else if (option.type === 'hls') {
             if (hlsInstanceRef.current) {
@@ -1161,10 +1193,11 @@ const WatchPartyPlayer = () => {
             }
             if (videoRef.current && videoRef.current.textTracks) {
                 for (let i = 0; i < videoRef.current.textTracks.length; i++) {
-                    videoRef.current.textTracks[i].mode = 'disabled';
+                    videoRef.current.textTracks[i].mode = (i === option.id) ? 'hidden' : 'disabled';
                 }
             }
             setActiveSubtitleId(`hls-${option.id}`);
+            setTimeout(onTimeUpdate, 100);
         } else if (option.type === 'ext') {
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
@@ -1175,6 +1208,7 @@ const WatchPartyPlayer = () => {
                 }
             }
             setActiveSubtitleId(`ext-${option.index}`);
+            setTimeout(onTimeUpdate, 100);
         } else if (option.type === 'custom') {
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
@@ -1185,6 +1219,7 @@ const WatchPartyPlayer = () => {
                 }
             }
             setActiveSubtitleId(`custom-${option.index}`);
+            setTimeout(onTimeUpdate, 100);
         }
         setIsSubMenuOpen(false);
     };
