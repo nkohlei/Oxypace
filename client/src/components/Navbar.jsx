@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Radio } from 'lucide-react';
+import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Route } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
@@ -64,6 +64,14 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         if (setMobileChannelOpen) {
             setMobileChannelOpen(true);
         }
+
+        window.dispatchEvent(new CustomEvent('oxypace:switch_channel', {
+            detail: {
+                portalId: activeRoom.portalId,
+                channelId: activeRoom.channelId
+            }
+        }));
+
         navigate(`/portal/${activeRoom.portalId}?channel=${activeRoom.channelId}&joinVoice=true`);
     };
 
@@ -253,9 +261,6 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                 title={`${roomDisplayName} - Canlı Odaya Git`}
                                 aria-label={`${roomDisplayName} - Canlı Odaya Git`}
                             >
-                                <span className="nav-live-pill-icon-box">
-                                    <Radio size={13} strokeWidth={2.5} className="nav-live-pill-radio-icon" />
-                                </span>
                                 <div className={`nav-live-pill-track ${isLiveTextOverflowing ? 'is-overflowing' : ''}`} ref={liveTrackRef}>
                                     <div className={`nav-live-pill-scroll-wrapper ${isLiveTextOverflowing ? 'is-marquee' : ''}`}>
                                         <span className="nav-live-pill-text" ref={liveTextSpanRef}>{roomDisplayName}</span>
@@ -270,6 +275,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                         )}
                                     </div>
                                 </div>
+                                <span className="nav-live-pill-icon-box">
+                                    <Route size={13} strokeWidth={2.4} className="nav-live-pill-route-icon" />
+                                </span>
                             </button>
                         )}
                     </div>

@@ -5,7 +5,7 @@ import { useUI } from '../context/UIContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ConnectionState } from 'livekit-client';
-import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings, Radio } from 'lucide-react';
+import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings, Route } from 'lucide-react';
 import './UserBar.css';
 import UserAvatar from './UserAvatar';
 
@@ -37,6 +37,14 @@ const UserBar = ({ currentChannelId }) => {
         if (setMobileChannelOpen) {
             setMobileChannelOpen(true);
         }
+
+        // Emit direct switch event so that if the user is already on the portal page, channel immediately updates!
+        window.dispatchEvent(new CustomEvent('oxypace:switch_channel', {
+            detail: {
+                portalId: activeRoom.portalId,
+                channelId: activeRoom.channelId
+            }
+        }));
 
         navigate(`/portal/${activeRoom.portalId}?channel=${activeRoom.channelId}&joinVoice=true`);
     };
@@ -95,7 +103,7 @@ const UserBar = ({ currentChannelId }) => {
                                 aria-label="Canlı Odaya Git"
                                 className="userbar-go-to-room-btn"
                             >
-                                <Radio size={14} strokeWidth={2.5} />
+                                <Route size={15} strokeWidth={2.4} />
                             </button>
                         </div>
                     </div>

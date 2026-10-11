@@ -804,6 +804,15 @@ const Portal = () => {
                     setCurrentChannel(defaultChannel._id);
                 }
             } else {
+                // If urlChannel was passed and differs from current channel, switch to it immediately!
+                if (urlChannel) {
+                    const matchedChannel = portal.channels.find(c => String(c._id) === String(urlChannel));
+                    if (matchedChannel && String(matchedChannel._id) !== String(currentChannel)) {
+                        setCurrentChannel(matchedChannel._id);
+                        return;
+                    }
+                }
+
                 // Validate existing currentChannel
                 const isValid = portal.channels.some(c => String(c._id) === String(currentChannel));
                 if (!isValid) {
@@ -814,24 +823,31 @@ const Portal = () => {
                 }
             }
         }
-    }, [portal, authLoading]);
+    }, [portal, authLoading, urlChannel]);
+
+    // Direct channel switch event listener (used by UserBar / Navbar live room quick-nav)
+    useEffect(() => {
+        const handleChannelSwitch = (e) => {
+            const { portalId, channelId } = e.detail || {};
+            if ((!portalId || String(portalId) === String(id)) && channelId) {
+                setCurrentChannel(channelId);
+                setShowScrollTop(false);
+                if (setMobileChannelOpen) {
+                    setMobileChannelOpen(true);
+                }
+            }
+        };
+        window.addEventListener('oxypace:switch_channel', handleChannelSwitch);
+        return () => window.removeEventListener('oxypace:switch_channel', handleChannelSwitch);
+    }, [id, setMobileChannelOpen]);
 
     // Handle mobileChannelOpen when navigating into Portal:
     // If URL contains channel or joinVoice, automatically open mobile channel view so the live room / channel displays immediately!
     useLayoutEffect(() => {
         const hasChannelParam = !!urlChannel || searchParams.get('joinVoice') === 'true';
-        if (setMobileChannelOpen) {
-            if (hasChannelParam) {
-                setMobileChannelOpen(true);
-            } else {
-                setMobileChannelOpen(false);
-            }
+        if (setMobileChannelOpen && hasChannelParam) {
+            setMobileChannelOpen(true);
         }
-        return () => {
-            if (setMobileChannelOpen) {
-                setMobileChannelOpen(false);
-            }
-        };
     }, [id, urlChannel, searchParams, setMobileChannelOpen]);
 
     useEffect(() => {

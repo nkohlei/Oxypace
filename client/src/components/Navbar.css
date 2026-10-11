@@ -359,7 +359,7 @@ body.dark-mode .logo-text {
     align-items: center;
     gap: 6px;
     height: 28px;
-    padding: 0 8px 0 6px;
+    padding: 0 6px 0 9px;
     border-radius: 14px;
     background: rgba(34, 197, 94, 0.12);
     border: 1px solid rgba(34, 197, 94, 0.35);
@@ -370,6 +370,7 @@ body.dark-mode .logo-text {
     max-width: 175px;
     min-width: 0;
     flex-shrink: 1;
+    margin-left: 10px;
     transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 0 10px rgba(34, 197, 94, 0.15);
     -webkit-tap-highlight-color: transparent;
@@ -414,15 +415,30 @@ body.dark-mode .logo-text {
     height: 14px;
 }
 
-.nav-live-pill-radio-icon {
+.nav-live-pill-route-icon {
     color: #22c55e;
-    animation: livePillRadioPulse 2.2s infinite ease-in-out;
+    animation: livePillRouteGlow 2.2s infinite ease-in-out;
 }
 
-@keyframes livePillRadioPulse {
+@keyframes livePillRouteGlow {
     0% { transform: scale(1); opacity: 0.85; filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.4)); }
-    50% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.85)); }
+    50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.9)); }
     100% { transform: scale(1); opacity: 0.85; filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.4)); }
+}
+
+.nav-live-room-pill:hover .nav-live-pill-route-icon {
+    color: #ffffff;
+    transform: scale(1.15);
+}
+
+:root[data-theme='light'] .nav-live-room-pill .nav-live-pill-route-icon,
+[data-theme='light'] .nav-live-room-pill .nav-live-pill-route-icon {
+    color: #22c55e !important;
+}
+
+:root[data-theme='light'] .nav-live-room-pill:hover .nav-live-pill-route-icon,
+[data-theme='light'] .nav-live-room-pill:hover .nav-live-pill-route-icon {
+    color: #ffffff !important;
 }
 
 .nav-live-pill-track {
@@ -785,10 +801,11 @@ body.dark-mode .dropdown-divider {
     .nav-live-room-pill {
         max-width: clamp(80px, 28vw, 125px);
         height: 25px;
-        padding: 0 6px 0 5px;
+        padding: 0 5px 0 7px;
         gap: 5px;
         flex-shrink: 1;
         min-width: 0;
+        margin-left: 8px;
     }
 
     .nav-live-pill-text {
