@@ -418,6 +418,7 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         activeSubtitleIdRef.current = activeSubtitleId;
     }, [activeSubtitleId]);
+    const userDisabledSubtitlesRef = useRef(false);
     const [customSubtitles, setCustomSubtitles] = useState([]);
     const customSubtitlesRef = useRef([]);
     const [discoveredSubtitles, setDiscoveredSubtitles] = useState([]);
@@ -828,6 +829,7 @@ const WatchPartyPlayer = () => {
         setHlsSubtitleTracks([]);
         setActiveSubtitleId('off');
         activeSubtitleIdRef.current = 'off';
+        userDisabledSubtitlesRef.current = false;
         parsedCuesRef.current = [];
         activeCueTextRef.current = '';
         setActiveCueText('');
@@ -1209,7 +1211,10 @@ const WatchPartyPlayer = () => {
             let foundText = '';
             for (let i = 0; i < videoRef.current.textTracks.length; i++) {
                 const tt = videoRef.current.textTracks[i];
-                if ((tt.mode === 'showing' || tt.mode === 'hidden') && tt.activeCues && tt.activeCues.length > 0) {
+                if (tt.mode === 'showing') {
+                    tt.mode = 'hidden';
+                }
+                if (tt.mode === 'hidden' && tt.activeCues && tt.activeCues.length > 0) {
                     foundText = Array.from(tt.activeCues).map(c => c.text).join('\n');
                     break;
                 }
@@ -1394,12 +1399,8 @@ const WatchPartyPlayer = () => {
         if (!watchParty?.activeSubtitle) return;
         const incomingSub = watchParty.activeSubtitle;
 
+        // Bireysel kapatma kuralı: Odaya gelen 'off' sinyalleri kullanıcıların altyazısını asla kapatamaz!
         if (incomingSub.type === 'off') {
-            parsedCuesRef.current = [];
-            activeCueTextRef.current = '';
-            setActiveCueText('');
-            activeSubtitleIdRef.current = 'off';
-            setActiveSubtitleId('off');
             return;
         }
 
@@ -1430,6 +1431,12 @@ const WatchPartyPlayer = () => {
             };
         }
 
+        // Bireysel tercih: Kullanıcı kendisi için 'Kapalı' seçtiyse, altyazı listeye eklenir ama ekranda zorla açılmaz
+        if (userDisabledSubtitlesRef.current) {
+            console.log('[WatchPartyPlayer] Oda altyazısı listeye eklendi, ancak kullanıcı altyazıyı kapalı tuttuğu için ekranda açılmadı.');
+            return;
+        }
+
         parsedCuesRef.current = parseSubtitleCues(incomingSub.rawContent);
         activeSubtitleIdRef.current = `custom-${existingIdx}`;
         setActiveSubtitleId(`custom-${existingIdx}`);
@@ -1449,7 +1456,7 @@ const WatchPartyPlayer = () => {
         setTimeout(syncCurrentSubtitleCue, 150);
 
         if (watchParty.lastSubActionName) {
-            setSubSyncNotice(`${watchParty.lastSubActionName} altyazı ayarladı: ${incomingSub.label}`);
+            setSubSyncNotice(`${watchParty.lastSubActionName} yeni altyazı paylaştı: ${incomingSub.label}`);
             setTimeout(() => setSubSyncNotice(null), 4000);
         }
     }, [watchParty?.activeSubtitle, syncCurrentSubtitleCue]);
@@ -1544,7 +1551,8 @@ const WatchPartyPlayer = () => {
             customSubtitlesRef.current = updatedList;
             setCustomSubtitles(updatedList);
 
-            // Instantly activate cues and overlay!
+            // Yükleyen kullanıcı için anında aç ve tercihi aktif yap
+            userDisabledSubtitlesRef.current = false;
             parsedCuesRef.current = parseSubtitleCues(content);
             activeSubtitleIdRef.current = `custom-${newIndex}`;
             setActiveSubtitleId(`custom-${newIndex}`);
@@ -1559,7 +1567,7 @@ const WatchPartyPlayer = () => {
             syncCurrentSubtitleCue();
             setTimeout(syncCurrentSubtitleCue, 50);
 
-            // ODA EŞİTLEMESİ: Herhangi bir kullanıcı yüklediğinde tüm odada aktif et!
+            // ODA EŞİTLEMESİ: Herhangi bir kullanıcı yüklediğinde tüm odada yeni dosyayı paylaş
             if (sendWatchSubtitle) {
                 sendWatchSubtitle(newSub);
             }
@@ -1579,6 +1587,7 @@ const WatchPartyPlayer = () => {
     const handleSelectSubtitleTrack = (option) => {
         loadSubtitleTrackText(option);
         if (option.type === 'off') {
+            userDisabledSubtitlesRef.current = true;
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
             }
@@ -1592,10 +1601,9 @@ const WatchPartyPlayer = () => {
             setActiveCueText('');
             activeSubtitleIdRef.current = 'off';
             setActiveSubtitleId('off');
-            if (sendWatchSubtitle) {
-                sendWatchSubtitle({ type: 'off', label: 'Kapalı' });
-            }
+            // Bireysel kapatma: Kesinlikle odaya kapatma sinyali gönderme!
         } else if (option.type === 'hls') {
+            userDisabledSubtitlesRef.current = false;
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = option.id;
             }
@@ -1608,6 +1616,7 @@ const WatchPartyPlayer = () => {
             setActiveSubtitleId(`hls-${option.id}`);
             setTimeout(syncCurrentSubtitleCue, 100);
         } else if (option.type === 'ext') {
+            userDisabledSubtitlesRef.current = false;
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
             }
@@ -1618,30 +1627,9 @@ const WatchPartyPlayer = () => {
             }
             activeSubtitleIdRef.current = `ext-${option.index}`;
             setActiveSubtitleId(`ext-${option.index}`);
-            const sub = allProviderSubtitles[option.index];
-            if (sub && sendWatchSubtitle) {
-                (async () => {
-                    let vtt = sub.rawContent;
-                    if (!vtt && (sub.file || sub.playableUrl)) {
-                        try {
-                            const targetUrl = sub.playableUrl
-                                ? sub.playableUrl
-                                : (sub.file && sub.file.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(sub.file)}` : sub.file);
-                            const res = await fetch(targetUrl);
-                            vtt = await res.text();
-                        } catch (err) {}
-                    }
-                    if (vtt) {
-                        sendWatchSubtitle({
-                            label: sub.label || `Altyazı ${option.index + 1}`,
-                            rawContent: vtt,
-                            lang: sub.lang || 'tr'
-                        });
-                    }
-                })();
-            }
             setTimeout(syncCurrentSubtitleCue, 100);
         } else if (option.type === 'custom') {
+            userDisabledSubtitlesRef.current = false;
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.subtitleTrack = -1;
             }
@@ -1652,10 +1640,6 @@ const WatchPartyPlayer = () => {
             }
             activeSubtitleIdRef.current = `custom-${option.index}`;
             setActiveSubtitleId(`custom-${option.index}`);
-            const selectedCustomSub = customSubtitlesRef.current[option.index] || customSubtitles[option.index];
-            if (selectedCustomSub && selectedCustomSub.rawContent && sendWatchSubtitle) {
-                sendWatchSubtitle(selectedCustomSub);
-            }
             setTimeout(syncCurrentSubtitleCue, 100);
         }
         setIsSubMenuOpen(false);
@@ -2241,29 +2225,7 @@ const WatchPartyPlayer = () => {
                     onDurationChange={onDurationChange}
                     onPlaying={onPlaying}
                     onPause={onPaused}
-                >
-                    {allProviderSubtitles.map((sub, idx) => (
-                        <track
-                            key={`sub-track-${idx}-${sub.file || sub.playableUrl}`}
-                            src={sub.file && sub.file.startsWith('http') ? sub.file : getProxiedUrl(sub.playableUrl || sub.file)}
-                            kind="subtitles"
-                            label={sub.label || `Altyazı ${idx + 1}`}
-                            srcLang={sub.lang || 'tr'}
-                            default={false}
-                            crossOrigin="anonymous"
-                        />
-                    ))}
-                    {customSubtitles.map((sub, idx) => (
-                        <track
-                            key={`sub-custom-${idx}`}
-                            src={sub.file}
-                            kind="subtitles"
-                            label={sub.label}
-                            srcLang={sub.lang || 'tr'}
-                            default={false}
-                        />
-                    ))}
-                </video>
+                />
 
                 {/* Mobile Autoplay & Unmute Quick Prompts */}
                 {needsUnmutePrompt && (

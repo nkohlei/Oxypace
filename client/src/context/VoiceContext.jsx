@@ -2171,9 +2171,17 @@ export const VoiceProvider = ({ children }) => {
 
     const sendWatchSubtitle = useCallback((subtitle) => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
-        if (roomName && subtitle) {
+        if (!subtitle) return;
+
+        // Subtitle off is strictly individual / local per-user. Never broadcast 'off' to other users!
+        if (subtitle.type === 'off') {
+            setWatchParty(prev => prev ? { ...prev, activeSubtitle: { type: 'off', label: 'Kapalı' } } : null);
+            return;
+        }
+
+        if (roomName && subtitle.rawContent) {
             const subPayload = {
-                type: subtitle.type || (subtitle.rawContent ? 'custom' : 'off'),
+                type: subtitle.type || 'custom',
                 label: subtitle.label || 'Altyazı',
                 rawContent: subtitle.rawContent || '',
                 lang: subtitle.lang || 'tr',
@@ -2187,7 +2195,7 @@ export const VoiceProvider = ({ children }) => {
             setWatchParty(prev => {
                 if (!prev) return null;
                 const sharedList = Array.isArray(prev.sharedSubtitles) ? [...prev.sharedSubtitles] : [];
-                if (subPayload.type !== 'off' && subPayload.label) {
+                if (subPayload.label) {
                     const existingIdx = sharedList.findIndex(s => s.label === subPayload.label);
                     if (existingIdx >= 0) {
                         sharedList[existingIdx] = subPayload;
@@ -2204,7 +2212,7 @@ export const VoiceProvider = ({ children }) => {
                 };
             });
         } else {
-            console.warn('[VoiceContext] sendWatchSubtitle skipped: missing roomName or subtitle', { roomName, subtitle });
+            console.warn('[VoiceContext] sendWatchSubtitle skipped: missing roomName or rawContent', { roomName, subtitle });
         }
     }, [activeRoom, watchParty, safeEmit, user]);
 

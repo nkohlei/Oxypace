@@ -355,6 +355,34 @@
     display: none !important;
 }
 
+/* Complete Native Subtitle & Track Cue Suppression (Prevents duplicate browser subtitles) */
+.watch-party-native-video::cue,
+video.watch-party-native-video::cue {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    font-size: 0 !important;
+    color: transparent !important;
+    background: transparent !important;
+    height: 0 !important;
+    width: 0 !important;
+    line-height: 0 !important;
+}
+
+.watch-party-native-video::-webkit-media-text-track-container,
+video.watch-party-native-video::-webkit-media-text-track-container {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+.watch-party-native-video::-webkit-media-text-track-display,
+video.watch-party-native-video::-webkit-media-text-track-display {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
 .watch-party-live-badge-inline {
     background: #ef4444;
     color: #ffffff;

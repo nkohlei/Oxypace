@@ -913,6 +913,7 @@ export const initializeVoiceHandler = (io) => {
             const { roomName, subtitle } = payload || {};
             if (!inRoom(roomName) || !limits.watch()) return;
             if (!subtitle || typeof subtitle !== 'object') return;
+            if (subtitle.type === 'off') return; // Subtitle off is strictly individual per-user, never broadcast room-wide
             if (typeof subtitle.rawContent === 'string' && subtitle.rawContent.length > MAX_SUBTITLE_CHARS) return;
 
             const clean = {
