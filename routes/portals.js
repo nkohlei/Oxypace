@@ -10,6 +10,7 @@ import { mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
 import upload from '../middleware/upload.js';
 import { escapeRegex } from '../utils/security.js';
+import { invalidatePortalRuleCache } from '../sockets/voiceHandler.js';
 
 const router = express.Router();
 
@@ -757,6 +758,22 @@ router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
                 ...(portal.liveRoomSettings?.toObject?.() || portal.liveRoomSettings || {}),
                 ...liveRoomSettings
             };
+            try {
+                invalidatePortalRuleCache(portal._id.toString());
+            } catch (err) {
+                console.error('[Portal] invalidatePortalRuleCache failed:', err.message);
+            }
+            try {
+                const io = req.app.get('io');
+                if (io) {
+                    io.to(`portal:${portal._id.toString()}`).emit('voice:consensus-rule-updated', {
+                        portalId: portal._id.toString(),
+                        consensusRule: portal.liveRoomSettings?.watchPartyConsensusRule || 'all'
+                    });
+                }
+            } catch (err) {
+                console.error('[Portal] emit consensus-rule-updated failed:', err.message);
+            }
         }
 
         await portal.save();

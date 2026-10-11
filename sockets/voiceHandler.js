@@ -32,8 +32,8 @@ const voiceRooms = new Map();
 const STRICT_SOCKET_AUTH = process.env.SOCKET_AUTH_STRICT === 'true';
 const ROOM_KEY_TTL_SEC = 60 * 60 * 24; // safety net for keys left behind by crashed workers
 const WATCHPARTY_TTL_SEC = 60 * 60 * 12;
-const STOP_VOTE_TTL_MS = 45 * 1000;
-const STOP_VOTE_REDIS_TTL_SEC = 90;
+const STOP_VOTE_TTL_MS = 90 * 1000;
+const STOP_VOTE_REDIS_TTL_SEC = 180;
 const EMPTY_ROOM_GRACE_MS = 20 * 1000; // allows socket reconnects without losing room state
 
 const MAX_URL_LENGTH = 4096;
@@ -113,6 +113,12 @@ const cachedLookup = async (key, ttlMs, loader) => {
     return value;
 };
 
+export const invalidatePortalRuleCache = (portalId) => {
+    if (!portalId) return;
+    const sId = String(portalId).trim();
+    lookupCache.delete(`rule:${sId}`);
+};
+
 const isPortalMember = async (portalId, userId) => {
     try {
         return await cachedLookup(`m:${portalId}:${userId}`, 30_000, async () =>
@@ -145,7 +151,7 @@ const getRoomConsensusRule = async (roomName) => {
     const parsed = parseRoomName(roomName);
     if (parsed) {
         try {
-            return await cachedLookup(`rule:${parsed.portalId}`, 10_000, async () => {
+            return await cachedLookup(`rule:${parsed.portalId}`, 5_000, async () => {
                 const portal = await Portal.findById(parsed.portalId).select('liveRoomSettings').lean();
                 const rule = portal?.liveRoomSettings?.watchPartyConsensusRule;
                 return VALID_CONSENSUS_RULES.has(rule) ? rule : 'all';
@@ -158,12 +164,16 @@ const getRoomConsensusRule = async (roomName) => {
 };
 
 const calculateRequiredVotes = (consensusRule, totalActive) => {
-    if (totalActive <= 1) return 1;
+    const active = Math.max(1, totalActive);
+    if (active <= 1) return 1;
     if (consensusRule === '1') return 1;
-    if (consensusRule === 'majority') return Math.max(1, Math.floor(totalActive / 2) + 1);
-    if (consensusRule === 'all') return totalActive;
+    if (consensusRule === 'majority') return Math.floor(active / 2) + 1;
+    if (consensusRule === 'all') return active;
     const num = parseInt(consensusRule, 10);
-    return Number.isNaN(num) ? totalActive : Math.min(totalActive, Math.max(1, num));
+    if (!Number.isNaN(num) && num >= 1) {
+        return Math.min(active, num);
+    }
+    return active;
 };
 
 // ─── Redis key helpers ──────────────────────────────────────────────────────
@@ -271,7 +281,13 @@ const getLiveRoomUserIds = async (roomName) => {
         const sockets = await ioRef.in(`voice:${roomName}`).fetchSockets();
         const ids = new Set();
         for (const s of sockets) {
-            if (s.data?.voiceUserId) ids.add(String(s.data.voiceUserId));
+            const uid = s.data?.voiceUserId || s.data?.authUserId || s.userId || s._voiceUserId;
+            if (uid) {
+                const sId = String(uid).trim();
+                if (sId && !sId.endsWith('-screen')) {
+                    ids.add(sId);
+                }
+            }
         }
         return ids;
     } catch (err) {
@@ -310,8 +326,13 @@ const stopState = {
         if (pubClient) {
             try {
                 const s = await pubClient.get(reqKey(roomName));
-                return s ? JSON.parse(s) : null;
-            } catch { return null; }
+                if (s) {
+                    const parsed = JSON.parse(s);
+                    const rd = voiceRooms.get(roomName);
+                    if (rd) rd.stopRequest = parsed;
+                    return parsed;
+                }
+            } catch { /* fall through to local */ }
         }
         return voiceRooms.get(roomName)?.stopRequest || null;
     },
@@ -319,9 +340,18 @@ const stopState = {
         if (pubClient) {
             try {
                 const created = await pubClient.set(reqKey(roomName), JSON.stringify(request), 'EX', STOP_VOTE_REDIS_TTL_SEC, 'NX');
-                if (created === 'OK') return { request, created: true };
+                if (created === 'OK') {
+                    const rd = ensureLocalRoom(roomName);
+                    rd.stopRequest = request;
+                    return { request, created: true };
+                }
                 const existing = await pubClient.get(reqKey(roomName));
-                return { request: existing ? JSON.parse(existing) : request, created: false };
+                if (existing) {
+                    const parsed = JSON.parse(existing);
+                    const rd = ensureLocalRoom(roomName);
+                    rd.stopRequest = parsed;
+                    return { request: parsed, created: false };
+                }
             } catch (err) {
                 console.error('[Watch Party Stop Vote] Redis error:', err.message);
             }
@@ -332,12 +362,13 @@ const stopState = {
         return { request, created: true };
     },
     async addVote(roomName, userId, vote) {
+        const sUid = String(userId).trim();
         const rd = ensureLocalRoom(roomName);
         if (!rd.stopVotes) rd.stopVotes = new Map();
-        rd.stopVotes.set(userId, vote);
+        rd.stopVotes.set(sUid, vote);
         if (pubClient) {
             try {
-                await pubClient.hset(votesKey(roomName), userId, JSON.stringify(vote));
+                await pubClient.hset(votesKey(roomName), sUid, JSON.stringify(vote));
                 await pubClient.expire(votesKey(roomName), STOP_VOTE_REDIS_TTL_SEC);
             } catch (err) {
                 console.error('[Watch Party Stop Vote] Redis error:', err.message);
@@ -348,7 +379,9 @@ const stopState = {
         if (pubClient) {
             try {
                 const all = await pubClient.hgetall(votesKey(roomName));
-                return Object.values(all || {}).map((s) => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+                if (all && Object.keys(all).length > 0) {
+                    return Object.values(all).map((s) => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+                }
             } catch { /* fall through to local */ }
         }
         return Array.from(voiceRooms.get(roomName)?.stopVotes?.values() || []);
@@ -402,23 +435,20 @@ const cleanupWatchParty = async (roomName) => {
 
 /**
  * Re-evaluates the pending stop request against the CURRENT live room:
- *  - votes of users who left no longer count (prevents "A votes, A leaves, B closes it for C"),
- *  - the requirement is recalculated for the current head count (a leaving user may complete consensus),
- *  - a request without any remaining voter is dropped.
+ *  - eliminates ghost participants who are no longer connected via live sockets,
+ *  - ensures the original requester is ALWAYS counted as voted yes,
+ *  - immediately tears down the video when consensus requirement is satisfied.
  */
 const evaluateStopVote = async (roomName) => {
     const request = await stopState.getRequest(roomName);
     if (!request) return;
 
-    // Get verified active participants from Redis and local cache
-    const participants = await getVoiceRoomParticipantsFromRedis(roomName);
-    const validParticipantIds = new Set(
-        (participants || [])
-            .map((p) => String(p.userId).trim())
-            .filter((id) => id && !id.endsWith('-screen'))
-    );
+    // Prune any disconnected ghost participants from Redis before evaluating
+    await pruneStaleParticipants(roomName);
 
+    // Determine strictly active human participants via live sockets (cluster-safe)
     const live = await getLiveRoomUserIds(roomName);
+    const validParticipantIds = new Set();
     if (live && live.size > 0) {
         for (const id of live) {
             const cleanId = String(id).trim();
@@ -426,32 +456,54 @@ const evaluateStopVote = async (roomName) => {
                 validParticipantIds.add(cleanId);
             }
         }
+    } else {
+        // Fallback to Redis / local participant map only if live socket inspection is unavailable
+        const participants = await getVoiceRoomParticipantsFromRedis(roomName);
+        for (const p of (participants || [])) {
+            const cleanId = String(p.userId).trim();
+            if (cleanId && !cleanId.endsWith('-screen')) {
+                validParticipantIds.add(cleanId);
+            }
+        }
+    }
+
+    // Always ensure the requester is treated as valid if still connected or requesting
+    if (request.requesterId) {
+        validParticipantIds.add(String(request.requesterId).trim());
     }
 
     let votes = await stopState.getVotes(roomName);
-    // Retain votes from currently active room participants
-    if (validParticipantIds.size > 0) {
-        votes = votes.filter((v) => {
-            const vId = String(v.userId).trim();
-            return validParticipantIds.has(vId) || (request.requesterId && vId === String(request.requesterId).trim());
+    const uniqueVoteMap = new Map();
+
+    // The initiator of the stop request is GUARANTEED to have voted yes
+    if (request.requesterId) {
+        const reqIdStr = String(request.requesterId).trim();
+        uniqueVoteMap.set(reqIdStr, {
+            userId: reqIdStr,
+            username: request.requesterName || 'Kapatma Başlatan',
+            isRequester: true
         });
     }
 
-    // De-duplicate votes by userId
-    const uniqueVoteMap = new Map();
     for (const v of votes) {
         const key = String(v.userId).trim();
-        if (key && !uniqueVoteMap.has(key)) {
-            uniqueVoteMap.set(key, v);
+        // Retain votes from active room participants
+        if (key && (validParticipantIds.has(key) || (request.requesterId && key === String(request.requesterId).trim()))) {
+            if (!uniqueVoteMap.has(key)) {
+                uniqueVoteMap.set(key, v);
+            }
         }
     }
+
     const uniqueVotes = Array.from(uniqueVoteMap.values());
     const voteCount = uniqueVotes.length;
 
-    // Active count: real humans present in the room
+    // Active count: real humans currently connected
     const totalActive = Math.max(validParticipantIds.size, voteCount, 1);
     const rule = await getRoomConsensusRule(roomName);
     const required = calculateRequiredVotes(rule, totalActive);
+
+    console.log(`[Watch Party Consensus] Room ${roomName}: voteCount=${voteCount}/${required}, totalActive=${totalActive}, rule=${rule}`);
 
     if (voteCount === 0) {
         await stopState.clear(roomName);
@@ -469,6 +521,7 @@ const evaluateStopVote = async (roomName) => {
         voters: uniqueVotes.map((v) => String(v.userId).trim()),
         voteCount,
         required,
+        rule,
         requesterName: request.requesterName,
         requesterId: request.requesterId
     });
@@ -479,19 +532,21 @@ const broadcastParticipants = async (roomName) => {
     const participants = await getVoiceRoomParticipantsFromRedis(roomName);
     const watchParty = await loadWatchParty(roomName);
     const startedAt = (await getRoomStartedAt(roomName, false)) || voiceRooms.get(roomName)?.startedAt || Date.now();
-    ioRef.to(`voice:${roomName}`).emit('voice:participants', {
+    const consensusRule = await getRoomConsensusRule(roomName);
+    ioRef?.to(`voice:${roomName}`).emit('voice:participants', {
         roomName,
         participants,
         startedAt,
         serverNow: Date.now(),
-        watchParty
+        watchParty,
+        consensusRule
     });
 
     const parsed = parseRoomName(roomName);
     if (parsed) {
         // Scoped to the portal room only (the former global io.emit leaked channel activity of private
         // portals to every connected user and did not scale).
-        ioRef.to(`portal:${parsed.portalId}`).emit('voice:channel-count-update', {
+        ioRef?.to(`portal:${parsed.portalId}`).emit('voice:channel-count-update', {
             portalId: parsed.portalId,
             channelId: parsed.channelId,
             count: participants ? participants.length : 0
@@ -964,22 +1019,49 @@ export const initializeVoiceHandler = (io) => {
         // ─── Watch Party Stop Consensus (configurable & cluster safe) ───
         const castStopVote = async (roomName, fallbackUserId = null, fallbackUsername = null) => {
             if (!inRoom(roomName) || !limits.vote()) return;
-            const uId = myId() || fallbackUserId;
+            const uId = myId() || (fallbackUserId ? String(fallbackUserId).trim() : null);
             if (!uId) return;
             const uName = fallbackUsername || socket.data.voiceProfile?.username || socket.username || 'Bir kullanıcı';
             await withRoomLock(roomName, async () => {
                 const wp = await loadWatchParty(roomName);
                 if (!wp) return;
 
-                const startedAt = Date.now();
-                const { request, created } = await stopState.ensureRequest(roomName, {
-                    requesterName: uName,
-                    requesterId: uId,
-                    startedAt
-                });
-                if (created) scheduleStopVoteExpiry(roomName, request.startedAt);
+                // Check if there is already an existing stop request in progress
+                let existingReq = await stopState.getRequest(roomName);
+                let currentRequest = existingReq;
 
-                await stopState.addVote(roomName, uId, { userId: uId, socketId: socket.id, username: uName });
+                if (!currentRequest) {
+                    // This user is initiating a brand new stop request
+                    const startedAt = Date.now();
+                    const newReq = {
+                        requesterName: uName,
+                        requesterId: uId,
+                        startedAt
+                    };
+                    const res = await stopState.ensureRequest(roomName, newReq);
+                    currentRequest = res.request;
+                    if (res.created) {
+                        scheduleStopVoteExpiry(roomName, currentRequest.startedAt);
+                    }
+                }
+
+                // Add the current user's affirmative vote
+                await stopState.addVote(roomName, uId, { 
+                    userId: uId, 
+                    socketId: socket.id, 
+                    username: uName,
+                    isRequester: String(uId) === String(currentRequest?.requesterId)
+                });
+
+                // Also guarantee that the original requester's affirmative vote is registered
+                if (currentRequest?.requesterId && String(currentRequest.requesterId) !== String(uId)) {
+                    await stopState.addVote(roomName, currentRequest.requesterId, {
+                        userId: String(currentRequest.requesterId).trim(),
+                        username: currentRequest.requesterName || 'Kapatma Başlatan',
+                        isRequester: true
+                    });
+                }
+
                 await evaluateStopVote(roomName);
             });
         };
