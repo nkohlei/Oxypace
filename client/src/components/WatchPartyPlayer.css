@@ -135,19 +135,32 @@
 }
 
 /* Minimalist Floating Track & Subtitle Popover */
+.native-unified-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: popoverFadeInBackdrop 0.2s ease-out;
+}
+
+@keyframes popoverFadeInBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .native-unified-dropdown-popover {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: 240px;
+    position: fixed;
+    z-index: 99999;
+    width: 250px;
     max-width: 90vw;
     background: rgba(18, 18, 24, 0.96);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 12px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
-    z-index: 250;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1255,6 +1268,44 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
+    /* Unified Audio & Subtitle Popover Mobile Bottom Sheet Style */
+    .native-unified-dropdown-popover,
+    .native-unified-dropdown-popover.is-mobile-sheet {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 24px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vw - 32px) !important;
+        max-width: 380px !important;
+        max-height: 75vh !important;
+        border-radius: 16px !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+        animation: popoverSlideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    @keyframes popoverSlideUpMobile {
+        from {
+            opacity: 0;
+            transform: translate(-50%, 16px) scale(0.96);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
+        }
+    }
+
+    .native-unified-dropdown-popover .native-unified-popover-body {
+        max-height: calc(75vh - 56px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .native-unified-dropdown-popover .native-track-dropdown-list {
+        max-height: none !important;
+    }
+
     /* Hide 10s skip buttons on mobile view */
     .native-skip-btn.desktop-only {
         display: none !important;

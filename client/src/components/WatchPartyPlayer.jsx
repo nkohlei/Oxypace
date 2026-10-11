@@ -668,10 +668,39 @@ const WatchPartyPlayer = () => {
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
     const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
     const unifiedMenuRef = useRef(null);
+    const popoverContentRef = useRef(null);
+    const [popoverPos, setPopoverPos] = useState({ isMobile: true });
     const isUnifiedMenuOpenRef = useRef(false);
     useEffect(() => {
         isUnifiedMenuOpenRef.current = isUnifiedMenuOpen;
     }, [isUnifiedMenuOpen]);
+
+    const updatePopoverPos = useCallback(() => {
+        if (!isUnifiedMenuOpenRef.current || !unifiedMenuRef.current) return;
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            setPopoverPos({ isMobile: true });
+        } else {
+            const rect = unifiedMenuRef.current.getBoundingClientRect();
+            setPopoverPos({
+                isMobile: false,
+                top: Math.round(rect.bottom + 8),
+                right: Math.max(12, Math.round(window.innerWidth - rect.right))
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isUnifiedMenuOpen) {
+            updatePopoverPos();
+            window.addEventListener('resize', updatePopoverPos);
+            window.addEventListener('scroll', updatePopoverPos, true);
+            return () => {
+                window.removeEventListener('resize', updatePopoverPos);
+                window.removeEventListener('scroll', updatePopoverPos, true);
+            };
+        }
+    }, [isUnifiedMenuOpen, updatePopoverPos]);
 
     useEffect(() => {
         if (audioTracks.length > 0 && unifiedTab !== 'subs') {
@@ -720,7 +749,11 @@ const WatchPartyPlayer = () => {
             if (subMenuRef.current && !subMenuRef.current.contains(e.target)) {
                 setIsSubMenuOpen(false);
             }
-            if (unifiedMenuRef.current && !unifiedMenuRef.current.contains(e.target)) {
+            if (
+                unifiedMenuRef.current && 
+                !unifiedMenuRef.current.contains(e.target) &&
+                (!popoverContentRef.current || !popoverContentRef.current.contains(e.target))
+            ) {
                 setIsUnifiedMenuOpen(false);
             }
             if (volumeContainerRef.current && !volumeContainerRef.current.contains(e.target)) {
@@ -1980,7 +2013,11 @@ const WatchPartyPlayer = () => {
                                 className={`watch-party-header-track-btn glass-btn ${isUnifiedMenuOpen ? 'active' : ''}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setIsUnifiedMenuOpen(prev => !prev);
+                                    setIsUnifiedMenuOpen(prev => {
+                                        const next = !prev;
+                                        if (next) setTimeout(updatePopoverPos, 0);
+                                        return next;
+                                    });
                                     triggerControlsTemporary();
                                 }}
                                 title="Ses ve Altyazı Seçenekleri"
@@ -1999,169 +2036,185 @@ const WatchPartyPlayer = () => {
                                     </div>
                                 )}
                             </button>
+                        </div>
+                    )}
 
-                            {/* Minimalist Floating Dropdown Popover */}
-                            {isUnifiedMenuOpen && (
-                                <div className="native-unified-dropdown-popover" onClick={(e) => e.stopPropagation()}>
-                                    <div className="native-unified-popover-header">
-                                        <div className="native-unified-tabs">
-                                            {audioTracks.length > 0 && (
-                                                <button
-                                                    type="button"
-                                                    className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
-                                                    onClick={() => setUnifiedTab('audio')}
-                                                >
-                                                    <Headphones size={12} />
-                                                    <span>Ses</span>
-                                                </button>
-                                            )}
+                    {/* Minimalist Floating Track & Subtitle Popover (Rendered via React Portal outside video overflow bounds) */}
+                    {isNativeVOD && isUnifiedMenuOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+                        <>
+                            <div 
+                                className="native-unified-popover-backdrop" 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsUnifiedMenuOpen(false);
+                                }} 
+                            />
+                            <div 
+                                ref={popoverContentRef}
+                                className={`native-unified-dropdown-popover ${popoverPos.isMobile ? 'is-mobile-sheet' : ''}`} 
+                                style={!popoverPos.isMobile && popoverPos.top !== undefined ? {
+                                    top: `${popoverPos.top}px`,
+                                    right: `${popoverPos.right}px`
+                                } : undefined}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="native-unified-popover-header">
+                                    <div className="native-unified-tabs">
+                                        {audioTracks.length > 0 && (
                                             <button
                                                 type="button"
-                                                className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
-                                                onClick={() => setUnifiedTab('subs')}
+                                                className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
+                                                onClick={() => setUnifiedTab('audio')}
                                             >
-                                                <Languages size={12} />
-                                                <span>Altyazı</span>
+                                                <Headphones size={12} />
+                                                <span>Ses</span>
                                             </button>
-                                        </div>
-                                        <button 
-                                            type="button" 
-                                            className="native-unified-popover-close-btn"
-                                            onClick={() => setIsUnifiedMenuOpen(false)}
-                                            aria-label="Kapat"
+                                        )}
+                                        <button
+                                            type="button"
+                                            className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
+                                            onClick={() => setUnifiedTab('subs')}
                                         >
-                                            <X size={13} />
+                                            <Languages size={12} />
+                                            <span>Altyazı</span>
                                         </button>
                                     </div>
+                                    <button 
+                                        type="button" 
+                                        className="native-unified-popover-close-btn"
+                                        onClick={() => setIsUnifiedMenuOpen(false)}
+                                        aria-label="Kapat"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                </div>
 
-                                    <div className="native-unified-popover-body">
-                                        {unifiedTab === 'audio' && audioTracks.length > 0 && (
-                                            <div className="native-track-dropdown-list">
-                                                {audioTracks.map((track, i) => {
-                                                    const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
-                                                    return (
-                                                        <button
-                                                            key={`pop-aud-${track.id}-${i}`}
-                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                            onClick={() => {
-                                                                handleSelectAudioTrack(track.id !== undefined ? track.id : i);
-                                                                setIsUnifiedMenuOpen(false);
-                                                            }}
-                                                        >
-                                                            <span className="native-track-item-check">
-                                                                {isSelected ? <Check size={13} /> : null}
-                                                            </span>
-                                                            <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-
-                                        {unifiedTab === 'subs' && (
-                                            <div className="native-track-dropdown-list">
-                                                <button
-                                                    className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
-                                                    onClick={() => {
-                                                        handleSelectSubtitleTrack({ type: 'off' });
-                                                        setIsUnifiedMenuOpen(false);
-                                                    }}
-                                                >
-                                                    <span className="native-track-item-check">
-                                                        {activeSubtitleId === 'off' ? <Check size={13} /> : null}
-                                                    </span>
-                                                    <span className="native-track-item-name">Kapalı</span>
-                                                </button>
-
-                                                {hlsSubtitleTracks.map((track, i) => {
-                                                    const isSelected = activeSubtitleId === `hls-${track.id}`;
-                                                    return (
-                                                        <button
-                                                            key={`pop-hls-sub-${track.id}-${i}`}
-                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                            onClick={() => {
-                                                                handleSelectSubtitleTrack({ type: 'hls', id: track.id });
-                                                                setIsUnifiedMenuOpen(false);
-                                                            }}
-                                                        >
-                                                            <span className="native-track-item-check">
-                                                                {isSelected ? <Check size={13} /> : null}
-                                                            </span>
-                                                            <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
-                                                        </button>
-                                                    );
-                                                })}
-
-                                                {allProviderSubtitles.map((sub, i) => {
-                                                    const isSelected = activeSubtitleId === `ext-${i}`;
-                                                    return (
-                                                        <button
-                                                            key={`pop-ext-sub-${i}`}
-                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                            onClick={() => {
-                                                                handleSelectSubtitleTrack({ type: 'ext', index: i });
-                                                                setIsUnifiedMenuOpen(false);
-                                                            }}
-                                                        >
-                                                            <span className="native-track-item-check">
-                                                                {isSelected ? <Check size={13} /> : null}
-                                                            </span>
-                                                            <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
-                                                        </button>
-                                                    );
-                                                })}
-
-                                                {customSubtitles.map((sub, i) => {
-                                                    const isSelected = activeSubtitleId === `custom-${i}`;
-                                                    return (
-                                                        <button
-                                                            key={`pop-custom-sub-${i}`}
-                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                            onClick={() => {
-                                                                handleSelectSubtitleTrack({ type: 'custom', index: i });
-                                                                setIsUnifiedMenuOpen(false);
-                                                            }}
-                                                        >
-                                                            <span className="native-track-item-check">
-                                                                {isSelected ? <Check size={13} /> : null}
-                                                            </span>
-                                                            <span className="native-track-item-name">{sub.label}</span>
-                                                        </button>
-                                                    );
-                                                })}
-
-                                                {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
-                                                    <div className="native-track-empty-note">
-                                                        Otomatik altyazı yok
-                                                    </div>
-                                                )}
-
-                                                <div className="native-track-divider" />
-                                                <label 
-                                                    className="native-track-upload-btn" 
-                                                    title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
-                                                >
-                                                    <Upload size={12} />
-                                                    <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
-                                                    <input
-                                                        ref={customFileInputRef}
-                                                        type="file"
-                                                        accept=".srt,.vtt"
-                                                        style={{ display: 'none' }}
-                                                        onChange={(e) => {
-                                                            handleCustomSubtitleUpload(e);
+                                <div className="native-unified-popover-body custom-scrollbar">
+                                    {unifiedTab === 'audio' && audioTracks.length > 0 && (
+                                        <div className="native-track-dropdown-list">
+                                            {audioTracks.map((track, i) => {
+                                                const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                return (
+                                                    <button
+                                                        key={`pop-aud-${track.id}-${i}`}
+                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            handleSelectAudioTrack(track.id !== undefined ? track.id : i);
                                                             setIsUnifiedMenuOpen(false);
                                                         }}
-                                                    />
-                                                </label>
-                                            </div>
-                                        )}
+                                                    >
+                                                        <span className="native-track-item-check">
+                                                            {isSelected ? <Check size={13} /> : null}
+                                                        </span>
+                                                        <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
 
+                                    {unifiedTab === 'subs' && (
+                                        <div className="native-track-dropdown-list">
+                                            <button
+                                                className={`native-track-dropdown-item ${activeSubtitleId === 'off' ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    handleSelectSubtitleTrack({ type: 'off' });
+                                                    setIsUnifiedMenuOpen(false);
+                                                }}
+                                            >
+                                                <span className="native-track-item-check">
+                                                    {activeSubtitleId === 'off' ? <Check size={13} /> : null}
+                                                </span>
+                                                <span className="native-track-item-name">Kapalı</span>
+                                            </button>
 
-                                    </div>
+                                            {hlsSubtitleTracks.map((track, i) => {
+                                                const isSelected = activeSubtitleId === `hls-${track.id}`;
+                                                return (
+                                                    <button
+                                                        key={`pop-hls-sub-${track.id}-${i}`}
+                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            handleSelectSubtitleTrack({ type: 'hls', id: track.id });
+                                                            setIsUnifiedMenuOpen(false);
+                                                        }}
+                                                    >
+                                                        <span className="native-track-item-check">
+                                                            {isSelected ? <Check size={13} /> : null}
+                                                        </span>
+                                                        <span className="native-track-item-name">{formatSubtitleLabel(track, i)}</span>
+                                                    </button>
+                                                );
+                                            })}
+
+                                            {allProviderSubtitles.map((sub, i) => {
+                                                const isSelected = activeSubtitleId === `ext-${i}`;
+                                                return (
+                                                    <button
+                                                        key={`pop-ext-sub-${i}`}
+                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            handleSelectSubtitleTrack({ type: 'ext', index: i });
+                                                            setIsUnifiedMenuOpen(false);
+                                                        }}
+                                                    >
+                                                        <span className="native-track-item-check">
+                                                            {isSelected ? <Check size={13} /> : null}
+                                                        </span>
+                                                        <span className="native-track-item-name">{formatSubtitleLabel(sub, i)}</span>
+                                                    </button>
+                                                );
+                                            })}
+
+                                            {customSubtitles.map((sub, i) => {
+                                                const isSelected = activeSubtitleId === `custom-${i}`;
+                                                return (
+                                                    <button
+                                                        key={`pop-custom-sub-${i}`}
+                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            handleSelectSubtitleTrack({ type: 'custom', index: i });
+                                                            setIsUnifiedMenuOpen(false);
+                                                        }}
+                                                    >
+                                                        <span className="native-track-item-check">
+                                                            {isSelected ? <Check size={13} /> : null}
+                                                        </span>
+                                                        <span className="native-track-item-name">{sub.label}</span>
+                                                    </button>
+                                                );
+                                            })}
+
+                                            {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
+                                                <div className="native-track-empty-note">
+                                                    Otomatik altyazı yok
+                                                </div>
+                                            )}
+
+                                            <div className="native-track-divider" />
+                                            <label 
+                                                className="native-track-upload-btn" 
+                                                title="Cihazınızdan .srt veya .vtt altyazı dosyası seçin"
+                                            >
+                                                <Upload size={12} />
+                                                <span>Altyazı Dosyası Ekle (.srt/.vtt)</span>
+                                                <input
+                                                    ref={customFileInputRef}
+                                                    type="file"
+                                                    accept=".srt,.vtt"
+                                                    style={{ display: 'none' }}
+                                                    onChange={(e) => {
+                                                        handleCustomSubtitleUpload(e);
+                                                        setIsUnifiedMenuOpen(false);
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        </>,
+                        document.fullscreenElement || document.body
                     )}
 
                     {/* Bitir Butonu: Yazısız sadece çarpı, kapatılmak için tıklandığında onay ister */}
@@ -2749,22 +2802,42 @@ export const GlobalWatchPartyWrapper = () => {
             return;
         }
 
+        const isElementVisible = (el) => {
+            if (!el) return false;
+            // Check if element or any ancestor is hidden by mobile class or display: none
+            if (el.closest('.mobile-content-hidden') || el.closest('.mobile-hidden')) {
+                return false;
+            }
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+                return false;
+            }
+            if (el.offsetParent === null && style.position !== 'fixed') {
+                return false;
+            }
+            const rect = el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) {
+                return false;
+            }
+            return true;
+        };
+
         const updateCoords = () => {
             const placeholder = document.getElementById('watch-party-portal-placeholder') || document.getElementById('watch-party-portal-target');
-            if (placeholder) {
+            if (placeholder && isElementVisible(placeholder)) {
                 const rect = placeholder.getBoundingClientRect();
-                const validWidth = rect.width > 0 ? rect.width : (placeholder.parentElement?.offsetWidth || window.innerWidth);
-                const validHeight = rect.height > 0 ? rect.height : Math.round((validWidth * 9) / 16);
-                setCoords({
-                    top: rect.top,
-                    left: rect.left,
-                    width: validWidth,
-                    height: validHeight,
-                    display: 'block'
-                });
-            } else {
-                setCoords({ display: 'none' });
+                if (rect.width > 0 && rect.height > 0) {
+                    setCoords({
+                        top: Math.round(rect.top),
+                        left: Math.round(rect.left),
+                        width: Math.round(rect.width),
+                        height: Math.round(rect.height),
+                        visible: true
+                    });
+                    return;
+                }
             }
+            setCoords({ visible: false });
         };
 
         updateCoords();
@@ -2776,7 +2849,7 @@ export const GlobalWatchPartyWrapper = () => {
         window.addEventListener('resize', updateCoords);
         window.addEventListener('scroll', updateCoords);
         
-        const interval = setInterval(updateCoords, 500);
+        const interval = setInterval(updateCoords, 400);
 
         return () => {
             observer.disconnect();
@@ -2788,17 +2861,32 @@ export const GlobalWatchPartyWrapper = () => {
 
     if (!watchParty || !watchParty.url) return null;
 
-    const style = coords ? {
+    const isVisible = coords?.visible;
+
+    const style = isVisible ? {
         position: 'fixed',
         top: `${coords.top}px`,
         left: `${coords.left}px`,
         width: `${coords.width}px`,
         height: `${coords.height}px`,
-        display: coords.display,
+        display: 'block',
+        visibility: 'visible',
+        opacity: 1,
         zIndex: 1,
         pointerEvents: 'auto',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-    } : { display: 'none' };
+    } : {
+        position: 'fixed',
+        top: '-9999px',
+        left: '-9999px',
+        width: '1px',
+        height: '1px',
+        opacity: 0,
+        pointerEvents: 'none',
+        visibility: 'hidden',
+        zIndex: -1,
+        transition: 'none'
+    };
 
     return (
         <div style={style}>
