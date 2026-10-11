@@ -1,6 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { validateSsrfUrl } from '../utils/security.js';
+import { validateSsrfUrl, safeFetch } from '../utils/security.js';
+import { Readable } from 'stream';
 import { createRequire } from 'module';
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
@@ -103,6 +104,8 @@ function isBlockedOrChallenge(text) {
 
 // Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
 async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
+  // SSRF / option-injection guard: only public http(s) URLs may ever reach the curl binary
+  if (!validateSsrfUrl(url).safe) return '';
   // 1. For HDFilmCehennemi, direct curl gets 403 on Oracle Cloud datacenter IP.
   // Use Python TLS Impersonator first (Chrome 124 TLS fingerprint).
   if (url.includes('hdfilmcehennemi')) {
@@ -121,6 +124,9 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
       '-s',
       '-L',
       '--max-time', String(timeoutSec),
+      '--proto', '=http,https',
+      '--proto-redir', '=http,https',
+      '--max-redirs', '5',
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
       ...headers.flatMap(h => ['-H', h]),
@@ -139,6 +145,9 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
       '-L',
       '--socks5-hostname', '127.0.0.1:9050',
       '--max-time', String(timeoutSec + 2),
+      '--proto', '=http,https',
+      '--proto-redir', '=http,https',
+      '--max-redirs', '5',
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
       ...headers.flatMap(h => ['-H', h]),
@@ -164,11 +173,16 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
 
 // Direct curl fetch for binary data (images/posters)
 async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
+  if (!validateSsrfUrl(url).safe) return null;
   const runCurl = (useTor = false) => new Promise((resolve, reject) => {
     const args = [
       '-s',
       '-L',
       '--max-time', String(timeoutSec),
+      '--proto', '=http,https',
+      '--proto-redir', '=http,https',
+      '--max-redirs', '5',
+      '--max-filesize', String(25 * 1024 * 1024),
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     ];
     if (useTor) args.push('--socks5-hostname', '127.0.0.1:9050');
@@ -206,6 +220,35 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
 }
 
 const router = express.Router();
+
+// CORS origin resolver shared by the buffered and streaming proxy paths.
+// Uses strict hostname matching (the previous `includes('oxypace')` also matched e.g. evil-oxypace.com).
+function resolveProxyCorsOrigin(incomingOrigin) {
+  if (!incomingOrigin) return '*'; // Direct / server-to-server / mobile webview
+  if (incomingOrigin.startsWith('capacitor://') || incomingOrigin.startsWith('ionic://')) return incomingOrigin;
+  try {
+    const host = new URL(incomingOrigin).hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.vercel.app') ||
+      host.endsWith('.netlify.app') ||
+      /(^|\.)oxypace\.[a-z.]+$/.test(host)
+    ) {
+      return incomingOrigin;
+    }
+  } catch { /* malformed origin */ }
+  return null;
+}
+
+// Tighter limiter for the expensive resolver endpoints (they scrape third-party pages / spawn processes)
+const resolverLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla çözümleme isteği. Lütfen biraz bekleyin.' },
+});
 
 // Scaled rate limit for proxy endpoint — handles high-frequency video streaming (.ts chunks and sub-playlists)
 const proxyLimiter = rateLimit({
@@ -289,7 +332,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       headers['Range'] = req.headers.range;
     }
 
-    let response = await fetch(targetUrl, {
+    let response = await safeFetch(targetUrl, {
       headers,
       cache: 'no-store',
     });
@@ -387,7 +430,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
             delete fbHeaders['Origin'];
           }
           try {
-            const fbRes = await fetch(targetUrl, { headers: fbHeaders, cache: 'no-store' });
+            const fbRes = await safeFetch(targetUrl, { headers: fbHeaders, cache: 'no-store' });
             if (fbRes.ok) {
               response = fbRes;
               refererHeader = fbRef;
@@ -418,6 +461,40 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       return res.status(response.status).json({
         error: `Hedef sunucu hata döndürdü: ${response.status} ${response.statusText}`,
       });
+    }
+
+    // ── Streaming fast-path ─────────────────────────────────────────────────────
+    // Large progressive files (MP4/MKV VOD) must NOT be buffered into server RAM:
+    // a single un-ranged request for a multi-GB file would otherwise OOM the whole API process
+    // (which also hosts realtime voice signaling). Playlists/small segments keep the buffered path
+    // because they are rewritten / content-sniffed.
+    {
+      const upstreamType = response.headers.get('Content-Type') || '';
+      const declaredLength = Number(response.headers.get('Content-Length')) || 0;
+      const looksLikePlaylist =
+        lowerUrl.includes('.m3u8') ||
+        lowerUrl.includes('.txt') ||
+        upstreamType.includes('mpegurl') ||
+        upstreamType.includes('m3u8');
+      const STREAM_THRESHOLD_BYTES = 8 * 1024 * 1024;
+      if (!looksLikePlaylist && !isPosterOrImage && !isSubtitleFile && response.body && declaredLength > STREAM_THRESHOLD_BYTES) {
+        const streamHeaders = {
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Content-Type': upstreamType || 'application/octet-stream',
+          'Content-Length': String(declaredLength),
+          'Accept-Ranges': response.headers.get('Accept-Ranges') || 'bytes',
+        };
+        if (response.headers.get('Content-Range')) streamHeaders['Content-Range'] = response.headers.get('Content-Range');
+        const streamCors = resolveProxyCorsOrigin(req.headers.origin);
+        if (streamCors) streamHeaders['Access-Control-Allow-Origin'] = streamCors;
+        res.writeHead(response.status === 206 ? 206 : 200, streamHeaders);
+        const nodeStream = Readable.fromWeb(response.body);
+        const teardown = () => { try { nodeStream.destroy(); } catch { /* ignore */ } };
+        res.on('close', teardown);
+        nodeStream.on('error', () => { try { res.destroy(); } catch { /* ignore */ } });
+        nodeStream.pipe(res);
+        return;
+      }
     }
 
     let responseBody = await response.arrayBuffer();
@@ -510,21 +587,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       }
     }
 
-    const incomingOrigin = req.headers.origin;
-    let allowedCorsOrigin = null;
-    if (!incomingOrigin) {
-      // Direct / server-to-server / mobile webview
-      allowedCorsOrigin = '*';
-    } else if (
-      incomingOrigin.includes('localhost') ||
-      incomingOrigin.endsWith('.vercel.app') ||
-      incomingOrigin.endsWith('.netlify.app') ||
-      incomingOrigin.includes('oxypace') ||
-      incomingOrigin.startsWith('capacitor://') ||
-      incomingOrigin.startsWith('ionic://')
-    ) {
-      allowedCorsOrigin = incomingOrigin;
-    }
+    const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin);
 
     const resHeaders = {
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -549,6 +612,14 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     res.set(resHeaders);
     return res.status(response.status === 206 ? 206 : 200).send(Buffer.from(responseBody));
   } catch (error) {
+    if (error && typeof error.message === 'string' && error.message.startsWith('SSRF_BLOCKED')) {
+      console.warn(`[SSRF Block] /api/proxy redirect/DNS rejected: ${error.message}`);
+      return res.status(400).json({ error: 'Invalid or disallowed target URL' });
+    }
+    if (res.headersSent) {
+      try { res.destroy(); } catch { /* ignore */ }
+      return;
+    }
     return res.status(500).json({
       error: error.message || 'An error occurred while proxying request',
     });
@@ -556,11 +627,18 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
 });
 
 // GET /api/resolve
-router.get('/resolve', async (req, res) => {
+router.get('/resolve', resolverLimiter, async (req, res) => {
   const pageUrl = req.query.url;
 
   if (!pageUrl) {
     return res.status(400).json({ error: 'Missing "url" parameter' });
+  }
+
+  // SSRF protection (previously unvalidated: allowed requests to localhost / internal services)
+  const resolveSsrf = validateSsrfUrl(pageUrl);
+  if (!resolveSsrf.safe) {
+    console.warn(`[SSRF Block] /api/resolve rejected: ${pageUrl} — ${resolveSsrf.reason}`);
+    return res.status(400).json({ error: 'Invalid or disallowed target URL' });
   }
 
   // Fast In-Process Resolver check
@@ -581,7 +659,7 @@ router.get('/resolve', async (req, res) => {
   }
 
   try {
-    const response = await fetch(pageUrl, {
+    const response = await safeFetch(pageUrl, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -643,10 +721,16 @@ router.get('/resolve', async (req, res) => {
 });
 
 // POST /api/resolve-stream (Stream Resolver Microservice Bridge & In-Process Resolver)
-router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
+router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
   const { url, timeout } = req.body || {};
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL parametresi.' });
+  }
+
+  const resolveStreamSsrf = validateSsrfUrl(url.trim());
+  if (!resolveStreamSsrf.safe) {
+    console.warn(`[SSRF Block] /api/resolve-stream rejected: ${url} — ${resolveStreamSsrf.reason}`);
+    return res.status(400).json({ success: false, error: 'Geçersiz veya izin verilmeyen URL.' });
   }
 
   const trimmedUrl = url.trim();
@@ -813,11 +897,26 @@ router.post('/resolve-stream', (req, res, next) => (req.body ? next() : express.
 
 // POST /api/detect-subtitles
 // Auto-detects subtitles from active stream or target page if subtitles were not originally attached
-router.post('/detect-subtitles', (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
+router.post('/detect-subtitles', resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
   try {
     const { streamUrl, pageUrl, title } = req.body || {};
     if (!streamUrl && !pageUrl) {
       return res.status(400).json({ success: false, error: 'streamUrl veya pageUrl gereklidir.' });
+    }
+
+    // SSRF protection: absolute URLs must be public http(s) addresses. Relative values (e.g. the
+    // `/api/proxy?url=...` playable URL or an uploaded media key) are legitimate client inputs and can
+    // never be used as a fetch target on their own; the curl helpers re-validate at the point of use.
+    for (const candidate of [streamUrl, pageUrl]) {
+      if (!candidate) continue;
+      if (typeof candidate !== 'string') {
+        return res.status(400).json({ success: false, error: 'Geçersiz URL.' });
+      }
+      let decoded = candidate;
+      try { decoded = decodeURIComponent(candidate); } catch { /* keep raw */ }
+      if (/^[a-z][a-z0-9+.-]*:/i.test(decoded) && !validateSsrfUrl(decoded).safe) {
+        return res.status(400).json({ success: false, error: 'Geçersiz veya izin verilmeyen URL.' });
+      }
     }
 
     const rawUrl = streamUrl ? decodeURIComponent(streamUrl) : '';

@@ -1338,32 +1338,6 @@ export const VoiceProvider = ({ children }) => {
                         sdp: prioritizedAnswer
                     });
                     console.log(`[Socket] video-answer gönderildi to ${senderId}`);
-
-                    // If local user is sharing screen, renegotiate so the new peer receives our screen track
-                    const hasLiveScreen = screenStreamRef.current && 
-                        screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
-                    if (hasLiveScreen) {
-                        setTimeout(async () => {
-                            try {
-                                if (pc.signalingState === 'stable') {
-                                    console.log(`[WebRTC] Initiating screenshare renegotiation offer to newly joined ${senderId}`);
-                                    const renegOffer = await pc.createOffer();
-                                    const prioritizedRenegOffer = prioritizeVideoCodec(renegOffer.sdp);
-                                    await pc.setLocalDescription({ type: 'offer', sdp: prioritizedRenegOffer });
-                                    const curRoom = activeRoomRef.current;
-                                    if (curRoom) {
-                                        safeEmit('voice:video-offer', {
-                                            roomName: curRoom.roomName,
-                                            targetUserId: senderId,
-                                            sdp: prioritizedRenegOffer
-                                        });
-                                    }
-                                }
-                            } catch (renegErr) {
-                                console.warn('[WebRTC] Screenshare renegotiation offer failed:', renegErr);
-                            }
-                        }, 350);
-                    }
                 } else {
                     console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
                 }
@@ -2451,9 +2425,26 @@ const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
                 });
             }
 
-            audioEl.current.play().catch(err => {
-                console.warn('[WebRTC] AudioTrackPlayer: audio.play() failed (likely autoplay policy):', err);
-            });
+            const attemptPlay = () => {
+                if (!audioEl.current) return;
+                const playPromise = audioEl.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn('[WebRTC] AudioTrackPlayer: autoplay blocked, waiting for user gesture:', err);
+                        const unlock = () => {
+                            if (audioEl.current) {
+                                audioEl.current.play().catch(() => {});
+                            }
+                            window.removeEventListener('click', unlock);
+                            window.removeEventListener('touchstart', unlock);
+                        };
+                        window.addEventListener('click', unlock, { once: true });
+                        window.addEventListener('touchstart', unlock, { once: true });
+                    });
+                }
+            };
+
+            attemptPlay();
         }
         return () => {
             if (audioEl.current) audioEl.current.srcObject = null;
@@ -2463,6 +2454,9 @@ const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
     useEffect(() => {
         if (audioEl.current) {
             audioEl.current.muted = muted;
+            if (!muted && audioEl.current.paused) {
+                audioEl.current.play().catch(() => {});
+            }
         }
     }, [muted]);
 

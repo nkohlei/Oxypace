@@ -1,3 +1,6 @@
+import dns from 'dns/promises';
+import net from 'net';
+
 /**
  * Escapes special regex characters to prevent RegExp Injection and ReDoS attacks.
  * @param {string} str Input search term
@@ -21,14 +24,17 @@ export function isPrivateOrReservedHost(hostname) {
     if (!hostname || typeof hostname !== 'string') return true;
     const h = hostname.toLowerCase().trim();
 
-    // Localhost variants
-    if (h === 'localhost' || h === 'local') return true;
-
-    // IPv6 loopback / unspecified
-    if (h === '::1' || h === '0:0:0:0:0:0:0:1' || h === '[::]' || h === '::') return true;
-
-    // Strip IPv6 brackets
+    // Strip IPv6 brackets FIRST (URL.hostname returns IPv6 literals as "[::1]")
     const stripped = h.startsWith('[') ? h.slice(1, -1) : h;
+
+    // Localhost variants
+    if (h === 'localhost' || h === 'local' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return true;
+
+    // IPv6 loopback / unspecified (bracketed or not)
+    if (stripped === '::1' || stripped === '0:0:0:0:0:0:0:1' || stripped === '::' || stripped === '0:0:0:0:0:0:0:0') return true;
+
+    // IPv4-mapped / IPv4-compatible IPv6 (e.g. ::ffff:127.0.0.1 or ::ffff:7f00:1) can smuggle private IPv4 targets
+    if (/^::(ffff:)?[0-9a-f.:]+$/i.test(stripped)) return true;
 
     // IPv4 check
     const ipv4Parts = stripped.split('.');
@@ -95,4 +101,45 @@ export function validateSsrfUrl(urlStr) {
     }
 
     return { safe: true };
+}
+
+/**
+ * DNS-aware check: true when the hostname is (or resolves to) a private/reserved address.
+ * Lookup failures are treated as "not private" so the real fetch fails naturally with its own error.
+ */
+export async function resolvesToPrivateAddress(hostname) {
+    const bare = hostname && hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
+    if (!bare) return true;
+    if (net.isIP(bare)) return isPrivateOrReservedHost(bare);
+    try {
+        const addrs = await dns.lookup(bare, { all: true, verbatim: true });
+        return addrs.some((a) => isPrivateOrReservedHost(a.address));
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * SSRF-safe fetch: validates the URL and its DNS resolution, follows redirects manually
+ * and re-validates every hop (a public host redirecting to 127.0.0.1 / metadata is rejected).
+ * Throws an Error whose message starts with "SSRF_BLOCKED" when a hop is disallowed.
+ */
+export async function safeFetch(url, options = {}, maxRedirects = 5) {
+    let current = url;
+    for (let hop = 0; hop <= maxRedirects; hop++) {
+        const check = validateSsrfUrl(current);
+        if (!check.safe) throw new Error(`SSRF_BLOCKED: ${check.reason}`);
+        if (await resolvesToPrivateAddress(new URL(current).hostname)) {
+            throw new Error('SSRF_BLOCKED: host resolves to a private address');
+        }
+        const res = await fetch(current, { ...options, redirect: 'manual' });
+        const location = res.headers.get('location');
+        if (res.status >= 300 && res.status < 400 && location) {
+            try { await res.body?.cancel(); } catch { /* ignore */ }
+            current = new URL(location, current).toString();
+            continue;
+        }
+        return res;
+    }
+    throw new Error('Too many redirects');
 }

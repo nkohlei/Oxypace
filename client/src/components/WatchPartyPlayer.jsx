@@ -430,6 +430,13 @@ const WatchPartyPlayer = () => {
     const subMenuRef = useRef(null);
     const customFileInputRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isApprovingStop, setIsApprovingStop] = useState(false);
+
+    useEffect(() => {
+        if (!watchStopVoteStatus) {
+            setIsApprovingStop(false);
+        }
+    }, [watchStopVoteStatus]);
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -1234,6 +1241,15 @@ const WatchPartyPlayer = () => {
         setIsNativePlaying(false);
     };
 
+    // High-precision subtitle ticker: Ensures cues sync smoothly at 100ms intervals
+    // even during seek, pauses, micro-rate pacing, or low-frequency browser onTimeUpdate events!
+    useEffect(() => {
+        const subTicker = setInterval(() => {
+            syncCurrentSubtitleCue();
+        }, 100);
+        return () => clearInterval(subTicker);
+    }, [syncCurrentSubtitleCue]);
+
     // Label formatters for Audio and Subtitles
     const formatAudioLabel = (track, idx, isShort = false) => {
         if (!track) return isShort ? 'Ses' : `Ses ${idx + 1}`;
@@ -1270,41 +1286,71 @@ const WatchPartyPlayer = () => {
 
     const parseSubtitleCues = (rawText) => {
         const cues = [];
-        if (!rawText) return cues;
-        const blocks = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\n+/);
-        const timeRegex = /(?:(\d{1,3}):)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(?:(\d{1,3}):)?(\d{2}):(\d{2})[,.](\d{3})/;
+        if (!rawText || typeof rawText !== 'string') return cues;
 
-        for (const block of blocks) {
-            const lines = block.trim().split('\n');
-            let timeLineIndex = -1;
-            let match = null;
+        // Remove UTF-8 BOM and normalize all line endings to Unix style
+        const cleanText = rawText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const lines = cleanText.split('\n');
 
-            for (let i = 0; i < lines.length; i++) {
-                match = lines[i].match(timeRegex);
-                if (match) {
-                    timeLineIndex = i;
-                    break;
+        // Comprehensive timestamp regex matching both SRT and WebVTT:
+        // Matches: HH:MM:SS,mmm or HH:MM:SS.mmm or H:MM:SS,mmm or MM:SS,mmm or MM:SS.mmm
+        const timeRegex = /(?:(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{2,3}))\s*-->\s*(?:(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{2,3}))/;
+
+        const parseTimestampSeconds = (h, m, s, ms) => {
+            const hours = h ? parseInt(h, 10) : 0;
+            const mins = m ? parseInt(m, 10) : 0;
+            const secs = s ? parseInt(s, 10) : 0;
+            let millis = 0;
+            if (ms) {
+                const msStr = ms.length === 2 ? `${ms}0` : ms.slice(0, 3);
+                millis = parseInt(msStr, 10);
+            }
+            return hours * 3600 + mins * 60 + secs + millis / 1000;
+        };
+
+        const parseSingleTimestamp = (ts) => {
+            if (!ts) return null;
+            const m = ts.trim().match(/(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{2,3})/);
+            if (!m) return null;
+            return parseTimestampSeconds(m[1], m[2], m[3], m[4]);
+        };
+
+        let i = 0;
+        while (i < lines.length) {
+            const line = lines[i].trim();
+            if (timeRegex.test(line)) {
+                const parts = line.split(/\s*-->\s*/);
+                if (parts.length >= 2) {
+                    const start = parseSingleTimestamp(parts[0]);
+                    // Strip optional WebVTT settings like "line:80% position:50%"
+                    const endToken = parts[1].trim().split(/\s+/)[0];
+                    const end = parseSingleTimestamp(endToken);
+
+                    i++;
+                    const textLines = [];
+                    while (i < lines.length) {
+                        const nextLine = lines[i];
+                        const trimmedNext = nextLine.trim();
+                        if (trimmedNext === '' || timeRegex.test(trimmedNext)) {
+                            if (trimmedNext === '') i++;
+                            break;
+                        }
+                        // Skip isolated numeric SRT index lines before the next cue
+                        if (/^\d+$/.test(trimmedNext) && i + 1 < lines.length && timeRegex.test(lines[i + 1])) {
+                            break;
+                        }
+                        textLines.push(nextLine);
+                        i++;
+                    }
+
+                    const rawContentText = textLines.join('\n').replace(/<\/?[^>]+(>|$)/g, '').trim();
+                    if (rawContentText && start !== null && end !== null && end > start) {
+                        cues.push({ start, end, text: rawContentText });
+                    }
+                    continue;
                 }
             }
-
-            if (timeLineIndex !== -1 && match) {
-                const parseSeconds = (h, m, s, ms) => {
-                    const hours = h ? parseInt(h, 10) : 0;
-                    const mins = parseInt(m, 10);
-                    const secs = parseInt(s, 10);
-                    const millis = parseInt(ms, 10);
-                    return hours * 3600 + mins * 60 + secs + millis / 1000;
-                };
-
-                const start = parseSeconds(match[1], match[2], match[3], match[4]);
-                const end = parseSeconds(match[5], match[6], match[7], match[8]);
-                const rawLines = lines.slice(timeLineIndex + 1).join('\n');
-                const text = rawLines.replace(/<\/?[^>]+(>|$)/g, '').trim();
-
-                if (text && end > start) {
-                    cues.push({ start, end, text });
-                }
-            }
+            i++;
         }
         return cues;
     };
@@ -1359,20 +1405,15 @@ const WatchPartyPlayer = () => {
 
         if (!incomingSub.rawContent) return;
 
-        // Halihazırda bu altyazı aktifse ve cues doluysa tekrar işlem yapma
-        if (activeSubtitleIdRef.current.startsWith('custom-') && parsedCuesRef.current.length > 0) {
-            const currentSub = customSubtitlesRef.current.find(s => s.label === incomingSub.label && s.rawContent === incomingSub.rawContent);
-            if (currentSub && activeCueTextRef.current) return;
-        }
-
         let existingIdx = customSubtitlesRef.current.findIndex(
-            s => s.label === incomingSub.label && s.rawContent === incomingSub.rawContent
+            s => s.label === incomingSub.label && (s.rawContent === incomingSub.rawContent || (!s.rawContent && s.file === incomingSub.file))
         );
 
         if (existingIdx === -1) {
             const blob = new Blob([incomingSub.rawContent], { type: 'text/vtt;charset=utf-8' });
             const blobUrl = URL.createObjectURL(blob);
             const addedSub = {
+                type: 'custom',
                 ...incomingSub,
                 file: blobUrl,
                 playableUrl: blobUrl,
@@ -1382,6 +1423,11 @@ const WatchPartyPlayer = () => {
             const updatedList = [...customSubtitlesRef.current, addedSub];
             customSubtitlesRef.current = updatedList;
             setCustomSubtitles(updatedList);
+        } else {
+            customSubtitlesRef.current[existingIdx] = {
+                ...customSubtitlesRef.current[existingIdx],
+                ...incomingSub
+            };
         }
 
         parsedCuesRef.current = parseSubtitleCues(incomingSub.rawContent);
@@ -1400,7 +1446,7 @@ const WatchPartyPlayer = () => {
         // Anlık geçerli cue'yu ekrana yansıt
         syncCurrentSubtitleCue();
         setTimeout(syncCurrentSubtitleCue, 50);
-        setTimeout(syncCurrentSubtitleCue, 200);
+        setTimeout(syncCurrentSubtitleCue, 150);
 
         if (watchParty.lastSubActionName) {
             setSubSyncNotice(`${watchParty.lastSubActionName} altyazı ayarladı: ${incomingSub.label}`);
@@ -1473,13 +1519,19 @@ const WatchPartyPlayer = () => {
                 }
             }
 
+            // Clean UTF-8 BOM and normalize line endings
+            content = content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
             if (file.name.toLowerCase().endsWith('.srt')) {
-                content = 'WEBVTT\n\n' + content.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+                // Universal SRT to WebVTT timestamp converter (handles 1 or 2-digit hour, comma to dot)
+                const converted = content.replace(/(^|\n)(\d+)\n((?:(?:\d{1,3}:)?\d{1,2}:\d{2})[,.]\d{2,3}\s*-->\s*(?:(?:\d{1,3}:)?\d{1,2}:\d{2})[,.]\d{2,3})/g, '$1$3');
+                content = 'WEBVTT\n\n' + converted.replace(/(\d{1,2}:\d{2}:\d{2}),(\d{2,3})/g, '$1.$2');
             }
             const blob = new Blob([content], { type: 'text/vtt;charset=utf-8' });
             const blobUrl = URL.createObjectURL(blob);
             const newIndex = customSubtitlesRef.current.length;
             const newSub = {
+                type: 'custom',
                 file: blobUrl,
                 playableUrl: blobUrl,
                 rawContent: content,
@@ -2577,17 +2629,27 @@ const WatchPartyPlayer = () => {
             {watchStopVoteStatus && (() => {
                 const currentUserId = user?._id?.toString() || user?.id?.toString();
                 const currentSocketId = socket?.id;
-                const votersList = Array.isArray(watchStopVoteStatus.voters) ? watchStopVoteStatus.voters : [];
-                const reqId = watchStopVoteStatus.requesterId ? String(watchStopVoteStatus.requesterId) : null;
+                const votersList = Array.isArray(watchStopVoteStatus.voters) ? watchStopVoteStatus.voters.map(v => String(v).trim()) : [];
+                const reqId = watchStopVoteStatus.requesterId ? String(watchStopVoteStatus.requesterId).trim() : null;
 
-                const hasCurrentVoted = votersList.some(v => 
-                    String(v) === currentUserId || (currentSocketId && String(v) === currentSocketId)
-                ) || (reqId && (
-                    reqId === currentUserId || (currentSocketId && reqId === currentSocketId)
-                ));
+                const isRequester = reqId && (reqId === currentUserId || (currentSocketId && reqId === currentSocketId));
+                const hasCurrentVoted = isApprovingStop || isRequester || votersList.some(v =>
+                    v === currentUserId || (currentSocketId && v === currentSocketId)
+                );
 
                 const currentApprovals = Math.max(votersList.length, reqId ? 1 : 0);
-                const requiredApprovals = watchStopVoteStatus.required || 2;
+                const requiredApprovals = Math.max(watchStopVoteStatus.required || 1, 1);
+                const isConsensusReached = currentApprovals >= requiredApprovals || isApprovingStop;
+
+                const handleVoteClick = () => {
+                    setIsApprovingStop(true);
+                    sendWatchStopVote();
+                };
+
+                const handleCancelClick = () => {
+                    setIsApprovingStop(false);
+                    sendWatchStopCancel();
+                };
 
                 return (
                     <div className="watch-party-consensus-backdrop">
@@ -2598,18 +2660,34 @@ const WatchPartyPlayer = () => {
                                     <h4>Birlikte İzleme Kapatma Onayı</h4>
                                 </div>
                                 <span className="watch-party-consensus-badge">
-                                    {currentApprovals} / {requiredApprovals} Onay
+                                    {Math.min(requiredApprovals, isApprovingStop ? Math.max(currentApprovals, requiredApprovals) : currentApprovals)} / {requiredApprovals} Onay
                                 </span>
                             </div>
                             <div className="watch-party-consensus-body">
-                                {hasCurrentVoted ? (
+                                {isRequester ? (
                                     <p>
                                         Kapatma onayınız alındı ({currentApprovals}/{requiredApprovals}).
                                         <br />
                                         <span className="watch-party-consensus-hint">
                                             {requiredApprovals > currentApprovals 
                                                 ? `Birlikte izlemenin sonlandırılması için odadan ${requiredApprovals - currentApprovals} kullanıcının daha onayı bekleniyor...`
-                                                : 'Kapatma işlemi tamamlanıyor...'}
+                                                : 'Kapatma işlemi tamamlanıyor, birlikte izleme sonlandırılıyor...'}
+                                        </span>
+                                    </p>
+                                ) : isApprovingStop || (hasCurrentVoted && isConsensusReached) ? (
+                                    <p>
+                                        Kapatma onayınız başarıyla iletildi.
+                                        <br />
+                                        <span className="watch-party-consensus-hint">
+                                            Konsensüs sağlandı, birlikte izleme tüm kullanıcılar için kapatılıyor...
+                                        </span>
+                                    </p>
+                                ) : hasCurrentVoted ? (
+                                    <p>
+                                        Kapatma onayınız alındı ({currentApprovals}/{requiredApprovals}).
+                                        <br />
+                                        <span className="watch-party-consensus-hint">
+                                            Odadaki diğer kullanıcıların onayı bekleniyor...
                                         </span>
                                     </p>
                                 ) : (
@@ -2617,35 +2695,46 @@ const WatchPartyPlayer = () => {
                                         <strong>{watchStopVoteStatus.requesterName || 'Bir kullanıcı'}</strong> birlikte izlemeyi sonlandırmak istiyor.
                                         <br />
                                         <span className="watch-party-consensus-hint">
-                                            Kapatma işleminin gerçekleşmesi için sizin onayınız gerekiyor (en az {requiredApprovals} kullanıcı onayı).
+                                            Kapatma işleminin gerçekleşmesi için sizin onayınız gerekiyor ({currentApprovals}/{requiredApprovals} onay mevcut).
                                         </span>
                                     </p>
                                 )}
                             </div>
                             <div className="watch-party-consensus-actions">
-                                {hasCurrentVoted ? (
+                                {isRequester ? (
                                     <button 
                                         type="button" 
                                         className="glass-btn secondary" 
-                                        onClick={() => sendWatchStopCancel()}
+                                        onClick={handleCancelClick}
                                     >
                                         İsteği İptal Et
+                                    </button>
+                                ) : hasCurrentVoted ? (
+                                    <button
+                                        type="button"
+                                        className="glass-btn secondary"
+                                        onClick={handleCancelClick}
+                                        disabled={isApprovingStop}
+                                    >
+                                        {isApprovingStop ? 'Sonlandırılıyor...' : 'İsteği İptal Et'}
                                     </button>
                                 ) : (
                                     <>
                                         <button 
                                             type="button" 
                                             className="glass-btn secondary" 
-                                            onClick={() => sendWatchStopCancel()}
+                                            onClick={handleCancelClick}
+                                            disabled={isApprovingStop}
                                         >
                                             İzlemeye Devam Et (Reddet)
                                         </button>
                                         <button 
                                             type="button" 
                                             className="glass-btn danger-confirm" 
-                                            onClick={() => sendWatchStopVote()}
+                                            onClick={handleVoteClick}
+                                            disabled={isApprovingStop}
                                         >
-                                            Kapatmayı Onayla ({Math.min(requiredApprovals, currentApprovals + 1)}/{requiredApprovals})
+                                            {isApprovingStop ? 'Kapatılıyor...' : `Kapatmayı Onayla (${Math.min(requiredApprovals, currentApprovals + 1)}/${requiredApprovals})`}
                                         </button>
                                     </>
                                 )}
