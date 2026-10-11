@@ -930,6 +930,9 @@ public class MainActivity extends BridgeActivity {
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setAllowFileAccess(true);
             settings.setAllowContentAccess(true);
+            settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+            settings.setLoadsImagesAutomatically(true);
+            settings.setBlockNetworkImage(false);
             
             // WebChromeClient for HTML5 Video & Media in WebView
             webView.setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(getBridge()) {

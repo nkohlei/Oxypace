@@ -32,6 +32,59 @@ const gifUpload = multer({
     },
 });
 
+// ── In-Memory Fast LRU Media Cache (Avatars, Thumbnails, Banners <= 1.5MB) ──
+const MEDIA_CACHE = new Map();
+const MAX_CACHE_ITEMS = 1200;
+const MAX_CACHE_BYTES = 80 * 1024 * 1024; // 80 MB limit
+let currentCacheBytes = 0;
+
+function getCachedMedia(key) {
+    const item = MEDIA_CACHE.get(key);
+    if (!item) return null;
+    if (Date.now() > item.expiresAt) {
+        currentCacheBytes -= item.buffer.length;
+        MEDIA_CACHE.delete(key);
+        return null;
+    }
+    // Refresh LRU position
+    MEDIA_CACHE.delete(key);
+    MEDIA_CACHE.set(key, item);
+    return item;
+}
+
+function setCachedMedia(key, { buffer, contentType, contentLength, etag }) {
+    if (!buffer || buffer.length > 1.5 * 1024 * 1024) return;
+    if (MEDIA_CACHE.has(key)) {
+        currentCacheBytes -= MEDIA_CACHE.get(key).buffer.length;
+        MEDIA_CACHE.delete(key);
+    }
+    while (MEDIA_CACHE.size >= MAX_CACHE_ITEMS || (currentCacheBytes + buffer.length) > MAX_CACHE_BYTES) {
+        const oldestKey = MEDIA_CACHE.keys().next().value;
+        if (!oldestKey) break;
+        const oldest = MEDIA_CACHE.get(oldestKey);
+        if (oldest && oldest.buffer) {
+            currentCacheBytes -= oldest.buffer.length;
+        }
+        MEDIA_CACHE.delete(oldestKey);
+    }
+    MEDIA_CACHE.set(key, {
+        buffer,
+        contentType,
+        contentLength,
+        etag: etag || `"${Date.now()}"`,
+        expiresAt: Date.now() + (3 * 60 * 60 * 1000) // 3 hours TTL
+    });
+    currentCacheBytes += buffer.length;
+}
+
+async function streamToBuffer(readableStream) {
+    const chunks = [];
+    for await (const chunk of readableStream) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    return Buffer.concat(chunks);
+}
+
 /**
  * @route   GET /api/media/*
  * @desc    Smart Media Resolver. 
@@ -699,36 +752,120 @@ router.get('/*', async (req, res) => {
             }
         }
 
-        // B. Standard R2 Images/Assets (Fast Single-Shot Proxy)
+        // B. Standard R2 Images/Assets (High Performance Proxy with LRU In-Memory Cache & ETag 304)
         let targetKey = filePath;
         if (targetKey.startsWith('post-') && !targetKey.startsWith('posts/')) {
             targetKey = `posts/general/${targetKey}`;
         }
 
-        const command = new GetObjectCommand({ Bucket: bucketName, Key: targetKey });
-        const response = await r2.send(command);
+        const clientEtag = req.headers['if-none-match'];
 
-        res.set('Content-Type', response.ContentType || 'application/octet-stream');
-        if (response.ContentLength) res.set('Content-Length', response.ContentLength);
+        // 1. Check In-Memory LRU Cache first (<1ms response, 0 R2 roundtrips)
+        const cached = getCachedMedia(targetKey);
+        if (cached) {
+            if (clientEtag && (clientEtag === cached.etag || clientEtag === `W/${cached.etag}`)) {
+                return res.status(304).end();
+            }
+            res.set('Content-Type', cached.contentType);
+            res.set('Content-Length', cached.contentLength);
+            res.set('ETag', cached.etag);
+            res.set('Cache-Control', 'public, max-age=31536000, immutable');
+            res.set('Accept-Ranges', 'bytes');
+            res.set('Access-Control-Allow-Origin', '*');
+            res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.set('X-Cache', 'HIT');
+            return res.send(cached.buffer);
+        }
+
+        // 2. Fetch from R2 with Graceful Variant Fallback
+        let response = null;
+        let finalKey = targetKey;
+
+        try {
+            const command = new GetObjectCommand({ Bucket: bucketName, Key: targetKey });
+            response = await r2.send(command);
+        } catch (r2Err) {
+            // If a thumbnail/medium/lowres variant was requested but doesn't exist (legacy uploads / GIFs),
+            // seamlessly fallback to the base image to avoid 404 client errors and reload latency!
+            if ((r2Err.name === 'NoSuchKey' || r2Err.name === 'NotFound') && 
+                (targetKey.includes('-thumbnail.webp') || targetKey.includes('-medium.webp') || targetKey.includes('-lowres.webp'))) {
+                
+                const baseWithoutSuffix = targetKey.replace(/-(thumbnail|medium|lowres)\.webp$/, '');
+                const fallbackCandidates = [
+                    baseWithoutSuffix,
+                    `${baseWithoutSuffix}.jpg`,
+                    `${baseWithoutSuffix}.jpeg`,
+                    `${baseWithoutSuffix}.png`,
+                    `${baseWithoutSuffix}.webp`,
+                    `${baseWithoutSuffix}.gif`
+                ];
+
+                for (const candidateKey of fallbackCandidates) {
+                    try {
+                        const fallbackCmd = new GetObjectCommand({ Bucket: bucketName, Key: candidateKey });
+                        response = await r2.send(fallbackCmd);
+                        finalKey = candidateKey;
+                        break;
+                    } catch (candErr) {
+                        // Keep trying
+                    }
+                }
+            }
+
+            if (!response) {
+                throw r2Err;
+            }
+        }
+
+        // 3. ETag 304 Validation from R2 response
+        const etag = response.ETag || `"${targetKey}"`;
+        if (clientEtag && (clientEtag === etag || clientEtag === `W/${etag}`)) {
+            return res.status(304).end();
+        }
+
+        const contentType = response.ContentType || 'image/jpeg';
+        const contentLength = response.ContentLength;
+
+        // 4. Cache small images (<= 1.5MB) in memory for instant subsequent loads
+        if (contentLength && contentLength <= 1.5 * 1024 * 1024) {
+            try {
+                const buffer = await streamToBuffer(response.Body);
+                setCachedMedia(targetKey, {
+                    buffer,
+                    contentType,
+                    contentLength: buffer.length,
+                    etag
+                });
+
+                res.set('Content-Type', contentType);
+                res.set('Content-Length', buffer.length);
+                res.set('ETag', etag);
+                res.set('Cache-Control', 'public, max-age=31536000, immutable');
+                res.set('Accept-Ranges', 'bytes');
+                res.set('Access-Control-Allow-Origin', '*');
+                res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+                res.set('X-Cache', 'MISS');
+                return res.send(buffer);
+            } catch (buffErr) {
+                console.warn('Buffering media stream failed, streaming directly:', buffErr.message);
+            }
+        }
+
+        // 5. Direct Streaming for larger assets
+        res.set('Content-Type', contentType);
+        if (contentLength) res.set('Content-Length', contentLength);
+        res.set('ETag', etag);
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
         res.set('Accept-Ranges', 'bytes');
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-
-        return response.Body.pipe(res);
-
-        res.set('Content-Type', response.ContentType || 'application/octet-stream');
-        if (response.ContentLength) res.set('Content-Length', response.ContentLength);
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-        res.set('Accept-Ranges', 'bytes');
-        res.set('Access-Control-Allow-Origin', '*');
-        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.set('X-Cache', 'STREAM');
 
         return response.Body.pipe(res);
 
     } catch (error) {
-        console.error('Media Resolver Error:', error.message);
         if (error.name === 'NoSuchKey' || error.name === 'NotFound') return res.status(404).json({ message: 'File not found' });
+        console.error('Media Resolver Error:', error.message);
         res.status(500).json({ message: 'Failed to resolve media' });
     }
 });

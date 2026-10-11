@@ -383,12 +383,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.3.9',
-        versionCode: 239,
-        minSupportedVersionCode: 239,
+        latestVersion: '2.4.0',
+        versionCode: 240,
+        minSupportedVersionCode: 240,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.3.9: Canlı sesli/görüntülü odalarda bildirim ve durum çubuğu güvenli alan (safe-area) hizalaması, çentik ve durum çubuğu çakışma önlemleri, Watch Party mobil oynatıcı ve ses geliştirmeleri.',
+        changelog: 'Oxypace 2.4.0: Profil ve portal avatarları, kapak görselleri ve post medyaları için yüksek performanslı bellek içi (LRU) önbellekleme mimarisi, HTTP 304 ETag doğrulama, otomatik varyant telafi sistemi ve mobil veri optimizasyonları.',
     });
 });
 

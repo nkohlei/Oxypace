@@ -52,8 +52,9 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
         if (!isNaN(numSize)) {
             if (numSize <= 80) return 'thumbnail';
             if (numSize <= 300) return 'medium';
+            return 'original';
         }
-        return 'original';
+        return 'thumbnail';
     };
 
     const resolvedSrc = src ? (src.startsWith('data:') ? src : getImageUrl(src, getAvatarSizeType())) : DEFAULT_AVATAR;

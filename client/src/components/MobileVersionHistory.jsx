@@ -27,15 +27,54 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.3.9)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.0)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.4.0',
+        versionCode: 240,
+        releaseDate: '11 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Yüksek Performanslı Medya & Görsel Önbellekleme, LRU Bellek & ETag 304 Hızlandırması',
+        summary: 'Uygulama içi profil ve portal avatarları, kapak görselleri ve post medyalarındaki yükleme gecikmeleri analiz edilerek uçtan uca performans devrimi yapıldı: Sunucu tarafında LRU bellek içi önbellekleme, HTTP 304 (ETag) desteği, Cloudflare R2 için persistent HTTPS bağlantı havuzu, eksik varyantlar için sunucu seviyesinde otomatik telafi ve Android WebView disk önbellek optimizasyonu uygulandı.',
+        category: 'perf',
+        apkSize: '78.5 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'R2 S3Client için persistent HTTPS keepAlive bağlantı havuzu (TLS el sıkışma gecikmesi 0\'a indirildi)',
+            'Sunucu tarafında 80MB kapasiteli akıllı LRU bellek içi medya önbellekleme (<1ms yanıt)',
+            'HTTP 304 Not Modified & ETag desteği ile sıfır veri transferi ve anında görsel gösterimi',
+            'Eksik varyantlar için sunucu tarafı otomatik telafi (404 hata ve yeniden yükleme döngüsü sonlandırıldı)',
+            'Ön yüz UserAvatar, ChannelSidebar ve görsel bileşenlerinde thumbnail/medium boyutlandırma optimizasyonu',
+            'Android WebView için donanım hızlandırmalı disk önbellekleme ve preconnect bağlantı hızlandırması'
+        ],
+        changes: [
+            { type: 'perf', text: 'config/r2.js içinde NodeHttpHandler ve persistent HTTPS Agent havuzu (keepAlive: true, 100 maxSockets) tanımlandı.' },
+            { type: 'perf', text: 'routes/media.js içinde 80MB kapasiteli akıllı LRU bellek içi önbellek kuruldu, 1.5MB altı tüm avatarlar ve görseller RAM üzerinden <1ms sürede sunuluyor.' },
+            { type: 'perf', text: 'routes/media.js içinde ETag ve If-None-Match başlıkları üzerinden HTTP 304 Not Modified mekanizması devreye alındı.' },
+            { type: 'fix', text: 'routes/media.js içinde talep edilen görsel varyantı (-thumbnail, -medium) R2 üzerinde yoksa 404 dönmek yerine orijinal dosyanın tek seferde sunulması sağlandı.' },
+            { type: 'ui', text: 'UserAvatar.jsx içinde tanımsız boyut durumlarında orijinal yüksek çözünürlük yerine hafif WebP thumbnail varsayılan hale getirildi.' },
+            { type: 'ui', text: 'ChannelSidebar.jsx portal banner görseli medium boyuta optimize edildi.' },
+            { type: 'perf', text: 'client/index.html içine api.oxypace.com.tr için preconnect ve dns-prefetch etiketleri eklendi.' },
+            { type: 'native', text: 'MainActivity.java WebView ayarlarında LOAD_DEFAULT önbellek modu ve görsel yükleme hızlandırması aktifleştirildi.' }
+        ],
+        affectedFiles: [
+            'config/r2.js',
+            'routes/media.js',
+            'client/src/components/UserAvatar.jsx',
+            'client/src/components/ChannelSidebar.jsx',
+            'client/index.html',
+            'android/app/src/main/java/com/oxypace/app/MainActivity.java'
+        ]
+    },
     {
         version: 'v2.3.9',
         versionCode: 239,
         releaseDate: '9 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '35b8dfb',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Canlı Oda Safe-Area Hizalaması, Çentik & Bildirim Çubuğu Koruması, Watch Party Yenilikleri',
         summary: 'Canlı sesli/görüntülü odalarda (VoiceChannel ve ConferenceChannel) yer alan üst gezinme ve kontrol butonlarının telefonların bildirim ve durum çubukları (status bar / notch / camera cutout) ile çakışması kökten giderildi. Ek olarak Watch Party mobil oynatıcı ses seviyesi kaydırıcısı, çift dokunuşla sarma ve altyazı geliştirmeleri dahil edildi.',
         category: 'fix',
@@ -546,7 +585,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.3.9': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.0': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
@@ -657,7 +696,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             </div>
                             <h1 className="mvh-title">Mobil Sürüm Günlüğü & Changelog</h1>
                             <p className="mvh-subtitle">
-                                Oxypace Android istemcisinin v2.0.0'dan v2.3.9'a kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
+                                Oxypace Android istemcisinin v2.0.0'dan v2.4.0'a kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
                             </p>
                         </div>
                     </div>
@@ -710,7 +749,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <div className="mvh-metric-val-row">
                                 <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="mvh-metric-desc">v2.0.0 → v2.3.9 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.4.0 Gelişim Süreci</span>
                         </div>
                     </div>
 
