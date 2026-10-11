@@ -113,6 +113,10 @@ const cachedLookup = async (key, ttlMs, loader) => {
     return value;
 };
 
+export const invalidatePortalRuleCache = (portalId) => {
+    if (portalId) lookupCache.delete(`rule:${portalId}`);
+};
+
 const isPortalMember = async (portalId, userId) => {
     try {
         return await cachedLookup(`m:${portalId}:${userId}`, 30_000, async () =>
@@ -271,7 +275,13 @@ const getLiveRoomUserIds = async (roomName) => {
         const sockets = await ioRef.in(`voice:${roomName}`).fetchSockets();
         const ids = new Set();
         for (const s of sockets) {
-            if (s.data?.voiceUserId) ids.add(String(s.data.voiceUserId));
+            const uid = s.data?.voiceUserId || s.data?.authUserId || s.userId || s._voiceUserId;
+            if (uid) {
+                const sId = String(uid).trim();
+                if (sId && !sId.endsWith('-screen')) {
+                    ids.add(sId);
+                }
+            }
         }
         return ids;
     } catch (err) {
@@ -282,13 +292,26 @@ const getLiveRoomUserIds = async (roomName) => {
 
 /** Removes hash entries of users that no longer have a live socket (e.g. crashed worker leftovers). */
 const pruneStaleParticipants = async (roomName) => {
-    if (!pubClient) return;
     try {
         const live = await getLiveRoomUserIds(roomName);
         if (!live || live.size === 0) return;
-        const keys = await pubClient.hkeys(roomKey(roomName));
-        const stale = keys.filter((k) => !live.has(String(k)));
-        if (stale.length) await pubClient.hdel(roomKey(roomName), ...stale);
+
+        // Prune local memory participants
+        const rd = voiceRooms.get(roomName);
+        if (rd?.participants) {
+            for (const key of Array.from(rd.participants.keys())) {
+                if (!live.has(String(key))) {
+                    rd.participants.delete(key);
+                }
+            }
+        }
+
+        // Prune Redis participants
+        if (pubClient) {
+            const keys = await pubClient.hkeys(roomKey(roomName));
+            const stale = keys.filter((k) => !live.has(String(k)));
+            if (stale.length) await pubClient.hdel(roomKey(roomName), ...stale);
+        }
     } catch (err) {
         console.error('[Voice] prune stale participants failed:', err.message);
     }
@@ -307,37 +330,51 @@ const countParticipants = async (roomName) => {
 // ─── Stop-vote state (Redis hash keyed by userId => natural de-duplication) ──
 const stopState = {
     async getRequest(roomName) {
+        const rd = voiceRooms.get(roomName);
+        if (rd?.stopRequest) return rd.stopRequest;
         if (pubClient) {
             try {
                 const s = await pubClient.get(reqKey(roomName));
-                return s ? JSON.parse(s) : null;
-            } catch { return null; }
+                if (s) {
+                    const parsed = JSON.parse(s);
+                    if (rd) rd.stopRequest = parsed;
+                    return parsed;
+                }
+            } catch { /* ignore */ }
         }
-        return voiceRooms.get(roomName)?.stopRequest || null;
+        return null;
     },
     async ensureRequest(roomName, request) {
+        const rd = ensureLocalRoom(roomName);
+        if (rd.stopRequest) return { request: rd.stopRequest, created: false };
         if (pubClient) {
             try {
                 const created = await pubClient.set(reqKey(roomName), JSON.stringify(request), 'EX', STOP_VOTE_REDIS_TTL_SEC, 'NX');
-                if (created === 'OK') return { request, created: true };
+                if (created === 'OK') {
+                    rd.stopRequest = request;
+                    return { request, created: true };
+                }
                 const existing = await pubClient.get(reqKey(roomName));
-                return { request: existing ? JSON.parse(existing) : request, created: false };
+                if (existing) {
+                    const parsed = JSON.parse(existing);
+                    rd.stopRequest = parsed;
+                    return { request: parsed, created: false };
+                }
             } catch (err) {
                 console.error('[Watch Party Stop Vote] Redis error:', err.message);
             }
         }
-        const rd = ensureLocalRoom(roomName);
-        if (rd.stopRequest) return { request: rd.stopRequest, created: false };
         rd.stopRequest = request;
         return { request, created: true };
     },
     async addVote(roomName, userId, vote) {
+        const cleanId = String(userId).trim();
         const rd = ensureLocalRoom(roomName);
         if (!rd.stopVotes) rd.stopVotes = new Map();
-        rd.stopVotes.set(userId, vote);
+        rd.stopVotes.set(cleanId, vote);
         if (pubClient) {
             try {
-                await pubClient.hset(votesKey(roomName), userId, JSON.stringify(vote));
+                await pubClient.hset(votesKey(roomName), cleanId, JSON.stringify(vote));
                 await pubClient.expire(votesKey(roomName), STOP_VOTE_REDIS_TTL_SEC);
             } catch (err) {
                 console.error('[Watch Party Stop Vote] Redis error:', err.message);
@@ -345,13 +382,22 @@ const stopState = {
         }
     },
     async getVotes(roomName) {
+        const rd = voiceRooms.get(roomName);
+        const map = new Map(rd?.stopVotes ? Array.from(rd.stopVotes.entries()) : []);
         if (pubClient) {
             try {
                 const all = await pubClient.hgetall(votesKey(roomName));
-                return Object.values(all || {}).map((s) => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+                if (all) {
+                    for (const [k, v] of Object.entries(all)) {
+                        try {
+                            const parsed = JSON.parse(v);
+                            if (parsed) map.set(String(k).trim(), parsed);
+                        } catch { /* ignore */ }
+                    }
+                }
             } catch { /* fall through to local */ }
         }
-        return Array.from(voiceRooms.get(roomName)?.stopVotes?.values() || []);
+        return Array.from(map.values());
     },
     async clear(roomName) {
         const rd = voiceRooms.get(roomName);
@@ -410,15 +456,12 @@ const evaluateStopVote = async (roomName) => {
     const request = await stopState.getRequest(roomName);
     if (!request) return;
 
-    // Get verified active participants from Redis and local cache
-    const participants = await getVoiceRoomParticipantsFromRedis(roomName);
-    const validParticipantIds = new Set(
-        (participants || [])
-            .map((p) => String(p.userId).trim())
-            .filter((id) => id && !id.endsWith('-screen'))
-    );
+    // Prune stale dead entries from Redis first
+    await pruneStaleParticipants(roomName);
 
+    // Determine strictly active human participants via live sockets (cluster-safe)
     const live = await getLiveRoomUserIds(roomName);
+    const validParticipantIds = new Set();
     if (live && live.size > 0) {
         for (const id of live) {
             const cleanId = String(id).trim();
@@ -426,32 +469,54 @@ const evaluateStopVote = async (roomName) => {
                 validParticipantIds.add(cleanId);
             }
         }
+    } else {
+        // Fallback to Redis / local participant map only if live socket inspection is unavailable
+        const participants = await getVoiceRoomParticipantsFromRedis(roomName);
+        for (const p of (participants || [])) {
+            const cleanId = String(p.userId).trim();
+            if (cleanId && !cleanId.endsWith('-screen')) {
+                validParticipantIds.add(cleanId);
+            }
+        }
+    }
+
+    // Always ensure the requester is treated as valid if still connected or requesting
+    if (request.requesterId) {
+        validParticipantIds.add(String(request.requesterId).trim());
     }
 
     let votes = await stopState.getVotes(roomName);
-    // Retain votes from currently active room participants
-    if (validParticipantIds.size > 0) {
-        votes = votes.filter((v) => {
-            const vId = String(v.userId).trim();
-            return validParticipantIds.has(vId) || (request.requesterId && vId === String(request.requesterId).trim());
+    const uniqueVoteMap = new Map();
+
+    // The initiator of the stop request is GUARANTEED to have voted yes
+    if (request.requesterId) {
+        const reqIdStr = String(request.requesterId).trim();
+        uniqueVoteMap.set(reqIdStr, {
+            userId: reqIdStr,
+            username: request.requesterName || 'Kapatma Başlatan',
+            isRequester: true
         });
     }
 
-    // De-duplicate votes by userId
-    const uniqueVoteMap = new Map();
     for (const v of votes) {
         const key = String(v.userId).trim();
-        if (key && !uniqueVoteMap.has(key)) {
-            uniqueVoteMap.set(key, v);
+        // Retain votes from active room participants
+        if (key && (validParticipantIds.has(key) || (request.requesterId && key === String(request.requesterId).trim()))) {
+            if (!uniqueVoteMap.has(key)) {
+                uniqueVoteMap.set(key, v);
+            }
         }
     }
+
     const uniqueVotes = Array.from(uniqueVoteMap.values());
     const voteCount = uniqueVotes.length;
 
-    // Active count: real humans present in the room
+    // Active count: real humans currently connected
     const totalActive = Math.max(validParticipantIds.size, voteCount, 1);
     const rule = await getRoomConsensusRule(roomName);
     const required = calculateRequiredVotes(rule, totalActive);
+
+    console.log(`[Watch Party Consensus] Room ${roomName}: voteCount=${voteCount}/${required}, totalActive=${totalActive}, rule=${rule}`);
 
     if (voteCount === 0) {
         await stopState.clear(roomName);
@@ -459,9 +524,9 @@ const evaluateStopVote = async (roomName) => {
         return;
     }
 
-    if (voteCount >= required) {
+    if (voteCount >= required || (totalActive > 0 && voteCount >= totalActive) || (validParticipantIds.size > 0 && voteCount >= validParticipantIds.size)) {
         await cleanupWatchParty(roomName);
-        console.log(`[Watch Party] stopped in ${roomName} after consensus reached (${voteCount}/${required}, rule: ${rule})`);
+        console.log(`[Watch Party] stopped in ${roomName} after consensus reached (${voteCount}/${required}, totalActive: ${totalActive}, rule: ${rule})`);
         return;
     }
 
@@ -469,6 +534,7 @@ const evaluateStopVote = async (roomName) => {
         voters: uniqueVotes.map((v) => String(v.userId).trim()),
         voteCount,
         required,
+        rule,
         requesterName: request.requesterName,
         requesterId: request.requesterId
     });
@@ -964,22 +1030,48 @@ export const initializeVoiceHandler = (io) => {
         // ─── Watch Party Stop Consensus (configurable & cluster safe) ───
         const castStopVote = async (roomName, fallbackUserId = null, fallbackUsername = null) => {
             if (!inRoom(roomName) || !limits.vote()) return;
-            const uId = myId() || fallbackUserId;
+            const uId = myId() || (fallbackUserId ? String(fallbackUserId).trim() : null);
             if (!uId) return;
             const uName = fallbackUsername || socket.data.voiceProfile?.username || socket.username || 'Bir kullanıcı';
             await withRoomLock(roomName, async () => {
                 const wp = await loadWatchParty(roomName);
                 if (!wp) return;
 
-                const startedAt = Date.now();
-                const { request, created } = await stopState.ensureRequest(roomName, {
-                    requesterName: uName,
-                    requesterId: uId,
-                    startedAt
-                });
-                if (created) scheduleStopVoteExpiry(roomName, request.startedAt);
+                // Check if there is already an existing stop request in progress
+                let currentRequest = await stopState.getRequest(roomName);
 
-                await stopState.addVote(roomName, uId, { userId: uId, socketId: socket.id, username: uName });
+                if (!currentRequest) {
+                    // This user is initiating a brand new stop request
+                    const startedAt = Date.now();
+                    const newReq = {
+                        requesterName: uName,
+                        requesterId: uId,
+                        startedAt
+                    };
+                    const res = await stopState.ensureRequest(roomName, newReq);
+                    currentRequest = res.request || newReq;
+                    if (res.created) {
+                        scheduleStopVoteExpiry(roomName, currentRequest.startedAt);
+                    }
+                }
+
+                // Add current user's affirmative vote
+                await stopState.addVote(roomName, uId, { 
+                    userId: uId, 
+                    socketId: socket.id, 
+                    username: uName,
+                    isRequester: String(uId) === String(currentRequest?.requesterId)
+                });
+
+                // Also guarantee that the original requester's affirmative vote is registered
+                if (currentRequest?.requesterId && String(currentRequest.requesterId) !== String(uId)) {
+                    await stopState.addVote(roomName, currentRequest.requesterId, {
+                        userId: String(currentRequest.requesterId).trim(),
+                        username: currentRequest.requesterName || 'Kapatma Başlatan',
+                        isRequester: true
+                    });
+                }
+
                 await evaluateStopVote(roomName);
             });
         };

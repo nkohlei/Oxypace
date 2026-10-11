@@ -258,7 +258,9 @@ const WatchPartyPlayer = () => {
         watchStopVoteStatus,
         sendWatchStopVote,
         sendWatchStopCancel,
-        socket
+        socket,
+        consensusRule,
+        activeRoom
     } = useVoice();
     const { user } = useAuth();
 
@@ -289,14 +291,14 @@ const WatchPartyPlayer = () => {
 
     const controlsTimeoutRef = useRef(null);
 
-    // Stop confirmation and 2-user consensus states
+    // Stop confirmation and consensus states
     const [isStopConfirmOpen, setIsStopConfirmOpen] = useState(false);
     const handleRequestStop = () => {
         setIsStopConfirmOpen(true);
     };
     const handleConfirmStop = () => {
         setIsStopConfirmOpen(false);
-        // Doğrudan oylama gönderilir; backend odada tek kişi varsa anında kapatır, birden fazla kişi varsa 2 kişilik onay süreci başlatır!
+        setIsApprovingStop(true);
         sendWatchStopVote();
     };
 
@@ -2554,35 +2556,54 @@ const WatchPartyPlayer = () => {
                                 <X size={15} />
                             </button>
                         </div>
-                        <div className="watch-party-consensus-body">
-                            {(participants || []).filter(p => !p.identity?.endsWith('-screen')).length <= 1 ? (
-                                <p>Birlikte izlemeyi sonlandırmak istediğinize emin misiniz?</p>
-                            ) : (
-                                <p>
-                                    Birlikte izlemeyi sonlandırmak istiyor musunuz?
-                                    <br />
-                                    <span className="watch-party-consensus-hint">
-                                        Odadaki diğer kullanıcıların izlemesini kesintiye uğratmamak için en az <strong>2 kullanıcının onayı</strong> gereklidir.
-                                    </span>
-                                </p>
-                            )}
-                        </div>
-                        <div className="watch-party-consensus-actions">
-                            <button 
-                                type="button" 
-                                className="glass-btn secondary" 
-                                onClick={() => setIsStopConfirmOpen(false)}
-                            >
-                                Vazgeç
-                            </button>
-                            <button 
-                                type="button" 
-                                className="glass-btn danger-confirm" 
-                                onClick={handleConfirmStop}
-                            >
-                                {(participants || []).filter(p => !p.identity?.endsWith('-screen')).length <= 1 ? 'Evet, Bitir' : 'Onay İsteği Başlat'}
-                            </button>
-                        </div>
+                        {(() => {
+                            const effectiveRule = consensusRule || activeRoom?.consensusRule || 'all';
+                            const activeCount = (participants || []).filter(p => !p.identity?.endsWith('-screen')).length;
+                            const isDirectClose = activeCount <= 1 || effectiveRule === '1';
+
+                            let ruleHint = 'Odadaki diğer kullanıcıların izlemesini kesintiye uğratmamak için odadaki tüm kullanıcıların onayı gereklidir.';
+                            if (effectiveRule === 'majority') {
+                                ruleHint = 'Odadaki diğer kullanıcıların izlemesini kesintiye uğratmamak için kullanıcıların çoğunluğunun onayı gereklidir.';
+                            } else if (effectiveRule === '2') {
+                                ruleHint = 'Odadaki diğer kullanıcıların izlemesini kesintiye uğratmamak için en az 2 kullanıcının onayı gereklidir.';
+                            } else if (effectiveRule === '3' || effectiveRule === '4') {
+                                ruleHint = `Odadaki diğer kullanıcıların izlemesini kesintiye uğratmamak için en az ${effectiveRule} kullanıcının onayı gereklidir.`;
+                            }
+
+                            return (
+                                <>
+                                    <div className="watch-party-consensus-body">
+                                        {isDirectClose ? (
+                                            <p>Birlikte izlemeyi sonlandırmak istediğinize emin misiniz?</p>
+                                        ) : (
+                                            <p>
+                                                Birlikte izlemeyi sonlandırmak istiyor musunuz?
+                                                <br />
+                                                <span className="watch-party-consensus-hint">
+                                                    {ruleHint}
+                                                </span>
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="watch-party-consensus-actions">
+                                        <button 
+                                            type="button" 
+                                            className="glass-btn secondary" 
+                                            onClick={() => setIsStopConfirmOpen(false)}
+                                        >
+                                            Vazgeç
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="glass-btn danger-confirm" 
+                                            onClick={handleConfirmStop}
+                                        >
+                                            {isDirectClose ? 'Evet, Bitir' : 'Onay İsteği Başlat'}
+                                        </button>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
@@ -2594,9 +2615,18 @@ const WatchPartyPlayer = () => {
                 const votersList = Array.isArray(watchStopVoteStatus.voters) ? watchStopVoteStatus.voters.map(v => String(v).trim()) : [];
                 const reqId = watchStopVoteStatus.requesterId ? String(watchStopVoteStatus.requesterId).trim() : null;
 
-                const isRequester = reqId && (reqId === currentUserId || (currentSocketId && reqId === currentSocketId));
-                const hasCurrentVoted = isApprovingStop || isRequester || votersList.some(v =>
-                    v === currentUserId || (currentSocketId && v === currentSocketId)
+                const isRequester = !!(
+                    (reqId && (reqId === currentUserId || (currentSocketId && reqId === currentSocketId))) ||
+                    (watchStopVoteStatus.requesterName && (
+                        watchStopVoteStatus.requesterName === user?.profile?.displayName || 
+                        watchStopVoteStatus.requesterName === user?.username
+                    ))
+                );
+
+                const hasCurrentVoted = !!(
+                    isApprovingStop || 
+                    isRequester || 
+                    votersList.some(v => v === currentUserId || (currentSocketId && v === currentSocketId))
                 );
 
                 const currentApprovals = Math.max(votersList.length, reqId ? 1 : 0);

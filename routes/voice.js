@@ -119,11 +119,13 @@ router.post('/token', protect, async (req, res) => {
             token,
             serverUrl: LIVEKIT_URL,
             roomName,
+            portalId: portal._id.toString(),
             roomMode: isStageMode ? 'stage' : 'free',
             userRole,
             channelName: channel.name,
             startedAt: roomData ? roomData.startedAt : null,
-            serverNow: Date.now()
+            serverNow: Date.now(),
+            consensusRule: portal.liveRoomSettings?.watchPartyConsensusRule || 'all'
         });
     } catch (error) {
         console.error('Voice token generation error:', error);

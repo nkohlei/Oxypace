@@ -881,7 +881,7 @@ export const VoiceProvider = ({ children }) => {
 
             // Fetch Token details
             const response = await axios.post('/api/voice/token', { portalId, channelId });
-            const { roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow } = response.data;
+            const { roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow, consensusRule, portalId: retPortalId } = response.data;
 
             if (startedAt && serverNow) {
                 const localNow = Date.now();
@@ -906,7 +906,15 @@ export const VoiceProvider = ({ children }) => {
                 isScreenSharing: false
             });
 
-            _setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
+            _setActiveRoom({ 
+                portalId: retPortalId || portalId, 
+                channelId, 
+                roomName, 
+                channelName, 
+                roomMode, 
+                userRole: returnRole,
+                consensusRule: consensusRule || 'all'
+            });
             setConnectionState(ConnectionState.Connected);
             setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
@@ -1239,6 +1247,10 @@ export const VoiceProvider = ({ children }) => {
             setWatchStopVoteStatus(null);
         };
 
+        const handleConsensusRuleUpdated = ({ portalId, consensusRule: newRule }) => {
+            _setActiveRoom(prev => (prev && (!portalId || prev.portalId === portalId) ? { ...prev, consensusRule: newRule } : prev));
+        };
+
         const handleWatchSubtitle = ({ subtitle, senderId, senderName }) => {
             console.log(`[VoiceContext] handleWatchSubtitle event received: "${subtitle?.label}" from "${senderName}"`);
             setWatchParty(prev => {
@@ -1277,6 +1289,7 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:watch-stop', handleWatchStop);
         socket.on('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
         socket.on('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
+        socket.on('voice:consensus-rule-updated', handleConsensusRuleUpdated);
 
         return () => {
             socket.off('voice:participants', handleParticipants);
@@ -1291,6 +1304,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:watch-stop', handleWatchStop);
             socket.off('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
             socket.off('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
+            socket.off('voice:consensus-rule-updated', handleConsensusRuleUpdated);
         };
     }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList, safeEmit]);
 
@@ -2385,6 +2399,7 @@ export const VoiceProvider = ({ children }) => {
         setUnreadCount,
         userVolume,
         setUserVolume,
+        consensusRule: activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all',
         socket
     };
 
