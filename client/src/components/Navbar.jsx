@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Route } from 'lucide-react';
+import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Forward } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
@@ -276,7 +276,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                     </div>
                                 </div>
                                 <span className="nav-live-pill-icon-box">
-                                    <Route size={13} strokeWidth={2.4} className="nav-live-pill-route-icon" />
+                                    <Forward size={13} strokeWidth={2.4} className="nav-live-pill-forward-icon" />
                                 </span>
                             </button>
                         )}

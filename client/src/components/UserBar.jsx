@@ -5,7 +5,7 @@ import { useUI } from '../context/UIContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ConnectionState } from 'livekit-client';
-import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings, Route } from 'lucide-react';
+import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings, Forward } from 'lucide-react';
 import './UserBar.css';
 import UserAvatar from './UserAvatar';
 
@@ -103,7 +103,7 @@ const UserBar = ({ currentChannelId }) => {
                                 aria-label="Canlı Odaya Git"
                                 className="userbar-go-to-room-btn"
                             >
-                                <Route size={15} strokeWidth={2.4} />
+                                <Forward size={16} strokeWidth={2.4} />
                             </button>
                         </div>
                     </div>
