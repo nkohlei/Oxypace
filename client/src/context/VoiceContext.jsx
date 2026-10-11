@@ -881,7 +881,7 @@ export const VoiceProvider = ({ children }) => {
 
             // Fetch Token details
             const response = await axios.post('/api/voice/token', { portalId, channelId });
-            const { roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow, consensusRule } = response.data;
+            const { roomName, channelName, roomMode, userRole: returnRole, startedAt, serverNow } = response.data;
 
             if (startedAt && serverNow) {
                 const localNow = Date.now();
@@ -906,15 +906,7 @@ export const VoiceProvider = ({ children }) => {
                 isScreenSharing: false
             });
 
-            _setActiveRoom({ 
-                portalId, 
-                channelId, 
-                roomName, 
-                channelName, 
-                roomMode, 
-                userRole: returnRole,
-                consensusRule: consensusRule || 'all'
-            });
+            _setActiveRoom({ portalId, channelId, roomName, channelName, roomMode, userRole: returnRole });
             setConnectionState(ConnectionState.Connected);
             setLocalState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
 
@@ -1009,10 +1001,6 @@ export const VoiceProvider = ({ children }) => {
                 } else {
                     _setRoomStartTime(data.startedAt);
                 }
-            }
-
-            if (data.consensusRule) {
-                _setActiveRoom(prev => prev ? { ...prev, consensusRule: data.consensusRule } : prev);
             }
 
             const incomingParticipants = (data.participants || []).map(p => ({
@@ -1251,13 +1239,6 @@ export const VoiceProvider = ({ children }) => {
             setWatchStopVoteStatus(null);
         };
 
-        const handleConsensusRuleUpdated = ({ portalId: updatedPortalId, consensusRule: newRule }) => {
-            if (activeRoomRef.current && String(activeRoomRef.current.portalId) === String(updatedPortalId)) {
-                console.log('[VoiceContext] Received live room consensus rule update:', newRule);
-                _setActiveRoom(prev => prev ? { ...prev, consensusRule: newRule } : prev);
-            }
-        };
-
         const handleWatchSubtitle = ({ subtitle, senderId, senderName }) => {
             console.log(`[VoiceContext] handleWatchSubtitle event received: "${subtitle?.label}" from "${senderName}"`);
             setWatchParty(prev => {
@@ -1296,7 +1277,6 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:watch-stop', handleWatchStop);
         socket.on('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
         socket.on('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
-        socket.on('voice:consensus-rule-updated', handleConsensusRuleUpdated);
 
         return () => {
             socket.off('voice:participants', handleParticipants);
@@ -1311,7 +1291,6 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:watch-stop', handleWatchStop);
             socket.off('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
             socket.off('voice:watch-stop-vote-clear', handleWatchStopVoteClear);
-            socket.off('voice:consensus-rule-updated', handleConsensusRuleUpdated);
         };
     }, [socket, activeRoom, user, getOrCreatePC, playInteractionSound, updateParticipantList, safeEmit]);
 
@@ -2163,11 +2142,9 @@ export const VoiceProvider = ({ children }) => {
     const stopWatchParty = useCallback(() => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
         if (roomName) {
-            const uId = user?._id?.toString() || user?.id?.toString();
-            const uName = user?.profile?.displayName || user?.username || 'Kullanıcı';
-            safeEmit('voice:watch-stop', { roomName, userId: uId, username: uName });
+            safeEmit('voice:watch-stop', { roomName });
         }
-    }, [activeRoom, watchParty, safeEmit, user]);
+    }, [activeRoom, watchParty, safeEmit]);
 
     const sendWatchPlay = useCallback((time) => {
         if (activeRoom) {
@@ -2408,8 +2385,7 @@ export const VoiceProvider = ({ children }) => {
         setUnreadCount,
         userVolume,
         setUserVolume,
-        socket,
-        consensusRule: activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all'
+        socket
     };
 
     return (
