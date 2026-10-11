@@ -4,11 +4,13 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus } from 'lucide-react';
+import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Radio } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
+import { useVoice } from '../context/VoiceContext';
+import { ConnectionState } from 'livekit-client';
 import './Navbar.css';
 import UserAvatar from './UserAvatar';
 import GhostModeBar from './GhostModeBar';
@@ -21,7 +23,50 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const isGhostMode = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
-    const { toggleSidebar, isMobileView } = useUI();
+    const { toggleSidebar, isMobileView, setMobileChannelOpen } = useUI() || {};
+    const { activeRoom, connectionState } = useVoice();
+    const isVoiceConnected = connectionState === ConnectionState.Connected;
+    const isLiveRoomActive = isVoiceConnected && !!activeRoom;
+    const roomDisplayName = activeRoom?.channelName || activeRoom?.roomName || 'Canlı Oda';
+    const liveTrackRef = useRef(null);
+    const liveTextSpanRef = useRef(null);
+    const [isLiveTextOverflowing, setIsLiveTextOverflowing] = useState(false);
+
+    useEffect(() => {
+        if (!isLiveRoomActive) {
+            setIsLiveTextOverflowing(false);
+            return;
+        }
+        const checkOverflow = () => {
+            if (liveTrackRef.current && liveTextSpanRef.current) {
+                const trackWidth = liveTrackRef.current.clientWidth;
+                const textWidth = liveTextSpanRef.current.offsetWidth || liveTextSpanRef.current.scrollWidth;
+                setIsLiveTextOverflowing(textWidth > trackWidth + 1);
+            }
+        };
+        checkOverflow();
+        const timer1 = setTimeout(checkOverflow, 120);
+        const timer2 = setTimeout(checkOverflow, 400);
+        window.addEventListener('resize', checkOverflow);
+        return () => {
+            clearTimeout(timer1);
+            clearTimeout(timer2);
+            window.removeEventListener('resize', checkOverflow);
+        };
+    }, [isLiveRoomActive, roomDisplayName]);
+
+    const handleGoToActiveRoom = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (!activeRoom) return;
+        if (setMobileChannelOpen) {
+            setMobileChannelOpen(true);
+        }
+        navigate(`/portal/${activeRoom.portalId}?channel=${activeRoom.channelId}&joinVoice=true`);
+    };
+
     const activeUploads = useUploadStore((state) => state.activeUploads);
     const activeUploadList = Object.values(activeUploads);
     const uploadingItem = activeUploadList.find((u) => u.status === 'uploading');
@@ -199,6 +244,34 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             <img src="/logo.png" alt="Oxypace Logo" className="logo-image" width="38" height="38" decoding="async" />
                             <img src="/oxypace-text-logo2.webp" alt="oxypace" className="logo-text" width="110" height="25" decoding="async" />
                         </Link>
+
+                        {isLiveRoomActive && (
+                            <button
+                                type="button"
+                                className="nav-live-room-pill"
+                                onClick={handleGoToActiveRoom}
+                                title={`${roomDisplayName} - Canlı Odaya Git`}
+                                aria-label={`${roomDisplayName} - Canlı Odaya Git`}
+                            >
+                                <span className="nav-live-pill-icon-box">
+                                    <Radio size={13} strokeWidth={2.5} className="nav-live-pill-radio-icon" />
+                                </span>
+                                <div className={`nav-live-pill-track ${isLiveTextOverflowing ? 'is-overflowing' : ''}`} ref={liveTrackRef}>
+                                    <div className={`nav-live-pill-scroll-wrapper ${isLiveTextOverflowing ? 'is-marquee' : ''}`}>
+                                        <span className="nav-live-pill-text" ref={liveTextSpanRef}>{roomDisplayName}</span>
+                                        {isLiveTextOverflowing && (
+                                            <>
+                                                <span className="nav-live-pill-spacer" aria-hidden="true" />
+                                                <span className="nav-live-pill-text clone" aria-hidden="true">
+                                                    {roomDisplayName}
+                                                </span>
+                                                <span className="nav-live-pill-spacer" aria-hidden="true" />
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </button>
+                        )}
                     </div>
 
                     {/* Center slot — used by Ghost Mode (highest priority) OR map page portal search */}

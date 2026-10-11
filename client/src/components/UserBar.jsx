@@ -1,16 +1,19 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useVoice } from '../context/VoiceContext';
+import { useUI } from '../context/UIContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ConnectionState } from 'livekit-client';
-import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings } from 'lucide-react';
+import { PhoneOff, MicOff, Mic, Pencil, Headphones, Settings, Radio } from 'lucide-react';
 import './UserBar.css';
 import UserAvatar from './UserAvatar';
 
 const UserBar = ({ currentChannelId }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const uiContext = useUI();
+    const { isMobileView, mobileChannelOpen, setMobileChannelOpen } = uiContext || {};
 
     // Global Voice State
     const { activeRoom, connectionState, localState, toggleMicrophone, disconnectFromChannel, participants, pinnedParticipant, setPinnedParticipant } = useVoice();
@@ -21,8 +24,22 @@ const UserBar = ({ currentChannelId }) => {
 
     // Visibility logic for the rich voice bar
     const isPortalRoute = location.pathname.includes(`/portal/${activeRoom?.portalId}`);
-    const isViewingActiveVoiceChannel = isPortalRoute && currentChannelId === activeRoom?.channelId;
+    const isViewingActiveVoiceChannel = isPortalRoute && currentChannelId === activeRoom?.channelId && (!isMobileView || mobileChannelOpen);
     const showVoiceBar = isConnected && activeRoom && !isViewingActiveVoiceChannel;
+
+    const handleGoToActiveRoom = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (!activeRoom) return;
+
+        if (setMobileChannelOpen) {
+            setMobileChannelOpen(true);
+        }
+
+        navigate(`/portal/${activeRoom.portalId}?channel=${activeRoom.channelId}&joinVoice=true`);
+    };
 
     // Close popover when clicking outside
     React.useEffect(() => {
@@ -57,7 +74,8 @@ const UserBar = ({ currentChannelId }) => {
                     {/* Header Row */}
                     <div
                         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                        onClick={() => navigate(`/portal/${activeRoom.portalId}`)}
+                        onClick={handleGoToActiveRoom}
+                        title="Canlı Odaya Git"
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
                             <div style={{
@@ -72,15 +90,12 @@ const UserBar = ({ currentChannelId }) => {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
                             <button
-                                onClick={disconnectFromChannel}
-                                title="Ayrıl"
-                                style={{
-                                    background: 'transparent', border: 'none', color: 'var(--text-muted)',
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    padding: '2px', borderRadius: '4px'
-                                }}
+                                onClick={handleGoToActiveRoom}
+                                title="Canlı Odaya Git"
+                                aria-label="Canlı Odaya Git"
+                                className="userbar-go-to-room-btn"
                             >
-                                <PhoneOff size={16} strokeWidth={2.5} />
+                                <Radio size={14} strokeWidth={2.5} />
                             </button>
                         </div>
                     </div>
