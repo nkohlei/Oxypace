@@ -72,8 +72,16 @@ if (fs.existsSync(downloadsSrc)) {
 console.log('🌐 Copying Blog static export over dist root...');
 copyRecursive(BLOG_OUT, CLIENT_DIST);
 
+// 3. Mirror complete build into root dist/ for Netlify publish directory
+const ROOT_DIST = path.join(ROOT, 'dist');
+console.log('🚀 Mirroring complete build to root dist/ (Netlify publish folder)...');
+fs.mkdirSync(ROOT_DIST, { recursive: true });
+copyRecursive(CLIENT_DIST, ROOT_DIST);
+
 console.log('\n✅ Merge complete!');
 console.log('   oxypace.com.tr/          → Blog (Next.js - index.html)');
 console.log('   oxypace.com.tr/login      → Portal SPA (portal.html)');
 console.log('   oxypace.com.tr/messages   → Portal SPA (portal.html)');
 console.log('   oxypace.com.tr/portal/:id → Portal SPA (portal.html)');
+console.log('   Synced to both client/dist/ and root dist/ successfully!');
+

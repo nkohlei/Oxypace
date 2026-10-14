@@ -67,7 +67,6 @@ export default function OxypaceHomePage() {
 
   const handleManualTabClick = (id) => {
     setActiveShowcase(id);
-    // Reset timer on user interaction
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setActiveShowcase((prev) => {
@@ -111,9 +110,9 @@ export default function OxypaceHomePage() {
 
       {/* =========================================================================
           1. NAVIGATION:
-          - Desktop: Floating silvery rectangular logo frame & matching "Giriş Yap" button
+          - Desktop: Floating container matched to content max-width (not extreme edge),
+                     silvery rectangular frame, 3D logo silhouette contour, and matching "Giriş Yap" button
           - Mobile: Converts to a full-width frosted glass header bar when scrolled
-          - Inward positioning (away from extreme edges)
           ========================================================================= */}
 
       {/* MOBILE HEADER CONVERSION (max-md) */}
@@ -130,9 +129,9 @@ export default function OxypaceHomePage() {
             <Image
               src="/logo.png"
               alt="Oxypace"
-              width={28}
-              height={28}
-              className="relative z-10 w-7 h-7 object-contain"
+              width={26}
+              height={26}
+              className="relative z-10 w-6.5 h-6.5 object-contain"
               priority
             />
           </div>
@@ -145,43 +144,46 @@ export default function OxypaceHomePage() {
         </Link>
       </header>
 
-      {/* DESKTOP FLOATING LOGO (hidden on mobile, positioned inward at left-8 sm:left-14 lg:left-20) */}
-      <div className="hidden md:block fixed top-6 sm:top-7 left-8 sm:left-14 lg:left-20 z-50">
-        <Link
-          href="/"
-          className={isScrolled ? "oxy-silver-rect-frame group" : "inline-flex items-center group p-1"}
-          title="Oxypace Anasayfa"
-        >
-          <div className="relative flex items-center justify-center w-11 h-11">
-            {/* Logo Silhouette Frame in Logo Shape */}
-            <Image
-              src="/oxypace-glyph-logo.png"
-              alt=""
-              width={46}
-              height={46}
-              className="oxy-logo-silhouette-layer object-contain transition-transform duration-300 group-hover:scale-105"
-            />
-            {/* Original Smaller Logo in Front */}
-            <Image
-              src="/logo.png"
-              alt="Oxypace"
-              width={32}
-              height={32}
-              className="relative z-10 w-8 h-8 object-contain transition-transform duration-300 group-hover:scale-105"
-              priority
-            />
+      {/* DESKTOP FLOATING NAVIGATION (hidden on mobile, aligned to max-w-6xl content width) */}
+      <div className="hidden md:block fixed top-6 sm:top-7 inset-x-0 z-50 pointer-events-none">
+        <div className="max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 flex items-center justify-between">
+          <div className="pointer-events-auto">
+            <Link
+              href="/"
+              className={isScrolled ? "oxy-silver-rect-frame group" : "inline-flex items-center group p-1"}
+              title="Oxypace Anasayfa"
+            >
+              <div className="relative flex items-center justify-center w-11 h-11">
+                {/* Logo Silhouette Frame in Logo Shape */}
+                <Image
+                  src="/oxypace-glyph-logo.png"
+                  alt=""
+                  width={46}
+                  height={46}
+                  className="oxy-logo-silhouette-layer object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+                {/* Original Smaller Logo in Front */}
+                <Image
+                  src="/logo.png"
+                  alt="Oxypace"
+                  width={30}
+                  height={30}
+                  className="relative z-10 w-7.5 h-7.5 object-contain transition-transform duration-300 group-hover:scale-105"
+                  priority
+                />
+              </div>
+            </Link>
           </div>
-        </Link>
-      </div>
 
-      {/* DESKTOP FLOATING GİRİŞ YAP BUTTON (Same horizontal line top-6 sm:top-7, positioned inward) */}
-      <div className="hidden md:flex fixed top-6 sm:top-7 right-8 sm:left-auto sm:right-14 lg:right-20 z-50 h-11 sm:h-12 items-center">
-        <Link
-          href="/login"
-          className="oxy-btn-mercury-ghost px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
-        >
-          Giriş Yap
-        </Link>
+          <div className="pointer-events-auto flex items-center h-11">
+            <Link
+              href="/login"
+              className="oxy-btn-mercury-ghost px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
+            >
+              Giriş Yap
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* =========================================================================
@@ -380,6 +382,7 @@ export default function OxypaceHomePage() {
           height={338}
           className="oxy-banner-image select-none pointer-events-none"
           priority
+          unoptimized
         />
       </section>
 
