@@ -88,41 +88,45 @@ export default function OxypaceHomePage() {
       <OxypaceBackground />
 
       {/* =========================================================================
-          1. TOP NAVIGATION (No Header Bar, Frameless Logo, Comfortable Inset)
-          - Aligned with max-w-5xl content column (NOT in extreme viewport corners)
-          - Frameless new ice/crystal logo
-          - Clean glassmorphic Giriş Yap button
+          1. PERMANENT FLOATING NAVIGATION (Fixed, Shifted Outward, Non-Colliding)
+          - Fixed position (stays visible during entire scroll)
+          - Shifted outward (max-w-7xl / px-6 sm:px-10 lg:px-14) so it never collides
+            with the centered content column (max-w-4xl / max-w-5xl)
+          - Frameless ice logo on left, frameless glassmorphic button on right
+          - pointer-events-none on container, pointer-events-auto on elements
           ========================================================================= */}
-      <nav className="relative z-20 max-w-5xl mx-auto px-6 sm:px-8 pt-8 sm:pt-10 flex items-center justify-between">
-        {/* Left: Frameless New Logo */}
-        <Link
-          href="/"
-          className="inline-flex items-center transition-transform hover:scale-105"
-          title="Oxypace Anasayfa"
-        >
-          <Image
-            src="/oxypace-ice-logo.png"
-            alt="Oxypace"
-            width={56}
-            height={56}
-            className="w-12 h-12 sm:w-14 sm:h-14 object-contain filter drop-shadow-[0_4px_18px_rgba(255,255,255,0.45)]"
-            priority
-          />
-        </Link>
+      <div className="fixed top-5 sm:top-7 inset-x-0 z-50 pointer-events-none">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 flex items-center justify-between">
+          {/* Left: Frameless New Ice Logo */}
+          <Link
+            href="/"
+            className="pointer-events-auto inline-flex items-center transition-transform hover:scale-105"
+            title="Oxypace Anasayfa"
+          >
+            <Image
+              src="/oxypace-ice-logo.png"
+              alt="Oxypace"
+              width={56}
+              height={56}
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain filter drop-shadow-[0_4px_18px_rgba(255,255,255,0.45)]"
+              priority
+            />
+          </Link>
 
-        {/* Right: Glassmorphic Borderless Giriş Yap Button */}
-        <Link
-          href="/login"
-          className="oxy-btn-glass px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-tight"
-        >
-          Giriş Yap
-        </Link>
-      </nav>
+          {/* Right: Glassmorphic Borderless Giriş Yap Button */}
+          <Link
+            href="/login"
+            className="pointer-events-auto oxy-btn-glass px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
+          >
+            Giriş Yap
+          </Link>
+        </div>
+      </div>
 
       {/* =========================================================================
           2. HERO SECTION (Minimalist, Punchy, High Impact)
           ========================================================================= */}
-      <section className="relative z-10 pt-16 sm:pt-24 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
+      <section className="relative z-10 pt-24 sm:pt-32 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
         {/* Master Headline in Outfit Font & Liquid Mercury Gradient */}
         <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.04] mb-6 max-w-4xl mx-auto">
           <span className="block text-white">TOPLULUK KUR.</span>
