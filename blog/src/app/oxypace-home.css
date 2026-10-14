@@ -69,12 +69,6 @@
   -webkit-text-fill-color: transparent;
 }
 
-.oxy-text-silver-subtle {
-  background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 50%, #64748B 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
 /* ==========================================================================
    BUTTONS: LIQUID MERCURY & BRUSHED TITANIUM
    ========================================================================== */
@@ -91,7 +85,7 @@
   box-shadow: 0 4px 22px rgba(255, 255, 255, 0.28),
               inset 0 1px 2px #FFFFFF,
               inset 0 -1px 3px rgba(0, 0, 0, 0.35);
-  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   cursor: pointer;
   letter-spacing: -0.01em;
@@ -136,12 +130,8 @@
   transform: translateY(-2px);
 }
 
-.oxy-btn-mercury-ghost:active {
-  transform: translateY(0);
-}
-
 /* ==========================================================================
-   CARDS: FROSTED OBSIDIAN WITH LIQUID SILVER BEVELS
+   CARDS & SHOWCASE
    ========================================================================== */
 
 .oxy-card-mercury {
@@ -162,7 +152,6 @@
   transform: translateY(-3px);
 }
 
-/* Visual Showcase Image Frame */
 .oxy-showcase-frame {
   position: relative;
   background: #07080A;
@@ -172,14 +161,7 @@
               0 0 0 1px rgba(255, 255, 255, 0.06),
               inset 0 1px 0 rgba(255, 255, 255, 0.25);
   overflow: hidden;
-  transition: all 0.4s ease;
-}
-
-.oxy-showcase-frame:hover {
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 35px 90px -15px rgba(0, 0, 0, 1),
-              0 0 0 1px rgba(255, 255, 255, 0.1),
-              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease;
 }
 
 /* Modern Tab Pill */
@@ -210,52 +192,95 @@
   box-shadow: 0 4px 16px rgba(255, 255, 255, 0.25);
 }
 
-/* Liquid Mercury Bevel Bar */
-.oxy-mercury-line {
-  height: 1px;
-  width: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
-}
+/* ==========================================================================
+   SILVERY RECTANGULAR LOGO FRAME & LOGO SILHOUETTE
+   User instruction: "Sayfa kaydırıldıkça beliren çerçeve stili gümüşümsü ve
+   dikdörtgen şekilli olsun. Logo çerçevesi ise logo şeklinde olsun, yani
+   logonun aynısı gümüş renginde olacak ve orijinal logo bu çerçevenin
+   önünde daha küçük boyutta olacak."
+   ========================================================================== */
 
-/* Floating Glassmorphic Logo Capsule */
-.oxy-floating-logo-capsule {
-  position: fixed;
-  top: 1.25rem;
-  left: 1.25rem;
-  z-index: 50;
+.oxy-silver-rect-frame {
   display: inline-flex;
   align-items: center;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  border-radius: 9999px;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem; /* Clean modern rectangular shape */
+  background: rgba(10, 11, 15, 0.80);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8),
+              inset 0 1px 1px rgba(255, 255, 255, 0.45),
+              inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
   text-decoration: none;
-  padding: 0.25rem 0.5rem;
 }
 
-.oxy-floating-logo-capsule.scrolled {
-  background: rgba(8, 9, 13, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  padding: 0.35rem 0.85rem 0.35rem 0.45rem;
+.oxy-silver-rect-frame:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.9),
+              inset 0 1px 2px rgba(255, 255, 255, 0.65);
 }
 
-/* Floating Top-Right Action Button */
-.oxy-floating-action {
-  position: fixed;
-  top: 1.25rem;
-  right: 1.25rem;
-  z-index: 50;
-  display: inline-flex;
+/* 3D Layered Logo Frame: Silver Logo Silhouette behind Original Logo */
+.oxy-logo-silhouette-layer {
+  position: absolute;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.85)) brightness(2.2) contrast(150%);
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   BOTTOM BANNER (Crisp 1:1 Sharp Image Container, Zero Blurriness)
+   ========================================================================== */
+
+.oxy-banner-container {
+  background-color: #000000;
+  width: 100%;
+  display: flex;
   align-items: center;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  justify-content: center;
+  overflow: hidden;
+  padding: 2rem 0;
 }
 
-.oxy-floating-action.scrolled .oxy-btn-mercury-ghost {
-  background: rgba(8, 9, 13, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+.oxy-banner-image {
+  max-width: 1024px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
+/* ==========================================================================
+   RESPONSIVE MOBILE HEADER CONVERSION
+   User instruction: "Mobil görünümde çerçeve yerine headere dönüşecek."
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .oxy-mobile-header-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 60px;
+    background: rgba(4, 5, 8, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+  }
+}

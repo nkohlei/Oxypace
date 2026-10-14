@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import OxypaceBackground from "./OxypaceBackground";
@@ -9,15 +9,7 @@ import "./oxypace-home.css";
 export default function OxypaceHomePage() {
   const [activeShowcase, setActiveShowcase] = useState("watch-party");
   const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 25);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const timerRef = useRef(null);
 
   const showcases = [
     {
@@ -54,46 +46,139 @@ export default function OxypaceHomePage() {
     },
   ];
 
+  // Auto-rotating timer for the 4 showcase cards (4.5 seconds per card)
+  useEffect(() => {
+    const startTimer = () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setActiveShowcase((prev) => {
+          const currentIndex = showcases.findIndex((s) => s.id === prev);
+          const nextIndex = (currentIndex + 1) % showcases.length;
+          return showcases[nextIndex].id;
+        });
+      }, 4500);
+    };
+
+    startTimer();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [showcases.length]);
+
+  const handleManualTabClick = (id) => {
+    setActiveShowcase(id);
+    // Reset timer on user interaction
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setActiveShowcase((prev) => {
+        const currentIndex = showcases.findIndex((s) => s.id === prev);
+        const nextIndex = (currentIndex + 1) % showcases.length;
+        return showcases[nextIndex].id;
+      });
+    }, 4500);
+  };
+
+  // High-performance RAF scroll listener (prevents unnecessary re-renders)
+  useEffect(() => {
+    let ticking = false;
+    let lastState = false;
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrolled = window.scrollY > 25;
+          if (scrolled !== lastState) {
+            lastState = scrolled;
+            setIsScrolled(scrolled);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const currentShowcase = showcases.find((s) => s.id === activeShowcase) || showcases[0];
 
   return (
     <div className="oxypace-landing relative">
-      {/* High-Pixel Cursor-Responsive Background with Logo Glyphs and Dynamic Non-Neon Shifting Colors */}
+      {/* 120 FPS High-Performance Cursor-Responsive Canvas Background */}
       <OxypaceBackground />
 
       {/* =========================================================================
-          1. FLOATING BRAND LOGOS (Protected by Glassmorphic Capsule on Scroll, Never Disappears)
+          1. NAVIGATION:
+          - Desktop: Floating silvery rectangular logo frame & matching "Giriş Yap" button
+          - Mobile: Converts to a full-width frosted glass header bar when scrolled
+          - Inward positioning (away from extreme edges)
           ========================================================================= */}
-      <Link
-        href="/"
-        className={`oxy-floating-logo-capsule group ${isScrolled ? "scrolled" : ""}`}
-        title="Oxypace Anasayfa"
-      >
-        {/* Main Icon Logo: Made Bigger */}
-        <Image
-          src="/logo.png"
-          alt="Oxypace"
-          width={44}
-          height={44}
-          className="w-10 h-10 sm:w-11 sm:h-11 object-contain transition-transform duration-300 group-hover:scale-105"
-          priority
-        />
-        {/* Text Logo: Made Smaller and Closer */}
-        <Image
-          src="/oxypace-text-logo2.webp"
-          alt="Oxypace"
-          width={88}
-          height={18}
-          className="h-4 sm:h-4.5 w-auto object-contain brightness-125 -ml-1 sm:-ml-0.5"
-          priority
-        />
-      </Link>
 
-      {/* Floating Top-Right Action Button */}
-      <div className={`oxy-floating-action ${isScrolled ? "scrolled" : ""}`}>
+      {/* MOBILE HEADER CONVERSION (max-md) */}
+      <header className={`md:hidden ${isScrolled ? "oxy-mobile-header-bar" : "fixed top-4 left-5 right-5 z-50 flex items-center justify-between"}`}>
+        <Link href="/" className="flex items-center gap-2" title="Oxypace">
+          <div className="relative flex items-center justify-center w-9 h-9">
+            <Image
+              src="/oxypace-glyph-logo.png"
+              alt=""
+              width={38}
+              height={38}
+              className="oxy-logo-silhouette-layer object-contain"
+            />
+            <Image
+              src="/logo.png"
+              alt="Oxypace"
+              width={28}
+              height={28}
+              className="relative z-10 w-7 h-7 object-contain"
+              priority
+            />
+          </div>
+        </Link>
         <Link
           href="/login"
-          className="oxy-btn-mercury-ghost px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-tight shadow-lg"
+          className="oxy-btn-mercury-ghost px-4 py-1.5 rounded-lg text-xs font-semibold"
+        >
+          Giriş Yap
+        </Link>
+      </header>
+
+      {/* DESKTOP FLOATING LOGO (hidden on mobile, positioned inward at left-8 sm:left-14 lg:left-20) */}
+      <div className="hidden md:block fixed top-6 sm:top-7 left-8 sm:left-14 lg:left-20 z-50">
+        <Link
+          href="/"
+          className={isScrolled ? "oxy-silver-rect-frame group" : "inline-flex items-center group p-1"}
+          title="Oxypace Anasayfa"
+        >
+          <div className="relative flex items-center justify-center w-11 h-11">
+            {/* Logo Silhouette Frame in Logo Shape */}
+            <Image
+              src="/oxypace-glyph-logo.png"
+              alt=""
+              width={46}
+              height={46}
+              className="oxy-logo-silhouette-layer object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+            {/* Original Smaller Logo in Front */}
+            <Image
+              src="/logo.png"
+              alt="Oxypace"
+              width={32}
+              height={32}
+              className="relative z-10 w-8 h-8 object-contain transition-transform duration-300 group-hover:scale-105"
+              priority
+            />
+          </div>
+        </Link>
+      </div>
+
+      {/* DESKTOP FLOATING GİRİŞ YAP BUTTON (Same horizontal line top-6 sm:top-7, positioned inward) */}
+      <div className="hidden md:flex fixed top-6 sm:top-7 right-8 sm:left-auto sm:right-14 lg:right-20 z-50 h-11 sm:h-12 items-center">
+        <Link
+          href="/login"
+          className="oxy-btn-mercury-ghost px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
         >
           Giriş Yap
         </Link>
@@ -118,7 +203,7 @@ export default function OxypaceHomePage() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-16">
           <Link
             href="/login"
-            className="oxy-btn-mercury w-full sm:w-auto px-8 py-3.5 rounded-full text-sm sm:text-base font-bold shadow-2xl flex items-center justify-center gap-2 group"
+            className="oxy-btn-mercury w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm sm:text-base font-bold shadow-2xl flex items-center justify-center gap-2 group"
           >
             <span>Web&apos;de Hemen Başla</span>
             <svg
@@ -132,7 +217,7 @@ export default function OxypaceHomePage() {
           </Link>
           <a
             href="/downloads/oxypace.apk"
-            className="oxy-btn-mercury-ghost w-full sm:w-auto px-7 py-3.5 rounded-full text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
+            className="oxy-btn-mercury-ghost w-full sm:w-auto px-7 py-3.5 rounded-xl text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5 text-slate-200" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0007s.4482-1.0006.9993-1.0006c.5516 0 1.0003.4485 1.0003 1.0006s-.4487 1.0007-1.0003 1.0007m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0007s.4482-1.0006.9993-1.0006c.5516 0 1.0003.4485 1.0003 1.0006s-.4487 1.0007-1.0003 1.0007m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.411 13.8559 8.1 12 8.1s-3.5902.311-5.1368.8504L4.8409 5.4474a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.784h24c-.3432-4.1251-2.6889-7.5973-6.1185-9.4626" />
@@ -142,17 +227,17 @@ export default function OxypaceHomePage() {
         </div>
 
         {/* =========================================================================
-            3. REAL VISUAL SHOWCASE: INTERACTIVE TABS & SCREENSHOTS
+            3. REAL VISUAL SHOWCASE: 4 AUTO-ROTATING TABS & SCREENSHOTS
             ========================================================================= */}
         <div className="max-w-5xl mx-auto">
-          {/* Interactive Navigation Tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-xl mb-6 max-w-fit mx-auto">
+          {/* Interactive Navigation Tabs with Auto-Timer */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl mb-6 max-w-fit mx-auto">
             {showcases.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveShowcase(tab.id)}
-                className={`oxy-tab-pill !rounded-full text-xs sm:text-sm ${activeShowcase === tab.id ? "active" : ""}`}
+                onClick={() => handleManualTabClick(tab.id)}
+                className={`oxy-tab-pill text-xs sm:text-sm ${activeShowcase === tab.id ? "active" : ""}`}
               >
                 <span>{tab.title}</span>
               </button>
@@ -199,12 +284,35 @@ export default function OxypaceHomePage() {
                 </div>
                 <Link
                   href="/login"
-                  className="oxy-btn-mercury px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap"
+                  className="oxy-btn-mercury px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap"
                 >
                   Dene →
                 </Link>
               </div>
             </div>
+          </div>
+
+          {/* =========================================================================
+              EVENT HORIZON CARD (Directly below the 4 showcase cards as requested)
+              ========================================================================= */}
+          <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/15 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-1">
+                OXYPACE EKOSİSTEMİ // BİLİM ARŞİVİ
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                EVENT HORIZON — Bağımsız Popüler Bilim & Astrofizik Portalı
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                Evrenin fizik sınırları, kara delikler ve uzay-zaman geometrisi üzerine interaktif makale ve simülasyon arşivi.
+              </p>
+            </div>
+            <Link
+              href="/blog"
+              className="oxy-btn-mercury-ghost px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap"
+            >
+              EVENT HORIZON&apos;a Git →
+            </Link>
           </div>
         </div>
       </section>
@@ -212,7 +320,7 @@ export default function OxypaceHomePage() {
       {/* =========================================================================
           4. MINIMALIST CORE PILLARS (3 Clean Cards, Zero Emojis)
           ========================================================================= */}
-      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <section className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Pillar 1 */}
           <div className="oxy-card-mercury p-6 rounded-2xl flex flex-col justify-between">
@@ -262,19 +370,17 @@ export default function OxypaceHomePage() {
       </section>
 
       {/* =========================================================================
-          5. BIG FULL-WIDTH MULTI-LOGO BANNER AT THE BOTTOM
+          5. BIG FULL-WIDTH MULTI-LOGO BANNER (Crisp 1:1 Sharp Image, Zero Blur)
           ========================================================================= */}
-      <section className="relative z-10 w-full mt-10 mb-2 overflow-hidden flex items-center justify-center">
-        <div className="w-full max-w-full">
-          <Image
-            src="/oxypace-multi-banner.jpg"
-            alt="Oxypace Logos"
-            width={1920}
-            height={480}
-            className="w-full h-auto object-cover object-center select-none pointer-events-none"
-            priority
-          />
-        </div>
+      <section className="relative z-10 oxy-banner-container mt-6">
+        <Image
+          src="/oxypace-multi-banner.jpg"
+          alt="Oxypace Multi Logo Variations"
+          width={1024}
+          height={338}
+          className="oxy-banner-image select-none pointer-events-none"
+          priority
+        />
       </section>
 
       {/* =========================================================================

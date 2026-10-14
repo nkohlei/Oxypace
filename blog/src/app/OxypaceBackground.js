@@ -17,31 +17,56 @@ export default function OxypaceBackground() {
     let height = 0;
     let dpr = 1;
 
-    // Load the Oxypace glyph logo image to include among the background shapes
+    // Pre-rendered offscreen canvas for micro-hat logo for ultra-high FPS blitting
+    let offscreenLogo = null;
+    let isLogoReady = false;
+
     const logoImg = new Image();
     logoImg.src = "/oxypace-glyph-logo.png";
-    let isLogoLoaded = false;
     logoImg.onload = () => {
-      isLogoLoaded = true;
+      try {
+        const off = document.createElement("canvas");
+        off.width = 36;
+        off.height = 36;
+        const offCtx = off.getContext("2d");
+        if (offCtx) {
+          offCtx.drawImage(logoImg, 0, 0, 36, 36);
+          offscreenLogo = off;
+          isLogoReady = true;
+        }
+      } catch (_) {}
     };
 
-    // Track mouse with smoothed position
+    // Track mouse with velocity & dynamic color hue
     const mouse = {
-      x: -2000,
-      y: -2000,
-      targetX: -2000,
-      targetY: -2000,
-      radius: 190,
+      x: -3000,
+      y: -3000,
+      targetX: -3000,
+      targetY: -3000,
+      radius: 175,
+      radiusSq: 175 * 175,
+      activeHue: 210, // Base metallic silver-blue
     };
+
+    let prevMouseX = -3000;
+    let prevMouseY = -3000;
 
     const handleMouseMove = (e) => {
       mouse.targetX = e.clientX;
       mouse.targetY = e.clientY;
+
+      // Mouse movement directly drives active color hue progression (Non-neon metallic cycle)
+      const distMoved = Math.hypot(e.clientX - prevMouseX, e.clientY - prevMouseY);
+      if (distMoved > 2 && distMoved < 600) {
+        mouse.activeHue = (mouse.activeHue + distMoved * 0.45) % 360;
+      }
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
     };
 
     const handleMouseLeave = () => {
-      mouse.targetX = -2000;
-      mouse.targetY = -2000;
+      mouse.targetX = -3000;
+      mouse.targetY = -3000;
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
@@ -52,8 +77,8 @@ export default function OxypaceBackground() {
 
     const initGrid = (w, h) => {
       nodes = [];
-      // Uniform dense distribution across the entire screen
-      const spacing = 34;
+      // High-performance spacing (54px) ensures silky 120 FPS on all GPUs/CPUs
+      const spacing = w < 768 ? 44 : 54;
       const cols = Math.ceil(w / spacing) + 2;
       const rows = Math.ceil(h / spacing) + 2;
 
@@ -65,11 +90,11 @@ export default function OxypaceBackground() {
           // 3 shape types:
           // 0: Micro 4-point crosshair (+)
           // 1: Precision Diamond (◆)
-          // 2: The Oxypace Hat Glyph Logo (same small size!)
-          const rand = (r * 13 + c * 7) % 10;
+          // 2: Oxypace Hat Glyph Logo (same micro size)
+          const rand = (r * 17 + c * 11) % 9;
           let shapeType = 0;
-          if (rand === 0 || rand === 5) {
-            shapeType = 2; // Oxypace Hat Glyph (~20% of nodes)
+          if (rand === 0 || rand === 4) {
+            shapeType = 2; // Hat glyph
           } else if (rand % 2 === 0) {
             shapeType = 1; // Diamond
           } else {
@@ -77,8 +102,8 @@ export default function OxypaceBackground() {
           }
 
           const phase = Math.random() * Math.PI * 2;
-          const speed = 0.4 + Math.random() * 0.4;
-          const colorOffset = (r * 37 + c * 23) % 360;
+          const speed = 0.5 + Math.random() * 0.4;
+          const localHueOffset = (r * 29 + c * 19) % 80;
 
           nodes.push({
             baseX,
@@ -86,7 +111,7 @@ export default function OxypaceBackground() {
             shapeType,
             phase,
             speed,
-            colorOffset,
+            localHueOffset,
             currIntensity: 0,
           });
         }
@@ -116,106 +141,95 @@ export default function OxypaceBackground() {
     const handleVisibility = () => {
       isVisible = !document.hidden;
       if (isVisible) {
-        lastTime = performance.now();
         animationId = requestAnimationFrame(animate);
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
-    let lastTime = performance.now();
-
     const animate = (now) => {
       if (!isVisible) return;
-      lastTime = now;
 
-      // Smooth mouse interpolation (60fps responsiveness)
-      mouse.x += (mouse.targetX - mouse.x) * 0.18;
-      mouse.y += (mouse.targetY - mouse.y) * 0.18;
+      // Smooth mouse interpolation (ultra-responsive 0.25 lerp)
+      mouse.x += (mouse.targetX - mouse.x) * 0.25;
+      mouse.y += (mouse.targetY - mouse.y) * 0.25;
 
-      // Deep pure black background
+      // Solid pitch black background (fast clear)
       ctx.fillStyle = "#020204";
       ctx.fillRect(0, 0, width, height);
 
       const timeSec = now * 0.001;
       const count = nodes.length;
+      const rSq = mouse.radiusSq;
+      const rInv = 1 / mouse.radius;
 
       for (let i = 0; i < count; i++) {
         const node = nodes[i];
 
-        // Minimal organic floating drift
+        // Minimal organic drift
         const floatX = Math.sin(timeSec * node.speed + node.phase) * 1.5;
         const floatY = Math.cos(timeSec * node.speed + node.phase) * 1.5;
 
         const effectiveX = node.baseX + floatX;
         const effectiveY = node.baseY + floatY;
 
-        // Proximity to mouse
+        // Fast squared distance check to avoid Math.hypot when outside radius
         const dx = mouse.x - effectiveX;
         const dy = mouse.y - effectiveY;
-        const dist = Math.hypot(dx, dy);
+        const distSq = dx * dx + dy * dy;
 
         let targetIntensity = 0;
         let trackOffsetX = 0;
         let trackOffsetY = 0;
 
-        if (dist < mouse.radius) {
-          const ratio = 1 - dist / mouse.radius;
-          targetIntensity = Math.pow(ratio, 1.4);
+        if (distSq < rSq) {
+          const dist = Math.sqrt(distSq);
+          const ratio = 1 - dist * rInv;
+          targetIntensity = ratio * ratio;
 
-          // Subtle tactile attraction / tracking
-          const pullForce = targetIntensity * 5;
-          trackOffsetX = (dx / dist) * pullForce;
-          trackOffsetY = (dy / dist) * pullForce;
+          // Subtle tactile pull toward cursor
+          const pull = targetIntensity * 4.5;
+          trackOffsetX = (dx / (dist + 0.001)) * pull;
+          trackOffsetY = (dy / (dist + 0.001)) * pull;
         }
 
-        // Smooth intensity interpolation
-        node.currIntensity += (targetIntensity - node.currIntensity) * 0.18;
+        // Fast intensity lerp
+        node.currIntensity += (targetIntensity - node.currIntensity) * 0.22;
         const intensity = node.currIntensity;
 
         const drawX = effectiveX + trackOffsetX;
         const drawY = effectiveY + trackOffsetY;
 
-        // Dynamic, non-neon, elegant color shifting when under cursor:
-        // When intensity > 0.05, cycle continuously through soft pastel metallic hues:
-        // Champagne, platinum, titanium, pearl rose, icy steel (low saturation 30%, high lightness 78%)
+        // Dynamic Non-Neon Color Generation:
+        // As the mouse moves, mouse.activeHue shifts actively!
         let strokeColor;
         let fillColor;
 
-        if (intensity > 0.08) {
-          // Continuously shifting hue based on time and node offset
-          const hue = (timeSec * 140 + node.colorOffset) % 360;
-          // Saturation strictly kept low (28%-38%) to prevent neon!
+        if (intensity > 0.06) {
+          // Dynamic continuous shifting color under cursor
+          const currentHue = (mouse.activeHue + node.localHueOffset) % 360;
+          // Saturation strictly kept low (28%-36%) to completely avoid neon colors!
           const sat = 32;
-          const light = 78 + intensity * 16; // Elegant bright metallic pearl
+          const light = 78 + intensity * 16; // Radiant silver/pearl
           const alpha = 0.25 + intensity * 0.75;
 
-          strokeColor = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
-          fillColor = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+          strokeColor = `hsla(${currentHue}, ${sat}%, ${light}%, ${alpha})`;
+          fillColor = `hsla(${currentHue}, ${sat}%, ${light}%, ${alpha})`;
         } else {
           // Default state: Dim dark titanium slate
-          strokeColor = "rgba(203, 213, 225, 0.12)";
-          fillColor = "rgba(203, 213, 225, 0.12)";
+          strokeColor = "rgba(203, 213, 225, 0.11)";
+          fillColor = "rgba(203, 213, 225, 0.11)";
         }
 
-        // Scale factor: starts micro (~1.0), grows slightly under cursor (~1.7)
         const scale = 1.0 + intensity * 0.7;
 
-        if (node.shapeType === 2 && isLogoLoaded) {
-          // The other logo (Oxypace hat) in the exact same micro size as the other shapes!
+        if (node.shapeType === 2 && isLogoReady && offscreenLogo) {
+          // Oxypace Hat Glyph logo in micro size (9px)
           const size = 9 * scale;
-          ctx.save();
           ctx.globalAlpha = 0.12 + intensity * 0.85;
-
-          if (intensity > 0.1) {
-            // Under cursor: glowing tint reflection
-            ctx.shadowColor = strokeColor;
-            ctx.shadowBlur = 6 * intensity;
-          }
-
-          ctx.drawImage(logoImg, drawX - size / 2, drawY - size / 2, size, size);
-          ctx.restore();
+          ctx.drawImage(offscreenLogo, drawX - size / 2, drawY - size / 2, size, size);
+          ctx.globalAlpha = 1.0;
         } else if (node.shapeType === 1) {
-          // Precision Diamond glyph (◆)
+          // Precision Diamond (◆)
           const rad = 2.2 * scale;
           ctx.beginPath();
           ctx.moveTo(drawX, drawY - rad);
