@@ -1,3 +1,5 @@
+import WarpGridBackground from "./components/WarpGridBackground";
+
 export const metadata = {
   title: "EVENT HORIZON - Popüler Bilim Arşivi | Oxypace",
   description: "Evrenin fizik sınırları ve ekstrem doğa koşulları üzerine bağımsız bilimsel arşiv.",
@@ -20,5 +22,11 @@ export const metadata = {
 };
 
 export default function BlogSubLayout({ children }) {
-  return children;
+  return (
+    <>
+      <WarpGridBackground />
+      {children}
+    </>
+  );
 }
+

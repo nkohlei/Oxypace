@@ -1,0 +1,257 @@
+/* ==========================================================================
+   OXYPACE MONOCHROME DESIGN SYSTEM
+   Strict Palette: Pure Black, Crisp White, Liquid Silver / Platinum
+   NO neon colors. NO saturated glows. Optical depth & metallic textures.
+   ========================================================================== */
+
+:root {
+  --oxy-bg: #030305;
+  --oxy-bg-card: rgba(14, 15, 19, 0.75);
+  --oxy-bg-card-hover: rgba(22, 24, 30, 0.90);
+  --oxy-border: rgba(255, 255, 255, 0.08);
+  --oxy-border-strong: rgba(255, 255, 255, 0.18);
+  --oxy-border-hover: rgba(255, 255, 255, 0.35);
+  --oxy-text-primary: #FFFFFF;
+  --oxy-text-secondary: #CBD5E1; /* Silver / Platinum */
+  --oxy-text-muted: #94A3B8;     /* Muted Silver */
+  --oxy-text-faint: #64748B;     /* Slate Silver */
+}
+
+/* Base Body Resets for Oxypace Home */
+.oxypace-landing {
+  background-color: var(--oxy-bg);
+  color: var(--oxy-text-primary);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Background Canvas Layer */
+.oxy-canvas-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Radial Vignette Overlay */
+.oxy-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.02) 0%, transparent 60%),
+              radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.8) 0%, transparent 80%),
+              radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.92) 100%);
+}
+
+/* Liquid Silver Gradient Text */
+.oxy-text-silver {
+  background: linear-gradient(180deg, #FFFFFF 0%, #E2E8F0 45%, #94A3B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.oxy-text-silver-bright {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 50%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.oxy-text-silver-subtle {
+  background: linear-gradient(180deg, #E2E8F0 0%, #94A3B8 60%, #64748B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Frosted Silver Cards */
+.oxy-card {
+  background: var(--oxy-bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--oxy-border);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.oxy-card:hover {
+  background: var(--oxy-bg-card-hover);
+  border-color: var(--oxy-border-hover);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.8),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+}
+
+/* Primary Liquid Chrome Button */
+.oxy-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #030305;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 50%, #E2E8F0 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 1),
+              inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.oxy-btn-primary:hover {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 100%);
+  box-shadow: 0 6px 24px rgba(255, 255, 255, 0.22),
+              inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-1px) scale(1.01);
+}
+
+.oxy-btn-primary:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Secondary Silver Outline Button */
+.oxy-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  color: #E2E8F0;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.oxy-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Subtle Silver Pill Tag */
+.oxy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* UI Mockup Details */
+.oxy-app-window {
+  background: #090A0D;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1rem;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9),
+              0 0 0 1px rgba(255, 255, 255, 0.05),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.oxy-mockup-sidebar-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.oxy-mockup-sidebar-icon:hover,
+.oxy-mockup-sidebar-icon.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+}
+
+/* Pulse Silver Dot */
+@keyframes oxy-pulse-silver {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+.oxy-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  animation: oxy-pulse-silver 2s infinite ease-in-out;
+}
+
+/* Speaking Wave Animation */
+@keyframes oxy-speak-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.oxy-speaking-ring {
+  animation: oxy-speak-ring 1.6s infinite cubic-bezier(0, 0, 0.2, 1);
+  border: 2px solid #FFFFFF;
+}
+
+/* Smooth Horizontal Marquee */
+@keyframes oxy-marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.oxy-marquee-inner {
+  display: flex;
+  width: max-content;
+  animation: oxy-marquee 35s linear infinite;
+}
+
+.oxy-marquee-inner:hover {
+  animation-play-state: paused;
+}
+
+/* Scrubber Bar Animation */
+@keyframes oxy-scrub {
+  0% { width: 35%; }
+  50% { width: 62%; }
+  100% { width: 35%; }
+}
+
+.oxy-scrubber-progress {
+  animation: oxy-scrub 14s infinite ease-in-out;
+}
