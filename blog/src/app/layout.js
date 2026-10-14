@@ -13,8 +13,55 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "EVENT HORIZON - Popüler Bilim Arşivi",
-  description: "Evrenin fizik sınırları ve ekstrem doğa koşulları üzerine bağımsız bilimsel arşiv.",
+  title: "Oxypace - Topluluk Kur ve Birlikte Film İzle",
+  description: "Oxypace - Yeni nesil portal ve topluluk platformu. Kendi portalını oluştur, sesli odalarda arkadaşlarınla birlikte film izle, sohbet et ve dünyayla bağlantı kur.",
+  applicationName: "Oxypace",
+  metadataBase: new URL("https://oxypace.com.tr"),
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: [
+      { url: "/logo.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logo192.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "Oxypace - Topluluk Kur ve Birlikte Film İzle",
+    description: "Oxypace - Yeni nesil portal ve topluluk platformu. Kendi portalını oluştur, sesli odalarda arkadaşlarınla birlikte film izle, sohbet et ve dünyayla bağlantı kur.",
+    url: "https://oxypace.com.tr",
+    siteName: "Oxypace",
+    images: [
+      {
+        url: "https://oxypace.com.tr/logo.png",
+        width: 512,
+        height: 512,
+        alt: "Oxypace Logo",
+      },
+    ],
+    locale: "tr_TR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Oxypace - Topluluk Kur ve Birlikte Film İzle",
+    description: "Oxypace - Yeni nesil portal ve topluluk platformu. Kendi portalını oluştur, sesli odalarda arkadaşlarınla birlikte film izle, sohbet et ve dünyayla bağlantı kur.",
+    images: ["https://oxypace.com.tr/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -25,6 +72,52 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <head>
+        <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/logo192.png" />
+        <meta name="google-site-verification" content="rwtbjVtSL--DZHB5gQfbwyj-x2CV8m6sBTakYbn78uc" />
+        {/* Google Structured Data / Schema for Oxypace Logo & Sitelinks */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "WebSite",
+                  "@id": "https://oxypace.com.tr/#website",
+                  "url": "https://oxypace.com.tr/",
+                  "name": "Oxypace",
+                  "alternateName": ["Oxypace Platformu", "Oxypace Portal"],
+                  "description": "Topluluk Kur ve Birlikte Film İzle",
+                  "publisher": {
+                    "@id": "https://oxypace.com.tr/#organization"
+                  },
+                  "inLanguage": "tr-TR"
+                },
+                {
+                  "@type": "Organization",
+                  "@id": "https://oxypace.com.tr/#organization",
+                  "name": "Oxypace",
+                  "url": "https://oxypace.com.tr/",
+                  "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://oxypace.com.tr/logo.png",
+                    "caption": "Oxypace Logo"
+                  },
+                  "image": "https://oxypace.com.tr/logo.png"
+                },
+                {
+                  "@type": "SiteNavigationElement",
+                  "@id": "https://oxypace.com.tr/#navigation",
+                  "name": "Portallara Giriş / Kayıt",
+                  "description": "Oxypace topluluk portallarına giriş yapın veya yeni bir hesap oluşturun.",
+                  "url": "https://oxypace.com.tr/login"
+                }
+              ]
+            })
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -41,6 +134,16 @@ export default function RootLayout({ children }) {
                 // Yönlendirme SADECE ilk girişte ve SADECE ana URL ('/') adresindeyken yapılır.
                 // Eğer girilen URL bir blog linki ise (/blog/...) ASLA yönlendirme yapılmaz.
                 if (isFirstVisitOfSession && isLoggedIn && !isBlogPath && (pathname === '/' || pathname === '')) {
+                  var topPortal = localStorage.getItem('oxypace_top_portal');
+                  if (topPortal) {
+                    try {
+                      var parsedPortal = JSON.parse(topPortal);
+                      if (parsedPortal && parsedPortal.id) {
+                        window.location.replace('/portal/' + parsedPortal.id);
+                        return;
+                      }
+                    } catch (_) {}
+                  }
                   window.location.replace('/messages');
                 }
 

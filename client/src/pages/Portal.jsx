@@ -788,6 +788,38 @@ const Portal = () => {
         }
     }, [id, authLoading]);
 
+    // Track portal visit frequency and update most visited portal in localStorage
+    useEffect(() => {
+        if (portal && portal._id && portal.name) {
+            try {
+                const rawVisits = localStorage.getItem('oxypace_portal_visits');
+                const visits = rawVisits ? JSON.parse(rawVisits) : {};
+                const portalIdStr = String(portal._id);
+                const cur = visits[portalIdStr] || { count: 0 };
+                visits[portalIdStr] = {
+                    id: portalIdStr,
+                    name: portal.name,
+                    avatar: portal.avatar,
+                    count: (cur.count || 0) + 1,
+                    lastVisited: Date.now()
+                };
+                localStorage.setItem('oxypace_portal_visits', JSON.stringify(visits));
+
+                let maxCount = 0;
+                let topPortal = null;
+                Object.values(visits).forEach(v => {
+                    if (v.count > maxCount) {
+                        maxCount = v.count;
+                        topPortal = v;
+                    }
+                });
+                if (topPortal) {
+                    localStorage.setItem('oxypace_top_portal', JSON.stringify({ id: topPortal.id, name: topPortal.name }));
+                }
+            } catch (_) {}
+        }
+    }, [portal?._id, portal?.name]);
+
     useEffect(() => {
         if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
             // Check if we need to set a default channel (only if currentChannel is null)
