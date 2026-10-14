@@ -205,6 +205,69 @@
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
 }
 
+/* ==========================================================================
+   NAVIGATION CORRIDOR CENTERING:
+   - Content column is max-w-5xl (1024px) centered with mx-auto.
+   - Left corridor is 0 to (100vw - 1024px) / 2.
+   - Right corridor is 100vw - (100vw - 1024px) / 2 to 100vw.
+   - Logo is centered in the left corridor, Giriş Yap in the right corridor!
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  .oxy-nav-left-corridor {
+    position: fixed;
+    top: 1.75rem;
+    left: 0;
+    width: calc((100vw - 1024px) / 2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .oxy-nav-right-corridor {
+    position: fixed;
+    top: 1.75rem;
+    right: 0;
+    width: calc((100vw - 1024px) / 2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .oxy-nav-left-corridor {
+    position: fixed;
+    top: 1.25rem;
+    left: 1.25rem;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .oxy-nav-right-corridor {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 50;
+    pointer-events: none;
+  }
+}
+
+/* Mobile Tab Pill compaction */
+@media (max-width: 640px) {
+  .oxy-tab-container {
+    padding: 0.25rem !important;
+    gap: 0.25rem !important;
+  }
+  .oxy-tab-pill {
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.725rem !important;
+    border-radius: 0.6rem !important;
+  }
+}
+
 /* Tab Pill Progress Bar Animation (4.5s countdown) */
 .oxy-tab-timer-line {
   position: absolute;

@@ -88,47 +88,43 @@ export default function OxypaceHomePage() {
       <OxypaceBackground />
 
       {/* =========================================================================
-          1. PERMANENT FLOATING NAVIGATION (Fixed, Shifted Outward, Non-Colliding)
-          - Fixed position (stays visible during entire scroll)
-          - Shifted outward (max-w-7xl / px-6 sm:px-10 lg:px-14) so it never collides
-            with the centered content column (max-w-4xl / max-w-5xl)
-          - Frameless ice logo on left, frameless glassmorphic button on right
-          - pointer-events-none on container, pointer-events-auto on elements
+          1. PERMANENT FLOATING NAVIGATION:
+          - Logo is centered in the left margin corridor (between screen edge and 1024px content)
+          - Giriş Yap is centered in the right margin corridor
+          - Permanently visible across entire scroll with zero collision
           ========================================================================= */}
-      <div className="fixed top-5 sm:top-7 inset-x-0 z-50 pointer-events-none">
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 flex items-center justify-between">
-          {/* Left: Frameless New Ice Logo */}
-          <Link
-            href="/"
-            className="pointer-events-auto inline-flex items-center transition-transform hover:scale-105"
-            title="Oxypace Anasayfa"
-          >
-            <Image
-              src="/oxypace-ice-logo.png"
-              alt="Oxypace"
-              width={56}
-              height={56}
-              className="w-12 h-12 sm:w-14 sm:h-14 object-contain filter drop-shadow-[0_4px_18px_rgba(255,255,255,0.45)]"
-              priority
-            />
-          </Link>
+      <div className="oxy-nav-left-corridor">
+        <Link
+          href="/"
+          className="pointer-events-auto inline-flex items-center transition-transform hover:scale-105"
+          title="Oxypace Anasayfa"
+        >
+          <Image
+            src="/oxypace-ice-logo.png"
+            alt="Oxypace"
+            width={56}
+            height={56}
+            className="w-11 h-11 sm:w-13 sm:h-13 object-contain filter drop-shadow-[0_4px_18px_rgba(255,255,255,0.45)]"
+            priority
+          />
+        </Link>
+      </div>
 
-          {/* Right: Glassmorphic Borderless Giriş Yap Button */}
-          <Link
-            href="/login"
-            className="pointer-events-auto oxy-btn-glass px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
-          >
-            Giriş Yap
-          </Link>
-        </div>
+      <div className="oxy-nav-right-corridor">
+        <Link
+          href="/login"
+          className="pointer-events-auto oxy-btn-glass px-5 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
+        >
+          Giriş Yap
+        </Link>
       </div>
 
       {/* =========================================================================
           2. HERO SECTION (Minimalist, Punchy, High Impact)
           ========================================================================= */}
       <section className="relative z-10 pt-24 sm:pt-32 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
-        {/* Master Headline in Outfit Font & Liquid Mercury Gradient */}
-        <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.04] mb-6 max-w-4xl mx-auto">
+        {/* Master Headline in Outfit Font & Liquid Mercury Gradient - Enlarged on Mobile */}
+        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.02] sm:leading-[1.04] mb-6 max-w-4xl mx-auto">
           <span className="block text-white">TOPLULUK KUR.</span>
           <span className="block oxy-text-mercury mt-2">BİRLİKTE FİLM İZLE.</span>
         </h1>
@@ -170,8 +166,8 @@ export default function OxypaceHomePage() {
             Pure Glassmorphic & Borderless
             ========================================================================= */}
         <div className="max-w-5xl mx-auto">
-          {/* Interactive Navigation Tabs with Duration Progress Bar Animation */}
-          <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 oxy-tab-container mb-6 max-w-fit mx-auto">
+          {/* Interactive Navigation Tabs with Duration Progress Bar Animation - Compact on Mobile */}
+          <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2 p-1 sm:p-1.5 oxy-tab-container mb-5 sm:mb-6 max-w-fit mx-auto">
             {showcases.map((tab) => {
               const isActive = activeShowcase === tab.id;
               return (
@@ -201,16 +197,17 @@ export default function OxypaceHomePage() {
               className="oxy-showcase-timer-bar"
             />
 
-            <div className="px-4 sm:px-5 py-3.5 bg-white/[0.03] flex items-center justify-between">
+            {/* Slimmed Down Top Info Header */}
+            <div className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-white/[0.03] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block" />
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block" />
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-800 inline-block" />
-                <span className="ml-2 text-xs font-mono text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-slate-600 inline-block" />
+                <span className="w-2 h-2 rounded-full bg-slate-700 inline-block" />
+                <span className="w-2 h-2 rounded-full bg-slate-800 inline-block" />
+                <span className="ml-1.5 text-[11px] sm:text-xs font-mono text-slate-300">
                   {currentShowcase.badge}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs font-mono text-slate-200">
+              <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-slate-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
                 <span className="hidden sm:inline">Canlı Senkronizasyon</span>
               </div>
