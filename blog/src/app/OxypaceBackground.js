@@ -2,6 +2,18 @@
 
 import { useEffect, useRef } from "react";
 
+// Classic vivid, unmistakable real colors (sarı, kırmızı, yeşil, mavi, kahverengi, mor, turuncu, camgöbeği)
+const REAL_COLORS = [
+  { fill: "#EF4444", stroke: "#FCA5A5", name: "kırmızı" },
+  { fill: "#FACC15", stroke: "#FEF08A", name: "sarı" },
+  { fill: "#22C55E", stroke: "#BBF7D0", name: "yeşil" },
+  { fill: "#3B82F6", stroke: "#BFDBFE", name: "mavi" },
+  { fill: "#A855F7", stroke: "#E9D5FF", name: "mor" },
+  { fill: "#B45309", stroke: "#FDE68A", name: "kahverengi" },
+  { fill: "#F97316", stroke: "#FED7AA", name: "turuncu" },
+  { fill: "#06B6D4", stroke: "#A5F3FC", name: "camgöbeği" },
+];
+
 export default function OxypaceBackground() {
   const canvasRef = useRef(null);
 
@@ -17,51 +29,69 @@ export default function OxypaceBackground() {
     let height = 0;
     let dpr = 1;
 
-    // Pre-rendered offscreen canvas for micro-hat logo for ultra-high FPS blitting
-    let offscreenLogo = null;
-    let isLogoReady = false;
+    // Cache pre-tinted offscreen logo canvases for all 8 real colors + default silver
+    const logoCanvases = {};
+    let isLogosReady = false;
 
-    const logoImg = new Image();
-    logoImg.src = "/oxypace-glyph-logo.png";
-    logoImg.onload = () => {
+    const baseLogo = new Image();
+    baseLogo.src = "/logo.png";
+    baseLogo.onload = () => {
       try {
-        const off = document.createElement("canvas");
-        off.width = 36;
-        off.height = 36;
-        const offCtx = off.getContext("2d");
-        if (offCtx) {
-          offCtx.drawImage(logoImg, 0, 0, 36, 36);
-          offscreenLogo = off;
-          isLogoReady = true;
+        const size = 32;
+        // Default silver logo
+        const silverCanvas = document.createElement("canvas");
+        silverCanvas.width = size;
+        silverCanvas.height = size;
+        const sCtx = silverCanvas.getContext("2d");
+        if (sCtx) {
+          sCtx.drawImage(baseLogo, 0, 0, size, size);
+          logoCanvases["silver"] = silverCanvas;
         }
+
+        // Tinted versions for all real colors
+        REAL_COLORS.forEach((col, idx) => {
+          const c = document.createElement("canvas");
+          c.width = size;
+          c.height = size;
+          const cCtx = c.getContext("2d");
+          if (cCtx) {
+            cCtx.drawImage(baseLogo, 0, 0, size, size);
+            cCtx.globalCompositeOperation = "source-in";
+            cCtx.fillStyle = col.fill;
+            cCtx.fillRect(0, 0, size, size);
+            logoCanvases[idx] = c;
+          }
+        });
+
+        isLogosReady = true;
       } catch (_) {}
     };
 
-    // Track mouse with velocity & dynamic color hue
+    // Track mouse with velocity & color shift
     const mouse = {
       x: -3000,
       y: -3000,
       targetX: -3000,
       targetY: -3000,
-      radius: 175,
-      radiusSq: 175 * 175,
-      activeHue: 210, // Base metallic silver-blue
+      radius: 190,
+      radiusSq: 190 * 190,
+      colorCycle: 0,
     };
 
-    let prevMouseX = -3000;
-    let prevMouseY = -3000;
+    let prevX = -3000;
+    let prevY = -3000;
 
     const handleMouseMove = (e) => {
       mouse.targetX = e.clientX;
       mouse.targetY = e.clientY;
 
-      // Mouse movement directly drives active color hue progression (Non-neon metallic cycle)
-      const distMoved = Math.hypot(e.clientX - prevMouseX, e.clientY - prevMouseY);
-      if (distMoved > 2 && distMoved < 600) {
-        mouse.activeHue = (mouse.activeHue + distMoved * 0.45) % 360;
+      const dist = Math.hypot(e.clientX - prevX, e.clientY - prevY);
+      if (dist > 2 && dist < 400) {
+        // Cycling through the real colors upon mouse motion
+        mouse.colorCycle = (mouse.colorCycle + dist * 0.04) % REAL_COLORS.length;
       }
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
+      prevX = e.clientX;
+      prevY = e.clientY;
     };
 
     const handleMouseLeave = () => {
@@ -72,13 +102,11 @@ export default function OxypaceBackground() {
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
 
-    // Grid nodes structure
     let nodes = [];
 
     const initGrid = (w, h) => {
       nodes = [];
-      // High-performance spacing (54px) ensures silky 120 FPS on all GPUs/CPUs
-      const spacing = w < 768 ? 44 : 54;
+      const spacing = w < 768 ? 44 : 52;
       const cols = Math.ceil(w / spacing) + 2;
       const rows = Math.ceil(h / spacing) + 2;
 
@@ -88,13 +116,13 @@ export default function OxypaceBackground() {
           const baseY = (r - 1) * spacing;
 
           // 3 shape types:
-          // 0: Micro 4-point crosshair (+)
+          // 0: Micro crosshair (+)
           // 1: Precision Diamond (◆)
-          // 2: Oxypace Hat Glyph Logo (same micro size)
-          const rand = (r * 17 + c * 11) % 9;
+          // 2: Oxypace Emblem Logo
+          const rand = (r * 13 + c * 7) % 7;
           let shapeType = 0;
-          if (rand === 0 || rand === 4) {
-            shapeType = 2; // Hat glyph
+          if (rand === 1 || rand === 5) {
+            shapeType = 2; // Logo emblem
           } else if (rand % 2 === 0) {
             shapeType = 1; // Diamond
           } else {
@@ -103,7 +131,7 @@ export default function OxypaceBackground() {
 
           const phase = Math.random() * Math.PI * 2;
           const speed = 0.5 + Math.random() * 0.4;
-          const localHueOffset = (r * 29 + c * 19) % 80;
+          const colorOffset = (r * 3 + c * 5) % REAL_COLORS.length;
 
           nodes.push({
             baseX,
@@ -111,7 +139,7 @@ export default function OxypaceBackground() {
             shapeType,
             phase,
             speed,
-            localHueOffset,
+            colorOffset,
             currIntensity: 0,
           });
         }
@@ -149,11 +177,11 @@ export default function OxypaceBackground() {
     const animate = (now) => {
       if (!isVisible) return;
 
-      // Smooth mouse interpolation (ultra-responsive 0.25 lerp)
-      mouse.x += (mouse.targetX - mouse.x) * 0.25;
-      mouse.y += (mouse.targetY - mouse.y) * 0.25;
+      // Smooth mouse interpolation
+      mouse.x += (mouse.targetX - mouse.x) * 0.22;
+      mouse.y += (mouse.targetY - mouse.y) * 0.22;
 
-      // Solid pitch black background (fast clear)
+      // Solid pitch black base
       ctx.fillStyle = "#020204";
       ctx.fillRect(0, 0, width, height);
 
@@ -165,14 +193,13 @@ export default function OxypaceBackground() {
       for (let i = 0; i < count; i++) {
         const node = nodes[i];
 
-        // Minimal organic drift
+        // Organic floating motion
         const floatX = Math.sin(timeSec * node.speed + node.phase) * 1.5;
         const floatY = Math.cos(timeSec * node.speed + node.phase) * 1.5;
 
         const effectiveX = node.baseX + floatX;
         const effectiveY = node.baseY + floatY;
 
-        // Fast squared distance check to avoid Math.hypot when outside radius
         const dx = mouse.x - effectiveX;
         const dy = mouse.y - effectiveY;
         const distSq = dx * dx + dy * dy;
@@ -186,51 +213,38 @@ export default function OxypaceBackground() {
           const ratio = 1 - dist * rInv;
           targetIntensity = ratio * ratio;
 
-          // Subtle tactile pull toward cursor
-          const pull = targetIntensity * 4.5;
+          // Magnetic attraction to cursor
+          const pull = targetIntensity * 6;
           trackOffsetX = (dx / (dist + 0.001)) * pull;
           trackOffsetY = (dy / (dist + 0.001)) * pull;
         }
 
-        // Fast intensity lerp
-        node.currIntensity += (targetIntensity - node.currIntensity) * 0.22;
+        node.currIntensity += (targetIntensity - node.currIntensity) * 0.25;
         const intensity = node.currIntensity;
 
         const drawX = effectiveX + trackOffsetX;
         const drawY = effectiveY + trackOffsetY;
 
-        // Dynamic Non-Neon Color Generation:
-        // As the mouse moves, mouse.activeHue shifts actively!
-        let strokeColor;
-        let fillColor;
+        // Determine color:
+        // When active under cursor: distinct, rich, real colors (sarı, kırmızı, yeşil, mavi, mor, kahverengi...)
+        const activeColorIndex = Math.floor((mouse.colorCycle + node.colorOffset) % REAL_COLORS.length);
+        const activeColor = REAL_COLORS[activeColorIndex];
 
-        if (intensity > 0.06) {
-          // Dynamic continuous shifting color under cursor
-          const currentHue = (mouse.activeHue + node.localHueOffset) % 360;
-          // Saturation strictly kept low (28%-36%) to completely avoid neon colors!
-          const sat = 32;
-          const light = 78 + intensity * 16; // Radiant silver/pearl
-          const alpha = 0.25 + intensity * 0.75;
+        const scale = 1.0 + intensity * 0.9;
 
-          strokeColor = `hsla(${currentHue}, ${sat}%, ${light}%, ${alpha})`;
-          fillColor = `hsla(${currentHue}, ${sat}%, ${light}%, ${alpha})`;
-        } else {
-          // Default state: Dim dark titanium slate
-          strokeColor = "rgba(203, 213, 225, 0.11)";
-          fillColor = "rgba(203, 213, 225, 0.11)";
-        }
+        if (node.shapeType === 2 && isLogosReady && logoCanvases["silver"]) {
+          // OXYPACE EMBLEM LOGO
+          const size = (intensity > 0.08 ? 16 : 11) * scale;
+          const logoToDraw = intensity > 0.08 && logoCanvases[activeColorIndex]
+            ? logoCanvases[activeColorIndex]
+            : logoCanvases["silver"];
 
-        const scale = 1.0 + intensity * 0.7;
-
-        if (node.shapeType === 2 && isLogoReady && offscreenLogo) {
-          // Oxypace Hat Glyph logo in micro size (9px)
-          const size = 9 * scale;
-          ctx.globalAlpha = 0.12 + intensity * 0.85;
-          ctx.drawImage(offscreenLogo, drawX - size / 2, drawY - size / 2, size, size);
+          ctx.globalAlpha = intensity > 0.08 ? 0.95 : 0.20;
+          ctx.drawImage(logoToDraw, drawX - size / 2, drawY - size / 2, size, size);
           ctx.globalAlpha = 1.0;
         } else if (node.shapeType === 1) {
-          // Precision Diamond (◆)
-          const rad = 2.2 * scale;
+          // PRECISION DIAMOND (◆)
+          const rad = (intensity > 0.08 ? 4.5 : 2.5) * scale;
           ctx.beginPath();
           ctx.moveTo(drawX, drawY - rad);
           ctx.lineTo(drawX + rad, drawY);
@@ -238,29 +252,38 @@ export default function OxypaceBackground() {
           ctx.lineTo(drawX - rad, drawY);
           ctx.closePath();
 
-          if (intensity > 0.2) {
-            ctx.fillStyle = fillColor;
+          if (intensity > 0.08) {
+            ctx.fillStyle = activeColor.fill;
             ctx.fill();
+            ctx.strokeStyle = activeColor.stroke;
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+          } else {
+            ctx.strokeStyle = "rgba(226, 232, 240, 0.18)";
+            ctx.lineWidth = 0.9;
+            ctx.stroke();
           }
-          ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = 0.8;
-          ctx.stroke();
         } else {
-          // Micro 4-point crosshair (+)
-          const arm = 2.4 * scale;
-          ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = 0.85;
-
+          // MICRO CROSSHAIR (+)
+          const arm = (intensity > 0.08 ? 5.5 : 3.0) * scale;
           ctx.beginPath();
           ctx.moveTo(drawX - arm, drawY);
           ctx.lineTo(drawX + arm, drawY);
           ctx.moveTo(drawX, drawY - arm);
           ctx.lineTo(drawX, drawY + arm);
-          ctx.stroke();
 
-          if (intensity > 0.3) {
-            ctx.fillStyle = fillColor;
-            ctx.fillRect(drawX - 0.75, drawY - 0.75, 1.5, 1.5);
+          if (intensity > 0.08) {
+            ctx.strokeStyle = activeColor.fill;
+            ctx.lineWidth = 1.6;
+            ctx.stroke();
+
+            // Center highlight pixel
+            ctx.fillStyle = activeColor.stroke;
+            ctx.fillRect(drawX - 1.5, drawY - 1.5, 3, 3);
+          } else {
+            ctx.strokeStyle = "rgba(226, 232, 240, 0.16)";
+            ctx.lineWidth = 0.9;
+            ctx.stroke();
           }
         }
       }
