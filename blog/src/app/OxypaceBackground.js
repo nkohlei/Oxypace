@@ -17,13 +17,21 @@ export default function OxypaceBackground() {
     let height = 0;
     let dpr = 1;
 
+    // Load the Oxypace glyph logo image to include among the background shapes
+    const logoImg = new Image();
+    logoImg.src = "/oxypace-glyph-logo.png";
+    let isLogoLoaded = false;
+    logoImg.onload = () => {
+      isLogoLoaded = true;
+    };
+
     // Track mouse with smoothed position
     const mouse = {
       x: -2000,
       y: -2000,
       targetX: -2000,
       targetY: -2000,
-      radius: 220,
+      radius: 190,
     };
 
     const handleMouseMove = (e) => {
@@ -44,8 +52,8 @@ export default function OxypaceBackground() {
 
     const initGrid = (w, h) => {
       nodes = [];
-      // Spacing across the entire screen
-      const spacing = 36;
+      // Uniform dense distribution across the entire screen
+      const spacing = 34;
       const cols = Math.ceil(w / spacing) + 2;
       const rows = Math.ceil(h / spacing) + 2;
 
@@ -53,19 +61,32 @@ export default function OxypaceBackground() {
         for (let c = 0; c < cols; c++) {
           const baseX = (c - 1) * spacing;
           const baseY = (r - 1) * spacing;
-          // Determine shape type: 0 for 4-point micro-cross/plus, 1 for precision diamond
-          const shapeType = (r + c) % 2 === 0 ? 0 : 1;
+
+          // 3 shape types:
+          // 0: Micro 4-point crosshair (+)
+          // 1: Precision Diamond (◆)
+          // 2: The Oxypace Hat Glyph Logo (same small size!)
+          const rand = (r * 13 + c * 7) % 10;
+          let shapeType = 0;
+          if (rand === 0 || rand === 5) {
+            shapeType = 2; // Oxypace Hat Glyph (~20% of nodes)
+          } else if (rand % 2 === 0) {
+            shapeType = 1; // Diamond
+          } else {
+            shapeType = 0; // Crosshair
+          }
+
           const phase = Math.random() * Math.PI * 2;
-          const speed = 0.5 + Math.random() * 0.4;
+          const speed = 0.4 + Math.random() * 0.4;
+          const colorOffset = (r * 37 + c * 23) % 360;
 
           nodes.push({
             baseX,
             baseY,
-            x: baseX,
-            y: baseY,
             shapeType,
             phase,
             speed,
+            colorOffset,
             currIntensity: 0,
           });
         }
@@ -105,26 +126,25 @@ export default function OxypaceBackground() {
 
     const animate = (now) => {
       if (!isVisible) return;
-      const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      // Smooth mouse interpolation
-      mouse.x += (mouse.targetX - mouse.x) * 0.15;
-      mouse.y += (mouse.targetY - mouse.y) * 0.15;
+      // Smooth mouse interpolation (60fps responsiveness)
+      mouse.x += (mouse.targetX - mouse.x) * 0.18;
+      mouse.y += (mouse.targetY - mouse.y) * 0.18;
 
-      // Pitch black background
-      ctx.fillStyle = "#030305";
+      // Deep pure black background
+      ctx.fillStyle = "#020204";
       ctx.fillRect(0, 0, width, height);
 
-      const time = now * 0.001;
+      const timeSec = now * 0.001;
       const count = nodes.length;
 
       for (let i = 0; i < count; i++) {
         const node = nodes[i];
 
-        // Minimal organic drift (floating motion)
-        const floatX = Math.sin(time * node.speed + node.phase) * 1.8;
-        const floatY = Math.cos(time * node.speed + node.phase) * 1.8;
+        // Minimal organic floating drift
+        const floatX = Math.sin(timeSec * node.speed + node.phase) * 1.5;
+        const floatY = Math.cos(timeSec * node.speed + node.phase) * 1.5;
 
         const effectiveX = node.baseX + floatX;
         const effectiveY = node.baseY + floatY;
@@ -139,56 +159,62 @@ export default function OxypaceBackground() {
         let trackOffsetY = 0;
 
         if (dist < mouse.radius) {
-          // Increase color intensity as mouse gets closer
           const ratio = 1 - dist / mouse.radius;
-          targetIntensity = Math.pow(ratio, 1.5);
+          targetIntensity = Math.pow(ratio, 1.4);
 
-          // Subtle magnetic tracking towards cursor
-          const pullForce = targetIntensity * 6;
+          // Subtle tactile attraction / tracking
+          const pullForce = targetIntensity * 5;
           trackOffsetX = (dx / dist) * pullForce;
           trackOffsetY = (dy / dist) * pullForce;
         }
 
-        // Smooth transition of intensity
-        node.currIntensity += (targetIntensity - node.currIntensity) * 0.15;
+        // Smooth intensity interpolation
+        node.currIntensity += (targetIntensity - node.currIntensity) * 0.18;
         const intensity = node.currIntensity;
 
-        // Render point position
         const drawX = effectiveX + trackOffsetX;
         const drawY = effectiveY + trackOffsetY;
 
-        // Color & Tone Calculation:
-        // Deep titanium slate (dim) -> Radiant Liquid Silver / Pure Chrome White (bright)
-        const baseAlpha = 0.12;
-        const alpha = baseAlpha + intensity * (0.95 - baseAlpha);
+        // Dynamic, non-neon, elegant color shifting when under cursor:
+        // When intensity > 0.05, cycle continuously through soft pastel metallic hues:
+        // Champagne, platinum, titanium, pearl rose, icy steel (low saturation 30%, high lightness 78%)
+        let strokeColor;
+        let fillColor;
 
-        // Size scaling with proximity
-        const scale = 1.0 + intensity * 1.4;
+        if (intensity > 0.08) {
+          // Continuously shifting hue based on time and node offset
+          const hue = (timeSec * 140 + node.colorOffset) % 360;
+          // Saturation strictly kept low (28%-38%) to prevent neon!
+          const sat = 32;
+          const light = 78 + intensity * 16; // Elegant bright metallic pearl
+          const alpha = 0.25 + intensity * 0.75;
 
-        if (node.shapeType === 0) {
-          // Micro 4-point crosshair (+) with central diamond
-          const arm = 2.4 * scale;
-          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-          ctx.lineWidth = 0.9;
-
-          // Horizontal arm
-          ctx.beginPath();
-          ctx.moveTo(drawX - arm, drawY);
-          ctx.lineTo(drawX + arm, drawY);
-          ctx.stroke();
-
-          // Vertical arm
-          ctx.beginPath();
-          ctx.moveTo(drawX, drawY - arm);
-          ctx.lineTo(drawX, drawY + arm);
-          ctx.stroke();
-
-          // Central silver specular core if close
-          if (intensity > 0.3) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${intensity})`;
-            ctx.fillRect(drawX - 0.7, drawY - 0.7, 1.4, 1.4);
-          }
+          strokeColor = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+          fillColor = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
         } else {
+          // Default state: Dim dark titanium slate
+          strokeColor = "rgba(203, 213, 225, 0.12)";
+          fillColor = "rgba(203, 213, 225, 0.12)";
+        }
+
+        // Scale factor: starts micro (~1.0), grows slightly under cursor (~1.7)
+        const scale = 1.0 + intensity * 0.7;
+
+        if (node.shapeType === 2 && isLogoLoaded) {
+          // The other logo (Oxypace hat) in the exact same micro size as the other shapes!
+          const size = 9 * scale;
+          ctx.save();
+          ctx.globalAlpha = 0.12 + intensity * 0.85;
+
+          if (intensity > 0.1) {
+            // Under cursor: glowing tint reflection
+            ctx.shadowColor = strokeColor;
+            ctx.shadowBlur = 6 * intensity;
+          }
+
+          ctx.drawImage(logoImg, drawX - size / 2, drawY - size / 2, size, size);
+          ctx.restore();
+        } else if (node.shapeType === 1) {
           // Precision Diamond glyph (◆)
           const rad = 2.2 * scale;
           ctx.beginPath();
@@ -198,17 +224,29 @@ export default function OxypaceBackground() {
           ctx.lineTo(drawX - rad, drawY);
           ctx.closePath();
 
-          if (intensity > 0.25) {
-            ctx.fillStyle = `rgba(241, 245, 249, ${alpha})`;
+          if (intensity > 0.2) {
+            ctx.fillStyle = fillColor;
             ctx.fill();
-            // Subtle liquid silver glow
-            ctx.strokeStyle = `rgba(255, 255, 255, ${intensity * 0.8})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-          } else {
-            ctx.strokeStyle = `rgba(203, 213, 225, ${alpha})`;
-            ctx.lineWidth = 0.7;
-            ctx.stroke();
+          }
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        } else {
+          // Micro 4-point crosshair (+)
+          const arm = 2.4 * scale;
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 0.85;
+
+          ctx.beginPath();
+          ctx.moveTo(drawX - arm, drawY);
+          ctx.lineTo(drawX + arm, drawY);
+          ctx.moveTo(drawX, drawY - arm);
+          ctx.lineTo(drawX, drawY + arm);
+          ctx.stroke();
+
+          if (intensity > 0.3) {
+            ctx.fillStyle = fillColor;
+            ctx.fillRect(drawX - 0.75, drawY - 0.75, 1.5, 1.5);
           }
         }
       }
