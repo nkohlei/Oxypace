@@ -2,22 +2,19 @@
    OXYPACE LIQUID MERCURY DESIGN SYSTEM
    Strict Palette: Pure Black, Crisp White, Liquid Mercury / Chrome Silver
    Zero Emojis. Ultra-Modern Geometric Typography (Outfit).
+   Pure Borderless Glassmorphism.
    ========================================================================== */
 
 :root {
   --oxy-bg: #020204;
-  --oxy-card-bg: rgba(12, 13, 17, 0.85);
-  --oxy-card-hover: rgba(22, 24, 32, 0.95);
-  --oxy-border-mercury: rgba(255, 255, 255, 0.22);
-  --oxy-border-shine: rgba(255, 255, 255, 0.55);
+  --oxy-card-glass: rgba(255, 255, 255, 0.04);
+  --oxy-card-glass-hover: rgba(255, 255, 255, 0.08);
   --oxy-silver-100: #FFFFFF;
   --oxy-silver-200: #F8FAFC;
   --oxy-silver-300: #E2E8F0;
   --oxy-silver-400: #CBD5E1;
   --oxy-silver-500: #94A3B8;
   --oxy-silver-600: #64748B;
-  --oxy-silver-700: #334155;
-  --oxy-silver-800: #1E293B;
 }
 
 /* Landing Page Wrapper */
@@ -71,7 +68,7 @@
 }
 
 /* ==========================================================================
-   BUTTONS: LIQUID MERCURY & BRUSHED TITANIUM
+   BUTTONS: LIQUID MERCURY & GLASS
    ========================================================================== */
 
 /* Primary: Molten Liquid Mercury Button */
@@ -82,10 +79,9 @@
   font-weight: 700;
   color: #020204 !important;
   background: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 35%, #CBD5E1 65%, #FFFFFF 100%);
-  border: 1.5px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 24px rgba(255, 255, 255, 0.32),
-              inset 0 1px 2px #FFFFFF,
-              inset 0 -1px 3px rgba(0, 0, 0, 0.35);
+  border: none !important;
+  box-shadow: 0 6px 26px rgba(255, 255, 255, 0.35),
+              inset 0 1px 2px #FFFFFF;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   cursor: pointer;
@@ -94,7 +90,7 @@
 
 .oxy-btn-mercury:hover {
   background: linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 50%, #E2E8F0 100%);
-  box-shadow: 0 6px 32px rgba(255, 255, 255, 0.48),
+  box-shadow: 0 8px 34px rgba(255, 255, 255, 0.5),
               inset 0 1px 2px #FFFFFF;
   transform: translateY(-2px) scale(1.02);
 }
@@ -104,170 +100,82 @@
   box-shadow: 0 2px 12px rgba(255, 255, 255, 0.2);
 }
 
-/* Secondary: Brushed Silver Titanium Button */
-.oxy-btn-mercury-ghost {
+/* Secondary: Pure Glassmorphic Button (Borderless) */
+.oxy-btn-glass {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   color: #FFFFFF !important;
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1.5px solid rgba(255, 255, 255, 0.28);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6),
-              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6),
+              inset 0 1px 1px rgba(255, 255, 255, 0.15);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   cursor: pointer;
 }
 
-.oxy-btn-mercury-ghost:hover {
+.oxy-btn-glass:hover {
   background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.8),
-              0 0 12px rgba(255, 255, 255, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #FFFFFF !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.8),
+              0 0 16px rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
 
 /* ==========================================================================
-   NAVIGATION: SILVERY RECTANGULAR LOGO FRAME & MATCHING GİRİŞ YAP BUTTON
-   - Exact horizontal height alignment
-   - High contrast silver visibility both at top and on scroll
-   - Logo silhouette frame in logo shape behind original logo
+   PURE GLASSMORPHIC CARDS (BORDERLESS / KENAR SINIRSIZ)
+   User instruction: "tüm kart görünümlerindeki kenar sınırlarını sil.
+   Tüm kart görünümleri glassmorpist olmalı."
    ========================================================================== */
 
-.oxy-silver-rect-frame {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 48px;
-  padding: 0 10px;
-  border-radius: 12px;
-  background: rgba(10, 12, 16, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.75),
-              inset 0 1px 1px rgba(255, 255, 255, 0.5),
-              inset 0 -1px 2px rgba(0, 0, 0, 0.6);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  text-decoration: none;
+/* Core Pillars (3 Cards) - No borders, pure glassmorphism */
+.oxy-card-mercury {
+  background: var(--oxy-card-glass);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: none !important;
+  box-shadow: 0 16px 44px -8px rgba(0, 0, 0, 0.8),
+              inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.oxy-silver-rect-frame.scrolled {
-  background: rgba(14, 16, 22, 0.92);
-  border-color: rgba(255, 255, 255, 0.60);
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.9),
-              0 0 18px rgba(255, 255, 255, 0.15),
-              inset 0 1px 2px rgba(255, 255, 255, 0.8);
+.oxy-card-mercury:hover {
+  background: var(--oxy-card-glass-hover);
+  box-shadow: 0 22px 54px -6px rgba(0, 0, 0, 0.9),
+              inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transform: translateY(-3px);
 }
 
-.oxy-silver-rect-frame:hover {
-  border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.95),
-              0 0 24px rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
-}
-
-/* Matching Nav Button with Identical Height & Silver Styling */
-.oxy-nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 48px;
-  padding: 0 20px;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #FFFFFF !important;
-  background: rgba(10, 12, 16, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.75),
-              inset 0 1px 1px rgba(255, 255, 255, 0.5),
-              inset 0 -1px 2px rgba(0, 0, 0, 0.6);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.oxy-nav-btn.scrolled {
-  background: rgba(14, 16, 22, 0.92);
-  border-color: rgba(255, 255, 255, 0.60);
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.9),
-              0 0 18px rgba(255, 255, 255, 0.15),
-              inset 0 1px 2px rgba(255, 255, 255, 0.8);
-}
-
-.oxy-nav-btn:hover {
-  background: linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 100%);
-  color: #020204 !important;
-  border-color: #FFFFFF;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.95),
-              0 0 24px rgba(255, 255, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-/* Silver Logo Silhouette Layer (in exact logo shape, radiant silver, behind the original logo) */
-.oxy-logo-silhouette-layer {
-  position: absolute;
-  inset: -3px;
-  width: calc(100% + 6px);
-  height: calc(100% + 6px);
-  filter: brightness(0) invert(0.9) drop-shadow(0 0 6px rgba(255, 255, 255, 0.95));
-  opacity: 0.95;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ==========================================================================
-   MOBILE FULL-WIDTH GLASS HEADER (Always Active, Never Disappears)
-   ========================================================================== */
-
-.oxy-mobile-header-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 60px;
-  background: rgba(4, 5, 8, 0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.85);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1rem;
-}
-
-/* ==========================================================================
-   SHOWCASE CAROUSEL & ANIMATED TIMER BAR
-   - Tab pill duration progress animation
-   - Showcase window timeline bar
-   ========================================================================== */
-
+/* Showcase Window Frame - No borders, pure glassmorphism */
 .oxy-showcase-frame {
   position: relative;
-  background: #07080A;
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
-  border-radius: 1.25rem;
-  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.95),
-              0 0 0 1px rgba(255, 255, 255, 0.08),
-              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: rgba(10, 12, 16, 0.70);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: none !important;
+  border-radius: 1.5rem;
+  box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.95),
+              inset 0 1px 1px rgba(255, 255, 255, 0.12);
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
-/* Tab Pill */
+/* Tab Navigation Container - No borders */
+.oxy-tab-container {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: none !important;
+  border-radius: 1rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7),
+              inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Tab Pill - No borders */
 .oxy-tab-pill {
   position: relative;
   overflow: hidden;
@@ -277,7 +185,7 @@
   font-weight: 600;
   color: var(--oxy-silver-400);
   background: transparent;
-  border: 1px solid transparent;
+  border: none !important;
   transition: all 0.2s ease;
   cursor: pointer;
   display: inline-flex;
@@ -293,7 +201,7 @@
 .oxy-tab-pill.active {
   color: #020204;
   background: linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 100%);
-  border-color: #FFFFFF;
+  border: none !important;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
 }
 
@@ -328,23 +236,23 @@
   }
 }
 
-/* Cards */
-.oxy-card-mercury {
-  background: var(--oxy-card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--oxy-border-mercury);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75),
-              inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+/* EVENT HORIZON Card - Borderless glassmorphic */
+.oxy-card-horizon {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: none !important;
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.85),
+              inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.oxy-card-mercury:hover {
-  background: var(--oxy-card-hover);
-  border-color: var(--oxy-border-shine);
-  box-shadow: 0 14px 44px -4px rgba(0, 0, 0, 0.9),
-              inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  transform: translateY(-3px);
+.oxy-card-horizon:hover {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 28px 70px -10px rgba(0, 0, 0, 0.92),
+              inset 0 1px 1px rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
 }
 
 /* ==========================================================================
