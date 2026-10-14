@@ -2,16 +2,17 @@
 
 import { useEffect, useRef } from "react";
 
-// Classic vivid, unmistakable real colors (sarı, kırmızı, yeşil, mavi, kahverengi, mor, turuncu, camgöbeği)
+// Rich, vivid classic colors (kırmızı, sarı, yeşil, mavi, mor, turuncu, camgöbeği, pembe, kehribar)
 const REAL_COLORS = [
   { fill: "#EF4444", stroke: "#FCA5A5", name: "kırmızı" },
   { fill: "#FACC15", stroke: "#FEF08A", name: "sarı" },
   { fill: "#22C55E", stroke: "#BBF7D0", name: "yeşil" },
   { fill: "#3B82F6", stroke: "#BFDBFE", name: "mavi" },
   { fill: "#A855F7", stroke: "#E9D5FF", name: "mor" },
-  { fill: "#B45309", stroke: "#FDE68A", name: "kahverengi" },
   { fill: "#F97316", stroke: "#FED7AA", name: "turuncu" },
   { fill: "#06B6D4", stroke: "#A5F3FC", name: "camgöbeği" },
+  { fill: "#EC4899", stroke: "#FBCFE8", name: "pembe" },
+  { fill: "#D97706", stroke: "#FDE68A", name: "kehribar" },
 ];
 
 export default function OxypaceBackground() {
@@ -29,16 +30,17 @@ export default function OxypaceBackground() {
     let height = 0;
     let dpr = 1;
 
-    // Cache pre-tinted offscreen logo canvases for all 8 real colors + default silver
+    // Cache pre-tinted offscreen logo canvases for all real colors + default white/silver
     const logoCanvases = {};
     let isLogosReady = false;
 
     const baseLogo = new Image();
-    baseLogo.src = "/logo.png";
+    baseLogo.src = "/oxypace-ice-logo.png";
     baseLogo.onload = () => {
       try {
-        const size = 32;
-        // Default silver logo
+        const size = 48;
+
+        // Default pure white/silver ice logo
         const silverCanvas = document.createElement("canvas");
         silverCanvas.width = size;
         silverCanvas.height = size;
@@ -67,14 +69,14 @@ export default function OxypaceBackground() {
       } catch (_) {}
     };
 
-    // Track mouse with velocity & color shift
+    // Track mouse with fast velocity & instant color cycling
     const mouse = {
       x: -3000,
       y: -3000,
       targetX: -3000,
       targetY: -3000,
-      radius: 190,
-      radiusSq: 190 * 190,
+      radius: 200,
+      radiusSq: 200 * 200,
       colorCycle: 0,
     };
 
@@ -86,9 +88,9 @@ export default function OxypaceBackground() {
       mouse.targetY = e.clientY;
 
       const dist = Math.hypot(e.clientX - prevX, e.clientY - prevY);
-      if (dist > 2 && dist < 400) {
-        // Cycling through the real colors upon mouse motion
-        mouse.colorCycle = (mouse.colorCycle + dist * 0.04) % REAL_COLORS.length;
+      if (dist > 1 && dist < 500) {
+        // Fast, highly responsive color shifting upon mouse movement
+        mouse.colorCycle = (mouse.colorCycle + dist * 0.12) % REAL_COLORS.length;
       }
       prevX = e.clientX;
       prevY = e.clientY;
@@ -104,9 +106,19 @@ export default function OxypaceBackground() {
 
     let nodes = [];
 
+    // 7 shape types distributed homogeneously across the entire screen:
+    // 0: Oxypace Ice Logo Emblem
+    // 1: 4-Point Star / Sparkle (✦)
+    // 2: Precision Diamond (◆)
+    // 3: Geometric Hexagon (⬡)
+    // 4: Micro Crosshair (+)
+    // 5: Tech Ring / Circle (○)
+    // 6: Equilateral Triangle (▲)
+    const SHAPE_COUNT = 7;
+
     const initGrid = (w, h) => {
       nodes = [];
-      const spacing = w < 768 ? 44 : 52;
+      const spacing = w < 768 ? 42 : 50;
       const cols = Math.ceil(w / spacing) + 2;
       const rows = Math.ceil(h / spacing) + 2;
 
@@ -115,22 +127,13 @@ export default function OxypaceBackground() {
           const baseX = (c - 1) * spacing;
           const baseY = (r - 1) * spacing;
 
-          // 3 shape types:
-          // 0: Micro crosshair (+)
-          // 1: Precision Diamond (◆)
-          // 2: Oxypace Emblem Logo
-          const rand = (r * 13 + c * 7) % 7;
-          let shapeType = 0;
-          if (rand === 1 || rand === 5) {
-            shapeType = 2; // Logo emblem
-          } else if (rand % 2 === 0) {
-            shapeType = 1; // Diamond
-          } else {
-            shapeType = 0; // Crosshair
-          }
+          // Mathematically uniform, homogeneous distribution:
+          // No two adjacent shapes are the same in any direction!
+          const shapeType = (r * 3 + c * 2) % SHAPE_COUNT;
 
           const phase = Math.random() * Math.PI * 2;
-          const speed = 0.5 + Math.random() * 0.4;
+          // Faster, lively motion speed (2.0 - 3.5x faster than before)
+          const speed = 2.0 + Math.random() * 1.4;
           const colorOffset = (r * 3 + c * 5) % REAL_COLORS.length;
 
           nodes.push({
@@ -177,11 +180,11 @@ export default function OxypaceBackground() {
     const animate = (now) => {
       if (!isVisible) return;
 
-      // Smooth mouse interpolation
-      mouse.x += (mouse.targetX - mouse.x) * 0.22;
-      mouse.y += (mouse.targetY - mouse.y) * 0.22;
+      // Fast, snappy mouse catch-up
+      mouse.x += (mouse.targetX - mouse.x) * 0.35;
+      mouse.y += (mouse.targetY - mouse.y) * 0.35;
 
-      // Solid pitch black base
+      // Pure solid deep canvas base
       ctx.fillStyle = "#020204";
       ctx.fillRect(0, 0, width, height);
 
@@ -193,9 +196,13 @@ export default function OxypaceBackground() {
       for (let i = 0; i < count; i++) {
         const node = nodes[i];
 
-        // Organic floating motion
-        const floatX = Math.sin(timeSec * node.speed + node.phase) * 1.5;
-        const floatY = Math.cos(timeSec * node.speed + node.phase) * 1.5;
+        // Fast, multi-harmonic fluid floating motion
+        const floatX =
+          Math.sin(timeSec * node.speed + node.phase) * 4.2 +
+          Math.cos(timeSec * (node.speed * 1.6) + node.phase) * 2.0;
+        const floatY =
+          Math.cos(timeSec * node.speed + node.phase) * 4.2 +
+          Math.sin(timeSec * (node.speed * 1.6) + node.phase) * 2.0;
 
         const effectiveX = node.baseX + floatX;
         const effectiveY = node.baseY + floatY;
@@ -213,77 +220,204 @@ export default function OxypaceBackground() {
           const ratio = 1 - dist * rInv;
           targetIntensity = ratio * ratio;
 
-          // Magnetic attraction to cursor
-          const pull = targetIntensity * 6;
+          // Strong springy magnetic attraction to cursor
+          const pull = targetIntensity * 14;
           trackOffsetX = (dx / (dist + 0.001)) * pull;
           trackOffsetY = (dy / (dist + 0.001)) * pull;
         }
 
-        node.currIntensity += (targetIntensity - node.currIntensity) * 0.25;
+        // Fast intensity lerp for immediate visual response
+        node.currIntensity += (targetIntensity - node.currIntensity) * 0.32;
         const intensity = node.currIntensity;
 
         const drawX = effectiveX + trackOffsetX;
         const drawY = effectiveY + trackOffsetY;
 
-        // Determine color:
-        // When active under cursor: distinct, rich, real colors (sarı, kırmızı, yeşil, mavi, mor, kahverengi...)
-        const activeColorIndex = Math.floor((mouse.colorCycle + node.colorOffset) % REAL_COLORS.length);
+        // Vivid color under cursor:
+        const activeColorIndex = Math.floor(
+          (mouse.colorCycle + node.colorOffset) % REAL_COLORS.length
+        );
         const activeColor = REAL_COLORS[activeColorIndex];
 
-        const scale = 1.0 + intensity * 0.9;
+        const isHovered = intensity > 0.06;
+        const scale = 1.0 + intensity * 0.85;
 
-        if (node.shapeType === 2 && isLogosReady && logoCanvases["silver"]) {
-          // OXYPACE EMBLEM LOGO
-          const size = (intensity > 0.08 ? 16 : 11) * scale;
-          const logoToDraw = intensity > 0.08 && logoCanvases[activeColorIndex]
-            ? logoCanvases[activeColorIndex]
-            : logoCanvases["silver"];
+        // Render each of the 7 homogeneously distributed shape types:
+        switch (node.shapeType) {
+          case 0: {
+            // 0: OXYPACE ICE LOGO EMBLEM
+            if (isLogosReady && logoCanvases["silver"]) {
+              const size = (isHovered ? 18 : 12) * scale;
+              const logoToDraw =
+                isHovered && logoCanvases[activeColorIndex]
+                  ? logoCanvases[activeColorIndex]
+                  : logoCanvases["silver"];
 
-          ctx.globalAlpha = intensity > 0.08 ? 0.95 : 0.20;
-          ctx.drawImage(logoToDraw, drawX - size / 2, drawY - size / 2, size, size);
-          ctx.globalAlpha = 1.0;
-        } else if (node.shapeType === 1) {
-          // PRECISION DIAMOND (◆)
-          const rad = (intensity > 0.08 ? 4.5 : 2.5) * scale;
-          ctx.beginPath();
-          ctx.moveTo(drawX, drawY - rad);
-          ctx.lineTo(drawX + rad, drawY);
-          ctx.lineTo(drawX, drawY + rad);
-          ctx.lineTo(drawX - rad, drawY);
-          ctx.closePath();
-
-          if (intensity > 0.08) {
-            ctx.fillStyle = activeColor.fill;
-            ctx.fill();
-            ctx.strokeStyle = activeColor.stroke;
-            ctx.lineWidth = 1.4;
-            ctx.stroke();
-          } else {
-            ctx.strokeStyle = "rgba(226, 232, 240, 0.18)";
-            ctx.lineWidth = 0.9;
-            ctx.stroke();
+              ctx.globalAlpha = isHovered ? 0.98 : 0.22;
+              ctx.drawImage(
+                logoToDraw,
+                drawX - size / 2,
+                drawY - size / 2,
+                size,
+                size
+              );
+              ctx.globalAlpha = 1.0;
+            }
+            break;
           }
-        } else {
-          // MICRO CROSSHAIR (+)
-          const arm = (intensity > 0.08 ? 5.5 : 3.0) * scale;
-          ctx.beginPath();
-          ctx.moveTo(drawX - arm, drawY);
-          ctx.lineTo(drawX + arm, drawY);
-          ctx.moveTo(drawX, drawY - arm);
-          ctx.lineTo(drawX, drawY + arm);
 
-          if (intensity > 0.08) {
-            ctx.strokeStyle = activeColor.fill;
-            ctx.lineWidth = 1.6;
-            ctx.stroke();
+          case 1: {
+            // 1: 4-POINT STAR / SPARKLE (✦)
+            const rad = (isHovered ? 7.5 : 3.6) * scale;
+            ctx.beginPath();
+            for (let a = 0; a < 8; a++) {
+              const ang = (a * Math.PI) / 4;
+              const r = a % 2 === 0 ? rad : rad * 0.32;
+              const px = drawX + Math.cos(ang) * r;
+              const py = drawY + Math.sin(ang) * r;
+              if (a === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
 
-            // Center highlight pixel
-            ctx.fillStyle = activeColor.stroke;
-            ctx.fillRect(drawX - 1.5, drawY - 1.5, 3, 3);
-          } else {
-            ctx.strokeStyle = "rgba(226, 232, 240, 0.16)";
-            ctx.lineWidth = 0.9;
-            ctx.stroke();
+            if (isHovered) {
+              ctx.fillStyle = activeColor.fill;
+              ctx.fill();
+              ctx.strokeStyle = activeColor.stroke;
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+            break;
+          }
+
+          case 2: {
+            // 2: PRECISION DIAMOND (◆)
+            const rad = (isHovered ? 5.5 : 2.8) * scale;
+            ctx.beginPath();
+            ctx.moveTo(drawX, drawY - rad);
+            ctx.lineTo(drawX + rad, drawY);
+            ctx.lineTo(drawX, drawY + rad);
+            ctx.lineTo(drawX - rad, drawY);
+            ctx.closePath();
+
+            if (isHovered) {
+              ctx.fillStyle = activeColor.fill;
+              ctx.fill();
+              ctx.strokeStyle = activeColor.stroke;
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+            break;
+          }
+
+          case 3: {
+            // 3: GEOMETRIC HEXAGON (⬡)
+            const rad = (isHovered ? 6.2 : 3.2) * scale;
+            ctx.beginPath();
+            for (let a = 0; a < 6; a++) {
+              const ang = (a * Math.PI) / 3;
+              const px = drawX + Math.cos(ang) * rad;
+              const py = drawY + Math.sin(ang) * rad;
+              if (a === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+
+            if (isHovered) {
+              ctx.fillStyle = activeColor.fill;
+              ctx.fill();
+              ctx.strokeStyle = activeColor.stroke;
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+            break;
+          }
+
+          case 4: {
+            // 4: MICRO CROSSHAIR (+)
+            const arm = (isHovered ? 6.5 : 3.2) * scale;
+            ctx.beginPath();
+            ctx.moveTo(drawX - arm, drawY);
+            ctx.lineTo(drawX + arm, drawY);
+            ctx.moveTo(drawX, drawY - arm);
+            ctx.lineTo(drawX, drawY + arm);
+
+            if (isHovered) {
+              ctx.strokeStyle = activeColor.fill;
+              ctx.lineWidth = 1.8;
+              ctx.stroke();
+
+              ctx.fillStyle = activeColor.stroke;
+              ctx.fillRect(drawX - 1.5, drawY - 1.5, 3, 3);
+            } else {
+              ctx.strokeStyle = "rgba(226, 232, 240, 0.18)";
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+            break;
+          }
+
+          case 5: {
+            // 5: TECH RING / CIRCLE (○)
+            const rad = (isHovered ? 5.2 : 2.6) * scale;
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, rad, 0, Math.PI * 2);
+
+            if (isHovered) {
+              ctx.strokeStyle = activeColor.fill;
+              ctx.lineWidth = 1.6;
+              ctx.stroke();
+
+              ctx.fillStyle = activeColor.stroke;
+              ctx.beginPath();
+              ctx.arc(drawX, drawY, 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+            break;
+          }
+
+          case 6:
+          default: {
+            // 6: EQUILATERAL TRIANGLE (▲)
+            const rad = (isHovered ? 6.0 : 3.0) * scale;
+            ctx.beginPath();
+            for (let a = 0; a < 3; a++) {
+              const ang = (a * 2 * Math.PI) / 3 - Math.PI / 2;
+              const px = drawX + Math.cos(ang) * rad;
+              const py = drawY + Math.sin(ang) * rad;
+              if (a === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+
+            if (isHovered) {
+              ctx.fillStyle = activeColor.fill;
+              ctx.fill();
+              ctx.strokeStyle = activeColor.stroke;
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+            break;
           }
         }
       }
