@@ -4,11 +4,15 @@ import { useEffect, useRef } from "react";
 
 /**
  * OxypaceMetallicMatrixBackground
- * - High-FPS 2D/3D undulating liquid mercury fluid sheet of circular dots
- * - Spans the entire screen homogeneously: zero diagonal razor cuts, zero barcode lines
- * - Muted luxury metallic palette ("hafif sönük"): deep gunmetal, cool titanium, champagne platinum, liquid mercury
- * - Buttery-smooth, organic liquid mercury cursor ripple & fluid displacement
- * - Solid 120 FPS performance with 5 GPU-batched Path2D draw passes
+ * - Exact recreation of the reference visual (media_1792180438123.jpg)
+ * - Continuous, multi-directional organic fluid currents (zero classic zigzag)
+ * - Distinct 3D dual-tone metallic iridescence:
+ *     * Cool icy steel-blue on wave flank A
+ *     * Warm champagne-ivory platinum on wave flank B
+ *     * Luminous liquid mercury / polished chrome crests
+ *     * Muted gunmetal dot matrix in deep background ("hafif sönük")
+ * - Broad ambient cursor sensitivity (360px radius) with gentle, non-absurd fluid response
+ * - Solid 120 FPS performance via 5 GPU-batched Path2D draw passes
  */
 export default function OxypaceBackground() {
   const canvasRef = useRef(null);
@@ -25,14 +29,14 @@ export default function OxypaceBackground() {
     let height = 0;
     let dpr = 1;
 
-    // Smooth inertia cursor tracking
+    // Smooth inertia cursor tracking with wide radius
     const mouse = {
       x: -3000,
       y: -3000,
       targetX: -3000,
       targetY: -3000,
-      radius: 200,
-      radiusSq: 200 * 200,
+      radius: 360,
+      radiusSq: 360 * 360,
     };
 
     const handleMouseMove = (e) => {
@@ -48,7 +52,7 @@ export default function OxypaceBackground() {
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
 
-    let spacing = 9.0;
+    let spacing = 6.8;
     let cols = 0;
     let rows = 0;
 
@@ -65,10 +69,12 @@ export default function OxypaceBackground() {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
-      // Clean, balanced matrix grid spacing
-      spacing = width < 768 ? 8.0 : 9.5;
+      // Fine, dense matrix grid spacing for identical photographic texture
+      spacing = width < 768 ? 6.2 : 6.8;
       cols = Math.ceil(width / spacing) + 1;
       rows = Math.ceil(height / spacing) + 1;
+      mouse.radius = width < 768 ? 260 : 360;
+      mouse.radiusSq = mouse.radius * mouse.radius;
     };
 
     handleResize();
@@ -91,22 +97,32 @@ export default function OxypaceBackground() {
       const elapsed = (now - startTime) * 0.001;
 
       // Silky inertia damping on mouse (smooth spring interpolation)
-      mouse.x += (mouse.targetX - mouse.x) * 0.14;
-      mouse.y += (mouse.targetY - mouse.y) * 0.14;
+      mouse.x += (mouse.targetX - mouse.x) * 0.10;
+      mouse.y += (mouse.targetY - mouse.y) * 0.10;
 
       // Solid deep pitch black background
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, width, height);
 
-      // Slow, hypnotic liquid mercury wave speed
-      const t = elapsed * 0.35;
+      // Slow, hypnotic multi-directional fluid time scales
+      const t = elapsed * 0.25;
+
+      // Continuously shifting multi-directional rotation angles (never classic zigzag)
+      // Flows drift and evolve organically in 360 degrees
+      const ang1 = 0.55 + Math.sin(t * 0.18) * 0.35;
+      const cos1 = Math.cos(ang1);
+      const sin1 = Math.sin(ang1);
+
+      const ang2 = -0.75 + Math.cos(t * 0.22) * 0.30;
+      const cos2 = Math.cos(ang2);
+      const sin2 = Math.sin(ang2);
 
       // 5 batched circular Path2D buckets for pure 120 FPS:
-      // Bucket 0: Faint deep charcoal gunmetal dots (deep ambient layer)
-      // Bucket 1: Cool titanium steel midtones
-      // Bucket 2: Warm champagne platinum slopes
-      // Bucket 3: Polished liquid mercury crests
-      // Bucket 4: Specular liquid chrome highlight & cursor sheen
+      // Bucket 0: Faint deep charcoal/gunmetal matrix (continuous subtle dots across entire canvas)
+      // Bucket 1: Cool icy steel-blue flank dots (distinct reference tone)
+      // Bucket 2: Warm champagne-ivory platinum flank dots (distinct reference tone)
+      // Bucket 3: Polished liquid mercury crests (bright silver)
+      // Bucket 4: Specular white chrome peak highlights & wide cursor illumination
       const p0 = new Path2D();
       const p1 = new Path2D();
       const p2 = new Path2D();
@@ -127,23 +143,45 @@ export default function OxypaceBackground() {
           const baseX = c * spacing;
           const nx = baseX * invW * 2 - 1; // -1 to 1
 
-          // Truly homogeneous, organic multi-wave 2D liquid mercury surface
-          // Sweeping diagonally and circularly across the whole viewport smoothly
-          const u = nx * 2.2;
-          const v = ny * 2.2;
+          // Primary rotating flow coordinate system
+          const u1 = nx * cos1 + ny * sin1;
+          const v1 = -nx * sin1 + ny * cos1;
 
-          const wave1 = Math.sin(u * 1.1 + v * 0.8 + t * 0.6);
-          const wave2 = Math.cos(u * 0.8 - v * 1.2 - t * 0.45);
-          const wave3 = Math.sin((u + v) * 0.95 + t * 0.5);
-          const wave4 = Math.cos(Math.sqrt(u * u + v * v) * 1.4 - t * 0.7);
+          // Secondary counter-directional flow coordinate system
+          const u2 = nx * cos2 + ny * sin2;
+          const v2 = -nx * sin2 + ny * cos2;
 
-          let rawElevation = (wave1 * 0.35 + wave2 * 0.30 + wave3 * 0.20 + wave4 * 0.15) + 0.5;
+          // Sweeping parabolic organic silk streams (flowing in multiple directions)
+          const spine1 =
+            Math.sin(v1 * 1.8 + t * 0.45) * 0.42 +
+            Math.cos(v1 * 0.9 - t * 0.25) * 0.22;
+
+          const spine2 =
+            Math.cos(v2 * 1.6 - t * 0.38) * 0.48 +
+            Math.sin(v2 * 2.4 + t * 0.32) * 0.16;
+
+          // Distances from primary and secondary ribbon spines
+          const d1 = u1 - spine1;
+          const d2 = u2 - spine2;
+
+          // Smooth Gaussian ribbon envelopes with soft silk drape
+          const ribbon1 = Math.exp(-d1 * d1 * 3.4);
+          const ribbon2 = Math.exp(-d2 * d2 * 3.8);
+
+          // Subtle organic silk wrinkles / cross-flow waves
+          const folds =
+            Math.sin(u1 * 2.4 + v2 * 2.0 + t * 0.5) * 0.12 +
+            Math.cos(u2 * 1.8 - v1 * 2.6 - t * 0.35) * 0.08;
+
+          // Combined terrain elevation (normalized 0 to 1)
+          let rawElevation = ribbon1 * 0.82 + ribbon2 * 0.58 + folds * (ribbon1 + 0.3);
           let elevation = Math.max(0, Math.min(1.0, rawElevation));
 
           // Softened contrast curve for elegant muted metallic aesthetic ("hafif sönük")
-          let intensity = Math.pow(elevation, 1.8) * 0.62;
+          let intensity = Math.pow(elevation, 1.7) * 0.68;
 
-          // Buttery-smooth, organic cursor interaction
+          // Broad, elegant, non-absurd cursor interaction
+          // Wide 360px ambient illumination + gentle, natural fluid deflection (max 3px)
           let drawX = baseX;
           let drawY = baseY;
           let cursorGlow = 0;
@@ -155,62 +193,68 @@ export default function OxypaceBackground() {
           if (mdistSq < rSq) {
             const mdist = Math.sqrt(mdistSq);
             const factor = 1 - mdist * rInv; // 0 to 1
-            // Smooth bell curve
+            // Smooth bell curve (smoothstep)
             const bell = factor * factor * (3 - 2 * factor);
 
-            // Gentle fluid displacement
-            const push = bell * 5.5;
+            // Subtle, non-absurd fluid deflection (gentle 2.8px glide)
+            const push = bell * 2.8;
             drawX += (mdx / (mdist + 0.01)) * push;
             drawY += (mdy / (mdist + 0.01)) * push;
 
-            // Soft liquid mercury sheen lifting under cursor
-            cursorGlow = bell * 0.32;
+            // Wide, soft liquid mercury ambient light lifting under cursor
+            cursorGlow = bell * 0.35;
           }
 
           const finalVal = Math.min(1.0, intensity + cursorGlow);
 
-          // Dot radius: 0.7px (subtle) to 2.2px (soft wave crest)
-          const radius = Math.max(0.7, Math.min(2.2, 0.7 + finalVal * 1.5));
+          // Dot radius: 0.55px (ambient grid) to 2.2px (wave crest)
+          const radius = Math.max(0.55, Math.min(2.2, 0.55 + finalVal * 1.5));
 
-          if (finalVal > 0.58) {
-            // Specular liquid chrome highlight & cursor sheen
+          if (finalVal > 0.62) {
+            // Specular liquid chrome highlight & cursor peak
             p4.arc(drawX, drawY, radius, 0, Math.PI * 2);
           } else if (finalVal > 0.38) {
             // Polished liquid mercury crest
             p3.arc(drawX, drawY, radius, 0, Math.PI * 2);
-          } else if (finalVal > 0.22) {
-            // Warm champagne platinum
-            p2.arc(drawX, drawY, radius, 0, Math.PI * 2);
-          } else if (finalVal > 0.10) {
-            // Cool titanium steel
+          } else if (finalVal > 0.18) {
+            // Distinct dual-tone metallic edge lighting from reference image:
+            if (d1 > 0) {
+              // Warm champagne-ivory platinum flank
+              p2.arc(drawX, drawY, radius, 0, Math.PI * 2);
+            } else {
+              // Cool icy steel-blue flank
+              p1.arc(drawX, drawY, radius, 0, Math.PI * 2);
+            }
+          } else if (finalVal > 0.08) {
+            // Faint cool steel transition dot
             p1.arc(drawX, drawY, radius, 0, Math.PI * 2);
           } else {
-            // Faint deep charcoal gunmetal dots (continuous uniform field)
-            p0.arc(drawX, drawY, 0.65, 0, Math.PI * 2);
+            // Continuous deep gunmetal base grid (uniform ambient coverage)
+            p0.arc(drawX, drawY, 0.55, 0, Math.PI * 2);
           }
         }
       }
 
       // 5 Single-pass GPU executions for solid 120 FPS:
-      // Muted metallic luxury palette ("hafif sönük" - soft, sophisticated, high contrast for text)
-      // Bucket 0: Faint deep charcoal gunmetal dots
-      ctx.fillStyle = "rgba(71, 85, 105, 0.08)";
+      // Exact color palette sampled from reference visual (media_1792180438123.jpg):
+      // Bucket 0: Faint deep charcoal gunmetal dots (deep ambient layer)
+      ctx.fillStyle = "rgba(70, 85, 110, 0.11)";
       ctx.fill(p0);
 
-      // Bucket 1: Cool titanium steel
-      ctx.fillStyle = "rgba(148, 175, 205, 0.18)";
+      // Bucket 1: Cool icy steel-blue flank dots
+      ctx.fillStyle = "rgba(130, 180, 230, 0.32)";
       ctx.fill(p1);
 
-      // Bucket 2: Warm champagne platinum
-      ctx.fillStyle = "rgba(226, 220, 210, 0.26)";
+      // Bucket 2: Warm champagne-ivory platinum flank dots
+      ctx.fillStyle = "rgba(238, 222, 202, 0.42)";
       ctx.fill(p2);
 
-      // Bucket 3: Polished liquid mercury
-      ctx.fillStyle = "rgba(238, 242, 248, 0.38)";
+      // Bucket 3: Polished liquid mercury crest dots
+      ctx.fillStyle = "rgba(240, 245, 252, 0.62)";
       ctx.fill(p3);
 
-      // Bucket 4: Specular liquid chrome highlight & cursor sheen
-      ctx.fillStyle = "rgba(255, 255, 255, 0.52)";
+      // Bucket 4: Specular white chrome peak highlights & wide cursor illumination
+      ctx.fillStyle = "rgba(255, 255, 255, 0.76)";
       ctx.fill(p4);
 
       animationId = requestAnimationFrame(animate);
