@@ -1,12 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=Space+Grotesk:wght@700;800;900&display=swap');
+
 /* ==========================================================================
    OXYPACE LIQUID MERCURY DESIGN SYSTEM
    Strict Palette: Pure Black, Crisp White, Liquid Mercury / Chrome Silver
-   Zero Emojis. Ultra-Modern Geometric Typography (Outfit).
+   Zero Emojis. Ultra-Modern Display Typography (Syne & Space Grotesk).
    Pure Borderless Glassmorphism.
    ========================================================================== */
 
 :root {
-  --oxy-bg: #020204;
+  --oxy-bg: #000000;
   --oxy-card-glass: rgba(255, 255, 255, 0.04);
   --oxy-card-glass-hover: rgba(255, 255, 255, 0.08);
   --oxy-silver-100: #FFFFFF;
@@ -26,6 +28,14 @@
   position: relative;
   min-height: 100vh;
   letter-spacing: -0.015em;
+}
+
+/* High-Impact Modern Display Headline */
+.oxy-hero-title {
+  font-family: 'Syne', 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  letter-spacing: -0.04em !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
 }
 
 /* Background Canvas Layer */

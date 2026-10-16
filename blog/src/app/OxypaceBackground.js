@@ -2,19 +2,14 @@
 
 import { useEffect, useRef } from "react";
 
-// Rich, vivid classic colors (kırmızı, sarı, yeşil, mavi, mor, turuncu, camgöbeği, pembe, kehribar)
-const REAL_COLORS = [
-  { fill: "#EF4444", stroke: "#FCA5A5", name: "kırmızı" },
-  { fill: "#FACC15", stroke: "#FEF08A", name: "sarı" },
-  { fill: "#22C55E", stroke: "#BBF7D0", name: "yeşil" },
-  { fill: "#3B82F6", stroke: "#BFDBFE", name: "mavi" },
-  { fill: "#A855F7", stroke: "#E9D5FF", name: "mor" },
-  { fill: "#F97316", stroke: "#FED7AA", name: "turuncu" },
-  { fill: "#06B6D4", stroke: "#A5F3FC", name: "camgöbeği" },
-  { fill: "#EC4899", stroke: "#FBCFE8", name: "pembe" },
-  { fill: "#D97706", stroke: "#FDE68A", name: "kehribar" },
-];
-
+/**
+ * OxypaceInteractiveMatrixBackground
+ * Recreates the exact digital halftone dot-matrix wave field from the reference visual:
+ * - Fluid undulating ribbons of light on a dark matrix
+ * - Dynamic cursor ripple / magnetic warp layer
+ * - Luminous cursor wave bloom
+ * - 120 FPS batched canvas rendering
+ */
 export default function OxypaceBackground() {
   const canvasRef = useRef(null);
 
@@ -30,54 +25,17 @@ export default function OxypaceBackground() {
     let height = 0;
     let dpr = 1;
 
-    // Cache pre-tinted offscreen logo canvases for all real colors + default white/silver
-    const logoCanvases = {};
-    let isLogosReady = false;
-
-    const baseLogo = new Image();
-    baseLogo.src = "/oxypace-ice-logo.png";
-    baseLogo.onload = () => {
-      try {
-        const size = 48;
-
-        // Default pure white/silver ice logo
-        const silverCanvas = document.createElement("canvas");
-        silverCanvas.width = size;
-        silverCanvas.height = size;
-        const sCtx = silverCanvas.getContext("2d");
-        if (sCtx) {
-          sCtx.drawImage(baseLogo, 0, 0, size, size);
-          logoCanvases["silver"] = silverCanvas;
-        }
-
-        // Tinted versions for all real colors
-        REAL_COLORS.forEach((col, idx) => {
-          const c = document.createElement("canvas");
-          c.width = size;
-          c.height = size;
-          const cCtx = c.getContext("2d");
-          if (cCtx) {
-            cCtx.drawImage(baseLogo, 0, 0, size, size);
-            cCtx.globalCompositeOperation = "source-in";
-            cCtx.fillStyle = col.fill;
-            cCtx.fillRect(0, 0, size, size);
-            logoCanvases[idx] = c;
-          }
-        });
-
-        isLogosReady = true;
-      } catch (_) {}
-    };
-
-    // Track mouse with fast velocity & instant color cycling
+    // Track mouse position and velocity
     const mouse = {
       x: -3000,
       y: -3000,
       targetX: -3000,
       targetY: -3000,
-      radius: 200,
-      radiusSq: 200 * 200,
-      colorCycle: 0,
+      vx: 0,
+      vy: 0,
+      radius: 220,
+      radiusSq: 220 * 220,
+      active: false,
     };
 
     let prevX = -3000;
@@ -86,12 +44,11 @@ export default function OxypaceBackground() {
     const handleMouseMove = (e) => {
       mouse.targetX = e.clientX;
       mouse.targetY = e.clientY;
+      mouse.active = true;
 
-      const dist = Math.hypot(e.clientX - prevX, e.clientY - prevY);
-      if (dist > 1 && dist < 500) {
-        // Fast, highly responsive color shifting upon mouse movement
-        mouse.colorCycle = (mouse.colorCycle + dist * 0.12) % REAL_COLORS.length;
-      }
+      mouse.vx = e.clientX - prevX;
+      mouse.vy = e.clientY - prevY;
+
       prevX = e.clientX;
       prevY = e.clientY;
     };
@@ -99,55 +56,15 @@ export default function OxypaceBackground() {
     const handleMouseLeave = () => {
       mouse.targetX = -3000;
       mouse.targetY = -3000;
+      mouse.active = false;
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
 
-    let nodes = [];
-
-    // 7 shape types distributed homogeneously across the entire screen:
-    // 0: Oxypace Ice Logo Emblem
-    // 1: 4-Point Star / Sparkle (✦)
-    // 2: Precision Diamond (◆)
-    // 3: Geometric Hexagon (⬡)
-    // 4: Micro Crosshair (+)
-    // 5: Tech Ring / Circle (○)
-    // 6: Equilateral Triangle (▲)
-    const SHAPE_COUNT = 7;
-
-    const initGrid = (w, h) => {
-      nodes = [];
-      const spacing = w < 768 ? 42 : 50;
-      const cols = Math.ceil(w / spacing) + 2;
-      const rows = Math.ceil(h / spacing) + 2;
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const baseX = (c - 1) * spacing;
-          const baseY = (r - 1) * spacing;
-
-          // Mathematically uniform, homogeneous distribution:
-          // No two adjacent shapes are the same in any direction!
-          const shapeType = (r * 3 + c * 2) % SHAPE_COUNT;
-
-          const phase = Math.random() * Math.PI * 2;
-          // Faster, lively motion speed (2.0 - 3.5x faster than before)
-          const speed = 2.0 + Math.random() * 1.4;
-          const colorOffset = (r * 3 + c * 5) % REAL_COLORS.length;
-
-          nodes.push({
-            baseX,
-            baseY,
-            shapeType,
-            phase,
-            speed,
-            colorOffset,
-            currIntensity: 0,
-          });
-        }
-      }
-    };
+    let spacing = 9.5;
+    let cols = 0;
+    let rows = 0;
 
     const handleResize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -162,7 +79,9 @@ export default function OxypaceBackground() {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
-      initGrid(width, height);
+      spacing = width < 768 ? 7.5 : 9.5;
+      cols = Math.ceil(width / spacing) + 1;
+      rows = Math.ceil(height / spacing) + 1;
     };
 
     handleResize();
@@ -177,250 +96,160 @@ export default function OxypaceBackground() {
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
+    let startTime = performance.now();
+
     const animate = (now) => {
       if (!isVisible) return;
 
-      // Fast, snappy mouse catch-up
-      mouse.x += (mouse.targetX - mouse.x) * 0.35;
-      mouse.y += (mouse.targetY - mouse.y) * 0.35;
+      const elapsed = (now - startTime) * 0.001;
 
-      // Pure solid deep canvas base
-      ctx.fillStyle = "#020204";
+      // Smooth mouse spring interpolation
+      mouse.x += (mouse.targetX - mouse.x) * 0.28;
+      mouse.y += (mouse.targetY - mouse.y) * 0.28;
+
+      // Pitch black background
+      ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, width, height);
 
-      const timeSec = now * 0.001;
-      const count = nodes.length;
+      // Animation time variables for fluid waves
+      const t = elapsed * 0.42;
+
+      // Pre-compute 6 batched path buckets for 120 FPS high performance
+      // Bucket 0: Very faint matrix specks
+      // Bucket 1: Soft cool blue/cyan edge dots
+      // Bucket 2: Warm champagne/ivory crest dots
+      // Bucket 3: Medium luminous silver dots
+      // Bucket 4: Brilliant white wave highlights
+      // Bucket 5: Interactive cursor bloom highlights
+      const p0 = new Path2D();
+      const p1 = new Path2D();
+      const p2 = new Path2D();
+      const p3 = new Path2D();
+      const p4 = new Path2D();
+      const p5 = new Path2D();
+
       const rSq = mouse.radiusSq;
       const rInv = 1 / mouse.radius;
 
-      for (let i = 0; i < count; i++) {
-        const node = nodes[i];
+      for (let r = 0; r < rows; r++) {
+        const baseY = r * spacing;
+        const ny = (baseY / height) * 2 - 1; // Normalized -1 to 1
 
-        // Fast, multi-harmonic fluid floating motion
-        const floatX =
-          Math.sin(timeSec * node.speed + node.phase) * 4.2 +
-          Math.cos(timeSec * (node.speed * 1.6) + node.phase) * 2.0;
-        const floatY =
-          Math.cos(timeSec * node.speed + node.phase) * 4.2 +
-          Math.sin(timeSec * (node.speed * 1.6) + node.phase) * 2.0;
+        // Primary flowing ribbon S-curve center
+        const ribbon1X =
+          Math.sin(ny * 2.6 + t * 0.8) * 0.58 +
+          Math.cos(ny * 4.8 - t * 0.5) * 0.16;
 
-        const effectiveX = node.baseX + floatX;
-        const effectiveY = node.baseY + floatY;
+        // Secondary flowing ribbon curve
+        const ribbon2X =
+          Math.cos(ny * 2.1 - t * 0.7) * 0.72 +
+          Math.sin(ny * 4.2 + t * 0.4) * 0.12;
 
-        const dx = mouse.x - effectiveX;
-        const dy = mouse.y - effectiveY;
-        const distSq = dx * dx + dy * dy;
+        const thick1 = 0.26 + Math.sin(ny * 3.2 + t * 0.6) * 0.06;
+        const thick2 = 0.30 + Math.cos(ny * 2.8 - t * 0.5) * 0.05;
 
-        let targetIntensity = 0;
-        let trackOffsetX = 0;
-        let trackOffsetY = 0;
+        const invThick1Sq = 1 / (2 * thick1 * thick1);
+        const invThick2Sq = 1 / (2 * thick2 * thick2);
 
-        if (distSq < rSq) {
-          const dist = Math.sqrt(distSq);
-          const ratio = 1 - dist * rInv;
-          targetIntensity = ratio * ratio;
+        for (let c = 0; c < cols; c++) {
+          const baseX = c * spacing;
+          const nx = (baseX / width) * 2 - 1; // Normalized -1 to 1
 
-          // Strong springy magnetic attraction to cursor
-          const pull = targetIntensity * 14;
-          trackOffsetX = (dx / (dist + 0.001)) * pull;
-          trackOffsetY = (dy / (dist + 0.001)) * pull;
-        }
+          // Calculate ribbon field intensity
+          const d1 = nx - ribbon1X;
+          const i1 = Math.exp(-d1 * d1 * invThick1Sq);
 
-        // Fast intensity lerp for immediate visual response
-        node.currIntensity += (targetIntensity - node.currIntensity) * 0.32;
-        const intensity = node.currIntensity;
+          const d2 = nx - ribbon2X;
+          const i2 = Math.exp(-d2 * d2 * invThick2Sq);
 
-        const drawX = effectiveX + trackOffsetX;
-        const drawY = effectiveY + trackOffsetY;
+          // Fluid organic interference wave
+          const fluidNoise = Math.sin(nx * 3.2 + ny * 3.8 + t * 0.9) * 0.14;
 
-        // Vivid color under cursor:
-        const activeColorIndex = Math.floor(
-          (mouse.colorCycle + node.colorOffset) % REAL_COLORS.length
-        );
-        const activeColor = REAL_COLORS[activeColorIndex];
+          let rawIntensity = i1 * 1.15 + i2 * 0.75 + fluidNoise;
+          let waveIntensity = Math.max(0, Math.min(1.0, rawIntensity));
 
-        const isHovered = intensity > 0.06;
-        const scale = 1.0 + intensity * 0.85;
+          // Contrast curve matching reference visual: deep voids, luminous ribbons
+          waveIntensity = Math.pow(waveIntensity, 2.1);
 
-        // Render each of the 7 homogeneously distributed shape types:
-        switch (node.shapeType) {
-          case 0: {
-            // 0: OXYPACE ICE LOGO EMBLEM
-            if (isLogosReady && logoCanvases["silver"]) {
-              const size = (isHovered ? 18 : 12) * scale;
-              const logoToDraw =
-                isHovered && logoCanvases[activeColorIndex]
-                  ? logoCanvases[activeColorIndex]
-                  : logoCanvases["silver"];
+          // Interactive cursor displacement & energy ripple
+          let drawX = baseX;
+          let drawY = baseY;
+          let cursorGlow = 0;
 
-              ctx.globalAlpha = isHovered ? 0.98 : 0.22;
-              ctx.drawImage(
-                logoToDraw,
-                drawX - size / 2,
-                drawY - size / 2,
-                size,
-                size
-              );
-              ctx.globalAlpha = 1.0;
-            }
-            break;
+          const dx = mouse.x - baseX;
+          const dy = mouse.y - baseY;
+          const distSq = dx * dx + dy * dy;
+
+          if (distSq < rSq) {
+            const dist = Math.sqrt(distSq);
+            const factor = 1 - dist * rInv;
+
+            // Elastic ripple displacement on the matrix layer
+            const ripple = Math.sin(dist * 0.06 - elapsed * 6.5) * factor * 14;
+            drawX -= (dx / (dist + 0.001)) * ripple;
+            drawY -= (dy / (dist + 0.001)) * ripple;
+
+            // Luminous energy bloom trailing the cursor
+            cursorGlow = factor * factor * 0.85;
           }
 
-          case 1: {
-            // 1: 4-POINT STAR / SPARKLE (✦)
-            const rad = (isHovered ? 7.5 : 3.6) * scale;
-            ctx.beginPath();
-            for (let a = 0; a < 8; a++) {
-              const ang = (a * Math.PI) / 4;
-              const r = a % 2 === 0 ? rad : rad * 0.32;
-              const px = drawX + Math.cos(ang) * r;
-              const py = drawY + Math.sin(ang) * r;
-              if (a === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
+          const totalIntensity = Math.min(1.0, waveIntensity + cursorGlow);
 
-            if (isHovered) {
-              ctx.fillStyle = activeColor.fill;
-              ctx.fill();
-              ctx.strokeStyle = activeColor.stroke;
-              ctx.lineWidth = 1.4;
-              ctx.stroke();
+          if (totalIntensity > 0.03) {
+            // Determine square dot size (from 1px to ~6.5px)
+            const dotSize = Math.max(1, Math.min(6.5, totalIntensity * 6.2));
+            const halfSize = dotSize * 0.5;
+
+            // Categorize into rendering buckets for maximum performance
+            if (cursorGlow > 0.35) {
+              // Cursor interaction energy
+              p5.rect(drawX - halfSize, drawY - halfSize, dotSize, dotSize);
+            } else if (totalIntensity > 0.82) {
+              // Peak brilliant white core
+              p4.rect(drawX - halfSize, drawY - halfSize, dotSize, dotSize);
+            } else if (totalIntensity > 0.55) {
+              // High silver
+              p3.rect(drawX - halfSize, drawY - halfSize, dotSize, dotSize);
+            } else if (totalIntensity > 0.28) {
+              if (d1 > 0) {
+                // Warm champagne/ivory tint on crest side
+                p2.rect(drawX - halfSize, drawY - halfSize, dotSize, dotSize);
+              } else {
+                // Cool icy cyan/blue tint on shadow side
+                p1.rect(drawX - halfSize, drawY - halfSize, dotSize, dotSize);
+              }
             } else {
-              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
-              ctx.lineWidth = 0.9;
-              ctx.stroke();
+              // Faint matrix dot
+              p0.rect(drawX - halfSize, drawY - halfSize, dotSize, dotSize);
             }
-            break;
-          }
-
-          case 2: {
-            // 2: PRECISION DIAMOND (◆)
-            const rad = (isHovered ? 5.5 : 2.8) * scale;
-            ctx.beginPath();
-            ctx.moveTo(drawX, drawY - rad);
-            ctx.lineTo(drawX + rad, drawY);
-            ctx.lineTo(drawX, drawY + rad);
-            ctx.lineTo(drawX - rad, drawY);
-            ctx.closePath();
-
-            if (isHovered) {
-              ctx.fillStyle = activeColor.fill;
-              ctx.fill();
-              ctx.strokeStyle = activeColor.stroke;
-              ctx.lineWidth = 1.4;
-              ctx.stroke();
-            } else {
-              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
-              ctx.lineWidth = 0.9;
-              ctx.stroke();
-            }
-            break;
-          }
-
-          case 3: {
-            // 3: GEOMETRIC HEXAGON (⬡)
-            const rad = (isHovered ? 6.2 : 3.2) * scale;
-            ctx.beginPath();
-            for (let a = 0; a < 6; a++) {
-              const ang = (a * Math.PI) / 3;
-              const px = drawX + Math.cos(ang) * rad;
-              const py = drawY + Math.sin(ang) * rad;
-              if (a === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-
-            if (isHovered) {
-              ctx.fillStyle = activeColor.fill;
-              ctx.fill();
-              ctx.strokeStyle = activeColor.stroke;
-              ctx.lineWidth = 1.4;
-              ctx.stroke();
-            } else {
-              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
-              ctx.lineWidth = 0.9;
-              ctx.stroke();
-            }
-            break;
-          }
-
-          case 4: {
-            // 4: MICRO CROSSHAIR (+)
-            const arm = (isHovered ? 6.5 : 3.2) * scale;
-            ctx.beginPath();
-            ctx.moveTo(drawX - arm, drawY);
-            ctx.lineTo(drawX + arm, drawY);
-            ctx.moveTo(drawX, drawY - arm);
-            ctx.lineTo(drawX, drawY + arm);
-
-            if (isHovered) {
-              ctx.strokeStyle = activeColor.fill;
-              ctx.lineWidth = 1.8;
-              ctx.stroke();
-
-              ctx.fillStyle = activeColor.stroke;
-              ctx.fillRect(drawX - 1.5, drawY - 1.5, 3, 3);
-            } else {
-              ctx.strokeStyle = "rgba(226, 232, 240, 0.18)";
-              ctx.lineWidth = 0.9;
-              ctx.stroke();
-            }
-            break;
-          }
-
-          case 5: {
-            // 5: TECH RING / CIRCLE (○)
-            const rad = (isHovered ? 5.2 : 2.6) * scale;
-            ctx.beginPath();
-            ctx.arc(drawX, drawY, rad, 0, Math.PI * 2);
-
-            if (isHovered) {
-              ctx.strokeStyle = activeColor.fill;
-              ctx.lineWidth = 1.6;
-              ctx.stroke();
-
-              ctx.fillStyle = activeColor.stroke;
-              ctx.beginPath();
-              ctx.arc(drawX, drawY, 2, 0, Math.PI * 2);
-              ctx.fill();
-            } else {
-              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
-              ctx.lineWidth = 0.9;
-              ctx.stroke();
-            }
-            break;
-          }
-
-          case 6:
-          default: {
-            // 6: EQUILATERAL TRIANGLE (▲)
-            const rad = (isHovered ? 6.0 : 3.0) * scale;
-            ctx.beginPath();
-            for (let a = 0; a < 3; a++) {
-              const ang = (a * 2 * Math.PI) / 3 - Math.PI / 2;
-              const px = drawX + Math.cos(ang) * rad;
-              const py = drawY + Math.sin(ang) * rad;
-              if (a === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-
-            if (isHovered) {
-              ctx.fillStyle = activeColor.fill;
-              ctx.fill();
-              ctx.strokeStyle = activeColor.stroke;
-              ctx.lineWidth = 1.4;
-              ctx.stroke();
-            } else {
-              ctx.strokeStyle = "rgba(226, 232, 240, 0.20)";
-              ctx.lineWidth = 0.9;
-              ctx.stroke();
-            }
-            break;
           }
         }
       }
+
+      // Draw all 6 buckets in unified GPU passes:
+      // Bucket 0: Faint background dots
+      ctx.fillStyle = "rgba(160, 175, 195, 0.16)";
+      ctx.fill(p0);
+
+      // Bucket 1: Cool icy blue/cyan wave edge
+      ctx.fillStyle = "rgba(165, 215, 255, 0.65)";
+      ctx.fill(p1);
+
+      // Bucket 2: Warm champagne/ivory wave edge
+      ctx.fillStyle = "rgba(255, 240, 220, 0.72)";
+      ctx.fill(p2);
+
+      // Bucket 3: Luminous chrome silver
+      ctx.fillStyle = "rgba(235, 240, 248, 0.90)";
+      ctx.fill(p3);
+
+      // Bucket 4: Pure brilliant white peak ribbons
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fill(p4);
+
+      // Bucket 5: Interactive cursor energy bloom
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fill(p5);
 
       animationId = requestAnimationFrame(animate);
     };
@@ -437,9 +266,9 @@ export default function OxypaceBackground() {
   }, []);
 
   return (
-    <>
-      <canvas ref={canvasRef} className="oxy-canvas-bg" />
-      <div className="oxy-vignette" />
-    </>
+    <canvas
+      ref={canvasRef}
+      className="oxy-canvas-bg select-none pointer-events-none"
+    />
   );
 }
