@@ -9,6 +9,7 @@
   # Output directory
   publish = "dist"
   edge_functions = "netlify/edge-functions"
+  ignore = "exit 1"
 
 [build.environment]
   CI = "false"
