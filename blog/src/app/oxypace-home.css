@@ -38,7 +38,7 @@
   text-transform: uppercase;
 }
 
-/* Background Canvas Layer */
+/* Background Canvas Layer (Hardware Accelerated & Decoupled) */
 .oxy-canvas-bg {
   position: fixed;
   top: 0;
@@ -47,6 +47,9 @@
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: strict;
   will-change: transform;
 }
 
@@ -81,8 +84,9 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: oxyMercuryReflect 7s ease-in-out infinite alternate;
-  filter: drop-shadow(0 2px 20px rgba(255, 255, 255, 0.32))
-          drop-shadow(0 2px 8px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 4px 18px rgba(255, 255, 255, 0.28));
+  transform: translateZ(0);
+  backface-visibility: hidden;
   will-change: background-position;
 }
 
