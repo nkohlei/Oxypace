@@ -123,10 +123,10 @@ export default function OxypaceHomePage() {
           2. HERO SECTION (Minimalist, Punchy, High Impact)
           ========================================================================= */}
       <section className="relative z-10 pt-24 sm:pt-32 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
-        {/* Master Headline in Restored Outfit Font & Reflective Liquid Mercury */}
-        <h1 className="oxy-hero-title oxy-civa-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.04] mb-6 max-w-4xl mx-auto">
+        {/* Master Headline in Restored Syne Display Font & Reflective Liquid Mercury */}
+        <h1 className="oxy-hero-title oxy-civa-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.1] mb-6 w-full max-w-5xl mx-auto">
           <span className="block whitespace-nowrap">TOPLULUK KUR.</span>
-          <span className="block mt-2 whitespace-nowrap">BİRLİKTE FİLM İZLE.</span>
+          <span className="block mt-2 sm:mt-3 whitespace-nowrap">BİRLİKTE FİLM İZLE.</span>
         </h1>
 
         {/* Short, Clean Subtitle */}

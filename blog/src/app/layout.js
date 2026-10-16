@@ -1,4 +1,4 @@
-import { Outfit, Space_Grotesk, Geist, Geist_Mono } from "next/font/google";
+import { Outfit, Space_Grotesk, Geist, Geist_Mono, Syne } from "next/font/google";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -11,6 +11,12 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+const syne = Syne({
+  variable: "--font-syne",
+  subsets: ["latin"],
+  weight: ["700", "800"],
 });
 
 const geistSans = Geist({
@@ -197,7 +203,7 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className={`${outfit.variable} ${spaceGrotesk.variable} ${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]`}>
+      <body className={`${outfit.variable} ${spaceGrotesk.variable} ${syne.variable} ${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]`}>
         {children}
       </body>
 
