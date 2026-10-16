@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-17T01:37:30.000Z",
-  "reason": "Upgrade OxypaceBackground to hardware-accelerated WebGL fragment shader for solid 120 FPS / 144 FPS / 240 FPS butter-smooth speed"
+  "lastBuild": "2026-10-17T01:48:30.000Z",
+  "reason": "Fix Netlify build by loading Google Fonts via direct high-performance CDN link instead of fragile build-time next/font loader"
 }

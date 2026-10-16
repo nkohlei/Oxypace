@@ -1,33 +1,4 @@
-import { Outfit, Space_Grotesk, Geist, Geist_Mono, Syne } from "next/font/google";
 import "./globals.css";
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-});
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const syne = Syne({
-  variable: "--font-syne",
-  subsets: ["latin"],
-  weight: ["700", "800"],
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 
 export const metadata = {
@@ -86,10 +57,16 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
       suppressHydrationWarning
     >
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
+          rel="stylesheet"
+        />
         <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/logo192.png" />
@@ -203,7 +180,7 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className={`${outfit.variable} ${spaceGrotesk.variable} ${syne.variable} ${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]`}>
+      <body className="min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]">
         {children}
       </body>
 
