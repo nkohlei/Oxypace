@@ -30,11 +30,11 @@
   letter-spacing: -0.015em;
 }
 
-/* High-Impact Modern Display Headline (Syne font restored) */
+/* High-Impact Modern Display Headline (Restored Outfit Display Font) */
 .oxy-hero-title {
-  font-family: 'Syne', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  letter-spacing: -0.04em !important;
-  font-weight: 800 !important;
+  font-family: var(--font-outfit), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  letter-spacing: -0.03em !important;
+  font-weight: 900 !important;
   text-transform: uppercase;
 }
 
