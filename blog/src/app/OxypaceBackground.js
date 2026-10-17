@@ -27,6 +27,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec2 u_mouse;
 uniform float u_dpr;
+uniform vec4 u_text_zone;
 
 void main() {
   // Normalize device pixels to CSS coordinates
@@ -89,6 +90,17 @@ void main() {
   // Contrast curve: elevation^1.7 * 0.68
   float intensity = pow(elevation, 1.7) * 0.68;
   
+  // Subtitle reading protection zone:
+  // When dots pass behind the subtitle text, their brightness/flare is suppressed
+  // so they stay dim, small, and subtle, ensuring crystal-clear text readability.
+  float textOcclusion = 0.0;
+  if (u_text_zone.z > 0.0) {
+    vec2 boxDiff = abs(dotCenter - u_text_zone.xy);
+    vec2 normBox = boxDiff / u_text_zone.zw;
+    float boxDist = pow(pow(normBox.x, 4.0) + pow(normBox.y, 4.0), 0.25);
+    textOcclusion = 1.0 - smoothstep(0.65, 1.25, boxDist);
+  }
+
   // Broad, elegant cursor interaction
   float mouseRadius = res.x < 768.0 ? 280.0 : 380.0;
   float cursorGlow = 0.0;
@@ -97,10 +109,12 @@ void main() {
   if (mdist < mouseRadius) {
     float factor = 1.0 - mdist / mouseRadius;
     float bell = factor * factor * (3.0 - 2.0 * factor);
-    cursorGlow = bell * 0.32;
+    cursorGlow = bell * 0.32 * (1.0 - textOcclusion * 0.7);
   }
   
-  float finalVal = clamp(intensity + cursorGlow, 0.0, 1.0);
+  // Cap the peak brightness so animation particles NEVER flare or turn specular white behind text
+  float maxAllowedVal = mix(1.0, 0.065, textOcclusion);
+  float finalVal = min(clamp(intensity + cursorGlow, 0.0, 1.0), maxAllowedVal);
   
   // Continuous dot radius calculation:
   // Base ambient gunmetal dot: 0.50px
@@ -143,6 +157,7 @@ void main() {
   
   // Alpha luminance depth
   float alpha = mix(0.18, 0.95, waveStrength);
+  alpha *= mix(1.0, 0.35, textOcclusion);
   
   gl_FragColor = vec4(col * circle * alpha, 1.0);
 }
@@ -218,10 +233,26 @@ export default function OxypaceBackground() {
     const uTime = gl.getUniformLocation(program, "u_time");
     const uMouse = gl.getUniformLocation(program, "u_mouse");
     const uDpr = gl.getUniformLocation(program, "u_dpr");
+    const uTextZone = gl.getUniformLocation(program, "u_text_zone");
 
     let width = 0;
     let height = 0;
     let dpr = 1;
+    let textZone = [0, 0, 0, 0];
+
+    const updateTextZone = () => {
+      const el = document.querySelector(".oxy-hero-subtitle");
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const cx = (rect.left + rect.right) * 0.5;
+        const cy = (rect.top + rect.bottom) * 0.5;
+        const hw = (rect.width * 0.5) + 38.0;
+        const hh = (rect.height * 0.5) + 22.0;
+        textZone = [cx, cy, hw, hh];
+      } else {
+        textZone = [window.innerWidth * 0.5, 325.0, Math.min(320.0, window.innerWidth * 0.44), 50.0];
+      }
+    };
 
     // Smooth inertia mouse tracking
     const mouse = {
@@ -261,10 +292,16 @@ export default function OxypaceBackground() {
     };
 
     handleResize();
-    window.addEventListener("resize", handleResize);
+    updateTextZone();
+    window.addEventListener("resize", () => {
+      handleResize();
+      updateTextZone();
+    });
+    window.addEventListener("scroll", updateTextZone, { passive: true });
 
     let isVisible = true;
     let animationId;
+    let frameCount = 0;
 
     const handleVisibility = () => {
       isVisible = !document.hidden;
@@ -279,6 +316,11 @@ export default function OxypaceBackground() {
     const render = (now) => {
       if (!isVisible) return;
 
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        updateTextZone();
+      }
+
       // Silky inertia spring damping
       mouse.x += (mouse.targetX - mouse.x) * 0.12;
       mouse.y += (mouse.targetY - mouse.y) * 0.12;
@@ -290,6 +332,7 @@ export default function OxypaceBackground() {
       gl.uniform1f(uTime, elapsed);
       gl.uniform2f(uMouse, mouse.x, mouse.y);
       gl.uniform1f(uDpr, dpr);
+      gl.uniform4f(uTextZone, textZone[0], textZone[1], textZone[2], textZone[3]);
 
       // Single hardware draw call
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -301,6 +344,7 @@ export default function OxypaceBackground() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", updateTextZone);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("visibilitychange", handleVisibility);

@@ -130,7 +130,7 @@ export default function OxypaceHomePage() {
         </h1>
 
         {/* Short, Clean Subtitle */}
-        <p className="max-w-xl mx-auto text-base sm:text-lg md:text-xl text-slate-300/90 font-normal leading-relaxed mb-10">
+        <p className="oxy-hero-subtitle max-w-xl mx-auto text-base sm:text-lg md:text-xl text-slate-200 font-medium leading-relaxed mb-10">
           Arkadaşlarınla kendi portalını oluştur, kristal netliğinde sesli odalarda sıfır gecikmeyle birlikte film izle.
         </p>
 

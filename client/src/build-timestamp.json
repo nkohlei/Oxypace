@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-17T01:48:30.000Z",
-  "reason": "Fix Netlify build by loading Google Fonts via direct high-performance CDN link instead of fragile build-time next/font loader"
+  "lastBuild": "2026-10-17T16:00:00.000Z",
+  "reason": "Add dynamic subtitle reading protection zone in WebGL shader: dim dots and suppress white flare directly behind text for crystal-clear readability"
 }
