@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T00:00:00.000Z",
-  "reason": "Fix banner caching with new oxypace-brand-banner-ultra asset and remove CSS crisp-edges to restore smooth anti-aliased rendering"
+  "lastBuild": "2026-10-18T00:25:00.000Z",
+  "reason": "Position footer navigation above brand banner and place ultra-hd Oxypace banner at the very bottom"
 }

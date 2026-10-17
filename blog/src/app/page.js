@@ -325,26 +325,9 @@ export default function OxypaceHomePage() {
       </section>
 
       {/* =========================================================================
-          5. BIG FULL-WIDTH MULTI-LOGO BANNER (User Uploaded New Banner)
+          5. MINIMALIST FOOTER (Positioned above the bottom banner)
           ========================================================================= */}
-      <section className="relative z-10 oxy-banner-container mt-12">
-        <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 flex items-center justify-center">
-          <Image
-            src="/oxypace-brand-banner-ultra.webp?v=2"
-            alt="Oxypace Banner"
-            width={3072}
-            height={459}
-            className="oxy-banner-image select-none pointer-events-none"
-            priority
-            unoptimized
-          />
-        </div>
-      </section>
-
-      {/* =========================================================================
-          6. MINIMALIST FOOTER
-          ========================================================================= */}
-      <footer className="relative z-10 bg-black py-10 px-4 sm:px-6 lg:px-8">
+      <footer className="relative z-10 bg-black pt-16 pb-8 px-4 sm:px-6 lg:px-8 border-t border-white/[0.04]">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white tracking-wider">OXYPACE</span>
@@ -371,6 +354,23 @@ export default function OxypaceHomePage() {
           </div>
         </div>
       </footer>
+
+      {/* =========================================================================
+          6. VERY BOTTOM FULL-WIDTH BRAND BANNER (User Added Ultra-HD Asset)
+          ========================================================================= */}
+      <section className="relative z-10 oxy-banner-container">
+        <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 flex items-center justify-center">
+          <Image
+            src="/oxypace-brand-banner-ultra.webp?v=4"
+            alt="Oxypace Banner"
+            width={4076}
+            height={612}
+            className="oxy-banner-image select-none pointer-events-none"
+            priority
+            unoptimized
+          />
+        </div>
+      </section>
     </div>
   );
 }
