@@ -330,10 +330,10 @@ export default function OxypaceHomePage() {
       <section className="relative z-10 oxy-banner-container mt-12">
         <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 flex items-center justify-center">
           <Image
-            src="/oxypace-multi-banner-new.webp"
+            src="/oxypace-brand-banner-ultra.webp?v=2"
             alt="Oxypace Banner"
-            width={2048}
-            height={306}
+            width={3072}
+            height={459}
             className="oxy-banner-image select-none pointer-events-none"
             priority
             unoptimized

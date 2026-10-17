@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-17T23:50:00.000Z",
-  "reason": "Update oxypace-multi-banner-new asset with modern wide-typography branding banner"
+  "lastBuild": "2026-10-18T00:00:00.000Z",
+  "reason": "Fix banner caching with new oxypace-brand-banner-ultra asset and remove CSS crisp-edges to restore smooth anti-aliased rendering"
 }
