@@ -100,8 +100,17 @@ export default function OxypaceHomePage() {
       setTimerKey((k) => k + 1);
     }, 4500);
   };
-
   const currentShowcase = showcases.find((s) => s.id === activeShowcase) || showcases[0];
+
+  // If user has active token, never render landing page elements to prevent any flash of content
+  if (typeof window !== "undefined") {
+    try {
+      const t = localStorage.getItem("token");
+      if (t && t !== "null" && t !== "undefined" && t !== "false" && typeof t === "string" && t.trim().length > 10) {
+        return null;
+      }
+    } catch (_) {}
+  }
 
   return (
     <div className="oxypace-landing relative">

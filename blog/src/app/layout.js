@@ -61,6 +61,52 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('token');
+                  var isAuth = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
+                  var p = window.location.pathname;
+                  var isHome = p === '/' || p === '' || p === '/index.html';
+
+                  if (isAuth) {
+                    try {
+                      document.cookie = "token=" + encodeURIComponent(t) + "; path=/; max-age=31536000; SameSite=Lax";
+                    } catch (_) {}
+
+                    if (isHome) {
+                      // Home sayfası 1 milisaniye bile ekranda görünmesin diye HTML'i anında gizle
+                      if (document.documentElement) {
+                        document.documentElement.style.display = 'none';
+                      }
+                      var target = '/messages';
+                      var topPortal = localStorage.getItem('oxypace_top_portal');
+                      if (topPortal) {
+                        try {
+                          var parsed = JSON.parse(topPortal);
+                          if (parsed && parsed.id) target = '/portal/' + parsed.id;
+                        } catch (_) {}
+                      }
+                      window.location.replace(target);
+                      return;
+                    }
+                  }
+
+                  var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                  if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                } catch (_) {}
+              })();
+            `,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -111,48 +157,6 @@ export default function RootLayout({ children }) {
                 }
               ]
             })
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                var pathname = window.location.pathname;
-                var isBlogOrArticlePath = pathname.indexOf('/blog') === 0 || 
-                                          pathname.indexOf('/calculations') === 0 || 
-                                          pathname.indexOf('/privacy') === 0 || 
-                                          pathname.indexOf('/terms') === 0 || 
-                                          pathname.indexOf('/contact') === 0;
-
-                var t = localStorage.getItem('token');
-                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
-
-                // Oturum açıkken ana sayfaya ('/') gelindiğinde takılmadan anında portala/mesajlara yönlendir
-                if (isLoggedIn && !isBlogOrArticlePath && (pathname === '/' || pathname === '' || pathname === '/index.html')) {
-                  var topPortal = localStorage.getItem('oxypace_top_portal');
-                  if (topPortal) {
-                    try {
-                      var parsedPortal = JSON.parse(topPortal);
-                      if (parsedPortal && parsedPortal.id) {
-                        window.location.replace('/portal/' + parsedPortal.id);
-                        return;
-                      }
-                    } catch (_) {}
-                  }
-                  window.location.replace('/messages');
-                  return;
-                }
-
-                var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
-                if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                  document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                  document.documentElement.setAttribute('data-theme', 'light');
-                }
-              } catch (_) {}
-            `,
           }}
         />
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107" crossorigin="anonymous" />

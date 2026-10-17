@@ -140,6 +140,14 @@ export default async (request, context) => {
     return context.next();
   }
 
+  // 1.5. Oturum açmış kullanıcılar ana sayfaya ('/' veya '') gelirse HTTP seviyesinde anında /messages'a yönlendir (Sıfır FOUC / Sıfır Gecikme)
+  if ((pathname === "/" || pathname === "" || pathname === "/index.html") && !isBot(userAgent)) {
+    const token = context.cookies.get("token");
+    if (token && typeof token === "string" && token.length > 10) {
+      return Response.redirect(new URL("/messages", request.url), 302);
+    }
+  }
+
   // 2. ── BOT & BROWSER OG META ETİKET ENJEKSİYONU ──────────────────────────
   let targetOgPath = null;
   if ((pathname === "/blog/post" || pathname === "/blog/post/") && url.searchParams.get("slug")) {

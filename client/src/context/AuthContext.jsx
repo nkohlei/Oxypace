@@ -25,6 +25,9 @@ export const AuthProvider = ({ children }) => {
         const prodServerUrl = 'https://oxypace.com.tr';
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            try {
+                document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Lax`;
+            } catch (_) {}
             if (Capacitor.isNativePlatform()) {
                 AuthSync.syncAuth({ token, serverUrl: prodServerUrl }).catch(() => {});
             }
@@ -85,6 +88,9 @@ export const AuthProvider = ({ children }) => {
 
     const login = (newToken, userData) => {
         localStorage.setItem('token', newToken);
+        try {
+            document.cookie = `token=${encodeURIComponent(newToken)}; path=/; max-age=31536000; SameSite=Lax`;
+        } catch (_) {}
         setToken(newToken);
         if (userData && userData._id && localStorage.getItem(`isSecurityConfigured_${userData._id}`) === 'true') {
             userData.securityQuestionsConfigured = true;
