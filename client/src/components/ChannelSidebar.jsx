@@ -172,12 +172,44 @@ const ChannelSidebar = ({
 
     const isSelected = (id) => currentChannel === id;
 
-    const defaultFallbackBanner = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
     const rawBanner = portal?.coverImage || portal?.banner;
     const resolvedBannerUrl = rawBanner ? getImageUrl(rawBanner) : null;
+    const defaultFallbackBanner = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+
+    // Only set fallback if portal is loaded and explicitly has no custom banner.
+    // If a custom banner is present, use ONLY that URL to avoid displaying any other image underneath.
     const bannerBgStyle = resolvedBannerUrl
-        ? `url("${resolvedBannerUrl}"), url("${defaultFallbackBanner}")`
-        : `url("${defaultFallbackBanner}")`;
+        ? `url("${resolvedBannerUrl}")`
+        : (portal && !rawBanner)
+            ? `url("${defaultFallbackBanner}")`
+            : 'none';
+
+    const [bannerLoaded, setBannerLoaded] = useState(false);
+    const lastBannerUrlRef = useRef(null);
+
+    useEffect(() => {
+        if (!resolvedBannerUrl) {
+            setBannerLoaded(true);
+            lastBannerUrlRef.current = null;
+            return;
+        }
+
+        if (lastBannerUrlRef.current === resolvedBannerUrl) {
+            setBannerLoaded(true);
+            return;
+        }
+
+        lastBannerUrlRef.current = resolvedBannerUrl;
+        const img = new window.Image();
+        img.src = resolvedBannerUrl;
+        if (img.complete) {
+            setBannerLoaded(true);
+        } else {
+            setBannerLoaded(false);
+            img.onload = () => setBannerLoaded(true);
+            img.onerror = () => setBannerLoaded(true);
+        }
+    }, [resolvedBannerUrl]);
 
     return (
         <div
@@ -235,6 +267,7 @@ const ChannelSidebar = ({
                             className="channel-banner-image"
                             style={{
                                 backgroundImage: bannerBgStyle,
+                                opacity: bannerLoaded ? 1 : 0,
                             }}
                         />
                         <div className="channel-banner-overlay" />
@@ -600,7 +633,7 @@ const ChannelSidebar = ({
                 background-size: cover;
                 background-position: center;
                 background-repeat: no-repeat;
-                transition: transform 0.5s ease;
+                transition: transform 0.5s ease, opacity 0.25s ease;
             }
             .channel-banner-container:hover .channel-banner-image {
                 transform: scale(1.05);

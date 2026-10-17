@@ -48,7 +48,18 @@ const Portal = () => {
     const isDesktopSidebarCollapsed = uiContext?.isDesktopSidebarCollapsed || false;
     const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
 
-    const [portal, setPortal] = useState(null);
+    const [portal, setPortal] = useState(() => {
+        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
+            return location.state.portal;
+        }
+        return null;
+    });
+
+    useEffect(() => {
+        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
+            setPortal(location.state.portal);
+        }
+    }, [id, location.state]);
     const posts = useGlobalStore((state) => state.posts);
     const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(true);

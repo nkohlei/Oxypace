@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T02:30:00.000Z",
-  "reason": "Fix portal banner images in ChannelSidebar by preventing invalid -medium.webp rewrite and restoring original banner assets with CSS fallback"
+  "lastBuild": "2026-10-18T02:46:00.000Z",
+  "reason": "Eliminate fallback banner flicker by using pure banner URL and preloaded opacity fade-in without background stacking"
 }

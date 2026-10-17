@@ -327,12 +327,12 @@ router.get('/me', protect, async (req, res) => {
         const [user, postCount, outgoingUserRequests, outgoingPortalRequests, ownedPortals] = await Promise.all([
             User.findById(req.user._id)
                 .select('-password -verificationToken')
-                .populate('joinedPortals', 'name avatar lowResAvatar')
+                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor')
                 .populate('following', 'username profile.displayName profile.avatar profile.lowResAvatar'),
             Post.countDocuments({ author: req.user._id }),
             User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar profile.lowResAvatar'),
             Portal.find({ joinRequests: req.user._id }).select('name avatar lowResAvatar privacy'),
-            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar')
+            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar banner themeColor')
         ]);
 
         // Pre-build follower ID set for fast lookup
@@ -661,7 +661,7 @@ router.get('/me', protect, async (req, res) => {
         const [user, postCount] = await Promise.all([
             User.findById(req.user._id)
                 .select('-password -verificationToken')
-                .populate('joinedPortals', 'name avatar lowResAvatar badges isVerified privacy members allowedUsers owner admins')
+                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor badges isVerified privacy members allowedUsers owner admins')
                 .lean(),
             Post.countDocuments({ author: req.user._id })
         ]);

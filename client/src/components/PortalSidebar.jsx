@@ -207,8 +207,8 @@ const PortalSidebar = () => {
         return location.pathname === `/portal/${portalId}`;
     };
 
-    const handleNavigation = (path) => {
-        navigate(path);
+    const handleNavigation = (path, options) => {
+        navigate(path, options);
         closeSidebar();
     };
 
@@ -245,7 +245,7 @@ const PortalSidebar = () => {
                                 key={portal._id}
                                 draggable={isReordering}
                                 className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${filteredCount > 0 ? 'has-unread' : ''}`}
-                                onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`)}
+                                onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`, { state: { portal } })}
                                 onDragStart={(e) => handleDragStart(e, index)}
                                 onDragOver={(e) => handleDragOver(e, index)}
                                 onDragEnd={handleDragEnd}
