@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-17T16:00:00.000Z",
-  "reason": "Add dynamic subtitle reading protection zone in WebGL shader: dim dots and suppress white flare directly behind text for crystal-clear readability"
+  "lastBuild": "2026-10-17T16:13:00.000Z",
+  "reason": "Upgrade subtitle zone to seamless wide-feather soft compression: eliminate dark cutout hole, keep particles clearly visible, and remove sharp transitions"
 }

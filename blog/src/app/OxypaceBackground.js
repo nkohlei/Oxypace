@@ -91,14 +91,17 @@ void main() {
   float intensity = pow(elevation, 1.7) * 0.68;
   
   // Subtitle reading protection zone:
-  // When dots pass behind the subtitle text, their brightness/flare is suppressed
-  // so they stay dim, small, and subtle, ensuring crystal-clear text readability.
-  float textOcclusion = 0.0;
+  // Ultra-smooth, feathered transition with NO dark hole and NO sharp edges.
+  // Particles remain clearly visible and flow with rich metallic color,
+  // but smoothly compress peak brightness to eliminate harsh white glare behind text.
+  float textFactor = 1.0;
   if (u_text_zone.z > 0.0) {
-    vec2 boxDiff = abs(dotCenter - u_text_zone.xy);
-    vec2 normBox = boxDiff / u_text_zone.zw;
-    float boxDist = pow(pow(normBox.x, 4.0) + pow(normBox.y, 4.0), 0.25);
-    textOcclusion = 1.0 - smoothstep(0.65, 1.25, boxDist);
+    vec2 innerCore = u_text_zone.zw * 0.50;
+    vec2 delta = max(abs(dotCenter - u_text_zone.xy) - innerCore, 0.0);
+    // Generous, organic feather radius (220px horizontal, 90px vertical)
+    vec2 feather = vec2(220.0, 90.0);
+    float d = length(delta / feather);
+    textFactor = smoothstep(0.0, 1.0, clamp(d, 0.0, 1.0));
   }
 
   // Broad, elegant cursor interaction
@@ -109,12 +112,15 @@ void main() {
   if (mdist < mouseRadius) {
     float factor = 1.0 - mdist / mouseRadius;
     float bell = factor * factor * (3.0 - 2.0 * factor);
-    cursorGlow = bell * 0.32 * (1.0 - textOcclusion * 0.7);
+    cursorGlow = bell * 0.32 * mix(0.70, 1.0, textFactor);
   }
   
-  // Cap the peak brightness so animation particles NEVER flare or turn specular white behind text
-  float maxAllowedVal = mix(1.0, 0.065, textOcclusion);
-  float finalVal = min(clamp(intensity + cursorGlow, 0.0, 1.0), maxAllowedVal);
+  float rawV = clamp(intensity + cursorGlow, 0.0, 1.0);
+  
+  // Soft non-linear compression to prevent blinding glare behind text
+  // while keeping particles fully visible (~0.26 intensity) with rich metallic colors:
+  float softCeiling = mix(0.26, 1.0, textFactor);
+  float finalVal = rawV > softCeiling ? softCeiling + (rawV - softCeiling) * mix(0.12, 1.0, textFactor) : rawV;
   
   // Continuous dot radius calculation:
   // Base ambient gunmetal dot: 0.50px
@@ -155,9 +161,8 @@ void main() {
   col = mix(col, cCrest, crestStrength);
   col = mix(col, cWhite, whiteStrength);
   
-  // Alpha luminance depth
-  float alpha = mix(0.18, 0.95, waveStrength);
-  alpha *= mix(1.0, 0.35, textOcclusion);
+  // Alpha luminance depth - smooth and continuous, NO artificial cutout hole!
+  float alpha = mix(0.20, 0.95, waveStrength);
   
   gl_FragColor = vec4(col * circle * alpha, 1.0);
 }
@@ -246,11 +251,11 @@ export default function OxypaceBackground() {
         const rect = el.getBoundingClientRect();
         const cx = (rect.left + rect.right) * 0.5;
         const cy = (rect.top + rect.bottom) * 0.5;
-        const hw = (rect.width * 0.5) + 38.0;
-        const hh = (rect.height * 0.5) + 22.0;
+        const hw = rect.width * 0.5;
+        const hh = rect.height * 0.5;
         textZone = [cx, cy, hw, hh];
       } else {
-        textZone = [window.innerWidth * 0.5, 325.0, Math.min(320.0, window.innerWidth * 0.44), 50.0];
+        textZone = [window.innerWidth * 0.5, 325.0, Math.min(290.0, window.innerWidth * 0.38), 35.0];
       }
     };
 
