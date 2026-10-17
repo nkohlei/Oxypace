@@ -331,9 +331,9 @@ export default function OxypaceHomePage() {
         <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 flex items-center justify-center">
           <Image
             src="/oxypace-multi-banner-new.webp"
-            alt="Oxypace Logo Varyasyonları ve Kimliği"
-            width={3072}
-            height={1014}
+            alt="Oxypace Banner"
+            width={2048}
+            height={306}
             className="oxy-banner-image select-none pointer-events-none"
             priority
             unoptimized
