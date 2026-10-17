@@ -376,7 +376,7 @@
 }
 
 /* ==========================================================================
-   BOTTOM BANNER (Crisp 1:1 Sharp Image Container, Zero Blurriness)
+   BOTTOM BANNER (Crisp 1:1 Sharp Image Container, Ultra-HD & Mobile-Enlarged)
    ========================================================================== */
 
 .oxy-banner-container {
@@ -385,7 +385,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 0 3rem 0;
+  padding: 1.5rem 0 3.5rem 0;
   overflow: hidden;
 }
 
@@ -396,3 +396,44 @@
   object-fit: contain;
   display: block;
 }
+
+@media (max-width: 640px) {
+  .oxy-banner-container {
+    padding: 0.75rem 0 2rem 0;
+  }
+  .oxy-banner-image {
+    width: 145%;
+    max-width: none;
+    transform: scale(1.18);
+  }
+}
+
+/* ==========================================================================
+   THEME-MATCHING SOCIAL ICON BUTTONS
+   ========================================================================== */
+
+.oxy-social-btn {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.oxy-social-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
+}
+
+.oxy-social-btn:active {
+  transform: scale(0.95);
+}
+
