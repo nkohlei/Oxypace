@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T02:15:00.000Z",
-  "reason": "Zero-flash instant direct account opening for logged in users via Edge 302 redirect and pre-render display none anti-flicker"
+  "lastBuild": "2026-10-18T02:30:00.000Z",
+  "reason": "Fix portal banner images in ChannelSidebar by preventing invalid -medium.webp rewrite and restoring original banner assets with CSS fallback"
 }

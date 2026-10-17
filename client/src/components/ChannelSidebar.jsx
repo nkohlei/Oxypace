@@ -172,6 +172,13 @@ const ChannelSidebar = ({
 
     const isSelected = (id) => currentChannel === id;
 
+    const defaultFallbackBanner = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+    const rawBanner = portal?.coverImage || portal?.banner;
+    const resolvedBannerUrl = rawBanner ? getImageUrl(rawBanner) : null;
+    const bannerBgStyle = resolvedBannerUrl
+        ? `url("${resolvedBannerUrl}"), url("${defaultFallbackBanner}")`
+        : `url("${defaultFallbackBanner}")`;
+
     return (
         <div
             className={`channel-sidebar ${isDesktopSidebarCollapsed ? 'collapsed' : ''} ${className || ''}`}
@@ -227,11 +234,7 @@ const ChannelSidebar = ({
                         <div
                             className="channel-banner-image"
                             style={{
-                                backgroundImage: portal.coverImage
-                                    ? `url(${getImageUrl(portal.coverImage, 'medium')})`
-                                    : portal.banner
-                                        ? `url(${getImageUrl(portal.banner, 'medium')})`
-                                        : 'url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
+                                backgroundImage: bannerBgStyle,
                             }}
                         />
                         <div className="channel-banner-overlay" />
@@ -593,8 +596,10 @@ const ChannelSidebar = ({
             .channel-banner-image {
                 width: 100%;
                 height: 100%;
+                background-color: #121316;
                 background-size: cover;
                 background-position: center;
+                background-repeat: no-repeat;
                 transition: transform 0.5s ease;
             }
             .channel-banner-container:hover .channel-banner-image {
