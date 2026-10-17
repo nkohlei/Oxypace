@@ -117,18 +117,18 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var isFirstVisitOfSession = !sessionStorage.getItem('hasVisitedThisSession');
-                sessionStorage.setItem('hasVisitedThisSession', 'true');
-
                 var pathname = window.location.pathname;
-                var isBlogPath = pathname.indexOf('/blog') === 0;
+                var isBlogOrArticlePath = pathname.indexOf('/blog') === 0 || 
+                                          pathname.indexOf('/calculations') === 0 || 
+                                          pathname.indexOf('/privacy') === 0 || 
+                                          pathname.indexOf('/terms') === 0 || 
+                                          pathname.indexOf('/contact') === 0;
 
                 var t = localStorage.getItem('token');
-                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 20;
+                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
 
-                // Yönlendirme SADECE ilk girişte ve SADECE ana URL ('/') adresindeyken yapılır.
-                // Eğer girilen URL bir blog linki ise (/blog/...) ASLA yönlendirme yapılmaz.
-                if (isFirstVisitOfSession && isLoggedIn && !isBlogPath && (pathname === '/' || pathname === '')) {
+                // Oturum açıkken ana sayfaya ('/') gelindiğinde takılmadan anında portala/mesajlara yönlendir
+                if (isLoggedIn && !isBlogOrArticlePath && (pathname === '/' || pathname === '' || pathname === '/index.html')) {
                   var topPortal = localStorage.getItem('oxypace_top_portal');
                   if (topPortal) {
                     try {
@@ -140,6 +140,7 @@ export default function RootLayout({ children }) {
                     } catch (_) {}
                   }
                   window.location.replace('/messages');
+                  return;
                 }
 
                 var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');

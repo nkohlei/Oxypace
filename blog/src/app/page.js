@@ -47,6 +47,27 @@ export default function OxypaceHomePage() {
   ];
 
   // Auto-rotating timer with 4.5 seconds per card and reset on manual selection
+  // Oturum açıkken kullanıcı ana sayfaya girdiğinde anında portalına/mesajlarına yönlendir
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem('token');
+      const isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
+      if (isLoggedIn) {
+        const topPortal = localStorage.getItem('oxypace_top_portal');
+        if (topPortal) {
+          try {
+            const parsed = JSON.parse(topPortal);
+            if (parsed && parsed.id) {
+              window.location.replace('/portal/' + parsed.id);
+              return;
+            }
+          } catch (_) {}
+        }
+        window.location.replace('/messages');
+      }
+    } catch (_) {}
+  }, []);
+
   useEffect(() => {
     const startTimer = () => {
       if (timerRef.current) clearInterval(timerRef.current);

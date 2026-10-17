@@ -587,14 +587,30 @@ const AppLayout = () => {
         };
     }, [isLoggedIn, location.pathname]);
 
-    // On mobile or native platform, redirect from '/' directly to '/messages' when logged in
+    // Redirect from '/' directly to user's portal or '/messages' when logged in (both on desktop and mobile)
     useEffect(() => {
-        const isMobileDevice = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
         const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
-        if (isMobileDevice && location.pathname === '/' && (isLoggedIn || hasToken)) {
+        if (location.pathname === '/' && (isLoggedIn || hasToken)) {
+            const topPortal = localStorage.getItem('oxypace_top_portal');
+            if (topPortal) {
+                try {
+                    const parsed = JSON.parse(topPortal);
+                    if (parsed && parsed.id) {
+                        navigate(`/portal/${parsed.id}`, { replace: true });
+                        return;
+                    }
+                } catch (_) {}
+            }
+            if (user?.joinedPortals && user.joinedPortals.length > 0) {
+                const firstPortalId = typeof user.joinedPortals[0] === 'string' 
+                    ? user.joinedPortals[0] 
+                    : user.joinedPortals[0]._id;
+                navigate(`/portal/${firstPortalId}`, { replace: true });
+                return;
+            }
             navigate('/messages', { replace: true });
         }
-    }, [isLoggedIn, location.pathname, navigate]);
+    }, [isLoggedIn, user, location.pathname, navigate]);
 
     // Page titles for mobile header
     const getPageTitle = () => {

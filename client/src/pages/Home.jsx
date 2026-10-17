@@ -39,14 +39,25 @@ const Home = () => {
     const [isGoogleBot, setIsGoogleBot] = useState(false);
     const [botPosts, setBotPosts] = useState([]);
 
-    // Auto-redirect logged-in users on Native Mobile app directly to platform
+    // Auto-redirect logged-in users directly to platform/portal/messages
     useEffect(() => {
-        if (isNative && !loading && user) {
+        if (!loading && user) {
             const pendingPortal = localStorage.getItem('oxypace_pending_portal');
             if (pendingPortal) {
                 localStorage.removeItem('oxypace_pending_portal');
                 navigate(`/portal/${pendingPortal}`, { replace: true });
                 return;
+            }
+
+            const topPortal = localStorage.getItem('oxypace_top_portal');
+            if (topPortal) {
+                try {
+                    const parsed = JSON.parse(topPortal);
+                    if (parsed && parsed.id) {
+                        navigate(`/portal/${parsed.id}`, { replace: true });
+                        return;
+                    }
+                } catch (_) {}
             }
 
             if (user.joinedPortals && user.joinedPortals.length > 0) {
@@ -58,7 +69,7 @@ const Home = () => {
                 navigate('/messages', { replace: true });
             }
         }
-    }, [user, loading, navigate, isNative]);
+    }, [user, loading, navigate]);
 
     // Detect Googlebot and fetch the public portal posts (Global Feed)
     useEffect(() => {
