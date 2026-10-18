@@ -13,6 +13,11 @@ const FALLBACK_BADGES = [
     { slug: 'partner', name: 'Partner', icon: 'diamond', category: 'both', style: { type: 'gradient', primaryColor: '#5865F2', secondaryColor: '#9b59b6', animationType: 'glow', glowColor: 'rgba(88, 101, 242, 0.4)' } },
     { slug: 'verified', name: 'Onaylı Portal', icon: 'checkmark', category: 'portal', style: { type: 'solid', primaryColor: '#1d9bf0', secondaryColor: '', animationType: 'none', glowColor: '' } },
     { slug: 'official', name: 'Resmi Hesap', icon: 'shield', category: 'both', style: { type: 'solid', primaryColor: '#808080', secondaryColor: '', animationType: 'none', glowColor: '' } },
+    { slug: 'vip', name: 'VIP Lider', icon: 'crown', category: 'both', style: { type: 'gradient', primaryColor: '#f59e0b', secondaryColor: '#ec4899', animationType: 'glow', glowColor: 'rgba(245, 158, 11, 0.45)' } },
+    { slug: 'founder', name: 'Kurucu / Pioneer', icon: 'rocket', category: 'both', style: { type: 'gradient', primaryColor: '#06b6d4', secondaryColor: '#8b5cf6', animationType: 'pulse', glowColor: 'rgba(6, 182, 212, 0.45)' } },
+    { slug: 'dev', name: 'Çekirdek Geliştirici', icon: 'atom', category: 'both', style: { type: 'iridescent', primaryColor: '#10b981', secondaryColor: '#3b82f6', animationType: 'shimmer', glowColor: 'rgba(16, 185, 129, 0.45)' } },
+    { slug: 'science', name: 'Bilim & Araştırma', icon: 'atom', category: 'both', style: { type: 'gradient', primaryColor: '#38bdf8', secondaryColor: '#6366f1', animationType: 'glow', glowColor: 'rgba(56, 189, 248, 0.45)' } },
+    { slug: 'creator', name: 'İçerik Üreticisi', icon: 'sparkle', category: 'both', style: { type: 'gradient', primaryColor: '#ec4899', secondaryColor: '#f43f5e', animationType: 'pulse', glowColor: 'rgba(236, 72, 153, 0.4)' } },
 ];
 
 export const BadgeProvider = ({ children }) => {

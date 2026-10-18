@@ -678,7 +678,13 @@ const PortalDetailModal = ({
                             onChange={(e) => {
                                 const selectedUrl = e.target.value;
                                 const selectedBadge = customBadges.find(b => b.url === selectedUrl);
-                                handlePortalCustomBadgeAssign(portal._id, selectedBadge ? selectedBadge.url : '', selectedBadge ? selectedBadge.name : '');
+                                handlePortalCustomBadgeAssign(
+                                    portal._id,
+                                    selectedBadge ? selectedBadge.url : '',
+                                    selectedBadge ? selectedBadge.name : '',
+                                    selectedBadge ? (selectedBadge.shape || 'round') : 'round',
+                                    selectedBadge ? (selectedBadge.borderStyle || 'thin') : 'thin'
+                                );
                             }}
                             style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
                         >
@@ -692,7 +698,12 @@ const PortalDetailModal = ({
                         {portal.customBadge?.url && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
                                 <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
-                                <img src={portal.customBadge.url} alt={portal.customBadge.name} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                                <span
+                                    className={`custom-badge-frame shape-${portal.customBadge.shape || 'round'} border-${portal.customBadge.borderStyle || 'thin'}`}
+                                    style={{ width: '22px', height: '22px' }}
+                                >
+                                    <img src={portal.customBadge.url} alt={portal.customBadge.name} className="custom-badge-icon" />
+                                </span>
                                 <span style={{ fontSize: '13px', color: '#fff' }}>{portal.customBadge.name}</span>
                             </div>
                         )}
@@ -908,7 +919,13 @@ const UserDetailModal = ({
                             onChange={(e) => {
                                 const selectedUrl = e.target.value;
                                 const selectedBadge = customBadges.find(b => b.url === selectedUrl);
-                                handleCustomBadgeAssign(user._id, selectedBadge ? selectedBadge.url : '', selectedBadge ? selectedBadge.name : '');
+                                handleCustomBadgeAssign(
+                                    user._id,
+                                    selectedBadge ? selectedBadge.url : '',
+                                    selectedBadge ? selectedBadge.name : '',
+                                    selectedBadge ? (selectedBadge.shape || 'round') : 'round',
+                                    selectedBadge ? (selectedBadge.borderStyle || 'thin') : 'thin'
+                                );
                             }}
                             style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
                         >
@@ -922,7 +939,12 @@ const UserDetailModal = ({
                         {user.customBadge?.url && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
                                 <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
-                                <img src={user.customBadge.url} alt={user.customBadge.name} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                                <span
+                                    className={`custom-badge-frame shape-${user.customBadge.shape || 'round'} border-${user.customBadge.borderStyle || 'thin'}`}
+                                    style={{ width: '22px', height: '22px' }}
+                                >
+                                    <img src={user.customBadge.url} alt={user.customBadge.name} className="custom-badge-icon" />
+                                </span>
                                 <span style={{ fontSize: '13px', color: '#fff' }}>{user.customBadge.name}</span>
                             </div>
                         )}
@@ -1105,6 +1127,8 @@ const AdminDashboard = () => {
     const [customBadgeUploadedKey, setCustomBadgeUploadedKey] = useState('');
     const [customBadgeUploadedUrl, setCustomBadgeUploadedUrl] = useState('');
     const [uploadingCustomBadge, setUploadingCustomBadge] = useState(false);
+    const [customBadgeShape, setCustomBadgeShape] = useState('round');
+    const [customBadgeBorderStyle, setCustomBadgeBorderStyle] = useState('thin');
 
     // Cropper State for Custom Badges
     const [customBadgeCropperImage, setCustomBadgeCropperImage] = useState(null);
@@ -1376,11 +1400,15 @@ const AdminDashboard = () => {
             await axios.post('/api/admin/custom-badges', {
                 name: customBadgeName.trim(),
                 url: customBadgeUploadedUrl,
-                key: customBadgeUploadedKey
+                key: customBadgeUploadedKey,
+                shape: customBadgeShape,
+                borderStyle: customBadgeBorderStyle
             });
             setCustomBadgeName('');
             setCustomBadgeUploadedUrl('');
             setCustomBadgeUploadedKey('');
+            setCustomBadgeShape('round');
+            setCustomBadgeBorderStyle('thin');
             fetchCustomBadges();
             alert('Özel rozet başarıyla eklendi.');
         } catch (err) {
@@ -1399,20 +1427,23 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleCustomBadgeAssign = async (userId, badgeUrl, badgeName) => {
+    const handleCustomBadgeAssign = async (userId, badgeUrl, badgeName, shape = 'round', borderStyle = 'thin') => {
         try {
             const { data } = await axios.post(`/api/admin/users/${userId}/custom-badge`, {
                 url: badgeUrl,
-                name: badgeName
+                name: badgeName,
+                shape,
+                borderStyle
             });
+            const badgeObj = { url: badgeUrl, name: badgeName, shape, borderStyle };
             setUsers(
                 users.map((u) =>
                     u._id === userId
-                        ? { ...u, customBadge: { url: badgeUrl, name: badgeName } }
+                        ? { ...u, customBadge: badgeObj }
                         : u
                 )
             );
-            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, customBadge: { url: badgeUrl, name: badgeName } } : prev);
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, customBadge: badgeObj } : prev);
             alert('Özel rozet kullanıcıya atandı.');
         } catch (err) {
             alert('Rozet atanamadı.');
@@ -1989,20 +2020,23 @@ const AdminDashboard = () => {
         }
     };
 
-    const handlePortalCustomBadgeAssign = async (portalId, badgeUrl, badgeName) => {
+    const handlePortalCustomBadgeAssign = async (portalId, badgeUrl, badgeName, shape = 'round', borderStyle = 'thin') => {
         try {
             await axios.post(`/api/admin/portals/${portalId}/custom-badge`, {
                 url: badgeUrl,
-                name: badgeName
+                name: badgeName,
+                shape,
+                borderStyle
             });
+            const badgeObj = { url: badgeUrl, name: badgeName, shape, borderStyle };
             setPortals(
                 portals.map((p) =>
                     p._id === portalId
-                        ? { ...p, customBadge: { url: badgeUrl, name: badgeName } }
+                        ? { ...p, customBadge: badgeObj }
                         : p
                 )
             );
-            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, customBadge: { url: badgeUrl, name: badgeName } } : prev);
+            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, customBadge: badgeObj } : prev);
             alert('Özel rozet portala atandı.');
         } catch (err) {
             alert('Rozet portala atanamadı.');
@@ -4593,6 +4627,33 @@ const AdminDashboard = () => {
                                         </label>
                                     </div>
 
+                                    <div>
+                                        <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px', fontWeight: '500' }}>Şekil (Form Faktörü)</label>
+                                        <select
+                                            value={customBadgeShape}
+                                            onChange={(e) => setCustomBadgeShape(e.target.value)}
+                                            style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', fontSize: '13px', width: '100%' }}
+                                        >
+                                            <option value="round">Yuvarlak / Dairesel (Klasik İkon)</option>
+                                            <option value="rounded">Hafif Yuvarlatılmış Kare (Modern)</option>
+                                            <option value="none">Çerçevesiz / Ham Görsel Şekli</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px', fontWeight: '500' }}>Kenarlık Efekti</label>
+                                        <select
+                                            value={customBadgeBorderStyle}
+                                            onChange={(e) => setCustomBadgeBorderStyle(e.target.value)}
+                                            style={{ padding: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', fontSize: '13px', width: '100%' }}
+                                        >
+                                            <option value="thin">İnce Şık Çerçeve (Önerilen)</option>
+                                            <option value="subtle">Hafif Saydam Kenarlık</option>
+                                            <option value="glow">Neon / Işıltılı Glow Efekti</option>
+                                            <option value="none">Kenarlık Yok</option>
+                                        </select>
+                                    </div>
+
                                     <button
                                         type="submit"
                                         className="btn-modern-primary"
@@ -4622,8 +4683,16 @@ const AdminDashboard = () => {
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
-                                                <img src={badge.url} alt={badge.name} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                                                <span
+                                                    className={`custom-badge-frame shape-${badge.shape || 'round'} border-${badge.borderStyle || 'thin'}`}
+                                                    style={{ width: '42px', height: '42px' }}
+                                                >
+                                                    <img src={badge.url} alt={badge.name} className="custom-badge-icon" />
+                                                </span>
                                                 <div style={{ color: '#fff', fontSize: '14px', fontWeight: '600', textAlign: 'center' }}>{badge.name}</div>
+                                                <div style={{ color: '#888', fontSize: '11px', textAlign: 'center' }}>
+                                                    {badge.shape === 'rounded' ? 'Kare' : badge.shape === 'none' ? 'Ham' : 'Yuvarlak'} • {badge.borderStyle === 'glow' ? 'Işıltı' : badge.borderStyle === 'subtle' ? 'Saydam' : badge.borderStyle === 'none' ? 'Düz' : 'İnce'}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getImageUrl } from '../utils/imageUtils';
 import { Youtube, ExternalLink } from 'lucide-react';
 import UserBadges from './UserBadges';
+import PortalBadges from './PortalBadges';
 import { extractFirstUrl } from '../utils/linkify';
 import VideoPlayer from './VideoPlayer';
 import UserAvatar from './UserAvatar';
@@ -173,6 +174,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                             />
                         )}
                         <span>{activePost.portal.name}</span>
+                        <PortalBadges portal={activePost.portal} size={14} />
                         <ExternalLink size={10} />
                     </Link>
                 )}

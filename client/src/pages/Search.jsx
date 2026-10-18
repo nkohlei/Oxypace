@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
+import PortalBadges from '../components/PortalBadges';
 import PortalInfoModal from '../components/PortalInfoModal';
 import './Search.css';
 
@@ -354,7 +355,7 @@ const Search = () => {
                                                 <div className="card-body">
                                                     <h3 className="card-title">
                                                         {portal.name}
-                                                        <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
+                                                        <PortalBadges portal={portal} size={18} />
                                                         {portal.isNSFW && (
                                                             <span className="nsfw-tag-inline">+18</span>
                                                         )}

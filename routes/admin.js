@@ -311,7 +311,9 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
         if (customBadge !== undefined) {
             portal.customBadge = {
                 url: customBadge?.url || '',
-                name: customBadge?.name || ''
+                name: customBadge?.name || '',
+                shape: customBadge?.shape || 'round',
+                borderStyle: customBadge?.borderStyle || 'thin'
             };
         }
 
@@ -332,7 +334,7 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
     try {
-        const { url, name } = req.body;
+        const { url, name, shape, borderStyle } = req.body;
         const Portal = await import('../models/Portal.js').then(m => m.default);
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
@@ -341,7 +343,9 @@ router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
 
         portal.customBadge = {
             url: url || '',
-            name: name || ''
+            name: name || '',
+            shape: shape || 'round',
+            borderStyle: borderStyle || 'thin'
         };
 
         await portal.save();
@@ -999,12 +1003,18 @@ router.get('/custom-badges', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/custom-badges', protect, admin, async (req, res) => {
     try {
-        const { name, url, key } = req.body;
+        const { name, url, key, shape, borderStyle } = req.body;
         if (!name || !url || !key) {
             return res.status(400).json({ message: 'Lütfen rozet adı, görsel URL ve anahtarını belirtin.' });
         }
 
-        const badge = await CustomBadge.create({ name, url, key });
+        const badge = await CustomBadge.create({
+            name,
+            url,
+            key,
+            shape: shape || 'round',
+            borderStyle: borderStyle || 'thin'
+        });
         res.status(201).json(badge);
     } catch (error) {
         console.error('Create custom badge error:', error);
@@ -1049,7 +1059,7 @@ router.delete('/custom-badges/:id', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
     try {
-        const { url, name } = req.body;
+        const { url, name, shape, borderStyle } = req.body;
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
@@ -1061,7 +1071,9 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
 
         user.customBadge = {
             url: url || '',
-            name: name || ''
+            name: name || '',
+            shape: shape || 'round',
+            borderStyle: borderStyle || 'thin'
         };
 
         await user.save();

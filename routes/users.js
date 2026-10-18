@@ -327,12 +327,12 @@ router.get('/me', protect, async (req, res) => {
         const [user, postCount, outgoingUserRequests, outgoingPortalRequests, ownedPortals] = await Promise.all([
             User.findById(req.user._id)
                 .select('-password -verificationToken')
-                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor')
+                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy')
                 .populate('following', 'username profile.displayName profile.avatar profile.lowResAvatar'),
             Post.countDocuments({ author: req.user._id }),
             User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar profile.lowResAvatar'),
             Portal.find({ joinRequests: req.user._id }).select('name avatar lowResAvatar privacy'),
-            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar banner themeColor')
+            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy')
         ]);
 
         // Pre-build follower ID set for fast lookup

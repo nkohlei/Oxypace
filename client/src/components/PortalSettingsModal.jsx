@@ -3,6 +3,7 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
+import PortalBadges from './PortalBadges';
 
 import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio } from 'lucide-react';
 import './PortalSettingsModal.css';
@@ -580,7 +581,10 @@ const PortalSettingsModal = ({
                 {/* Sidebar */}
                 <div className="settings-sidebar">
                     <div className="sidebar-header">
-                        <div className="sidebar-portal-name">{portal.name}</div>
+                        <div className="sidebar-portal-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>{portal.name}</span>
+                            <PortalBadges portal={portal} size={16} />
+                        </div>
                     </div>
 
                     <div

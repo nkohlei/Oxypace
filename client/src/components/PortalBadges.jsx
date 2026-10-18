@@ -16,22 +16,29 @@ const PortalBadges = ({ portal, size = 18 }) => {
 
     if (!systemBadge && !hasCustom) return null;
 
+    const shape = portal.customBadge?.shape || 'round';
+    const borderStyle = portal.customBadge?.borderStyle || 'thin';
+
     return (
         <span className="portal-badges-container" onClick={(e) => e.stopPropagation()}>
             {systemBadge && (
                 <Badge type={systemBadge} size={size} />
             )}
             {hasCustom && (
-                <img
-                    src={getImageUrl(portal.customBadge.url)}
-                    alt={portal.customBadge.name || 'Özel Portal Rozeti'}
-                    title={portal.customBadge.name || 'Özel Portal Rozeti'}
-                    className="portal-custom-badge"
+                <span
+                    className={`custom-badge-frame shape-${shape} border-${borderStyle}`}
                     style={{
                         width: `${size}px`,
-                        height: `${size}px`
+                        height: `${size}px`,
                     }}
-                />
+                    title={portal.customBadge.name || 'Özel Portal Rozeti'}
+                >
+                    <img
+                        src={getImageUrl(portal.customBadge.url)}
+                        alt={portal.customBadge.name || 'Özel Portal Rozeti'}
+                        className="custom-badge-icon"
+                    />
+                </span>
             )}
         </span>
     );

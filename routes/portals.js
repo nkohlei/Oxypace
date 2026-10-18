@@ -209,7 +209,7 @@ router.get('/showcase', optionalProtect, async (req, res) => {
             name: { $regex: /^Oxypace Global$/i },
             status: { $ne: 'closed' }
         })
-        .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+        .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status')
         .populate('members', 'isDeleted');
 
         // Fallback if not named exactly "Oxypace Global"
@@ -220,7 +220,7 @@ router.get('/showcase', optionalProtect, async (req, res) => {
                 isNSFW: { $ne: true }
             })
             .sort({ 'members.length': -1 })
-            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status')
             .populate('members', 'isDeleted');
         }
 
@@ -263,7 +263,7 @@ router.get('/showcase', optionalProtect, async (req, res) => {
                 status: 'active',
                 privacy: { $in: ['public', 'private'] }
             })
-            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status')
             .populate('members', 'isDeleted');
 
             topPortals = activePortalIds
@@ -280,7 +280,7 @@ router.get('/showcase', optionalProtect, async (req, res) => {
                 status: 'active',
                 privacy: { $in: ['public', 'private'] }
             })
-            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status')
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status')
             .populate('members', 'isDeleted')
             .limit(10);
 
@@ -555,18 +555,18 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
             .populate({
                 path: 'promotedPortal',
-                select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status'
+                select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status'
             })
             .populate({
                 path: 'quotedPost',
                 populate: [
                     { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
-                    { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers' },
+                    { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers badges customBadge isVerified' },
                     {
                         path: 'quotedPost',
                         populate: [
                             { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
-                            { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers' }
+                            { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers badges customBadge isVerified' }
                         ]
                     }
                 ]

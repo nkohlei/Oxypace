@@ -15,6 +15,16 @@ const customBadgeSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        shape: {
+            type: String,
+            enum: ['round', 'rounded', 'none'],
+            default: 'round',
+        },
+        borderStyle: {
+            type: String,
+            enum: ['thin', 'subtle', 'glow', 'none'],
+            default: 'thin',
+        },
     },
     {
         timestamps: true,

@@ -84,6 +84,14 @@ const portalSchema = new mongoose.Schema(
                 type: String,
                 default: '',
             },
+            shape: {
+                type: String,
+                default: 'round',
+            },
+            borderStyle: {
+                type: String,
+                default: 'thin',
+            },
         },
         status: {
             type: String,

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Users, Globe, Lock, Check, Clock, Compass, ArrowRight, ShieldCheck } from 'lucide-react';
 import PortalInfoModal from './PortalInfoModal';
+import PortalBadges from './PortalBadges';
 import './PromotedPortalCard.css';
 
 const PromotedPortalCard = ({ portal }) => {
@@ -139,8 +140,9 @@ const PromotedPortalCard = ({ portal }) => {
                     </div>
 
                     <div className="promoted-title-col">
-                        <div className="promoted-title-row">
+                        <div className="promoted-title-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <h4 className="promoted-portal-name">{portal.name}</h4>
+                            <PortalBadges portal={portal} size={16} />
                         </div>
                         <div className="promoted-members-meta">
                             <Users size={13} className="meta-icon" />

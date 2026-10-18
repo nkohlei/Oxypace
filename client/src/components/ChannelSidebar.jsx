@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useUI } from '../context/UIContext';
 import InviteUserModal from './InviteUserModal';
 import Badge from './Badge';
+import PortalBadges from './PortalBadges';
 import UserBar from './UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useVoice } from '../context/VoiceContext';
@@ -278,7 +279,7 @@ const ChannelSidebar = ({
                         <div className="portal-info-main" onClick={() => onShowPortalInfo && onShowPortalInfo()}>
                             <h2 className="portal-title-text">
                                 {portal.name}
-                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={16} />
+                                <PortalBadges portal={portal} size={18} />
                             </h2>
                             <div className="portal-stats-row">
                                 <div className="stat-item">

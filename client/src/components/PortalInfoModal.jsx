@@ -215,7 +215,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
                     <img src={getImageUrl(portalData.avatar)} alt={portalData.name} className="portal-info-avatar-img" />
                 </div>
                 <div className="portal-info-top-actions">
-                    {!window.location.pathname.includes(`/portal/${currentPortalId}`) && (
+                    {!window.location.pathname.includes(`/portal/${currentPortalId}`) && !(portalData.privacy === 'private' && !isCurrentUserMember) && (
                         <button 
                             type="button"
                             className="portal-info-go-btn"

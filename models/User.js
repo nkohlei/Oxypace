@@ -62,6 +62,14 @@ const userSchema = new mongoose.Schema(
                 type: String,
                 default: '',
             },
+            shape: {
+                type: String,
+                default: 'round',
+            },
+            borderStyle: {
+                type: String,
+                default: 'thin',
+            },
         },
         verificationRequest: {
             status: {

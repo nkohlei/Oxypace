@@ -5,22 +5,76 @@
     vertical-align: middle;
     margin-left: 6px;
     margin-right: 6px;
+    line-height: 1;
 }
 
-.user-custom-badge {
-    object-fit: contain;
+/* Custom Icon Badge Frame: Snug fit, no empty gaps, thin sleek border */
+.custom-badge-frame {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    padding: 0;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.custom-badge-frame:hover {
+    transform: scale(1.18);
+}
+
+/* Frame Shapes */
+.custom-badge-frame.shape-round {
+    border-radius: 50%;
+}
+
+.custom-badge-frame.shape-rounded {
     border-radius: 4px;
-    padding: 1px;
-    background: rgba(255, 255, 255, 0.08);
+}
+
+.custom-badge-frame.shape-none {
+    border-radius: 50%;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Border Styles - Hairline thin, elegant styling */
+.custom-badge-frame.border-thin {
+    border: 0.75px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-    display: inline-block;
-    vertical-align: middle;
-    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
-.user-custom-badge:hover {
-    transform: scale(1.15);
+.custom-badge-frame.border-subtle {
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.custom-badge-frame.border-glow {
+    border: 0.75px solid rgba(99, 102, 241, 0.6);
+    background: rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
+}
+
+.custom-badge-frame.border-none {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Icon image inside frame: fits perfectly edge-to-edge */
+.custom-badge-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    pointer-events: none;
 }

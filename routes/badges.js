@@ -71,10 +71,50 @@ const DEFAULT_BADGES = [
         style: { type: 'solid', primaryColor: '#808080', secondaryColor: '', animationType: 'none', glowColor: '', borderStyle: 'none' },
         isDefault: true,
     },
+    {
+        name: 'VIP Lider',
+        slug: 'vip',
+        icon: 'crown',
+        category: 'both',
+        style: { type: 'gradient', primaryColor: '#f59e0b', secondaryColor: '#ec4899', animationType: 'glow', glowColor: 'rgba(245, 158, 11, 0.45)', borderStyle: 'none' },
+        isDefault: true,
+    },
+    {
+        name: 'Kurucu / Pioneer',
+        slug: 'founder',
+        icon: 'rocket',
+        category: 'both',
+        style: { type: 'gradient', primaryColor: '#06b6d4', secondaryColor: '#8b5cf6', animationType: 'pulse', glowColor: 'rgba(6, 182, 212, 0.45)', borderStyle: 'none' },
+        isDefault: true,
+    },
+    {
+        name: 'Çekirdek Geliştirici',
+        slug: 'dev',
+        icon: 'atom',
+        category: 'both',
+        style: { type: 'iridescent', primaryColor: '#10b981', secondaryColor: '#3b82f6', animationType: 'shimmer', glowColor: 'rgba(16, 185, 129, 0.45)', borderStyle: 'none' },
+        isDefault: true,
+    },
+    {
+        name: 'Bilim & Araştırma',
+        slug: 'science',
+        icon: 'atom',
+        category: 'both',
+        style: { type: 'gradient', primaryColor: '#38bdf8', secondaryColor: '#6366f1', animationType: 'glow', glowColor: 'rgba(56, 189, 248, 0.45)', borderStyle: 'none' },
+        isDefault: true,
+    },
+    {
+        name: 'İçerik Üreticisi',
+        slug: 'creator',
+        icon: 'sparkle',
+        category: 'both',
+        style: { type: 'gradient', primaryColor: '#ec4899', secondaryColor: '#f43f5e', animationType: 'pulse', glowColor: 'rgba(236, 72, 153, 0.4)', borderStyle: 'none' },
+        isDefault: true,
+    },
 ];
 
 // @route   GET /api/badges/seed
-// @desc    Seed default badges (run once)
+// @desc    Seed default badges (run once or update)
 // @access  Private/Admin
 router.post('/seed', protect, admin, async (req, res) => {
     try {
@@ -98,7 +138,7 @@ router.post('/seed', protect, admin, async (req, res) => {
 // @access  Public (needed to render badges everywhere)
 router.get('/', async (req, res) => {
     try {
-        const badges = await Badge.find().sort({ isDefault: -1, createdAt: 1 });
+        const badges = await Badge.find().sort({ isDefault: -1, name: 1 });
         res.json(badges);
     } catch (error) {
         console.error('Fetch badges error:', error);
