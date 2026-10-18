@@ -218,7 +218,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             } catch (e) {}
         }
         logout();
-        window.location.replace('/');
+        navigate('/', { replace: true });
     };
 
     const handleLogoClick = (e) => {

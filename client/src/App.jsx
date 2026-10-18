@@ -709,7 +709,11 @@ const AppLayout = () => {
                                 } />
 
                                 {/* Portal Route */}
-                                <Route path="/portal/:id" element={<Portal />} />
+                                <Route path="/portal/:id" element={
+                                    <PrivateRoute>
+                                        <Portal />
+                                    </PrivateRoute>
+                                } />
                                 <Route
                                     path="/map"
                                     element={
@@ -727,7 +731,11 @@ const AppLayout = () => {
                                         </PrivateRoute>
                                     }
                                 />
-                                <Route path="/search" element={<Search />} />
+                                <Route path="/search" element={
+                                    <PrivateRoute>
+                                        <Search />
+                                    </PrivateRoute>
+                                } />
                                 <Route
                                     path="/profile"
                                     element={
@@ -736,7 +744,11 @@ const AppLayout = () => {
                                         </PrivateRoute>
                                     }
                                 />
-                                <Route path="/profile/:username" element={<Profile />} />
+                                <Route path="/profile/:username" element={
+                                    <PrivateRoute>
+                                        <Profile />
+                                    </PrivateRoute>
+                                } />
                                 <Route
                                     path="/inbox"
                                     element={<Navigate to="/messages" replace />}
@@ -781,7 +793,11 @@ const AppLayout = () => {
                                         </PrivateRoute>
                                     }
                                 />
-                                <Route path="/post/:postId" element={<PostDetail />} />
+                                <Route path="/post/:postId" element={
+                                    <PrivateRoute>
+                                        <PostDetail />
+                                    </PrivateRoute>
+                                } />
                                 <Route
                                     path="/comment/:commentId"
                                     element={

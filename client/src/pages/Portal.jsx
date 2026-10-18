@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Lenis from 'lenis';
 import { uploadFile } from '../utils/uploadUtils';
@@ -1206,6 +1206,11 @@ const Portal = () => {
         const interval = setInterval(updateCountdown, 1000);
         return () => clearInterval(interval);
     }, [suspensionInfo]);
+
+    // Guest protection: If no token/session, redirect directly to Home (no flash, no lock screen)
+    if (!token && !authLoading) {
+        return <Navigate to="/" replace />;
+    }
 
     // Error State — Suspended/Closed Portal
     if (error === 'suspended' && suspensionInfo) {

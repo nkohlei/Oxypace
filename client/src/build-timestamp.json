@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T03:10:00.000Z",
-  "reason": "Fix React Minified Error #300 by eliminating early returns before hooks in Navbar, Home, ChannelSidebar and VideoDownloadModal"
+  "lastBuild": "2026-10-18T03:51:00.000Z",
+  "reason": "Protect internal platform routes with PrivateRoute to ensure instant redirect to Home without content or lock screen flash on logout or guest visits"
 }

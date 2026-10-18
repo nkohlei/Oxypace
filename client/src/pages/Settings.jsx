@@ -574,7 +574,7 @@ const Settings = () => {
             } catch (e) {}
         }
         logout();
-        navigate('/login');
+        navigate('/', { replace: true });
     };
 
     // Check for mobile/window width to adjust layout logic if needed
