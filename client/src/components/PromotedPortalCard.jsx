@@ -78,7 +78,10 @@ const PromotedPortalCard = ({ portal }) => {
 
     const isPrivate = portal.privacy === 'private' || portal.privacy === 'restricted';
     const bannerUrl = portal.banner ? getImageUrl(portal.banner) : null;
-    const avatarUrl = portal.lowResAvatar || portal.avatar ? getImageUrl(portal.lowResAvatar || portal.avatar) : null;
+    const isGifAvatar = portal.avatar && /\.gif($|\?)/i.test(portal.avatar);
+    const avatarUrl = portal.avatar || portal.lowResAvatar 
+        ? getImageUrl(isGifAvatar ? portal.avatar : (portal.lowResAvatar || portal.avatar)) 
+        : null;
 
     return (
         <div className="promoted-portal-card" onClick={handleCardClick} role="button" tabIndex={0}>

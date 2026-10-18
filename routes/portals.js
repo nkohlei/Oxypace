@@ -814,8 +814,9 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
         }
 
         const result = await processAndUploadMultiResAvatars(targetAvatarKey);
+        const isGif = Boolean(result.original && /\.gif($|\?)/i.test(result.original));
         portal.avatar = result.original;
-        portal.lowResAvatar = result.lowRes;
+        portal.lowResAvatar = isGif ? '' : result.lowRes;
 
         await portal.save();
         await portal.populate('owner', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');

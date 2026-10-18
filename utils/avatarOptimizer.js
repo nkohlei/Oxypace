@@ -43,6 +43,21 @@ export async function processAndUploadMultiResAvatars(mediaKeyOrFile) {
     const folder = parsedPath.dir || 'avatars';
     const baseName = parsedPath.name;
 
+    const isGif = parsedPath.ext?.toLowerCase() === '.gif' ||
+                  (mediaKeyOrFile && mediaKeyOrFile.mimetype === 'image/gif') ||
+                  (inputBuffer && inputBuffer.length >= 3 && inputBuffer.toString('utf8', 0, 3) === 'GIF');
+
+    // GIF animation protection: Do not convert animated GIFs to static WebP thumbnails
+    if (isGif) {
+        const originalUrl = constructProxiedUrl(originalKey);
+        return {
+            original: originalUrl,
+            medium: originalUrl,
+            thumbnail: originalUrl,
+            lowRes: originalUrl
+        };
+    }
+
     // Initialize sharp
     const sharpInstance = sharp(inputBuffer);
 

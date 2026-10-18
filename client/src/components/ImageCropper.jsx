@@ -4,7 +4,9 @@ import {
     getMinScale,
     clampOffset,
     cropImage,
+    getCropRect,
 } from '../utils/cropperUtils';
+import axios from 'axios';
 import { X, RotateCcw, RotateCw, ZoomIn, ZoomOut, RefreshCw, Compass } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
 import './ImageCropper.css';
@@ -461,7 +463,35 @@ const ImageCropper = ({
         try {
             if (isGif) {
                 const uploadPurpose = mode === 'avatar' ? 'avatar' : 'cover';
-                const mediaKey = await uploadFile(file, uploadPurpose, portalId);
+                const outputSize = getOutputSize();
+                const w = imageObj.naturalWidth || imageObj.width;
+                const h = imageObj.naturalHeight || imageObj.height;
+                const cropRect = getCropRect(w, h, cropSize, scale, offset);
+
+                let mediaKey;
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('gif', file);
+                    formData.append('sourceX', cropRect.left);
+                    formData.append('sourceY', cropRect.top);
+                    formData.append('sourceWidth', cropRect.width);
+                    formData.append('sourceHeight', cropRect.height);
+                    formData.append('outputWidth', outputSize.width);
+                    formData.append('outputHeight', outputSize.height);
+                    formData.append('rotation', 0);
+                    formData.append('purpose', uploadPurpose);
+                    if (portalId) {
+                        formData.append('portalId', portalId);
+                    }
+
+                    const res = await axios.post('/api/media/process-gif', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    mediaKey = res.data.mediaKey;
+                } else {
+                    mediaKey = await uploadFile(file, uploadPurpose, portalId);
+                }
+
                 onComplete(mediaKey);
             } else {
                 const outputSize = getOutputSize();
@@ -686,7 +716,7 @@ const ImageCropper = ({
 
                     {isGif && (
                         <div className="cropper-gif-notice">
-                            [!] HAREKETLİ GIF: ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR
+                            [!] HAREKETLİ GIF: KADRAJ VE ÖLÇEĞİ AYARLAYABİLİRSİNİZ (ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR)
                         </div>
                     )}
 

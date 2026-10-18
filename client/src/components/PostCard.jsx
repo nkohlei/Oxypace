@@ -556,7 +556,11 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     onClick={(e) => e.stopPropagation()}
                 >
                     <UserAvatar
-                        src={author.profile?.lowResAvatar || author.profile?.avatar}
+                        src={
+                            (author.profile?.avatar && /\.gif($|\?)/i.test(author.profile?.avatar))
+                                ? author.profile?.avatar
+                                : (author.profile?.lowResAvatar || author.profile?.avatar)
+                        }
                         alt={author.username}
                         className="author-avatar"
                         size={40}

@@ -260,7 +260,11 @@ const PortalSidebar = () => {
                                     <div className="portal-icon">
                                         {portal.avatar ? (
                                             <img 
-                                                src={getImageUrl(portal.lowResAvatar || portal.avatar, failedThumbnails[portal._id] ? 'original' : 'thumbnail')} 
+                                                src={
+                                                    (/\.gif($|\?)/i.test(portal.avatar))
+                                                        ? getImageUrl(portal.avatar, 'original')
+                                                        : getImageUrl(portal.lowResAvatar || portal.avatar, failedThumbnails[portal._id] ? 'original' : 'thumbnail')
+                                                } 
                                                 alt={portal.name} 
                                                 draggable="false" 
                                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}

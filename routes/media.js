@@ -198,7 +198,8 @@ router.post('/process-gif', auth, (req, res, next) => {
         // Reuse the same instance for metadata (avoids double decode)
         const metadata = await sharpInstance.metadata();
         const originalWidth = metadata.width || 1;
-        const originalHeight = metadata.height || 1;
+        // In sharp with animated: true, pageHeight is the height of a single frame
+        const originalHeight = metadata.pageHeight || metadata.height || 1;
 
         // Calculate effective dimensions after rotation
         const normalizedAngle = ((Number(rotation) % 360) + 360) % 360;
@@ -214,10 +215,10 @@ router.post('/process-gif', auth, (req, res, next) => {
         }
 
         // Clamp crop coordinates to image bounds (sharp requires integers)
-        const cropLeft = Math.max(0, Math.round(Number(sourceX)));
-        const cropTop  = Math.max(0, Math.round(Number(sourceY)));
-        const cropWidth  = Math.max(1, Math.round(Number(sourceWidth)));
-        const cropHeight = Math.max(1, Math.round(Number(sourceHeight)));
+        const cropLeft = Math.max(0, Math.round(Number(sourceX) || 0));
+        const cropTop  = Math.max(0, Math.round(Number(sourceY) || 0));
+        const cropWidth  = Math.max(1, Math.round(Number(sourceWidth) || rotatedWidth));
+        const cropHeight = Math.max(1, Math.round(Number(sourceHeight) || rotatedHeight));
 
         const finalLeft   = Math.min(cropLeft,  rotatedWidth  - 1);
         const finalTop    = Math.min(cropTop,   rotatedHeight - 1);
@@ -231,10 +232,19 @@ router.post('/process-gif', auth, (req, res, next) => {
             height: finalHeight,
         });
 
-        const outputBuffer = await pipeline.toBuffer();
+        // Resize if requested
+        if (req.body.outputWidth && req.body.outputHeight) {
+            const outW = Math.round(Number(req.body.outputWidth));
+            const outH = Math.round(Number(req.body.outputHeight));
+            if (outW > 0 && outH > 0) {
+                pipeline = pipeline.resize(outW, outH);
+            }
+        }
+
+        const outputBuffer = await pipeline.gif({ loop: 0 }).toBuffer();
 
         // 2. Upload processed GIF to R2
-        const folder = purpose === 'avatar' ? 'avatars' : 'banners';
+        const folder = purpose === 'avatar' ? 'avatars' : (purpose === 'banner' || purpose === 'cover' ? 'banners' : 'uploads');
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const processedKey = `${folder}/${purpose || 'cropped'}-${uniqueSuffix}.gif`;
         const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';

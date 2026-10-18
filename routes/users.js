@@ -933,8 +933,9 @@ router.post(
             }
 
             const result = await processAndUploadMultiResAvatars(targetAvatarKey);
+            const isGif = Boolean(result.original && /\.gif($|\?)/i.test(result.original));
             user.profile.avatar = result.original;
-            user.profile.lowResAvatar = result.lowRes;
+            user.profile.lowResAvatar = isGif ? '' : result.lowRes;
 
              await user.save();
 

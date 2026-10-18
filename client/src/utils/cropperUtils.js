@@ -154,3 +154,30 @@ export async function cropImage(image, cropSize, scale, offset, rotation = 0, ou
         );
     });
 }
+
+/**
+ * Verilen vizör ve ölçek/offset değerlerine göre orijinal görsel koordinatlarındaki kırpma dikdörtgenini hesaplar.
+ * Animasyonlu GIF gibi backend'de kırpılan medyalar için kullanılır.
+ *
+ * @param {number} naturalWidth - Orijinal görsel genişliği
+ * @param {number} naturalHeight - Orijinal görsel yüksekliği
+ * @param {{width: number, height: number}} cropSize - Vizör boyutları
+ * @param {number} scale - Zoom ölçeği
+ * @param {{x: number, y: number}} offset - Görselin merkez deplasmanı
+ * @returns {{left: number, top: number, width: number, height: number}}
+ */
+export function getCropRect(naturalWidth, naturalHeight, cropSize, scale, offset = { x: 0, y: 0 }) {
+    if (!naturalWidth || !naturalHeight || !cropSize || !scale) {
+        return { left: 0, top: 0, width: naturalWidth || 1, height: naturalHeight || 1 };
+    }
+
+    const cropLeftInScaled = (naturalWidth * scale - cropSize.width) / 2 - (offset.x || 0);
+    const cropTopInScaled = (naturalHeight * scale - cropSize.height) / 2 - (offset.y || 0);
+
+    const left = Math.max(0, Math.round(cropLeftInScaled / scale));
+    const top = Math.max(0, Math.round(cropTopInScaled / scale));
+    const width = Math.max(1, Math.min(naturalWidth - left, Math.round(cropSize.width / scale)));
+    const height = Math.max(1, Math.min(naturalHeight - top, Math.round(cropSize.height / scale)));
+
+    return { left, top, width, height };
+}

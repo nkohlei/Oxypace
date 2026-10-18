@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T18:10:00.000Z",
-  "reason": "Display PortalInfoModal for non-member private portals and support custom portal badges"
+  "lastBuild": "2026-10-18T19:07:00.000Z",
+  "reason": "Full animated GIF support in ImageCropper, avatars and portal sidebars with lossless multi-frame extraction"
 }

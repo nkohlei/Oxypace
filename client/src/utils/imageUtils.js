@@ -77,6 +77,13 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 const queryPart = pathParts[1] ? `?${pathParts[1]}` : '';
                 const lastDotIdx = pathPart.lastIndexOf('.');
                 if (lastDotIdx !== -1) {
+                    const ext = pathPart.substring(lastDotIdx).toLowerCase();
+                    if (ext === '.gif') {
+                        // Preserve original GIF animation, do not replace with static webp
+                        return relativePath.startsWith('http')
+                            ? `${baseUrl}/api/media/${encodeURIComponent(relativePath)}`
+                            : `${baseUrl}/api/media/${relativePath}`;
+                    }
                     const pathWithoutExt = pathPart.substring(0, lastDotIdx);
                     const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
                     if (!isLegacyAvatar) {
@@ -155,6 +162,11 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 const queryPart = urlParts[1] ? `?${urlParts[1]}` : '';
                 const lastDotIdx = pathPart.lastIndexOf('.');
                 if (lastDotIdx !== -1) {
+                    const ext = pathPart.substring(lastDotIdx).toLowerCase();
+                    if (ext === '.gif') {
+                        // Preserve original GIF animation, do not replace with static webp
+                        return absoluteUrl;
+                    }
                     const pathWithoutExt = pathPart.substring(0, lastDotIdx);
                     const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
                     if (!isLegacyAvatar) {
