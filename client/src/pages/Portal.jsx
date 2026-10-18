@@ -1556,42 +1556,26 @@ const Portal = () => {
                                                         </header>
                                                     )}
                                                     {error === 'private' ? (
-                                                        <div className="portal-privacy-screen">
-                                                            <div className="privacy-card">
-                                                                <div className="privacy-icon">🔒</div>
-                                                                <img
-                                                                    src={getImageUrl(portal.avatar)}
-                                                                    alt=""
-                                                                    className="privacy-avatar"
-                                                                    loading="lazy"
-                                                                    decoding="async"
-                                                                    width="80"
-                                                                    height="80"
-                                                                />
-                                                                <h2>{portal.name}</h2>
-                                                                <p className="privacy-desc">
-                                                                    {portal.description || 'Bu portal gizlidir.'}
-                                                                </p>
-                                                                <p className="privacy-hint">
-                                                                    İçeriği görmek ve mesajlaşmak için üye olmalısın.
-                                                                </p>
-
-                                                                {portal.isRequested ? (
-                                                                    <button className="privacy-join-btn requested" disabled>
-                                                                        İstek Gönderildi
-                                                                    </button>
-                                                                ) : (
-                                                                    <button
-                                                                        className="privacy-join-btn"
-                                                                        onClick={handleJoin}
-                                                                    >
-                                                                        {portal.privacy === 'private'
-                                                                            ? 'Üyelik İsteği Gönder'
-                                                                            : 'Portala Katıl'}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
+                                                        <PortalInfoModal
+                                                            portal={portal}
+                                                            onClose={() => {
+                                                                if (window.history.length > 2) {
+                                                                    navigate(-1);
+                                                                } else {
+                                                                    navigate('/search');
+                                                                }
+                                                            }}
+                                                            isMobile={isMobileView}
+                                                            onJoinStatusChange={(status) => {
+                                                                if (status === 'requested') {
+                                                                    setPortal((prev) => (prev ? { ...prev, isRequested: true } : prev));
+                                                                } else if (status === 'joined') {
+                                                                    setIsMember(true);
+                                                                    setError('');
+                                                                    fetchPosts();
+                                                                }
+                                                            }}
+                                                        />
                                                     ) : (
                                                         <>
                                                             {/* Admin Alert Banner */}

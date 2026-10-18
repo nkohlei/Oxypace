@@ -7,7 +7,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
 import './PortalInfoModal.css';
 
-const PortalInfoModal = ({ portal, onClose, isMobile, onLeave }) => {
+const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChange }) => {
     const [portalData, setPortalData] = useState(portal || {});
     const [leaving, setLeaving] = useState(false);
     const [joining, setJoining] = useState(false);
@@ -114,6 +114,9 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave }) => {
                 setPortalData((prev) => ({ ...prev, isRequested: true }));
                 alert('Üyelik isteğiniz iletildi.');
             }
+            if (onJoinStatusChange) {
+                onJoinStatusChange(res.data.status, currentPortalId);
+            }
         } catch (err) {
             console.error('Katılma hatası:', err);
             alert(err.response?.data?.message || 'Katılma işlemi başarısız oldu.');
@@ -211,18 +214,20 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave }) => {
                     <img src={getImageUrl(portalData.avatar)} alt={portalData.name} className="portal-info-avatar-img" />
                 </div>
                 <div className="portal-info-top-actions">
-                    <button 
-                        type="button"
-                        className="portal-info-go-btn"
-                        onClick={() => {
-                            onClose();
-                            navigate(`/portal/${currentPortalId}`);
-                        }}
-                        title="Portala Git"
-                    >
-                        <span>Git</span>
-                        <ArrowUpRight size={14} className="portal-go-icon" />
-                    </button>
+                    {!window.location.pathname.includes(`/portal/${currentPortalId}`) && (
+                        <button 
+                            type="button"
+                            className="portal-info-go-btn"
+                            onClick={() => {
+                                onClose();
+                                navigate(`/portal/${currentPortalId}`);
+                            }}
+                            title="Portala Git"
+                        >
+                            <span>Git</span>
+                            <ArrowUpRight size={14} className="portal-go-icon" />
+                        </button>
+                    )}
                     <button className="portal-info-close" onClick={onClose} aria-label="Kapat">
                         <X size={18} />
                     </button>

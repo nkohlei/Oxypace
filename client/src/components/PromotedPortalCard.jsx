@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Users, Globe, Lock, Check, Clock, Compass, ArrowRight, ShieldCheck } from 'lucide-react';
+import PortalInfoModal from './PortalInfoModal';
 import './PromotedPortalCard.css';
 
 const PromotedPortalCard = ({ portal }) => {
@@ -18,6 +19,7 @@ const PromotedPortalCard = ({ portal }) => {
     const [isMember, setIsMember] = useState(Boolean(portal.isMember));
     const [isRequested, setIsRequested] = useState(Boolean(portal.isRequested));
     const [memberCount, setMemberCount] = useState(Number(portal.memberCount) || 0);
+    const [showInfoModal, setShowInfoModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -66,7 +68,11 @@ const PromotedPortalCard = ({ portal }) => {
     };
 
     const handleCardClick = () => {
-        navigate(`/portal/${portal._id}`);
+        if (portal.privacy === 'private' && !isMember) {
+            setShowInfoModal(true);
+        } else {
+            navigate(`/portal/${portal._id}`);
+        }
     };
 
     const isPrivate = portal.privacy === 'private' || portal.privacy === 'restricted';
@@ -197,6 +203,22 @@ const PromotedPortalCard = ({ portal }) => {
                     </button>
                 </div>
             </div>
+
+            {showInfoModal && (
+                <PortalInfoModal
+                    portal={portal}
+                    onClose={() => setShowInfoModal(false)}
+                    isMobile={window.innerWidth <= 768}
+                    onJoinStatusChange={(status) => {
+                        if (status === 'requested') {
+                            setIsRequested(true);
+                        } else if (status === 'joined') {
+                            setIsMember(true);
+                            setMemberCount((prev) => prev + 1);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };

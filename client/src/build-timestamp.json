@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T04:14:00.000Z",
-  "reason": "Completely remove old starry quote home page and synchronize client SPA Home to new landing page"
+  "lastBuild": "2026-10-18T04:42:00.000Z",
+  "reason": "Display PortalInfoModal instead of legacy privacy card when clicking or accessing unjoined private portals"
 }

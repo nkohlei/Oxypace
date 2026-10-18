@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
+import PortalInfoModal from '../components/PortalInfoModal';
 import './Search.css';
 
 const Search = () => {
@@ -14,6 +15,7 @@ const Search = () => {
     const [query, setQuery] = useState('');
     const [userResults, setUserResults] = useState([]);
     const [portalResults, setPortalResults] = useState([]);
+    const [selectedPortalForInfo, setSelectedPortalForInfo] = useState(null);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
     const [activeTab, setActiveTab] = useState('portals'); // 'portals' or 'users'
@@ -153,6 +155,32 @@ const Search = () => {
         return 'linear-gradient(135deg, #18181b 0%, #27272a 50%, #3f3f46 100%)';
     };
 
+    const isUserMemberOfPortal = (targetPortal) => {
+        if (!targetPortal) return false;
+        if (targetPortal.isMember) return true;
+        const currentUserId = user?._id?.toString();
+        const ownerId = (targetPortal.owner?._id || targetPortal.owner)?.toString();
+        if (currentUserId && ownerId && currentUserId === ownerId) return true;
+        if (user && Array.isArray(user.joinedPortals)) {
+            const portalIdStr = targetPortal._id?.toString();
+            if (user.joinedPortals.some((p) => (p?._id || p)?.toString() === portalIdStr)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const handlePortalCardClick = (targetPortal) => {
+        const isMember = isUserMemberOfPortal(targetPortal);
+        const isPrivate = targetPortal.privacy === 'private' || targetPortal.isPrivate === true;
+
+        if (isPrivate && !isMember) {
+            setSelectedPortalForInfo(targetPortal);
+        } else {
+            navigate(`/portal/${targetPortal._id}`);
+        }
+    };
+
     return (
         <div className="app-wrapper search-page-wrapper">
             <Navbar />
@@ -285,7 +313,7 @@ const Search = () => {
                                             <div
                                                 key={portal._id}
                                                 className="modern-portal-card"
-                                                onClick={() => navigate(`/portal/${portal._id}`)}
+                                                onClick={() => handlePortalCardClick(portal)}
                                             >
                                                 {/* Banner */}
                                                 <div
@@ -470,6 +498,28 @@ const Search = () => {
                     )}
                 </div>
             </main>
+
+            {selectedPortalForInfo && (
+                <PortalInfoModal
+                    portal={selectedPortalForInfo}
+                    onClose={() => setSelectedPortalForInfo(null)}
+                    isMobile={window.innerWidth <= 768}
+                    onJoinStatusChange={(status, pId) => {
+                        setPortalResults((prev) =>
+                            prev.map((p) => {
+                                if (p._id === pId) {
+                                    if (status === 'requested') {
+                                        return { ...p, isRequested: true };
+                                    } else if (status === 'joined') {
+                                        return { ...p, isMember: true, memberCount: (p.memberCount || 0) + 1 };
+                                    }
+                                }
+                                return p;
+                            })
+                        );
+                    }}
+                />
+            )}
         </div>
     );
 };
