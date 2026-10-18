@@ -8,6 +8,15 @@
     line-height: 1;
 }
 
+/* When placed inside a flex row with gap, eliminate double-spacing margin */
+.portal-title-text .portal-badges-container,
+.promoted-title-row .portal-badges-container,
+.sidebar-portal-name .portal-badges-container,
+.card-title .portal-badges-container,
+.portal-info-header h1 .portal-badges-container {
+    margin-left: 0 !important;
+}
+
 /* Custom Icon Badge Frame: Snug fit, no empty gaps, thin sleek border */
 .portal-badges-container .custom-badge-frame {
     display: inline-flex;

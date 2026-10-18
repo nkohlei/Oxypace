@@ -299,7 +299,7 @@ const ChannelSidebar = ({
                     <div className="portal-quick-info">
                         <div className="portal-info-main" onClick={() => onShowPortalInfo && onShowPortalInfo()}>
                             <h2 className="portal-title-text">
-                                {portal.name}
+                                <span className="portal-title-name">{portal.name}</span>
                                 <PortalBadges portal={portal} size={18} />
                             </h2>
                             <div className="portal-stats-row">
@@ -720,6 +720,15 @@ const ChannelSidebar = ({
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+            }
+            .portal-title-name {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .portal-title-text .portal-badges-container {
+                margin-left: 0 !important;
+                gap: 6px;
             }
             .portal-stats-row {
                 display: flex;
