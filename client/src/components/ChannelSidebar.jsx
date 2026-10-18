@@ -153,8 +153,6 @@ const ChannelSidebar = ({
         };
     }, [socket, portal?._id]);
 
-    if (!portal) return null;
-
     const channels = portal?.channels ? [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0)).map((ch) => ({
         id: ch._id,
         name: ch.name,
@@ -210,6 +208,8 @@ const ChannelSidebar = ({
             img.onerror = () => setBannerLoaded(true);
         }
     }, [resolvedBannerUrl]);
+
+    if (!portal) return null;
 
     return (
         <div

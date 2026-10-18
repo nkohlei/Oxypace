@@ -80,13 +80,9 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const uploadingItem = activeUploadList.find((u) => u.status === 'uploading');
     const navigate = useNavigate();
 
-    // Hide Navbar on non-home pages ONLY for guests (not logged-in users)
-    // Logged-in users' pages (Portal, Profile, etc.) always show the Navbar
+    // Check guest status and home page for render check at the end
     const isGuest = !token;
     const isHomePage = location.pathname === '/';
-    if (isGuest && !isHomePage) {
-        return null;
-    }
 
     const [showMenu, setShowMenu] = useState(false);
     const unreadCount = useGlobalStore((state) => state.unreadNotificationsCount);
@@ -232,6 +228,12 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             navigate('/messages');
         }
     };
+
+    // Hide Navbar on non-home pages ONLY for guests (not logged-in users)
+    // Placed after all hooks to guarantee identical hook count across all renders
+    if (isGuest && !isHomePage) {
+        return null;
+    }
 
     return (
         <>

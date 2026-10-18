@@ -181,6 +181,12 @@ const Home = () => {
         }
     }, [user, navigate]);
 
+    // Tripled for infinite scroll illusion (placed before loading check to satisfy Rules of Hooks)
+    const sliderPortals = useMemo(() => {
+        if (publicPortals.length === 0) return [];
+        return [...publicPortals, ...publicPortals, ...publicPortals];
+    }, [publicPortals]);
+
     if (loading) {
         return (
             <div className="app-wrapper advanced-home">
@@ -199,12 +205,6 @@ const Home = () => {
     const logoScale = 1 - (splitProgress * 0.5);
     const logoBlur = splitProgress * 25;
     const logoOpacity = 1 - (splitProgress * 0.4);
-
-    // Tripled for infinite scroll illusion
-    const sliderPortals = useMemo(() => {
-        if (publicPortals.length === 0) return [];
-        return [...publicPortals, ...publicPortals, ...publicPortals];
-    }, [publicPortals]);
 
     // Smooth scroll to discovery section
     const scrollToDiscovery = () => {

@@ -5,6 +5,45 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import './LinkPreview.css';
 
+const TweetVideo = ({ src, poster }) => {
+    const videoRef = useRef(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.intersectionRatio < 0.20) {
+                    if (videoRef.current) {
+                        videoRef.current.pause();
+                        videoRef.current.muted = true;
+                    }
+                }
+            },
+            { threshold: [0, 0.20, 1.0] }
+        );
+
+        if (videoRef.current) {
+            observer.observe(videoRef.current);
+        }
+
+        return () => {
+            observer.disconnect();
+        };
+    }, []);
+
+    return (
+        <video
+            ref={videoRef}
+            src={src}
+            poster={poster}
+            controls
+            playsInline
+            preload="metadata"
+            className="tweet-card-video"
+            onClick={(e) => e.stopPropagation()}
+        />
+    );
+};
+
 /**
  * Main LinkPreview component
  * For Twitter/X: renders a tweet-styled card with author info, text, media
@@ -143,46 +182,6 @@ const LinkPreview = ({ url, postId }) => {
                             const apiBase = axios.defaults.baseURL || '';
                             const cleanBase = apiBase.replace(/\/$/, '');
                             const videoUrl = `${cleanBase}/api/preview/video?url=${encodeURIComponent(vid.url)}`;
-                            
-                            // Inline component or call TweetVideo
-                            const TweetVideo = ({ src, poster }) => {
-                                const videoRef = useRef(null);
-
-                                useEffect(() => {
-                                    const observer = new IntersectionObserver(
-                                        ([entry]) => {
-                                            if (entry.intersectionRatio < 0.20) {
-                                                if (videoRef.current) {
-                                                    videoRef.current.pause();
-                                                    videoRef.current.muted = true;
-                                                }
-                                            }
-                                        },
-                                        { threshold: [0, 0.20, 1.0] }
-                                    );
-
-                                    if (videoRef.current) {
-                                        observer.observe(videoRef.current);
-                                    }
-
-                                    return () => {
-                                        observer.disconnect();
-                                    };
-                                }, []);
-
-                                return (
-                                    <video
-                                        ref={videoRef}
-                                        src={src}
-                                        poster={poster}
-                                        controls
-                                        playsInline
-                                        preload="metadata"
-                                        className="tweet-card-video"
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                );
-                            };
 
                             return (
                                 <TweetVideo

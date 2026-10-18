@@ -13,8 +13,6 @@ const RESOLUTION_MAP = {
 };
 
 const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
-  if (!isOpen || !post) return null;
-
   // Initialize format from localStorage or default to 'mp4' (Evrensel MP4)
   const defaultFormatPref = (() => {
     try {
@@ -26,6 +24,8 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
   })();
 
   const [activeFormat, setActiveFormat] = useState(defaultFormatPref);
+
+  if (!isOpen || !post) return null;
 
   const isProcessing = !!post.isProcessing;
   const processingProgress = post.processingProgress || 0;
