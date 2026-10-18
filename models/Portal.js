@@ -75,6 +75,16 @@ const portalSchema = new mongoose.Schema(
                 type: String, // e.g., 'official', 'verified', 'partner', 'gold', 'blue'
             }
         ],
+        customBadge: {
+            url: {
+                type: String,
+                default: '',
+            },
+            name: {
+                type: String,
+                default: '',
+            },
+        },
         status: {
             type: String,
             enum: ['active', 'suspended', 'closed'],

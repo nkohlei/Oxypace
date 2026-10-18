@@ -125,7 +125,7 @@ router.get('/', optionalProtect, async (req, res) => {
         }
 
         const portals = await Portal.find(searchFilter)
-            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status statusReason')
+            .select('name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status statusReason')
             .populate('members', 'isDeleted')
             .limit(100);
 

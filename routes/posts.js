@@ -590,7 +590,7 @@ router.get('/bot-feed', optionalProtect, async (req, res) => {
                 'author',
                 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted'
             )
-            .populate('portal', 'name avatar privacy members')
+            .populate('portal', 'name avatar privacy members badges customBadge isVerified')
             .populate({
                 path: 'quotedPost',
                 populate: [
@@ -655,7 +655,7 @@ router.get('/archived', protect, async (req, res) => {
             .skip(skip)
             .limit(limit)
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
-            .populate('portal', 'name avatar channels privacy')
+            .populate('portal', 'name avatar channels privacy badges customBadge isVerified')
             .populate({
                 path: 'quotedPost',
                 populate: [
@@ -927,7 +927,7 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             .skip(skip)
             .limit(limit)
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
-            .populate('portal', 'name avatar channels privacy') // Include privacy for secondary checks if needed
+            .populate('portal', 'name avatar channels privacy badges customBadge isVerified') // Include privacy for secondary checks if needed
             .populate({
                 path: 'quotedPost',
                 populate: [

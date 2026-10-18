@@ -257,7 +257,7 @@ router.get('/portals', protect, admin, async (req, res) => {
         }
 
         const portals = await import('../models/Portal.js').then(m => m.default.find(query)
-            .select('name description owner avatar banner themeColor isVerified badges status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members')
+            .select('name description owner avatar banner themeColor isVerified badges customBadge status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members')
             .populate('owner', 'username profile.displayName')
             .sort({ createdAt: -1 })
             .limit(50));
@@ -270,11 +270,11 @@ router.get('/portals', protect, admin, async (req, res) => {
 });
 
 // @route   PUT /api/admin/portals/:id
-// @desc    Update portal status/badges/read-only
+// @desc    Update portal status/badges/read-only/customBadge
 // @access  Private/Admin
 router.put('/portals/:id', protect, admin, async (req, res) => {
     try {
-        const { status, badges, isVerified } = req.body;
+        const { status, badges, isVerified, customBadge } = req.body;
         const Portal = await import('../models/Portal.js').then(m => m.default);
         const portal = await Portal.findById(req.params.id);
 
@@ -308,6 +308,13 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
             portal.badges = badges.map(b => b.trim().toLowerCase().slice(0, 50));
         }
 
+        if (customBadge !== undefined) {
+            portal.customBadge = {
+                url: customBadge?.url || '',
+                name: customBadge?.name || ''
+            };
+        }
+
         if (typeof isVerified === 'boolean') {portal.isVerified = isVerified;}
         if (typeof req.body.isNSFW === 'boolean') {portal.isNSFW = req.body.isNSFW;}
         if (typeof req.body.isReadOnly === 'boolean') {portal.isReadOnly = req.body.isReadOnly;}
@@ -316,6 +323,55 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
         res.json({ message: 'Portal updated', portal });
     } catch (error) {
         console.error('Update portal error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/portals/:id/custom-badge
+// @desc    Assign custom badge to a portal
+// @access  Private/Admin
+router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
+    try {
+        const { url, name } = req.body;
+        const Portal = await import('../models/Portal.js').then(m => m.default);
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı.' });
+        }
+
+        portal.customBadge = {
+            url: url || '',
+            name: name || ''
+        };
+
+        await portal.save();
+
+        // Create notification for portal owner if assigned
+        if (url && name && portal.owner) {
+            try {
+                const User = await import('../models/User.js').then(m => m.default);
+                const owner = await User.findById(portal.owner);
+                if (owner && owner.settings?.notifications?.system !== false) {
+                    await Notification.create({
+                        recipient: owner._id,
+                        type: 'system',
+                        title: 'Portalınıza Özel Rozet Atandı',
+                        message: `"${portal.name}" portalınıza "${name}" özel ikon rozeti tanımlandı.`,
+                        data: {
+                            portalId: portal._id,
+                            badgeUrl: url,
+                            badgeName: name
+                        }
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Portal custom badge notification error:', notifErr);
+            }
+        }
+
+        res.json({ message: 'Özel rozet portala atandı.', customBadge: portal.customBadge });
+    } catch (error) {
+        console.error('Assign portal custom badge error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

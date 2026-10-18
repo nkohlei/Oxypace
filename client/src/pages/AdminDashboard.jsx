@@ -7,6 +7,7 @@ import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History } from 'lucide-react';
 import Badge from '../components/Badge';
+import PortalBadges from '../components/PortalBadges';
 import UserBadges from '../components/UserBadges';
 import UserAvatar from '../components/UserAvatar';
 import ImageCropper from '../components/ImageCropper';
@@ -547,7 +548,9 @@ const PortalDetailModal = ({
     onClose,
     portal,
     contextBadges,
+    customBadges = [],
     handlePortalBadge,
+    handlePortalCustomBadgeAssign,
     handleNSFWToggle,
     handleReadOnlyToggle,
     initiatePortalStatusChange,
@@ -581,7 +584,7 @@ const PortalDetailModal = ({
                     <div className="portal-detail-title-info">
                         <h2>
                             {portal.name}
-                            <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={20} />
+                            <PortalBadges portal={portal} size={20} />
                             {portal.isNSFW && <span className="nsfw-badge-admin">+18</span>}
                         </h2>
                         <p>Sahibi: <strong>@{portal.owner?.username || 'Bilinmiyor'}</strong></p>
@@ -664,6 +667,35 @@ const PortalDetailModal = ({
                                 </span>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Custom Badge Assignment */}
+                    <div className="detail-section-card">
+                        <h4 className="detail-section-title">Özel İkon Rozeti (Yönetici Rozeti)</h4>
+                        <select
+                            className="badge-select"
+                            value={portal.customBadge?.url || ''}
+                            onChange={(e) => {
+                                const selectedUrl = e.target.value;
+                                const selectedBadge = customBadges.find(b => b.url === selectedUrl);
+                                handlePortalCustomBadgeAssign(portal._id, selectedBadge ? selectedBadge.url : '', selectedBadge ? selectedBadge.name : '');
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                        >
+                            <option value="">Rozet Yok</option>
+                            {customBadges.map((badge) => (
+                                <option key={badge._id} value={badge.url}>
+                                    {badge.name}
+                                </option>
+                            ))}
+                        </select>
+                        {portal.customBadge?.url && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                                <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
+                                <img src={portal.customBadge.url} alt={portal.customBadge.name} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                                <span style={{ fontSize: '13px', color: '#fff' }}>{portal.customBadge.name}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Sahiplik Devri (Transfer Ownership) */}
@@ -1954,6 +1986,26 @@ const AdminDashboard = () => {
             setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, badges } : prev);
         } catch (err) {
             alert('Rozet güncellenemedi.');
+        }
+    };
+
+    const handlePortalCustomBadgeAssign = async (portalId, badgeUrl, badgeName) => {
+        try {
+            await axios.post(`/api/admin/portals/${portalId}/custom-badge`, {
+                url: badgeUrl,
+                name: badgeName
+            });
+            setPortals(
+                portals.map((p) =>
+                    p._id === portalId
+                        ? { ...p, customBadge: { url: badgeUrl, name: badgeName } }
+                        : p
+                )
+            );
+            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, customBadge: { url: badgeUrl, name: badgeName } } : prev);
+            alert('Özel rozet portala atandı.');
+        } catch (err) {
+            alert('Rozet portala atanamadı.');
         }
     };
 
@@ -3833,7 +3885,7 @@ const AdminDashboard = () => {
                                         <div className="card-body">
                                             <h3 className="card-title">
                                                 {portal.name}
-                                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
+                                                <PortalBadges portal={portal} size={18} />
                                                 {portal.isReadOnly && <span className="read-only-badge" style={{ marginLeft: 'auto' }}>SALT OKUNUR</span>}
                                             </h3>
                                             <p className="card-desc">
@@ -5157,7 +5209,9 @@ const AdminDashboard = () => {
                 onClose={() => setDetailModalOpen(false)}
                 portal={detailPortal}
                 contextBadges={contextBadges}
+                customBadges={customBadges}
                 handlePortalBadge={handlePortalBadge}
+                handlePortalCustomBadgeAssign={handlePortalCustomBadgeAssign}
                 handleNSFWToggle={handleNSFWToggle}
                 handleReadOnlyToggle={handleReadOnlyToggle}
                 initiatePortalStatusChange={initiatePortalStatusChange}

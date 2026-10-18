@@ -830,7 +830,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
         // ─────────────────────────────────────────────────────────────────────────
 
         // Fetch portals owned by the user
-        const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar badges isVerified privacy members allowedUsers owner admins');
+        const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar badges customBadge isVerified privacy members allowedUsers owner admins');
 
         // Privacy Check for Portals
         // Default to public if setting missing

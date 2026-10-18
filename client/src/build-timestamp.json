@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T16:53:00.000Z",
-  "reason": "Fix custom badge creation upload hang and preserve PNG transparency and GIF animation"
+  "lastBuild": "2026-10-18T17:30:00.000Z",
+  "reason": "Display PortalInfoModal for non-member private portals and support custom portal badges"
 }

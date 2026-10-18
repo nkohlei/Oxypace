@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
+import PortalBadges from './PortalBadges';
 import './PortalInfoModal.css';
 
 const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChange }) => {
@@ -238,7 +239,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
                 <div className="portal-info-header">
                     <h1>
                         {portalData.name}
-                        <Badge type={portalData.isVerified ? 'verified' : portalData.badges?.[0]} size={20} />
+                        <PortalBadges portal={portalData} size={20} />
                     </h1>
                     <p className="portal-info-tagline">{portalData.description || 'Bu portal için bir açıklama bulunmuyor.'}</p>
                 </div>
