@@ -376,24 +376,20 @@ const Search = () => {
 
                                                     <div className="card-footer">
                                                         <div className="card-footer-stats">
-                                                            <div className="member-count">
+                                                            <div className="member-count" title="Üye">
                                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
                                                                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                                                                     <circle cx="9" cy="7" r="4" />
                                                                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                                                                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                                                 </svg>
-                                                                <span>
-                                                                    {portal.memberCount || 0} <span className="member-count-text">Üye</span>
-                                                                </span>
+                                                                <span>{portal.memberCount || 0}</span>
                                                             </div>
-                                                            <div className="member-count post-count">
+                                                            <div className="member-count post-count" title="Gönderi">
                                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
                                                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                                                                 </svg>
-                                                                <span>
-                                                                    {portal.postCount || 0} <span className="member-count-text">Gönderi</span>
-                                                                </span>
+                                                                <span>{portal.postCount || 0}</span>
                                                             </div>
                                                         </div>
 

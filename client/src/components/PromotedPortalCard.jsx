@@ -148,14 +148,14 @@ const PromotedPortalCard = ({ portal }) => {
                             <PortalBadges portal={portal} size={16} />
                         </div>
                         <div className="promoted-members-meta">
-                            <span className="promoted-meta-item">
+                            <span className="promoted-meta-item" title="Üye">
                                 <Users size={13} className="meta-icon" />
-                                <span>{memberCount.toLocaleString('tr-TR')} üye</span>
+                                <span>{memberCount.toLocaleString('tr-TR')}</span>
                             </span>
                             <span className="promoted-meta-sep">•</span>
-                            <span className="promoted-meta-item">
+                            <span className="promoted-meta-item" title="Gönderi">
                                 <MessageSquare size={13} className="meta-icon" />
-                                <span>{(portal.postCount || 0).toLocaleString('tr-TR')} gönderi</span>
+                                <span>{(portal.postCount || 0).toLocaleString('tr-TR')}</span>
                             </span>
                         </div>
                     </div>

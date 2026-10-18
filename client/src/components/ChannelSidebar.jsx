@@ -38,6 +38,27 @@ const ChannelSidebar = ({
     const { roomStartTime, activeRoom, participants } = useVoice();
     const { socket, onlineUsers } = useSocket();
     const [voiceCounts, setVoiceCounts] = useState({});
+    const [activeStatTooltip, setActiveStatTooltip] = useState(null);
+    const statTooltipTimeoutRef = useRef(null);
+
+    const handleStatClick = (statKey, e) => {
+        e.stopPropagation();
+        if (statTooltipTimeoutRef.current) {
+            clearTimeout(statTooltipTimeoutRef.current);
+        }
+        setActiveStatTooltip(statKey);
+        statTooltipTimeoutRef.current = setTimeout(() => {
+            setActiveStatTooltip(null);
+        }, 1800);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (statTooltipTimeoutRef.current) {
+                clearTimeout(statTooltipTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Savunmacı ID çıkarma — populate edilmiş obje ya da raw string ID her ikisini de doğru işler.
     // portal.owner obje olduğunda String(portal.owner) → "[object Object]" olur, bu hatayı önler.
@@ -282,19 +303,34 @@ const ChannelSidebar = ({
                                 <PortalBadges portal={portal} size={18} />
                             </h2>
                             <div className="portal-stats-row">
-                                <div className="stat-item">
+                                <div
+                                    className={`stat-item ${activeStatTooltip === 'members' ? 'stat-tooltip-active' : ''}`}
+                                    onClick={(e) => handleStatClick('members', e)}
+                                    title="Üye"
+                                >
                                     <UserCheck size={12} />
-                                    <span>{totalMemberCount} Üye</span>
+                                    <span>{totalMemberCount}</span>
+                                    <div className="stat-floating-tag">Üye</div>
                                 </div>
                                 <div className="stat-dot" />
-                                <div className="stat-item">
+                                <div
+                                    className={`stat-item ${activeStatTooltip === 'posts' ? 'stat-tooltip-active' : ''}`}
+                                    onClick={(e) => handleStatClick('posts', e)}
+                                    title="Gönderi"
+                                >
                                     <MessageSquare size={12} />
-                                    <span>{portal.postCount || 0} Gönderi</span>
+                                    <span>{portal.postCount || 0}</span>
+                                    <div className="stat-floating-tag">Gönderi</div>
                                 </div>
                                 <div className="stat-dot" />
-                                <div className="stat-item">
+                                <div
+                                    className={`stat-item ${activeStatTooltip === 'online' ? 'stat-tooltip-active' : ''}`}
+                                    onClick={(e) => handleStatClick('online', e)}
+                                    title="Çevrimiçi"
+                                >
                                     <div className="online-indicator-dot" />
-                                    <span>{onlineCount} Çevrimiçi</span>
+                                    <span>{onlineCount}</span>
+                                    <div className="stat-floating-tag">Çevrimiçi</div>
                                 </div>
                             </div>
                         </div>
@@ -652,17 +688,26 @@ const ChannelSidebar = ({
             }
 
             /* ── Portal quick info ── */
+            .cs-panel--banner {
+                flex-shrink: 0;
+                display: flex;
+                flex-direction: column;
+                overflow: visible !important;
+            }
             .portal-quick-info {
                 padding: 14px 16px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 background: transparent;
+                position: relative;
+                overflow: visible !important;
             }
             .portal-info-main {
                 flex: 1;
                 cursor: pointer;
                 min-width: 0;
+                position: relative;
             }
             .portal-title-text {
                 font-size: 18px;
@@ -679,15 +724,76 @@ const ChannelSidebar = ({
             .portal-stats-row {
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
+                position: relative;
             }
             .stat-item {
-                display: flex;
+                position: relative;
+                display: inline-flex;
                 align-items: center;
                 gap: 4px;
                 font-size: 12px;
                 color: var(--text-secondary);
-                font-weight: 500;
+                font-weight: 600;
+                cursor: pointer;
+                user-select: none;
+                padding: 2px 4px;
+                border-radius: 6px;
+                transition: color 0.15s ease, background-color 0.15s ease;
+            }
+            .stat-item:hover {
+                color: var(--text-primary);
+                background-color: rgba(255, 255, 255, 0.08);
+            }
+            :root[data-theme='light'] .stat-item:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+            .stat-floating-tag {
+                position: absolute;
+                bottom: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(4px);
+                background: rgba(15, 20, 32, 0.96);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 3px 8px;
+                border-radius: 6px;
+                white-space: nowrap;
+                pointer-events: none;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                z-index: 1000;
+            }
+            :root[data-theme='light'] .stat-floating-tag {
+                background: rgba(255, 255, 255, 0.98);
+                color: #0f172a;
+                border-color: rgba(0, 0, 0, 0.12);
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+            }
+            .stat-floating-tag::after {
+                content: '';
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                border-width: 4px;
+                border-style: solid;
+                border-color: rgba(15, 20, 32, 0.96) transparent transparent transparent;
+            }
+            :root[data-theme='light'] .stat-floating-tag::after {
+                border-color: rgba(255, 255, 255, 0.98) transparent transparent transparent;
+            }
+            .stat-item:hover .stat-floating-tag,
+            .stat-item.stat-tooltip-active .stat-floating-tag {
+                opacity: 1;
+                visibility: visible;
+                transform: translateX(-50%) translateY(0);
             }
             .online-indicator-dot {
                 width: 8px;
