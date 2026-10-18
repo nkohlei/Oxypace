@@ -245,6 +245,7 @@ const PortalSidebar = () => {
                                 key={portal._id}
                                 draggable={isReordering}
                                 className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${filteredCount > 0 ? 'has-unread' : ''}`}
+                                title={`${portal.name} • ${portal.postCount || 0} gönderi`}
                                 onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`, { state: { portal } })}
                                 onDragStart={(e) => handleDragStart(e, index)}
                                 onDragOver={(e) => handleDragOver(e, index)}

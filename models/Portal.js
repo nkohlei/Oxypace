@@ -8,7 +8,7 @@ const portalSchema = new mongoose.Schema(
             unique: true,
             trim: true,
             minlength: 2,
-            maxlength: 50,
+            maxlength: 20,
         },
         description: {
             type: String,

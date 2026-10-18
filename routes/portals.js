@@ -21,7 +21,11 @@ router.post('/', protect, async (req, res) => {
     try {
         const { name, description, privacy, avatar, allowedUsers } = req.body;
 
-        const portalExists = await Portal.findOne({ name });
+        if (!name || name.trim().length < 2 || name.trim().length > 20) {
+            return res.status(400).json({ message: 'Portal adı 2 ile 20 karakter arasında olmalıdır.' });
+        }
+
+        const portalExists = await Portal.findOne({ name: name.trim() });
         if (portalExists) {
             return res.status(400).json({ message: 'Portal name already exists' });
         }
@@ -150,11 +154,23 @@ router.get('/', optionalProtect, async (req, res) => {
             });
         }
 
+        // Get post counts for all these portals in one aggregation
+        const portalIds = portals.map(p => p._id);
+        const postCounts = await Post.aggregate([
+            { $match: { portal: { $in: portalIds } } },
+            { $group: { _id: '$portal', count: { $sum: 1 } } }
+        ]);
+        const postCountMap = {};
+        postCounts.forEach(pc => {
+            postCountMap[pc._id.toString()] = pc.count;
+        });
+
         const userId = req.user?._id?.toString();
         const formattedPortals = portals.map((portal) => {
             const portalObj = portal.toObject();
             const activeMembers = (portal.members || []).filter(m => !m.isDeleted);
             portalObj.memberCount = activeMembers.length;
+            portalObj.postCount = postCountMap[portal._id.toString()] || 0;
 
             if (userId) {
                 portalObj.isMember = activeMembers.some((m) => (m._id || m).toString() === userId);
@@ -294,9 +310,28 @@ router.get('/showcase', optionalProtect, async (req, res) => {
 
         topPortals = topPortals.slice(0, 3);
 
+        const allShowcaseIds = [globalPortal?._id, ...topPortals.map(p => p._id)].filter(Boolean);
+        const showcasePostCounts = await Post.aggregate([
+            { $match: { portal: { $in: allShowcaseIds } } },
+            { $group: { _id: '$portal', count: { $sum: 1 } } }
+        ]);
+        const showcasePostCountMap = {};
+        showcasePostCounts.forEach(pc => {
+            showcasePostCountMap[pc._id.toString()] = pc.count;
+        });
+
+        const formatWithPostCount = (portalDoc) => {
+            if (!portalDoc) return null;
+            const res = formatPortalHelper(portalDoc);
+            if (res && res._id) {
+                res.postCount = showcasePostCountMap[res._id.toString()] || 0;
+            }
+            return res;
+        };
+
         res.json({
-            globalPortal: formatPortalHelper(globalPortal),
-            topPortals: topPortals.map(formatPortalHelper)
+            globalPortal: formatWithPostCount(globalPortal),
+            topPortals: topPortals.map(formatWithPostCount)
         });
     } catch (error) {
         console.error('Error fetching showcase portals:', error);
@@ -448,6 +483,10 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
                 a => a.isActive && new Date(a.expiresAt) > now
             );
         }
+
+        // Fetch accurate post count for the portal
+        const postCount = await Post.countDocuments({ portal: portal._id });
+        portalObj.postCount = postCount;
 
         res.json(portalObj);
     } catch (error) {
@@ -741,7 +780,13 @@ router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this portal' });
         }
 
-        portal.name = name || portal.name;
+        if (name !== undefined) {
+            const trimmedName = name.trim();
+            if (trimmedName.length < 2 || trimmedName.length > 20) {
+                return res.status(400).json({ message: 'Portal adı 2 ile 20 karakter arasında olmalıdır.' });
+            }
+            portal.name = trimmedName;
+        }
         portal.description = description || portal.description;
         portal.privacy = privacy || portal.privacy;
         if (allowedUsers) {

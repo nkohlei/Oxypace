@@ -1022,6 +1022,53 @@ router.post('/custom-badges', protect, admin, async (req, res) => {
     }
 });
 
+// @route   PUT /api/admin/custom-badges/:id
+// @desc    Update custom badge details
+// @access  Private/Admin
+router.put('/custom-badges/:id', protect, admin, async (req, res) => {
+    try {
+        const { name, url, key, shape, borderStyle } = req.body;
+        const badge = await CustomBadge.findById(req.params.id);
+        if (!badge) {
+            return res.status(404).json({ message: 'Rozet bulunamadı.' });
+        }
+
+        const oldUrl = badge.url;
+
+        if (name) badge.name = name.trim();
+        if (url) badge.url = url;
+        if (key) badge.key = key;
+        if (shape) badge.shape = shape;
+        if (borderStyle) badge.borderStyle = borderStyle;
+
+        await badge.save();
+
+        // Cascade update to portals and users currently using this badge
+        try {
+            const Portal = await import('../models/Portal.js').then(m => m.default);
+            const User = await import('../models/User.js').then(m => m.default);
+
+            const portalUpdate = {};
+            if (name) portalUpdate['customBadge.name'] = badge.name;
+            if (url) portalUpdate['customBadge.url'] = badge.url;
+            if (shape) portalUpdate['customBadge.shape'] = badge.shape;
+            if (borderStyle) portalUpdate['customBadge.borderStyle'] = badge.borderStyle;
+
+            await Promise.all([
+                Portal.updateMany({ 'customBadge.url': oldUrl }, { $set: portalUpdate }),
+                User.updateMany({ 'customBadge.url': oldUrl }, { $set: portalUpdate })
+            ]);
+        } catch (cascadeErr) {
+            console.error('Cascade custom badge update error:', cascadeErr);
+        }
+
+        res.json({ message: 'Özel rozet başarıyla güncellendi.', badge });
+    } catch (error) {
+        console.error('Update custom badge error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // @route   DELETE /api/admin/custom-badges/:id
 // @desc    Delete custom badge
 // @access  Private/Admin

@@ -12,7 +12,7 @@ import { useSocket } from '../context/SocketContext';
 import RoomTimer from './RoomTimer';
 
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image, Mic } from 'lucide-react';
+import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image, Mic, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PortalInfoModal from './PortalInfoModal';
 
@@ -285,6 +285,11 @@ const ChannelSidebar = ({
                                 <div className="stat-item">
                                     <UserCheck size={12} />
                                     <span>{totalMemberCount} Üye</span>
+                                </div>
+                                <div className="stat-dot" />
+                                <div className="stat-item">
+                                    <MessageSquare size={12} />
+                                    <span>{portal.postCount || 0} Gönderi</span>
                                 </div>
                                 <div className="stat-dot" />
                                 <div className="stat-item">

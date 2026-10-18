@@ -1129,6 +1129,7 @@ const AdminDashboard = () => {
     const [uploadingCustomBadge, setUploadingCustomBadge] = useState(false);
     const [customBadgeShape, setCustomBadgeShape] = useState('round');
     const [customBadgeBorderStyle, setCustomBadgeBorderStyle] = useState('thin');
+    const [editingCustomBadgeId, setEditingCustomBadgeId] = useState(null);
 
     // Cropper State for Custom Badges
     const [customBadgeCropperImage, setCustomBadgeCropperImage] = useState(null);
@@ -1397,23 +1398,50 @@ const AdminDashboard = () => {
         }
 
         try {
-            await axios.post('/api/admin/custom-badges', {
-                name: customBadgeName.trim(),
-                url: customBadgeUploadedUrl,
-                key: customBadgeUploadedKey,
-                shape: customBadgeShape,
-                borderStyle: customBadgeBorderStyle
-            });
-            setCustomBadgeName('');
-            setCustomBadgeUploadedUrl('');
-            setCustomBadgeUploadedKey('');
-            setCustomBadgeShape('round');
-            setCustomBadgeBorderStyle('thin');
+            if (editingCustomBadgeId) {
+                await axios.put(`/api/admin/custom-badges/${editingCustomBadgeId}`, {
+                    name: customBadgeName.trim(),
+                    url: customBadgeUploadedUrl,
+                    key: customBadgeUploadedKey,
+                    shape: customBadgeShape,
+                    borderStyle: customBadgeBorderStyle
+                });
+                alert('Özel rozet başarıyla güncellendi.');
+            } else {
+                await axios.post('/api/admin/custom-badges', {
+                    name: customBadgeName.trim(),
+                    url: customBadgeUploadedUrl,
+                    key: customBadgeUploadedKey,
+                    shape: customBadgeShape,
+                    borderStyle: customBadgeBorderStyle
+                });
+                alert('Özel rozet başarıyla eklendi.');
+            }
+            handleCancelCustomBadgeEdit();
             fetchCustomBadges();
-            alert('Özel rozet başarıyla eklendi.');
         } catch (err) {
             alert(err.response?.data?.message || 'Rozet kaydedilemedi.');
         }
+    };
+
+    const handleEditCustomBadge = (badge) => {
+        setEditingCustomBadgeId(badge._id);
+        setCustomBadgeName(badge.name || '');
+        setCustomBadgeUploadedUrl(badge.url || '');
+        setCustomBadgeUploadedKey(badge.key || '');
+        setCustomBadgeShape(badge.shape || 'round');
+        setCustomBadgeBorderStyle(badge.borderStyle || 'thin');
+        const formEl = document.querySelector('.custom-badge-form-card');
+        if (formEl) formEl.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const handleCancelCustomBadgeEdit = () => {
+        setEditingCustomBadgeId(null);
+        setCustomBadgeName('');
+        setCustomBadgeUploadedUrl('');
+        setCustomBadgeUploadedKey('');
+        setCustomBadgeShape('round');
+        setCustomBadgeBorderStyle('thin');
     };
 
     const handleDeleteCustomBadge = async (badgeId) => {
@@ -4541,7 +4569,7 @@ const AdminDashboard = () => {
                         <div className="custom-badges-layout" style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '30px', marginTop: '20px' }}>
                             {/* Left Side: Create / Upload form */}
                             <div className="custom-badge-form-card" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(20px)' }}>
-                                <h3 style={{ color: '#fff', marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>Yeni Rozet Ekle</h3>
+                                <h3 style={{ color: '#fff', marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>{editingCustomBadgeId ? '✏️ Özel Rozeti Düzenle' : 'Yeni Rozet Ekle'}</h3>
                                 <form onSubmit={handleSaveCustomBadge} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                     <div>
                                         <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px', fontWeight: '500' }}>Rozet Adı</label>
@@ -4654,14 +4682,26 @@ const AdminDashboard = () => {
                                         </select>
                                     </div>
 
-                                    <button
-                                        type="submit"
-                                        className="btn-modern-primary"
-                                        style={{ width: '100%', padding: '12px', fontSize: '14px', marginTop: '10px' }}
-                                        disabled={uploadingCustomBadge || !customBadgeUploadedUrl}
-                                    >
-                                        Kaydet
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                        <button
+                                            type="submit"
+                                            className="btn-modern-primary"
+                                            style={{ flex: 1, padding: '12px', fontSize: '14px' }}
+                                            disabled={uploadingCustomBadge || !customBadgeUploadedUrl}
+                                        >
+                                            {editingCustomBadgeId ? 'Güncelle' : 'Kaydet'}
+                                        </button>
+                                        {editingCustomBadgeId && (
+                                            <button
+                                                type="button"
+                                                className="btn-modern-secondary"
+                                                onClick={handleCancelCustomBadgeEdit}
+                                                style={{ padding: '12px 16px', fontSize: '14px', background: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+                                            >
+                                                İptal
+                                            </button>
+                                        )}
+                                    </div>
                                 </form>
                             </div>
 
@@ -4676,13 +4716,24 @@ const AdminDashboard = () => {
                                     <div className="custom-badges-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
                                         {customBadges.map((badge) => (
                                             <div key={badge._id} className="custom-badge-item-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', position: 'relative', gap: '12px' }}>
-                                                <button
-                                                    onClick={() => handleDeleteCustomBadge(badge._id)}
-                                                    style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ff4b4b', cursor: 'pointer' }}
-                                                    title="Sil"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 2 }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditCustomBadge(badge)}
+                                                        style={{ background: 'rgba(99, 102, 241, 0.2)', border: '1px solid rgba(99, 102, 241, 0.4)', borderRadius: '6px', color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', padding: 0 }}
+                                                        title="Düzenle"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteCustomBadge(badge._id)}
+                                                        style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', padding: 0 }}
+                                                        title="Sil"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                                 <span
                                                     className={`custom-badge-frame shape-${badge.shape || 'round'} border-${badge.borderStyle || 'thin'}`}
                                                     style={{ width: '42px', height: '42px' }}

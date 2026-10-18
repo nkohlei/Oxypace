@@ -142,19 +142,19 @@ const CreatePortalModal = ({ onClose }) => {
                             </div>
 
                             <div className="form-group">
-                                <label>Portal Adı <span className="required-badge">Zorunlu</span></label>
+                                <label>Portal Adı <span className="required-badge">Zorunlu</span> <span style={{ fontSize: '11px', color: 'var(--text-secondary, #888)', fontWeight: 'normal' }}>({(formData.name || '').length}/20)</span></label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.name}
                                     onChange={(e) => {
-                                        setFormData({ ...formData, name: e.target.value });
+                                        setFormData({ ...formData, name: e.target.value.slice(0, 20) });
                                         if (e.target.value.trim()) {
                                             setShowNameError(false);
                                         }
                                     }}
                                     placeholder="Örn: Yazılım Dünyası"
-                                    maxLength={50}
+                                    maxLength={20}
                                     autoFocus
                                 />
                                 {showNameError && !formData.name.trim() && (

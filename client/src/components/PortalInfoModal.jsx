@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ArrowUpRight, LogOut, UserPlus, ShieldCheck } from 'lucide-react';
+import { X, ArrowUpRight, LogOut, UserPlus, ShieldCheck, Settings, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -8,7 +8,7 @@ import Badge from './Badge';
 import PortalBadges from './PortalBadges';
 import './PortalInfoModal.css';
 
-const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChange }) => {
+const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChange, onOpenSettings }) => {
     const [portalData, setPortalData] = useState(portal || {});
     const [leaving, setLeaving] = useState(false);
     const [joining, setJoining] = useState(false);
@@ -49,6 +49,22 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
         portalData?.owner &&
         (portalData.owner?._id || portalData.owner)?.toString() === currentUserId
     );
+
+    const isAdmin = Boolean(
+        isOwner ||
+        (currentUserId && Array.isArray(portalData?.admins) &&
+            portalData.admins.some((a) => (a?._id || a)?.toString() === currentUserId)) ||
+        user?.role === 'admin'
+    );
+
+    const handleOpenSettings = () => {
+        onClose();
+        if (onOpenSettings) {
+            onOpenSettings();
+        } else {
+            navigate(`/portal/${currentPortalId}?openSettings=true`);
+        }
+    };
 
     const isCurrentUserMember = Boolean(
         currentUserId && (
@@ -215,6 +231,17 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
                     <img src={getImageUrl(portalData.avatar)} alt={portalData.name} className="portal-info-avatar-img" />
                 </div>
                 <div className="portal-info-top-actions">
+                    {isAdmin && (
+                        <button 
+                            type="button"
+                            className="portal-info-settings-btn"
+                            onClick={handleOpenSettings}
+                            title="Portal Ayarları"
+                            aria-label="Portal Ayarları"
+                        >
+                            <Settings size={16} />
+                        </button>
+                    )}
                     {!window.location.pathname.includes(`/portal/${currentPortalId}`) && !(portalData.privacy === 'private' && !isCurrentUserMember) && (
                         <button 
                             type="button"
@@ -239,7 +266,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
                 <div className="portal-info-header">
                     <h1>
                         {portalData.name}
-                        <PortalBadges portal={portalData} size={20} />
+                        <PortalBadges portal={portalData} size={28} />
                     </h1>
                     <p className="portal-info-tagline">{portalData.description || 'Bu portal için bir açıklama bulunmuyor.'}</p>
                 </div>
@@ -257,6 +284,15 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
                         <div className="stat-data">
                             <span className="stat-value">{portalData.membersCount || portalData.members?.length || 0}</span>
                             <span className="stat-label">Üye</span>
+                        </div>
+                    </div>
+                    <div className="portal-info-stat-card">
+                        <div className="portal-stat-icon-box">
+                            <MessageSquare size={18} />
+                        </div>
+                        <div className="stat-data">
+                            <span className="stat-value">{portalData.postCount || 0}</span>
+                            <span className="stat-label">Gönderi</span>
                         </div>
                     </div>
                     <div className="portal-info-stat-card">
@@ -306,11 +342,22 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
 
                 {/* Footer Action Area */}
                 <div className="portal-info-footer-actions">
+                    {isAdmin && (
+                        <button
+                            type="button"
+                            className="portal-info-settings-action-btn"
+                            onClick={handleOpenSettings}
+                            title="Portal Ayarlarını Düzenle"
+                        >
+                            <Settings size={16} />
+                            <span>Ayarları Düzenle</span>
+                        </button>
+                    )}
                     {isCurrentUserMember ? (
                         isOwner ? (
                             <div className="portal-owner-indicator">
                                 <ShieldCheck size={16} />
-                                <span>Bu portalın kurucususunuz</span>
+                                <span>Kurucususunuz</span>
                             </div>
                         ) : (
                             <button

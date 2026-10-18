@@ -741,12 +741,15 @@ const PortalSettingsModal = ({
                             />
 
                             <div className="form-group">
-                                <label className="form-label">Portal Adı</label>
+                                <label className="form-label">
+                                    Portal Adı <span style={{ fontSize: '11px', color: 'var(--text-secondary, #888)', fontWeight: 'normal' }}>({(formData.name || '').length}/20)</span>
+                                </label>
                                 <input
                                     className="form-input"
                                     value={formData.name}
+                                    maxLength={20}
                                     onChange={(e) =>
-                                        setFormData({ ...formData, name: e.target.value })
+                                        setFormData({ ...formData, name: e.target.value.slice(0, 20) })
                                     }
                                     disabled={!isOwner}
                                 />

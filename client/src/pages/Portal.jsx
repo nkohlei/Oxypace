@@ -799,6 +799,13 @@ const Portal = () => {
         }
     }, [id, authLoading]);
 
+    useEffect(() => {
+        if (searchParams.get('openSettings') === 'true') {
+            setSettingsTab('overview');
+            setEditing(true);
+        }
+    }, [searchParams]);
+
     // Track portal visit frequency and update most visited portal in localStorage
     useEffect(() => {
         if (portal && portal._id && portal.name) {
@@ -1566,6 +1573,10 @@ const Portal = () => {
                                                                 }
                                                             }}
                                                             isMobile={isMobileView}
+                                                            onOpenSettings={() => {
+                                                                setSettingsTab('overview');
+                                                                setEditing(true);
+                                                            }}
                                                             onJoinStatusChange={(status) => {
                                                                 if (status === 'requested') {
                                                                     setPortal((prev) => (prev ? { ...prev, isRequested: true } : prev));
@@ -2316,6 +2327,11 @@ const Portal = () => {
                     portal={portal}
                     onClose={() => setShowPortalInfo(false)}
                     isMobile={isMobileView}
+                    onOpenSettings={() => {
+                        setShowPortalInfo(false);
+                        setSettingsTab('overview');
+                        setEditing(true);
+                    }}
                     onLeave={() => {
                         setShowPortalInfo(false);
                         setIsMember(false);

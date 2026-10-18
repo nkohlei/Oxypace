@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Users, Globe, Lock, Check, Clock, Compass, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Users, Globe, Lock, Check, Clock, Compass, ArrowRight, ShieldCheck, MessageSquare } from 'lucide-react';
 import PortalInfoModal from './PortalInfoModal';
 import PortalBadges from './PortalBadges';
 import './PromotedPortalCard.css';
@@ -148,8 +148,15 @@ const PromotedPortalCard = ({ portal }) => {
                             <PortalBadges portal={portal} size={16} />
                         </div>
                         <div className="promoted-members-meta">
-                            <Users size={13} className="meta-icon" />
-                            <span>{memberCount.toLocaleString('tr-TR')} üye</span>
+                            <span className="promoted-meta-item">
+                                <Users size={13} className="meta-icon" />
+                                <span>{memberCount.toLocaleString('tr-TR')} üye</span>
+                            </span>
+                            <span className="promoted-meta-sep">•</span>
+                            <span className="promoted-meta-item">
+                                <MessageSquare size={13} className="meta-icon" />
+                                <span>{(portal.postCount || 0).toLocaleString('tr-TR')} gönderi</span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -214,6 +221,10 @@ const PromotedPortalCard = ({ portal }) => {
                     portal={portal}
                     onClose={() => setShowInfoModal(false)}
                     isMobile={window.innerWidth <= 768}
+                    onOpenSettings={() => {
+                        setShowInfoModal(false);
+                        navigate(`/portal/${portal._id}?openSettings=true`);
+                    }}
                     onJoinStatusChange={(status) => {
                         if (status === 'requested') {
                             setIsRequested(true);

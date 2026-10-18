@@ -371,7 +371,25 @@ router.get('/me', protect, async (req, res) => {
             }
         }
 
-        userObj.portals = allPortals;
+        // Aggregate post counts for user portals
+        const userPortalIds = allPortals.map(p => p._id).filter(Boolean);
+        if (userPortalIds.length > 0) {
+            const portalPostCounts = await Post.aggregate([
+                { $match: { portal: { $in: userPortalIds } } },
+                { $group: { _id: '$portal', count: { $sum: 1 } } }
+            ]);
+            const countMap = {};
+            portalPostCounts.forEach(pc => {
+                countMap[pc._id.toString()] = pc.count;
+            });
+            userObj.portals = allPortals.map(p => {
+                const po = p.toObject ? p.toObject() : { ...p };
+                po.postCount = countMap[po._id?.toString()] || 0;
+                return po;
+            });
+        } else {
+            userObj.portals = allPortals;
+        }
 
         // Filter out nulls from following array
         if (Array.isArray(userObj.following)) {
