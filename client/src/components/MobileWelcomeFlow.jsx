@@ -280,9 +280,9 @@ const MobileWelcomeFlow = () => {
                         />
                     </div>
 
-                    {/* Slogan: Minimal, Iconic Steve Jobs quote in Handwritten Cursive Style */}
+                    {/* Slogan: Modern Brand Headline */}
                     <p className="welcome-slogan-quote">
-                        "The people who are crazy enough to think they can change the world are the ones who do."
+                        "Topluluk kur. Birlikte film izle."
                     </p>
                 </div>
 

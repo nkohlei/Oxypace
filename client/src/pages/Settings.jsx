@@ -574,7 +574,7 @@ const Settings = () => {
             } catch (e) {}
         }
         logout();
-        navigate('/', { replace: true });
+        window.location.href = '/';
     };
 
     // Check for mobile/window width to adjust layout logic if needed

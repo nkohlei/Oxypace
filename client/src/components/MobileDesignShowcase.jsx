@@ -316,9 +316,9 @@ const MobileDesignShowcase = () => {
                         />
                     </div>
 
-                    {/* Slogan: Minimal, Iconic Steve Jobs quote in Handwritten Cursive Style */}
+                    {/* Slogan: Modern Brand Headline */}
                     <p className="welcome-slogan-quote">
-                        "The people who are crazy enough to think they can change the world are the ones who do."
+                        "Topluluk kur. Birlikte film izle."
                     </p>
                 </div>
 
@@ -776,7 +776,7 @@ const MobileDesignShowcase = () => {
 2. Karşılama & İlk Giriş (Welcome Screen)
    ├── Reversible Logo Animasyonu:
    │   [Emblem belirir] -> [OXYPACE sağdan açılır] -> [OXYPACE geri çekilir] -> [Emblem ortada kalır]
-   ├── Slogan: "The people who are crazy enough to think they can change the world are the ones who do." (El Yazısı)
+   ├── Slogan: "Topluluk kur. Birlikte film izle."
    ├── "Giriş Yap" (Gümüşümsü Buton) -> Auth
    └── "Hesap Oluştur" (Gümüş Çerçeve Buton) -> Kayıt`}
                         </pre>

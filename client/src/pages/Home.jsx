@@ -1,54 +1,55 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
-import AdUnit from '../components/AdUnit';
 import SEO from '../components/SEO';
-import axios from 'axios';
-import { getImageUrl } from '../utils/imageUtils';
-import Badge from '../components/Badge';
-import FloatingScrollTop from '../components/FloatingScrollTop';
-import MobileWelcomeFlow from '../components/MobileWelcomeFlow';
+import OxypaceBackground from '../components/OxypaceBackground';
 import './Home.css';
 
-// Fisher-Yates shuffle
-const shuffleArray = (arr) => {
-    const shuffled = [...arr];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-};
-
-const Home = () => {
+export default function Home() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
-    const isNative = Capacitor.isNativePlatform();
-    const isMobilePreview = typeof window !== 'undefined' && (
-        new URLSearchParams(window.location.search).get('mobile') === 'true' ||
-        window.location.search.includes('welcome=true')
-    );
-    const [publicPortals, setPublicPortals] = useState([]);
-    const [scrollY, setScrollY] = useState(0);
-    const [revealedSections, setRevealedSections] = useState(new Set());
-    const sectionRefs = useRef([]);
+    const [activeShowcase, setActiveShowcase] = useState("watch-party");
+    const [timerKey, setTimerKey] = useState(0);
+    const timerRef = useRef(null);
 
-    const [isGoogleBot, setIsGoogleBot] = useState(false);
-    const [botPosts, setBotPosts] = useState([]);
+    const showcases = [
+        {
+            id: "watch-party",
+            title: "Birlikte Film İzle",
+            subtitle: "Milisaniyelik eşzamanlama ve sıfır desenkron ile sinema keyfi.",
+            image: "/onboarding-showcase/slide-3-watch-party.webp",
+            alt: "Oxypace Birlikte Film İzleme ve Watch Party Arayüzü",
+            badge: "Sıfır Gecikmeli Canlı Oynatıcı",
+        },
+        {
+            id: "portals",
+            title: "Kendi Portalını Kur",
+            subtitle: "Sınırsız kanal, ses odaları ve gelişmiş yetkilendirme.",
+            image: "/onboarding-showcase/slide-1-portal.webp",
+            alt: "Oxypace Portallar ve Kanal Hiyerarşisi Arayüzü",
+            badge: "Özelleştirilebilir Topluluk Portalı",
+        },
+        {
+            id: "posts",
+            title: "Topluluk Akışı",
+            subtitle: "Görseller, tartışma başlıkları ve anlık canlı etkileşim.",
+            image: "/onboarding-showcase/slide-2-post.webp",
+            alt: "Oxypace Gönderi ve Etkileşim Duvarı",
+            badge: "Canlı Akış ve Sosyal Katılım",
+        },
+        {
+            id: "network",
+            title: "Küresel Bağlantı Ağı",
+            subtitle: "Dünyanın her yerinden üyelerle düşük gecikmeli WebRTC odaları.",
+            image: "/onboarding-showcase/slide-4-globe.webp",
+            alt: "Oxypace Küresel Ağ ve Canlı Odalar",
+            badge: "WebRTC Düşük Gecikme Altyapısı",
+        },
+    ];
 
-    // Auto-redirect logged-in users directly to platform/portal/messages
+    // Oturum açıkken kullanıcı ana sayfaya geldiğinde anında portalına/mesajlarına yönlendir
     useEffect(() => {
         if (!loading && user) {
-            const pendingPortal = localStorage.getItem('oxypace_pending_portal');
-            if (pendingPortal) {
-                localStorage.removeItem('oxypace_pending_portal');
-                navigate(`/portal/${pendingPortal}`, { replace: true });
-                return;
-            }
-
             const topPortal = localStorage.getItem('oxypace_top_portal');
             if (topPortal) {
                 try {
@@ -61,8 +62,8 @@ const Home = () => {
             }
 
             if (user.joinedPortals && user.joinedPortals.length > 0) {
-                const firstPortalId = typeof user.joinedPortals[0] === 'string' 
-                    ? user.joinedPortals[0] 
+                const firstPortalId = typeof user.joinedPortals[0] === 'string'
+                    ? user.joinedPortals[0]
                     : user.joinedPortals[0]._id;
                 navigate(`/portal/${firstPortalId}`, { replace: true });
             } else {
@@ -71,466 +72,396 @@ const Home = () => {
         }
     }, [user, loading, navigate]);
 
-    // Detect Googlebot and fetch the public portal posts (Global Feed)
+    // Showcase timer (4.5 seconds per tab)
     useEffect(() => {
-        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-        const isBot = /googlebot|mediapartners-google/i.test(ua) || window.location.search.includes('bot=true');
-        setIsGoogleBot(isBot);
-
-        if (isBot) {
-            const fetchBotFeed = async () => {
-                try {
-                    const res = await axios.get('/api/posts/bot-feed');
-                    if (res.data && res.data.posts) {
-                        setBotPosts(res.data.posts);
-                    }
-                } catch (err) {
-                    console.error('Error fetching Googlebot feed:', err);
-                }
-            };
-            fetchBotFeed();
-        }
-    }, []);
-
-    // Handle pending portal redirect after login if any (Web)
-    useEffect(() => {
-        if (!isNative && !loading && user) {
-            const pendingPortal = localStorage.getItem('oxypace_pending_portal');
-            if (pendingPortal) {
-                localStorage.removeItem('oxypace_pending_portal');
-                navigate(`/portal/${pendingPortal}`);
-            }
-        }
-    }, [user, loading, navigate, isNative]);
-
-    // Fetch portals and shuffle for randomized display
-    useEffect(() => {
-        const fetchPortals = async () => {
-            // Check cache first
-            const cached = sessionStorage.getItem('oxypace_public_portals');
-            if (cached) {
-                try {
-                    setPublicPortals(JSON.parse(cached));
-                    // Still fetch in background to keep it fresh, but don't block
-                } catch (e) {
-                    console.error("Cache parse error", e);
-                }
-            }
-
-            try {
-                const res = await axios.get('/api/portals?keyword=');
-                if (res.data && res.data.length > 0) {
-                    // Limit to 30 and shuffle
-                    const selected = res.data.slice(0, 30);
-                    const shuffled = shuffleArray(selected);
-                    setPublicPortals(shuffled);
-                    sessionStorage.setItem('oxypace_public_portals', JSON.stringify(shuffled));
-                }
-            } catch (err) {
-                console.error("Failed to fetch portals", err);
-            }
-        };
-        fetchPortals();
-    }, []);
-
-    // Scroll tracking - perfectly tracks any element's scroll via capture phase
-    useEffect(() => {
-        const handleScroll = (e) => {
-            const target = e.target;
-            if (target === document || target === window) {
-                setScrollY(window.scrollY);
-            } else if (target.scrollTop !== undefined) {
-                setScrollY(target.scrollTop);
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
-        // Initial setup
-        handleScroll({ target: window });
-
-        return () => window.removeEventListener('scroll', handleScroll, { capture: true });
-    }, []);
-
-    // Intersection Observer for scroll-reveal
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        setRevealedSections(prev => new Set([...prev, entry.target.dataset.section]));
-                    }
+        const startTimer = () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = setInterval(() => {
+                setActiveShowcase((prev) => {
+                    const currentIndex = showcases.findIndex((s) => s.id === prev);
+                    const nextIndex = (currentIndex + 1) % showcases.length;
+                    return showcases[nextIndex].id;
                 });
-            },
-            { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
-        );
-        sectionRefs.current.forEach(ref => { if (ref) observer.observe(ref); });
-        return () => observer.disconnect();
-    }, []);
+                setTimerKey((k) => k + 1);
+            }, 4500);
+        };
 
-    const setSectionRef = useCallback((index) => (el) => {
-        sectionRefs.current[index] = el;
-    }, []);
+        startTimer();
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [showcases.length]);
 
-    // Handle portal card click
-    const handlePortalClick = useCallback((portalId) => {
-        if (user) {
-            navigate(`/portal/${portalId}`);
-        } else {
-            localStorage.setItem('oxypace_pending_portal', portalId);
-            navigate('/login');
-        }
-    }, [user, navigate]);
-
-    // Tripled for infinite scroll illusion (placed before loading check to satisfy Rules of Hooks)
-    const sliderPortals = useMemo(() => {
-        if (publicPortals.length === 0) return [];
-        return [...publicPortals, ...publicPortals, ...publicPortals];
-    }, [publicPortals]);
-
-    if (loading) {
-        return (
-            <div className="app-wrapper advanced-home">
-                <Navbar />
-                <div className="spinner-container"><div className="spinner"></div></div>
-            </div>
-        );
-    }
-
-    // Scroll-based hero animation
-    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const splitProgress = Math.min(scrollY / (windowHeight * 0.6), 1);
-
-    // başlık arka plana ve ekranın ortasına doğru küçülerek geçecek ve buğulu/sisli bir hale gelecek
-    // We stay perfectly centered (no translateY), scale down to 0.5, become foggy/blurry up to 25px, and keep some opacity so it's visible in the background
-    const logoScale = 1 - (splitProgress * 0.5);
-    const logoBlur = splitProgress * 25;
-    const logoOpacity = 1 - (splitProgress * 0.4);
-
-    // Smooth scroll to discovery section
-    const scrollToDiscovery = () => {
-        const el = document.getElementById('discovery-section');
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+    const handleManualTabClick = (id) => {
+        setActiveShowcase(id);
+        setTimerKey((k) => k + 1);
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+            setActiveShowcase((prev) => {
+                const currentIndex = showcases.findIndex((s) => s.id === prev);
+                const nextIndex = (currentIndex + 1) % showcases.length;
+                return showcases[nextIndex].id;
+            });
+            setTimerKey((k) => k + 1);
+        }, 4500);
     };
 
-    const features = [
-        {
-            num: '01',
-            title: 'Topluluğunu İnşa Et',
-            desc: 'Oxypace, ilgi alanlarına odaklanan modern portallardan oluşur. Kendi portalınızı oluşturun, kurallarınızı belirleyin ve kitlenizi büyütün. Kaliteli tartışmalar ve paylaşımlar için özel bir alan yaratın.',
-            cta: 'Portallara Göz At',
-            ctaAction: scrollToDiscovery,
-            icon: '🌐',
-            mockup: 'portal'
-        },
-        {
-            num: '02',
-            title: 'Küresel İletişim',
-            desc: 'Global message özelliği sayesinde farklı portallardaki arkadaşlarınızla tek bir arayüzden gerçek zamanlı sohbet edin. Kesintisiz etkileşim ve güvenli altyapı her an yanınızda.',
-            cta: 'Aramıza Katıl',
-            ctaAction: () => navigate('/register'),
-            icon: '💬',
-            mockup: 'chat'
-        },
-        {
-            num: '03',
-            title: 'Sizi Yansıtan Yapı',
-            desc: 'Karanlık mod, yüksek çözünürlüklü profiller, kapak fotoğrafları ve özel rozetler... Platformu tamamen kendi tarzınıza göre özelleştirin. Oxypace size tam kontrol sunar.',
-            cta: 'Hemen Başla',
-            ctaAction: () => navigate('/register'),
-            icon: '✨',
-            mockup: 'profile',
-            primary: true
-        }
-    ];
+    const currentShowcase = showcases.find((s) => s.id === activeShowcase) || showcases[0];
 
-    if (isNative || isMobilePreview) {
-        // If still loading session or already logged in, do not render welcome screen to prevent flash
-        if (loading || user) {
-            return <div className="app-wrapper advanced-home native-mobile-welcome" style={{ background: '#000000' }} />;
-        }
-
-        return <MobileWelcomeFlow />;
+    // Prevent flashing landing page if already logged in
+    if (!loading && user) {
+        return null;
     }
 
     return (
-        <div className="app-wrapper advanced-home">
+        <div className="oxypace-landing relative">
             <SEO
-                title="Ana Sayfa | Global Message & Portallar"
-                description="Oxypace - Yeni nesil sosyal medya ve topluluk platformu. Kendi portalınızı oluşturun, arkadaşlarınızla sohbet edin ve global mesajlaşmanın keyfini çıkarın."
-                schema={{
-                    "@context": "https://schema.org",
-                    "@type": "WebSite",
-                    "name": "Oxypace",
-                    "url": window.location.origin,
-                    "potentialAction": {
-                        "@type": "SearchAction",
-                        "target": `${window.location.origin}/search?q={search_term_string}`,
-                        "query-input": "required name=search_term_string"
-                    }
-                }}
+                title="Oxypace - Topluluk Kur ve Birlikte Film İzle"
+                description="Arkadaşlarınla kendi portalını oluştur, kristal netliğinde sesli odalarda sıfır gecikmeyle birlikte film izle."
             />
 
-            <Navbar hideThemeToggle />
+            {/* 120 FPS Vivid-Color Cursor-Responsive Canvas Background */}
+            <OxypaceBackground />
 
-            <main className="advanced-home-content">
-                {/* HERO TITLE - User's Logo Image masked with an actual CSS Gradient overlay */}
-                <div className="hero-title-container" style={{
-                    transform: `scale(${logoScale})`,
-                    opacity: logoOpacity,
-                    filter: `blur(${logoBlur}px)`
-                }}>
-                    <div className="hero-gradient-glow"></div>
-                    
-                    <div className="hero-quote-animated">
-                        "The people who are crazy enough to think they can change the world are the ones who do."
-                    </div>
+            {/* =========================================================================
+                1. PERMANENT FLOATING NAVIGATION
+                ========================================================================= */}
+            <div className="oxy-nav-left-corridor">
+                <Link
+                    to="/"
+                    className="pointer-events-auto inline-flex items-center transition-transform hover:scale-105"
+                    title="Oxypace Anasayfa"
+                >
+                    <img
+                        src="/oxypace-ice-logo.png"
+                        alt="Oxypace"
+                        width="56"
+                        height="56"
+                        className="w-11 h-11 sm:w-13 sm:h-13 object-contain filter drop-shadow-[0_4px_18px_rgba(255,255,255,0.45)]"
+                    />
+                </Link>
+            </div>
 
-                    <div className="hero-logo-mask-container">
-                        <img src="/oxypace-text-logo.webp" alt="OXYPACE Logo" className="hero-logo-img" width="540" height="120" fetchpriority="high" loading="eager" decoding="async" />
-                    </div>
-                </div>
+            <div className="oxy-nav-right-corridor">
+                <Link
+                    to="/login"
+                    className="pointer-events-auto oxy-btn-glass px-5 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-tight shadow-xl"
+                >
+                    Giriş Yap
+                </Link>
+            </div>
 
-                {/* SCROLLABLE CONTENT */}
-                <div className="content-scroll-layer">
-                    <section className="hero-empty-section"></section>
+            {/* =========================================================================
+                2. HERO SECTION
+                ========================================================================= */}
+            <section className="relative z-10 pt-24 sm:pt-32 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
+                {/* Master Headline in Syne Display Font & Reflective Liquid Mercury */}
+                <h1 className="oxy-hero-title oxy-civa-title text-[2.15rem] min-[390px]:text-[2.5rem] min-[440px]:text-[2.9rem] sm:text-5xl md:text-6xl xl:text-[3.8rem] font-extrabold tracking-tight leading-[1.08] mb-6 w-full max-w-5xl mx-auto">
+                    <span className="block">TOPLULUK KUR.</span>
+                    <span className="block mt-2 sm:mt-3">
+                        <span className="block sm:inline">BİRLİKTE </span>
+                        <span className="block sm:inline">FİLM İZLE.</span>
+                    </span>
+                </h1>
 
-                    {/* FEATURE SECTIONS */}
-                    <div className="content-sections-wrapper">
-                        {features.map((feat, i) => (
-                            <section
-                                key={feat.num}
-                                className={`info-section ${revealedSections.has(`feature-${i}`) ? 'revealed' : ''}`}
-                                data-section={`feature-${i}`}
-                                ref={setSectionRef(i)}
-                            >
-                                <div className="info-text">
-                                    <div className="feature-icon-badge">{feat.icon}</div>
-                                    <h3>
-                                        <span className="accent">{feat.num}.</span>
-                                        <br />{feat.title}
-                                    </h3>
-                                    <p>{feat.desc}</p>
-                                    <button
-                                        className={`section-cta-btn ${feat.primary ? 'primary' : ''}`}
-                                        onClick={feat.ctaAction}
-                                    >
-                                        {feat.cta} <span className="arrow">→</span>
-                                    </button>
-                                </div>
-                                <div className="info-visual">
-                                    {feat.mockup === 'portal' && (
-                                        <div className="mockup-window">
-                                            <div className="mockup-header">
-                                                <span className="dot red"></span>
-                                                <span className="dot yellow"></span>
-                                                <span className="dot green"></span>
-                                            </div>
-                                            <div className="mockup-body mockup-01">
-                                                <div className="skeleton-line sm"></div>
-                                                <div className="skeleton-box"></div>
-                                                <div className="skeleton-box"></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {feat.mockup === 'chat' && (
-                                        <div className="mockup-window">
-                                            <div className="mockup-header">
-                                                <span className="dot red"></span>
-                                                <span className="dot yellow"></span>
-                                                <span className="dot green"></span>
-                                            </div>
-                                            <div className="mockup-body mockup-02">
-                                                <div className="skeleton-chat-left"></div>
-                                                <div className="skeleton-chat-right accent"></div>
-                                                <div className="skeleton-chat-left sm"></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {feat.mockup === 'profile' && (
-                                        <div className="mockup-window">
-                                            <div className="mockup-header">
-                                                <span className="dot red"></span>
-                                                <span className="dot yellow"></span>
-                                                <span className="dot green"></span>
-                                            </div>
-                                            <div className="mockup-body mockup-03">
-                                                <div className="skeleton-box large">
-                                                    <div className="profile-circle"></div>
-                                                </div>
-                                                <div className="skeleton-line center w-50 mt-default"></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-                        ))}
-                    </div>
+                {/* Subtitle */}
+                <p className="oxy-hero-subtitle max-w-xl mx-auto text-base sm:text-lg md:text-xl text-slate-200 font-medium leading-relaxed mb-10">
+                    Arkadaşlarınla kendi portalını oluştur, kristal netliğinde sesli odalarda sıfır gecikmeyle birlikte film izle.
+                </p>
 
-                    {/* PORTAL DISCOVERY - Randomized, clickable, no content */}
-                    <section
-                        id="discovery-section"
-                        className={`portal-discovery-section slider-mode ${revealedSections.has('discovery') ? 'revealed' : ''}`}
-                        data-section="discovery"
-                        ref={setSectionRef(3)}
+                {/* Primary CTAs */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-16">
+                    <Link
+                        to="/login"
+                        className="oxy-btn-mercury w-full sm:w-auto px-8 py-3.5 rounded-full text-sm sm:text-base font-bold shadow-2xl flex items-center justify-center gap-2 group"
                     >
-                        <div className="discovery-header">
-                            <h2 className="discovery-title">Popüler Toplulukları Keşfet</h2>
-                            <p className="discovery-subtitle">Sizin gibi düşünen insanlarla tanışın ve ilgi alanlarınıza uygun portallara katılın.</p>
-                        </div>
-                        <div className="discovery-slider-container">
-                            <div className="discovery-slider-track">
-                                {sliderPortals.map((portal, idx) => (
-                                    <div
-                                        key={`${portal._id}-${idx}`}
-                                        className="modern-portal-card frosted-discovery"
-                                        onClick={() => handlePortalClick(portal._id)}
-                                    >
+                        <span>Web&apos;de Hemen Başla</span>
+                        <svg
+                            className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </Link>
+                    <a
+                        href="/downloads/oxypace.apk"
+                        className="oxy-btn-glass w-full sm:w-auto px-7 py-3.5 rounded-full text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
+                    >
+                        <svg className="w-5 h-5 text-slate-200" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0007s.4482-1.0006.9993-1.0006c.5516 0 1.0003.4485 1.0003 1.0006s-.4487 1.0007-1.0003 1.0007m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0007s.4482-1.0006.9993-1.0006c.5516 0 1.0003.4485 1.0003 1.0006s-.4487 1.0007-1.0003 1.0007m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.411 13.8559 8.1 12 8.1s-3.5902.311-5.1368.8504L4.8409 5.4474a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.784h24c-.3432-4.1251-2.6889-7.5973-6.1185-9.4626" />
+                        </svg>
+                        <span>Android APK</span>
+                    </a>
+                </div>
+
+                {/* =========================================================================
+                    3. REAL VISUAL SHOWCASE: 4 AUTO-ROTATING TABS
+                    ========================================================================= */}
+                <div className="max-w-5xl mx-auto">
+                    {/* Interactive Navigation Tabs */}
+                    <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2 p-1 sm:p-1.5 oxy-tab-container mb-5 sm:mb-6 max-w-fit mx-auto">
+                        {showcases.map((tab) => {
+                            const isActive = activeShowcase === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => handleManualTabClick(tab.id)}
+                                    className={`oxy-tab-pill text-xs sm:text-sm ${isActive ? "active" : ""}`}
+                                >
+                                    <span className="relative z-10">{tab.title}</span>
+                                    {isActive && (
                                         <div
-                                            className="card-banner"
-                                            style={{
-                                                background: portal.banner
-                                                    ? `url(${getImageUrl(portal.banner)}) center/cover`
-                                                    : 'linear-gradient(135deg, #0a0a2e, #1a1a4e)'
-                                            }}
-                                        ></div>
-                                        <div className="card-icon-wrapper">
-                                            {portal.avatar ? (
-                                                <img src={getImageUrl(portal.avatar)} alt={portal.name} className="card-icon-img" width="48" height="48" loading="lazy" decoding="async" />
-                                            ) : (
-                                                <div className="card-icon-placeholder">{portal.name?.substring(0, 2).toUpperCase()}</div>
-                                            )}
-                                        </div>
-                                        <div className="card-body">
-                                            <h3 className="card-title">
-                                                {portal.name}
-                                                <Badge type={portal.isVerified ? 'verified' : portal.badges?.[0]} size={18} />
-                                            </h3>
-                                            <p className="card-desc">
-                                                {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
-                                            </p>
-                                            <div className="card-footer">
-                                                <div className="member-count">
-                                                    <div className="status-dot"></div>
-                                                    <span>{portal.memberCount || 0} Üye</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* GOOGLEBOT GLOBAL FEED */}
-                    {isGoogleBot && botPosts.length > 0 && (
-                        <section className="bot-feed-section" id="bot-feed-section" style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
-                            <h2 style={{ fontSize: '2rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Global Akış</h2>
-                            <div className="bot-posts-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                {botPosts.map((post) => {
-                                    const channelId = post.channel ? (post.channel._id || post.channel) : 'general';
-                                    return (
-                                        <article 
-                                            key={post._id} 
-                                            className="bot-post-card" 
-                                            id={`post-${post._id}`}
-                                            style={{ 
-                                                background: 'var(--bg-secondary)', 
-                                                border: '1px solid var(--border-color)', 
-                                                borderRadius: '8px', 
-                                                padding: '20px' 
-                                            }}
-                                        >
-                                            <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                <h3 style={{ fontSize: '1.2rem', margin: 0 }}>
-                                                    <a 
-                                                        href={`/portal/${post.portal?._id}?channel=${channelId}&post=${post._id}`}
-                                                        style={{ color: 'var(--accent-primary, #00f0ff)', textDecoration: 'none' }}
-                                                    >
-                                                        {post.author?.profile?.displayName || post.author?.username || 'Kullanıcı'} - {post.portal?.name || 'Portal'}
-                                                    </a>
-                                                </h3>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                                    {new Date(post.createdAt).toLocaleDateString('tr-TR')}
-                                                </span>
-                                            </header>
-                                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0 0 10px 0', whiteSpace: 'pre-wrap' }}>
-                                                {post.content}
-                                            </p>
-                                            {post.media && post.mediaType === 'image' && (
-                                                <img 
-                                                    src={post.media} 
-                                                    alt="Post media" 
-                                                    style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px', marginTop: '10px' }} 
-                                                />
-                                            )}
-                                            {post.media && post.mediaType === 'video' && (
-                                                <video 
-                                                    src={post.media} 
-                                                    controls 
-                                                    style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px', marginTop: '10px' }} 
-                                                />
-                                            )}
-                                        </article>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
-
-                    <div className="home-footer-ad">
-                        <AdUnit slot="1234567890" />
+                                            key={`timer-pill-${tab.id}-${timerKey}`}
+                                            className="oxy-tab-timer-line"
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* FOOTER */}
-                    <footer className="home-advanced-footer">
-                        <div className="footer-content">
-                            <div className="footer-brand">
-                                <img src="/oxypace-text-logo1.webp" alt="OXYPACE" className="footer-logo" width="160" height="37" loading="lazy" decoding="async" />
-                                <p>Sınırsız dijital iletişim ve özgür topluluk deneyimi sunan global platform.</p>
+                    {/* Visual Showcase Frame */}
+                    <div className="oxy-showcase-frame text-left">
+                        {/* Top Animated Timeline Bar */}
+                        <div
+                            key={`showcase-bar-${activeShowcase}-${timerKey}`}
+                            className="oxy-showcase-timer-bar"
+                        />
+
+                        {/* Top Info Header */}
+                        <div className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-white/[0.03] flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-slate-600 inline-block" />
+                                <span className="w-2 h-2 rounded-full bg-slate-700 inline-block" />
+                                <span className="w-2 h-2 rounded-full bg-slate-800 inline-block" />
+                                <span className="ml-1.5 text-[11px] sm:text-xs font-mono text-slate-300">
+                                    {currentShowcase.badge}
+                                </span>
                             </div>
-
-                            {!Capacitor.isNativePlatform() && (
-                                <div className="footer-apk-container">
-                                    <a href="/downloads/oxypace.apk" download className="footer-apk-btn">
-                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="apk-icon">
-                                            <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-8.5-6C8.4 2 5.2 4.9 5 8.6h14c-.2-3.7-3.4-6.6-7-6.6zm-2.5 3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
-                                        </svg>
-                                        <span>Download APK (v{import.meta.env.VITE_APP_VERSION || '2.4.0'})</span>
-                                    </a>
-                                </div>
-                            )}
-
-                            <div className="footer-links-grid">
-                                <div className="footer-col">
-                                    <h4>Platform</h4>
-                                    <span onClick={scrollToDiscovery}>Portalları Keşfet</span>
-                                    <span onClick={() => navigate('/login')}>Giriş Yap</span>
-                                    <span onClick={() => navigate('/register')}>Kayıt Ol</span>
-                                </div>
-                                <div className="footer-col">
-                                    <h4>Yasal</h4>
-                                    <span onClick={() => navigate('/privacy')}>Gizlilik Politikası</span>
-                                    <span onClick={() => navigate('/terms')}>Kullanım Koşulları</span>
-                                </div>
-                                <div className="footer-col">
-                                    <h4>İletişim</h4>
-                                    <span onClick={() => navigate('/contact')}>Bize Ulaşın</span>
-                                    <a href="mailto:nqohlei@gmail.com">Destek</a>
-                                </div>
+                            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-slate-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
+                                <span className="hidden sm:inline">Canlı Senkronizasyon</span>
                             </div>
                         </div>
-                        <div className="footer-bottom">
-                            <p>&copy; {new Date().getFullYear()} Oxypace. Tüm hakları saklıdır.</p>
+
+                        {/* High-Resolution Screenshot */}
+                        <div className="relative aspect-[16/9] sm:aspect-[16/8.5] w-full bg-[#050608] overflow-hidden group">
+                            <img
+                                key={currentShowcase.id}
+                                src={currentShowcase.image}
+                                alt={currentShowcase.alt}
+                                className="w-full h-full object-contain object-top p-2 sm:p-4 transition-transform duration-500 group-hover:scale-[1.01]"
+                                loading="eager"
+                            />
+
+                            {/* Bottom Subtle Overlay */}
+                            <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 bg-gradient-to-t from-black via-black/85 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                                        {currentShowcase.title}
+                                    </h3>
+                                    <p className="text-xs text-slate-300 max-w-md">
+                                        {currentShowcase.subtitle}
+                                    </p>
+                                </div>
+                                <Link
+                                    to="/login"
+                                    className="oxy-btn-mercury px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap"
+                                >
+                                    Dene →
+                                </Link>
+                            </div>
                         </div>
-                    </footer>
+                    </div>
+
+                    {/* =========================================================================
+                        EVENT HORIZON CARD
+                        ========================================================================= */}
+                    <div className="mt-8 p-6 sm:p-8 oxy-card-horizon flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 text-left shadow-2xl">
+                        <div className="flex-1">
+                            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-white/10 text-[11px] font-mono uppercase tracking-widest text-slate-300 mb-2.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#ffffff]" />
+                                OXYPACE EKOSİSTEMİ // BİLİM ARŞİVİ
+                            </div>
+                            <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                                EVENT HORIZON — Bağımsız Popüler Bilim & Astrofizik Portalı
+                            </h3>
+                            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
+                                Evrenin fizik sınırları, kara delikler ve uzay-zaman geometrisi üzerine interaktif makale ve simülasyon arşivi. Oxypace topluluğunun bağımsız bilim alanı.
+                            </p>
+                        </div>
+                        <a
+                            href="/blog"
+                            className="oxy-btn-glass px-6 py-3 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap hover:scale-105 transition-transform"
+                        >
+                            EVENT HORIZON&apos;a Git →
+                        </a>
+                    </div>
                 </div>
-            </main>
+            </section>
 
-            <FloatingScrollTop />
+            {/* =========================================================================
+                4. MINIMALIST CORE PILLARS
+                ========================================================================= */}
+            <section className="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {/* Pillar 1 */}
+                    <div className="oxy-card-mercury p-6 rounded-2xl flex flex-col justify-between">
+                        <div>
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4 text-white">
+                                <svg className="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-bold text-white mb-2">Birlikte Film İzle</h3>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Buffer senkronizasyonu ile arkadaşlarınla aynı anda başlat, durdur ve kesintisiz izle.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Pillar 2 */}
+                    <div className="oxy-card-mercury p-6 rounded-2xl flex flex-col justify-between">
+                        <div>
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4 text-white">
+                                <svg className="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-bold text-white mb-2">Özel Portallar</h3>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Kendi kurallarını koyduğun, sınırsız ses ve metin kanallarına sahip bağımsız alanlar kur.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Pillar 3 */}
+                    <div className="oxy-card-mercury p-6 rounded-2xl flex flex-col justify-between">
+                        <div>
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4 text-white">
+                                <svg className="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-bold text-white mb-2">Kristal Netliğinde Ses</h3>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                WebRTC tabanlı düşük gecikmeli, gürültü filtreli ve arka planda çalışan ses motoru.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* =========================================================================
+                5. MINIMALIST FOOTER
+                ========================================================================= */}
+            <footer className="relative z-10 bg-black pt-12 pb-6 px-4 sm:px-6 lg:px-8 border-t border-white/[0.05]">
+                <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+                    {/* Top-left: Oxypace Ice Logo */}
+                    <div className="w-full sm:w-auto flex items-center justify-start">
+                        <Link
+                            to="/"
+                            className="inline-flex items-center transition-transform hover:scale-105 active:scale-95"
+                            title="Oxypace"
+                        >
+                            <img
+                                src="/oxypace-ice-logo.png"
+                                alt="Oxypace"
+                                width="40"
+                                height="40"
+                                className="w-9 h-9 sm:w-10 sm:h-10 object-contain filter drop-shadow-[0_2px_12px_rgba(255,255,255,0.35)]"
+                            />
+                        </Link>
+                    </div>
+
+                    {/* Right: Policies and Social Links */}
+                    <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-4 sm:gap-5 text-slate-400">
+                        {/* Policies */}
+                        <div className="flex items-center gap-3 sm:gap-4 font-medium text-[11px] sm:text-xs tracking-wide">
+                            <Link to="/privacy" className="hover:text-white transition-colors">
+                                Gizlilik
+                            </Link>
+                            <span className="w-1 h-1 rounded-full bg-slate-700" />
+                            <Link to="/terms" className="hover:text-white transition-colors">
+                                Şartlar
+                            </Link>
+                        </div>
+
+                        <div className="hidden sm:block h-3.5 w-px bg-white/10" />
+
+                        {/* Theme-matching Icon Social Links */}
+                        <div className="flex items-center gap-2">
+                            <a
+                                href="https://x.com/oxypace"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="X (Twitter)"
+                                className="oxy-social-btn"
+                                title="X (Twitter)"
+                            >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                            </a>
+
+                            <a
+                                href="https://discord.gg"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Discord"
+                                className="oxy-social-btn"
+                                title="Discord"
+                            >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                                </svg>
+                            </a>
+
+                            <a
+                                href="https://github.com/nkohlei/Oxypace"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="GitHub"
+                                className="oxy-social-btn"
+                                title="GitHub"
+                            >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                                </svg>
+                            </a>
+
+                            <a
+                                href="https://instagram.com/oxypace"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Instagram"
+                                className="oxy-social-btn"
+                                title="Instagram"
+                            >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+
+            {/* =========================================================================
+                6. VERY BOTTOM FULL-WIDTH BRAND BANNER
+                ========================================================================= */}
+            <section className="relative z-10 oxy-banner-container">
+                <div className="w-full max-w-[1440px] mx-auto px-0 sm:px-6 flex items-center justify-center overflow-hidden">
+                    <img
+                        src="/oxypace-brand-banner-ultra.webp?v=5"
+                        alt="Oxypace Banner"
+                        className="oxy-banner-image select-none pointer-events-none"
+                    />
+                </div>
+            </section>
         </div>
     );
-};
-
-export default Home;
+}
