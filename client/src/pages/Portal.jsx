@@ -40,7 +40,7 @@ const Portal = () => {
     const [searchParams] = useSearchParams();
     const urlChannel = searchParams.get('channel');
     const urlPost = searchParams.get('post');
-    const { user, updateUser, loading: authLoading } = useAuth();
+    const { user, token, updateUser, loading: authLoading } = useAuth();
     const { socket, connected } = useSocket();
     const navigate = useNavigate();
     const uiContext = useUI();
@@ -1208,7 +1208,7 @@ const Portal = () => {
     }, [suspensionInfo]);
 
     // Guest protection: If no token/session, redirect directly to Home (no flash, no lock screen)
-    if (!token && !authLoading) {
+    if ((!token || !user) && !authLoading) {
         return <Navigate to="/" replace />;
     }
 
