@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T19:44:00.000Z",
-  "reason": "Fix GIF pixel limit error with limitInputPixels:false, remove notice banner (Option A), add bulletproof fallback"
+  "lastBuild": "2026-10-18T20:33:00.000Z",
+  "reason": "Fix GIF cropping position offset calculation: mirror exact frontend scale and translate so avatar and banner crop output matches preview"
 }

@@ -468,30 +468,54 @@ const ImageCropper = ({
                 const h = imageObj.naturalHeight || imageObj.height;
                 const cropRect = getCropRect(w, h, cropSize, scale, offset);
 
+                let uploadFileObj = file;
+                if (!uploadFileObj && typeof image === 'string') {
+                    try {
+                        const blobRes = await fetch(image);
+                        const blobData = await blobRes.blob();
+                        uploadFileObj = new File([blobData], 'image.gif', { type: 'image/gif' });
+                    } catch (blobErr) {
+                        console.warn('Could not convert data URL to file:', blobErr);
+                    }
+                }
+
                 let mediaKey;
-                if (file) {
+                if (uploadFileObj) {
                     try {
                         const formData = new FormData();
-                        formData.append('gif', file);
+                        formData.append('gif', uploadFileObj);
                         formData.append('sourceX', cropRect.left);
                         formData.append('sourceY', cropRect.top);
                         formData.append('sourceWidth', cropRect.width);
                         formData.append('sourceHeight', cropRect.height);
+                        formData.append('scale', scale);
+                        formData.append('offsetX', offset.x);
+                        formData.append('offsetY', offset.y);
+                        formData.append('cropWidth', cropSize.width);
+                        formData.append('cropHeight', cropSize.height);
                         formData.append('outputWidth', outputSize.width);
                         formData.append('outputHeight', outputSize.height);
-                        formData.append('rotation', 0);
+                        formData.append('rotation', rotation || 0);
                         formData.append('purpose', uploadPurpose);
                         if (portalId) {
                             formData.append('portalId', portalId);
                         }
 
+                        const token = localStorage.getItem('token');
+                        const headers = {};
+                        if (token) {
+                            headers['Authorization'] = `Bearer ${token}`;
+                        }
+
                         const res = await axios.post('/api/media/process-gif', formData, {
-                            headers: { 'Content-Type': 'multipart/form-data' },
+                            headers,
                         });
                         mediaKey = res.data.mediaKey;
                     } catch (backendErr) {
-                        console.warn('Backend GIF kırpma hatası, doğrudan orijinal dosya yükleniyor:', backendErr);
-                        mediaKey = await uploadFile(file, uploadPurpose, portalId);
+                        console.error('Backend GIF kırpma hatası:', backendErr);
+                        alert('GIF kırpma hatası: ' + (backendErr.response?.data?.message || backendErr.message));
+                        setProcessing(false);
+                        return;
                     }
                 } else {
                     mediaKey = await uploadFile(file, uploadPurpose, portalId);

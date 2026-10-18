@@ -167,7 +167,13 @@ router.post('/process-gif', auth, (req, res, next) => {
     });
 }, async (req, res) => {
     try {
-        const { sourceX, sourceY, sourceWidth, sourceHeight, rotation, purpose } = req.body;
+        const {
+            sourceX, sourceY, sourceWidth, sourceHeight,
+            scale, offsetX, offsetY,
+            cropWidth, cropHeight,
+            outputWidth, outputHeight,
+            rotation, purpose
+        } = req.body;
 
         // Accept file either as direct upload (multipart) or fallback to R2 key
         let inputBuffer;
@@ -210,44 +216,79 @@ router.post('/process-gif', auth, (req, res, next) => {
             const rotatedWidth = is90or270 ? originalHeight : originalWidth;
             const rotatedHeight = is90or270 ? originalWidth : originalHeight;
 
-            // Build processing pipeline
+            const outW = Math.max(1, Math.round(Number(outputWidth) || 512));
+            const outH = Math.max(1, Math.round(Number(outputHeight) || 512));
+
             let pipeline = sharp(inputBuffer, { animated: true, limitInputPixels: false });
 
             if (normalizedAngle !== 0) {
                 pipeline = pipeline.rotate(normalizedAngle);
             }
 
-            // Clamp crop coordinates to image bounds (sharp requires integers)
-            const cropLeft = Math.max(0, Math.round(Number(sourceX) || 0));
-            const cropTop  = Math.max(0, Math.round(Number(sourceY) || 0));
-            const cropWidth  = Math.max(1, Math.round(Number(sourceWidth) || rotatedWidth));
-            const cropHeight = Math.max(1, Math.round(Number(sourceHeight) || rotatedHeight));
+            if (scale && cropWidth && cropHeight) {
+                // High-precision viewport-relative cropping:
+                // Perfectly mirrors the user's screen zoom & pan
+                const userScale = Number(scale) || 1;
+                const viewW = Number(cropWidth) || outW;
+                const userOffsetX = Number(offsetX) || 0;
+                const userOffsetY = Number(offsetY) || 0;
 
-            const finalLeft   = Math.min(cropLeft,  rotatedWidth  - 1);
-            const finalTop    = Math.min(cropTop,   rotatedHeight - 1);
-            const finalWidth  = Math.min(cropWidth,  rotatedWidth  - finalLeft);
-            const finalHeight = Math.min(cropHeight, rotatedHeight - finalTop);
+                const k = outW / viewW;
+                const targetW = Math.max(1, Math.round(rotatedWidth * userScale * k));
+                const targetH = Math.max(1, Math.round(rotatedHeight * userScale * k));
 
-            pipeline = pipeline.extract({
-                left:   finalLeft,
-                top:    finalTop,
-                width:  finalWidth,
-                height: finalHeight,
-            });
+                const targetCenterX = Math.round(outW / 2 + userOffsetX * k);
+                const targetCenterY = Math.round(outH / 2 + userOffsetY * k);
 
-            // Resize if requested
-            if (req.body.outputWidth && req.body.outputHeight) {
-                const outW = Math.round(Number(req.body.outputWidth));
-                const outH = Math.round(Number(req.body.outputHeight));
-                if (outW > 0 && outH > 0) {
-                    pipeline = pipeline.resize(outW, outH);
+                const targetLeft = targetCenterX - Math.round(targetW / 2);
+                const targetTop = targetCenterY - Math.round(targetH / 2);
+
+                pipeline = pipeline.resize(targetW, targetH);
+
+                const extractX = -targetLeft;
+                const extractY = -targetTop;
+
+                const safeLeft = Math.max(0, Math.min(extractX, Math.max(0, targetW - outW)));
+                const safeTop = Math.max(0, Math.min(extractY, Math.max(0, targetH - outH)));
+                const safeW = Math.min(outW, targetW - safeLeft);
+                const safeH = Math.min(outH, targetH - safeTop);
+
+                pipeline = pipeline.extract({
+                    left: safeLeft,
+                    top: safeTop,
+                    width: safeW,
+                    height: safeH,
+                });
+
+                if (safeW !== outW || safeH !== outH) {
+                    pipeline = pipeline.resize(outW, outH, { fit: 'cover' });
                 }
+            } else {
+                // Clamp crop coordinates to image bounds (sharp requires integers)
+                const cropLeft = Math.max(0, Math.round(Number(sourceX) || 0));
+                const cropTop  = Math.max(0, Math.round(Number(sourceY) || 0));
+                const cropWidthVal  = Math.max(1, Math.round(Number(sourceWidth) || rotatedWidth));
+                const cropHeightVal = Math.max(1, Math.round(Number(sourceHeight) || rotatedHeight));
+
+                const finalLeft   = Math.min(cropLeft,  rotatedWidth  - 1);
+                const finalTop    = Math.min(cropTop,   rotatedHeight - 1);
+                const finalWidth  = Math.min(cropWidthVal,  rotatedWidth  - finalLeft);
+                const finalHeight = Math.min(cropHeightVal, rotatedHeight - finalTop);
+
+                pipeline = pipeline.extract({
+                    left:   finalLeft,
+                    top:    finalTop,
+                    width:  finalWidth,
+                    height: finalHeight,
+                });
+
+                pipeline = pipeline.resize(outW, outH, { fit: 'cover' });
             }
 
             outputBuffer = await pipeline.gif({ loop: 0 }).toBuffer();
         } catch (procErr) {
-            console.warn('[process-gif] Sharp crop failed or exceeded limits, falling back to original GIF buffer:', procErr.message);
-            outputBuffer = inputBuffer;
+            console.error('[process-gif] Sharp crop failed:', procErr);
+            return res.status(500).json({ message: 'GIF kırpma işlemi başarısız oldu: ' + procErr.message });
         }
 
         // 2. Upload processed (or fallback original) GIF to R2
