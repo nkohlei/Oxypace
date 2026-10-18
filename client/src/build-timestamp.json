@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T04:42:00.000Z",
-  "reason": "Display PortalInfoModal instead of legacy privacy card when clicking or accessing unjoined private portals"
+  "lastBuild": "2026-10-18T16:53:00.000Z",
+  "reason": "Fix custom badge creation upload hang and preserve PNG transparency and GIF animation"
 }

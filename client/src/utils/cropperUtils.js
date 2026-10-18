@@ -11,7 +11,9 @@
 export function loadImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        if (typeof src === 'string' && !src.startsWith('data:')) {
+            img.crossOrigin = 'anonymous';
+        }
         img.onload = () => resolve(img);
         img.onerror = () => reject(new Error('Görsel yüklenemedi'));
         img.src = src;
@@ -102,7 +104,7 @@ export function clampOffset(offset, naturalWidth, naturalHeight, scale, cropWidt
  * @param {{width: number, height: number}} outputSize - Çıktı çözünürlüğü (örn. 512x512)
  * @returns {Promise<Blob>}
  */
-export async function cropImage(image, cropSize, scale, offset, rotation = 0, outputSize = { width: 512, height: 512 }) {
+export async function cropImage(image, cropSize, scale, offset, rotation = 0, outputSize = { width: 512, height: 512 }, mimeType = 'image/jpeg') {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -147,8 +149,8 @@ export async function cropImage(image, cropSize, scale, offset, rotation = 0, ou
                     reject(new Error('Görsel oluşturulamadı'));
                 }
             },
-            'image/jpeg',
-            0.98
+            mimeType,
+            mimeType === 'image/jpeg' ? 0.98 : undefined
         );
     });
 }

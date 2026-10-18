@@ -465,13 +465,19 @@ const ImageCropper = ({
                 onComplete(mediaKey);
             } else {
                 const outputSize = getOutputSize();
+                const isPng = Boolean(
+                    (file && (file.type === 'image/png' || file.name?.toLowerCase().endsWith('.png'))) ||
+                    (typeof image === 'string' && (image.startsWith('data:image/png') || image.toLowerCase().includes('.png')))
+                );
+                const mimeType = isPng ? 'image/png' : 'image/jpeg';
                 const blob = await cropImage(
                     imageObj,
                     cropSize,
                     scale,
                     offset,
                     rotation,
-                    outputSize
+                    outputSize,
+                    mimeType
                 );
                 onComplete(blob);
             }

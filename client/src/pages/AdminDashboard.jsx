@@ -1261,43 +1261,6 @@ const AdminDashboard = () => {
         }
     };
 
-    const analyzeImageFile = (file) => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        resolve({ isTransparent: false, aspectRatio: 1 });
-                        return;
-                    }
-                    ctx.drawImage(img, 0, 0);
-                    try {
-                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                        let isTransparent = false;
-                        for (let i = 3; i < imgData.length; i += 4) {
-                            if (imgData[i] < 255) {
-                                isTransparent = true;
-                                break;
-                            }
-                        }
-                        resolve({ isTransparent, aspectRatio: img.width / img.height });
-                    } catch (err) {
-                        resolve({ isTransparent: false, aspectRatio: img.width / img.height });
-                    }
-                };
-                img.onerror = () => resolve({ isTransparent: false, aspectRatio: 1 });
-                img.src = e.target.result;
-            };
-            reader.onerror = () => resolve({ isTransparent: false, aspectRatio: 1 });
-            reader.readAsDataURL(file);
-        });
-    };
-
     const fetchCustomBadges = async () => {
         setLoading(true);
         try {
@@ -1311,23 +1274,37 @@ const AdminDashboard = () => {
     };
 
     const handleCustomBadgeFileSelect = async (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (!file) return;
+
+        // Dosya boyutu kontrolü (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Rozet görseli boyutu en fazla 10MB olabilir.');
+            if (e.target) e.target.value = '';
+            return;
+        }
+
+        // Dosya tipi kontrolü
+        const isImage = file.type?.startsWith('image/') || file.name?.match(/\.(png|gif|jpe?g|webp|svg)$/i);
+        if (!isImage) {
+            alert('Lütfen geçerli bir görsel dosyası seçin (PNG, GIF, JPEG veya WebP).');
+            if (e.target) e.target.value = '';
+            return;
+        }
 
         setUploadingCustomBadge(true);
         try {
-            const { isTransparent, aspectRatio } = await analyzeImageFile(file);
-            const reader = new FileReader();
-            reader.onload = () => {
-                setCustomBadgeCropperImage(reader.result);
-                setCustomBadgeCropperFile(file);
-                setCustomBadgeCropperAspectRatio(isTransparent ? aspectRatio : 1.0);
-                setUploadingCustomBadge(false);
-            };
-            reader.readAsDataURL(file);
+            // PNG şeffaflığı ve GIF animasyonu tam korunarak doğrudan yüklenir
+            const mediaKey = await uploadFile(file, 'avatar');
+            setCustomBadgeUploadedKey(mediaKey);
+            setCustomBadgeUploadedUrl(getImageUrl(mediaKey));
+            setCustomBadgeCropperFile(file);
         } catch (err) {
-            console.error('Image analysis error:', err);
+            console.error('Custom badge upload error:', err);
+            alert(err.response?.data?.message || err.message || 'Görsel yüklenirken bir hata oluştu.');
+        } finally {
             setUploadingCustomBadge(false);
+            if (e.target) e.target.value = '';
         }
     };
 
@@ -1344,9 +1321,9 @@ const AdminDashboard = () => {
 
             setCustomBadgeUploadedKey(mediaKey);
             setCustomBadgeUploadedUrl(getImageUrl(mediaKey));
-            alert('Görsel başarıyla yüklendi.');
+            alert('Görsel başarıyla güncellendi.');
         } catch (err) {
-            alert('Görsel yüklenirken hata oluştu.');
+            alert('Görsel kırpılırken hata oluştu.');
         } finally {
             setUploadingCustomBadge(false);
         }
@@ -4523,11 +4500,37 @@ const AdminDashboard = () => {
                                             className="custom-badge-upload-label"
                                         >
                                             {uploadingCustomBadge ? (
-                                                <span>Yükleniyor / Analiz Ediliyor...</span>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ width: '22px', height: '22px', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                                                    <span style={{ color: '#818cf8', fontSize: '13px', fontWeight: '500' }}>Yükleniyor...</span>
+                                                </div>
                                             ) : customBadgeUploadedUrl ? (
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                                                    <img src={customBadgeUploadedUrl} alt="Preview" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-                                                    <span style={{ fontSize: '11px', color: '#4ade80' }}>Değiştirmek için tıklayın</span>
+                                                    <img src={customBadgeUploadedUrl} alt="Preview" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
+                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '11px', color: '#4ade80' }}>Değiştirmek için tıklayın</span>
+                                                        {!customBadgeUploadedUrl.toLowerCase().endsWith('.gif') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    setCustomBadgeCropperImage(customBadgeUploadedUrl);
+                                                                }}
+                                                                style={{
+                                                                    background: 'rgba(99, 102, 241, 0.25)',
+                                                                    border: '1px solid rgba(99, 102, 241, 0.45)',
+                                                                    color: '#c7d2fe',
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '6px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                ✂️ Kırp
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <>
