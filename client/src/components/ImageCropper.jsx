@@ -470,24 +470,29 @@ const ImageCropper = ({
 
                 let mediaKey;
                 if (file) {
-                    const formData = new FormData();
-                    formData.append('gif', file);
-                    formData.append('sourceX', cropRect.left);
-                    formData.append('sourceY', cropRect.top);
-                    formData.append('sourceWidth', cropRect.width);
-                    formData.append('sourceHeight', cropRect.height);
-                    formData.append('outputWidth', outputSize.width);
-                    formData.append('outputHeight', outputSize.height);
-                    formData.append('rotation', 0);
-                    formData.append('purpose', uploadPurpose);
-                    if (portalId) {
-                        formData.append('portalId', portalId);
-                    }
+                    try {
+                        const formData = new FormData();
+                        formData.append('gif', file);
+                        formData.append('sourceX', cropRect.left);
+                        formData.append('sourceY', cropRect.top);
+                        formData.append('sourceWidth', cropRect.width);
+                        formData.append('sourceHeight', cropRect.height);
+                        formData.append('outputWidth', outputSize.width);
+                        formData.append('outputHeight', outputSize.height);
+                        formData.append('rotation', 0);
+                        formData.append('purpose', uploadPurpose);
+                        if (portalId) {
+                            formData.append('portalId', portalId);
+                        }
 
-                    const res = await axios.post('/api/media/process-gif', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                    });
-                    mediaKey = res.data.mediaKey;
+                        const res = await axios.post('/api/media/process-gif', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                        });
+                        mediaKey = res.data.mediaKey;
+                    } catch (backendErr) {
+                        console.warn('Backend GIF kırpma hatası, doğrudan orijinal dosya yükleniyor:', backendErr);
+                        mediaKey = await uploadFile(file, uploadPurpose, portalId);
+                    }
                 } else {
                     mediaKey = await uploadFile(file, uploadPurpose, portalId);
                 }
@@ -711,12 +716,6 @@ const ImageCropper = ({
                                 <RefreshCw size={14} strokeWidth={2.5} />
                                 <span>SIFIRLA</span>
                             </button>
-                        </div>
-                    )}
-
-                    {isGif && (
-                        <div className="cropper-gif-notice">
-                            [!] HAREKETLİ GIF: KADRAJ VE ÖLÇEĞİ AYARLAYABİLİRSİNİZ (ANİMASYONUN KORUNMASI İÇİN ROTASYON DEVRE DIŞIDIR)
                         </div>
                     )}
 

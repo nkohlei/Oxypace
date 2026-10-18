@@ -192,58 +192,65 @@ router.post('/process-gif', auth, (req, res, next) => {
             return res.status(400).json({ message: 'GIF dosyası veya mediaKey gerekli' });
         }
 
-        // 1. Process with sharp (animated: true preserves all frames)
-        const sharpInstance = sharp(inputBuffer, { animated: true });
+        let outputBuffer = inputBuffer;
 
-        // Reuse the same instance for metadata (avoids double decode)
-        const metadata = await sharpInstance.metadata();
-        const originalWidth = metadata.width || 1;
-        // In sharp with animated: true, pageHeight is the height of a single frame
-        const originalHeight = metadata.pageHeight || metadata.height || 1;
+        try {
+            // 1. Process with sharp (animated: true preserves all frames, limitInputPixels: false handles any pixel count)
+            const sharpInstance = sharp(inputBuffer, { animated: true, limitInputPixels: false });
 
-        // Calculate effective dimensions after rotation
-        const normalizedAngle = ((Number(rotation) % 360) + 360) % 360;
-        const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
-        const rotatedWidth = is90or270 ? originalHeight : originalWidth;
-        const rotatedHeight = is90or270 ? originalWidth : originalHeight;
+            // Reuse the same instance for metadata (avoids double decode)
+            const metadata = await sharpInstance.metadata();
+            const originalWidth = metadata.width || 1;
+            // In sharp with animated: true, pageHeight is the height of a single frame
+            const originalHeight = metadata.pageHeight || metadata.height || 1;
 
-        // Build processing pipeline
-        let pipeline = sharp(inputBuffer, { animated: true });
+            // Calculate effective dimensions after rotation
+            const normalizedAngle = ((Number(rotation) % 360) + 360) % 360;
+            const is90or270 = normalizedAngle === 90 || normalizedAngle === 270;
+            const rotatedWidth = is90or270 ? originalHeight : originalWidth;
+            const rotatedHeight = is90or270 ? originalWidth : originalHeight;
 
-        if (normalizedAngle !== 0) {
-            pipeline = pipeline.rotate(normalizedAngle);
-        }
+            // Build processing pipeline
+            let pipeline = sharp(inputBuffer, { animated: true, limitInputPixels: false });
 
-        // Clamp crop coordinates to image bounds (sharp requires integers)
-        const cropLeft = Math.max(0, Math.round(Number(sourceX) || 0));
-        const cropTop  = Math.max(0, Math.round(Number(sourceY) || 0));
-        const cropWidth  = Math.max(1, Math.round(Number(sourceWidth) || rotatedWidth));
-        const cropHeight = Math.max(1, Math.round(Number(sourceHeight) || rotatedHeight));
-
-        const finalLeft   = Math.min(cropLeft,  rotatedWidth  - 1);
-        const finalTop    = Math.min(cropTop,   rotatedHeight - 1);
-        const finalWidth  = Math.min(cropWidth,  rotatedWidth  - finalLeft);
-        const finalHeight = Math.min(cropHeight, rotatedHeight - finalTop);
-
-        pipeline = pipeline.extract({
-            left:   finalLeft,
-            top:    finalTop,
-            width:  finalWidth,
-            height: finalHeight,
-        });
-
-        // Resize if requested
-        if (req.body.outputWidth && req.body.outputHeight) {
-            const outW = Math.round(Number(req.body.outputWidth));
-            const outH = Math.round(Number(req.body.outputHeight));
-            if (outW > 0 && outH > 0) {
-                pipeline = pipeline.resize(outW, outH);
+            if (normalizedAngle !== 0) {
+                pipeline = pipeline.rotate(normalizedAngle);
             }
+
+            // Clamp crop coordinates to image bounds (sharp requires integers)
+            const cropLeft = Math.max(0, Math.round(Number(sourceX) || 0));
+            const cropTop  = Math.max(0, Math.round(Number(sourceY) || 0));
+            const cropWidth  = Math.max(1, Math.round(Number(sourceWidth) || rotatedWidth));
+            const cropHeight = Math.max(1, Math.round(Number(sourceHeight) || rotatedHeight));
+
+            const finalLeft   = Math.min(cropLeft,  rotatedWidth  - 1);
+            const finalTop    = Math.min(cropTop,   rotatedHeight - 1);
+            const finalWidth  = Math.min(cropWidth,  rotatedWidth  - finalLeft);
+            const finalHeight = Math.min(cropHeight, rotatedHeight - finalTop);
+
+            pipeline = pipeline.extract({
+                left:   finalLeft,
+                top:    finalTop,
+                width:  finalWidth,
+                height: finalHeight,
+            });
+
+            // Resize if requested
+            if (req.body.outputWidth && req.body.outputHeight) {
+                const outW = Math.round(Number(req.body.outputWidth));
+                const outH = Math.round(Number(req.body.outputHeight));
+                if (outW > 0 && outH > 0) {
+                    pipeline = pipeline.resize(outW, outH);
+                }
+            }
+
+            outputBuffer = await pipeline.gif({ loop: 0 }).toBuffer();
+        } catch (procErr) {
+            console.warn('[process-gif] Sharp crop failed or exceeded limits, falling back to original GIF buffer:', procErr.message);
+            outputBuffer = inputBuffer;
         }
 
-        const outputBuffer = await pipeline.gif({ loop: 0 }).toBuffer();
-
-        // 2. Upload processed GIF to R2
+        // 2. Upload processed (or fallback original) GIF to R2
         const folder = purpose === 'avatar' ? 'avatars' : (purpose === 'banner' || purpose === 'cover' ? 'banners' : 'uploads');
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const processedKey = `${folder}/${purpose || 'cropped'}-${uniqueSuffix}.gif`;

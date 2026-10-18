@@ -1,4 +1,4 @@
 {
-  "lastBuild": "2026-10-18T19:07:00.000Z",
-  "reason": "Full animated GIF support in ImageCropper, avatars and portal sidebars with lossless multi-frame extraction"
+  "lastBuild": "2026-10-18T19:44:00.000Z",
+  "reason": "Fix GIF pixel limit error with limitInputPixels:false, remove notice banner (Option A), add bulletproof fallback"
 }
