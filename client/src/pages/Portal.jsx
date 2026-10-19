@@ -1284,7 +1284,7 @@ const Portal = () => {
     }, [suspensionInfo]);
 
     // Guest protection: If no token/session, redirect directly to Home (no flash, no lock screen)
-    if ((!token || !user) && !authLoading) {
+    if (!token && !authLoading) {
         return <Navigate to="/" replace />;
     }
 

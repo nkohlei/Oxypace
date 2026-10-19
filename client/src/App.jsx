@@ -589,7 +589,7 @@ const AppLayout = () => {
 
     // Redirect from '/' directly to user's portal or '/messages' when logged in (both on desktop and mobile)
     useEffect(() => {
-        if (location.pathname === '/' && isAuthenticated) {
+        if (location.pathname === '/' && isAuthenticated && user) {
             const topPortal = localStorage.getItem('oxypace_top_portal');
             if (topPortal) {
                 try {
@@ -600,7 +600,7 @@ const AppLayout = () => {
                     }
                 } catch (_) {}
             }
-            if (user?.joinedPortals && user.joinedPortals.length > 0) {
+            if (user.joinedPortals && user.joinedPortals.length > 0) {
                 const firstPortalId = typeof user.joinedPortals[0] === 'string' 
                     ? user.joinedPortals[0] 
                     : user.joinedPortals[0]._id;
