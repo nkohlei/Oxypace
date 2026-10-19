@@ -134,12 +134,11 @@ router.post(
 
                 // Visual Channel Validation
                 if (matchedChannel && matchedChannel.type === 'image') {
-                        const hasMedia = req.file || req.body.mediaKey || (Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) || (media && mediaType);
-                        if (!hasMedia) {
-                            return res.status(400).json({
-                                message: 'Bu kanalda en az 1 görsel paylaşılması zorunludur',
-                            });
-                        }
+                    const hasMedia = req.file || req.body.mediaKey || (Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) || (media && mediaType);
+                    if (!hasMedia) {
+                        return res.status(400).json({
+                            message: 'Bu kanalda en az 1 görsel paylaşılması zorunludur',
+                        });
                     }
                 }
             }

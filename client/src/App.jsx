@@ -388,12 +388,12 @@ const AppLayout = () => {
     }, [navigate]);
 
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen, setMobileChannelOpen } = useUI();
-    const { user, token, updateUser } = useAuth();
+    const { user, token, updateUser, isAuthenticated } = useAuth();
     const userId = user?._id;
     const location = useLocation();
     const { socket, connected } = useSocket();
 
-    const isLoggedIn = !!token;
+    const isLoggedIn = isAuthenticated;
 
     // Auto-dismiss delivered device notifications when accessing chat conversation
     useEffect(() => {
@@ -589,8 +589,7 @@ const AppLayout = () => {
 
     // Redirect from '/' directly to user's portal or '/messages' when logged in (both on desktop and mobile)
     useEffect(() => {
-        const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
-        if (location.pathname === '/' && (isLoggedIn || hasToken)) {
+        if (location.pathname === '/' && isAuthenticated) {
             const topPortal = localStorage.getItem('oxypace_top_portal');
             if (topPortal) {
                 try {
@@ -610,7 +609,7 @@ const AppLayout = () => {
             }
             navigate('/messages', { replace: true });
         }
-    }, [isLoggedIn, user, location.pathname, navigate]);
+    }, [isAuthenticated, user, location.pathname, navigate]);
 
     // Page titles for mobile header
     const getPageTitle = () => {
