@@ -110,39 +110,47 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
         }
 
         // Initialize arrays if missing
-        if (!targetUser.followers) {
-            targetUser.followers = [];
-        }
-        if (!targetUser.followRequests) {
-            targetUser.followRequests = [];
-        }
-        if (!currentUser.following) {
-            currentUser.following = [];
-        }
+        if (!targetUser.followers) targetUser.followers = [];
+        if (!targetUser.following) targetUser.following = [];
+        if (!targetUser.followRequests) targetUser.followRequests = [];
+        if (!currentUser.followers) currentUser.followers = [];
+        if (!currentUser.following) currentUser.following = [];
+        if (!currentUser.followRequests) currentUser.followRequests = [];
 
-        const isFollowing = targetUser.followers.some(
-            (id) => id.toString() === req.user._id.toString()
-        );
-        const hasRequested = targetUser.followRequests.some(
-            (id) => id.toString() === req.user._id.toString()
-        );
+        const targetIdStr = targetUser._id.toString();
+        const currentIdStr = currentUser._id.toString();
 
-        if (isFollowing) {
+        const isFollowing = currentUser.following.some(id => id.toString() === targetIdStr) ||
+                            targetUser.followers.some(id => id.toString() === currentIdStr);
+        const isFollowedBy = currentUser.followers.some(id => id.toString() === targetIdStr) ||
+                             targetUser.following.some(id => id.toString() === currentIdStr);
+        const isFriend = isFollowing && isFollowedBy;
+
+        const hasRequested = targetUser.followRequests.some(id => id.toString() === currentIdStr);
+        const hasIncomingRequest = currentUser.followRequests.some(id => id.toString() === targetIdStr);
+
+        if (isFollowing || isFriend) {
             // Unfriend / Unfollow in both directions
             targetUser.followers = targetUser.followers.filter(
-                (id) => id.toString() !== req.user._id.toString()
+                (id) => id.toString() !== currentIdStr
             );
             targetUser.following = targetUser.following.filter(
-                (id) => id.toString() !== req.user._id.toString()
+                (id) => id.toString() !== currentIdStr
+            );
+            targetUser.followRequests = targetUser.followRequests.filter(
+                (id) => id.toString() !== currentIdStr
             );
             targetUser.followerCount = targetUser.followers.length;
             targetUser.followingCount = targetUser.following.length;
 
             currentUser.following = currentUser.following.filter(
-                (id) => id.toString() !== req.params.id
+                (id) => id.toString() !== targetIdStr
             );
             currentUser.followers = currentUser.followers.filter(
-                (id) => id.toString() !== req.params.id
+                (id) => id.toString() !== targetIdStr
+            );
+            currentUser.followRequests = currentUser.followRequests.filter(
+                (id) => id.toString() !== targetIdStr
             );
             currentUser.followerCount = currentUser.followers.length;
             currentUser.followingCount = currentUser.following.length;
@@ -150,30 +158,89 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
             await targetUser.save();
             await currentUser.save();
 
-            return res.json({ message: 'Unfollowed', isFollowing: false, hasRequested: false });
+            // Clean up any lingering request notifications
+            await Notification.deleteMany({
+                $or: [
+                    { recipient: targetUser._id, sender: currentUser._id, type: { $in: ['follow_request', 'friend_request'] } },
+                    { recipient: currentUser._id, sender: targetUser._id, type: { $in: ['follow_request', 'friend_request'] } }
+                ]
+            });
+
+            return res.json({ message: 'Arkadaşlıktan çıkarıldı', isFollowing: false, hasRequested: false, isFriend: false });
         }
 
         if (hasRequested) {
             // Cancel Request
             targetUser.followRequests = targetUser.followRequests.filter(
-                (id) => id.toString() !== req.user._id.toString()
+                (id) => id.toString() !== currentIdStr
             );
             await targetUser.save();
+
+            await Notification.deleteMany({
+                recipient: targetUser._id,
+                sender: currentUser._id,
+                type: { $in: ['follow_request', 'friend_request'] }
+            });
+
             return res.json({
-                message: 'Request cancelled',
+                message: 'İstek iptal edildi',
                 isFollowing: false,
                 hasRequested: false,
+                isFriend: false,
             });
         }
 
-        // START FOLLOW (TANIŞMA) PROCESS
-        // Force Request Logic for Everyone (No direct follow)
-        if (!hasRequested) {
-            if (!targetUser.followRequests.some(id => id.toString() === req.user._id.toString())) {
-                targetUser.followRequests.push(req.user._id);
-            }
+        // If targetUser already requested currentUser, clicking connect directly accepts it
+        if (hasIncomingRequest) {
+            currentUser.followRequests = currentUser.followRequests.filter(
+                (id) => id.toString() !== targetIdStr
+            );
+            targetUser.followRequests = targetUser.followRequests.filter(
+                (id) => id.toString() !== currentIdStr
+            );
+
+            if (!currentUser.followers.some(id => id.toString() === targetIdStr)) currentUser.followers.push(targetUser._id);
+            if (!currentUser.following.some(id => id.toString() === targetIdStr)) currentUser.following.push(targetUser._id);
+            if (!targetUser.followers.some(id => id.toString() === currentIdStr)) targetUser.followers.push(currentUser._id);
+            if (!targetUser.following.some(id => id.toString() === currentIdStr)) targetUser.following.push(currentUser._id);
+
+            currentUser.followerCount = currentUser.followers.length;
+            currentUser.followingCount = currentUser.following.length;
+            targetUser.followerCount = targetUser.followers.length;
+            targetUser.followingCount = targetUser.following.length;
+
+            await currentUser.save();
             await targetUser.save();
+
+            await Notification.updateMany(
+                {
+                    $or: [
+                        { recipient: currentUser._id, sender: targetUser._id, type: { $in: ['follow_request', 'friend_request'] } },
+                        { recipient: targetUser._id, sender: currentUser._id, type: { $in: ['follow_request', 'friend_request'] } }
+                    ]
+                },
+                { type: 'friend_connected', read: true }
+            );
+
+            const io = req.app.get('io');
+            if (io) {
+                io.to(targetIdStr).emit('friendRequestAccepted', { senderId: currentUser._id });
+                io.to(currentIdStr).emit('friendRequestAccepted', { senderId: targetUser._id });
+            }
+
+            return res.json({
+                message: 'Tanışma isteği kabul edildi. Artık arkadaşsınız.',
+                isFollowing: true,
+                hasRequested: false,
+                isFriend: true,
+            });
         }
+
+        // START FOLLOW (TANIŞMA) REQUEST
+        if (!targetUser.followRequests.some(id => id.toString() === currentIdStr)) {
+            targetUser.followRequests.push(currentUser._id);
+        }
+        await targetUser.save();
 
         // Notify
         const friendRequestsEnabled = targetUser.settings?.notifications?.friendRequests !== false;
@@ -188,9 +255,9 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
             if (io) {
                 const populated = await notification.populate(
                     'sender',
-                    'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge'
+                    'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge'
                 );
-                io.to(targetUser._id.toString()).emit('newNotification', populated);
+                io.to(targetIdStr).emit('newNotification', populated);
             }
         }
 
@@ -198,6 +265,7 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
             message: 'Tanışma isteği gönderildi',
             isFollowing: false,
             hasRequested: true,
+            isFriend: false,
         });
     } catch (error) {
         console.error('Follow error:', error);
@@ -218,23 +286,29 @@ router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, 
             return res.status(404).json({ message: 'User not found' });
         }
 
-        if (!currentUser.followRequests.some((id) => id.toString() === requesterId)) {
-            return res.status(400).json({ message: 'No request found from this user' });
-        }
-
-        // Move from requests to followers (Requester follows User)
-        currentUser.followRequests = currentUser.followRequests.filter(
-            (id) => id.toString() !== requesterId
-        );
-
         const requesterIdStr = requesterId.toString();
         const currentUserIdStr = currentUser._id.toString();
 
+        if (!currentUser.followRequests) currentUser.followRequests = [];
+        if (!requester.followRequests) requester.followRequests = [];
+        if (!currentUser.followers) currentUser.followers = [];
+        if (!currentUser.following) currentUser.following = [];
+        if (!requester.followers) requester.followers = [];
+        if (!requester.following) requester.following = [];
+
+        // Move from requests to followers (Requester follows User) & clean both sides
+        currentUser.followRequests = currentUser.followRequests.filter(
+            (id) => id.toString() !== requesterIdStr
+        );
+        requester.followRequests = requester.followRequests.filter(
+            (id) => id.toString() !== currentUserIdStr
+        );
+
         if (!currentUser.followers.some(id => id.toString() === requesterIdStr)) {
-            currentUser.followers.push(requesterId);
+            currentUser.followers.push(requester._id);
         }
         if (!currentUser.following.some(id => id.toString() === requesterIdStr)) {
-            currentUser.following.push(requesterId);
+            currentUser.following.push(requester._id);
         }
 
         if (!requester.following.some(id => id.toString() === currentUserIdStr)) {
@@ -253,10 +327,14 @@ router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, 
         await currentUser.save();
         await requester.save();
 
-        // Update EXISTING notification for the Receiver (Me)
-        // Convert "Request" -> "Friendship Confirmed"
-        await Notification.findOneAndUpdate(
-            { recipient: currentUser._id, sender: requester._id, type: 'follow_request' },
+        // Update ALL matching notifications in both directions to friend_connected
+        await Notification.updateMany(
+            {
+                $or: [
+                    { recipient: currentUser._id, sender: requester._id, type: { $in: ['follow_request', 'friend_request'] } },
+                    { recipient: requester._id, sender: currentUser._id, type: { $in: ['follow_request', 'friend_request'] } }
+                ]
+            },
             { type: 'friend_connected', read: true }
         );
 
@@ -274,26 +352,33 @@ router.post('/follow/accept/:id', protect, mongoIdValidation('id'), async (req, 
 
         const io = req.app.get('io');
         if (io) {
-            // Notify Requester
             if (notification) {
                 const populated = await notification.populate(
                     'sender',
-                    'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge'
+                    'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge'
                 );
-                io.to(requesterId.toString()).emit('newNotification', populated);
+                io.to(requesterIdStr).emit('newNotification', populated);
             }
 
-            // Notify Receiver (Self) to update UI immediately
-            io.to(currentUser._id.toString()).emit('friendRequestAccepted', {
+            io.to(currentUserIdStr).emit('friendRequestAccepted', {
                 senderId: requester._id,
+                notificationId: notification ? notification._id : null,
+            });
+            io.to(requesterIdStr).emit('friendRequestAccepted', {
+                senderId: currentUser._id,
                 notificationId: notification ? notification._id : null,
             });
         }
 
-        res.json({ message: 'Tanışma isteği kabul edildi. Artık arkadaşsınız.' });
+        res.json({
+            message: 'Tanışma isteği kabul edildi. Artık arkadaşsınız.',
+            isFollowing: true,
+            hasRequested: false,
+            isFriend: true
+        });
     } catch (error) {
         console.error('Accept follow error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error: ' + error.message });
     }
 });
 
@@ -305,10 +390,18 @@ router.post('/follow/decline/:id', protect, mongoIdValidation('id'), async (req,
         const requesterId = req.params.id;
         const currentUser = await User.findById(req.user._id);
 
-        currentUser.followRequests = currentUser.followRequests.filter(
-            (id) => id.toString() !== requesterId
+        if (currentUser) {
+            currentUser.followRequests = (currentUser.followRequests || []).filter(
+                (id) => id.toString() !== requesterId
+            );
+            await currentUser.save();
+        }
+
+        // Clean up or mark notification as handled
+        await Notification.updateMany(
+            { recipient: req.user._id, sender: requesterId, type: { $in: ['follow_request', 'friend_request'] } },
+            { type: 'follow_request_handled', read: true }
         );
-        await currentUser.save();
 
         res.json({ message: 'Request declined' });
     } catch (error) {
@@ -401,6 +494,32 @@ router.get('/me', protect, async (req, res) => {
         userObj.friends = (userObj.following || []).filter(
             (f) => f && followerIdSet.has(f._id.toString())
         );
+        userObj.friendCount = userObj.friends.length;
+
+        // Clean up outgoing requests if any are already friends!
+        const friendIdSet = new Set(userObj.friends.map(f => f._id.toString()));
+        userObj.outgoingUserRequests = (outgoingUserRequests || []).filter(
+            (u) => u && !friendIdSet.has(u._id.toString())
+        );
+
+        // Background self-healing: If user had stale followRequests with mutual friends, purge them
+        const staleFollowRequests = (user.followRequests || []).filter(id => id && friendIdSet.has(id.toString()));
+        if (staleFollowRequests.length > 0) {
+            User.updateOne(
+                { _id: req.user._id },
+                { $pull: { followRequests: { $in: staleFollowRequests } } }
+            ).exec().catch(err => console.error('Self heal followRequests error:', err));
+        }
+
+        // Also if any outgoing requests were already mutual friends, pull current user from their followRequests
+        const staleTargetUsers = (outgoingUserRequests || []).filter(u => u && friendIdSet.has(u._id.toString()));
+        if (staleTargetUsers.length > 0) {
+            const staleTargetIds = staleTargetUsers.map(u => u._id);
+            User.updateMany(
+                { _id: { $in: staleTargetIds } },
+                { $pull: { followRequests: req.user._id } }
+            ).exec().catch(err => console.error('Self heal target followRequests error:', err));
+        }
 
         if (userObj.securityAnswers) {
             userObj.securityAnswers = userObj.securityAnswers.map(item => ({
@@ -671,34 +790,6 @@ router.delete('/devices/:deviceId', protect, async (req, res) => {
     }
 });
 
-// @route   GET /api/users/me
-// @desc    Get current logged in user profile
-// @access  Private
-router.get('/me', protect, async (req, res) => {
-    try {
-        const [user, postCount] = await Promise.all([
-            User.findById(req.user._id)
-                .select('-password -verificationToken')
-                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor badges isVerified privacy members allowedUsers owner admins')
-                .lean(),
-            Post.countDocuments({ author: req.user._id })
-        ]);
-
-        if (!user || user.isDeleted) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        user.postCount = postCount;
-        const followerIdSet = new Set((user.followers || []).filter(Boolean).map(id => id.toString()));
-        user.friendCount = (user.following || []).filter(id => id && followerIdSet.has(id.toString())).length;
-
-        res.json(user);
-    } catch (error) {
-        console.error('Get me error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
 // @route   GET /api/users/:username
 // @desc    Get user profile by username or ObjectId
 // @access  Public (Optional Auth)
@@ -731,62 +822,74 @@ router.get('/:username', optionalProtect, async (req, res) => {
         let mutualPortals = [];
 
         if (req.user) {
-            const currentUser = await User.findById(req.user._id).select('following joinedPortals');
+            const currentUser = await User.findById(req.user._id).select('following followers joinedPortals followRequests');
             isOwner = req.user._id.toString() === user._id.toString();
 
             // Check following status
-            userObj.isFollowing = currentUser.following.some(
+            userObj.isFollowing = (currentUser.following || []).some(
                 (id) => id.toString() === user._id.toString()
             );
 
             // Check if friend (Mutual follow)
-            // Friend definition: I follow them AND they follow me.
-            // user.followers check is needed. user.followers contains IDs of people following user.
-            // If req.user._id is in user.followers => I follow them.
-            // If user._id is in currentUser.followers => They follow me.
-            // Wait, simpler:
-            // isFollowing = I follow them.
-            // isFollowedBy = They follow me.
-            const isFollowedBy = user.following.some(
+            const isFollowedBy = (user.following || []).some(
                 (id) => id.toString() === req.user._id.toString()
             );
             isFriend = userObj.isFollowing && isFollowedBy;
 
             userObj.isFriend = isFriend;
-            userObj.hasRequested =
-                user.followRequests &&
-                user.followRequests.some((id) => id.toString() === req.user._id.toString());
+
+            if (isFriend) {
+                // If they are friends, hasRequested CANNOT be true
+                userObj.hasRequested = false;
+
+                // Self-healing: if either side still has a stale followRequest for the other, clear it in the background!
+                const userHasStale = (user.followRequests || []).some(id => id.toString() === req.user._id.toString());
+                const currentHasStale = (currentUser.followRequests || []).some(id => id.toString() === user._id.toString());
+                if (userHasStale || currentHasStale) {
+                    User.updateOne({ _id: user._id }, { $pull: { followRequests: req.user._id } }).exec().catch(err => console.error('Self heal user followRequests error:', err));
+                    User.updateOne({ _id: req.user._id }, { $pull: { followRequests: user._id } }).exec().catch(err => console.error('Self heal currentUser followRequests error:', err));
+                }
+            } else {
+                userObj.hasRequested =
+                    user.followRequests &&
+                    user.followRequests.some((id) => id.toString() === req.user._id.toString());
+            }
 
             if (!isOwner) {
-                // Calculate Mutual Friends (Mutual follows of both)
-                // This can be expensive. For now, let's approximate or just intersect 'following' lists?
-                // Real "Friends" are mutual follows.
-                // Let's find users that both currentUser and targetUser follow.
-                // Or better: friends of currentUser INTERSECT friends of targetUser.
-                // For simplicity/performance now: Users that BOTH follow.
-                // Only if needed. User asked for "Common Friends".
-                // Let's find Intersection(currentUser.following, user.following).
-                const myFollowingIds = currentUser.following.map((id) => id.toString());
-                const theirFollowingIds = user.following.map((id) => id.toString());
-                const mutualIds = myFollowingIds.filter((id) => theirFollowingIds.includes(id));
+                // Calculate TRUE Mutual Friends (friends of currentUser that are also friends of targetUser)
+                const myFollowerIdSet = new Set((currentUser.followers || []).map(id => id.toString()));
+                const myFriendIds = new Set(
+                    (currentUser.following || [])
+                        .filter(id => id && myFollowerIdSet.has(id.toString()))
+                        .map(id => id.toString())
+                );
 
-                // We might want to populate these mutuals to show names/avatars
-                if (mutualIds.length > 0) {
-                    mutualFriends = await User.find({ _id: { $in: mutualIds } })
-                        .select('username profile.avatar')
-                        .limit(5);
+                const theirFollowerIdSet = new Set((user.followers || []).map(id => id.toString()));
+                const theirFriendIds = (user.following || [])
+                    .filter(id => id && theirFollowerIdSet.has(id.toString()))
+                    .map(id => id.toString());
+
+                const mutualFriendIds = theirFriendIds.filter(
+                    id => myFriendIds.has(id) && id !== req.user._id.toString() && id !== user._id.toString()
+                );
+
+                if (mutualFriendIds.length > 0) {
+                    mutualFriends = await User.find({ _id: { $in: mutualFriendIds }, isDeleted: { $ne: true } })
+                        .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
+                        .limit(20)
+                        .lean();
                 }
 
                 // Calculate Mutual Portals
-                const myPortalIds = currentUser.joinedPortals.map((id) => id.toString());
-                const theirPortalIds = user.joinedPortals.filter(Boolean).map((p) =>
+                const myPortalIds = (currentUser.joinedPortals || []).map((id) => id.toString());
+                const theirPortalIds = (user.joinedPortals || []).filter(Boolean).map((p) =>
                     p._id ? p._id.toString() : p.toString()
                 );
                 const mutualPortalIds = myPortalIds.filter((id) => theirPortalIds.includes(id));
 
                 if (mutualPortalIds.length > 0) {
                     // Filter from the already populated user.joinedPortals
-                    mutualPortals = user.joinedPortals.filter((p) =>
+                    mutualPortals = (user.joinedPortals || []).filter((p) =>
                         p && p._id && mutualPortalIds.includes(p._id.toString())
                     );
                 }
@@ -807,11 +910,11 @@ router.get('/:username', optionalProtect, async (req, res) => {
         const followerIdSet = new Set(
             (user.followers || []).filter(Boolean).map((id) => id.toString())
         );
-        const friendCount = (user.following || []).filter(
+        const friendIds = (user.following || []).filter(
             (id) => id && followerIdSet.has(id.toString())
-        ).length;
+        );
 
-        userObj.friendCount = friendCount;
+        userObj.friendCount = friendIds.length;
 
         // ─── PRIVATE ACCOUNT GATE ────────────────────────────────────────────────
         // If the account is private AND the viewer is not the owner AND not a friend,
@@ -827,7 +930,8 @@ router.get('/:username', optionalProtect, async (req, res) => {
                     avatar: userObj.profile?.avatar,
                     coverImage: userObj.profile?.coverImage,
                 },
-                friendCount,            // mutual friends only — no follow direction
+                friendCount: friendIds.length,
+                friends: [],
                 postCount: 0,           // exact count hidden
                 verificationBadge: userObj.verificationBadge,
                 createdAt: userObj.createdAt,
@@ -846,6 +950,14 @@ router.get('/:username', optionalProtect, async (req, res) => {
             });
         }
         // ─────────────────────────────────────────────────────────────────────────
+
+        // Populate friends list for non-private or authorized viewer
+        userObj.friends = await User.find({
+            _id: { $in: friendIds },
+            isDeleted: { $ne: true }
+        })
+            .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
+            .lean();
 
         // Fetch portals owned by the user
         const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar badges customBadge isVerified privacy members allowedUsers owner admins');

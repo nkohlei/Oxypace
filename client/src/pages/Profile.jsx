@@ -709,15 +709,20 @@ const Profile = () => {
         if (!profileUser || isOwnProfile) return;
         try {
             const response = await axios.post(`/api/users/follow/${profileUser._id}`);
-            // Optimistic update or refetch
-            // For simplicity, update local state similar to response
+            const newIsFriend = response.data.isFriend !== undefined
+                ? response.data.isFriend
+                : (response.data.isFollowing && !response.data.hasRequested);
             setProfileUser((prev) => ({
                 ...prev,
                 isFollowing: response.data.isFollowing,
                 hasRequested: response.data.hasRequested,
-                // If unfollowed, isFriend becomes false
-                isFriend: response.data.isFollowing ? prev.isFriend : false,
+                isFriend: newIsFriend,
+                friendCount: response.data.friendCount !== undefined
+                    ? response.data.friendCount
+                    : (newIsFriend && !prev.isFriend ? (prev.friendCount || 0) + 1 : (!newIsFriend && prev.isFriend ? Math.max(0, (prev.friendCount || 1) - 1) : prev.friendCount)),
             }));
+            // Refresh profile silently to sync friends list if connected/disconnected
+            fetchUserProfile(profileUser.username);
         } catch (err) {
             console.error('Follow action failed:', err);
         }
@@ -1593,18 +1598,61 @@ const Profile = () => {
 
                                         {activeTab === 'friends' && (
                                             <div className="tab-content fade-in">
+                                                {!isOwnProfile && (profileUser.mutualFriends || []).length > 0 && (
+                                                    <div style={{ marginBottom: '24px' }}>
+                                                        <h4 className="section-header">
+                                                            ORTAK ARKADAŞLAR ({profileUser.mutualFriends.length})
+                                                        </h4>
+                                                        <div className="friends-grid">
+                                                            {profileUser.mutualFriends.map((friend) => (
+                                                                <div
+                                                                    key={friend._id}
+                                                                    className="friend-item-card"
+                                                                    onClick={() =>
+                                                                        navigate(`/profile/${friend.username}`)
+                                                                    }
+                                                                >
+                                                                    <img
+                                                                        src={getImageUrl(
+                                                                            friend.profile?.avatar
+                                                                        )}
+                                                                        alt=""
+                                                                        loading="lazy"
+                                                                        decoding="async"
+                                                                        width="48"
+                                                                        height="48"
+                                                                    />
+                                                                    <div className="friend-card-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                            <span className="f-name">
+                                                                                {friend.profile?.displayName || friend.username}
+                                                                            </span>
+                                                                            {friend.verificationBadge && (
+                                                                                <Badge type="verified" size={14} />
+                                                                            )}
+                                                                        </div>
+                                                                        {friend.profile?.displayName && friend.profile?.displayName !== friend.username && (
+                                                                            <span style={{ fontSize: '11px', color: 'var(--text-muted, #8e9297)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                                @{friend.username}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 <h4 className="section-header">
-                                                    {isOwnProfile ? 'ARKADAŞLAR' : 'ORTAK ARKADAŞLAR'}
+                                                    {isOwnProfile
+                                                        ? `ARKADAŞLAR (${profileUser.friends?.length || 0})`
+                                                        : (!isOwnProfile && (profileUser.mutualFriends || []).length > 0
+                                                            ? `TÜM ARKADAŞLAR (${profileUser.friends?.length || 0})`
+                                                            : `ARKADAŞLAR (${profileUser.friends?.length || 0})`)}
                                                 </h4>
                                                 <div className="friends-grid">
-                                                    {(isOwnProfile
-                                                        ? profileUser.friends   // mutual follows only
-                                                        : profileUser.mutualFriends
-                                                    )?.length > 0 ? (
-                                                        (isOwnProfile
-                                                            ? profileUser.friends
-                                                            : profileUser.mutualFriends
-                                                        ).map((friend) => (
+                                                    {(profileUser.friends || []).length > 0 ? (
+                                                        profileUser.friends.map((friend) => (
                                                             <div
                                                                 key={friend._id}
                                                                 className="friend-item-card"
@@ -1612,7 +1660,7 @@ const Profile = () => {
                                                                     navigate(`/profile/${friend.username}`)
                                                                 }
                                                             >
-                                                                 <img
+                                                                <img
                                                                     src={getImageUrl(
                                                                         friend.profile?.avatar
                                                                     )}
@@ -1622,9 +1670,21 @@ const Profile = () => {
                                                                     width="48"
                                                                     height="48"
                                                                 />
-                                                                <span className="f-name">
-                                                                    {friend.username}
-                                                                </span>
+                                                                <div className="friend-card-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                        <span className="f-name">
+                                                                            {friend.profile?.displayName || friend.username}
+                                                                        </span>
+                                                                        {friend.verificationBadge && (
+                                                                            <Badge type="verified" size={14} />
+                                                                        )}
+                                                                    </div>
+                                                                    {friend.profile?.displayName && friend.profile?.displayName !== friend.username && (
+                                                                        <span style={{ fontSize: '11px', color: 'var(--text-muted, #8e9297)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                            @{friend.username}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         ))
                                                     ) : (
