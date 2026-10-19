@@ -6,7 +6,7 @@ import Badge from '../models/Badge.js';
 const router = express.Router();
 
 // Default badges to seed (including authentic Twitter / X verification badges)
-const DEFAULT_BADGES = [
+export const DEFAULT_BADGES = [
     {
         name: 'X Mavi Onay (Twitter Blue)',
         slug: 'x-blue',
