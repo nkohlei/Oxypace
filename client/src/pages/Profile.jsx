@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar';
 // SubHeader removed
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
+import PortalBadges from '../components/PortalBadges';
 import ImageCropper from '../components/ImageCropper';
 import ProfileImageModal from '../components/ProfileImageModal';
 import SEO from '../components/SEO';
@@ -1580,10 +1581,12 @@ const Profile = () => {
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    <span className="p-name">
-                                                                        {p.name}
-                                                                        <Badge type={p.isVerified ? 'verified' : p.badges?.[0]} size={14} />
-                                                                    </span>
+                                                                    <div className="portal-item-info">
+                                                                        <span className="p-name">
+                                                                            {p.name}
+                                                                        </span>
+                                                                        <PortalBadges portal={p} size={15} />
+                                                                    </div>
                                                                 </div>
                                                             ))
                                                         ) : (
@@ -1627,9 +1630,7 @@ const Profile = () => {
                                                                             <span className="f-name">
                                                                                 {friend.profile?.displayName || friend.username}
                                                                             </span>
-                                                                            {friend.verificationBadge && (
-                                                                                <Badge type="verified" size={14} />
-                                                                            )}
+                                                                            <UserBadges user={friend} size={15} />
                                                                         </div>
                                                                         {friend.profile?.displayName && friend.profile?.displayName !== friend.username && (
                                                                             <span style={{ fontSize: '11px', color: 'var(--text-muted, #8e9297)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1675,9 +1676,7 @@ const Profile = () => {
                                                                         <span className="f-name">
                                                                             {friend.profile?.displayName || friend.username}
                                                                         </span>
-                                                                        {friend.verificationBadge && (
-                                                                            <Badge type="verified" size={14} />
-                                                                        )}
+                                                                        <UserBadges user={friend} size={15} />
                                                                     </div>
                                                                     {friend.profile?.displayName && friend.profile?.displayName !== friend.username && (
                                                                         <span style={{ fontSize: '11px', color: 'var(--text-muted, #8e9297)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1725,7 +1724,10 @@ const Profile = () => {
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    <span className="p-name">{p.name}</span>
+                                                                    <div className="portal-item-info">
+                                                                        <span className="p-name">{p.name}</span>
+                                                                        <PortalBadges portal={p} size={14} />
+                                                                    </div>
                                                                     <div
                                                                         className="p-status-dot"
                                                                         title="Beklemede"
@@ -1755,9 +1757,12 @@ const Profile = () => {
                                                                         src={getImageUrl(u.profile?.avatar)}
                                                                         alt=""
                                                                     />
-                                                                    <span className="f-name">
-                                                                        {u.username}
-                                                                    </span>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+                                                                        <span className="f-name">
+                                                                            {u.profile?.displayName || u.username}
+                                                                        </span>
+                                                                        <UserBadges user={u} size={14} />
+                                                                    </div>
                                                                     <div
                                                                         className="f-status-dot"
                                                                         title="İstek Gönderildi"
@@ -1797,7 +1802,10 @@ const Profile = () => {
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                <span className="p-name">{p.name}</span>
+                                                                <div className="portal-item-info">
+                                                                    <span className="p-name">{p.name}</span>
+                                                                    <PortalBadges portal={p} size={15} />
+                                                                </div>
                                                             </div>
                                                         ))
                                                     ) : (

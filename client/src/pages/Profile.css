@@ -525,6 +525,24 @@
     text-overflow: ellipsis;
 }
 
+.portal-item-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.portal-item-info .p-name {
+    flex-shrink: 1;
+}
+
+.portal-item-info .portal-badges-container,
+.friend-card-info .user-badges-container {
+    flex-shrink: 0;
+    margin-left: 2px !important;
+}
+
 /* Wishlist Split View */
 .wishlist-split-view {
     display: flex;

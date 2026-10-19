@@ -421,9 +421,9 @@ router.get('/me', protect, async (req, res) => {
             User.findById(req.user._id)
                 .select('-password -verificationToken')
                 .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy')
-                .populate('following', 'username profile.displayName profile.avatar profile.lowResAvatar'),
+                .populate('following', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge'),
             Post.countDocuments({ author: req.user._id }),
-            User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar profile.lowResAvatar'),
+            User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge'),
             Portal.find({ joinRequests: req.user._id }).select('name avatar lowResAvatar privacy'),
             Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy')
         ]);
@@ -803,7 +803,7 @@ router.get('/:username', optionalProtect, async (req, res) => {
             .select(
                 'username profile.displayName profile.bio profile.avatar profile.lowResAvatar profile.coverImage followerCount followingCount createdAt settings verificationBadge customBadge joinedPortals following followers followRequests isDeleted'
             )
-            .populate('joinedPortals', 'name avatar lowResAvatar badges isVerified privacy members allowedUsers owner admins');
+            .populate('joinedPortals', 'name avatar lowResAvatar badges customBadge isVerified privacy members allowedUsers owner admins');
 
         if (!user || user.isDeleted) {
             return res.status(404).json({ message: 'User not found' });
@@ -1619,7 +1619,7 @@ router.post('/updatePortalOrder', protect, async (req, res) => {
 
         const populatedUser = await User.findById(req.user._id)
             .select('-password -verificationToken')
-            .populate('joinedPortals', 'name avatar badges isVerified privacy members allowedUsers owner admins');
+            .populate('joinedPortals', 'name avatar badges customBadge isVerified privacy members allowedUsers owner admins');
 
         res.json({ message: 'Sıralama güncellendi', user: populatedUser });
     } catch (error) {

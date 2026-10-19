@@ -5,9 +5,11 @@
 .verification-badge {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     transition: transform 0.2s ease, filter 0.2s ease;
     cursor: default;
     line-height: 0;
+    background: transparent !important;
 }
 
 .verification-badge:hover {
@@ -40,11 +42,11 @@
 
     0%,
     100% {
-        filter: none;
+        filter: drop-shadow(0 0 2px var(--badge-glow-color, rgba(29, 155, 240, 0.4)));
     }
 
     50% {
-        filter: none;
+        filter: drop-shadow(0 0 6px var(--badge-glow-color, rgba(29, 155, 240, 0.8)));
     }
 }
 
