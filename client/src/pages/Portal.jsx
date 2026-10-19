@@ -894,7 +894,7 @@ const Portal = () => {
                         return;
                     }
                 }
-                const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
+                const defaultChannel = portal.channels[0];
                 if (defaultChannel) {
                     setCurrentChannel(defaultChannel._id);
                 }
@@ -911,7 +911,7 @@ const Portal = () => {
                 // Validate existing currentChannel
                 const isValid = portal.channels.some(c => String(c._id) === String(currentChannel));
                 if (!isValid) {
-                    const defaultChannel = portal.channels.find(c => c.name === 'genel' || c.name === 'general') || portal.channels[0];
+                    const defaultChannel = portal.channels[0];
                     if (defaultChannel) {
                         setCurrentChannel(defaultChannel._id);
                     }

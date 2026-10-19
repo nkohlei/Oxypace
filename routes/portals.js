@@ -26,18 +26,19 @@ function getPortalChannelFilter(portal, channelQuery) {
         return null;
     }
 
-    const channelStr = String(channelQuery || 'general').trim();
+    const channelStr = String(channelQuery || '').trim();
 
     // 1. Find matching channel in portal
-    let targetChannel = portal.channels.find(
-        (c) =>
-            c._id.toString() === channelStr ||
-            c.name.toLowerCase() === channelStr.toLowerCase() ||
-            (channelStr === 'general' && ['genel', 'general', 'genel sohbet'].includes((c.name || '').toLowerCase()))
-    );
+    // Try matching by exact ID first
+    let targetChannel = portal.channels.find((c) => c._id.toString() === channelStr);
 
-    // If "general" or fallback, pick first channel
-    if (!targetChannel && (channelStr === 'general' || channelStr === '')) {
+    // If not matched by ID, try matching by exact name
+    if (!targetChannel && channelStr && channelStr !== 'general') {
+        targetChannel = portal.channels.find((c) => c.name.toLowerCase() === channelStr.toLowerCase());
+    }
+
+    // If channelStr is 'general' or empty, or still not found, fallback to the portal's primary channel (portal.channels[0])
+    if (!targetChannel && (!channelStr || channelStr === 'general')) {
         targetChannel = portal.channels[0];
     }
 
@@ -46,10 +47,7 @@ function getPortalChannelFilter(portal, channelQuery) {
     }
 
     const targetIdStr = targetChannel._id.toString();
-    const isGeneral =
-        ['genel', 'general', 'genel sohbet'].includes((targetChannel.name || '').toLowerCase()) ||
-        channelStr === 'general' ||
-        portal.channels[0]._id.toString() === targetIdStr;
+    const isPrimary = portal.channels[0]._id.toString() === targetIdStr;
 
     // Direct identifiers for target channel
     const directMatches = [targetIdStr, targetChannel.name];
@@ -57,18 +55,17 @@ function getPortalChannelFilter(portal, channelQuery) {
         directMatches.push(new mongoose.Types.ObjectId(targetIdStr));
     } catch (e) {}
 
-    if (!isGeneral) {
-        // Specific non-general channel
+    if (!isPrimary) {
+        // Specific secondary channel: matches ONLY its own direct matches
         return {
             targetChannel,
-            isGeneral: false,
+            isPrimary: false,
             filter: { $in: directMatches }
         };
     }
 
-    // General / Main channel:
-    // Any post of this portal that is NOT explicitly assigned to any of the OTHER channels
-    // belongs to the main/general channel! This recovers all early/legacy/orphan posts.
+    // Primary / Main channel (portal.channels[0]):
+    // Matches its own direct matches AND legacy/orphan posts not belonging to any other channel!
     const otherChannelIdentifiers = [];
     portal.channels.forEach((c) => {
         if (c._id.toString() !== targetIdStr) {
@@ -85,7 +82,7 @@ function getPortalChannelFilter(portal, channelQuery) {
 
     return {
         targetChannel,
-        isGeneral: true,
+        isPrimary: true,
         filter: otherChannelIdentifiers.length > 0
             ? { $nin: otherChannelIdentifiers }
             : { $nin: [] }
@@ -671,6 +668,10 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             query.isPinned = { $ne: true };
         }
 
+        const sortOptions = before
+            ? { createdAt: -1 }
+            : { isPinned: -1, pinnedAt: -1, createdAt: -1 };
+
         const posts = await Post.find(query)
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
             .populate({
@@ -691,7 +692,7 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
                     }
                 ]
             })
-            .sort({ isPinned: -1, pinnedAt: -1, createdAt: -1 })
+            .sort(sortOptions)
             .limit(limit)
             .lean();
 

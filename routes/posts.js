@@ -126,8 +126,8 @@ router.post(
                 let matchedChannel = portal.channels.find(
                     (c) => c._id.toString() === String(rawChannel) || c.name.toLowerCase() === String(rawChannel).toLowerCase()
                 );
-                if (!matchedChannel && (rawChannel === 'general' || ['genel', 'general', 'genel sohbet'].includes(String(rawChannel).toLowerCase()))) {
-                    matchedChannel = portal.channels.find((c) => ['genel', 'general', 'genel sohbet'].includes((c.name || '').toLowerCase())) || portal.channels[0];
+                if (!matchedChannel && (!rawChannel || rawChannel === 'general')) {
+                    matchedChannel = portal.channels[0];
                 }
                 const channelId = matchedChannel ? matchedChannel._id.toString() : String(rawChannel);
                 postData.channel = channelId;
