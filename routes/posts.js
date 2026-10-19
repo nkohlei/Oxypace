@@ -122,13 +122,18 @@ router.post(
                 }
 
                 postData.portal = portalId;
-                const channelId = req.body.channel || 'general';
+                const rawChannel = req.body.channel || 'general';
+                let matchedChannel = portal.channels.find(
+                    (c) => c._id.toString() === String(rawChannel) || c.name.toLowerCase() === String(rawChannel).toLowerCase()
+                );
+                if (!matchedChannel && (rawChannel === 'general' || ['genel', 'general', 'genel sohbet'].includes(String(rawChannel).toLowerCase()))) {
+                    matchedChannel = portal.channels.find((c) => ['genel', 'general', 'genel sohbet'].includes((c.name || '').toLowerCase())) || portal.channels[0];
+                }
+                const channelId = matchedChannel ? matchedChannel._id.toString() : String(rawChannel);
                 postData.channel = channelId;
 
                 // Visual Channel Validation
-                if (channelId !== 'general') {
-                    const channel = portal.channels.find((c) => c._id.toString() === channelId);
-                    if (channel && channel.type === 'image') {
+                if (matchedChannel && matchedChannel.type === 'image') {
                         const hasMedia = req.file || req.body.mediaKey || (Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) || (media && mediaType);
                         if (!hasMedia) {
                             return res.status(400).json({

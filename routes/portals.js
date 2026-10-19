@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Portal from '../models/Portal.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
@@ -11,6 +12,85 @@ import multer from 'multer';
 import upload from '../middleware/upload.js';
 import { escapeRegex } from '../utils/security.js';
 import { invalidatePortalRuleCache } from '../sockets/voiceHandler.js';
+
+/**
+ * Foolproof channel query and filter generator for a portal.
+ * Guarantees that:
+ * 1. Specific channels (Sports, Tech, Announcement, etc.) match only their own posts.
+ * 2. The primary / general channel matches its own posts AND any early/legacy/orphan posts
+ *    in the portal that do not belong to other specific channels.
+ * 3. Both String and BSON ObjectId representations of channel IDs are matched.
+ */
+function getPortalChannelFilter(portal, channelQuery) {
+    if (!portal || !Array.isArray(portal.channels) || portal.channels.length === 0) {
+        return null;
+    }
+
+    const channelStr = String(channelQuery || 'general').trim();
+
+    // 1. Find matching channel in portal
+    let targetChannel = portal.channels.find(
+        (c) =>
+            c._id.toString() === channelStr ||
+            c.name.toLowerCase() === channelStr.toLowerCase() ||
+            (channelStr === 'general' && ['genel', 'general', 'genel sohbet'].includes((c.name || '').toLowerCase()))
+    );
+
+    // If "general" or fallback, pick first channel
+    if (!targetChannel && (channelStr === 'general' || channelStr === '')) {
+        targetChannel = portal.channels[0];
+    }
+
+    if (!targetChannel) {
+        return null;
+    }
+
+    const targetIdStr = targetChannel._id.toString();
+    const isGeneral =
+        ['genel', 'general', 'genel sohbet'].includes((targetChannel.name || '').toLowerCase()) ||
+        channelStr === 'general' ||
+        portal.channels[0]._id.toString() === targetIdStr;
+
+    // Direct identifiers for target channel
+    const directMatches = [targetIdStr, targetChannel.name];
+    try {
+        directMatches.push(new mongoose.Types.ObjectId(targetIdStr));
+    } catch (e) {}
+
+    if (!isGeneral) {
+        // Specific non-general channel
+        return {
+            targetChannel,
+            isGeneral: false,
+            filter: { $in: directMatches }
+        };
+    }
+
+    // General / Main channel:
+    // Any post of this portal that is NOT explicitly assigned to any of the OTHER channels
+    // belongs to the main/general channel! This recovers all early/legacy/orphan posts.
+    const otherChannelIdentifiers = [];
+    portal.channels.forEach((c) => {
+        if (c._id.toString() !== targetIdStr) {
+            const otherIdStr = c._id.toString();
+            otherChannelIdentifiers.push(otherIdStr);
+            try {
+                otherChannelIdentifiers.push(new mongoose.Types.ObjectId(otherIdStr));
+            } catch (e) {}
+            if (c.name) {
+                otherChannelIdentifiers.push(c.name);
+            }
+        }
+    });
+
+    return {
+        targetChannel,
+        isGeneral: true,
+        filter: otherChannelIdentifiers.length > 0
+            ? { $nin: otherChannelIdentifiers }
+            : { $nin: [] }
+    };
+}
 
 const router = express.Router();
 
@@ -488,31 +568,23 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
         const postCount = await Post.countDocuments({ portal: portal._id, isArchived: { $ne: true } });
         portalObj.postCount = postCount;
 
-        // Fetch channel post counts
-        const channelPostCounts = await Post.aggregate([
-            { $match: { portal: portal._id, isArchived: { $ne: true } } },
-            { $group: { _id: '$channel', count: { $sum: 1 } } }
-        ]);
-
-        const countMap = {};
-        channelPostCounts.forEach(c => {
-            if (c._id) {
-                countMap[String(c._id)] = c.count;
-            } else {
-                countMap['general'] = (countMap['general'] || 0) + c.count;
-            }
-        });
-
+        // Fetch channel post counts accurately using the unified channel filter logic
         if (portalObj.channels && Array.isArray(portalObj.channels)) {
-            portalObj.channels = portalObj.channels.map(ch => {
+            const channelCounts = await Promise.all(
+                portalObj.channels.map(async (ch) => {
+                    const resolved = getPortalChannelFilter(portal, ch._id.toString());
+                    if (!resolved) return 0;
+                    return await Post.countDocuments({
+                        portal: portal._id,
+                        isArchived: { $ne: true },
+                        channel: resolved.filter
+                    });
+                })
+            );
+
+            portalObj.channels = portalObj.channels.map((ch, idx) => {
                 const chObj = ch && ch.toObject ? ch.toObject() : { ...ch };
-                const chName = (chObj.name || '').toLowerCase();
-                const isGen = ['genel', 'general', 'genel sohbet'].includes(chName);
-                let count = countMap[String(chObj._id)] || countMap[chObj.name] || 0;
-                if (isGen) {
-                    count += (countMap['general'] || 0) + (countMap['genel'] || 0) + (countMap['genel sohbet'] || 0);
-                }
-                chObj.postCount = count;
+                chObj.postCount = channelCounts[idx] || 0;
                 return chObj;
             });
         }
@@ -581,34 +653,14 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
 
         const query = { portal: portalId, isArchived: { $ne: true } };
 
-        // Channel Filtering Logic: Find the actual channel object to get its exact ID/Name
-        let targetChannel = portal.channels.find(
-            (c) =>
-                c._id.toString() === channel ||
-                c.name === channel ||
-                (channel === 'general' && ['genel', 'general', 'genel sohbet'].includes(c.name.toLowerCase()))
-        );
-
-        // Fallback: If "general" was requested but NO matched channel was found, pick the first one
-        if (!targetChannel && channel === 'general' && portal.channels.length > 0) {
-            targetChannel = portal.channels[0];
-        }
-
-        if (targetChannel) {
-            // Support BOTH ID-based and Name-based queries for backward compatibility
-            // Also include common fallbacks if this is a "general" style channel
-            const isGeneral = ['genel', 'general', 'genel sohbet'].includes(targetChannel.name.toLowerCase()) || channel === 'general';
-            
-            const channelMatches = [targetChannel._id.toString(), targetChannel.name];
-            if (isGeneral) {
-                channelMatches.push(null, 'general', 'genel', 'genel sohbet');
-            }
-            
-            query.channel = { $in: [...new Set(channelMatches)] };
-        } else {
-            // If the requested channel is truly not found, return empty
+        // Channel Filtering Logic: Use unified getPortalChannelFilter
+        const channelFilterInfo = getPortalChannelFilter(portal, channel);
+        if (!channelFilterInfo) {
             return res.json([]);
         }
+
+        const targetChannel = channelFilterInfo.targetChannel;
+        query.channel = channelFilterInfo.filter;
 
         // Pagination
         const limit = parseInt(req.query.limit) || 10;

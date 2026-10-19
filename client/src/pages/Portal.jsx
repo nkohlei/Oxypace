@@ -72,7 +72,7 @@ const Portal = () => {
 
     // Channel State
     const [currentChannel, setCurrentChannel] = useState(null);
-    const [channelPostCount, setChannelPostCount] = useState(null);
+    const [channelPostCounts, setChannelPostCounts] = useState({});
     const [hasScrolledToPost, setHasScrolledToPost] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [portalTypingUsers, setPortalTypingUsers] = useState([]); // Array of { userId, username, displayName, avatar }
@@ -202,17 +202,25 @@ const Portal = () => {
         }
     }, [location.state, id]);
 
-    const activeChannelObj = portal?.channels?.find((c) => c._id === currentChannel);
+    const activeChannelObj = portal?.channels?.find((c) => String(c._id) === String(currentChannel));
     const isImageChannel = activeChannelObj?.type === 'image';
     const isVoiceChannel = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
     const isVoiceChannelActive = isVoiceChannel && (!isMobileView || mobileChannelOpen);
 
     useEffect(() => {
-        const ch = portal?.channels?.find((c) => String(c._id) === String(currentChannel));
-        if (ch && ch.postCount !== undefined) {
-            setChannelPostCount(ch.postCount);
+        if (portal?.channels && Array.isArray(portal.channels)) {
+            setChannelPostCounts((prev) => {
+                const next = { ...prev };
+                portal.channels.forEach((ch) => {
+                    const idStr = String(ch._id);
+                    if (ch.postCount !== undefined) {
+                        next[idStr] = ch.postCount;
+                    }
+                });
+                return next;
+            });
         }
-    }, [currentChannel, portal?.channels]);
+    }, [portal?.channels]);
 
     // --- SOCKET ROOM MANAGEMENT ---
     useEffect(() => {
@@ -247,7 +255,11 @@ const Portal = () => {
                 console.log('✅ Realtime Post Accepted for this view');
                 const postAuthorId = newPost.author?._id || newPost.author?.id || newPost.author;
                 if (String(postAuthorId) !== String(user?._id)) {
-                    setChannelPostCount((prev) => (prev !== null ? prev + 1 : 1));
+                    const chKey = String(currentChannel);
+                    setChannelPostCounts((prev) => ({
+                        ...prev,
+                        [chKey]: (prev[chKey] !== undefined ? prev[chKey] : (activeChannelObj?.postCount || 0)) + 1
+                    }));
                 }
                 setPosts((prev) => {
                     if (prev.some(p => p._id === newPost._id)) return prev;
@@ -630,7 +642,13 @@ const Portal = () => {
 
         // Add to feed immediately
         setPosts((current) => [optimisticPost, ...current]);
-        setChannelPostCount((prev) => (prev !== null ? prev + 1 : 1));
+        if (currentChannel) {
+            const chKey = String(currentChannel);
+            setChannelPostCounts((prev) => ({
+                ...prev,
+                [chKey]: (prev[chKey] !== undefined ? prev[chKey] : (activeChannelObj?.postCount || 0)) + 1
+            }));
+        }
 
         // Clear input immediately
         setMessageText('');
@@ -681,7 +699,13 @@ const Portal = () => {
                             if (err) {
                                 // Rollback optimistic update
                                 setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
-                                setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+                                if (currentChannel) {
+                                    const chKey = String(currentChannel);
+                                    setChannelPostCounts((prev) => ({
+                                        ...prev,
+                                        [chKey]: Math.max(0, (prev[chKey] || 1) - 1)
+                                    }));
+                                }
                                 triggerToast('Video yükleme başarısız oldu.', 'error');
                             } else if (createdPost) {
                                 // Replace optimistic temp post with real post
@@ -785,7 +809,13 @@ const Portal = () => {
 
             // 3. Failure: Remove optimistic post and restore input
             setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
-            setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+            if (currentChannel) {
+                const chKey = String(currentChannel);
+                setChannelPostCounts((prev) => ({
+                    ...prev,
+                    [chKey]: Math.max(0, (prev[chKey] || 1) - 1)
+                }));
+            }
             setMessageText(currentData.content);
             setMediaFile(currentData.media);
             setMediaFiles(currentData.mediaFiles || []);
@@ -1046,7 +1076,10 @@ const Portal = () => {
             if (res.headers && res.headers['x-total-count'] !== undefined) {
                 const totalCount = parseInt(res.headers['x-total-count'], 10);
                 if (!isNaN(totalCount)) {
-                    setChannelPostCount(totalCount);
+                    setChannelPostCounts((prev) => ({
+                        ...prev,
+                        [String(currentChannelId)]: totalCount
+                    }));
                 }
             }
 
@@ -1113,13 +1146,25 @@ const Portal = () => {
 
     const handleDeletePost = useCallback((postId) => {
         setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
-        setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+        const chId = channelRef.current;
+        if (chId) {
+            setChannelPostCounts((prev) => ({
+                ...prev,
+                [String(chId)]: Math.max(0, (prev[String(chId)] || 1) - 1)
+            }));
+        }
     }, [setPosts]);
 
     const handleArchivePost = useCallback((postId, isArchived) => {
         if (isArchived) {
             setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
-            setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+            const chId = channelRef.current;
+            if (chId) {
+                setChannelPostCounts((prev) => ({
+                    ...prev,
+                    [String(chId)]: Math.max(0, (prev[String(chId)] || 1) - 1)
+                }));
+            }
         }
     }, [setPosts]);
 
@@ -1563,13 +1608,21 @@ const Portal = () => {
                                                                 <h3 className="channel-name">
                                                                     {channelName}
                                                                 </h3>
-                                                                <div
-                                                                    className="channel-post-count-badge"
-                                                                    title={`${channelPostCount !== null ? channelPostCount : (currentChannelObj?.postCount ?? 0)} Gönderi`}
-                                                                >
-                                                                    <MessageSquare size={13} />
-                                                                    <span>{channelPostCount !== null ? channelPostCount : (currentChannelObj?.postCount ?? 0)}</span>
-                                                                </div>
+                                                                {(() => {
+                                                                    const currentChannelKey = String(currentChannelObj?._id || currentChannel || '');
+                                                                    const count = channelPostCounts[currentChannelKey] !== undefined
+                                                                        ? channelPostCounts[currentChannelKey]
+                                                                        : (currentChannelObj?.postCount ?? 0);
+                                                                    return (
+                                                                        <div
+                                                                            className="channel-post-count-badge"
+                                                                            title={`${count} Gönderi`}
+                                                                        >
+                                                                            <MessageSquare size={13} />
+                                                                            <span>{count}</span>
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             </div>
 
                                                             <div className="channel-header-actions">

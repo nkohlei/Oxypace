@@ -179,9 +179,10 @@ const ChannelSidebar = ({
         id: ch._id,
         name: ch.name,
         type: ch.type || 'text',
+        postCount: ch.postCount,
     })) : [];
 
-    const activeChannelObj = channels.find(ch => ch.id === currentChannel);
+    const activeChannelObj = channels.find(ch => String(ch.id) === String(currentChannel));
     const isLiveRoom = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
 
     useEffect(() => {
@@ -190,7 +191,7 @@ const ChannelSidebar = ({
         }
     }, [isLiveRoom, isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed]);
 
-    const isSelected = (id) => currentChannel === id;
+    const isSelected = (id) => String(currentChannel) === String(id);
 
     const rawBanner = portal?.coverImage || portal?.banner;
     const resolvedBannerUrl = rawBanner ? getImageUrl(rawBanner) : null;
