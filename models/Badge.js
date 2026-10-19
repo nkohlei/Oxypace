@@ -80,7 +80,6 @@ const badgeSchema = new mongoose.Schema(
     }
 );
 
-badgeSchema.index({ slug: 1 });
 badgeSchema.index({ category: 1 });
 
 export default mongoose.model('Badge', badgeSchema);
