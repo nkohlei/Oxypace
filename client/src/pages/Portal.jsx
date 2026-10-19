@@ -29,7 +29,7 @@ const VoiceChannel = lazy(() => import('../components/VoiceChannel'));
 const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useSocket } from '../context/SocketContext';
-import { X, Youtube, Search, Users, SendHorizontal } from 'lucide-react';
+import { X, Youtube, Search, Users, SendHorizontal, MessageSquare } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
 import './Portal.css';
 
@@ -72,6 +72,7 @@ const Portal = () => {
 
     // Channel State
     const [currentChannel, setCurrentChannel] = useState(null);
+    const [channelPostCount, setChannelPostCount] = useState(null);
     const [hasScrolledToPost, setHasScrolledToPost] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [portalTypingUsers, setPortalTypingUsers] = useState([]); // Array of { userId, username, displayName, avatar }
@@ -206,6 +207,13 @@ const Portal = () => {
     const isVoiceChannel = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
     const isVoiceChannelActive = isVoiceChannel && (!isMobileView || mobileChannelOpen);
 
+    useEffect(() => {
+        const ch = portal?.channels?.find((c) => String(c._id) === String(currentChannel));
+        if (ch && ch.postCount !== undefined) {
+            setChannelPostCount(ch.postCount);
+        }
+    }, [currentChannel, portal?.channels]);
+
     // --- SOCKET ROOM MANAGEMENT ---
     useEffect(() => {
         if (!socket || !connected || !id) return;
@@ -237,6 +245,10 @@ const Portal = () => {
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');
+                const postAuthorId = newPost.author?._id || newPost.author?.id || newPost.author;
+                if (String(postAuthorId) !== String(user?._id)) {
+                    setChannelPostCount((prev) => (prev !== null ? prev + 1 : 1));
+                }
                 setPosts((prev) => {
                     if (prev.some(p => p._id === newPost._id)) return prev;
                     
@@ -618,6 +630,7 @@ const Portal = () => {
 
         // Add to feed immediately
         setPosts((current) => [optimisticPost, ...current]);
+        setChannelPostCount((prev) => (prev !== null ? prev + 1 : 1));
 
         // Clear input immediately
         setMessageText('');
@@ -668,6 +681,7 @@ const Portal = () => {
                             if (err) {
                                 // Rollback optimistic update
                                 setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+                                setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
                                 triggerToast('Video yükleme başarısız oldu.', 'error');
                             } else if (createdPost) {
                                 // Replace optimistic temp post with real post
@@ -771,6 +785,7 @@ const Portal = () => {
 
             // 3. Failure: Remove optimistic post and restore input
             setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+            setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
             setMessageText(currentData.content);
             setMediaFile(currentData.media);
             setMediaFiles(currentData.mediaFiles || []);
@@ -1028,6 +1043,13 @@ const Portal = () => {
             const res = await axios.get(url, config);
             const newPosts = res.data;
 
+            if (res.headers && res.headers['x-total-count'] !== undefined) {
+                const totalCount = parseInt(res.headers['x-total-count'], 10);
+                if (!isNaN(totalCount)) {
+                    setChannelPostCount(totalCount);
+                }
+            }
+
             if (newPosts.length < 10) {
                 setHasMore(false);
             }
@@ -1091,11 +1113,13 @@ const Portal = () => {
 
     const handleDeletePost = useCallback((postId) => {
         setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
+        setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
     }, [setPosts]);
 
     const handleArchivePost = useCallback((postId, isArchived) => {
         if (isArchived) {
             setPosts((prevPosts) => prevPosts.filter((p) => String(p._id) !== String(postId)));
+            setChannelPostCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
         }
     }, [setPosts]);
 
@@ -1539,6 +1563,13 @@ const Portal = () => {
                                                                 <h3 className="channel-name">
                                                                     {channelName}
                                                                 </h3>
+                                                                <div
+                                                                    className="channel-post-count-badge"
+                                                                    title={`${channelPostCount !== null ? channelPostCount : (currentChannelObj?.postCount ?? 0)} Gönderi`}
+                                                                >
+                                                                    <MessageSquare size={13} />
+                                                                    <span>{channelPostCount !== null ? channelPostCount : (currentChannelObj?.postCount ?? 0)}</span>
+                                                                </div>
                                                             </div>
 
                                                             <div className="channel-header-actions">

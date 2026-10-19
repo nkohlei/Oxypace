@@ -667,6 +667,8 @@ const ChannelSidebar = ({
                 overflow: hidden;
                 flex-shrink: 0;
                 transition: height 0.3s ease;
+                border-top-left-radius: 14px;
+                border-top-right-radius: 14px;
             }
             .channel-banner-image {
                 width: 100%;
@@ -676,6 +678,8 @@ const ChannelSidebar = ({
                 background-position: center;
                 background-repeat: no-repeat;
                 transition: transform 0.5s ease, opacity 0.25s ease;
+                border-top-left-radius: 14px;
+                border-top-right-radius: 14px;
             }
             .channel-banner-container:hover .channel-banner-image {
                 transform: scale(1.05);
@@ -685,6 +689,8 @@ const ChannelSidebar = ({
                 top: 0; left: 0;
                 width: 100%; height: 100%;
                 background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 100%);
+                border-top-left-radius: 14px;
+                border-top-right-radius: 14px;
             }
 
             /* ── Portal quick info ── */

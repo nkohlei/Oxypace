@@ -448,8 +448,13 @@ const PortalSettingsModal = ({
     const handleAddChannel = async () => {
         if (!newChannelName.trim()) return;
         if (!isAdmin) return;
+        if (!newChannelName || !newChannelName.trim()) return;
+        if (newChannelName.trim().length > 20) {
+            alert('Kanal adı en fazla 20 karakter olabilir');
+            return;
+        }
         try {
-            const payload = { name: newChannelName, type: newChannelType };
+            const payload = { name: newChannelName.trim(), type: newChannelType };
             // Conference channels default to stage mode
             if (newChannelType === 'conference') {
                 payload.roomMode = 'stage';
@@ -502,9 +507,13 @@ const PortalSettingsModal = ({
 
     const handleUpdateChannel = async () => {
         if (!editingChannel || !editingChannel.name.trim()) return;
+        if (editingChannel.name.trim().length > 20) {
+            alert('Kanal adı en fazla 20 karakter olabilir');
+            return;
+        }
         try {
             const res = await axios.put(`/api/portals/${portal._id}/channels/${editingChannel.id}`, {
-                name: editingChannel.name,
+                name: editingChannel.name.trim(),
                 isPrivate: editingChannel.isPrivate,
                 type: editingChannel.type,
             });
@@ -987,6 +996,7 @@ const PortalSettingsModal = ({
                                     <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                                         <input
                                             className="form-input"
+                                            maxLength={20}
                                             placeholder={
                                                 newChannelType === 'text'
                                                     ? 'Kanal adı (örn: oyun, müzik)'
@@ -1044,6 +1054,7 @@ const PortalSettingsModal = ({
                                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                         <input
                                                             className="form-input"
+                                                            maxLength={20}
                                                             value={editingChannel.name}
                                                             onChange={(e) =>
                                                                 setEditingChannel({

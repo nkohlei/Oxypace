@@ -485,8 +485,37 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
         }
 
         // Fetch accurate post count for the portal
-        const postCount = await Post.countDocuments({ portal: portal._id });
+        const postCount = await Post.countDocuments({ portal: portal._id, isArchived: { $ne: true } });
         portalObj.postCount = postCount;
+
+        // Fetch channel post counts
+        const channelPostCounts = await Post.aggregate([
+            { $match: { portal: portal._id, isArchived: { $ne: true } } },
+            { $group: { _id: '$channel', count: { $sum: 1 } } }
+        ]);
+
+        const countMap = {};
+        channelPostCounts.forEach(c => {
+            if (c._id) {
+                countMap[String(c._id)] = c.count;
+            } else {
+                countMap['general'] = (countMap['general'] || 0) + c.count;
+            }
+        });
+
+        if (portalObj.channels && Array.isArray(portalObj.channels)) {
+            portalObj.channels = portalObj.channels.map(ch => {
+                const chObj = ch && ch.toObject ? ch.toObject() : { ...ch };
+                const chName = (chObj.name || '').toLowerCase();
+                const isGen = ['genel', 'general', 'genel sohbet'].includes(chName);
+                let count = countMap[String(chObj._id)] || countMap[chObj.name] || 0;
+                if (isGen) {
+                    count += (countMap['general'] || 0) + (countMap['genel'] || 0) + (countMap['genel sohbet'] || 0);
+                }
+                chObj.postCount = count;
+                return chObj;
+            });
+        }
 
         res.json(portalObj);
     } catch (error) {
@@ -658,6 +687,13 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
         }
 
         const activePosts = posts;
+        const totalChannelPosts = await Post.countDocuments({
+            portal: portalId,
+            isArchived: { $ne: true },
+            channel: query.channel
+        });
+        res.set('X-Total-Count', totalChannelPosts.toString());
+        res.set('Access-Control-Expose-Headers', 'X-Total-Count');
         res.json(activePosts);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -927,7 +963,15 @@ router.post('/:id/channels', protect, mongoIdValidation('id'), async (req, res) 
             return res.status(403).json({ message: 'Not authorized' });
         }
 
-        const channelData = { name };
+        if (!name || typeof name !== 'string' || !name.trim()) {
+            return res.status(400).json({ message: 'Kanal adı gereklidir' });
+        }
+        const trimmedName = name.trim();
+        if (trimmedName.length > 20) {
+            return res.status(400).json({ message: 'Kanal adı en fazla 20 karakter olabilir' });
+        }
+
+        const channelData = { name: trimmedName };
         if (type && ['text', 'voice', 'conference', 'image'].includes(type)) {
             channelData.type = type;
         }
@@ -1032,8 +1076,15 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
             return res.status(404).json({ message: 'Channel not found' });
         }
 
-        if (name) {
-            channel.name = name;
+        if (name !== undefined) {
+            if (typeof name !== 'string' || !name.trim()) {
+                return res.status(400).json({ message: 'Kanal adı gereklidir' });
+            }
+            const trimmedName = name.trim();
+            if (trimmedName.length > 20) {
+                return res.status(400).json({ message: 'Kanal adı en fazla 20 karakter olabilir' });
+            }
+            channel.name = trimmedName;
         }
         if (isPrivate !== undefined) {
             channel.isPrivate = isPrivate;
