@@ -14,9 +14,13 @@ const badgeSchema = new mongoose.Schema(
             trim: true,
             lowercase: true,
         },
+        shape: {
+            type: String,
+            enum: ['rosette', 'rounded_square', 'circle', 'hexagon', 'shield', 'starburst', 'octagon', 'diamond', 'icon_only'],
+            default: 'rosette',
+        },
         icon: {
             type: String,
-            enum: ['checkmark', 'star', 'shield', 'lightning', 'diamond', 'crown', 'fire', 'heart', 'rocket', 'globe', 'sparkle', 'music', 'award', 'gem', 'verified', 'eye', 'swords', 'hexagon', 'triangle', 'atom'],
             default: 'checkmark',
         },
         category: {
@@ -27,7 +31,7 @@ const badgeSchema = new mongoose.Schema(
         style: {
             type: {
                 type: String,
-                enum: ['solid', 'gradient', 'iridescent', 'animated'],
+                enum: ['solid', 'gradient', 'iridescent', 'metallic', 'neon', 'cosmic', 'animated'],
                 default: 'solid',
             },
             primaryColor: {
@@ -38,9 +42,22 @@ const badgeSchema = new mongoose.Schema(
                 type: String,
                 default: '',
             },
+            gradientAngle: {
+                type: Number,
+                default: 135,
+            },
+            metallicType: {
+                type: String,
+                enum: ['none', 'gold', 'silver', 'platinum', 'rose_gold', 'obsidian', 'bronze'],
+                default: 'none',
+            },
+            innerIconColor: {
+                type: String,
+                default: '#ffffff',
+            },
             animationType: {
                 type: String,
-                enum: ['none', 'pulse', 'glow', 'spin', 'shimmer', 'bounce'],
+                enum: ['none', 'pulse', 'glow', 'spin', 'shimmer', 'bounce', 'float'],
                 default: 'none',
             },
             glowColor: {

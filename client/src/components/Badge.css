@@ -1,130 +1,40 @@
 /* =============================================
-   BADGE ANIMATIONS — Lucide Icon Compatible
+   AUTHENTIC VERIFICATION BADGES & FX
    ============================================= */
 
 .verification-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease, filter 0.2s ease;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.22s ease;
     cursor: default;
     line-height: 0;
+    vertical-align: middle;
     background: transparent !important;
+    user-select: none;
+    flex-shrink: 0;
 }
 
 .verification-badge:hover {
-    transform: scale(1.15);
+    transform: scale(1.18);
 }
 
-/* ---- Pulse: smooth scale breathing ---- */
-.badge-anim-pulse {
-    animation: badgePulse 2s ease-in-out infinite;
+/* Subtle default drop shadow for high contrast on any background */
+.verification-badge svg {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+    transition: filter 0.25s ease;
 }
 
-@keyframes badgePulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.2);
-    }
+.verification-badge:hover svg {
+    filter: drop-shadow(0 2px 6px var(--badge-glow-color, rgba(0, 0, 0, 0.4)));
 }
 
-/* ---- Glow: soft color halo ---- */
-.badge-anim-glow {
-    animation: badgeGlow 2.5s ease-in-out infinite;
+/* ---- Neon / Cyberpunk Glow ---- */
+.badge-style-neon svg {
+    filter: drop-shadow(0 0 3px var(--badge-glow-color)) drop-shadow(0 0 8px var(--badge-glow-color)) !important;
 }
 
-@keyframes badgeGlow {
-
-    0%,
-    100% {
-        filter: drop-shadow(0 0 2px var(--badge-glow-color, rgba(29, 155, 240, 0.4)));
-    }
-
-    50% {
-        filter: drop-shadow(0 0 6px var(--badge-glow-color, rgba(29, 155, 240, 0.8)));
-    }
-}
-
-/* ---- Spin: smooth continuous rotation ---- */
-.badge-anim-spin {
-    animation: badgeSpin 3s linear infinite;
-}
-
-@keyframes badgeSpin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* ---- Shimmer: metallic sheen sweep ---- */
-.badge-anim-shimmer {
-    animation: badgeShimmer 3s ease-in-out infinite;
-    position: relative;
-}
-
-@keyframes badgeShimmer {
-
-    0%,
-    100% {
-        filter: brightness(1);
-    }
-
-    50% {
-        filter: brightness(1.5);
-    }
-}
-
-/* ---- Bounce: playful vertical bounce ---- */
-.badge-anim-bounce {
-    animation: badgeBounce 1.8s ease infinite;
-}
-
-@keyframes badgeBounce {
-
-    0%,
-    20%,
-    50%,
-    80%,
-    100% {
-        transform: translateY(0);
-    }
-
-    40% {
-        transform: translateY(-4px);
-    }
-
-    60% {
-        transform: translateY(-2px);
-    }
-}
-
-/* ---- Float: gentle hover motion ---- */
-.badge-anim-float {
-    animation: badgeFloat 3s ease-in-out infinite;
-}
-
-@keyframes badgeFloat {
-
-    0%,
-    100% {
-        transform: translateY(0px);
-    }
-
-    50% {
-        transform: translateY(-3px);
-    }
-}
-
-/* ---- Iridescent: hue rotation for rainbow effect ---- */
+/* ---- Iridescent / Holographic Rainbow Rotation ---- */
 .badge-style-iridescent {
     animation: badgeIridescent 4s linear infinite;
 }
@@ -133,21 +43,104 @@
     from {
         filter: hue-rotate(0deg);
     }
-
     to {
         filter: hue-rotate(360deg);
     }
 }
 
-/* Combined: iridescent + other animations stack */
+/* ---- Pulse: Breathing Effect ---- */
+.badge-anim-pulse {
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.15);
+    }
+}
+
+/* ---- Glow: Halo Pulsation ---- */
+.badge-anim-glow svg {
+    animation: badgeGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes badgeGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 2px var(--badge-glow-color, rgba(29, 155, 240, 0.4)));
+    }
+    50% {
+        filter: drop-shadow(0 0 8px var(--badge-glow-color, rgba(29, 155, 240, 0.85)));
+    }
+}
+
+/* ---- Spin: Smooth Continuous Rotation ---- */
+.badge-anim-spin {
+    animation: badgeSpin 4s linear infinite;
+}
+
+@keyframes badgeSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---- Shimmer: Dynamic Specular Reflection Sweep ---- */
+.badge-anim-shimmer {
+    animation: badgeShimmer 2.8s ease-in-out infinite;
+    position: relative;
+}
+
+@keyframes badgeShimmer {
+    0%, 100% {
+        filter: brightness(1) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+    }
+    50% {
+        filter: brightness(1.45) drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+    }
+}
+
+/* ---- Float: Gentle Floating Motion ---- */
+.badge-anim-float {
+    animation: badgeFloat 2.6s ease-in-out infinite;
+}
+
+@keyframes badgeFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+/* ---- Bounce: Playful Vertical Bounce ---- */
+.badge-anim-bounce {
+    animation: badgeBounce 1.8s ease infinite;
+}
+
+@keyframes badgeBounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-4px);
+    }
+    60% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Combined animations */
 .badge-style-iridescent.badge-anim-pulse {
     animation: badgeIridescent 4s linear infinite, badgePulse 2s ease-in-out infinite;
 }
 
-.badge-style-iridescent.badge-anim-glow {
-    animation: badgeIridescent 4s linear infinite, badgeGlow 2.5s ease-in-out infinite;
-}
-
-.badge-style-iridescent.badge-anim-shimmer {
-    animation: badgeIridescent 4s linear infinite, badgeShimmer 3s ease-in-out infinite;
+.badge-style-iridescent.badge-anim-glow svg {
+    animation: badgeGlow 2.5s ease-in-out infinite;
 }

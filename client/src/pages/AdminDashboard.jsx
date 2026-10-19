@@ -1188,25 +1188,41 @@ const AdminDashboard = () => {
     const [uploadingCalcToolImage, setUploadingCalcToolImage] = useState(false);
     const [calcToolSaving, setCalcToolSaving] = useState(false);
 
-    // Badge Creator State
+    // Badge Studio State
     const { badges: contextBadges, refreshBadges } = useBadges();
     const [allBadges, setAllBadges] = useState([]);
     const [badgeModalOpen, setBadgeModalOpen] = useState(false);
     const [editingBadge, setEditingBadge] = useState(null);
+    const [badgeFilter, setBadgeFilter] = useState('all'); // 'all', 'x_official', 'user', 'portal'
+    const [badgeSearch, setBadgeSearch] = useState('');
+    const [badgeCanvasBg, setBadgeCanvasBg] = useState('dark'); // 'dark' | 'light'
     const [badgeForm, setBadgeForm] = useState({
         name: '',
         slug: '',
+        shape: 'rosette',
         icon: 'checkmark',
         category: 'both',
         style: {
             type: 'solid',
             primaryColor: '#1d9bf0',
-            secondaryColor: '#ff8c00',
+            secondaryColor: '#f59e0b',
+            gradientAngle: 135,
+            metallicType: 'gold',
+            innerIconColor: '#ffffff',
             animationType: 'none',
             glowColor: '',
             borderStyle: 'none',
         },
     });
+
+    // Direct Badge Assignment Modal State
+    const [assignModalOpen, setAssignModalOpen] = useState(false);
+    const [assignTargetBadge, setAssignTargetBadge] = useState(null);
+    const [assignType, setAssignType] = useState('user'); // 'user' | 'portal'
+    const [assignQuery, setAssignQuery] = useState('');
+    const [assignResults, setAssignResults] = useState([]);
+    const [assignLoading, setAssignLoading] = useState(false);
+    const [assignSuccessMsg, setAssignSuccessMsg] = useState('');
 
     // Feedback Modal State
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -2229,7 +2245,298 @@ const AdminDashboard = () => {
         }
     };
 
-    // ===== BADGE CRUD =====
+    // ===== BADGE STUDIO CONSTANTS & PRESETS =====
+    const BADGE_PRESETS = [
+        {
+            id: 'x_blue',
+            name: 'X Mavi Onay',
+            desc: 'Twitter / X Orijinal Mavi Onay',
+            badge: {
+                name: 'X Mavi Onay',
+                slug: 'x-blue',
+                shape: 'rosette',
+                icon: 'checkmark',
+                category: 'both',
+                style: {
+                    type: 'solid',
+                    primaryColor: '#1d9bf0',
+                    secondaryColor: '',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'none',
+                    glowColor: 'rgba(29, 155, 240, 0.45)',
+                }
+            }
+        },
+        {
+            id: 'x_gold',
+            name: 'X Altın Kuruluş',
+            desc: 'Twitter / X Orijinal Şirket Rozeti',
+            badge: {
+                name: 'X Altın Onay (Kuruluş)',
+                slug: 'x-gold',
+                shape: 'rounded_square',
+                icon: 'checkmark',
+                category: 'both',
+                style: {
+                    type: 'gradient',
+                    primaryColor: '#ffd700',
+                    secondaryColor: '#f59e0b',
+                    gradientAngle: 135,
+                    metallicType: 'gold',
+                    innerIconColor: '#ffffff',
+                    animationType: 'none',
+                    glowColor: 'rgba(255, 215, 0, 0.45)',
+                }
+            }
+        },
+        {
+            id: 'x_grey',
+            name: 'X Gri Hükümet',
+            desc: 'Twitter / X Orijinal Resmi Kurum Rozeti',
+            badge: {
+                name: 'X Gri Onay (Hükümet & Resmi)',
+                slug: 'x-grey',
+                shape: 'rosette',
+                icon: 'checkmark',
+                category: 'both',
+                style: {
+                    type: 'solid',
+                    primaryColor: '#829aab',
+                    secondaryColor: '',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'none',
+                    glowColor: 'rgba(130, 154, 171, 0.4)',
+                }
+            }
+        },
+        {
+            id: 'x_affiliate',
+            name: 'X Bağlı Kuruluş',
+            desc: 'Twitter / X Bağlı Şirket Rozeti',
+            badge: {
+                name: 'X Bağlı Kuruluş',
+                slug: 'x-affiliate',
+                shape: 'rounded_square',
+                icon: 'shield',
+                category: 'both',
+                style: {
+                    type: 'solid',
+                    primaryColor: '#1d9bf0',
+                    secondaryColor: '',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'none',
+                    glowColor: 'rgba(29, 155, 240, 0.4)',
+                }
+            }
+        },
+        {
+            id: 'cyber_neon',
+            name: 'Siberpunk Neon',
+            desc: 'Fütüristik Parlayan Altıgen',
+            badge: {
+                name: 'Siberpunk Neon',
+                slug: 'cyber-neon',
+                shape: 'hexagon',
+                icon: 'lightning',
+                category: 'both',
+                style: {
+                    type: 'neon',
+                    primaryColor: '#00ffcc',
+                    secondaryColor: '#0088ff',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'glow',
+                    glowColor: '#00ffcc',
+                }
+            }
+        },
+        {
+            id: 'cosmic_aurora',
+            name: 'Kozmik Aurora',
+            desc: 'Mistik Galaksi & Yıldız Işıltısı',
+            badge: {
+                name: 'Kozmik Aurora',
+                slug: 'cosmic-aurora',
+                shape: 'rosette',
+                icon: 'sparkle',
+                category: 'both',
+                style: {
+                    type: 'cosmic',
+                    primaryColor: '#8b5cf6',
+                    secondaryColor: '#06b6d4',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'pulse',
+                    glowColor: 'rgba(139, 92, 246, 0.6)',
+                }
+            }
+        },
+        {
+            id: 'imperial_gold',
+            name: 'İmparatorluk Altını',
+            desc: 'Kraliyet Metalik Altın Sekizgen',
+            badge: {
+                name: 'İmparatorluk Altını',
+                slug: 'imperial-gold',
+                shape: 'octagon',
+                icon: 'crown',
+                category: 'both',
+                style: {
+                    type: 'metallic',
+                    metallicType: 'gold',
+                    primaryColor: '#ffd700',
+                    secondaryColor: '#b45309',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'shimmer',
+                    glowColor: 'rgba(255, 215, 0, 0.5)',
+                }
+            }
+        },
+        {
+            id: 'platinum_shield',
+            name: 'Platin Muhafız',
+            desc: 'Metalik Platin Güvenlik Kalkanı',
+            badge: {
+                name: 'Platin Muhafız',
+                slug: 'platinum-shield',
+                shape: 'shield',
+                icon: 'shield',
+                category: 'both',
+                style: {
+                    type: 'metallic',
+                    metallicType: 'platinum',
+                    primaryColor: '#f1f5f9',
+                    secondaryColor: '#94a3b8',
+                    gradientAngle: 135,
+                    innerIconColor: '#0f172a',
+                    animationType: 'shimmer',
+                    glowColor: 'rgba(226, 232, 240, 0.4)',
+                }
+            }
+        },
+        {
+            id: 'holo_prism',
+            name: 'Holografik Prizma',
+            desc: 'Dinamik Gökkuşağı Renk Döngüsü',
+            badge: {
+                name: 'Holografik Prizma',
+                slug: 'holo-prism',
+                shape: 'diamond',
+                icon: 'diamond',
+                category: 'both',
+                style: {
+                    type: 'iridescent',
+                    primaryColor: '#ec4899',
+                    secondaryColor: '#3b82f6',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'none',
+                    glowColor: 'rgba(236, 72, 153, 0.5)',
+                }
+            }
+        },
+        {
+            id: 'inferno_flame',
+            name: 'Alev Yıldızı',
+            desc: 'Yanan Ateş & Enerji Patlaması',
+            badge: {
+                name: 'Alev Yıldızı',
+                slug: 'inferno-flame',
+                shape: 'starburst',
+                icon: 'fire',
+                category: 'both',
+                style: {
+                    type: 'gradient',
+                    primaryColor: '#ef4444',
+                    secondaryColor: '#f59e0b',
+                    gradientAngle: 45,
+                    innerIconColor: '#ffffff',
+                    animationType: 'pulse',
+                    glowColor: 'rgba(239, 68, 68, 0.6)',
+                }
+            }
+        },
+    ];
+
+    const SHAPES = [
+        { value: 'rosette', label: 'X Rozet', desc: 'Resmi X/Twitter Mavi & Gri rozet formu' },
+        { value: 'rounded_square', label: 'X Yuvarlak Kare', desc: 'Resmi X Altın Şirket/Kuruluş formu' },
+        { value: 'circle', label: 'Daire', desc: 'Klasik yuvarlak rozet' },
+        { value: 'hexagon', label: 'Altıgen', desc: 'Teknoloji & Modern Web3 formu' },
+        { value: 'shield', label: 'Kalkan', desc: 'Güvenlik & Resmi Otorite formu' },
+        { value: 'starburst', label: '12-Köşe Yıldız', desc: 'Enerjik yıldız patlaması' },
+        { value: 'octagon', label: 'Sekizgen', desc: 'İmparatorluk sekizgen formu' },
+        { value: 'diamond', label: 'Elmas', desc: 'Lüks eğik elmas formu' },
+    ];
+
+    const STYLE_MODES = [
+        { value: 'solid', label: 'Düz Renk', desc: 'Net ve minimalist tek renk' },
+        { value: 'gradient', label: 'Gradyan', desc: 'Açı kontrollü 2 renkli geçiş' },
+        { value: 'metallic', label: 'Gerçekçi Metalik', desc: 'Altın, Platin, Gümüş, Gül Altın, vb.' },
+        { value: 'neon', label: 'Siberpunk Neon', desc: 'Yüksek yoğunluklu neon ışıması' },
+        { value: 'cosmic', label: 'Kozmik Aurora', desc: 'Gizemli nebula & galaksi gradyanı' },
+        { value: 'iridescent', label: 'Holografik Prizma', desc: 'Sürekli dönen gökkuşağı efekti' },
+    ];
+
+    const METALLIC_TYPES = [
+        { value: 'gold', label: 'Altın (Gold)' },
+        { value: 'platinum', label: 'Platin (Platinum)' },
+        { value: 'silver', label: 'Gümüş (Silver)' },
+        { value: 'rose_gold', label: 'Gül Altın (Rose Gold)' },
+        { value: 'obsidian', label: 'Obsidiyen / Titanyum' },
+        { value: 'bronze', label: 'Bronz' },
+    ];
+
+    const QUICK_PALETTES = [
+        { name: 'X Blue', hex: '#1d9bf0' },
+        { name: 'X Gold', hex: '#ffd700' },
+        { name: 'Amber', hex: '#f59e0b' },
+        { name: 'X Grey', hex: '#829aab' },
+        { name: 'Emerald', hex: '#10b981' },
+        { name: 'Ruby', hex: '#ef4444' },
+        { name: 'Amethyst', hex: '#8b5cf6' },
+        { name: 'Cyan', hex: '#06b6d4' },
+        { name: 'Neon Green', hex: '#00ff66' },
+        { name: 'Neon Pink', hex: '#f43f5e' },
+        { name: 'Dark Slate', hex: '#0f172a' },
+        { name: 'Pure White', hex: '#ffffff' },
+    ];
+
+    const ICONS = [
+        { value: 'checkmark', label: 'X Onayı' },
+        { value: 'star', label: 'Yıldız' },
+        { value: 'shield', label: 'Kalkan' },
+        { value: 'lightning', label: 'Şimşek' },
+        { value: 'diamond', label: 'Elmas' },
+        { value: 'crown', label: 'Taç' },
+        { value: 'fire', label: 'Ateş' },
+        { value: 'heart', label: 'Kalp' },
+        { value: 'rocket', label: 'Roket' },
+        { value: 'sparkle', label: 'Parıltı' },
+        { value: 'atom', label: 'Atom' },
+        { value: 'gem', label: 'Mücevher' },
+        { value: 'award', label: 'Ödül' },
+        { value: 'globe', label: 'Dünya' },
+        { value: 'music', label: 'Müzik' },
+        { value: 'swords', label: 'Kılıç' },
+        { value: 'eye', label: 'Göz' },
+    ];
+
+    const ANIM_TYPES = [
+        { value: 'none', label: 'Yok' },
+        { value: 'pulse', label: 'Nabız' },
+        { value: 'glow', label: 'Parıltı' },
+        { value: 'shimmer', label: 'Işıltı' },
+        { value: 'spin', label: 'Dönme' },
+        { value: 'float', label: 'Süzülme' },
+        { value: 'bounce', label: 'Zıplama' },
+    ];
+
+    // ===== BADGE CRUD & STUDIO HANDLERS =====
     const fetchAllBadges = async () => {
         setLoading(true);
         try {
@@ -2257,23 +2564,38 @@ const AdminDashboard = () => {
         if (badge) {
             setEditingBadge(badge);
             setBadgeForm({
-                name: badge.name,
-                slug: badge.slug,
-                icon: badge.icon,
-                category: badge.category,
-                style: { ...badge.style },
+                name: badge.name || '',
+                slug: badge.slug || '',
+                shape: badge.shape || (badge.slug?.includes('gold') ? 'rounded_square' : 'rosette'),
+                icon: badge.icon || 'checkmark',
+                category: badge.category || 'both',
+                style: {
+                    type: badge.style?.type || 'solid',
+                    primaryColor: badge.style?.primaryColor || '#1d9bf0',
+                    secondaryColor: badge.style?.secondaryColor || '#f59e0b',
+                    gradientAngle: badge.style?.gradientAngle ?? 135,
+                    metallicType: badge.style?.metallicType || 'gold',
+                    innerIconColor: badge.style?.innerIconColor || '#ffffff',
+                    animationType: badge.style?.animationType || 'none',
+                    glowColor: badge.style?.glowColor || '',
+                    borderStyle: badge.style?.borderStyle || 'none',
+                },
             });
         } else {
             setEditingBadge(null);
             setBadgeForm({
                 name: '',
                 slug: '',
+                shape: 'rosette',
                 icon: 'checkmark',
                 category: 'both',
                 style: {
                     type: 'solid',
                     primaryColor: '#1d9bf0',
-                    secondaryColor: '#ff8c00',
+                    secondaryColor: '#f59e0b',
+                    gradientAngle: 135,
+                    metallicType: 'gold',
+                    innerIconColor: '#ffffff',
                     animationType: 'none',
                     glowColor: '',
                     borderStyle: 'none',
@@ -2281,6 +2603,41 @@ const AdminDashboard = () => {
             });
         }
         setBadgeModalOpen(true);
+    };
+
+    const handleBadgeClone = (badge) => {
+        setEditingBadge(null);
+        setBadgeForm({
+            name: `${badge.name} (Kopya)`,
+            slug: `${badge.slug}-kopya`,
+            shape: badge.shape || 'rosette',
+            icon: badge.icon || 'checkmark',
+            category: badge.category || 'both',
+            style: {
+                type: badge.style?.type || 'solid',
+                primaryColor: badge.style?.primaryColor || '#1d9bf0',
+                secondaryColor: badge.style?.secondaryColor || '#f59e0b',
+                gradientAngle: badge.style?.gradientAngle ?? 135,
+                metallicType: badge.style?.metallicType || 'gold',
+                innerIconColor: badge.style?.innerIconColor || '#ffffff',
+                animationType: badge.style?.animationType || 'none',
+                glowColor: badge.style?.glowColor || '',
+                borderStyle: badge.style?.borderStyle || 'none',
+            },
+        });
+        setBadgeModalOpen(true);
+    };
+
+    const applyBadgePreset = (preset) => {
+        setBadgeForm(prev => ({
+            ...prev,
+            name: editingBadge ? prev.name : preset.badge.name,
+            slug: editingBadge ? prev.slug : preset.badge.slug,
+            shape: preset.badge.shape,
+            icon: preset.badge.icon,
+            category: preset.badge.category,
+            style: { ...preset.badge.style },
+        }));
     };
 
     const handleBadgeSave = async () => {
@@ -2313,43 +2670,6 @@ const AdminDashboard = () => {
         }
     };
 
-    const ICONS = [
-        { value: 'checkmark', label: 'Onay' },
-        { value: 'star', label: 'Yıldız' },
-        { value: 'shield', label: 'Kalkan' },
-        { value: 'lightning', label: 'Şimşek' },
-        { value: 'diamond', label: 'Elmas' },
-        { value: 'crown', label: 'Taç' },
-        { value: 'fire', label: 'Ateş' },
-        { value: 'heart', label: 'Kalp' },
-        { value: 'rocket', label: 'Roket' },
-        { value: 'globe', label: 'Dünya' },
-        { value: 'sparkle', label: 'Parıltı' },
-        { value: 'music', label: 'Müzik' },
-        { value: 'award', label: 'Ödül' },
-        { value: 'gem', label: 'Mücevher' },
-        { value: 'verified', label: 'Doğrulanmış' },
-        { value: 'eye', label: 'Göz' },
-        { value: 'swords', label: 'Kılıç' },
-        { value: 'hexagon', label: 'Altıgen' },
-        { value: 'triangle', label: 'Üçgen' },
-        { value: 'atom', label: 'Atom' },
-    ];
-    const STYLE_TYPES = [
-        { value: 'solid', label: 'Düz Renk', desc: 'Tekli renk dolgu' },
-        { value: 'gradient', label: 'Gradient', desc: 'İki renkli geçişli' },
-        { value: 'iridescent', label: 'İridesans', desc: 'Gökkuşağı hue döngüsü' },
-        { value: 'animated', label: 'Animasyonlu', desc: 'Hareket efektli' },
-    ];
-    const ANIM_TYPES = [
-        { value: 'none', label: 'Yok' },
-        { value: 'pulse', label: 'Nabız' },
-        { value: 'glow', label: 'Parıltı' },
-        { value: 'spin', label: 'Dönme' },
-        { value: 'shimmer', label: 'Işıltı' },
-        { value: 'bounce', label: 'Zıplama' },
-    ];
-
     // Auto-generate slug from name (Turkish chars → ASCII)
     const generateSlug = (name) => {
         return name
@@ -2362,11 +2682,86 @@ const AdminDashboard = () => {
 
     const handleNameChange = (name) => {
         const newForm = { ...badgeForm, name };
-        // Auto-generate slug only for new badges (not editing defaults)
         if (!editingBadge || !editingBadge.isDefault) {
             newForm.slug = generateSlug(name);
         }
         setBadgeForm(newForm);
+    };
+
+    // Direct Badge Assignment Handlers
+    const openAssignModal = (badge, targetType = 'user') => {
+        setAssignTargetBadge(badge);
+        setAssignType(targetType);
+        setAssignQuery('');
+        setAssignResults([]);
+        setAssignSuccessMsg('');
+        setAssignModalOpen(true);
+    };
+
+    const handleAssignSearch = async (query) => {
+        setAssignQuery(query);
+        if (!query || query.trim().length < 1) {
+            setAssignResults([]);
+            return;
+        }
+        setAssignLoading(true);
+        try {
+            if (assignType === 'user') {
+                const { data } = await axios.get(`/api/admin/users?search=${encodeURIComponent(query)}`);
+                setAssignResults(data.users || data || []);
+            } else {
+                const { data } = await axios.get(`/api/admin/portals?search=${encodeURIComponent(query)}`);
+                setAssignResults(data.portals || data || []);
+            }
+        } catch (err) {
+            console.error('Assign search error:', err);
+        } finally {
+            setAssignLoading(false);
+        }
+    };
+
+    const executeBadgeAssign = async (targetItem) => {
+        if (!assignTargetBadge) return;
+        setAssignLoading(true);
+        try {
+            if (assignType === 'user') {
+                await axios.put(`/api/admin/users/${targetItem._id}/badge`, { badge: assignTargetBadge.slug });
+                setAssignSuccessMsg(`"${assignTargetBadge.name}" rozeti @${targetItem.username} kullanıcısına başarıyla atandı!`);
+            } else {
+                const existingBadges = targetItem.badges || [];
+                const updatedBadges = existingBadges.includes(assignTargetBadge.slug)
+                    ? existingBadges
+                    : [...existingBadges, assignTargetBadge.slug];
+                await axios.put(`/api/admin/portals/${targetItem._id}/status`, { badges: updatedBadges });
+                setAssignSuccessMsg(`"${assignTargetBadge.name}" rozeti "${targetItem.name}" portalına başarıyla atandı!`);
+            }
+            refreshBadges();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Atama işlemi başarısız.');
+        } finally {
+            setAssignLoading(false);
+        }
+    };
+
+    const executeBadgeRevoke = async (targetItem) => {
+        if (!assignTargetBadge) return;
+        setAssignLoading(true);
+        try {
+            if (assignType === 'user') {
+                await axios.put(`/api/admin/users/${targetItem._id}/badge`, { badge: 'none' });
+                setAssignSuccessMsg(`@${targetItem.username} kullanıcısının rozeti kaldırıldı.`);
+            } else {
+                const existingBadges = targetItem.badges || [];
+                const updatedBadges = existingBadges.filter(b => b !== assignTargetBadge.slug);
+                await axios.put(`/api/admin/portals/${targetItem._id}/status`, { badges: updatedBadges });
+                setAssignSuccessMsg(`"${targetItem.name}" portalından rozet kaldırıldı.`);
+            }
+            refreshBadges();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Kaldırma işlemi başarısız.');
+        } finally {
+            setAssignLoading(false);
+        }
     };
 
     // ===== BLOG MANAGEMENT HANDLERS =====
@@ -3972,54 +4367,247 @@ const AdminDashboard = () => {
                 )}
 
                 {/* ===== BADGES TAB ===== */}
-                {activeTab === 'badges' && (
-                    <div className="badges-section fade-in">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                            <button className="btn-modern-primary" onClick={() => openBadgeCreator()} style={{ padding: '10px 20px', fontSize: '14px' }}>
-                                + Yeni Rozet
-                            </button>
-                            <button className="btn-modern-ghost" onClick={handleSeedBadges} style={{ padding: '8px 16px', fontSize: '12px' }}>
-                                🌱 Varsayılan Rozetleri Yükle
-                            </button>
-                        </div>
+                {/* ===== BADGES STUDIO & MANAGEMENT TAB ===== */}
+                {activeTab === 'badges' && (() => {
+                    const isXBadge = (b) => {
+                        const s = String(b.slug || '').toLowerCase();
+                        return s.startsWith('x-') || ['blue', 'gold', 'platinum', 'verified', 'official'].includes(s);
+                    };
 
-                        {loading && <div className="admin-loading">Yükleniyor...</div>}
+                    const xBadgesCount = allBadges.filter(isXBadge).length;
+                    const userBadgesCount = allBadges.filter(b => b.category === 'user' || b.category === 'both').length;
+                    const portalBadgesCount = allBadges.filter(b => b.category === 'portal' || b.category === 'both').length;
 
-                        <div className="badge-grid">
-                            {allBadges.map((badge) => (
-                                <div key={badge._id || badge.slug} className="badge-card">
-                                    <div className="badge-card-preview">
-                                        <Badge type={badge.slug} size={40} />
+                    const filteredBadges = allBadges.filter(b => {
+                        // Category / group filter
+                        if (badgeFilter === 'x_official' && !isXBadge(b)) return false;
+                        if (badgeFilter === 'user' && b.category === 'portal') return false;
+                        if (badgeFilter === 'portal' && b.category === 'user') return false;
+
+                        // Search filter
+                        if (badgeSearch.trim()) {
+                            const query = badgeSearch.toLowerCase().trim();
+                            const matchName = (b.name || '').toLowerCase().includes(query);
+                            const matchSlug = (b.slug || '').toLowerCase().includes(query);
+                            const matchShape = (b.shape || '').toLowerCase().includes(query);
+                            return matchName || matchSlug || matchShape;
+                        }
+                        return true;
+                    });
+
+                    return (
+                        <div className="badges-section fade-in">
+                            {/* Studio Header Banner */}
+                            <div className="badge-studio-header">
+                                <div className="badge-studio-title-row">
+                                    <div className="badge-studio-title">
+                                        <span>💎 Rozet Stüdyosu & Doğrulama Merkezi</span>
                                     </div>
-                                    <div className="badge-card-info">
-                                        <div className="badge-card-name">{badge.name}</div>
-                                        <div className="badge-card-slug">{badge.slug}</div>
-                                        <div className="badge-card-meta">
-                                            <span className="badge-card-tag">{badge.style?.type}</span>
-                                            <span className="badge-card-tag">{badge.icon}</span>
-                                            {badge.style?.animationType !== 'none' && <span className="badge-card-tag anim">{badge.style.animationType}</span>}
-                                            {badge.isDefault && <span className="badge-card-tag default">varsayılan</span>}
-                                        </div>
-                                    </div>
-                                    <div className="badge-card-actions">
-                                        <button className="badge-edit-btn" onClick={() => openBadgeCreator(badge)} title="Düzenle">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="m16 3 5 5-11 11H5v-5L16 3z" />
-                                            </svg>
+                                    <div className="badge-studio-actions">
+                                        <button
+                                            className="btn-modern-primary"
+                                            onClick={() => openBadgeCreator()}
+                                            style={{
+                                                padding: '10px 22px',
+                                                fontSize: '13px',
+                                                fontWeight: '700',
+                                                boxShadow: '0 0 20px rgba(29, 155, 240, 0.4)'
+                                            }}
+                                        >
+                                            ✨ + Yeni Rozet Tasarla
                                         </button>
-                                        {!badge.isDefault && (
-                                            <button className="badge-delete-btn" onClick={() => handleBadgeDelete(badge._id)} title="Sil">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M3 6h18M8 6V4h8v2m1 0v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6h10z" />
-                                                </svg>
+                                        <button
+                                            className="btn-modern-ghost"
+                                            onClick={handleSeedBadges}
+                                            style={{ padding: '9px 18px', fontSize: '12px' }}
+                                            title="X Orijinal Rozetlerini ve sistem varsayılanlarını sıfırlamadan yükle / senkronize et"
+                                        >
+                                            🔄 X Rozetlerini Senkronize Et
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="badge-studio-desc">
+                                    Twitter / X orijinal mavi onay rozeti, altın şirket/kuruluş rozeti, gri hükümet/yetkili rozeti ve bağlı kuruluş onaylarını yönetin. Hem mevcut hem de yeni rozetler üzerinde profesyonel metalik kaplamalar (altın, platin, gümüş, obsidiyen) ve fantastik efektler (siberpunk neon, kozmik aurora, holografik prizma) tasarlayın.
+                                </p>
+
+                                {/* Filter & Search Toolbar */}
+                                <div className="badge-filter-bar" style={{ marginBottom: 0 }}>
+                                    <div className="badge-filter-pills">
+                                        <button
+                                            type="button"
+                                            className={`badge-filter-pill ${badgeFilter === 'all' ? 'active' : ''}`}
+                                            onClick={() => setBadgeFilter('all')}
+                                        >
+                                            Tümü ({allBadges.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`badge-filter-pill ${badgeFilter === 'x_official' ? 'active' : ''}`}
+                                            onClick={() => setBadgeFilter('x_official')}
+                                        >
+                                            ✨ X / Doğrulama ({xBadgesCount})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`badge-filter-pill ${badgeFilter === 'user' ? 'active' : ''}`}
+                                            onClick={() => setBadgeFilter('user')}
+                                        >
+                                            👤 Kullanıcı ({userBadgesCount})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`badge-filter-pill ${badgeFilter === 'portal' ? 'active' : ''}`}
+                                            onClick={() => setBadgeFilter('portal')}
+                                        >
+                                            🌐 Portal ({portalBadgesCount})
+                                        </button>
+                                    </div>
+
+                                    <div className="badge-search-input-wrap">
+                                        <span className="badge-search-icon">🔍</span>
+                                        <input
+                                            type="text"
+                                            className="badge-search-input"
+                                            placeholder="Rozet adı veya slug ara..."
+                                            value={badgeSearch}
+                                            onChange={(e) => setBadgeSearch(e.target.value)}
+                                        />
+                                        {badgeSearch && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setBadgeSearch('')}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '10px',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: '#888',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                ✕
                                             </button>
                                         )}
                                     </div>
                                 </div>
-                            ))}
+                            </div>
+
+                            {loading && <div className="admin-loading">Rozetler yükleniyor...</div>}
+
+                            {!loading && filteredBadges.length === 0 && (
+                                <div className="no-data" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                                    <p style={{ fontSize: '16px', color: '#cbd5e1', marginBottom: '12px' }}>Aramanıza uygun rozet bulunamadı.</p>
+                                    <button className="btn-modern-primary" onClick={() => { setBadgeSearch(''); setBadgeFilter('all'); }}>
+                                        Filtreleri Temizle
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Badge Cards Grid */}
+                            <div className="badge-grid">
+                                {filteredBadges.map((badge) => {
+                                    const shapeObj = SHAPES.find(s => s.value === (badge.shape || 'rosette'));
+                                    const styleModeObj = STYLE_MODES.find(m => m.value === (badge.style?.type || 'solid'));
+                                    const isOfficialX = isXBadge(badge);
+
+                                    return (
+                                        <div
+                                            key={badge._id || badge.slug}
+                                            className={`badge-card ${isOfficialX ? 'is-x-badge' : ''}`}
+                                        >
+                                            <div className="badge-card-main">
+                                                <div className="badge-card-preview" title="Canlı Vektör Önizleme">
+                                                    <Badge badge={badge} size={44} />
+                                                </div>
+                                                <div className="badge-card-info">
+                                                    <div className="badge-card-name-row">
+                                                        <span className="badge-card-name">{badge.name}</span>
+                                                    </div>
+                                                    <div className="badge-card-slug">@{badge.slug}</div>
+                                                    <div className="badge-card-meta">
+                                                        <span className="badge-card-tag shape" title="Rozet Geometrisi">
+                                                            {shapeObj?.label || badge.shape || 'X Rozet'}
+                                                        </span>
+                                                        <span className="badge-card-tag style" title="Görünüm ve Materyal">
+                                                            {badge.style?.metallicType && badge.style.metallicType !== 'none'
+                                                                ? `Metalik (${badge.style.metallicType})`
+                                                                : (styleModeObj?.label || badge.style?.type || 'Düz')}
+                                                        </span>
+                                                        {badge.style?.animationType && badge.style.animationType !== 'none' && (
+                                                            <span className="badge-card-tag anim" title="Animasyon Efekti">
+                                                                ⚡ {badge.style.animationType}
+                                                            </span>
+                                                        )}
+                                                        <span className="badge-card-tag scope" title="Kullanım Alanı">
+                                                            {badge.category === 'user' ? '👤 Kullanıcı' : (badge.category === 'portal' ? '🌐 Portal' : '✨ Her İkisi')}
+                                                        </span>
+                                                        {badge.isDefault && (
+                                                            <span className="badge-card-tag default" title="Sistem Varsayılanı">
+                                                                Varsayılan
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Card Action Toolbar */}
+                                            <div className="badge-card-actions">
+                                                <button
+                                                    type="button"
+                                                    className="badge-action-btn edit"
+                                                    onClick={() => openBadgeCreator(badge)}
+                                                    title="Rozet Stüdyosunda Düzenle"
+                                                >
+                                                    🎨 Düzenle
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="badge-action-btn"
+                                                    onClick={() => handleBadgeClone(badge)}
+                                                    title="Bu rozeti şablon olarak çoğalt"
+                                                >
+                                                    📋 Klonla
+                                                </button>
+                                                {(badge.category === 'user' || badge.category === 'both') && (
+                                                    <button
+                                                        type="button"
+                                                        className="badge-action-btn assign"
+                                                        onClick={() => openAssignModal(badge, 'user')}
+                                                        title="Kullanıcıya Doğrudan Ver"
+                                                    >
+                                                        👤 Kullanıcıya Ver
+                                                    </button>
+                                                )}
+                                                {(badge.category === 'portal' || badge.category === 'both') && (
+                                                    <button
+                                                        type="button"
+                                                        className="badge-action-btn assign"
+                                                        onClick={() => openAssignModal(badge, 'portal')}
+                                                        title="Portala Doğrudan Ver"
+                                                    >
+                                                        🌐 Portala Ver
+                                                    </button>
+                                                )}
+                                                {!badge.isDefault && (
+                                                    <button
+                                                        type="button"
+                                                        className="badge-action-btn delete"
+                                                        onClick={() => handleBadgeDelete(badge._id)}
+                                                        title="Rozeti Sil"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {activeTab === 'reports' && (isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (() => {
                     const getReportReasonLabel = (reason) => {
@@ -5375,177 +5963,638 @@ const AdminDashboard = () => {
                 />
             )}
 
-
-            {/* Badge Creator/Editor Modal */}
+            {/* =============================================
+               BADGE STUDIO MODAL (Modern Interactive Editor)
+               ============================================= */}
             {badgeModalOpen && (
-                <div className="modal-overlay-modern">
-                    <div className="modal-content-modern" style={{ maxWidth: '620px' }}>
-                        <div className="modal-header-modern">
-                            <h2>{editingBadge ? 'Rozet Düzenle' : 'Yeni Rozet Oluştur'}</h2>
-                            <button className="close-btn-modern" onClick={() => setBadgeModalOpen(false)}>&times;</button>
+                <div className="modal-overlay-modern" onClick={() => setBadgeModalOpen(false)}>
+                    <div
+                        className="modal-content-modern badge-studio-modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="badge-studio-modal-header">
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>
+                                    {editingBadge ? `🎨 Rozet Düzenle: ${editingBadge.name}` : '✨ Yeni Rozet Tasarla (Stüdyo)'}
+                                </h2>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                                    X / Twitter onay rozetleri, metalik kaplamalar ve fantastik efektlerle canlı önizlemeli tasarım.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="close-btn-modern"
+                                onClick={() => setBadgeModalOpen(false)}
+                            >
+                                &times;
+                            </button>
                         </div>
-                        <div className="modal-body-modern" style={{ gap: '18px' }}>
 
-                            {/* Live Preview */}
-                            <div className="badge-creator-preview">
-                                <span style={{ color: '#888', fontSize: '12px', marginBottom: '6px', display: 'block' }}>Önizleme</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#0a0a0a', padding: '16px 20px', borderRadius: '12px', border: '1px solid #222' }}>
-                                    <Badge type={badgeForm.slug || '_preview'} size={36} />
-                                    <Badge type={badgeForm.slug || '_preview'} size={24} />
-                                    <Badge type={badgeForm.slug || '_preview'} size={16} />
-                                    <span style={{ color: '#ccc', marginLeft: '12px', fontSize: '14px' }}>{badgeForm.name || 'Rozet Adı'}</span>
-                                </div>
-                            </div>
-
-                            {/* Rozet Adı */}
-                            <div>
-                                <label className="badge-label">Rozet Adı</label>
-                                <input
-                                    className="reason-input-modern"
-                                    style={{ padding: '10px' }}
-                                    value={badgeForm.name}
-                                    onChange={(e) => handleNameChange(e.target.value)}
-                                    placeholder="Örn: Altın Onay, VIP Üye"
-                                />
-                            </div>
-
-                            {/* Slug — auto-generated, collapsible */}
-                            <div>
-                                <label className="badge-label">Rozet Kodu (Slug)</label>
-                                <p className="badge-help-text">Sistem tarafından kullanılan benzersiz tanımlayıcı. İsim girdiğinizde otomatik oluşturulur.</p>
-                                <input
-                                    className="reason-input-modern"
-                                    style={{ padding: '10px', fontFamily: 'monospace', fontSize: '13px', color: '#888' }}
-                                    value={badgeForm.slug}
-                                    onChange={(e) => setBadgeForm({ ...badgeForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                                    placeholder="otomatik-olusturulur"
-                                    disabled={editingBadge?.isDefault}
-                                />
-                            </div>
-
-                            {/* İkon Seçici */}
-                            <div>
-                                <label className="badge-label">İkon Şekli</label>
-                                <div className="badge-icon-grid">
-                                    {ICONS.map(ic => (
+                        {/* Split Body */}
+                        <div className="badge-studio-modal-body">
+                            {/* LEFT: Live Interactive Canvas & Contexts */}
+                            <div className="badge-studio-canvas">
+                                {/* Stage */}
+                                <div
+                                    className="badge-canvas-hero"
+                                    style={{
+                                        background: badgeCanvasBg === 'light'
+                                            ? '#f8fafc'
+                                            : 'radial-gradient(circle, rgba(29, 155, 240, 0.08) 0%, rgba(0, 0, 0, 0.6) 80%)',
+                                        border: badgeCanvasBg === 'light'
+                                            ? '1px solid #cbd5e1'
+                                            : '1px solid rgba(255, 255, 255, 0.08)'
+                                    }}
+                                >
+                                    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '4px' }}>
                                         <button
-                                            key={ic.value}
                                             type="button"
-                                            className={`badge-icon-btn ${badgeForm.icon === ic.value ? 'active' : ''}`}
-                                            onClick={() => setBadgeForm({ ...badgeForm, icon: ic.value })}
+                                            onClick={() => setBadgeCanvasBg('dark')}
+                                            style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                background: badgeCanvasBg === 'dark' ? '#1d9bf0' : '#111',
+                                                color: '#fff',
+                                                fontSize: '10px',
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Koyu Tema Kontrastı"
                                         >
-                                            <Badge type={`_icon_${ic.value}`} size={22} />
-                                            <span>{ic.label}</span>
+                                            🌙 Koyu
                                         </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Kategori */}
-                            <div>
-                                <label className="badge-label">Kullanım Alanı</label>
-                                <p className="badge-help-text">Bu rozet kimlere atanabilir?</p>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    {[{ v: 'user', l: '👤 Kullanıcı' }, { v: 'portal', l: '🌐 Portal' }, { v: 'both', l: '✨ Her İkisi' }].map(c => (
                                         <button
-                                            key={c.v}
                                             type="button"
-                                            className={`preset-btn ${badgeForm.category === c.v ? 'active' : ''}`}
-                                            onClick={() => setBadgeForm({ ...badgeForm, category: c.v })}
+                                            onClick={() => setBadgeCanvasBg('light')}
+                                            style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                border: '1px solid rgba(0,0,0,0.1)',
+                                                background: badgeCanvasBg === 'light' ? '#1d9bf0' : '#e2e8f0',
+                                                color: badgeCanvasBg === 'light' ? '#fff' : '#000',
+                                                fontSize: '10px',
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Açık Tema Kontrastı"
                                         >
-                                            {c.l}
+                                            ☀️ Açık
                                         </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Stil */}
-                            <div>
-                                <label className="badge-label">Görünüm Stili</label>
-                                <p className="badge-help-text">Rozetin renk efekt tipi</p>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    {STYLE_TYPES.map(s => (
-                                        <button
-                                            key={s.value}
-                                            type="button"
-                                            className={`preset-btn ${badgeForm.style.type === s.value ? 'active' : ''}`}
-                                            onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, type: s.value } })}
-                                            title={s.desc}
-                                        >
-                                            {s.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Renkler */}
-                            <div>
-                                <label className="badge-label">Renkler</label>
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                    <div>
-                                        <p className="badge-help-text" style={{ marginBottom: '4px' }}>Ana Renk</p>
-                                        <div className="badge-color-wrap">
-                                            <input
-                                                type="color"
-                                                value={badgeForm.style.primaryColor}
-                                                onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, primaryColor: e.target.value } })}
-                                                className="badge-color-input"
-                                            />
-                                            <span>{badgeForm.style.primaryColor}</span>
-                                        </div>
                                     </div>
-                                    {(badgeForm.style.type === 'gradient' || badgeForm.style.type === 'iridescent') && (
-                                        <div>
-                                            <p className="badge-help-text" style={{ marginBottom: '4px' }}>İkinci Renk</p>
-                                            <div className="badge-color-wrap">
-                                                <input
-                                                    type="color"
-                                                    value={badgeForm.style.secondaryColor || '#ff8c00'}
-                                                    onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, secondaryColor: e.target.value } })}
-                                                    className="badge-color-input"
-                                                />
-                                                <span>{badgeForm.style.secondaryColor || '#ff8c00'}</span>
+
+                                    {/* Main Showcase Badge */}
+                                    <Badge badge={badgeForm} size={58} />
+                                    <div
+                                        className="badge-canvas-hero-name"
+                                        style={{ color: badgeCanvasBg === 'light' ? '#0f172a' : '#fff' }}
+                                    >
+                                        <span>{badgeForm.name || 'Yeni Rozet'}</span>
+                                        <Badge badge={badgeForm} size={18} />
+                                    </div>
+                                    <span style={{ fontSize: '11px', color: badgeCanvasBg === 'light' ? '#64748b' : '#94a3b8', fontFamily: 'monospace' }}>
+                                        @{badgeForm.slug || 'rozet-kodu'}
+                                    </span>
+                                </div>
+
+                                {/* Multi-Size Comparison Bar */}
+                                <div className="badge-size-preview-row">
+                                    {[16, 20, 24, 32, 44].map((sz) => (
+                                        <div key={sz} className="badge-size-item">
+                                            <Badge badge={badgeForm} size={sz} />
+                                            <span className="badge-size-label">{sz}px</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Simulated In-App Context: Post */}
+                                <div className="badge-simulated-context">
+                                    <div className="badge-sim-header">📱 Canlı Paylaşım Önizlemesi</div>
+                                    <div className="badge-sim-post">
+                                        <div className="badge-sim-avatar">O</div>
+                                        <div className="badge-sim-content">
+                                            <div className="badge-sim-user">
+                                                <span>Oxypace Global</span>
+                                                <Badge badge={badgeForm} size={18} />
+                                                <span className="badge-sim-handle">@oxypace • 2d</span>
+                                            </div>
+                                            <div className="badge-sim-text">
+                                                Oxypace platformunda yeni nesil doğrulama rozetleri aktif!
                                             </div>
                                         </div>
-                                    )}
-                                    <div>
-                                        <p className="badge-help-text" style={{ marginBottom: '4px' }}>Parıltı Rengi</p>
-                                        <div className="badge-color-wrap">
-                                            <input
-                                                type="color"
-                                                value={badgeForm.style.glowColor || badgeForm.style.primaryColor}
-                                                onChange={(e) => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, glowColor: e.target.value } })}
-                                                className="badge-color-input"
-                                            />
-                                            <span>{badgeForm.style.glowColor || 'otomatik'}</span>
-                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 1-Click Fast Presets */}
+                                <div className="badge-presets-section">
+                                    <div className="badge-control-title">
+                                        <span>⚡ Hızlı Şablonlar (1-Tıkla Uygula)</span>
+                                    </div>
+                                    <div className="badge-presets-grid">
+                                        {BADGE_PRESETS.map((pst) => (
+                                            <button
+                                                key={pst.id}
+                                                type="button"
+                                                className="badge-preset-btn"
+                                                onClick={() => applyBadgePreset(pst)}
+                                                title={pst.desc}
+                                            >
+                                                <Badge badge={pst.badge} size={22} />
+                                                <div className="badge-preset-info">
+                                                    <div className="badge-preset-title">{pst.name}</div>
+                                                </div>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Animasyon */}
-                            <div>
-                                <label className="badge-label">Animasyon Efekti</label>
-                                <p className="badge-help-text">Rozetin hareket efekti — profilde ve paylaşımlarda görünür</p>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    {ANIM_TYPES.map(a => (
-                                        <button
-                                            key={a.value}
-                                            type="button"
-                                            className={`preset-btn ${badgeForm.style.animationType === a.value ? 'active' : ''}`}
-                                            onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, animationType: a.value } })}
-                                        >
-                                            {a.label}
-                                        </button>
-                                    ))}
+                            {/* RIGHT: Studio Deep Controls */}
+                            <div className="badge-studio-controls">
+                                {/* 1. Name & Slug */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div className="badge-control-group">
+                                        <label className="badge-label">Rozet Adı</label>
+                                        <input
+                                            className="reason-input-modern"
+                                            style={{ padding: '10px 14px', fontSize: '13px' }}
+                                            value={badgeForm.name}
+                                            onChange={(e) => handleNameChange(e.target.value)}
+                                            placeholder="Örn: X Mavi Onay, VIP Lider"
+                                        />
+                                    </div>
+                                    <div className="badge-control-group">
+                                        <label className="badge-label">Rozet Kodu (Slug)</label>
+                                        <input
+                                            className="reason-input-modern"
+                                            style={{ padding: '10px 14px', fontFamily: 'monospace', fontSize: '13px', color: '#38bdf8' }}
+                                            value={badgeForm.slug}
+                                            onChange={(e) => setBadgeForm({ ...badgeForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                                            placeholder="otomatik-olusturulur"
+                                            disabled={editingBadge?.isDefault}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* 2. Visual Shape Selector */}
+                                <div className="badge-control-group">
+                                    <div className="badge-control-title">
+                                        <span>🔷 Rozet Geometrisi & Şekli</span>
+                                        <span style={{ fontSize: '11px', color: '#38bdf8', textTransform: 'none' }}>
+                                            {SHAPES.find(s => s.value === badgeForm.shape)?.label}
+                                        </span>
+                                    </div>
+                                    <p className="badge-help-text">Twitter / X Mavi rozet formu (Rosette) veya Altın Şirket formu (Yuvarlak Kare) dahil 8 vektör seçeneği.</p>
+                                    <div className="badge-shape-grid">
+                                        {SHAPES.map((sh) => (
+                                            <button
+                                                key={sh.value}
+                                                type="button"
+                                                className={`badge-shape-card ${badgeForm.shape === sh.value ? 'active' : ''}`}
+                                                onClick={() => setBadgeForm({ ...badgeForm, shape: sh.value })}
+                                                title={sh.desc}
+                                            >
+                                                <Badge
+                                                    badge={{
+                                                        ...badgeForm,
+                                                        shape: sh.value,
+                                                        style: {
+                                                            ...badgeForm.style,
+                                                            animationType: 'none'
+                                                        }
+                                                    }}
+                                                    size={26}
+                                                />
+                                                <span>{sh.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 3. Inner Icon & Inner Color */}
+                                <div className="badge-control-group">
+                                    <div className="badge-control-title">
+                                        <span>✨ İç İkon & Sembol Rengi</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>İkon Rengi:</span>
+                                            <input
+                                                type="color"
+                                                value={badgeForm.style.innerIconColor || '#ffffff'}
+                                                onChange={(e) => setBadgeForm({
+                                                    ...badgeForm,
+                                                    style: { ...badgeForm.style, innerIconColor: e.target.value }
+                                                })}
+                                                className="badge-color-input"
+                                                style={{ width: '22px', height: '22px' }}
+                                                title="İç ikon rengi (Checkmark / Yıldız rengi)"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, innerIconColor: '#ffffff' } })}
+                                                style={{ padding: '2px 6px', fontSize: '10px', borderRadius: '4px', background: '#333', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                Beyaz
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, innerIconColor: '#0f172a' } })}
+                                                style={{ padding: '2px 6px', fontSize: '10px', borderRadius: '4px', background: '#333', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                Koyu
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="badge-icon-grid">
+                                        {ICONS.map((ic) => (
+                                            <button
+                                                key={ic.value}
+                                                type="button"
+                                                className={`badge-icon-btn ${badgeForm.icon === ic.value ? 'active' : ''}`}
+                                                onClick={() => setBadgeForm({ ...badgeForm, icon: ic.value })}
+                                            >
+                                                <Badge
+                                                    badge={{
+                                                        ...badgeForm,
+                                                        icon: ic.value,
+                                                        style: { ...badgeForm.style, animationType: 'none' }
+                                                    }}
+                                                    size={20}
+                                                />
+                                                <span>{ic.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 4. Style & Material Engine */}
+                                <div className="badge-control-group">
+                                    <div className="badge-control-title">
+                                        <span>🎨 Görünüm & Materyal Motoru</span>
+                                        <span style={{ fontSize: '11px', color: '#f59e0b', textTransform: 'none' }}>
+                                            {STYLE_MODES.find(m => m.value === badgeForm.style.type)?.label}
+                                        </span>
+                                    </div>
+                                    <div className="badge-style-modes">
+                                        {STYLE_MODES.map((sm) => (
+                                            <button
+                                                key={sm.value}
+                                                type="button"
+                                                className={`badge-mode-btn ${badgeForm.style.type === sm.value ? 'active' : ''}`}
+                                                onClick={() => setBadgeForm({
+                                                    ...badgeForm,
+                                                    style: { ...badgeForm.style, type: sm.value }
+                                                })}
+                                                title={sm.desc}
+                                            >
+                                                {sm.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Color & Material Details based on mode */}
+                                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '14px', marginTop: '6px' }}>
+                                        {/* If Metallic Mode */}
+                                        {badgeForm.style.type === 'metallic' && (
+                                            <div style={{ marginBottom: '12px' }}>
+                                                <label className="badge-label">Metalik Kaplama Türü</label>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                                    {METALLIC_TYPES.map((mt) => (
+                                                        <button
+                                                            key={mt.value}
+                                                            type="button"
+                                                            className={`preset-btn ${badgeForm.style.metallicType === mt.value ? 'active' : ''}`}
+                                                            onClick={() => setBadgeForm({
+                                                                ...badgeForm,
+                                                                style: { ...badgeForm.style, metallicType: mt.value }
+                                                            })}
+                                                            style={{ fontSize: '11px', padding: '8px' }}
+                                                        >
+                                                            {mt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Colors */}
+                                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <div>
+                                                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+                                                    {badgeForm.style.type === 'gradient' ? 'Başlangıç Rengi' : 'Ana Renk'}
+                                                </span>
+                                                <div className="badge-color-wrap">
+                                                    <input
+                                                        type="color"
+                                                        value={badgeForm.style.primaryColor}
+                                                        onChange={(e) => setBadgeForm({
+                                                            ...badgeForm,
+                                                            style: { ...badgeForm.style, primaryColor: e.target.value }
+                                                        })}
+                                                        className="badge-color-input"
+                                                    />
+                                                    <span>{badgeForm.style.primaryColor}</span>
+                                                </div>
+                                            </div>
+
+                                            {(badgeForm.style.type === 'gradient' || badgeForm.style.type === 'cosmic') && (
+                                                <div>
+                                                    <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+                                                        İkincil Geçiş Rengi
+                                                    </span>
+                                                    <div className="badge-color-wrap">
+                                                        <input
+                                                            type="color"
+                                                            value={badgeForm.style.secondaryColor || '#f59e0b'}
+                                                            onChange={(e) => setBadgeForm({
+                                                                ...badgeForm,
+                                                                style: { ...badgeForm.style, secondaryColor: e.target.value }
+                                                            })}
+                                                            className="badge-color-input"
+                                                        />
+                                                        <span>{badgeForm.style.secondaryColor || '#f59e0b'}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Gradient Angle Slider */}
+                                            {badgeForm.style.type === 'gradient' && (
+                                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
+                                                        <span>Geçiş Açısı</span>
+                                                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>{badgeForm.style.gradientAngle ?? 135}°</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="360"
+                                                        step="15"
+                                                        value={badgeForm.style.gradientAngle ?? 135}
+                                                        onChange={(e) => setBadgeForm({
+                                                            ...badgeForm,
+                                                            style: { ...badgeForm.style, gradientAngle: Number(e.target.value) }
+                                                        })}
+                                                        style={{ width: '100%', cursor: 'pointer' }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Glow Color */}
+                                            <div>
+                                                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+                                                    Işıma (Glow) Rengi
+                                                </span>
+                                                <div className="badge-color-wrap">
+                                                    <input
+                                                        type="color"
+                                                        value={badgeForm.style.glowColor || badgeForm.style.primaryColor}
+                                                        onChange={(e) => setBadgeForm({
+                                                            ...badgeForm,
+                                                            style: { ...badgeForm.style, glowColor: e.target.value }
+                                                        })}
+                                                        className="badge-color-input"
+                                                    />
+                                                    <span>{badgeForm.style.glowColor || 'Varsayılan'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Quick Color Palette */}
+                                        <div style={{ marginTop: '10px' }}>
+                                            <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Hızlı Palet
+                                            </span>
+                                            <div className="badge-palette-row">
+                                                {QUICK_PALETTES.map((qp) => (
+                                                    <button
+                                                        key={qp.hex}
+                                                        type="button"
+                                                        className="badge-palette-dot"
+                                                        style={{ background: qp.hex }}
+                                                        onClick={() => setBadgeForm({
+                                                            ...badgeForm,
+                                                            style: { ...badgeForm.style, primaryColor: qp.hex }
+                                                        })}
+                                                        title={`${qp.name} (${qp.hex})`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 5. Animation FX */}
+                                <div className="badge-control-group">
+                                    <label className="badge-label">Animasyon Efekti</label>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        {ANIM_TYPES.map((a) => (
+                                            <button
+                                                key={a.value}
+                                                type="button"
+                                                className={`preset-btn ${badgeForm.style.animationType === a.value ? 'active' : ''}`}
+                                                onClick={() => setBadgeForm({
+                                                    ...badgeForm,
+                                                    style: { ...badgeForm.style, animationType: a.value }
+                                                })}
+                                            >
+                                                {a.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 6. Category Scope */}
+                                <div className="badge-control-group">
+                                    <label className="badge-label">Kullanım Alanı</label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {[
+                                            { v: 'both', l: '✨ Her İkisi' },
+                                            { v: 'user', l: '👤 Sadece Kullanıcı' },
+                                            { v: 'portal', l: '🌐 Sadece Portal' },
+                                        ].map((c) => (
+                                            <button
+                                                key={c.v}
+                                                type="button"
+                                                className={`preset-btn ${badgeForm.category === c.v ? 'active' : ''}`}
+                                                onClick={() => setBadgeForm({ ...badgeForm, category: c.v })}
+                                            >
+                                                {c.l}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="badge-studio-modal-footer">
+                            <button
+                                type="button"
+                                className="btn-modern-ghost"
+                                onClick={() => setBadgeModalOpen(false)}
+                            >
+                                İptal
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-modern-primary"
+                                onClick={handleBadgeSave}
+                                style={{ padding: '10px 24px', fontWeight: 700 }}
+                            >
+                                {editingBadge ? '💾 GÜNCELLE VE KAYDET' : '✨ ROZETİ OLUŞTUR'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* =============================================
+               DIRECT BADGE ASSIGNMENT MODAL
+               ============================================= */}
+            {assignModalOpen && assignTargetBadge && (
+                <div className="modal-overlay-modern" onClick={() => setAssignModalOpen(false)}>
+                    <div
+                        className="modal-content-modern badge-assign-modal"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="modal-header-modern">
+                            <h2>
+                                {assignType === 'user' ? '👤 Kullanıcıya Rozet Ata' : '🌐 Portala Rozet Ata'}
+                            </h2>
+                            <button className="close-btn-modern" onClick={() => setAssignModalOpen(false)}>&times;</button>
+                        </div>
+
+                        <div className="modal-body-modern" style={{ gap: '16px' }}>
+                            {/* Selected Badge Preview */}
+                            <div className="badge-assign-target-preview">
+                                <Badge badge={assignTargetBadge} size={36} />
+                                <div>
+                                    <div style={{ fontWeight: 700, color: '#fff', fontSize: '14px' }}>
+                                        {assignTargetBadge.name}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                        @{assignTargetBadge.slug}
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Search Box */}
+                            <div>
+                                <label className="badge-label">
+                                    {assignType === 'user' ? 'Kullanıcı Ara' : 'Portal Ara'}
+                                </label>
+                                <input
+                                    type="text"
+                                    className="reason-input-modern"
+                                    placeholder={assignType === 'user' ? 'Kullanıcı adı veya isim yazın...' : 'Portal adı yazın...'}
+                                    value={assignQuery}
+                                    onChange={(e) => handleAssignSearch(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+
+                            {assignSuccessMsg && (
+                                <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontSize: '12px' }}>
+                                    ✓ {assignSuccessMsg}
+                                </div>
+                            )}
+
+                            {assignLoading && (
+                                <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '12px' }}>
+                                    Aranıyor...
+                                </div>
+                            )}
+
+                            {/* Results List */}
+                            <div className="badge-assign-list">
+                                {assignResults.map((item) => {
+                                    if (assignType === 'user') {
+                                        const hasThisBadge = item.verificationBadge === assignTargetBadge.slug;
+                                        return (
+                                            <div key={item._id} className="badge-assign-item">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 700 }}>
+                                                        {item.username?.[0]?.toUpperCase() || 'U'}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                                                            {item.profile?.displayName || item.username}
+                                                        </div>
+                                                        <div style={{ color: '#64748b', fontSize: '11px' }}>
+                                                            @{item.username} {item.verificationBadge && item.verificationBadge !== 'none' ? `(${item.verificationBadge})` : ''}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    {hasThisBadge ? (
+                                                        <button
+                                                            type="button"
+                                                            className="badge-action-btn delete"
+                                                            onClick={() => executeBadgeRevoke(item)}
+                                                        >
+                                                            Kaldır
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="badge-action-btn assign"
+                                                            onClick={() => executeBadgeAssign(item)}
+                                                        >
+                                                            Ata
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    } else {
+                                        const existingBadges = item.badges || [];
+                                        const hasThisBadge = existingBadges.includes(assignTargetBadge.slug);
+                                        return (
+                                            <div key={item._id} className="badge-assign-item">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 700 }}>
+                                                        {item.name?.[0]?.toUpperCase() || 'P'}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                                                            {item.name}
+                                                        </div>
+                                                        <div style={{ color: '#64748b', fontSize: '11px' }}>
+                                                            {existingBadges.length > 0 ? `${existingBadges.join(', ')}` : 'Rozet yok'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    {hasThisBadge ? (
+                                                        <button
+                                                            type="button"
+                                                            className="badge-action-btn delete"
+                                                            onClick={() => executeBadgeRevoke(item)}
+                                                        >
+                                                            Kaldır
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="badge-action-btn assign"
+                                                            onClick={() => executeBadgeAssign(item)}
+                                                        >
+                                                            Ata
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                })}
+                            </div>
                         </div>
+
                         <div className="modal-footer-modern">
-                            <button type="button" className="btn-modern-ghost" onClick={() => setBadgeModalOpen(false)}>İptal</button>
-                            <button type="button" className="btn-modern-primary" onClick={handleBadgeSave}>
-                                {editingBadge ? 'GÜNCELLE' : 'OLUŞTUR'}
+                            <button
+                                type="button"
+                                className="btn-modern-ghost"
+                                onClick={() => setAssignModalOpen(false)}
+                            >
+                                Kapat
                             </button>
                         </div>
                     </div>
