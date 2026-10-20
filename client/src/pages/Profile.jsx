@@ -34,6 +34,7 @@ const Profile = () => {
     const { username } = useParams();
     const navigate = useNavigate();
     const { user: currentUser, updateUser } = useAuth();
+    const isOwnProfile = !username || (currentUser && currentUser.username === username);
     const { socket, connected } = useSocket();
     const [profileUser, setProfileUser] = useState(null);
     const [editing, setEditing] = useState(false);
@@ -284,8 +285,6 @@ const Profile = () => {
 
     const avatarInputRef = useRef(null);
     const coverInputRef = useRef(null);
-
-    const isOwnProfile = !username || (currentUser && currentUser.username === username);
 
     useEffect(() => {
         if (isOwnProfile) {
