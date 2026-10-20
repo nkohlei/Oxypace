@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import {
-    Check, CheckCircle2, Star, Shield, Zap, Diamond, Crown, Flame, Heart,
-    Rocket, Globe, Sparkles, Music, Award, Gem, BadgeCheck, Verified,
-    Eye, Swords, Hexagon, Triangle, Atom
+    CheckCircle2, Star, Shield, Zap, Diamond, Crown, Flame, Heart,
+    Rocket, Globe, Sparkles, Music, Award, Gem, BadgeCheck,
+    Eye, Swords, Atom
 } from 'lucide-react';
 import { useBadges } from '../context/BadgeContext';
 import './Badge.css';
@@ -26,14 +26,12 @@ const LUCIDE_MAP = {
     verified: BadgeCheck,
     eye: Eye,
     swords: Swords,
-    hexagon: Hexagon,
-    triangle: Triangle,
     atom: Atom,
 };
 
 // Precise Vector Paths for inner icons (24x24 viewBox, centered at 12, 12)
 const INNER_ICON_PATHS = {
-    // Authentic Twitter / X checkmark
+    // Official Twitter / X crisp checkmark
     checkmark: 'M9.86 16.29l-3.3-3.3a1 1 0 0 1 1.41-1.41l1.89 1.89 5.3-5.3a1 1 0 0 1 1.41 1.41l-6.71 6.71z',
     verified: 'M9.86 16.29l-3.3-3.3a1 1 0 0 1 1.41-1.41l1.89 1.89 5.3-5.3a1 1 0 0 1 1.41 1.41l-6.71 6.71z',
     star: 'M12 6.5l1.65 3.35 3.7.54-2.68 2.61.63 3.69L12 14.95l-3.3 1.74.63-3.69-2.68-2.61 3.7-.54L12 6.5z',
@@ -54,25 +52,61 @@ const INNER_ICON_PATHS = {
     eye: 'M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zm9 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
 };
 
-// Stable counter for unique SVG element IDs
+// Enterprise-Grade Verification Rosette Paths
+// 10-Point Scalloped Rosette (Official X / Twitter geometry)
+const ROSETTE_10_PATH = "M 12 3.2 A 2.9 2.9 0 0 1 17.173 4.881 A 2.9 2.9 0 0 1 20.369 9.281 A 2.9 2.9 0 0 1 20.369 14.719 A 2.9 2.9 0 0 1 17.173 19.119 A 2.9 2.9 0 0 1 12 20.8 A 2.9 2.9 0 0 1 6.827 19.119 A 2.9 2.9 0 0 1 3.631 14.719 A 2.9 2.9 0 0 1 3.631 9.281 A 2.9 2.9 0 0 1 6.827 4.881 A 2.9 2.9 0 0 1 12 3.2 Z";
+
+// 12-Point Scalloped Rosette (Official Twitter Classic & Meta / Instagram geometry)
+const ROSETTE_12_PATH = "M 12 2.9 A 2.5 2.5 0 0 1 16.55 4.119 A 2.5 2.5 0 0 1 19.881 7.45 A 2.5 2.5 0 0 1 21.1 12 A 2.5 2.5 0 0 1 19.881 16.55 A 2.5 2.5 0 0 1 16.55 19.881 A 2.5 2.5 0 0 1 12 21.1 A 2.5 2.5 0 0 1 7.45 19.881 A 2.5 2.5 0 0 1 4.119 16.55 A 2.5 2.5 0 0 1 2.9 12 A 2.5 2.5 0 0 1 4.119 7.45 A 2.5 2.5 0 0 1 7.45 4.119 A 2.5 2.5 0 0 1 12 2.9 Z";
+
+// 8-Point Scalloped Rosette (X / Twitter classic vector)
+const ROSETTE_8_PATH = "M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.67-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z";
+
+// Color utility functions for dynamic material shaders
+const hexToRgb = (hex) => {
+    if (!hex) return { r: 255, g: 255, b: 255 };
+    hex = String(hex).replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    if (hex.length !== 6) return { r: 255, g: 255, b: 255 };
+    const num = parseInt(hex, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+};
+
+const rgbToHex = (r, g, b) => {
+    const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+    return '#' + [clamp(r), clamp(g), clamp(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+};
+
+const adjustLightness = (hex, percent) => {
+    const { r, g, b } = hexToRgb(hex);
+    if (percent > 0) {
+        const f = percent / 100;
+        return rgbToHex(r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f);
+    } else {
+        const f = 1 + (percent / 100);
+        return rgbToHex(r * f, g * f, b * f);
+    }
+};
+
+// Unique gradient ID generator
 let _badgeGradCounter = 0;
 
-// Resolve default shape if missing on older badges
+// Resolve shape to top-tier enterprise verified shapes
 const resolveShape = (shape, slug, icon) => {
-    if (shape && shape !== 'default') return shape;
-    const s = String(slug || '').toLowerCase();
-    const ic = String(icon || '').toLowerCase();
-
-    if (s.includes('gold') || s === 'x-gold') return 'rounded_square';
-    if (s.includes('blue') || s === 'x-blue' || s === 'x-grey' || s.includes('grey') || ic === 'checkmark' || ic === 'verified') {
-        return 'rosette';
+    if (shape === 'rosette_10' || shape === 'rosette_12' || shape === 'rosette_8' || shape === 'rounded_square' || shape === 'icon_only') {
+        return shape;
     }
-    if (ic === 'shield') return 'shield';
-    if (ic === 'star') return 'starburst';
-    if (ic === 'crown') return 'octagon';
-    if (ic === 'diamond') return 'diamond';
-    if (ic === 'rocket' || ic === 'atom') return 'hexagon';
-    return 'rosette';
+    if (shape === 'rosette') return 'rosette_10';
+    if (shape === 'starburst') return 'rosette_12';
+
+    const s = String(slug || '').toLowerCase();
+    if (s.includes('gold') || s === 'x-gold' || s.includes('affiliate') || s.includes('partner') || s.includes('verified')) {
+        return 'rounded_square';
+    }
+    if (s.includes('meta') || s.includes('official') || s.includes('platinum')) {
+        return 'rosette_12';
+    }
+    return 'rosette_10';
 };
 
 const Badge = ({ type, badge, size = 20, className = '' }) => {
@@ -80,7 +114,7 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
     const badgeDef = badge || getBadge(type);
     const gradId = useMemo(() => `badge-fx-${++_badgeGradCounter}`, []);
 
-    // Helper for standalone icon or shape previews
+    // Standalone icon or shape preview helper
     if (typeof type === 'string' && type.startsWith('_icon_')) {
         const iconName = type.replace('_icon_', '');
         const IconComp = LUCIDE_MAP[iconName] || CheckCircle2;
@@ -115,7 +149,7 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
     const resolvedBadge = badgeDef || {
         name: type,
         slug: type,
-        shape: type === 'gold' ? 'rounded_square' : 'rosette',
+        shape: type === 'gold' ? 'rounded_square' : 'rosette_10',
         icon: 'checkmark',
         style: {
             type: 'solid',
@@ -137,36 +171,27 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
     const primaryColor = style.primaryColor || '#1d9bf0';
     const secondaryColor = style.secondaryColor || primaryColor;
     const gradientAngle = style.gradientAngle ?? 135;
-    const metallicType = style.metallicType || 'gold';
     const innerIconColor = style.innerIconColor || '#ffffff';
     const animationType = style.animationType || 'none';
     const glowColor = style.glowColor || '';
-    const borderStyle = style.borderStyle || 'none';
 
-    // Calculate gradient coordinates based on angle
+    // Calculate dynamic gradient coordinates based on angle
     const angleRad = ((gradientAngle - 90) * Math.PI) / 180;
     const x1 = Math.round(50 + Math.cos(angleRad + Math.PI) * 50);
     const y1 = Math.round(50 + Math.sin(angleRad + Math.PI) * 50);
     const x2 = Math.round(50 + Math.cos(angleRad) * 50);
     const y2 = Math.round(50 + Math.sin(angleRad) * 50);
 
-    const isMetallic = styleType === 'metallic';
-    const isNeon = styleType === 'neon';
-    const isCosmic = styleType === 'cosmic';
-    const isIridescent = styleType === 'iridescent';
-    const isGradient = styleType === 'gradient' || isMetallic || isCosmic || isIridescent;
+    const isSolid = styleType === 'solid';
+    const isGradient = !isSolid;
 
-    // Dynamic fill reference
-    let fillAttr = primaryColor;
-    if (isGradient) {
-        fillAttr = `url(#${gradId})`;
-    }
+    // Dynamic fill attribute
+    const fillAttr = isGradient ? `url(#${gradId})` : primaryColor;
 
     // Animation & filter CSS classes
     const animClass = animationType !== 'none' ? `badge-anim-${animationType}` : '';
-    const styleClass = isIridescent ? 'badge-style-iridescent' : (isNeon ? 'badge-style-neon' : '');
+    const styleClass = styleType === 'iridescent' ? 'badge-style-iridescent' : (styleType === 'neon' ? 'badge-style-neon' : '');
 
-    // Outer inline style
     const wrapperStyle = {
         width: `${size}px`,
         height: `${size}px`,
@@ -178,22 +203,25 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
         verticalAlign: 'middle',
         position: 'relative',
         lineHeight: 1,
-        '--badge-glow-color': glowColor || (isNeon ? primaryColor : `${primaryColor}80`),
+        '--badge-glow-color': glowColor || (styleType === 'neon' ? primaryColor : `${primaryColor}80`),
     };
 
-    // Render shape vector elements
+    // Render verified shape path
     const renderShapePath = () => {
         switch (shape) {
+            case 'rosette_10':
             case 'rosette':
-                // Official Twitter / X Scalloped Rosette (8/10 points flowerburst)
-                return (
-                    <path
-                        d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.67-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z"
-                        fill={fillAttr}
-                    />
-                );
+                // Official Twitter / X 10-point scalloped rosette
+                return <path d={ROSETTE_10_PATH} fill={fillAttr} />;
+            case 'rosette_12':
+            case 'starburst':
+                // Official Twitter Classic & Meta / Instagram 12-point scalloped rosette
+                return <path d={ROSETTE_12_PATH} fill={fillAttr} />;
+            case 'rosette_8':
+                // Official Twitter 8-point scalloped rosette
+                return <path d={ROSETTE_8_PATH} fill={fillAttr} />;
             case 'rounded_square':
-                // Official Twitter / X Gold Organization Squircle
+                // Official Twitter / X Gold Verified Organizations Squircle
                 return (
                     <rect
                         x="2"
@@ -205,48 +233,11 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
                         fill={fillAttr}
                     />
                 );
-            case 'circle':
-                return <circle cx="12" cy="12" r="10" fill={fillAttr} />;
-            case 'hexagon':
-                return (
-                    <polygon
-                        points="12,2 20.66,7 20.66,17 12,22 3.34,17 3.34,7"
-                        fill={fillAttr}
-                    />
-                );
-            case 'shield':
-                return (
-                    <path
-                        d="M12 2L4 5.5v5.5C4 16.5 7.4 21.2 12 22.5c4.6-1.3 8-6 8-11.5V5.5L12 2z"
-                        fill={fillAttr}
-                    />
-                );
-            case 'starburst':
-                // 12-point sharp badge starburst
-                return (
-                    <path
-                        d="M12 2l2.2 2.7 3.4-.9.9 3.4 3.2 1.4-.9 3.4 2.2 2.7-2.2 2.7.9 3.4-3.2 1.4-.9 3.4-3.4-.9L12 22l-2.2-2.7-3.4.9-.9-3.4-3.2-1.4.9-3.4L1 12l2.2-2.7-.9-3.4 3.2-1.4.9-3.4 3.4.9L12 2z"
-                        fill={fillAttr}
-                    />
-                );
-            case 'octagon':
-                return (
-                    <polygon
-                        points="7.5,2 16.5,2 22,7.5 22,16.5 16.5,22 7.5,22 2,16.5 2,7.5"
-                        fill={fillAttr}
-                    />
-                );
-            case 'diamond':
-                return (
-                    <polygon
-                        points="12,1.8 22.2,12 12,22.2 1.8,12"
-                        fill={fillAttr}
-                    />
-                );
             case 'icon_only':
                 return null;
             default:
-                return <circle cx="12" cy="12" r="10" fill={fillAttr} />;
+                // Graceful fallback to 10-point rosette
+                return <path d={ROSETTE_10_PATH} fill={fillAttr} />;
         }
     };
 
@@ -277,6 +268,107 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
         );
     };
 
+    // Render dynamic gradient stops tailored to user colors and material shaders
+    const renderGradientStops = () => {
+        const base = primaryColor;
+        const sec = secondaryColor || primaryColor;
+
+        switch (styleType) {
+            case 'metallic':
+                // Dynamic 7-stop specular chrome reflection based on user's primary & secondary colors
+                return (
+                    <>
+                        <stop offset="0%" stopColor={adjustLightness(base, -35)} />
+                        <stop offset="18%" stopColor={adjustLightness(base, -10)} />
+                        <stop offset="36%" stopColor={adjustLightness(base, 75)} />
+                        <stop offset="52%" stopColor={base} />
+                        <stop offset="68%" stopColor={adjustLightness(sec, 40)} />
+                        <stop offset="85%" stopColor={adjustLightness(sec, -35)} />
+                        <stop offset="100%" stopColor={adjustLightness(base, -20)} />
+                    </>
+                );
+
+            case 'titanium':
+                // Brushed titanium multi-band specular reflection
+                return (
+                    <>
+                        <stop offset="0%" stopColor={adjustLightness(base, -50)} />
+                        <stop offset="20%" stopColor={adjustLightness(base, 35)} />
+                        <stop offset="38%" stopColor={adjustLightness(base, -20)} />
+                        <stop offset="58%" stopColor={adjustLightness(base, 60)} />
+                        <stop offset="78%" stopColor={adjustLightness(sec, -35)} />
+                        <stop offset="100%" stopColor={adjustLightness(sec, 20)} />
+                    </>
+                );
+
+            case 'glass':
+                // Liquid glass refraction with rim specular glint
+                return (
+                    <>
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                        <stop offset="25%" stopColor={adjustLightness(base, 35)} stopOpacity="0.8" />
+                        <stop offset="65%" stopColor={base} stopOpacity="0.7" />
+                        <stop offset="100%" stopColor={adjustLightness(sec, -40)} stopOpacity="0.85" />
+                    </>
+                );
+
+            case 'obsidian':
+                // Stealth carbon & obsidian dark gloss
+                return (
+                    <>
+                        <stop offset="0%" stopColor="#08080a" />
+                        <stop offset="30%" stopColor={adjustLightness(base, -30)} />
+                        <stop offset="50%" stopColor={adjustLightness(base, 45)} />
+                        <stop offset="75%" stopColor="#141418" />
+                        <stop offset="100%" stopColor="#020203" />
+                    </>
+                );
+
+            case 'neon':
+                // Intense cyber luminescence core
+                return (
+                    <>
+                        <stop offset="0%" stopColor={base} />
+                        <stop offset="45%" stopColor={adjustLightness(base, 65)} />
+                        <stop offset="100%" stopColor={sec} />
+                    </>
+                );
+
+            case 'cosmic':
+                // Interstellar nebula deep gradient
+                return (
+                    <>
+                        <stop offset="0%" stopColor={base} />
+                        <stop offset="45%" stopColor={adjustLightness(sec, 20)} />
+                        <stop offset="80%" stopColor={adjustLightness(base, -30)} />
+                        <stop offset="100%" stopColor={sec} />
+                    </>
+                );
+
+            case 'iridescent':
+                // Multi-spectral chromatic diffraction
+                return (
+                    <>
+                        <stop offset="0%" stopColor={base} />
+                        <stop offset="25%" stopColor="#38bdf8" />
+                        <stop offset="50%" stopColor="#ec4899" />
+                        <stop offset="75%" stopColor="#a855f7" />
+                        <stop offset="100%" stopColor={sec} />
+                    </>
+                );
+
+            case 'gradient':
+            default:
+                // Standard 2-stop linear gradient
+                return (
+                    <>
+                        <stop offset="0%" stopColor={base} />
+                        <stop offset="100%" stopColor={sec} />
+                    </>
+                );
+        }
+    };
+
     return (
         <span
             className={`verification-badge badge-shape-${shape} ${animClass} ${styleClass} ${className}`.trim()}
@@ -293,7 +385,7 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
                 style={{ display: 'block', overflow: 'visible' }}
             >
                 <defs>
-                    {/* Multi-mode Gradients */}
+                    {/* Dynamic Shader Gradient */}
                     {isGradient && (
                         <linearGradient
                             id={gradId}
@@ -302,62 +394,14 @@ const Badge = ({ type, badge, size = 20, className = '' }) => {
                             x2={`${x2}%`}
                             y2={`${y2}%`}
                         >
-                            {isMetallic ? (
-                                metallicType === 'silver' || metallicType === 'platinum' ? (
-                                    <>
-                                        <stop offset="0%" stopColor="#FFFFFF" />
-                                        <stop offset="35%" stopColor="#CBD5E1" />
-                                        <stop offset="70%" stopColor="#94A3B8" />
-                                        <stop offset="100%" stopColor="#E2E8F0" />
-                                    </>
-                                ) : metallicType === 'rose_gold' ? (
-                                    <>
-                                        <stop offset="0%" stopColor="#FED7AA" />
-                                        <stop offset="45%" stopColor="#F472B6" />
-                                        <stop offset="80%" stopColor="#BE185D" />
-                                        <stop offset="100%" stopColor="#FBCFE8" />
-                                    </>
-                                ) : metallicType === 'obsidian' ? (
-                                    <>
-                                        <stop offset="0%" stopColor="#64748B" />
-                                        <stop offset="45%" stopColor="#1E293B" />
-                                        <stop offset="85%" stopColor="#090D16" />
-                                        <stop offset="100%" stopColor="#334155" />
-                                    </>
-                                ) : metallicType === 'bronze' ? (
-                                    <>
-                                        <stop offset="0%" stopColor="#FDBA74" />
-                                        <stop offset="50%" stopColor="#B45309" />
-                                        <stop offset="100%" stopColor="#78350F" />
-                                    </>
-                                ) : (
-                                    // Default: Gold
-                                    <>
-                                        <stop offset="0%" stopColor="#FFF2A3" />
-                                        <stop offset="30%" stopColor="#F59E0B" />
-                                        <stop offset="70%" stopColor="#B45309" />
-                                        <stop offset="100%" stopColor="#FDE68A" />
-                                    </>
-                                )
-                            ) : isCosmic ? (
-                                <>
-                                    <stop offset="0%" stopColor="#8B5CF6" />
-                                    <stop offset="50%" stopColor="#06B6D4" />
-                                    <stop offset="100%" stopColor="#F43F5E" />
-                                </>
-                            ) : (
-                                <>
-                                    <stop offset="0%" stopColor={primaryColor} />
-                                    <stop offset="100%" stopColor={secondaryColor} />
-                                </>
-                            )}
+                            {renderGradientStops()}
                         </linearGradient>
                     )}
 
-                    {/* Subtle metallic bevel highlight */}
+                    {/* Specular Glint Reflection */}
                     <linearGradient id={`specular-${gradId}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
-                        <stop offset="40%" stopColor="#ffffff" stopOpacity="0.1" />
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+                        <stop offset="40%" stopColor="#ffffff" stopOpacity="0.05" />
                         <stop offset="100%" stopColor="#000000" stopOpacity="0.25" />
                     </linearGradient>
                 </defs>

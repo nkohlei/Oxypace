@@ -16,8 +16,8 @@ const badgeSchema = new mongoose.Schema(
         },
         shape: {
             type: String,
-            enum: ['rosette', 'rounded_square', 'circle', 'hexagon', 'shield', 'starburst', 'octagon', 'diamond', 'icon_only'],
-            default: 'rosette',
+            enum: ['rosette_10', 'rosette_12', 'rosette_8', 'rounded_square', 'rosette', 'icon_only', 'circle', 'hexagon', 'shield', 'starburst', 'octagon', 'diamond'],
+            default: 'rosette_10',
         },
         icon: {
             type: String,
@@ -31,7 +31,7 @@ const badgeSchema = new mongoose.Schema(
         style: {
             type: {
                 type: String,
-                enum: ['solid', 'gradient', 'iridescent', 'metallic', 'neon', 'cosmic', 'animated'],
+                enum: ['solid', 'gradient', 'metallic', 'titanium', 'glass', 'obsidian', 'neon', 'cosmic', 'iridescent'],
                 default: 'solid',
             },
             primaryColor: {

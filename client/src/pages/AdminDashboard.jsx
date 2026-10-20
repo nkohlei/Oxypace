@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield } from 'lucide-react';
 import Badge from '../components/Badge';
 import PortalBadges from '../components/PortalBadges';
 import UserBadges from '../components/UserBadges';
@@ -2254,7 +2254,7 @@ const AdminDashboard = () => {
             badge: {
                 name: 'X Mavi Onay',
                 slug: 'x-blue',
-                shape: 'rosette',
+                shape: 'rosette_10',
                 icon: 'checkmark',
                 category: 'both',
                 style: {
@@ -2279,11 +2279,10 @@ const AdminDashboard = () => {
                 icon: 'checkmark',
                 category: 'both',
                 style: {
-                    type: 'gradient',
+                    type: 'metallic',
                     primaryColor: '#ffd700',
                     secondaryColor: '#f59e0b',
                     gradientAngle: 135,
-                    metallicType: 'gold',
                     innerIconColor: '#ffffff',
                     animationType: 'none',
                     glowColor: 'rgba(255, 215, 0, 0.45)',
@@ -2297,7 +2296,7 @@ const AdminDashboard = () => {
             badge: {
                 name: 'X Gri Onay (Hükümet & Resmi)',
                 slug: 'x-grey',
-                shape: 'rosette',
+                shape: 'rosette_10',
                 icon: 'checkmark',
                 category: 'both',
                 style: {
@@ -2333,162 +2332,151 @@ const AdminDashboard = () => {
             }
         },
         {
-            id: 'cyber_neon',
-            name: 'Siberpunk Neon',
-            desc: 'Fütüristik Parlayan Altıgen',
+            id: 'meta_verified',
+            name: 'Meta Onaylı',
+            desc: 'Meta / Instagram 12-Köşe Resmi Doğrulama',
             badge: {
-                name: 'Siberpunk Neon',
-                slug: 'cyber-neon',
-                shape: 'hexagon',
-                icon: 'lightning',
+                name: 'Meta Onaylı Rozet',
+                slug: 'meta-verified',
+                shape: 'rosette_12',
+                icon: 'checkmark',
                 category: 'both',
                 style: {
-                    type: 'neon',
-                    primaryColor: '#00ffcc',
-                    secondaryColor: '#0088ff',
+                    type: 'solid',
+                    primaryColor: '#0095f6',
+                    secondaryColor: '',
                     gradientAngle: 135,
                     innerIconColor: '#ffffff',
-                    animationType: 'glow',
-                    glowColor: '#00ffcc',
+                    animationType: 'none',
+                    glowColor: 'rgba(0, 149, 246, 0.4)',
                 }
             }
         },
         {
-            id: 'cosmic_aurora',
-            name: 'Kozmik Aurora',
-            desc: 'Mistik Galaksi & Yıldız Işıltısı',
+            id: 'oxypace_official',
+            name: 'Oxypace Resmi',
+            desc: 'Fırçalanmış Titanyum 12-Köşe Doğrulama',
             badge: {
-                name: 'Kozmik Aurora',
-                slug: 'cosmic-aurora',
-                shape: 'rosette',
-                icon: 'sparkle',
+                name: 'Oxypace Resmi Doğrulama',
+                slug: 'oxypace-official',
+                shape: 'rosette_12',
+                icon: 'checkmark',
                 category: 'both',
                 style: {
-                    type: 'cosmic',
-                    primaryColor: '#8b5cf6',
-                    secondaryColor: '#06b6d4',
+                    type: 'titanium',
+                    primaryColor: '#ffffff',
+                    secondaryColor: '#71717a',
                     gradientAngle: 135,
-                    innerIconColor: '#ffffff',
-                    animationType: 'pulse',
-                    glowColor: 'rgba(139, 92, 246, 0.6)',
+                    innerIconColor: '#000000',
+                    animationType: 'shimmer',
+                    glowColor: 'rgba(255, 255, 255, 0.4)',
                 }
             }
         },
         {
-            id: 'imperial_gold',
-            name: 'İmparatorluk Altını',
-            desc: 'Kraliyet Metalik Altın Sekizgen',
+            id: 'oxypace_gold',
+            name: 'Oxypace Kurumsal Altın',
+            desc: 'Gerçekçi Metalik Altın Şirket Rozeti',
             badge: {
-                name: 'İmparatorluk Altını',
-                slug: 'imperial-gold',
-                shape: 'octagon',
-                icon: 'crown',
+                name: 'Oxypace Kurumsal Altın',
+                slug: 'oxypace-gold',
+                shape: 'rounded_square',
+                icon: 'checkmark',
                 category: 'both',
                 style: {
                     type: 'metallic',
-                    metallicType: 'gold',
                     primaryColor: '#ffd700',
                     secondaryColor: '#b45309',
                     gradientAngle: 135,
                     innerIconColor: '#ffffff',
-                    animationType: 'shimmer',
-                    glowColor: 'rgba(255, 215, 0, 0.5)',
+                    animationType: 'none',
+                    glowColor: 'rgba(255, 215, 0, 0.4)',
                 }
             }
         },
         {
-            id: 'platinum_shield',
-            name: 'Platin Muhafız',
-            desc: 'Metalik Platin Güvenlik Kalkanı',
+            id: 'oxypace_executive',
+            name: 'Oxypace Yönetim',
+            desc: 'Obsidiyen & Karbon Yönetim Rozeti',
             badge: {
-                name: 'Platin Muhafız',
-                slug: 'platinum-shield',
-                shape: 'shield',
+                name: 'Oxypace Yönetim & Lider',
+                slug: 'oxypace-executive',
+                shape: 'rosette_10',
+                icon: 'crown',
+                category: 'both',
+                style: {
+                    type: 'obsidian',
+                    primaryColor: '#18181b',
+                    secondaryColor: '#27272a',
+                    gradientAngle: 135,
+                    innerIconColor: '#ffffff',
+                    animationType: 'none',
+                    glowColor: 'rgba(255, 255, 255, 0.15)',
+                }
+            }
+        },
+        {
+            id: 'oxypace_partner',
+            name: 'Oxypace Partner',
+            desc: 'Metalik Mavi Stratejik Ortak',
+            badge: {
+                name: 'Oxypace Stratejik Partner',
+                slug: 'oxypace-partner',
+                shape: 'rounded_square',
                 icon: 'shield',
                 category: 'both',
                 style: {
                     type: 'metallic',
-                    metallicType: 'platinum',
-                    primaryColor: '#f1f5f9',
-                    secondaryColor: '#94a3b8',
-                    gradientAngle: 135,
-                    innerIconColor: '#0f172a',
-                    animationType: 'shimmer',
-                    glowColor: 'rgba(226, 232, 240, 0.4)',
-                }
-            }
-        },
-        {
-            id: 'holo_prism',
-            name: 'Holografik Prizma',
-            desc: 'Dinamik Gökkuşağı Renk Döngüsü',
-            badge: {
-                name: 'Holografik Prizma',
-                slug: 'holo-prism',
-                shape: 'diamond',
-                icon: 'diamond',
-                category: 'both',
-                style: {
-                    type: 'iridescent',
-                    primaryColor: '#ec4899',
-                    secondaryColor: '#3b82f6',
+                    primaryColor: '#3b82f6',
+                    secondaryColor: '#6366f1',
                     gradientAngle: 135,
                     innerIconColor: '#ffffff',
                     animationType: 'none',
-                    glowColor: 'rgba(236, 72, 153, 0.5)',
+                    glowColor: 'rgba(59, 130, 246, 0.4)',
                 }
             }
         },
         {
-            id: 'inferno_flame',
-            name: 'Alev Yıldızı',
-            desc: 'Yanan Ateş & Enerji Patlaması',
+            id: 'emerald_verified',
+            name: 'Zümrüt Doğrulama',
+            desc: 'Metalik Zümrüt Yeşil 10-Köşe',
             badge: {
-                name: 'Alev Yıldızı',
-                slug: 'inferno-flame',
-                shape: 'starburst',
-                icon: 'fire',
+                name: 'Zümrüt Doğrulama',
+                slug: 'emerald-verified',
+                shape: 'rosette_10',
+                icon: 'checkmark',
                 category: 'both',
                 style: {
-                    type: 'gradient',
-                    primaryColor: '#ef4444',
-                    secondaryColor: '#f59e0b',
-                    gradientAngle: 45,
+                    type: 'metallic',
+                    primaryColor: '#10b981',
+                    secondaryColor: '#059669',
+                    gradientAngle: 135,
                     innerIconColor: '#ffffff',
-                    animationType: 'pulse',
-                    glowColor: 'rgba(239, 68, 68, 0.6)',
+                    animationType: 'none',
+                    glowColor: 'rgba(16, 185, 129, 0.4)',
                 }
             }
         },
     ];
 
     const SHAPES = [
-        { value: 'rosette', label: 'X Rozet', desc: 'Resmi X/Twitter Mavi & Gri rozet formu' },
-        { value: 'rounded_square', label: 'X Yuvarlak Kare', desc: 'Resmi X Altın Şirket/Kuruluş formu' },
-        { value: 'circle', label: 'Daire', desc: 'Klasik yuvarlak rozet' },
-        { value: 'hexagon', label: 'Altıgen', desc: 'Teknoloji & Modern Web3 formu' },
-        { value: 'shield', label: 'Kalkan', desc: 'Güvenlik & Resmi Otorite formu' },
-        { value: 'starburst', label: '12-Köşe Yıldız', desc: 'Enerjik yıldız patlaması' },
-        { value: 'octagon', label: 'Sekizgen', desc: 'İmparatorluk sekizgen formu' },
-        { value: 'diamond', label: 'Elmas', desc: 'Lüks eğik elmas formu' },
+        { value: 'rosette_10', label: '10-Köşeli X Orijinal Rozet', desc: 'Resmi Twitter / X Standart Doğrulama Formu' },
+        { value: 'rosette_12', label: '12-Köşeli Kurumsal Rozet', desc: 'Resmi Twitter Klasik & Meta / Instagram Doğrulama' },
+        { value: 'rounded_square', label: 'Kurumsal Squircle (Kare)', desc: 'Resmi X Altın Şirket / Doğrulanmış Kuruluş Formu' },
+        { value: 'rosette_8', label: '8-Köşeli Kompakt Rozet', desc: 'X / Twitter Klasik Kompakt Geometri' },
+        { value: 'icon_only', label: 'Yalnızca Simge (Minimal)', desc: 'Arka plansız doğrudan vektör simge görünümü' },
     ];
 
     const STYLE_MODES = [
-        { value: 'solid', label: 'Düz Renk', desc: 'Net ve minimalist tek renk' },
-        { value: 'gradient', label: 'Gradyan', desc: 'Açı kontrollü 2 renkli geçiş' },
-        { value: 'metallic', label: 'Gerçekçi Metalik', desc: 'Altın, Platin, Gümüş, Gül Altın, vb.' },
-        { value: 'neon', label: 'Siberpunk Neon', desc: 'Yüksek yoğunluklu neon ışıması' },
-        { value: 'cosmic', label: 'Kozmik Aurora', desc: 'Gizemli nebula & galaksi gradyanı' },
-        { value: 'iridescent', label: 'Holografik Prizma', desc: 'Sürekli dönen gökkuşağı efekti' },
-    ];
-
-    const METALLIC_TYPES = [
-        { value: 'gold', label: 'Altın (Gold)' },
-        { value: 'platinum', label: 'Platin (Platinum)' },
-        { value: 'silver', label: 'Gümüş (Silver)' },
-        { value: 'rose_gold', label: 'Gül Altın (Rose Gold)' },
-        { value: 'obsidian', label: 'Obsidiyen / Titanyum' },
-        { value: 'bronze', label: 'Bronz' },
+        { value: 'solid', label: 'Mat / Düz Renk', desc: 'Net ve minimalist kurumsal tek renk' },
+        { value: 'gradient', label: 'Dinamik Gradyan', desc: 'Açı kontrollü 2 renkli yumuşak geçiş' },
+        { value: 'metallic', label: 'Metalik Krom & Parlaklık', desc: 'Seçtiğiniz renkten dinamik türetilen gerçekçi ayna yansıması' },
+        { value: 'titanium', label: 'Fırçalanmış Titanyum', desc: 'Yüksek kontrastlı çok şeritli endüstriyel metal yansıması' },
+        { value: 'glass', label: 'Sıvı Cam & Akrilik', desc: 'Işığı kıran saydam kristal kenar parıltısı' },
+        { value: 'obsidian', label: 'Karbon & Obsidiyen', desc: 'Grafen parıltılı koyu grafit ve derin siyah' },
+        { value: 'neon', label: 'Siberpunk Işıması', desc: 'Yüksek yoğunluklu luminesan çekirdek ve ışık halesi' },
+        { value: 'cosmic', label: 'Kozmik Aurora', desc: 'Derin uzay ve nebula spektrum geçişi' },
+        { value: 'iridescent', label: 'Holografik Prizma', desc: 'Renk değiştiren kromatik difraksiyon dalgası' },
     ];
 
     const QUICK_PALETTES = [
@@ -2496,41 +2484,40 @@ const AdminDashboard = () => {
         { name: 'X Gold', hex: '#ffd700' },
         { name: 'Amber', hex: '#f59e0b' },
         { name: 'X Grey', hex: '#829aab' },
+        { name: 'Meta Blue', hex: '#0095f6' },
+        { name: 'Pure White', hex: '#ffffff' },
+        { name: 'Titanium Slate', hex: '#71717a' },
+        { name: 'Obsidian Black', hex: '#18181b' },
         { name: 'Emerald', hex: '#10b981' },
         { name: 'Ruby', hex: '#ef4444' },
         { name: 'Amethyst', hex: '#8b5cf6' },
         { name: 'Cyan', hex: '#06b6d4' },
-        { name: 'Neon Green', hex: '#00ff66' },
-        { name: 'Neon Pink', hex: '#f43f5e' },
-        { name: 'Dark Slate', hex: '#0f172a' },
-        { name: 'Pure White', hex: '#ffffff' },
     ];
 
     const ICONS = [
         { value: 'checkmark', label: 'X Onayı' },
-        { value: 'star', label: 'Yıldız' },
         { value: 'shield', label: 'Kalkan' },
+        { value: 'star', label: 'Yıldız' },
+        { value: 'crown', label: 'Taç' },
+        { value: 'award', label: 'Ödül' },
+        { value: 'gem', label: 'Mücevher' },
         { value: 'lightning', label: 'Şimşek' },
         { value: 'diamond', label: 'Elmas' },
-        { value: 'crown', label: 'Taç' },
+        { value: 'sparkle', label: 'Parıltı' },
+        { value: 'globe', label: 'Dünya' },
+        { value: 'rocket', label: 'Roket' },
         { value: 'fire', label: 'Ateş' },
         { value: 'heart', label: 'Kalp' },
-        { value: 'rocket', label: 'Roket' },
-        { value: 'sparkle', label: 'Parıltı' },
         { value: 'atom', label: 'Atom' },
-        { value: 'gem', label: 'Mücevher' },
-        { value: 'award', label: 'Ödül' },
-        { value: 'globe', label: 'Dünya' },
-        { value: 'music', label: 'Müzik' },
         { value: 'swords', label: 'Kılıç' },
         { value: 'eye', label: 'Göz' },
     ];
 
     const ANIM_TYPES = [
-        { value: 'none', label: 'Yok' },
+        { value: 'none', label: 'Sabit' },
         { value: 'pulse', label: 'Nabız' },
-        { value: 'glow', label: 'Parıltı' },
-        { value: 'shimmer', label: 'Işıltı' },
+        { value: 'glow', label: 'Işıma' },
+        { value: 'shimmer', label: 'Yansıma' },
         { value: 'spin', label: 'Dönme' },
         { value: 'float', label: 'Süzülme' },
         { value: 'bounce', label: 'Zıplama' },
@@ -2566,7 +2553,7 @@ const AdminDashboard = () => {
             setBadgeForm({
                 name: badge.name || '',
                 slug: badge.slug || '',
-                shape: badge.shape || (badge.slug?.includes('gold') ? 'rounded_square' : 'rosette'),
+                shape: badge.shape || (badge.slug?.includes('gold') ? 'rounded_square' : 'rosette_10'),
                 icon: badge.icon || 'checkmark',
                 category: badge.category || 'both',
                 style: {
@@ -2574,7 +2561,6 @@ const AdminDashboard = () => {
                     primaryColor: badge.style?.primaryColor || '#1d9bf0',
                     secondaryColor: badge.style?.secondaryColor || '#f59e0b',
                     gradientAngle: badge.style?.gradientAngle ?? 135,
-                    metallicType: badge.style?.metallicType || 'gold',
                     innerIconColor: badge.style?.innerIconColor || '#ffffff',
                     animationType: badge.style?.animationType || 'none',
                     glowColor: badge.style?.glowColor || '',
@@ -2586,7 +2572,7 @@ const AdminDashboard = () => {
             setBadgeForm({
                 name: '',
                 slug: '',
-                shape: 'rosette',
+                shape: 'rosette_10',
                 icon: 'checkmark',
                 category: 'both',
                 style: {
@@ -2594,7 +2580,6 @@ const AdminDashboard = () => {
                     primaryColor: '#1d9bf0',
                     secondaryColor: '#f59e0b',
                     gradientAngle: 135,
-                    metallicType: 'gold',
                     innerIconColor: '#ffffff',
                     animationType: 'none',
                     glowColor: '',
@@ -2610,7 +2595,7 @@ const AdminDashboard = () => {
         setBadgeForm({
             name: `${badge.name} (Kopya)`,
             slug: `${badge.slug}-kopya`,
-            shape: badge.shape || 'rosette',
+            shape: badge.shape || 'rosette_10',
             icon: badge.icon || 'checkmark',
             category: badge.category || 'both',
             style: {
@@ -2618,7 +2603,6 @@ const AdminDashboard = () => {
                 primaryColor: badge.style?.primaryColor || '#1d9bf0',
                 secondaryColor: badge.style?.secondaryColor || '#f59e0b',
                 gradientAngle: badge.style?.gradientAngle ?? 135,
-                metallicType: badge.style?.metallicType || 'gold',
                 innerIconColor: badge.style?.innerIconColor || '#ffffff',
                 animationType: badge.style?.animationType || 'none',
                 glowColor: badge.style?.glowColor || '',
@@ -4401,33 +4385,29 @@ const AdminDashboard = () => {
                             <div className="badge-studio-header">
                                 <div className="badge-studio-title-row">
                                     <div className="badge-studio-title">
-                                        <span>💎 Rozet Stüdyosu & Doğrulama Merkezi</span>
+                                        <ShieldCheck size={20} className="text-white" />
+                                        <span>ROZET STÜDYOSU & DOĞRULAMA MERKEZİ</span>
                                     </div>
                                     <div className="badge-studio-actions">
                                         <button
-                                            className="btn-modern-primary"
+                                            className="badge-btn-primary"
                                             onClick={() => openBadgeCreator()}
-                                            style={{
-                                                padding: '10px 22px',
-                                                fontSize: '13px',
-                                                fontWeight: '700',
-                                                boxShadow: '0 0 20px rgba(29, 155, 240, 0.4)'
-                                            }}
                                         >
-                                            ✨ + Yeni Rozet Tasarla
+                                            <Plus size={15} />
+                                            Yeni Rozet Tasarla
                                         </button>
                                         <button
-                                            className="btn-modern-ghost"
+                                            className="badge-btn-secondary"
                                             onClick={handleSeedBadges}
-                                            style={{ padding: '9px 18px', fontSize: '12px' }}
-                                            title="X Orijinal Rozetlerini ve sistem varsayılanlarını sıfırlamadan yükle / senkronize et"
+                                            title="X Orijinal Rozetlerini ve sistem varsayılanlarını senkronize et"
                                         >
-                                            🔄 X Rozetlerini Senkronize Et
+                                            <RefreshCw size={14} />
+                                            Rozetleri Senkronize Et
                                         </button>
                                     </div>
                                 </div>
                                 <p className="badge-studio-desc">
-                                    Twitter / X orijinal mavi onay rozeti, altın şirket/kuruluş rozeti, gri hükümet/yetkili rozeti ve bağlı kuruluş onaylarını yönetin. Hem mevcut hem de yeni rozetler üzerinde profesyonel metalik kaplamalar (altın, platin, gümüş, obsidiyen) ve fantastik efektler (siberpunk neon, kozmik aurora, holografik prizma) tasarlayın.
+                                    X / Twitter resmi mavi ve altın doğrulama rozetleri, kurumsal onaylar ve Oxypace resmi sistem rozetleri. Gerçek zamanlı dinamik metalik krom, fırçalanmış titanyum, obsidiyen, sıvı cam ve siber ışık efektleriyle vektörel tasarım stüdyosu.
                                 </p>
 
                                 {/* Filter & Search Toolbar */}
@@ -4438,6 +4418,7 @@ const AdminDashboard = () => {
                                             className={`badge-filter-pill ${badgeFilter === 'all' ? 'active' : ''}`}
                                             onClick={() => setBadgeFilter('all')}
                                         >
+                                            <Award size={13} />
                                             Tümü ({allBadges.length})
                                         </button>
                                         <button
@@ -4445,26 +4426,29 @@ const AdminDashboard = () => {
                                             className={`badge-filter-pill ${badgeFilter === 'x_official' ? 'active' : ''}`}
                                             onClick={() => setBadgeFilter('x_official')}
                                         >
-                                            ✨ X / Doğrulama ({xBadgesCount})
+                                            <CheckCircle2 size={13} />
+                                            Doğrulama & X ({xBadgesCount})
                                         </button>
                                         <button
                                             type="button"
                                             className={`badge-filter-pill ${badgeFilter === 'user' ? 'active' : ''}`}
                                             onClick={() => setBadgeFilter('user')}
                                         >
-                                            👤 Kullanıcı ({userBadgesCount})
+                                            <User size={13} />
+                                            Kullanıcı ({userBadgesCount})
                                         </button>
                                         <button
                                             type="button"
                                             className={`badge-filter-pill ${badgeFilter === 'portal' ? 'active' : ''}`}
                                             onClick={() => setBadgeFilter('portal')}
                                         >
-                                            🌐 Portal ({portalBadgesCount})
+                                            <Globe size={13} />
+                                            Portal ({portalBadgesCount})
                                         </button>
                                     </div>
 
                                     <div className="badge-search-input-wrap">
-                                        <span className="badge-search-icon">🔍</span>
+                                        <Search size={14} className="badge-search-icon" />
                                         <input
                                             type="text"
                                             className="badge-search-input"
@@ -4475,19 +4459,10 @@ const AdminDashboard = () => {
                                         {badgeSearch && (
                                             <button
                                                 type="button"
+                                                className="badge-search-clear"
                                                 onClick={() => setBadgeSearch('')}
-                                                style={{
-                                                    position: 'absolute',
-                                                    right: '10px',
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    color: '#888',
-                                                    cursor: 'pointer'
-                                                }}
                                             >
-                                                ✕
+                                                <X size={12} />
                                             </button>
                                         )}
                                     </div>
@@ -4498,8 +4473,8 @@ const AdminDashboard = () => {
 
                             {!loading && filteredBadges.length === 0 && (
                                 <div className="no-data" style={{ padding: '60px 20px', textAlign: 'center' }}>
-                                    <p style={{ fontSize: '16px', color: '#cbd5e1', marginBottom: '12px' }}>Aramanıza uygun rozet bulunamadı.</p>
-                                    <button className="btn-modern-primary" onClick={() => { setBadgeSearch(''); setBadgeFilter('all'); }}>
+                                    <p style={{ fontSize: '14px', color: '#a1a1aa', marginBottom: '12px' }}>Aramanıza uygun rozet bulunamadı.</p>
+                                    <button className="badge-btn-primary" onClick={() => { setBadgeSearch(''); setBadgeFilter('all'); }}>
                                         Filtreleri Temizle
                                     </button>
                                 </div>
@@ -4508,7 +4483,7 @@ const AdminDashboard = () => {
                             {/* Badge Cards Grid */}
                             <div className="badge-grid">
                                 {filteredBadges.map((badge) => {
-                                    const shapeObj = SHAPES.find(s => s.value === (badge.shape || 'rosette'));
+                                    const shapeObj = SHAPES.find(s => s.value === (badge.shape || 'rosette_10'));
                                     const styleModeObj = STYLE_MODES.find(m => m.value === (badge.style?.type || 'solid'));
                                     const isOfficialX = isXBadge(badge);
 
@@ -4519,7 +4494,7 @@ const AdminDashboard = () => {
                                         >
                                             <div className="badge-card-main">
                                                 <div className="badge-card-preview" title="Canlı Vektör Önizleme">
-                                                    <Badge badge={badge} size={44} />
+                                                    <Badge badge={badge} size={42} />
                                                 </div>
                                                 <div className="badge-card-info">
                                                     <div className="badge-card-name-row">
@@ -4528,24 +4503,23 @@ const AdminDashboard = () => {
                                                     <div className="badge-card-slug">@{badge.slug}</div>
                                                     <div className="badge-card-meta">
                                                         <span className="badge-card-tag shape" title="Rozet Geometrisi">
-                                                            {shapeObj?.label || badge.shape || 'X Rozet'}
+                                                            {shapeObj?.label || (badge.shape === 'rounded_square' ? 'Kurumsal Squircle' : '10-Köşeli Rozet')}
                                                         </span>
                                                         <span className="badge-card-tag style" title="Görünüm ve Materyal">
-                                                            {badge.style?.metallicType && badge.style.metallicType !== 'none'
-                                                                ? `Metalik (${badge.style.metallicType})`
-                                                                : (styleModeObj?.label || badge.style?.type || 'Düz')}
+                                                            {styleModeObj?.label || badge.style?.type || 'Düz'}
                                                         </span>
                                                         {badge.style?.animationType && badge.style.animationType !== 'none' && (
                                                             <span className="badge-card-tag anim" title="Animasyon Efekti">
-                                                                ⚡ {badge.style.animationType}
+                                                                <Zap size={10} style={{ display: 'inline', marginRight: 2 }} />
+                                                                {badge.style.animationType}
                                                             </span>
                                                         )}
                                                         <span className="badge-card-tag scope" title="Kullanım Alanı">
-                                                            {badge.category === 'user' ? '👤 Kullanıcı' : (badge.category === 'portal' ? '🌐 Portal' : '✨ Her İkisi')}
+                                                            {badge.category === 'user' ? 'Kullanıcı' : (badge.category === 'portal' ? 'Portal' : 'Evrensel')}
                                                         </span>
                                                         {badge.isDefault && (
                                                             <span className="badge-card-tag default" title="Sistem Varsayılanı">
-                                                                Varsayılan
+                                                                Sistem
                                                             </span>
                                                         )}
                                                     </div>
@@ -4560,7 +4534,8 @@ const AdminDashboard = () => {
                                                     onClick={() => openBadgeCreator(badge)}
                                                     title="Rozet Stüdyosunda Düzenle"
                                                 >
-                                                    🎨 Düzenle
+                                                    <Edit3 size={12} />
+                                                    Düzenle
                                                 </button>
                                                 <button
                                                     type="button"
@@ -4568,7 +4543,8 @@ const AdminDashboard = () => {
                                                     onClick={() => handleBadgeClone(badge)}
                                                     title="Bu rozeti şablon olarak çoğalt"
                                                 >
-                                                    📋 Klonla
+                                                    <Copy size={12} />
+                                                    Klonla
                                                 </button>
                                                 {(badge.category === 'user' || badge.category === 'both') && (
                                                     <button
@@ -4577,7 +4553,8 @@ const AdminDashboard = () => {
                                                         onClick={() => openAssignModal(badge, 'user')}
                                                         title="Kullanıcıya Doğrudan Ver"
                                                     >
-                                                        👤 Kullanıcıya Ver
+                                                        <User size={12} />
+                                                        Kullanıcıya Ver
                                                     </button>
                                                 )}
                                                 {(badge.category === 'portal' || badge.category === 'both') && (
@@ -4587,7 +4564,8 @@ const AdminDashboard = () => {
                                                         onClick={() => openAssignModal(badge, 'portal')}
                                                         title="Portala Doğrudan Ver"
                                                     >
-                                                        🌐 Portala Ver
+                                                        <Globe size={12} />
+                                                        Portala Ver
                                                     </button>
                                                 )}
                                                 {!badge.isDefault && (
@@ -4597,7 +4575,7 @@ const AdminDashboard = () => {
                                                         onClick={() => handleBadgeDelete(badge._id)}
                                                         title="Rozeti Sil"
                                                     >
-                                                        🗑️
+                                                        <Trash2 size={12} />
                                                     </button>
                                                 )}
                                             </div>
@@ -5974,20 +5952,25 @@ const AdminDashboard = () => {
                     >
                         {/* Header */}
                         <div className="badge-studio-modal-header">
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>
-                                    {editingBadge ? `🎨 Rozet Düzenle: ${editingBadge.name}` : '✨ Yeni Rozet Tasarla (Stüdyo)'}
-                                </h2>
-                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
-                                    X / Twitter onay rozetleri, metalik kaplamalar ve fantastik efektlerle canlı önizlemeli tasarım.
-                                </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div className="badge-studio-header-icon">
+                                    <ShieldCheck size={20} color="#ffffff" />
+                                </div>
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#ffffff', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                                        {editingBadge ? `Rozet Düzenle: ${editingBadge.name}` : 'Oxypace Doğrulama Rozeti Stüdyosu'}
+                                    </h2>
+                                    <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#71717a' }}>
+                                        10-Köşe ve 12-Köşe X/Twitter geometrisi, dinamik metalik krom yansıma ve kurumsal renk motoru.
+                                    </p>
+                                </div>
                             </div>
                             <button
                                 type="button"
                                 className="close-btn-modern"
                                 onClick={() => setBadgeModalOpen(false)}
                             >
-                                &times;
+                                <X size={18} />
                             </button>
                         </div>
 
@@ -6000,45 +5983,31 @@ const AdminDashboard = () => {
                                     className="badge-canvas-hero"
                                     style={{
                                         background: badgeCanvasBg === 'light'
-                                            ? '#f8fafc'
-                                            : 'radial-gradient(circle, rgba(29, 155, 240, 0.08) 0%, rgba(0, 0, 0, 0.6) 80%)',
+                                            ? '#f4f4f5'
+                                            : '#09090b',
                                         border: badgeCanvasBg === 'light'
-                                            ? '1px solid #cbd5e1'
-                                            : '1px solid rgba(255, 255, 255, 0.08)'
+                                            ? '1px solid #d4d4d8'
+                                            : '1px solid #27272a'
                                     }}
                                 >
-                                    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '4px' }}>
+                                    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '6px' }}>
                                         <button
                                             type="button"
                                             onClick={() => setBadgeCanvasBg('dark')}
-                                            style={{
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                background: badgeCanvasBg === 'dark' ? '#1d9bf0' : '#111',
-                                                color: '#fff',
-                                                fontSize: '10px',
-                                                cursor: 'pointer'
-                                            }}
+                                            className={`badge-canvas-theme-btn ${badgeCanvasBg === 'dark' ? 'active' : ''}`}
                                             title="Koyu Tema Kontrastı"
                                         >
-                                            🌙 Koyu
+                                            <Moon size={11} />
+                                            <span>KOYU</span>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setBadgeCanvasBg('light')}
-                                            style={{
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                border: '1px solid rgba(0,0,0,0.1)',
-                                                background: badgeCanvasBg === 'light' ? '#1d9bf0' : '#e2e8f0',
-                                                color: badgeCanvasBg === 'light' ? '#fff' : '#000',
-                                                fontSize: '10px',
-                                                cursor: 'pointer'
-                                            }}
+                                            className={`badge-canvas-theme-btn ${badgeCanvasBg === 'light' ? 'active' : ''}`}
                                             title="Açık Tema Kontrastı"
                                         >
-                                            ☀️ Açık
+                                            <Sun size={11} />
+                                            <span>AÇIK</span>
                                         </button>
                                     </div>
 
@@ -6046,12 +6015,12 @@ const AdminDashboard = () => {
                                     <Badge badge={badgeForm} size={58} />
                                     <div
                                         className="badge-canvas-hero-name"
-                                        style={{ color: badgeCanvasBg === 'light' ? '#0f172a' : '#fff' }}
+                                        style={{ color: badgeCanvasBg === 'light' ? '#09090b' : '#ffffff' }}
                                     >
                                         <span>{badgeForm.name || 'Yeni Rozet'}</span>
                                         <Badge badge={badgeForm} size={18} />
                                     </div>
-                                    <span style={{ fontSize: '11px', color: badgeCanvasBg === 'light' ? '#64748b' : '#94a3b8', fontFamily: 'monospace' }}>
+                                    <span style={{ fontSize: '11px', color: badgeCanvasBg === 'light' ? '#52525b' : '#a1a1aa', fontFamily: 'monospace' }}>
                                         @{badgeForm.slug || 'rozet-kodu'}
                                     </span>
                                 </div>
@@ -6068,17 +6037,20 @@ const AdminDashboard = () => {
 
                                 {/* Simulated In-App Context: Post */}
                                 <div className="badge-simulated-context">
-                                    <div className="badge-sim-header">📱 Canlı Paylaşım Önizlemesi</div>
+                                    <div className="badge-sim-header">
+                                        <Smartphone size={12} />
+                                        <span>CANLI AKIŞ ÖNİZLEMESİ</span>
+                                    </div>
                                     <div className="badge-sim-post">
                                         <div className="badge-sim-avatar">O</div>
                                         <div className="badge-sim-content">
                                             <div className="badge-sim-user">
                                                 <span>Oxypace Global</span>
-                                                <Badge badge={badgeForm} size={18} />
+                                                <Badge badge={badgeForm} size={17} />
                                                 <span className="badge-sim-handle">@oxypace • 2d</span>
                                             </div>
                                             <div className="badge-sim-text">
-                                                Oxypace platformunda yeni nesil doğrulama rozetleri aktif!
+                                                Oxypace kurumsal doğrulama rozeti aktif ve doğrulanmış profillerde yayında.
                                             </div>
                                         </div>
                                     </div>
@@ -6087,7 +6059,10 @@ const AdminDashboard = () => {
                                 {/* 1-Click Fast Presets */}
                                 <div className="badge-presets-section">
                                     <div className="badge-control-title">
-                                        <span>⚡ Hızlı Şablonlar (1-Tıkla Uygula)</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Zap size={13} color="#ffffff" />
+                                            <span>KURUMSAL DOĞRULAMA ŞABLONLARI</span>
+                                        </div>
                                     </div>
                                     <div className="badge-presets-grid">
                                         {BADGE_PRESETS.map((pst) => (
@@ -6116,17 +6091,17 @@ const AdminDashboard = () => {
                                         <label className="badge-label">Rozet Adı</label>
                                         <input
                                             className="reason-input-modern"
-                                            style={{ padding: '10px 14px', fontSize: '13px' }}
+                                            style={{ padding: '10px 14px', fontSize: '13px', borderRadius: '4px' }}
                                             value={badgeForm.name}
                                             onChange={(e) => handleNameChange(e.target.value)}
-                                            placeholder="Örn: X Mavi Onay, VIP Lider"
+                                            placeholder="Örn: X Mavi Onay, Kurumsal Altın"
                                         />
                                     </div>
                                     <div className="badge-control-group">
                                         <label className="badge-label">Rozet Kodu (Slug)</label>
                                         <input
                                             className="reason-input-modern"
-                                            style={{ padding: '10px 14px', fontFamily: 'monospace', fontSize: '13px', color: '#38bdf8' }}
+                                            style={{ padding: '10px 14px', fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', borderRadius: '4px' }}
                                             value={badgeForm.slug}
                                             onChange={(e) => setBadgeForm({ ...badgeForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                                             placeholder="otomatik-olusturulur"
@@ -6138,12 +6113,15 @@ const AdminDashboard = () => {
                                 {/* 2. Visual Shape Selector */}
                                 <div className="badge-control-group">
                                     <div className="badge-control-title">
-                                        <span>🔷 Rozet Geometrisi & Şekli</span>
-                                        <span style={{ fontSize: '11px', color: '#38bdf8', textTransform: 'none' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Layers size={13} color="#ffffff" />
+                                            <span>ROZET GEOMETRİSİ & FORMU</span>
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: '#a1a1aa', fontWeight: 600 }}>
                                             {SHAPES.find(s => s.value === badgeForm.shape)?.label}
                                         </span>
                                     </div>
-                                    <p className="badge-help-text">Twitter / X Mavi rozet formu (Rosette) veya Altın Şirket formu (Yuvarlak Kare) dahil 8 vektör seçeneği.</p>
+                                    <p className="badge-help-text">Twitter / X 10-Köşeli Orijinal Rozet, 12-Köşeli Kurumsal veya Altın Şirket Squircle formu.</p>
                                     <div className="badge-shape-grid">
                                         {SHAPES.map((sh) => (
                                             <button
@@ -6173,9 +6151,12 @@ const AdminDashboard = () => {
                                 {/* 3. Inner Icon & Inner Color */}
                                 <div className="badge-control-group">
                                     <div className="badge-control-title">
-                                        <span>✨ İç İkon & Sembol Rengi</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>İkon Rengi:</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <ShieldCheck size={13} color="#ffffff" />
+                                            <span>İÇ SEMBOL & RENK</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '11px', color: '#71717a' }}>Sembol:</span>
                                             <input
                                                 type="color"
                                                 value={badgeForm.style.innerIconColor || '#ffffff'}
@@ -6185,21 +6166,28 @@ const AdminDashboard = () => {
                                                 })}
                                                 className="badge-color-input"
                                                 style={{ width: '22px', height: '22px' }}
-                                                title="İç ikon rengi (Checkmark / Yıldız rengi)"
+                                                title="İç sembol rengi (Checkmark / Yıldız rengi)"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, innerIconColor: '#ffffff' } })}
-                                                style={{ padding: '2px 6px', fontSize: '10px', borderRadius: '4px', background: '#333', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                                className="badge-color-quick-btn"
                                             >
                                                 Beyaz
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, innerIconColor: '#0f172a' } })}
-                                                style={{ padding: '2px 6px', fontSize: '10px', borderRadius: '4px', background: '#333', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                                onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, innerIconColor: '#000000' } })}
+                                                className="badge-color-quick-btn"
                                             >
-                                                Koyu
+                                                Siyah
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setBadgeForm({ ...badgeForm, style: { ...badgeForm.style, innerIconColor: '#ffd700' } })}
+                                                className="badge-color-quick-btn"
+                                            >
+                                                Altın
                                             </button>
                                         </div>
                                     </div>
@@ -6228,8 +6216,11 @@ const AdminDashboard = () => {
                                 {/* 4. Style & Material Engine */}
                                 <div className="badge-control-group">
                                     <div className="badge-control-title">
-                                        <span>🎨 Görünüm & Materyal Motoru</span>
-                                        <span style={{ fontSize: '11px', color: '#f59e0b', textTransform: 'none' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Sliders size={13} color="#ffffff" />
+                                            <span>MATERYAL & RENK MOTORU</span>
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: '#ffffff', fontWeight: 700 }}>
                                             {STYLE_MODES.find(m => m.value === badgeForm.style.type)?.label}
                                         </span>
                                     </div>
@@ -6250,77 +6241,55 @@ const AdminDashboard = () => {
                                         ))}
                                     </div>
 
-                                    {/* Color & Material Details based on mode */}
-                                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '14px', marginTop: '6px' }}>
-                                        {/* If Metallic Mode */}
-                                        {badgeForm.style.type === 'metallic' && (
-                                            <div style={{ marginBottom: '12px' }}>
-                                                <label className="badge-label">Metalik Kaplama Türü</label>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                                                    {METALLIC_TYPES.map((mt) => (
-                                                        <button
-                                                            key={mt.value}
-                                                            type="button"
-                                                            className={`preset-btn ${badgeForm.style.metallicType === mt.value ? 'active' : ''}`}
-                                                            onClick={() => setBadgeForm({
-                                                                ...badgeForm,
-                                                                style: { ...badgeForm.style, metallicType: mt.value }
-                                                            })}
-                                                            style={{ fontSize: '11px', padding: '8px' }}
-                                                        >
-                                                            {mt.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Colors */}
-                                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                            <div>
-                                                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                                                    {badgeForm.style.type === 'gradient' ? 'Başlangıç Rengi' : 'Ana Renk'}
+                                    {/* Color & Material Details */}
+                                    <div className="badge-material-panel">
+                                        <div className="badge-material-colors-row">
+                                            {/* Primary Color */}
+                                            <div className="badge-material-color-cell">
+                                                <span className="badge-material-color-label">
+                                                    Ana Renk (Gövde)
                                                 </span>
                                                 <div className="badge-color-wrap">
                                                     <input
                                                         type="color"
-                                                        value={badgeForm.style.primaryColor}
+                                                        value={badgeForm.style.primaryColor || '#1d9bf0'}
                                                         onChange={(e) => setBadgeForm({
                                                             ...badgeForm,
                                                             style: { ...badgeForm.style, primaryColor: e.target.value }
                                                         })}
                                                         className="badge-color-input"
                                                     />
-                                                    <span>{badgeForm.style.primaryColor}</span>
+                                                    <span className="badge-hex-code">{badgeForm.style.primaryColor}</span>
                                                 </div>
                                             </div>
 
-                                            {(badgeForm.style.type === 'gradient' || badgeForm.style.type === 'cosmic') && (
-                                                <div>
-                                                    <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                                                        İkincil Geçiş Rengi
+                                            {/* Secondary / Sheen Color */}
+                                            {badgeForm.style.type !== 'solid' && (
+                                                <div className="badge-material-color-cell">
+                                                    <span className="badge-material-color-label">
+                                                        İkincil / Yansıma Rengi
                                                     </span>
                                                     <div className="badge-color-wrap">
                                                         <input
                                                             type="color"
-                                                            value={badgeForm.style.secondaryColor || '#f59e0b'}
+                                                            value={badgeForm.style.secondaryColor || '#ffffff'}
                                                             onChange={(e) => setBadgeForm({
                                                                 ...badgeForm,
                                                                 style: { ...badgeForm.style, secondaryColor: e.target.value }
                                                             })}
                                                             className="badge-color-input"
                                                         />
-                                                        <span>{badgeForm.style.secondaryColor || '#f59e0b'}</span>
+                                                        <span className="badge-hex-code">{badgeForm.style.secondaryColor || 'Otomatik'}</span>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {/* Gradient Angle Slider */}
-                                            {badgeForm.style.type === 'gradient' && (
-                                                <div style={{ flex: 1, minWidth: '150px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
-                                                        <span>Geçiş Açısı</span>
-                                                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>{badgeForm.style.gradientAngle ?? 135}°</span>
+                                            {/* Angle Slider for gradient / reflection */}
+                                            {badgeForm.style.type !== 'solid' && (
+                                                <div className="badge-material-angle-cell">
+                                                    <div className="badge-angle-header">
+                                                        <span>Yansıma Açısı</span>
+                                                        <span className="badge-angle-val">{badgeForm.style.gradientAngle ?? 135}°</span>
                                                     </div>
                                                     <input
                                                         type="range"
@@ -6332,15 +6301,15 @@ const AdminDashboard = () => {
                                                             ...badgeForm,
                                                             style: { ...badgeForm.style, gradientAngle: Number(e.target.value) }
                                                         })}
-                                                        style={{ width: '100%', cursor: 'pointer' }}
+                                                        className="badge-range-slider"
                                                     />
                                                 </div>
                                             )}
 
                                             {/* Glow Color */}
-                                            <div>
-                                                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                                                    Işıma (Glow) Rengi
+                                            <div className="badge-material-color-cell">
+                                                <span className="badge-material-color-label">
+                                                    Işıma (Glow)
                                                 </span>
                                                 <div className="badge-color-wrap">
                                                     <input
@@ -6352,16 +6321,16 @@ const AdminDashboard = () => {
                                                         })}
                                                         className="badge-color-input"
                                                     />
-                                                    <span>{badgeForm.style.glowColor || 'Varsayılan'}</span>
+                                                    <span className="badge-hex-code">{badgeForm.style.glowColor || 'Varsayılan'}</span>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Quick Color Palette */}
-                                        <div style={{ marginTop: '10px' }}>
-                                            <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                Hızlı Palet
-                                            </span>
+                                        <div style={{ marginTop: '12px' }}>
+                                            <div style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, marginBottom: '6px' }}>
+                                                Hızlı Kurumsal Renk Paleti (1-Tıkla Uygula)
+                                            </div>
                                             <div className="badge-palette-row">
                                                 {QUICK_PALETTES.map((qp) => (
                                                     <button
@@ -6383,13 +6352,18 @@ const AdminDashboard = () => {
 
                                 {/* 5. Animation FX */}
                                 <div className="badge-control-group">
-                                    <label className="badge-label">Animasyon Efekti</label>
+                                    <div className="badge-control-title">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <RefreshCw size={13} color="#ffffff" />
+                                            <span>ANİMASYON EFEKTİ</span>
+                                        </div>
+                                    </div>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                         {ANIM_TYPES.map((a) => (
                                             <button
                                                 key={a.value}
                                                 type="button"
-                                                className={`preset-btn ${badgeForm.style.animationType === a.value ? 'active' : ''}`}
+                                                className={`badge-anim-btn ${badgeForm.style.animationType === a.value ? 'active' : ''}`}
                                                 onClick={() => setBadgeForm({
                                                     ...badgeForm,
                                                     style: { ...badgeForm.style, animationType: a.value }
@@ -6403,22 +6377,31 @@ const AdminDashboard = () => {
 
                                 {/* 6. Category Scope */}
                                 <div className="badge-control-group">
-                                    <label className="badge-label">Kullanım Alanı</label>
+                                    <div className="badge-control-title">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Layers size={13} color="#ffffff" />
+                                            <span>KULLANIM ALANI</span>
+                                        </div>
+                                    </div>
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         {[
-                                            { v: 'both', l: '✨ Her İkisi' },
-                                            { v: 'user', l: '👤 Sadece Kullanıcı' },
-                                            { v: 'portal', l: '🌐 Sadece Portal' },
-                                        ].map((c) => (
-                                            <button
-                                                key={c.v}
-                                                type="button"
-                                                className={`preset-btn ${badgeForm.category === c.v ? 'active' : ''}`}
-                                                onClick={() => setBadgeForm({ ...badgeForm, category: c.v })}
-                                            >
-                                                {c.l}
-                                            </button>
-                                        ))}
+                                            { v: 'both', l: 'Her İkisi', icon: Layers },
+                                            { v: 'user', l: 'Sadece Kullanıcı', icon: User },
+                                            { v: 'portal', l: 'Sadece Portal', icon: Globe },
+                                        ].map((c) => {
+                                            const IconComp = c.icon;
+                                            return (
+                                                <button
+                                                    key={c.v}
+                                                    type="button"
+                                                    className={`badge-scope-btn ${badgeForm.category === c.v ? 'active' : ''}`}
+                                                    onClick={() => setBadgeForm({ ...badgeForm, category: c.v })}
+                                                >
+                                                    <IconComp size={13} />
+                                                    <span>{c.l}</span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -6428,18 +6411,27 @@ const AdminDashboard = () => {
                         <div className="badge-studio-modal-footer">
                             <button
                                 type="button"
-                                className="btn-modern-ghost"
+                                className="badge-btn-cancel"
                                 onClick={() => setBadgeModalOpen(false)}
                             >
                                 İptal
                             </button>
                             <button
                                 type="button"
-                                className="btn-modern-primary"
+                                className="badge-btn-save"
                                 onClick={handleBadgeSave}
-                                style={{ padding: '10px 24px', fontWeight: 700 }}
                             >
-                                {editingBadge ? '💾 GÜNCELLE VE KAYDET' : '✨ ROZETİ OLUŞTUR'}
+                                {editingBadge ? (
+                                    <>
+                                        <Check size={14} />
+                                        <span>GÜNCELLE VE KAYDET</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus size={14} />
+                                        <span>ROZETİ OLUŞTUR</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -6456,10 +6448,15 @@ const AdminDashboard = () => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="modal-header-modern">
-                            <h2>
-                                {assignType === 'user' ? '👤 Kullanıcıya Rozet Ata' : '🌐 Portala Rozet Ata'}
-                            </h2>
-                            <button className="close-btn-modern" onClick={() => setAssignModalOpen(false)}>&times;</button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {assignType === 'user' ? <User size={16} /> : <Globe size={16} />}
+                                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px', color: '#ffffff' }}>
+                                    {assignType === 'user' ? 'Kullanıcıya Rozet Ata' : 'Portala Rozet Ata'}
+                                </h2>
+                            </div>
+                            <button className="close-btn-modern" onClick={() => setAssignModalOpen(false)}>
+                                <X size={16} />
+                            </button>
                         </div>
 
                         <div className="modal-body-modern" style={{ gap: '16px' }}>
