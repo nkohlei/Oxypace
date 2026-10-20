@@ -273,6 +273,50 @@ router.post('/follow/:id', protect, mongoIdValidation('id'), async (req, res) =>
     }
 });
 
+// @route   POST /api/users/friends/remove/:id
+// @desc    Explicitly remove a friend
+// @access  Private
+router.post('/friends/remove/:id', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const targetIdStr = req.params.id;
+        const currentIdStr = req.user._id.toString();
+
+        const targetUser = await User.findById(targetIdStr);
+        const currentUser = await User.findById(currentIdStr);
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+        }
+
+        targetUser.followers = (targetUser.followers || []).filter(id => id.toString() !== currentIdStr);
+        targetUser.following = (targetUser.following || []).filter(id => id.toString() !== currentIdStr);
+        targetUser.followRequests = (targetUser.followRequests || []).filter(id => id.toString() !== currentIdStr);
+        targetUser.followerCount = targetUser.followers.length;
+        targetUser.followingCount = targetUser.following.length;
+
+        currentUser.followers = (currentUser.followers || []).filter(id => id.toString() !== targetIdStr);
+        currentUser.following = (currentUser.following || []).filter(id => id.toString() !== targetIdStr);
+        currentUser.followRequests = (currentUser.followRequests || []).filter(id => id.toString() !== targetIdStr);
+        currentUser.followerCount = currentUser.followers.length;
+        currentUser.followingCount = currentUser.following.length;
+
+        await targetUser.save();
+        await currentUser.save();
+
+        await Notification.deleteMany({
+            $or: [
+                { recipient: targetUser._id, sender: currentUser._id, type: { $in: ['follow_request', 'friend_request'] } },
+                { recipient: currentUser._id, sender: targetUser._id, type: { $in: ['follow_request', 'friend_request'] } }
+            ]
+        });
+
+        return res.json({ message: 'Arkadaşlıktan çıkarıldı', success: true });
+    } catch (error) {
+        console.error('Remove friend error:', error);
+        return res.status(500).json({ message: 'Sunucu hatası: ' + error.message });
+    }
+});
+
 // @route   POST /api/users/follow/accept/:id
 // @desc    Accept follow request (Enable Mutual Friendship)
 // @access  Private
@@ -420,12 +464,12 @@ router.get('/me', protect, async (req, res) => {
         const [user, postCount, outgoingUserRequests, outgoingPortalRequests, ownedPortals] = await Promise.all([
             User.findById(req.user._id)
                 .select('-password -verificationToken')
-                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy')
+                .populate('joinedPortals', 'name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy owner')
                 .populate('following', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge'),
             Post.countDocuments({ author: req.user._id }),
             User.find({ followRequests: req.user._id }).select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge'),
             Portal.find({ joinRequests: req.user._id }).select('name avatar lowResAvatar privacy'),
-            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy')
+            Portal.find({ owner: req.user._id }).select('name avatar lowResAvatar banner themeColor badges customBadge isVerified privacy owner')
         ]);
 
         // Pre-build follower ID set for fast lookup

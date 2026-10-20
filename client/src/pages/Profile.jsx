@@ -86,6 +86,129 @@ const Profile = () => {
     const [initialFormData, setInitialFormData] = useState(null);
     const [showConfirmClose, setShowConfirmClose] = useState(false);
 
+    // Friend & Portal Action Modals
+    const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
+    const [confirmLeavePortal, setConfirmLeavePortal] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    const isPortalOwner = useCallback((portal) => {
+        if (!portal || !currentUser) return false;
+        const ownerId = portal.owner?._id || portal.owner;
+        if (ownerId && String(ownerId) === String(currentUser._id)) return true;
+        if (currentUser.ownedPortals && currentUser.ownedPortals.some(op => (op._id || op).toString() === portal._id?.toString())) {
+            return true;
+        }
+        return false;
+    }, [currentUser]);
+
+    const canLeavePortal = useCallback((portal) => {
+        if (!portal || !currentUser) return false;
+        if (isPortalOwner(portal)) return false; // Kurucusu olduğumuz portallarda bu buton gözükmesin
+        if (isOwnProfile) return true;
+        const userPortals = currentUser.joinedPortals || currentUser.portals || [];
+        return userPortals.some((p) => (p._id || p).toString() === portal._id?.toString());
+    }, [currentUser, isPortalOwner, isOwnProfile]);
+
+    const canRemoveFriend = useCallback((friend) => {
+        if (!friend || !currentUser) return false;
+        if (String(friend._id || friend) === String(currentUser._id)) return false;
+        if (isOwnProfile) return true;
+        const myFriends = currentUser.friends || currentUser.following || [];
+        return myFriends.some((f) => (f._id || f).toString() === (friend._id || friend).toString());
+    }, [currentUser, isOwnProfile]);
+
+    const handleExecuteRemoveFriend = async () => {
+        if (!confirmRemoveFriend) return;
+        setActionLoading(true);
+        try {
+            const friendId = confirmRemoveFriend._id;
+            await axios.post(`/api/users/friends/remove/${friendId}`);
+
+            setProfileUser((prev) => {
+                if (!prev) return prev;
+                const updatedFriends = (prev.friends || []).filter(
+                    (f) => (f._id || f).toString() !== friendId.toString()
+                );
+                const updatedMutual = (prev.mutualFriends || []).filter(
+                    (f) => (f._id || f).toString() !== friendId.toString()
+                );
+                return {
+                    ...prev,
+                    friends: updatedFriends,
+                    mutualFriends: updatedMutual,
+                    friendCount: Math.max(0, (prev.friendCount || updatedFriends.length + 1) - 1),
+                };
+            });
+
+            if (currentUser) {
+                const updatedFollowing = (currentUser.following || []).filter(
+                    (f) => (f._id || f).toString() !== friendId.toString()
+                );
+                const updatedFriends = (currentUser.friends || []).filter(
+                    (f) => (f._id || f).toString() !== friendId.toString()
+                );
+                updateUser({
+                    ...currentUser,
+                    following: updatedFollowing,
+                    friends: updatedFriends,
+                    followingCount: Math.max(0, (currentUser.followingCount || 1) - 1),
+                });
+            }
+
+            setConfirmRemoveFriend(null);
+        } catch (err) {
+            console.error('Arkadaş çıkarma hatası:', err);
+            alert(err.response?.data?.message || 'Arkadaş çıkarılırken bir hata oluştu.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleExecuteLeavePortal = async () => {
+        if (!confirmLeavePortal) return;
+        setActionLoading(true);
+        try {
+            const portalId = confirmLeavePortal._id;
+            await axios.post(`/api/portals/${portalId}/leave`);
+
+            setProfileUser((prev) => {
+                if (!prev) return prev;
+                const updatedPortals = (prev.portals || []).filter(
+                    (p) => (p._id || p).toString() !== portalId.toString()
+                );
+                const updatedMutual = (prev.mutualPortals || []).filter(
+                    (p) => (p._id || p).toString() !== portalId.toString()
+                );
+                return {
+                    ...prev,
+                    portals: updatedPortals,
+                    mutualPortals: updatedMutual,
+                };
+            });
+
+            if (currentUser) {
+                const updatedJoined = (currentUser.joinedPortals || []).filter(
+                    (p) => (p._id || p).toString() !== portalId.toString()
+                );
+                const updatedPortals = (currentUser.portals || []).filter(
+                    (p) => (p._id || p).toString() !== portalId.toString()
+                );
+                updateUser({
+                    ...currentUser,
+                    joinedPortals: updatedJoined,
+                    portals: updatedPortals,
+                });
+            }
+
+            setConfirmLeavePortal(null);
+        } catch (err) {
+            console.error('Portaldan ayrılma hatası:', err);
+            alert(err.response?.data?.message || 'Portaldan ayrılırken bir hata oluştu.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const isProfileDirty = () => {
         if (!initialFormData) return false;
         return (
@@ -1565,27 +1688,43 @@ const Profile = () => {
                                                                         setSelectedPortalForInfo(p)
                                                                     }
                                                                 >
-                                                                    <div className="p-avatar">
-                                                                        {p.avatar ? (
-                                                                            <img
-                                                                                src={getImageUrl(p.avatar)}
-                                                                                alt=""
-                                                                                loading="lazy"
-                                                                                decoding="async"
-                                                                                width="40"
-                                                                                height="40"
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="p-avatar-placeholder">
-                                                                                {p.name?.[0]}
-                                                                            </div>
-                                                                        )}
+                                                                    <div className="portal-item-left">
+                                                                        <div className="p-avatar">
+                                                                            {p.avatar ? (
+                                                                                <img
+                                                                                    src={getImageUrl(p.avatar)}
+                                                                                    alt=""
+                                                                                    loading="lazy"
+                                                                                    decoding="async"
+                                                                                    width="40"
+                                                                                    height="40"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="p-avatar-placeholder">
+                                                                                    {p.name?.[0]}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="portal-item-info">
+                                                                            <span className="p-name">
+                                                                                {p.name}
+                                                                            </span>
+                                                                            <PortalBadges portal={p} size={15} />
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="portal-item-info">
-                                                                        <span className="p-name">
-                                                                            {p.name}
-                                                                        </span>
-                                                                        <PortalBadges portal={p} size={15} />
+                                                                    <div className="portal-item-actions" onClick={(e) => e.stopPropagation()}>
+                                                                        {canLeavePortal(p) && (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="profile-action-btn leave-portal-btn"
+                                                                                onClick={() => setConfirmLeavePortal(p)}
+                                                                            >
+                                                                                Ayrıl
+                                                                            </button>
+                                                                        )}
+                                                                        {isPortalOwner(p) && (
+                                                                            <span className="portal-owner-tag">Kurucu</span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             ))
@@ -1615,6 +1754,66 @@ const Profile = () => {
                                                                         navigate(`/profile/${friend.username}`)
                                                                     }
                                                                 >
+                                                                    <div className="friend-item-left">
+                                                                        <img
+                                                                            src={getImageUrl(
+                                                                                friend.profile?.avatar
+                                                                            )}
+                                                                            alt=""
+                                                                            loading="lazy"
+                                                                            decoding="async"
+                                                                            width="48"
+                                                                            height="48"
+                                                                        />
+                                                                        <div className="friend-card-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                <span className="f-name">
+                                                                                    {friend.profile?.displayName || friend.username}
+                                                                                </span>
+                                                                                <UserBadges user={friend} size={15} />
+                                                                            </div>
+                                                                            {friend.profile?.displayName && friend.profile?.displayName !== friend.username && (
+                                                                                <span style={{ fontSize: '11px', color: 'var(--text-muted, #8e9297)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                                    @{friend.username}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    {canRemoveFriend(friend) && (
+                                                                        <div className="friend-item-actions" onClick={(e) => e.stopPropagation()}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="profile-action-btn remove-friend-btn"
+                                                                                onClick={() => setConfirmRemoveFriend(friend)}
+                                                                            >
+                                                                                Çıkar
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <h4 className="section-header">
+                                                    {isOwnProfile
+                                                        ? `ARKADAŞLAR (${profileUser.friends?.length || 0})`
+                                                        : (!isOwnProfile && (profileUser.mutualFriends || []).length > 0
+                                                            ? `TÜM ARKADAŞLAR (${profileUser.friends?.length || 0})`
+                                                            : `ARKADAŞLAR (${profileUser.friends?.length || 0})`)}
+                                                </h4>
+                                                <div className="friends-grid">
+                                                    {(profileUser.friends || []).length > 0 ? (
+                                                        profileUser.friends.map((friend) => (
+                                                            <div
+                                                                key={friend._id}
+                                                                className="friend-item-card"
+                                                                onClick={() =>
+                                                                    navigate(`/profile/${friend.username}`)
+                                                                }
+                                                            >
+                                                                <div className="friend-item-left">
                                                                     <img
                                                                         src={getImageUrl(
                                                                             friend.profile?.avatar
@@ -1639,51 +1838,17 @@ const Profile = () => {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                <h4 className="section-header">
-                                                    {isOwnProfile
-                                                        ? `ARKADAŞLAR (${profileUser.friends?.length || 0})`
-                                                        : (!isOwnProfile && (profileUser.mutualFriends || []).length > 0
-                                                            ? `TÜM ARKADAŞLAR (${profileUser.friends?.length || 0})`
-                                                            : `ARKADAŞLAR (${profileUser.friends?.length || 0})`)}
-                                                </h4>
-                                                <div className="friends-grid">
-                                                    {(profileUser.friends || []).length > 0 ? (
-                                                        profileUser.friends.map((friend) => (
-                                                            <div
-                                                                key={friend._id}
-                                                                className="friend-item-card"
-                                                                onClick={() =>
-                                                                    navigate(`/profile/${friend.username}`)
-                                                                }
-                                                            >
-                                                                <img
-                                                                    src={getImageUrl(
-                                                                        friend.profile?.avatar
-                                                                    )}
-                                                                    alt=""
-                                                                    loading="lazy"
-                                                                    decoding="async"
-                                                                    width="48"
-                                                                    height="48"
-                                                                />
-                                                                <div className="friend-card-info" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                        <span className="f-name">
-                                                                            {friend.profile?.displayName || friend.username}
-                                                                        </span>
-                                                                        <UserBadges user={friend} size={15} />
+                                                                {canRemoveFriend(friend) && (
+                                                                    <div className="friend-item-actions" onClick={(e) => e.stopPropagation()}>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="profile-action-btn remove-friend-btn"
+                                                                            onClick={() => setConfirmRemoveFriend(friend)}
+                                                                        >
+                                                                            Çıkar
+                                                                        </button>
                                                                     </div>
-                                                                    {friend.profile?.displayName && friend.profile?.displayName !== friend.username && (
-                                                                        <span style={{ fontSize: '11px', color: 'var(--text-muted, #8e9297)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                            @{friend.username}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         ))
                                                     ) : (
@@ -1790,21 +1955,37 @@ const Profile = () => {
                                                                 className="portal-item-card"
                                                                 onClick={() => navigate(`/portal/${p._id}`)}
                                                             >
-                                                                <div className="p-avatar">
-                                                                    {p.avatar ? (
-                                                                        <img
-                                                                            src={getImageUrl(p.avatar)}
-                                                                            alt=""
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-avatar-placeholder">
-                                                                            {p.name?.[0]}
-                                                                        </div>
-                                                                    )}
+                                                                <div className="portal-item-left">
+                                                                    <div className="p-avatar">
+                                                                        {p.avatar ? (
+                                                                            <img
+                                                                                src={getImageUrl(p.avatar)}
+                                                                                alt=""
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-avatar-placeholder">
+                                                                                {p.name?.[0]}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="portal-item-info">
+                                                                        <span className="p-name">{p.name}</span>
+                                                                        <PortalBadges portal={p} size={15} />
+                                                                    </div>
                                                                 </div>
-                                                                <div className="portal-item-info">
-                                                                    <span className="p-name">{p.name}</span>
-                                                                    <PortalBadges portal={p} size={15} />
+                                                                <div className="portal-item-actions" onClick={(e) => e.stopPropagation()}>
+                                                                    {canLeavePortal(p) && (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="profile-action-btn leave-portal-btn"
+                                                                            onClick={() => setConfirmLeavePortal(p)}
+                                                                        >
+                                                                            Ayrıl
+                                                                        </button>
+                                                                    )}
+                                                                    {isPortalOwner(p) && (
+                                                                        <span className="portal-owner-tag">Kurucu</span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         ))
@@ -2293,6 +2474,84 @@ const Profile = () => {
                         }
                     }}
                 />
+            )}
+
+            {/* Friend Removal Confirmation Modal */}
+            {confirmRemoveFriend && (
+                <div
+                    className="profile-page-confirm-overlay"
+                    onClick={() => !actionLoading && setConfirmRemoveFriend(null)}
+                >
+                    <div
+                        className="profile-confirm-dialog"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <span className="profile-confirm-tag">[ ARKADAŞI ÇIKAR ]</span>
+                        <h3 className="profile-confirm-title">
+                            {confirmRemoveFriend.profile?.displayName || confirmRemoveFriend.username}
+                        </h3>
+                        <p className="profile-confirm-desc">
+                            Bu kullanıcıyı arkadaş listenizden çıkarmak istediğinizden emin misiniz?
+                        </p>
+                        <div className="profile-confirm-actions">
+                            <button
+                                type="button"
+                                className="profile-confirm-btn-stay"
+                                disabled={actionLoading}
+                                onClick={() => setConfirmRemoveFriend(null)}
+                            >
+                                Vazgeç
+                            </button>
+                            <button
+                                type="button"
+                                className="profile-confirm-btn-discard"
+                                disabled={actionLoading}
+                                onClick={handleExecuteRemoveFriend}
+                            >
+                                {actionLoading ? 'Çıkarılıyor...' : 'Arkadaşı Çıkar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Portal Leave Confirmation Modal */}
+            {confirmLeavePortal && (
+                <div
+                    className="profile-page-confirm-overlay"
+                    onClick={() => !actionLoading && setConfirmLeavePortal(null)}
+                >
+                    <div
+                        className="profile-confirm-dialog"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <span className="profile-confirm-tag">[ PORTALDAN AYRIL ]</span>
+                        <h3 className="profile-confirm-title">
+                            {confirmLeavePortal.name}
+                        </h3>
+                        <p className="profile-confirm-desc">
+                            Bu portaldan ayrılmak istediğinizden emin misiniz? Portal üyelik listenizden kaldırılacaktır.
+                        </p>
+                        <div className="profile-confirm-actions">
+                            <button
+                                type="button"
+                                className="profile-confirm-btn-stay"
+                                disabled={actionLoading}
+                                onClick={() => setConfirmLeavePortal(null)}
+                            >
+                                Vazgeç
+                            </button>
+                            <button
+                                type="button"
+                                className="profile-confirm-btn-discard"
+                                disabled={actionLoading}
+                                onClick={handleExecuteLeavePortal}
+                            >
+                                {actionLoading ? 'Ayrılınıyor...' : 'Portaldan Ayrıl'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
