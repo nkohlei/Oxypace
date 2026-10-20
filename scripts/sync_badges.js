@@ -1,8 +1,13 @@
-const mongoose = require('mongoose');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
-const Badge = require('../models/Badge');
-const { DEFAULT_BADGES } = require('../routes/badges');
+import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import Badge from '../models/Badge.js';
+import { DEFAULT_BADGES } from '../routes/badges.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 (async () => {
     try {
