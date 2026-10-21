@@ -25,7 +25,8 @@ import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
 import PortalInfoModal from '../components/PortalInfoModal';
 import { useSocket } from '../context/SocketContext';
-import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown } from 'lucide-react';
+import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown, Search, Download } from 'lucide-react';
+import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import { validateProfileFields } from '../utils/profanityFilter';
 import './Profile.css';
 
@@ -91,6 +92,43 @@ const Profile = () => {
     const [confirmRemoveFriend, setConfirmRemoveFriend] = useState(null);
     const [confirmLeavePortal, setConfirmLeavePortal] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
+
+    // Search filters for Friends and Memberships
+    const [friendSearchQuery, setFriendSearchQuery] = useState('');
+    const [portalSearchQuery, setPortalSearchQuery] = useState('');
+
+    const filteredFriends = useMemo(() => {
+        const list = profileUser?.friends || [];
+        const q = friendSearchQuery.trim().toLocaleLowerCase('tr-TR');
+        if (!q) return list;
+        return list.filter((friend) => {
+            const u = (friend.username || '').toLocaleLowerCase('tr-TR');
+            const d = (friend.profile?.displayName || '').toLocaleLowerCase('tr-TR');
+            return u.includes(q) || d.includes(q);
+        });
+    }, [profileUser?.friends, friendSearchQuery]);
+
+    const filteredMutualFriends = useMemo(() => {
+        const list = profileUser?.mutualFriends || [];
+        const q = friendSearchQuery.trim().toLocaleLowerCase('tr-TR');
+        if (!q) return list;
+        return list.filter((friend) => {
+            const u = (friend.username || '').toLocaleLowerCase('tr-TR');
+            const d = (friend.profile?.displayName || '').toLocaleLowerCase('tr-TR');
+            return u.includes(q) || d.includes(q);
+        });
+    }, [profileUser?.mutualFriends, friendSearchQuery]);
+
+    const filteredPortals = useMemo(() => {
+        const list = profileUser?.portals || [];
+        const q = portalSearchQuery.trim().toLocaleLowerCase('tr-TR');
+        if (!q) return list;
+        return list.filter((p) => {
+            const name = (p.name || '').toLocaleLowerCase('tr-TR');
+            const desc = (p.description || '').toLocaleLowerCase('tr-TR');
+            return name.includes(q) || desc.includes(q);
+        });
+    }, [profileUser?.portals, portalSearchQuery]);
 
     const isPortalOwner = useCallback((portal) => {
         if (!portal || !currentUser) return false;
@@ -261,6 +299,7 @@ const Profile = () => {
     const composeMediaInputRef = useRef(null);
     const composeBoxRef = useRef(null);
     const isVideoFileRef = useRef(false);
+    const isPdfFileRef = useRef(false);
 
     // Video transcoder hook (WASM, lazy-loaded)
     const { transcodeAndUpload } = useVideoTranscoder();
@@ -527,6 +566,9 @@ const Profile = () => {
                     if (videoQualitiesPayload) {
                         postData.videoQualities = JSON.stringify(videoQualitiesPayload);
                     }
+                } else if (isPdfFileRef.current || (composeMedia && (composeMedia.type === 'application/pdf' || composeMedia.name?.toLowerCase().endsWith('.pdf')))) {
+                    postData.pdfName = composeMedia.name;
+                    postData.pdfSize = composeMedia.size;
                 }
             }
 
@@ -547,6 +589,8 @@ const Profile = () => {
             setComposeText('');
             setComposeMedia(null);
             setComposeMediaPreview(null);
+            isVideoFileRef.current = false;
+            isPdfFileRef.current = false;
             setComposeFocused(false);
         } catch (err) {
             console.error('Profile post failed:', err);
@@ -565,15 +609,24 @@ const Profile = () => {
             return;
         }
         setComposeMedia(file);
-        isVideoFileRef.current = file.type.startsWith('video/') ||
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const isVideo = file.type.startsWith('video/') ||
             ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(file.name.split('.').pop().toLowerCase());
-        setComposeMediaPreview(URL.createObjectURL(file));
+        isVideoFileRef.current = isVideo;
+        isPdfFileRef.current = isPdf;
+        if (isPdf) {
+            setComposeMediaPreview({ isPdf: true, name: file.name, size: file.size });
+        } else {
+            setComposeMediaPreview(URL.createObjectURL(file));
+        }
         e.target.value = '';
     };
 
     const removeComposeMedia = () => {
         setComposeMedia(null);
         setComposeMediaPreview(null);
+        isVideoFileRef.current = false;
+        isPdfFileRef.current = false;
         if (composeMediaInputRef.current) {
             composeMediaInputRef.current.value = '';
         }
@@ -1329,7 +1382,24 @@ const Profile = () => {
                                                                     />
                                                                     {composeMediaPreview && (
                                                                         <div className="compose-media-preview">
-                                                                            {composeMedia?.type?.startsWith('video') ? (
+                                                                            {composeMediaPreview?.isPdf ? (
+                                                                                <div className="compose-preview-pdf">
+                                                                                    <FileText size={24} style={{ color: '#f87171', flexShrink: 0 }} />
+                                                                                    <div className="compose-preview-pdf-info">
+                                                                                        <span className="compose-preview-pdf-name" title={composeMediaPreview.name}>
+                                                                                            {composeMediaPreview.name}
+                                                                                        </span>
+                                                                                        <span className="compose-preview-pdf-size">
+                                                                                            {(composeMediaPreview.size / (1024 * 1024)).toFixed(2)} MB
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
+                                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                </div>
+                                                                            ) : composeMedia?.type?.startsWith('video') ? (
                                                                                 <video src={composeMediaPreview} className="compose-preview-video" />
                                                                             ) : (
                                                                                 <img
@@ -1341,16 +1411,18 @@ const Profile = () => {
                                                                                     height="150"
                                                                                 />
                                                                             )}
-                                                                            <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
-                                                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                                                                </svg>
-                                                                            </button>
+                                                                            {!composeMediaPreview?.isPdf && (
+                                                                                <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
+                                                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                     <div className="compose-actions">
                                                                         <div className="compose-tools">
-                                                                            <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()} title="Fotoğraf / GIF">
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()} title="Fotoğraf / Video / PDF / GIF">
                                                                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
                                                                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                                                                                     <circle cx="8.5" cy="8.5" r="1.5" />
@@ -1378,7 +1450,7 @@ const Profile = () => {
                                                                             <input
                                                                                 ref={composeMediaInputRef}
                                                                                 type="file"
-                                                                                accept="image/*,video/*,.gif"
+                                                                                accept="image/*,video/*,.gif,.pdf,application/pdf"
                                                                                 onChange={handleComposeMediaSelect}
                                                                                 style={{ display: 'none' }}
                                                                             />
@@ -1576,8 +1648,66 @@ const Profile = () => {
                                                                             return null;
                                                                         })()}
 
+                                                                        {/* PDF Document Card */}
+                                                                        {(post.pdfUrl || (post.media && (post.mediaType === 'pdf' || (typeof post.media === 'string' && post.media.toLowerCase().endsWith('.pdf'))))) && (() => {
+                                                                            const pdfUrl = post.pdfUrl || post.media;
+                                                                            return (
+                                                                                <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
+                                                                                    <div
+                                                                                        className="pdf-glass-card"
+                                                                                        onClick={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            window.open(getImageUrl(pdfUrl), '_blank', 'noopener,noreferrer');
+                                                                                        }}
+                                                                                    >
+                                                                                        {post.pdfThumbnailUrl ? (
+                                                                                            <div className="pdf-thumbnail-wrapper">
+                                                                                                <img
+                                                                                                    src={getImageUrl(post.pdfThumbnailUrl)}
+                                                                                                    alt="PDF preview"
+                                                                                                    className="pdf-thumbnail"
+                                                                                                    loading="lazy"
+                                                                                                    decoding="async"
+                                                                                                    width="150"
+                                                                                                    height="200"
+                                                                                                />
+                                                                                                <div className="pdf-badge">PDF</div>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <div className="pdf-icon-placeholder">
+                                                                                                <FileText size={24} style={{ color: '#f87171' }} />
+                                                                                                <div className="pdf-icon-text">PDF</div>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        <div className="pdf-info">
+                                                                                            <span className="pdf-name" title={post.pdfName || 'Doküman.pdf'}>
+                                                                                                {post.pdfName || 'Doküman.pdf'}
+                                                                                            </span>
+                                                                                            <span className="pdf-size">
+                                                                                                {post.pdfSize ? (post.pdfSize / (1024 * 1024)).toFixed(2) + ' MB' : '0.00 MB'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="pdf-download-btn"
+                                                                                            onClick={async (e) => {
+                                                                                                e.stopPropagation();
+                                                                                                const url = getImageUrl(pdfUrl);
+                                                                                                const filename = post.pdfName || 'Doküman.pdf';
+                                                                                                await nativeDownloadFile(url, filename);
+                                                                                            }}
+                                                                                            aria-label="PDF İndir"
+                                                                                            title="İndir"
+                                                                                        >
+                                                                                            <Download size={16} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })()}
+
                                                                         {/* Media */}
-                                                                        {post.media && (
+                                                                        {post.media && post.mediaType !== 'pdf' && !post.pdfUrl && !(typeof post.media === 'string' && post.media.toLowerCase().endsWith('.pdf')) && (
                                                                             <div className="profile-post-media">
                                                                                 {post.mediaType === 'video' ? (
                                                                                     <VideoPlayer
@@ -1652,7 +1782,33 @@ const Profile = () => {
 
                                         {activeTab === 'memberships' && (
                                             <div className="tab-content fade-in">
-                                                <h4 className="section-header">ÜYE OLUNAN PORTALLAR</h4>
+                                                <div className="section-header-row">
+                                                    <h4 className="section-header">
+                                                        ÜYELİKLER ({profileUser.portals?.length || 0})
+                                                    </h4>
+                                                    {!profileUser.portalsHidden && ((profileUser.portals || []).length > 0 || portalSearchQuery) && (
+                                                        <div className="profile-minimal-search">
+                                                            <Search size={13} className="minimal-search-icon" />
+                                                            <input
+                                                                type="text"
+                                                                value={portalSearchQuery}
+                                                                onChange={(e) => setPortalSearchQuery(e.target.value)}
+                                                                placeholder="Portal ara..."
+                                                                className="minimal-search-input"
+                                                            />
+                                                            {portalSearchQuery && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="minimal-search-clear"
+                                                                    onClick={() => setPortalSearchQuery('')}
+                                                                    title="Temizle"
+                                                                >
+                                                                    <X size={12} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 {profileUser.portalsHidden ? (
                                                     <div className="locked-portals">
                                                         <svg
@@ -1678,8 +1834,8 @@ const Profile = () => {
                                                     </div>
                                                 ) : (
                                                     <div className="portals-grid">
-                                                        {profileUser.portals?.length > 0 ? (
-                                                            profileUser.portals.map((p) => (
+                                                        {filteredPortals.length > 0 ? (
+                                                            filteredPortals.map((p) => (
                                                                 <div
                                                                     key={p._id}
                                                                     className="portal-item-card"
@@ -1729,7 +1885,7 @@ const Profile = () => {
                                                             ))
                                                         ) : (
                                                             <div className="empty-tab">
-                                                                Henüz bir portala üye olunmamış.
+                                                                {portalSearchQuery.trim() ? 'Aramanızla eşleşen portal bulunamadı.' : 'Henüz bir portala üye olunmamış.'}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1739,13 +1895,13 @@ const Profile = () => {
 
                                         {activeTab === 'friends' && (
                                             <div className="tab-content fade-in">
-                                                {!isOwnProfile && (profileUser.mutualFriends || []).length > 0 && (
+                                                {!isOwnProfile && (profileUser.mutualFriends || []).length > 0 && (!friendSearchQuery.trim() || filteredMutualFriends.length > 0) && (
                                                     <div style={{ marginBottom: '24px' }}>
                                                         <h4 className="section-header">
-                                                            ORTAK ARKADAŞLAR ({profileUser.mutualFriends.length})
+                                                            ORTAK ARKADAŞLAR ({filteredMutualFriends.length})
                                                         </h4>
                                                         <div className="friends-grid">
-                                                            {profileUser.mutualFriends.map((friend) => (
+                                                            {filteredMutualFriends.map((friend) => (
                                                                 <div
                                                                     key={friend._id}
                                                                     className="friend-item-card"
@@ -1795,16 +1951,40 @@ const Profile = () => {
                                                     </div>
                                                 )}
 
-                                                <h4 className="section-header">
-                                                    {isOwnProfile
-                                                        ? `ARKADAŞLAR (${profileUser.friends?.length || 0})`
-                                                        : (!isOwnProfile && (profileUser.mutualFriends || []).length > 0
-                                                            ? `TÜM ARKADAŞLAR (${profileUser.friends?.length || 0})`
-                                                            : `ARKADAŞLAR (${profileUser.friends?.length || 0})`)}
-                                                </h4>
+                                                <div className="section-header-row">
+                                                    <h4 className="section-header">
+                                                        {isOwnProfile
+                                                            ? `ARKADAŞLAR (${profileUser.friends?.length || 0})`
+                                                            : (!isOwnProfile && (profileUser.mutualFriends || []).length > 0
+                                                                ? `TÜM ARKADAŞLAR (${profileUser.friends?.length || 0})`
+                                                                : `ARKADAŞLAR (${profileUser.friends?.length || 0})`)}
+                                                    </h4>
+                                                    {((profileUser.friends || []).length > 0 || friendSearchQuery) && (
+                                                        <div className="profile-minimal-search">
+                                                            <Search size={13} className="minimal-search-icon" />
+                                                            <input
+                                                                type="text"
+                                                                value={friendSearchQuery}
+                                                                onChange={(e) => setFriendSearchQuery(e.target.value)}
+                                                                placeholder="Arkadaş ara..."
+                                                                className="minimal-search-input"
+                                                            />
+                                                            {friendSearchQuery && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="minimal-search-clear"
+                                                                    onClick={() => setFriendSearchQuery('')}
+                                                                    title="Temizle"
+                                                                >
+                                                                    <X size={12} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div className="friends-grid">
-                                                    {(profileUser.friends || []).length > 0 ? (
-                                                        profileUser.friends.map((friend) => (
+                                                    {filteredFriends.length > 0 ? (
+                                                        filteredFriends.map((friend) => (
                                                             <div
                                                                 key={friend._id}
                                                                 className="friend-item-card"
@@ -1852,7 +2032,7 @@ const Profile = () => {
                                                         ))
                                                     ) : (
                                                         <div className="empty-tab">
-                                                            Henüz ekli arkadaş yok.
+                                                            {friendSearchQuery.trim() ? 'Aramanızla eşleşen arkadaş bulunamadı.' : 'Henüz ekli arkadaş yok.'}
                                                         </div>
                                                     )}
                                                 </div>
