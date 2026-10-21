@@ -27,15 +27,55 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.0)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.1)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.4.1',
+        versionCode: 241,
+        releaseDate: '22 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Yeni Nesil X/Twitter Rozet Motoru, Dinamik Metalik Shader, Profil Üyelik & Arkadaşlık 2x2 Grid Yönetimi, Mobil Portal İyileştirmeleri',
+        summary: 'Özel rozet sistemi X/Twitter doğrulama rozetleri, 10 ve 12 köşeli rozetler (rosette), dinamik metalik shader ve agresif monokrom tasarım ile yeniden tasarlandı. Profil sayfasına 2x2 grid yapısında üyelik ve arkadaşlık yönetimi, minimal arama ve PDF gönderi desteği eklendi. Mobil portal bilgi ekranı istatistikleri ve butonları kompakt hale getirildi, animasyonlu GIF kırpma ve oynatma optimizasyonları yapıldı.',
+        category: 'feat',
+        apkSize: '78.6 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Otantik X/Twitter doğrulama rozetleri, 10 & 12 köşeli rozet şekilleri ve dinamik metalik yansıma motoru',
+            'Profil sayfalarında 2x2 grid ile kompakt portal üyelikleri ve arkadaşlık kartları, arama ve hızlı ayrılma/çıkarma aksiyonları',
+            'Profil sekmesinde PDF doküman gönderilerinin doğrudan görüntülenmesi ve filtreleme desteği',
+            'Mobil ekranlar için sıkılaştırılmış ve dikey alan tasarrufu sağlayan portal istatistikleri ve etiketleri',
+            'ImageCropper ve medya işlemcisi arasında birebir ölçeklenen animasyonlu GIF yükleme ve kırpma pipeline\'ı',
+            'Admin Panelinde baştan aşağı yenilenen Rozet Stüdyosu (Badge Studio) ile anlık SVG/CSS/Gradient önizleme'
+        ],
+        changes: [
+            { type: 'feat', text: 'Özel rozet motoruna otantik X rozetleri, rozet tipleri (solid, gradient, iridescent, holographic) ve dinamik metalik shader eklendi.' },
+            { type: 'ui', text: 'Profil sayfalarında üyelikler ve arkadaşlar bölümleri 2x2 mobil dostu ızgara düzenine taşındı, anlık arama entegre edildi.' },
+            { type: 'feat', text: 'Profil sayfasında PDF gönderilerinin önizleme kartları ve doküman indirme butonları eklendi.' },
+            { type: 'ui', text: 'Portal detay ve bilgi modalında mobil ekranlar için kompakt istatistik ızgarası ve yuvarlatılmış kapak kenarları uygulandı.' },
+            { type: 'fix', text: 'Animasyonlu GIF kırpma işleminde ön yüz önizlemesi ile sunucu tarafı sharp koordinatları tam senkronize edildi.' },
+            { type: 'admin', text: 'AdminDashboard Rozet Stüdyosu geliştirildi, özel ikonlu üye portal rozetleri ve canlı şekil önizlemeleri sağlandı.' },
+            { type: 'build', text: 'Android Release APK derlemesi yapıldı, dist-mobile optimize edildi.' }
+        ],
+        affectedFiles: [
+            'client/src/components/UserBadges.jsx',
+            'client/src/components/UserBadges.css',
+            'client/src/pages/AdminDashboard.jsx',
+            'client/src/pages/Profile.jsx',
+            'client/src/pages/Profile.css',
+            'client/src/components/PortalInfoModal.jsx',
+            'client/src/components/ImageCropper.jsx',
+            'models/CustomBadge.js'
+        ]
+    },
     {
         version: 'v2.4.0',
         versionCode: 240,
         releaseDate: '11 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: 'fcc6334',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Yüksek Performanslı Medya & Görsel Önbellekleme, LRU Bellek & ETag 304 Hızlandırması',
         summary: 'Uygulama içi profil ve portal avatarları, kapak görselleri ve post medyalarındaki yükleme gecikmeleri analiz edilerek uçtan uca performans devrimi yapıldı: Sunucu tarafında LRU bellek içi önbellekleme, HTTP 304 (ETag) desteği, Cloudflare R2 için persistent HTTPS bağlantı havuzu, eksik varyantlar için sunucu seviyesinde otomatik telafi ve Android WebView disk önbellek optimizasyonu uygulandı.',
         category: 'perf',
@@ -585,7 +625,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.0': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.1': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
@@ -696,7 +736,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             </div>
                             <h1 className="mvh-title">Mobil Sürüm Günlüğü & Changelog</h1>
                             <p className="mvh-subtitle">
-                                Oxypace Android istemcisinin v2.0.0'dan v2.4.0'a kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
+                                Oxypace Android istemcisinin v2.0.0'dan v2.4.1'e kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
                             </p>
                         </div>
                     </div>
@@ -749,7 +789,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <div className="mvh-metric-val-row">
                                 <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="mvh-metric-desc">v2.0.0 → v2.4.0 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.4.1 Gelişim Süreci</span>
                         </div>
                     </div>
 

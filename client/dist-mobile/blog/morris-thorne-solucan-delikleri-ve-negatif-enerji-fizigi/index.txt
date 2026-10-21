@@ -1,49 +1,68 @@
 1:"$Sreact.fragment"
-3:I[7989,["177","static/chunks/app/layout-9df323ac7a159213.js"],"default"]
-4:I[7121,[],""]
-5:I[4581,[],""]
 c:I[7123,[],"default",1]
-:HL["/_next/static/css/327c91087b364dea.css","style"]
-2:T5c3,
-              try {
-                var isFirstVisitOfSession = !sessionStorage.getItem('hasVisitedThisSession');
-                sessionStorage.setItem('hasVisitedThisSession', 'true');
+:HL["/_next/static/css/95b0eeb0d6357d1a.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap","style"]
+2:T7ee,
+              (function() {
+                try {
+                  var t = localStorage.getItem('token');
+                  var isAuth = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
+                  var p = window.location.pathname;
+                  var isHome = p === '/' || p === '' || p === '/index.html';
 
-                var pathname = window.location.pathname;
-                var isBlogPath = pathname.indexOf('/blog') === 0;
+                  if (isAuth) {
+                    try {
+                      document.cookie = "token=" + encodeURIComponent(t) + "; path=/; max-age=31536000; SameSite=Lax";
+                    } catch (_) {}
 
-                var t = localStorage.getItem('token');
-                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 20;
+                    if (isHome) {
+                      // Home sayfası 1 milisaniye bile ekranda görünmesin diye HTML'i anında gizle
+                      if (document.documentElement) {
+                        document.documentElement.style.display = 'none';
+                      }
+                      var target = '/messages';
+                      var topPortal = localStorage.getItem('oxypace_top_portal');
+                      if (topPortal) {
+                        try {
+                          var parsed = JSON.parse(topPortal);
+                          if (parsed && parsed.id) target = '/portal/' + parsed.id;
+                        } catch (_) {}
+                      }
+                      window.location.replace(target);
+                      return;
+                    }
+                  }
 
-                // Yönlendirme SADECE ilk girişte ve SADECE ana URL ('/') adresindeyken yapılır.
-                // Eğer girilen URL bir blog linki ise (/blog/...) ASLA yönlendirme yapılmaz.
-                if (isFirstVisitOfSession && isLoggedIn && !isBlogPath && (pathname === '/' || pathname === '')) {
-                  window.location.replace('/messages');
-                }
-
-                var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
-                if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                  document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                  document.documentElement.setAttribute('data-theme', 'light');
-                }
-              } catch (_) {}
-            0:{"P":null,"c":["","blog","morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi",""],"q":"","i":false,"f":[[["",{"children":["blog",{"children":[["slug","morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi","d",null],{"children":["__PAGE__",{}]}]}]},"$undefined","$undefined",16],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/327c91087b364dea.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"tr","className":"__variable_246ccd __variable_c29908 h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}],["$","script",null,{"async":true,"src":"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107","crossorigin":"anonymous"}],["$","script",null,{"async":true,"type":"application/javascript","src":"https://news.google.com/swg/js/v1/swg-basic.js"}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"\n              try {\n                var lastShown = localStorage.getItem('swg_last_shown_time');\n                var now = Date.now();\n                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat\n\n                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {\n                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {\n                    basicSubscriptions.init({\n                      type: \"NewsArticle\",\n                      isPartOfType: [\"Product\"],\n                      isPartOfProductId: \"CAowz_nMDA:openaccess\",\n                      clientOptions: { theme: \"light\", lang: \"tr\" },\n                    });\n                    localStorage.setItem('swg_last_shown_time', now.toString());\n                  });\n                }\n              } catch (_) {}\n            "}}]]}],["$","body",null,{"className":"min-h-full flex flex-col transition-colors duration-300","children":[["$","$L3",null,{}],["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$L6","forbidden":"$undefined","unauthorized":"$undefined"}]]}]]}]]}],{"children":["$L7",{"children":["$L8",{"children":["$L9",{},null,false,null]},null,false,"$@a"]},null,false,"$@a"]},null,false,null],"$Lb",false]],"m":"$undefined","G":["$c",[]],"S":true,"h":null,"s":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"u0o_RuLeIinQj9WdJEemM"}
-e:I[484,[],"OutletBoundary"]
-f:"$Sreact.suspense"
-12:I[484,[],"ViewportBoundary"]
-14:I[484,[],"MetadataBoundary"]
-6:[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]
-7:["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
-8:["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
-9:["$","$1","c",{"children":["$Ld",null,["$","$Le",null,{"children":["$","$f",null,{"name":"Next.MetadataOutlet","children":"$@10"}]}]]}]
-11:[]
-a:"$W11"
-b:["$","$1","h",{"children":[null,["$","$L12",null,{"children":"$L13"}],["$","div",null,{"hidden":true,"children":["$","$L14",null,{"children":["$","$f",null,{"name":"Next.Metadata","children":"$L15"}]}]}],null]}]
-16:I[8013,["257","static/chunks/257-a3913a9a898aeef4.js","686","static/chunks/686-3d181fd7748437b6.js","13","static/chunks/13-fc04d544a539df52.js","953","static/chunks/app/blog/%5Bslug%5D/page-b9881672a3af81e5.js"],"default"]
-17:Tbab,
+                  var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                  if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                } catch (_) {}
+              })();
+            0:{"P":null,"c":["","blog","morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi",""],"q":"","i":false,"f":[[["",{"children":["blog",{"children":[["slug","morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi","d",null],{"children":["__PAGE__",{}]}]}]},"$undefined","$undefined",16],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/95b0eeb0d6357d1a.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"tr","className":"h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}],["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap","rel":"stylesheet"}],["$","link",null,{"rel":"icon","type":"image/png","sizes":"32x32","href":"/logo.png"}],["$","link",null,{"rel":"icon","type":"image/png","sizes":"16x16","href":"/logo.png"}],["$","link",null,{"rel":"apple-touch-icon","sizes":"180x180","href":"/logo192.png"}],["$","meta",null,{"name":"google-site-verification","content":"rwtbjVtSL--DZHB5gQfbwyj-x2CV8m6sBTakYbn78uc"}],["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebSite\",\"@id\":\"https://oxypace.com.tr/#website\",\"url\":\"https://oxypace.com.tr/\",\"name\":\"Oxypace\",\"alternateName\":[\"Oxypace Platformu\",\"Oxypace Portal\"],\"description\":\"Topluluk Kur ve Birlikte Film İzle\",\"publisher\":{\"@id\":\"https://oxypace.com.tr/#organization\"},\"inLanguage\":\"tr-TR\"},{\"@type\":\"Organization\",\"@id\":\"https://oxypace.com.tr/#organization\",\"name\":\"Oxypace\",\"url\":\"https://oxypace.com.tr/\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https://oxypace.com.tr/logo.png\",\"caption\":\"Oxypace Logo\"},\"image\":\"https://oxypace.com.tr/logo.png\"},{\"@type\":\"SiteNavigationElement\",\"@id\":\"https://oxypace.com.tr/#navigation\",\"name\":\"Portallara Giriş / Kayıt\",\"description\":\"Oxypace topluluk portallarına giriş yapın veya yeni bir hesap oluşturun.\",\"url\":\"https://oxypace.com.tr/login\"}]}"}}],"$L3","$L4","$L5"]}],"$L6"]}]]}],{"children":["$L7",{"children":["$L8",{"children":["$L9",{},null,false,null]},null,false,"$@a"]},null,false,null]},null,false,null],"$Lb",false]],"m":"$undefined","G":["$c",[]],"S":true,"h":null,"s":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"LLCTIrcoflfx-goWaiAmS"}
+d:I[7121,[],""]
+e:I[4581,[],""]
+f:I[7989,["584","static/chunks/app/blog/layout-4a7b272124d7ff93.js"],"default"]
+11:I[484,[],"OutletBoundary"]
+12:"$Sreact.suspense"
+15:I[484,[],"ViewportBoundary"]
+17:I[484,[],"MetadataBoundary"]
+3:["$","script",null,{"async":true,"src":"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107","crossorigin":"anonymous"}]
+4:["$","script",null,{"async":true,"type":"application/javascript","src":"https://news.google.com/swg/js/v1/swg-basic.js"}]
+5:["$","script",null,{"dangerouslySetInnerHTML":{"__html":"\n              try {\n                var lastShown = localStorage.getItem('swg_last_shown_time');\n                var now = Date.now();\n                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat\n\n                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {\n                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {\n                    basicSubscriptions.init({\n                      type: \"NewsArticle\",\n                      isPartOfType: [\"Product\"],\n                      isPartOfProductId: \"CAowz_nMDA:openaccess\",\n                      clientOptions: { theme: \"light\", lang: \"tr\" },\n                    });\n                    localStorage.setItem('swg_last_shown_time', now.toString());\n                  });\n                }\n              } catch (_) {}\n            "}}]
+6:["$","body",null,{"className":"min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]","children":["$","$Ld",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Le",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]
+7:["$","$1","c",{"children":[null,[["$","$Lf",null,{}],["$","$Ld",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Le",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]]}]
+8:["$","$1","c",{"children":[null,["$","$Ld",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Le",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+9:["$","$1","c",{"children":["$L10",null,["$","$L11",null,{"children":["$","$12",null,{"name":"Next.MetadataOutlet","children":"$@13"}]}]]}]
+14:[]
+a:"$W14"
+b:["$","$1","h",{"children":[null,["$","$L15",null,{"children":"$L16"}],["$","div",null,{"hidden":true,"children":["$","$L17",null,{"children":["$","$12",null,{"name":"Next.Metadata","children":"$L18"}]}]}],null]}]
+19:I[8013,["500","static/chunks/500-c99b8dfd3de17c86.js","686","static/chunks/686-84975f35519b3215.js","13","static/chunks/13-fc04d544a539df52.js","953","static/chunks/app/blog/%5Bslug%5D/page-7549f3e465ac21c2.js"],"default"]
+1a:Tbab,
       <p class="lead text-lg text-zinc-300 mb-6">Genel Görelilik kuramının en büyüleyici ve tartışmalı öngörülerinden biri, uzay-zamanın iki uzak noktasını birbirine bağlayan topolojik tünellerdir: Solucan Delikleri (Wormholes). Ancak onlarca yıl boyunca bu yapılar yalnızca matematiksel bir fantezi olarak kaldı. Çünkü 1935 tarihli klasik Einstein-Rosen köprüsü, üzerinden hiçbir maddenin geçemeyeceği kadar kararsızdı ve anında tekilliğe çöküyordu.</p>
       
       <h2 class="text-2xl font-bold text-white mt-8 mb-4">1988 Devrimi: Morris-Thorne Metriği</h2>
@@ -62,8 +81,8 @@ b:["$","$1","h",{"children":[null,["$","$L12",null,{"children":"$L13"}],["$","di
 
       <h2 class="text-2xl font-bold text-white mt-8 mb-4">İnteraktif Simülatör ve İspatlar</h2>
       <p class="text-zinc-300 mb-4">Event Horizon Hesaplama Portalı'nda yer alan 3D Morris-Thorne simülatörümüzle, farklı boğaz yarıçapları için gereken negatif enerji miktarını, insan boyundaki bir astronotun maruz kalacağı diferansiyel gelgit kuvvetlerini ve uzay yolculuğu sürelerini canlı hesaplayabilirsiniz.</p>
-    d:["$","$L16",null,{"initialPost":{"id":7,"title":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği","slug":"morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi","excerpt":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu fiziği.","category":"Teorik Astrofizik","readTime":"15 dk okuma","date":"16 Temmuz 2026","image":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80","content":"$17"},"slug":"morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi"}]
-13:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
-18:I[6869,[],"IconMark"]
-10:null
-15:[["$","title","0",{"children":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği | Oxypace Blog"}],["$","meta","1",{"name":"description","content":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu"}],["$","meta","2",{"property":"og:title","content":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği"}],["$","meta","3",{"property":"og:description","content":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu"}],["$","meta","4",{"property":"og:url","content":"https://oxypace.com.tr/blog/morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi/"}],["$","meta","5",{"property":"og:site_name","content":"Oxypace Blog"}],["$","meta","6",{"property":"og:image","content":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80"}],["$","meta","7",{"property":"og:image:width","content":"1200"}],["$","meta","8",{"property":"og:image:height","content":"630"}],["$","meta","9",{"property":"og:image:alt","content":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği"}],["$","meta","10",{"property":"og:type","content":"article"}],["$","meta","11",{"property":"article:published_time","content":"16 Temmuz 2026"}],["$","meta","12",{"property":"article:author","content":"Oxypace"}],["$","meta","13",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","14",{"name":"twitter:creator","content":"@oxypace"}],["$","meta","15",{"name":"twitter:title","content":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği"}],["$","meta","16",{"name":"twitter:description","content":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu"}],["$","meta","17",{"name":"twitter:image","content":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80"}],["$","link","18",{"rel":"icon","href":"/favicon.ico?603d046c9a6fdfbb","type":"image/x-icon","sizes":"16x16"}],["$","$L18","19",{}]]
+    10:["$","$L19",null,{"initialPost":{"id":7,"title":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği","slug":"morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi","excerpt":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu fiziği.","category":"Teorik Astrofizik","readTime":"15 dk okuma","date":"16 Temmuz 2026","image":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80","content":"$1a"},"slug":"morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi"}]
+16:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+1b:I[6869,[],"IconMark"]
+13:null
+18:[["$","title","0",{"children":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği | Oxypace Blog"}],["$","meta","1",{"name":"description","content":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu"}],["$","meta","2",{"name":"application-name","content":"Oxypace"}],["$","meta","3",{"name":"robots","content":"index, follow"}],["$","meta","4",{"name":"googlebot","content":"index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1"}],["$","link","5",{"rel":"canonical","href":"https://oxypace.com.tr/"}],["$","meta","6",{"property":"og:title","content":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği"}],["$","meta","7",{"property":"og:description","content":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu"}],["$","meta","8",{"property":"og:url","content":"https://oxypace.com.tr/blog/morris-thorne-solucan-delikleri-ve-negatif-enerji-fizigi/"}],["$","meta","9",{"property":"og:site_name","content":"Oxypace Blog"}],["$","meta","10",{"property":"og:image","content":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80"}],["$","meta","11",{"property":"og:image:width","content":"1200"}],["$","meta","12",{"property":"og:image:height","content":"630"}],["$","meta","13",{"property":"og:image:alt","content":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği"}],["$","meta","14",{"property":"og:type","content":"article"}],["$","meta","15",{"property":"article:published_time","content":"16 Temmuz 2026"}],["$","meta","16",{"property":"article:author","content":"Oxypace"}],["$","meta","17",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","18",{"name":"twitter:creator","content":"@oxypace"}],["$","meta","19",{"name":"twitter:title","content":"Uzay-Zaman Kısayolları: Morris-Thorne Solucan Delikleri ve Negatif Enerji Fiziği"}],["$","meta","20",{"name":"twitter:description","content":"Işık hızını aşmadan yıldızlararası seyahat mümkün mü? 1988 Kip Thorne metriği, Einstein-Rosen köprülerinin çöküşü ve Casimir etkisiyle negatif enerji yoğunluğu"}],["$","meta","21",{"name":"twitter:image","content":"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=800&q=80"}],["$","link","22",{"rel":"icon","href":"/favicon.ico?603d046c9a6fdfbb","type":"image/x-icon","sizes":"16x16"}],["$","link","23",{"rel":"icon","href":"/logo.png","sizes":"32x32","type":"image/png"}],["$","link","24",{"rel":"icon","href":"/logo.png","sizes":"16x16","type":"image/png"}],["$","link","25",{"rel":"apple-touch-icon","href":"/logo192.png","sizes":"180x180","type":"image/png"}],["$","$L1b","26",{}]]

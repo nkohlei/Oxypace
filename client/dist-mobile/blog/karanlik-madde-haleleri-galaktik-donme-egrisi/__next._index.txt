@@ -1,33 +1,51 @@
 1:"$Sreact.fragment"
-3:I[7989,["177","static/chunks/app/layout-9df323ac7a159213.js"],"default"]
-4:I[7121,[],""]
-5:I[4581,[],""]
-:HL["/_next/static/css/327c91087b364dea.css","style"]
-2:T5c3,
-              try {
-                var isFirstVisitOfSession = !sessionStorage.getItem('hasVisitedThisSession');
-                sessionStorage.setItem('hasVisitedThisSession', 'true');
+7:I[7121,[],""]
+8:I[4581,[],""]
+:HL["/_next/static/css/95b0eeb0d6357d1a.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap","style"]
+2:T7ee,
+              (function() {
+                try {
+                  var t = localStorage.getItem('token');
+                  var isAuth = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
+                  var p = window.location.pathname;
+                  var isHome = p === '/' || p === '' || p === '/index.html';
 
-                var pathname = window.location.pathname;
-                var isBlogPath = pathname.indexOf('/blog') === 0;
+                  if (isAuth) {
+                    try {
+                      document.cookie = "token=" + encodeURIComponent(t) + "; path=/; max-age=31536000; SameSite=Lax";
+                    } catch (_) {}
 
-                var t = localStorage.getItem('token');
-                var isLoggedIn = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 20;
+                    if (isHome) {
+                      // Home sayfası 1 milisaniye bile ekranda görünmesin diye HTML'i anında gizle
+                      if (document.documentElement) {
+                        document.documentElement.style.display = 'none';
+                      }
+                      var target = '/messages';
+                      var topPortal = localStorage.getItem('oxypace_top_portal');
+                      if (topPortal) {
+                        try {
+                          var parsed = JSON.parse(topPortal);
+                          if (parsed && parsed.id) target = '/portal/' + parsed.id;
+                        } catch (_) {}
+                      }
+                      window.location.replace(target);
+                      return;
+                    }
+                  }
 
-                // Yönlendirme SADECE ilk girişte ve SADECE ana URL ('/') adresindeyken yapılır.
-                // Eğer girilen URL bir blog linki ise (/blog/...) ASLA yönlendirme yapılmaz.
-                if (isFirstVisitOfSession && isLoggedIn && !isBlogPath && (pathname === '/' || pathname === '')) {
-                  window.location.replace('/messages');
-                }
-
-                var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
-                if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                  document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                  document.documentElement.setAttribute('data-theme', 'light');
-                }
-              } catch (_) {}
-            0:{"rsc":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/327c91087b364dea.css","precedence":"next"}]],["$","html",null,{"lang":"tr","className":"__variable_246ccd __variable_c29908 h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}],["$","script",null,{"async":true,"src":"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107","crossorigin":"anonymous"}],["$","script",null,{"async":true,"type":"application/javascript","src":"https://news.google.com/swg/js/v1/swg-basic.js"}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"\n              try {\n                var lastShown = localStorage.getItem('swg_last_shown_time');\n                var now = Date.now();\n                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat\n\n                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {\n                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {\n                    basicSubscriptions.init({\n                      type: \"NewsArticle\",\n                      isPartOfType: [\"Product\"],\n                      isPartOfProductId: \"CAowz_nMDA:openaccess\",\n                      clientOptions: { theme: \"light\", lang: \"tr\" },\n                    });\n                    localStorage.setItem('swg_last_shown_time', now.toString());\n                  });\n                }\n              } catch (_) {}\n            "}}]]}],["$","body",null,{"className":"min-h-full flex flex-col transition-colors duration-300","children":[["$","$L3",null,{}],["$","$L4",null,{"parallelRouterKey":"children","template":["$","$L5",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":"$L6"}]],[]]}]]}]]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"u0o_RuLeIinQj9WdJEemM"}
-6:["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]
+                  var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                  if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                } catch (_) {}
+              })();
+            0:{"rsc":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/95b0eeb0d6357d1a.css","precedence":"next"}]],["$","html",null,{"lang":"tr","className":"h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}],["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap","rel":"stylesheet"}],["$","link",null,{"rel":"icon","type":"image/png","sizes":"32x32","href":"/logo.png"}],["$","link",null,{"rel":"icon","type":"image/png","sizes":"16x16","href":"/logo.png"}],["$","link",null,{"rel":"apple-touch-icon","sizes":"180x180","href":"/logo192.png"}],["$","meta",null,{"name":"google-site-verification","content":"rwtbjVtSL--DZHB5gQfbwyj-x2CV8m6sBTakYbn78uc"}],["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebSite\",\"@id\":\"https://oxypace.com.tr/#website\",\"url\":\"https://oxypace.com.tr/\",\"name\":\"Oxypace\",\"alternateName\":[\"Oxypace Platformu\",\"Oxypace Portal\"],\"description\":\"Topluluk Kur ve Birlikte Film İzle\",\"publisher\":{\"@id\":\"https://oxypace.com.tr/#organization\"},\"inLanguage\":\"tr-TR\"},{\"@type\":\"Organization\",\"@id\":\"https://oxypace.com.tr/#organization\",\"name\":\"Oxypace\",\"url\":\"https://oxypace.com.tr/\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https://oxypace.com.tr/logo.png\",\"caption\":\"Oxypace Logo\"},\"image\":\"https://oxypace.com.tr/logo.png\"},{\"@type\":\"SiteNavigationElement\",\"@id\":\"https://oxypace.com.tr/#navigation\",\"name\":\"Portallara Giriş / Kayıt\",\"description\":\"Oxypace topluluk portallarına giriş yapın veya yeni bir hesap oluşturun.\",\"url\":\"https://oxypace.com.tr/login\"}]}"}}],"$L3","$L4","$L5"]}],"$L6"]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"LLCTIrcoflfx-goWaiAmS"}
+3:["$","script",null,{"async":true,"src":"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107","crossorigin":"anonymous"}]
+4:["$","script",null,{"async":true,"type":"application/javascript","src":"https://news.google.com/swg/js/v1/swg-basic.js"}]
+5:["$","script",null,{"dangerouslySetInnerHTML":{"__html":"\n              try {\n                var lastShown = localStorage.getItem('swg_last_shown_time');\n                var now = Date.now();\n                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat\n\n                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {\n                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {\n                    basicSubscriptions.init({\n                      type: \"NewsArticle\",\n                      isPartOfType: [\"Product\"],\n                      isPartOfProductId: \"CAowz_nMDA:openaccess\",\n                      clientOptions: { theme: \"light\", lang: \"tr\" },\n                    });\n                    localStorage.setItem('swg_last_shown_time', now.toString());\n                  });\n                }\n              } catch (_) {}\n            "}}]
+6:["$","body",null,{"className":"min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]","children":["$","$L7",null,{"parallelRouterKey":"children","template":["$","$L8",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}]}]

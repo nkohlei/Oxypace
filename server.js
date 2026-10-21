@@ -383,12 +383,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.0',
-        versionCode: 240,
-        minSupportedVersionCode: 240,
+        latestVersion: '2.4.1',
+        versionCode: 241,
+        minSupportedVersionCode: 241,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.0: Profil ve portal avatarları, kapak görselleri ve post medyaları için yüksek performanslı bellek içi (LRU) önbellekleme mimarisi, HTTP 304 ETag doğrulama, otomatik varyant telafi sistemi ve mobil veri optimizasyonları.',
+        changelog: 'Oxypace 2.4.1: Yeni nesil X/Twitter rozet motoru, dinamik metalik gölgelendirmeler, profil üyelik ve arkadaşlık 2x2 grid yönetimi, kompakt portal istatistikleri, animasyonlu GIF kırpma ve performans geliştirmeleri.',
     });
 });
 
