@@ -2691,11 +2691,11 @@ const AdminDashboard = () => {
         setAssignLoading(true);
         try {
             if (assignType === 'user') {
-                const { data } = await axios.get(`/api/admin/users?search=${encodeURIComponent(query)}`);
-                setAssignResults(data.users || data || []);
+                const { data } = await axios.get(`/api/admin/users?q=${encodeURIComponent(query)}`);
+                setAssignResults(Array.isArray(data) ? data : (data.users || []));
             } else {
-                const { data } = await axios.get(`/api/admin/portals?search=${encodeURIComponent(query)}`);
-                setAssignResults(data.portals || data || []);
+                const { data } = await axios.get(`/api/admin/portals?q=${encodeURIComponent(query)}`);
+                setAssignResults(Array.isArray(data) ? data : (data.portals || []));
             }
         } catch (err) {
             console.error('Assign search error:', err);
@@ -2711,13 +2711,19 @@ const AdminDashboard = () => {
             if (assignType === 'user') {
                 await axios.put(`/api/admin/users/${targetItem._id}/badge`, { badge: assignTargetBadge.slug });
                 setAssignSuccessMsg(`"${assignTargetBadge.name}" rozeti @${targetItem.username} kullanıcısına başarıyla atandı!`);
+                setAssignResults(prev => prev.map(u => u._id === targetItem._id ? { ...u, verificationBadge: assignTargetBadge.slug, isVerified: true } : u));
+                setUsers(prev => prev.map(u => u._id === targetItem._id ? { ...u, verificationBadge: assignTargetBadge.slug, isVerified: true } : u));
+                setSelectedUserDetail(prev => prev && prev._id === targetItem._id ? { ...prev, verificationBadge: assignTargetBadge.slug, isVerified: true } : prev);
             } else {
                 const existingBadges = targetItem.badges || [];
                 const updatedBadges = existingBadges.includes(assignTargetBadge.slug)
                     ? existingBadges
                     : [...existingBadges, assignTargetBadge.slug];
-                await axios.put(`/api/admin/portals/${targetItem._id}/status`, { badges: updatedBadges });
+                await axios.put(`/api/admin/portals/${targetItem._id}`, { badges: updatedBadges });
                 setAssignSuccessMsg(`"${assignTargetBadge.name}" rozeti "${targetItem.name}" portalına başarıyla atandı!`);
+                setAssignResults(prev => prev.map(p => p._id === targetItem._id ? { ...p, badges: updatedBadges, isVerified: true } : p));
+                setPortals(prev => prev.map(p => p._id === targetItem._id ? { ...p, badges: updatedBadges, isVerified: true } : p));
+                setDetailPortal(prev => prev && prev._id === targetItem._id ? { ...prev, badges: updatedBadges, isVerified: true } : prev);
             }
             refreshBadges();
         } catch (err) {
@@ -2734,11 +2740,17 @@ const AdminDashboard = () => {
             if (assignType === 'user') {
                 await axios.put(`/api/admin/users/${targetItem._id}/badge`, { badge: 'none' });
                 setAssignSuccessMsg(`@${targetItem.username} kullanıcısının rozeti kaldırıldı.`);
+                setAssignResults(prev => prev.map(u => u._id === targetItem._id ? { ...u, verificationBadge: 'none', isVerified: false } : u));
+                setUsers(prev => prev.map(u => u._id === targetItem._id ? { ...u, verificationBadge: 'none', isVerified: false } : u));
+                setSelectedUserDetail(prev => prev && prev._id === targetItem._id ? { ...prev, verificationBadge: 'none', isVerified: false } : prev);
             } else {
                 const existingBadges = targetItem.badges || [];
                 const updatedBadges = existingBadges.filter(b => b !== assignTargetBadge.slug);
-                await axios.put(`/api/admin/portals/${targetItem._id}/status`, { badges: updatedBadges });
+                await axios.put(`/api/admin/portals/${targetItem._id}`, { badges: updatedBadges });
                 setAssignSuccessMsg(`"${targetItem.name}" portalından rozet kaldırıldı.`);
+                setAssignResults(prev => prev.map(p => p._id === targetItem._id ? { ...p, badges: updatedBadges, isVerified: updatedBadges.length > 0 } : p));
+                setPortals(prev => prev.map(p => p._id === targetItem._id ? { ...p, badges: updatedBadges, isVerified: updatedBadges.length > 0 } : p));
+                setDetailPortal(prev => prev && prev._id === targetItem._id ? { ...prev, badges: updatedBadges, isVerified: updatedBadges.length > 0 } : prev);
             }
             refreshBadges();
         } catch (err) {

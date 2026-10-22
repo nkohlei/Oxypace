@@ -137,7 +137,7 @@ const portalSchema = new mongoose.Schema(
                     required: true,
                     trim: true,
                     minlength: 1,
-                    maxlength: 20,
+                    maxlength: 100,
                 },
                 type: {
                     type: String,

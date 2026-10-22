@@ -140,11 +140,18 @@ router.post('/reject-verification/:id', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.get('/users', protect, admin, async (req, res) => {
     try {
-        const { q } = req.query;
+        const q = req.query.q || req.query.search;
         let query = {};
 
         if (q) {
-            query = { username: { $regex: escapeRegex(q), $options: 'i' } };
+            const escaped = escapeRegex(q);
+            query = {
+                $or: [
+                    { username: { $regex: escaped, $options: 'i' } },
+                    { email: { $regex: escaped, $options: 'i' } },
+                    { 'profile.displayName': { $regex: escaped, $options: 'i' } }
+                ]
+            };
         }
 
         const users = await User.find(query)
@@ -181,17 +188,27 @@ router.put('/users/:id/badge', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.verificationBadge = sanitizedBadge;
+        const updateData = {
+            verificationBadge: sanitizedBadge,
+            isVerified: sanitizedBadge !== 'none'
+        };
 
         // If giving badge manually, approve pending request if exists
         if (sanitizedBadge !== 'none' && user.verificationRequest?.status === 'pending') {
-            user.verificationRequest.status = 'approved';
-            user.verificationRequest.badgeType = sanitizedBadge;
-            user.verificationRequest.processedAt = new Date();
+            updateData['verificationRequest.status'] = 'approved';
+            updateData['verificationRequest.badgeType'] = sanitizedBadge;
+            updateData['verificationRequest.processedAt'] = new Date();
+        } else if (sanitizedBadge === 'none' && user.verificationRequest?.status === 'approved') {
+            updateData['verificationRequest.status'] = 'none';
         }
 
-        await user.save();
-        res.json({ message: 'Badge updated', user });
+        const updatedUser = await User.findByIdAndUpdate(
+            req.params.id,
+            { $set: updateData },
+            { new: true, runValidators: false }
+        );
+
+        res.json({ message: 'Badge updated', user: updatedUser });
     } catch (error) {
         console.error('Update badge error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -249,7 +266,7 @@ router.put('/contact-messages/:id/status', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.get('/portals', protect, admin, async (req, res) => {
     try {
-        const { q } = req.query;
+        const q = req.query.q || req.query.search;
         let query = {};
 
         if (q) {
@@ -269,10 +286,10 @@ router.get('/portals', protect, admin, async (req, res) => {
     }
 });
 
-// @route   PUT /api/admin/portals/:id
+// @route   PUT /api/admin/portals/:id AND /api/admin/portals/:id/status
 // @desc    Update portal status/badges/read-only/customBadge
 // @access  Private/Admin
-router.put('/portals/:id', protect, admin, async (req, res) => {
+router.put(['/portals/:id', '/portals/:id/status'], protect, admin, async (req, res) => {
     try {
         const { status, badges, isVerified, customBadge } = req.body;
         const Portal = await import('../models/Portal.js').then(m => m.default);
@@ -282,34 +299,44 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Portal not found' });
         }
 
+        const updateData = {};
+
         // Validate status value
         const ALLOWED_STATUSES = ['active', 'suspended', 'closed'];
         if (status) {
             if (!ALLOWED_STATUSES.includes(status)) {
                 return res.status(400).json({ message: 'Geçersiz durum değeri.' });
             }
-            portal.status = status;
+            updateData.status = status;
         }
 
-        if (req.body.statusReason !== undefined) {portal.statusReason = String(req.body.statusReason).slice(0, 500);}
-        if (req.body.suspendedUntil !== undefined) {portal.suspendedUntil = req.body.suspendedUntil;}
+        if (req.body.statusReason !== undefined) {
+            updateData.statusReason = String(req.body.statusReason).slice(0, 500);
+        }
+        if (req.body.suspendedUntil !== undefined) {
+            updateData.suspendedUntil = req.body.suspendedUntil;
+        }
 
         // Clear suspendedUntil when activating
         if (status === 'active') {
-            portal.suspendedUntil = null;
-            portal.statusReason = '';
+            updateData.suspendedUntil = null;
+            updateData.statusReason = '';
         }
 
         // Validate badges array
-        if (badges) {
+        if (badges !== undefined) {
             if (!Array.isArray(badges) || badges.some(b => typeof b !== 'string')) {
                 return res.status(400).json({ message: 'Rozetler dizi formatında olmalı.' });
             }
-            portal.badges = badges.map(b => b.trim().toLowerCase().slice(0, 50));
+            const cleanBadges = badges.map(b => b.trim().toLowerCase().slice(0, 50));
+            updateData.badges = cleanBadges;
+            if (isVerified === undefined) {
+                updateData.isVerified = cleanBadges.length > 0;
+            }
         }
 
         if (customBadge !== undefined) {
-            portal.customBadge = {
+            updateData.customBadge = {
                 url: customBadge?.url || '',
                 name: customBadge?.name || '',
                 shape: customBadge?.shape || 'round',
@@ -317,12 +344,23 @@ router.put('/portals/:id', protect, admin, async (req, res) => {
             };
         }
 
-        if (typeof isVerified === 'boolean') {portal.isVerified = isVerified;}
-        if (typeof req.body.isNSFW === 'boolean') {portal.isNSFW = req.body.isNSFW;}
-        if (typeof req.body.isReadOnly === 'boolean') {portal.isReadOnly = req.body.isReadOnly;}
+        if (typeof isVerified === 'boolean') {
+            updateData.isVerified = isVerified;
+        }
+        if (typeof req.body.isNSFW === 'boolean') {
+            updateData.isNSFW = req.body.isNSFW;
+        }
+        if (typeof req.body.isReadOnly === 'boolean') {
+            updateData.isReadOnly = req.body.isReadOnly;
+        }
 
-        await portal.save();
-        res.json({ message: 'Portal updated', portal });
+        const updatedPortal = await Portal.findByIdAndUpdate(
+            req.params.id,
+            { $set: updateData },
+            { new: true, runValidators: false }
+        );
+
+        res.json({ message: 'Portal updated', portal: updatedPortal });
     } catch (error) {
         console.error('Update portal error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -341,14 +379,18 @@ router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Portal bulunamadı.' });
         }
 
-        portal.customBadge = {
+        const customBadgeObj = {
             url: url || '',
             name: name || '',
             shape: shape || 'round',
             borderStyle: borderStyle || 'thin'
         };
 
-        await portal.save();
+        const updatedPortal = await Portal.findByIdAndUpdate(
+            req.params.id,
+            { $set: { customBadge: customBadgeObj } },
+            { new: true, runValidators: false }
+        );
 
         // Create notification for portal owner if assigned
         if (url && name && portal.owner) {
@@ -359,13 +401,7 @@ router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
                     await Notification.create({
                         recipient: owner._id,
                         type: 'system',
-                        title: 'Portalınıza Özel Rozet Atandı',
-                        message: `"${portal.name}" portalınıza "${name}" özel ikon rozeti tanımlandı.`,
-                        data: {
-                            portalId: portal._id,
-                            badgeUrl: url,
-                            badgeName: name
-                        }
+                        content: `"${portal.name}" portalınıza "${name}" özel ikon rozeti tanımlandı.`,
                     });
                 }
             } catch (notifErr) {
@@ -373,7 +409,7 @@ router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
             }
         }
 
-        res.json({ message: 'Özel rozet portala atandı.', customBadge: portal.customBadge });
+        res.json({ message: 'Özel rozet portala atandı.', customBadge: updatedPortal?.customBadge || customBadgeObj });
     } catch (error) {
         console.error('Assign portal custom badge error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -1112,18 +1148,22 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
+        if ((user.username === 'oxypace' && req.user.username !== 'oxypace') || req.user.isTouristAdmin) {
             return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
         }
 
-        user.customBadge = {
+        const customBadgeObj = {
             url: url || '',
             name: name || '',
             shape: shape || 'round',
             borderStyle: borderStyle || 'thin'
         };
 
-        await user.save();
+        const updatedUser = await User.findByIdAndUpdate(
+            req.params.id,
+            { $set: { customBadge: customBadgeObj } },
+            { new: true, runValidators: false }
+        );
 
         // Create notification for user
         if (url && name) {
@@ -1141,7 +1181,7 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
             }
         }
 
-        res.json({ message: 'Kullanıcı özel rozeti güncellendi.', user });
+        res.json({ message: 'Kullanıcı özel rozeti güncellendi.', user: updatedUser });
     } catch (error) {
         console.error('Assign custom badge error:', error);
         res.status(500).json({ message: 'Server error' });
