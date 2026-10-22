@@ -13,6 +13,9 @@ const UserBadges = ({ user, size = 18 }) => {
 
     const shape = user.customBadge?.shape || 'round';
     const borderStyle = user.customBadge?.borderStyle || 'thin';
+    // Optical scale: The verified rosette path occupies ~75-80% of its bounding box.
+    // Scaling the custom badge frame to 0.88 ensures both badges have identical optical height.
+    const customSize = Math.max(12, Math.round(size * 0.88));
 
     return (
         <span className="user-badges-container" onClick={(e) => e.stopPropagation()}>
@@ -23,8 +26,8 @@ const UserBadges = ({ user, size = 18 }) => {
                 <span
                     className={`custom-badge-frame shape-${shape} border-${borderStyle}`}
                     style={{
-                        width: `${size}px`,
-                        height: `${size}px`,
+                        width: `${customSize}px`,
+                        height: `${customSize}px`,
                     }}
                     title={user.customBadge.name || 'Özel Rozet'}
                 >

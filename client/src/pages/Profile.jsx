@@ -1207,7 +1207,7 @@ const Profile = () => {
                                             </span>
                                         )}
                                         <div className="badge-alignment-container">
-                                            <UserBadges user={profileUser} size={18} />
+                                            <UserBadges user={profileUser} size={20} />
                                         </div>
                                     </div>
                                     <span className="profile-username-tag">

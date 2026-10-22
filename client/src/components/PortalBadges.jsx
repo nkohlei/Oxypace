@@ -22,6 +22,7 @@ const PortalBadges = ({ portal, size = 18 }) => {
 
     const shape = portal.customBadge?.shape || 'round';
     const borderStyle = portal.customBadge?.borderStyle || 'thin';
+    const customSize = Math.max(12, Math.round(size * 0.88));
 
     return (
         <span className="portal-badges-container" onClick={(e) => e.stopPropagation()}>
@@ -32,8 +33,8 @@ const PortalBadges = ({ portal, size = 18 }) => {
                 <span
                     className={`custom-badge-frame shape-${shape} border-${borderStyle}`}
                     style={{
-                        width: `${size}px`,
-                        height: `${size}px`,
+                        width: `${customSize}px`,
+                        height: `${customSize}px`,
                     }}
                     title={portal.customBadge.name || 'Özel Portal Rozeti'}
                 >

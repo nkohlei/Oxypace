@@ -229,18 +229,23 @@
 
 .user-main-title .title-row {
     display: flex;
-    align-items: flex-end;
-    gap: 6px;
+    align-items: center;
+    gap: 4px;
     flex-wrap: wrap;
-    line-height: 0.9;
+    line-height: 1.2;
     margin-bottom: 2px;
 }
 
 .badge-alignment-container {
-    display: flex;
-    align-items: flex-end;
-    /* Adjust margin slightly if the checkmark sits too low compared to text baseline */
-    margin-bottom: 2px; 
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0;
+    line-height: 1;
+}
+
+.badge-alignment-container .user-badges-container,
+.title-row .user-badges-container {
+    margin-left: 0 !important;
 }
 
 .user-main-title h1 {
@@ -249,7 +254,9 @@
     color: var(--text-primary);
     letter-spacing: -0.5px;
     margin: 0;
-    line-height: 0.9;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
 }
 
 .profile-username-tag {

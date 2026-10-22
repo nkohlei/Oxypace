@@ -237,13 +237,14 @@
 .conv-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
 }
 
 .conv-user-info {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    min-width: 0;
 }
 
 .conv-name {
@@ -253,6 +254,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.25;
+    display: inline-flex;
+    align-items: center;
 }
 
 .conv-time {
@@ -363,8 +367,8 @@
     color: var(--text-primary);
     display: flex;
     align-items: center;
-    gap: 6px;
-    line-height: 1.2;
+    gap: 4px;
+    line-height: 1.25;
 }
 
 .chat-header-joined {
