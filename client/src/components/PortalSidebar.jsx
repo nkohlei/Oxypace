@@ -88,17 +88,43 @@ const PortalSidebar = () => {
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        const source = user?.portals || user?.joinedPortals;
-        if (source) {
-            const filtered = source.filter((p) => p && p._id && p.name);
-            const currentIdsSorted = [...orderedPortals].map(p => p._id).sort().join(',');
-            const newIdsSorted = filtered.map(p => p._id).sort().join(',');
+        // Collect and merge portals from both user.portals and user.joinedPortals
+        const portalMap = new Map();
+        const addPortal = (p) => {
+            if (!p) return;
+            const pid = (p._id || p)?.toString();
+            if (!pid) return;
+            if (typeof p === 'object' && p.name) {
+                const existing = portalMap.get(pid);
+                portalMap.set(pid, { ...(existing || {}), ...p });
+            }
+        };
+
+        if (Array.isArray(user?.joinedPortals)) {
+            user.joinedPortals.forEach(addPortal);
+        }
+        if (Array.isArray(user?.portals)) {
+            user.portals.forEach(addPortal);
+        }
+
+        const filtered = Array.from(portalMap.values());
+        if (filtered.length > 0 || (user && (user.portals || user.joinedPortals))) {
+            const currentIdsSorted = [...orderedPortals].map(p => (p._id || p)?.toString()).sort().join(',');
+            const newIdsSorted = filtered.map(p => (p._id || p)?.toString()).sort().join(',');
             
             if (currentIdsSorted !== newIdsSorted) {
-                setOrderedPortals(filtered);
+                // Keep current order, append new portals at the end, remove unjoined ones
+                const existingOrdered = orderedPortals
+                    .filter(op => portalMap.has((op._id || op)?.toString()))
+                    .map(op => portalMap.get((op._id || op)?.toString()) || op);
+                
+                const existingIds = new Set(existingOrdered.map(p => (p._id || p)?.toString()));
+                const newlyAdded = filtered.filter(p => !existingIds.has((p._id || p)?.toString()));
+                
+                setOrderedPortals([...existingOrdered, ...newlyAdded]);
             } else {
                 const updated = orderedPortals.map(op => {
-                    const latest = filtered.find(fp => fp._id === op._id);
+                    const latest = filtered.find(fp => (fp._id || fp)?.toString() === (op._id || op)?.toString());
                     return latest ? latest : op;
                 });
                 if (JSON.stringify(orderedPortals) !== JSON.stringify(updated)) {

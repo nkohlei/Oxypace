@@ -89,7 +89,8 @@ const CreatePortalModal = ({ onClose }) => {
 
             const updatedUser = {
                 ...user,
-                joinedPortals: [...(user.joinedPortals || []), newPortal],
+                joinedPortals: [...(user?.joinedPortals || []), newPortal],
+                portals: [...(user?.portals || []), newPortal],
             };
             updateUser(updatedUser);
 

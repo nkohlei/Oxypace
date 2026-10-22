@@ -85,10 +85,12 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
         try {
             await axios.post(`/api/portals/${currentPortalId}/leave`);
             if (user && updateUser) {
-                const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
+                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
                 updateUser({
                     ...user,
-                    joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== currentPortalId),
+                    joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()),
+                    portals: currentPortals.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()),
                 });
             }
             if (onLeave) {
@@ -116,10 +118,12 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
             const res = await axios.post(`/api/portals/${currentPortalId}/join`);
             if (res.data.status === 'joined') {
                 if (user && updateUser) {
-                    const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                    const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
+                    const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
                     updateUser({
                         ...user,
-                        joinedPortals: [...currentJoined, portalData],
+                        joinedPortals: [...currentJoined.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()), portalData],
+                        portals: [...currentPortals.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()), portalData],
                     });
                 }
                 setPortalData((prev) => ({

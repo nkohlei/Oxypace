@@ -95,10 +95,13 @@ const Search = () => {
                 })
             );
             if (user && updateUser && res.data.status !== 'requested') {
-                const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                const targetPortal = portalResults.find((p) => p._id === portalId) || { _id: portalId };
+                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
+                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
                 updateUser({
                     ...user,
-                    joinedPortals: [...currentJoined, portalId],
+                    joinedPortals: [...currentJoined.filter((p) => (p?._id || p)?.toString() !== portalId.toString()), targetPortal],
+                    portals: [...currentPortals.filter((p) => (p?._id || p)?.toString() !== portalId.toString()), targetPortal],
                 });
             }
         } catch (err) {
@@ -132,10 +135,12 @@ const Search = () => {
                 })
             );
             if (user && updateUser) {
-                const currentJoined = Array.isArray(user.joinedPortals) ? user.joinedPortals : [];
+                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
+                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
                 updateUser({
                     ...user,
-                    joinedPortals: currentJoined.filter((p) => (p?._id || p) !== portalId),
+                    joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== portalId.toString()),
+                    portals: currentPortals.filter((p) => (p?._id || p)?.toString() !== portalId.toString()),
                 });
             }
         } catch (err) {

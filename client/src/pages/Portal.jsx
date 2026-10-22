@@ -1202,9 +1202,14 @@ const Portal = () => {
             const res = await axios.post(`/api/portals/${id}/join`, {}, config);
             if (res.data.status === 'joined') {
                 setIsMember(true);
+                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
+                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
+                const updatedJoined = [...currentJoined.filter(p => (p?._id || p)?.toString() !== id.toString()), portal];
+                const updatedPortals = [...currentPortals.filter(p => (p?._id || p)?.toString() !== id.toString()), portal];
                 const updatedUser = {
                     ...user,
-                    joinedPortals: [...(user.joinedPortals || []), portal],
+                    joinedPortals: updatedJoined,
+                    portals: updatedPortals,
                 };
                 updateUser(updatedUser);
                 setPortal((prev) => ({ ...prev, members: [...(prev.members || []), user._id] }));
@@ -1226,9 +1231,12 @@ const Portal = () => {
         try {
             await axios.post(`/api/portals/${id}/leave`);
             setIsMember(false);
+            const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
+            const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
             const updatedUser = {
                 ...user,
-                joinedPortals: user.joinedPortals.filter((p) => p._id !== id && p !== id),
+                joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== id.toString()),
+                portals: currentPortals.filter((p) => (p?._id || p)?.toString() !== id.toString()),
             };
             updateUser(updatedUser);
             navigate('/');

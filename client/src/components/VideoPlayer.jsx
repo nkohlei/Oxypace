@@ -100,6 +100,18 @@ const findWorkingReferer = async (targetUrl) => {
 };
 
 
+const pauseAllOtherVideos = (currentEl) => {
+  if (typeof document === 'undefined') return;
+  document.querySelectorAll('video').forEach((v) => {
+    if (v !== currentEl && !v.paused) {
+      v.dataset.userPaused = 'true';
+      try {
+        v.pause();
+      } catch (e) {}
+    }
+  });
+};
+
 const checkCenterVideo = () => {
   if (mountedVideos.size === 0) return;
   if (typeof document !== 'undefined' && document.hidden) {
@@ -116,26 +128,56 @@ const checkCenterVideo = () => {
     });
     return;
   }
+
+  // 1. If any video is already actively playing and still visible in viewport, KEEP it playing
+  // and guarantee ALL other videos remain paused. Never interrupt the user's active video.
+  let currentlyPlaying = null;
+  mountedVideos.forEach(video => {
+    if (video && !video.paused) {
+      currentlyPlaying = video;
+    }
+  });
+
+  if (currentlyPlaying) {
+    const rect = currentlyPlaying.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0) {
+      const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+      const ratio = visibleHeight / (rect.height || 1);
+      if (ratio > 0.25) {
+        // Active video is still well visible: pause all other videos and exit
+        pauseAllOtherVideos(currentlyPlaying);
+        return;
+      }
+    }
+    // If it scrolled off-screen, pause it
+    currentlyPlaying.pause();
+  }
+
+  // 2. If no video is playing, pick the one closest to screen center
   const centerY = window.innerHeight / 2;
   let closestVideo = null;
   let minDistance = Infinity;
   mountedVideos.forEach(video => {
     if (!video) return;
     const rect = video.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return; // Skip hidden elements (e.g. background cached pages)
+    if (rect.width === 0 || rect.height === 0) return; // Skip hidden elements
     if (rect.top < window.innerHeight && rect.bottom > 0) {
       const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
       const ratio = visibleHeight / (rect.height || 1);
-      if (ratio > 0.2) {
+      if (ratio > 0.3) {
         const vCenter = rect.top + rect.height / 2;
         const distance = Math.abs(vCenter - centerY);
         if (distance < minDistance) { minDistance = distance; closestVideo = video; }
       }
     }
   });
+
   mountedVideos.forEach(video => {
     if (video === closestVideo) {
-      if (video.dataset.userPaused !== 'true' && video.paused) video.play().catch(() => {});
+      if (video.dataset.userPaused !== 'true' && video.paused) {
+        pauseAllOtherVideos(video);
+        video.play().catch(() => {});
+      }
     } else {
       if (!video.paused) video.pause();
     }
@@ -148,6 +190,14 @@ const handleGlobalScroll = () => {
 };
 
 if (typeof window !== 'undefined') {
+  // Capture-phase play listener across entire DOM to guarantee only 1 video can EVER play
+  window.addEventListener('play', (e) => {
+    const target = e.target;
+    if (target && target.tagName === 'VIDEO') {
+      pauseAllOtherVideos(target);
+    }
+  }, true);
+
   window.addEventListener('scroll', handleGlobalScroll, true);
   window.addEventListener('resize', handleGlobalScroll);
   const onFullscreenChange = (e) => {
@@ -339,23 +389,25 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     };
   }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, activeVideo, disableWatchSync, serverNowProp]);
 
-  // --- URL resolution helper to prevent double resolution/proxying ---
+  // --- URL resolution helper using imageUtils to enforce Edge CDN / r2-media / api/media correctly ---
   const resolveVideoUrl = (url) => {
     if (!url) return '';
-    if (url.startsWith('http') || url.startsWith('/api/media/') || url.startsWith('/r2-media/')) {
-      return url;
-    }
     return getImageUrl(url);
   };
 
-  // --- URL resolution & natural dimension analysis ---
-  const rawBase = resolveVideoUrl(videoOriginal || qualities?.videoOriginal || qualities?.high || videoUrl || src);
+  // Safe parse for qualities if stringified
+  const parsedQualities = typeof qualities === 'string'
+    ? (() => { try { return JSON.parse(qualities); } catch(e) { return {}; } })()
+    : (qualities || {});
 
-  const raw2160 = resolveVideoUrl(video2160 || qualities?.video2160 || qualities?.p2160 || qualities?.['2160p']);
-  const raw1080 = resolveVideoUrl(video1080 || qualities?.video1080 || qualities?.p1080 || qualities?.['1080p']);
-  const raw720  = resolveVideoUrl(video720  || qualities?.video720  || qualities?.p720  || qualities?.['720p']);
-  const raw360  = resolveVideoUrl(video360  || qualities?.video360  || qualities?.p360  || qualities?.['360p']);
-  const raw144  = resolveVideoUrl(video144  || qualities?.video144  || qualities?.p144  || qualities?.['144p']);
+  // --- URL resolution & natural dimension analysis ---
+  const rawBase = resolveVideoUrl(videoOriginal || parsedQualities?.videoOriginal || parsedQualities?.high || videoUrl || src);
+
+  const raw2160 = resolveVideoUrl(video2160 || parsedQualities?.video2160 || parsedQualities?.p2160 || parsedQualities?.['2160p']);
+  const raw1080 = resolveVideoUrl(video1080 || parsedQualities?.video1080 || parsedQualities?.p1080 || parsedQualities?.['1080p']);
+  const raw720  = resolveVideoUrl(video720  || parsedQualities?.video720  || parsedQualities?.p720  || parsedQualities?.['720p']);
+  const raw360  = resolveVideoUrl(video360  || parsedQualities?.video360  || parsedQualities?.p360  || parsedQualities?.['360p']);
+  const raw144  = resolveVideoUrl(video144  || parsedQualities?.video144  || parsedQualities?.p144  || parsedQualities?.['144p'] || parsedQualities?.low || lowVideoUrl);
 
   const natH = naturalDimensions?.height || 0;
   const natW = naturalDimensions?.width || 0;
@@ -365,26 +417,24 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const isNatural360  = (natH >= 360  || natW >= 640 ) && !isNatural4K && !isNatural1080 && !isNatural720;
 
   // 2160p (4K): explicitly present OR detected from video element metadata
-  const has2160 = !!raw2160 || isNatural4K;
+  const has2160 = !!raw2160 || (isNatural4K && !!rawBase);
   const src2160 = raw2160 || (has2160 ? rawBase : '');
 
   // 1080p:
-  // If video is 4K, 1080p ONLY exists if an explicit 1080p transcode has been provided!
-  // If video is not 4K, it is true if explicit 1080p exists OR if video is naturally 1080p OR default fallback
-  const has1080 = !!raw1080 || (!has2160 && (isNatural1080 || (!raw720 && !raw360 && !raw144 && !!rawBase)));
-  const src1080 = raw1080 || (has1080 ? (!has2160 ? rawBase : '') : '');
+  const has1080 = !!raw1080 || (isNatural1080 && !!rawBase) || (!has2160 && !raw720 && !raw360 && !raw144 && !!rawBase);
+  const src1080 = raw1080 || (has1080 ? rawBase : '');
 
   // 720p:
-  const has720 = !!raw720 || (!has2160 && !has1080 && isNatural720);
-  const src720 = raw720 || (has720 ? rawBase : (src1080 || src2160 || rawBase));
+  const has720 = !!raw720 || (isNatural720 && !has1080 && !has2160 && !!rawBase);
+  const src720 = raw720 || (has720 ? rawBase : '');
 
   // 360p:
-  const has360 = !!raw360 || (!has2160 && !has1080 && !has720 && isNatural360);
-  const src360 = raw360 || (has360 ? rawBase : (src720 || src1080 || src2160 || rawBase));
+  const has360 = !!raw360 || (isNatural360 && !has720 && !has1080 && !has2160 && !!rawBase);
+  const src360 = raw360 || (has360 ? rawBase : '');
 
   // 144p:
   const has144 = !!raw144;
-  const src144 = raw144 || resolveVideoUrl(qualities?.low || lowVideoUrl) || src360 || src720 || src1080 || src2160 || rawBase;
+  const src144 = raw144 || '';
 
   let maxResolution = '1080p';
   if (has2160) maxResolution = '2160p';
@@ -403,44 +453,46 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   };
 
   const getBestSrc = useCallback(() => {
-    if (isSlowConnection()) return src144;
-    if (maxResolution === '2160p') return src2160;
-    if (maxResolution === '1080p') return src1080;
-    if (maxResolution === '720p') return src720;
-    if (maxResolution === '360p') return src360;
-    return src144;
-  }, [src144, src360, src720, src1080, src2160, maxResolution]);
+    if (isSlowConnection() && src144) return src144;
+    if (src2160) return src2160;
+    if (src1080) return src1080;
+    if (src720) return src720;
+    if (src360) return src360;
+    if (src144) return src144;
+    return rawBase;
+  }, [src144, src360, src720, src1080, src2160, rawBase]);
 
   const getPreferredSrc = useCallback(() => {
     const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
     if (pref === 'performance') {
-      if (has2160) return src2160;
-      if (has1080) return src1080;
-      if (has720) return src720;
-      if (has360) return src360;
-      return src144;
+      if (src2160) return src2160;
+      if (src1080) return src1080;
+      if (src720) return src720;
+      if (src360) return src360;
+      if (src144) return src144;
+      return rawBase;
     } else if (pref === 'saver') {
-      if (has720) return src720;
-      if (has360) return src360;
-      if (has144) return src144;
-      if (has1080) return src1080;
-      return src2160;
+      if (src720) return src720;
+      if (src360) return src360;
+      if (src144) return src144;
+      if (src1080) return src1080;
+      return src2160 || rawBase;
     } else if (pref === 'lowest') {
-      if (has144) return src144;
-      if (has360) return src360;
-      if (has720) return src720;
-      if (has1080) return src1080;
-      return src2160;
+      if (src144) return src144;
+      if (src360) return src360;
+      if (src720) return src720;
+      if (src1080) return src1080;
+      return src2160 || rawBase;
     }
     return getBestSrc();
-  }, [user, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc]);
+  }, [user, src2160, src1080, src720, src360, src144, rawBase, getBestSrc]);
 
   const availableQualities = [{ value: 'auto', label: 'Oto' }];
-  if (has2160) availableQualities.push({ value: '2160', label: '2160p' });
-  if (has1080) availableQualities.push({ value: '1080', label: '1080p' });
-  if (has720)  availableQualities.push({ value: '720',  label: '720p'  });
-  if (has360)  availableQualities.push({ value: '360',  label: '360p'  });
-  if (has144)  availableQualities.push({ value: '144',  label: '144p'  });
+  if (has2160 && src2160) availableQualities.push({ value: '2160', label: '2160p' });
+  if (has1080 && src1080) availableQualities.push({ value: '1080', label: '1080p' });
+  if (has720  && src720)  availableQualities.push({ value: '720',  label: '720p'  });
+  if (has360  && src360)  availableQualities.push({ value: '360',  label: '360p'  });
+  if (has144  && src144)  availableQualities.push({ value: '144',  label: '144p'  });
 
   // --- Helpers ---
   const getActiveEl  = () => (activeVideoRef.current === 'A' ? videoRefA : videoRefB).current;
@@ -676,8 +728,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else                      targetSrc = getBestSrc();
     
     const activeEl = getActiveEl();
-    if (activeEl && targetSrc && activeEl.src !== targetSrc && activeEl.currentSrc !== targetSrc) {
-      setVideoSource(activeEl, targetSrc);
+    if (activeEl && targetSrc) {
+      let isSame = false;
+      try {
+        const activeUrl = new URL(activeEl.currentSrc || activeEl.src, window.location.href).href;
+        const targetUrl = new URL(targetSrc, window.location.href).href;
+        if (activeUrl === targetUrl) isSame = true;
+      } catch (_) {
+        if (activeEl.src === targetSrc || activeEl.currentSrc === targetSrc) isSame = true;
+      }
+      if (!isSame) {
+        setVideoSource(activeEl, targetSrc);
+      }
     }
   }, [user?.settings?.video?.playbackQuality, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
 
@@ -708,10 +770,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const initiateQualitySwap = useCallback((newSrc) => {
     const activeEl   = getActiveEl();
     const inactiveEl = getInactiveEl();
-    if (!activeEl || !inactiveEl || !newSrc) return;
+    if (!activeEl || !newSrc) return;
 
     // Already playing this src → nothing to do
-    if (activeEl.src === newSrc || activeEl.currentSrc === newSrc) return;
+    let isAlreadyPlaying = false;
+    try {
+      const activeUrl = new URL(activeEl.currentSrc || activeEl.src, window.location.href).href;
+      const targetUrl = new URL(newSrc, window.location.href).href;
+      if (activeUrl === targetUrl) isAlreadyPlaying = true;
+    } catch (_) {
+      if (activeEl.src === newSrc || activeEl.currentSrc === newSrc) isAlreadyPlaying = true;
+    }
+    if (isAlreadyPlaying) return;
 
     // Cancel any previous swap in flight so latest choice applies immediately
     if (cleanupSwapRef.current) {
@@ -735,17 +805,38 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         clearTimeout(safetyTimeout);
         safetyTimeout = null;
       }
-      inactiveEl.removeEventListener('loadedmetadata', onMeta);
-      inactiveEl.removeEventListener('seeked', onReady);
-      inactiveEl.removeEventListener('canplay', onReady);
-      inactiveEl.removeEventListener('loadeddata', onReady);
-      inactiveEl.removeEventListener('error', onError);
+      if (inactiveEl) {
+        inactiveEl.removeEventListener('loadedmetadata', onMeta);
+        inactiveEl.removeEventListener('seeked', onReady);
+        inactiveEl.removeEventListener('canplay', onReady);
+        inactiveEl.removeEventListener('loadeddata', onReady);
+        inactiveEl.removeEventListener('error', onError);
+      }
       if (cleanupSwapRef.current === cleanup) {
         cleanupSwapRef.current = null;
       }
       swapPendingRef.current = false;
     };
     cleanupSwapRef.current = cleanup;
+
+    // Direct fallback if dual-buffer fails, stalls, or is unsupported
+    const applyDirectFallback = () => {
+      cleanup();
+      const el = getActiveEl();
+      if (!el || !newSrc) return;
+      const liveTime = el.currentTime;
+      const isPlay = !el.paused;
+      setVideoSource(el, newSrc);
+      const onDirectMeta = () => {
+        try {
+          el.currentTime = liveTime;
+        } catch (_) {}
+        if (isPlay) {
+          el.play().catch(() => {});
+        }
+      };
+      el.addEventListener('loadedmetadata', onDirectMeta, { once: true });
+    };
 
     const executeSwap = () => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
@@ -819,9 +910,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     const onError = (err) => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
-      console.warn('[VideoPlayer] Quality swap aborted due to inactive element error:', err);
-      cleanup();
+      console.warn('[VideoPlayer] Quality swap inactive element error, falling back to direct swap:', err);
+      applyDirectFallback();
     };
+
+    if (!inactiveEl) {
+      applyDirectFallback();
+      return;
+    }
 
     // Prepare inactive element: keep muted during background preparation
     inactiveEl.muted = true;
@@ -841,16 +937,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setVideoSource(inactiveEl, newSrc);
     }
 
-    // Safety timeout: prevents lockups if network stalls
+    // Safety timeout: if inactiveEl doesn't reach readyState >= 2 within 2500ms, fallback to direct swap
     safetyTimeout = setTimeout(() => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
-      console.warn('[VideoPlayer] Swap safety timeout (3500ms) reached.');
+      console.warn('[VideoPlayer] Swap safety timeout (2500ms) reached.');
       if (inactiveEl.readyState >= 2) {
         executeSwap();
       } else {
-        cleanup();
+        applyDirectFallback();
       }
-    }, 3500);
+    }, 2500);
   }, [isMuted, volume, playbackRate, setVideoSource]);
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
@@ -1116,16 +1212,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     e.stopPropagation();
     if (isSettingsOpen || isQualityMenuOpen) { setIsSettingsOpen(false); setIsQualityMenuOpen(false); return; }
     
-    // If controls are hidden, the first click should only show them and reset auto-hide timeout
-    if (!showControls) {
-      setShowControls(true);
-      startControlsTimeout(2000);
-      return;
-    }
+    // Always reveal controls and reset auto-hide timeout on interaction
+    setShowControls(true);
+    startControlsTimeout(2000);
     
     const el = getActiveEl(); if (!el) return;
     if (watchParty) {
       if (el.paused) {
+        pauseAllOtherVideos(el);
         el.play().catch(() => {});
         setIsPaused(false);
         if (onPlay) onPlay(el.currentTime);
@@ -1136,9 +1230,15 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       }
       return;
     }
-    if (el.paused) { el.dataset.userPaused = 'false'; el.play().catch(() => {}); }
-    else           { el.dataset.userPaused = 'true';  el.pause(); }
-  }, [isSettingsOpen, isQualityMenuOpen, activeVideo, showControls, startControlsTimeout, watchParty, onPlay, onPause]);
+    if (el.paused) {
+      pauseAllOtherVideos(el);
+      el.dataset.userPaused = 'false';
+      el.play().catch(() => {});
+    } else {
+      el.dataset.userPaused = 'true';
+      el.pause();
+    }
+  }, [isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
 
   const toggleMute = useCallback((e) => {
     e.stopPropagation();
