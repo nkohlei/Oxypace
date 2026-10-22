@@ -118,63 +118,119 @@ const pauseAllOtherVideos = (currentEl) => {
   });
 };
 
+const isElementVisibleOnScreen = (el, minVisibleRatio = 0.35) => {
+  if (!el || typeof window === 'undefined') return false;
+  if (!el.isConnected) return false;
+
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+
+  const isFs = !!document.fullscreenElement;
+  const TOP_NAVBAR_OFFSET = isFs ? 0 : 50;
+  let clipTop = TOP_NAVBAR_OFFSET;
+  let clipBottom = window.innerHeight || document.documentElement.clientHeight;
+  let clipLeft = 0;
+  let clipRight = window.innerWidth || document.documentElement.clientWidth;
+
+  // Intersect with every scrollable / clipping ancestor container
+  let parent = el.parentElement;
+  while (parent && parent !== document.body && parent !== document.documentElement) {
+    const pStyle = window.getComputedStyle(parent);
+    const overflowY = pStyle.overflowY;
+    const overflowX = pStyle.overflowX;
+    const isScrollableOrClipped = 
+      overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'hidden' ||
+      overflowX === 'auto' || overflowX === 'scroll' || overflowX === 'hidden';
+
+    if (isScrollableOrClipped) {
+      const pRect = parent.getBoundingClientRect();
+      clipTop = Math.max(clipTop, pRect.top);
+      clipBottom = Math.min(clipBottom, pRect.bottom);
+      clipLeft = Math.max(clipLeft, pRect.left);
+      clipRight = Math.min(clipRight, pRect.right);
+    }
+    parent = parent.parentElement;
+  }
+
+  const visibleTop = Math.max(rect.top, clipTop);
+  const visibleBottom = Math.min(rect.bottom, clipBottom);
+  const visibleLeft = Math.max(rect.left, clipLeft);
+  const visibleRight = Math.min(rect.right, clipRight);
+
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+
+  if (visibleHeight <= 0 || visibleWidth <= 0) return false;
+
+  const visibleArea = visibleHeight * visibleWidth;
+  const totalArea = rect.height * rect.width;
+  const ratio = totalArea > 0 ? (visibleArea / totalArea) : 0;
+
+  return ratio >= minVisibleRatio;
+};
+
 const checkCenterVideo = () => {
-  if (mountedVideos.size === 0) return;
-  if (typeof document !== 'undefined' && document.hidden) {
-    mountedVideos.forEach(video => {
+  if (typeof document === 'undefined') return;
+
+  // 0. If document/tab is hidden in background, pause ALL playing videos
+  if (document.hidden) {
+    document.querySelectorAll('video').forEach(video => {
       if (!video.paused) video.pause();
     });
     return;
   }
+
+  // If in fullscreen, only allow fullscreen video to play
   const isFs = !!document.fullscreenElement;
   if (isFs) {
-    mountedVideos.forEach(video => {
+    document.querySelectorAll('video').forEach(video => {
       const amIFs = document.fullscreenElement.contains(video);
       if (!amIFs && !video.paused) video.pause();
     });
     return;
   }
 
-  // 1. If any video is already actively playing and still visible in viewport, KEEP it playing
-  // and guarantee ALL other videos remain paused. Never interrupt the user's active video.
+  // 1. CRITICAL: Pause ANY playing video in DOM that is not sufficiently visible on screen
+  document.querySelectorAll('video').forEach(video => {
+    if (!video.paused && !isElementVisibleOnScreen(video, 0.35)) {
+      try {
+        video.pause();
+      } catch (e) {}
+    }
+  });
+
+  if (mountedVideos.size === 0) return;
+
+  // 2. If any video is actively playing and STILL visible on screen, KEEP it playing
+  // and ensure all other videos are paused.
   let currentlyPlaying = null;
   mountedVideos.forEach(video => {
-    if (video && !video.paused) {
+    if (video && !video.paused && isElementVisibleOnScreen(video, 0.35)) {
       currentlyPlaying = video;
     }
   });
 
   if (currentlyPlaying) {
-    const rect = currentlyPlaying.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0) {
-      const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
-      const ratio = visibleHeight / (rect.height || 1);
-      if (ratio > 0.25) {
-        // Active video is still well visible: pause all other videos and exit
-        pauseAllOtherVideos(currentlyPlaying);
-        return;
-      }
-    }
-    // If it scrolled off-screen, pause it
-    currentlyPlaying.pause();
+    pauseAllOtherVideos(currentlyPlaying);
+    return;
   }
 
-  // 2. If no video is playing, pick the one closest to screen center
+  // 3. If no video is currently playing, pick the one closest to screen center (that is well-visible)
   const centerY = window.innerHeight / 2;
   let closestVideo = null;
   let minDistance = Infinity;
+
   mountedVideos.forEach(video => {
-    if (!video) return;
+    if (!video || !isElementVisibleOnScreen(video, 0.4)) return;
     const rect = video.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return; // Skip hidden elements
-    if (rect.top < window.innerHeight && rect.bottom > 0) {
-      const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
-      const ratio = visibleHeight / (rect.height || 1);
-      if (ratio > 0.3) {
-        const vCenter = rect.top + rect.height / 2;
-        const distance = Math.abs(vCenter - centerY);
-        if (distance < minDistance) { minDistance = distance; closestVideo = video; }
-      }
+    const vCenter = rect.top + rect.height / 2;
+    const distance = Math.abs(vCenter - centerY);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestVideo = video;
     }
   });
 
@@ -1094,16 +1150,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (container && typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            handleGlobalScroll();
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.35) {
+            // Pauses immediately when it goes out of view or below 35% visible
+            const containerVideos = container.querySelectorAll('video');
+            containerVideos.forEach(v => {
+              if (!v.paused) {
+                try {
+                  v.pause();
+                } catch (e) {}
+              }
+            });
           } else {
-            // Pauses immediately when it goes out of view
-            if (!el.paused) {
-              el.pause();
-            }
+            handleGlobalScroll();
           }
         });
-      }, { threshold: [0.0, 0.2] });
+      }, { threshold: [0.0, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0] });
       observer.observe(container);
     }
 
@@ -1220,7 +1281,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setProgress(frac * 100);
   }, [duration, activeVideo, isAdPlaying, watchParty, onSeek]);
 
-  const handleSeekOffset = useCallback((offset) => {
+  const handleSeekOffset = useCallback((offset, e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     const el = getActiveEl();
     if (!el || !duration) return;
     const targetTime = Math.max(0, Math.min(duration, el.currentTime + offset));
@@ -1232,37 +1294,94 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setProgress((targetTime / duration) * 100);
   }, [duration, activeVideo, watchParty, onSeek]);
 
-  const handleVideoClick = useCallback((e) => {
+  // ─── Video Area Click: 1st tap shows controls, 2nd tap pauses/plays ───
+  const handleVideoAreaClick = useCallback((e) => {
     e.stopPropagation();
-    if (isSettingsOpen || isQualityMenuOpen) { setIsSettingsOpen(false); setIsQualityMenuOpen(false); return; }
-    
-    // Always reveal controls and reset auto-hide timeout on interaction
-    setShowControls(true);
-    startControlsTimeout(2000);
-    
-    const el = getActiveEl(); if (!el) return;
+    if (isSettingsOpen || isQualityMenuOpen) {
+      setIsSettingsOpen(false);
+      setIsQualityMenuOpen(false);
+      return;
+    }
+
+    // 1st click: If controls are currently hidden, first click ONLY reveals the controls!
+    if (!showControls) {
+      setShowControls(true);
+      startControlsTimeout(2500);
+      return;
+    }
+
+    // 2nd click: Controls are already visible -> toggles play / pause
+    const el = getActiveEl();
+    if (!el) return;
+
     if (watchParty) {
       if (el.paused) {
         pauseAllOtherVideos(el);
         el.play().catch(() => {});
         setIsPaused(false);
         if (onPlay) onPlay(el.currentTime);
+        startControlsTimeout(2000);
       } else {
         el.pause();
         setIsPaused(true);
         if (onPause) onPause(el.currentTime);
+        setShowControls(true);
       }
       return;
     }
+
     if (el.paused) {
       pauseAllOtherVideos(el);
       el.dataset.userPaused = 'false';
       el.play().catch(() => {});
+      startControlsTimeout(2000);
     } else {
       el.dataset.userPaused = 'true';
       el.pause();
+      setShowControls(true);
+    }
+  }, [showControls, isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
+
+  // ─── Dedicated Play/Pause Button Click (Direct toggle) ─────────────────
+  const handlePlayPauseBtnClick = useCallback((e) => {
+    e.stopPropagation();
+    if (isSettingsOpen || isQualityMenuOpen) {
+      setIsSettingsOpen(false);
+      setIsQualityMenuOpen(false);
+    }
+
+    const el = getActiveEl();
+    if (!el) return;
+
+    if (watchParty) {
+      if (el.paused) {
+        pauseAllOtherVideos(el);
+        el.play().catch(() => {});
+        setIsPaused(false);
+        if (onPlay) onPlay(el.currentTime);
+        startControlsTimeout(2000);
+      } else {
+        el.pause();
+        setIsPaused(true);
+        if (onPause) onPause(el.currentTime);
+        setShowControls(true);
+      }
+      return;
+    }
+
+    if (el.paused) {
+      pauseAllOtherVideos(el);
+      el.dataset.userPaused = 'false';
+      el.play().catch(() => {});
+      startControlsTimeout(2000);
+    } else {
+      el.dataset.userPaused = 'true';
+      el.pause();
+      setShowControls(true);
     }
   }, [isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
+
+  const handleVideoClick = handleVideoAreaClick;
 
   const toggleMute = useCallback((e) => {
     e.stopPropagation();
@@ -1398,7 +1517,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     <div
       className={`native-player-container left-aligned v16-scale ${className || ''} ${isQualityMenuOpen || isSettingsOpen ? 'has-open-menu' : ''}`}
       style={containerStyle}
-      onClick={e => e.stopPropagation()}
+      onClick={handleVideoAreaClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
     >
@@ -1434,7 +1553,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         style={videoStyle('A')}
         playsInline loop={!isAdPlaying} preload="auto"
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
-        onClick={handleVideoClick}
+        onClick={handleVideoAreaClick}
         onTimeUpdate={activeVideo === 'A' ? handleTimeUpdate : undefined}
         onLoadedMetadata={activeVideo === 'A' ? handleLoadedMetadataActive : undefined}
         onWaiting={activeVideo === 'A' ? handleWaiting : undefined}
@@ -1453,7 +1572,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         style={videoStyle('B')}
         playsInline loop={!isAdPlaying} preload="auto"
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
-        onClick={handleVideoClick}
+        onClick={handleVideoAreaClick}
         onTimeUpdate={activeVideo === 'B' ? handleTimeUpdate : undefined}
         onLoadedMetadata={activeVideo === 'B' ? handleLoadedMetadataActive : undefined}
         onWaiting={activeVideo === 'B' ? handleWaiting : undefined}
@@ -1499,7 +1618,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
         <div className="native-bottom-row">
           <div className="native-left-controls">
-            <button className="native-play-pause-btn" onClick={handleVideoClick} aria-label="Oynat / Duraklat">
+            <button className="native-play-pause-btn" onClick={handlePlayPauseBtnClick} aria-label="Oynat / Duraklat">
               {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}
             </button>
             <div className="native-time-display">
@@ -1510,10 +1629,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
             {!isAdPlaying && (
               <>
-                <button className="native-skip-btn" onClick={() => handleSeekOffset(-10)} title="10 Saniye Geri">
+                <button className="native-skip-btn" onClick={(e) => handleSeekOffset(-10, e)} title="10 Saniye Geri">
                   <RotateCcw size={16} />
                 </button>
-                <button className="native-skip-btn" onClick={() => handleSeekOffset(10)} title="10 Saniye İleri">
+                <button className="native-skip-btn" onClick={(e) => handleSeekOffset(10, e)} title="10 Saniye İleri">
                   <RotateCw size={16} />
                 </button>
               </>
