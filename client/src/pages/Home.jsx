@@ -1,13 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import SEO from '../components/SEO';
 import OxypaceBackground from '../components/OxypaceBackground';
+import MobileWelcomeFlow from '../components/MobileWelcomeFlow';
 import './Home.css';
 
 export default function Home() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
+    const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+    const isMobilePreview = typeof window !== 'undefined' && (
+        new URLSearchParams(window.location.search).get('mobile') === 'true' ||
+        window.location.search.includes('welcome=true')
+    );
     const [activeShowcase, setActiveShowcase] = useState("watch-party");
     const [timerKey, setTimerKey] = useState(0);
     const timerRef = useRef(null);
@@ -108,7 +115,16 @@ export default function Home() {
 
     const currentShowcase = showcases.find((s) => s.id === activeShowcase) || showcases[0];
 
-    // Prevent flashing landing page if already logged in
+    // Native mobile app: Render authentic MobileWelcomeFlow (Onboarding + Welcome gateway)
+    if (isNative || isMobilePreview) {
+        // If still loading session or already logged in, do not render welcome screen to prevent flash
+        if (loading || user) {
+            return <div className="app-wrapper advanced-home native-mobile-welcome" style={{ background: '#000000', minHeight: '100vh', width: '100%' }} />;
+        }
+        return <MobileWelcomeFlow />;
+    }
+
+    // Web landing page: Prevent flashing landing page if already logged in
     if (!loading && user) {
         return null;
     }

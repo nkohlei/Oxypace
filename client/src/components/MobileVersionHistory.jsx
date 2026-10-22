@@ -27,15 +27,51 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.2)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.3)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.4.3',
+        versionCode: 243,
+        releaseDate: '23 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Özgün Mobil Karşılama ve Onboarding Restorasyonu, Video Kapak & Merkez Oynat Butonu, Kademeli Blur-Up Medya',
+        summary: 'Mobil uygulamaya özel 5 aşamalı görsel onboarding tanıtımı ve Steve Jobs karşılama geçidi restore edildi; masaüstü web landing sayfası ile mobil uygulama anasayfası birbirinden tamamen ayrıştırıldı. Video oynatıcıda oynatma başlayana kadar kilitli kalan video kapağı, merkez oynat butonu, ayarlar ile senkronize otomatik oynatma yönetimi ve gönderi görsellerinde Twitter/X tarzı progressive blur-up arka plan entegre edildi.',
+        category: 'feature',
+        apkSize: '80.1 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Mobil ve Web Anasayfa Ayrımı: Mobil uygulamada doğrudan 5 aşamalı özgün Onboarding & Hoş Geldin geçidi',
+            'Video Oynatıcı Merkez Oynat Butonu ve Kapak Koruması (Yalancı oynatma ve siyah ekran engellendi)',
+            'Gelişmiş Görüş Alanı Tespiti ile Ekrandan Çıkan Videoların Anında Durdurulması (%20 görünürlük eşiği)',
+            'Gönderi Görsellerinde Twitter/X Tarzı Kademeli Ambient Blur-Up Yükleme',
+            'Kullanıcı Ayarları ile Anlık Senkronize Feed Otomatik Oynatma Tercihi',
+            'Oturum Açıkken Mobil Uygulamada Portala / Mesajlara Flaşsız Doğrudan Geçiş'
+        ],
+        changes: [
+            { type: 'ui', text: 'client/src/pages/Home.jsx içinde native mobil ortamda Web landing sayfası yerine MobileWelcomeFlow aktif edildi.' },
+            { type: 'feat', text: 'VideoPlayer.jsx içine oynatma başlamadan önce gösterilen cam efektli merkez oynat butonu ve güvenilir kapak katmanı eklendi.' },
+            { type: 'perf', text: 'VideoPlayer.jsx görünürlük oranı %20 altına inen videoları anında durduran derin DOM hiyerarşi tarayıcısı entegre edildi.' },
+            { type: 'ui', text: 'PostImageGallery.jsx ve PostImageGallery.css içine kademeli blur-up ve ambient progressive backdrop uygulandı.' },
+            { type: 'build', text: 'Android Release APK v2.4.3 (versionCode 243) Java 21 ortamında derlendi ve dağıtım dizinlerine senkronize edildi.' }
+        ],
+        affectedFiles: [
+            'client/src/pages/Home.jsx',
+            'client/src/components/VideoPlayer.jsx',
+            'client/src/components/PostImageGallery.jsx',
+            'client/src/components/PostImageGallery.css',
+            'android/app/build.gradle',
+            'server.js'
+        ]
+    },
     {
         version: 'v2.4.2',
         versionCode: 242,
         releaseDate: '22 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: 'b2678f6',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Büyük Şirket Standartlarında Kesintisiz Video Kalite Geçişi, Progressive Ultra HD Görsel Yakınlaştırma & Sıfır Gecikmeli Önbellek Pipeline',
         summary: 'Video gönderilerinde kalite seçimi yapıldığında yaşanan donma ve gecikmeler, sıfır roundtrip bellek içi meta önbellekleme, akıllı çift yönlü socket temizliği ve anlık doğrudan aktarım (seamless handover) mimarisi ile kökten giderildi. Yüksek çözünürlüklü görsel postlarda yakınlaştırma ve lightbox ekranı büyük şirket standartlarında kademeli (progressive) render, anlık görsel önbellek transferi ve komşu slaytlar için akıllı arka plan prefetching ile donatıldı.',
         category: 'perf',
@@ -664,7 +700,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.2': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.3': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'

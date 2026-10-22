@@ -383,12 +383,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.2',
-        versionCode: 242,
-        minSupportedVersionCode: 242,
+        latestVersion: '2.4.3',
+        versionCode: 243,
+        minSupportedVersionCode: 243,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.2: Kesintisiz ve anında video kalite geçişi, büyük şirket kalitesinde kademeli (progressive) Ultra HD görsel yakınlaştırma, Cloudflare R2 video range istekleri için sıfır roundtrip bellek içi meta önbellekleme ve akıllı komşu görsel prefetching sistemi.',
+        changelog: 'Oxypace 2.4.3: Mobil uygulama karşılama ve onboarding deneyimi restore edildi; video oynatıcıda kapak görseli koruması, merkez oynat buton etkileşimi, kademeli görsel blur-up geçişleri ve akıcı performans optimizasyonları.',
     });
 });
 
