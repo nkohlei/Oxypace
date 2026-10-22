@@ -350,10 +350,23 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, []);
 
   useEffect(() => {
-    if (user?.settings?.video?.autoplay) {
+    const local = localStorage.getItem('video_autoplay');
+    if (local !== null) {
+      setIsAutoplayOff(local === 'off');
+    } else if (user?.settings?.video?.autoplay) {
       setIsAutoplayOff(user.settings.video.autoplay === 'off');
     }
   }, [user?.settings?.video?.autoplay]);
+
+  // If autoplay is off and user has not started playback, enforce paused state
+  useEffect(() => {
+    if (isAutoplayOff && !hasStartedPlayback) {
+      const el = getActiveEl();
+      if (el && !el.paused) {
+        el.pause();
+      }
+    }
+  }, [isAutoplayOff, hasStartedPlayback, activeVideo]);
 
   // Reset playback status when source changes
   useEffect(() => {
@@ -1127,13 +1140,20 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }, 600);
   }, [qualityMode, src144, src360, src, initiateQualitySwap]);
 
+  const handleCanPlay = useCallback(() => {
+    if (waitingTimerRef.current) { 
+      clearTimeout(waitingTimerRef.current); 
+      waitingTimerRef.current = null; 
+    }
+    setIsWaiting(false);
+  }, []);
+
   const handlePlaying = useCallback(() => {
     if (waitingTimerRef.current) { 
       clearTimeout(waitingTimerRef.current); 
       waitingTimerRef.current = null; 
     }
     setIsWaiting(false);
-    setHasStartedPlayback(true);
     setIsPaused(false);
   }, []);
 
@@ -1711,7 +1731,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onWaiting={activeVideo === 'A' ? handleWaiting : undefined}
         onStalled={activeVideo === 'A' ? handleWaiting : undefined}
         onPlaying={activeVideo === 'A' ? handlePlaying : undefined}
-        onCanPlay={activeVideo === 'A' ? handlePlaying : undefined}
+        onCanPlay={activeVideo === 'A' ? handleCanPlay : undefined}
         onEnded={activeVideo === 'A' ? handleVideoEnded : undefined}
         onError={activeVideo === 'A' ? handleVideoError : undefined}
       />
@@ -1731,7 +1751,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onWaiting={activeVideo === 'B' ? handleWaiting : undefined}
         onStalled={activeVideo === 'B' ? handleWaiting : undefined}
         onPlaying={activeVideo === 'B' ? handlePlaying : undefined}
-        onCanPlay={activeVideo === 'B' ? handlePlaying : undefined}
+        onCanPlay={activeVideo === 'B' ? handleCanPlay : undefined}
         onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
         onError={activeVideo === 'B' ? handleVideoError : undefined}
       />
