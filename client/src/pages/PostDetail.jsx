@@ -662,7 +662,7 @@ const PostDetail = () => {
                                                 video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)} 
                                                 video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)} 
                                                 video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)} 
-                                                isProcessing={post.mediaType === 'videoUrl' ? false : post.isProcessing} 
+                                                isProcessing={Boolean(post.mediaType === 'video' && post.isProcessing && !post.video720 && !post.video1080)} 
                                                 processingProgress={post.processingProgress} 
                                                 estimatedTime={post.estimatedTime} 
                                             />

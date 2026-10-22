@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Check, Maximize, Play, Pause, RotateCcw, RotateCw } from 'lucide-react';
+import { Volume2, VolumeX, Check, Maximize, Play, Pause, RotateCcw, RotateCw, Film } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar } from '@capacitor/status-bar';
 import { useGlobalStore } from '../store/useGlobalStore';
@@ -239,9 +239,16 @@ const checkCenterVideo = () => {
 
   mountedVideos.forEach(video => {
     if (video === closestVideo) {
-      if (!isAutoplayOff && video.dataset.userPaused !== 'true' && video.paused) {
+      // Feed videos must ONLY autoplay if autoplay setting is not off, user hasn't paused it, and video is MUTED.
+      // Browsers reject unmuted autoplay with DOMException, causing black screen and state desync.
+      if (!isAutoplayOff && video.dataset.userPaused !== 'true' && video.paused && video.muted) {
         pauseAllOtherVideos(video);
-        video.play().catch(() => {});
+        const playPromise = video.play();
+        if (playPromise && playPromise.catch) {
+          playPromise.catch(() => {
+            try { video.pause(); } catch (_) {}
+          });
+        }
       }
     } else {
       if (!video.paused) video.pause();
@@ -323,12 +330,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
-  const [isAutoplayOff, setIsAutoplayOff] = useState(() => typeof window !== 'undefined' && localStorage.getItem('video_autoplay') === 'off');
+  const [isAutoplayOff, setIsAutoplayOff] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const local = localStorage.getItem('video_autoplay');
+    if (local !== null) return local === 'off';
+    return user?.settings?.video?.autoplay === 'off';
+  });
   const [derivedPoster, setDerivedPoster] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
 
-  // Sync autoplay preference reactively from settings
+  // Sync autoplay preference reactively from settings and user profile
   useEffect(() => {
     const handleAutoplayChange = (e) => {
       setIsAutoplayOff(e.detail === 'off');
@@ -336,6 +348,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     window.addEventListener('video-autoplay-changed', handleAutoplayChange);
     return () => window.removeEventListener('video-autoplay-changed', handleAutoplayChange);
   }, []);
+
+  useEffect(() => {
+    if (user?.settings?.video?.autoplay) {
+      setIsAutoplayOff(user.settings.video.autoplay === 'off');
+    }
+  }, [user?.settings?.video?.autoplay]);
 
   // Reset playback status when source changes
   useEffect(() => {
@@ -379,8 +397,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [showProcessingInfo, setShowProcessingInfo] = useState(false);
   const processingInfoTimeoutRef = useRef(null);
 
-  // Center play button condition: ONLY at the beginning, ONLY if autoplay is OFF, NEVER during pauses mid-video
-  const showCenterPlayBtn = isAutoplayOff && !hasStartedPlayback && currentTime < 0.2 && isPaused && !watchParty && !isAdPlaying;
+  // Only display processing indicator if it is genuinely in progress (< 100%) and has not finished
+  const hasFinishedTranscode = !!(video720 || video1080 || video360);
+  const showProcessingBadge = isProcessing && !hasFinishedTranscode && processingProgress < 100 && !watchParty;
+
+  // Center play button: ONLY at the beginning, ONLY if autoplay is OFF, NEVER during pauses mid-video
+  const showCenterPlayBtn = isAutoplayOff && !hasStartedPlayback && !watchParty && !isAdPlaying;
 
   // Close quality/speed menus when clicking outside
   useEffect(() => {
@@ -1612,7 +1634,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
     >
-      {isProcessing && (
+      {showProcessingBadge && (
         <div
           className="processing-badge-minimal"
           onClick={toggleProcessingInfo}
@@ -1637,24 +1659,29 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       )}
 
       {/* Ambient backdrop for zero-black letterboxing & deep atmospheric diffusion */}
-      {effectivePoster && (
+      <div
+        className="native-player-backdrop"
+        style={effectivePoster ? { backgroundImage: `url(${effectivePoster})` } : undefined}
+        aria-hidden="true"
+      />
+
+      {/* Mandatory Cover Poster: stays locked until user actively starts playback and video renders */}
+      {(!hasStartedPlayback || isPaused || currentTime < 0.05) && (
         <div
-          className="native-player-backdrop"
-          style={{ backgroundImage: `url(${effectivePoster})` }}
+          className={`native-cover-poster ${!effectivePoster ? 'native-fallback-cover' : ''}`}
+          style={effectivePoster ? { backgroundImage: `url(${effectivePoster})` } : undefined}
           aria-hidden="true"
-        />
+        >
+          {!effectivePoster && (
+            <div className="native-fallback-cover-content">
+              <Film className="native-fallback-icon" />
+              <span className="native-fallback-label">Oxypace Video</span>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Mandatory Cover Poster: locked and crisp until playback begins */}
-      {effectivePoster && isPaused && currentTime < 0.2 && (
-        <div
-          className="native-cover-poster"
-          style={{ backgroundImage: `url(${effectivePoster})` }}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Glassmorphic Center Play Button Overlay on Video Cover (Only when autoplay is OFF and before playback has ever started) */}
+      {/* Glassmorphic Center Play Button Overlay on Video Cover (Only before playback has started when autoplay is OFF) */}
       {showCenterPlayBtn && (
         <div
           className="native-center-play-overlay"
@@ -1676,6 +1703,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         className="native-video-element"
         style={videoStyle('A')}
         playsInline loop={!isAdPlaying} preload="auto"
+        muted={isMuted}
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoAreaClick}
         onTimeUpdate={activeVideo === 'A' ? handleTimeUpdate : undefined}
@@ -1695,6 +1723,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         className="native-video-element"
         style={videoStyle('B')}
         playsInline loop={!isAdPlaying} preload="auto"
+        muted={isMuted}
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoAreaClick}
         onTimeUpdate={activeVideo === 'B' ? handleTimeUpdate : undefined}

@@ -834,6 +834,38 @@
     transition: opacity 0.3s ease;
 }
 
+.native-fallback-cover {
+    background: radial-gradient(circle at 50% 40%, #172033 0%, #0c101d 60%, #060913 100%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.native-fallback-cover-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.38;
+    pointer-events: none;
+    user-select: none;
+    transform: translateY(-8px);
+}
+
+.native-fallback-icon {
+    width: 38px;
+    height: 38px;
+    color: #94a3b8;
+}
+
+.native-fallback-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Video Cover Front Play Button Overlay (Manual Autoplay Off / Paused State)
    ───────────────────────────────────────────────────────────────────────── */
