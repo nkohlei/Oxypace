@@ -365,9 +365,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const effectivePoster = poster || derivedPoster;
 
-  // Center play button condition: ONLY at the beginning, ONLY if autoplay is OFF, NEVER during pauses mid-video
-  const showCenterPlayBtn = isAutoplayOff && !hasStartedPlayback && currentTime < 0.2 && isPaused && !watchParty && !isAdPlaying;
-
   const [volumeSliderOpen, setVolumeSliderOpen] = useState(false);
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
@@ -381,6 +378,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [adCountdown, setAdCountdown] = useState(5);
   const [showProcessingInfo, setShowProcessingInfo] = useState(false);
   const processingInfoTimeoutRef = useRef(null);
+
+  // Center play button condition: ONLY at the beginning, ONLY if autoplay is OFF, NEVER during pauses mid-video
+  const showCenterPlayBtn = isAutoplayOff && !hasStartedPlayback && currentTime < 0.2 && isPaused && !watchParty && !isAdPlaying;
 
   // Close quality/speed menus when clicking outside
   useEffect(() => {
