@@ -361,6 +361,72 @@
     user-select: none;
     -webkit-user-drag: none;
     pointer-events: auto;
+    transition: filter 0.3s ease, opacity 0.25s ease;
+}
+
+.oxypace-lightbox-img.hd-loading {
+    filter: brightness(0.96);
+}
+
+.oxypace-lightbox-img.hd-ready {
+    filter: brightness(1);
+}
+
+/* Top Ultra HD Status Badge */
+.oxypace-lightbox-hd-badge {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 16px;
+    border-radius: 24px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    z-index: 1000001;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    pointer-events: none;
+    user-select: none;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.oxypace-lightbox-hd-badge.loading {
+    background: rgba(10, 16, 26, 0.82);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    color: #00f0ff;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.25), inset 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+.oxypace-lightbox-hd-badge.ready {
+    background: rgba(8, 22, 16, 0.85);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #10b981;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.25), inset 0 0 10px rgba(16, 185, 129, 0.1);
+    animation: hdBadgeFade 3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes hdBadgeFade {
+    0%, 65% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+}
+
+.oxypace-hd-spin {
+    animation: hdSpin 2s linear infinite;
+}
+
+@keyframes hdSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* Lightbox Nav Arrows */

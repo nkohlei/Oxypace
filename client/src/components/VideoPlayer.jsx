@@ -104,6 +104,12 @@ const pauseAllOtherVideos = (currentEl) => {
   if (typeof document === 'undefined') return;
   document.querySelectorAll('video').forEach((v) => {
     if (v !== currentEl && !v.paused) {
+      // Don't pause a sibling video within the SAME player container during quality swaps
+      const myContainer = currentEl?.closest?.('.native-player-container');
+      const otherContainer = v?.closest?.('.native-player-container');
+      if (myContainer && otherContainer && myContainer === otherContainer) {
+        return;
+      }
       v.dataset.userPaused = 'true';
       try {
         v.pause();
@@ -234,6 +240,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const swapPendingRef = useRef(false);
   const swapIdRef = useRef(0);
   const cleanupSwapRef = useRef(null);
+  const lastManualQualityChangeRef = useRef(0);
 
   const globalMuted = useGlobalStore(state => state.isMuted);
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
@@ -835,7 +842,13 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           el.play().catch(() => {});
         }
       };
-      el.addEventListener('loadedmetadata', onDirectMeta, { once: true });
+      if (el.readyState >= 1) {
+        onDirectMeta();
+      } else {
+        el.addEventListener('loadedmetadata', onDirectMeta, { once: true });
+      }
+      el.addEventListener('canplay', () => setIsWaiting(false), { once: true });
+      el.addEventListener('playing', () => setIsWaiting(false), { once: true });
     };
 
     const executeSwap = () => {
@@ -875,6 +888,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       mountedVideos.delete(activeEl);
       mountedVideos.add(inactiveEl);
 
+      setIsWaiting(false);
       console.log(`[VideoPlayer] Fast swap complete → ${newId} at ${liveNow.toFixed(3)}s (corrected drift: ${drift.toFixed(3)}s)`);
     };
 
@@ -896,9 +910,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         } else {
           inactiveEl.addEventListener('canplay', onReady, { once: true });
           inactiveEl.addEventListener('loadeddata', onReady, { once: true });
+          inactiveEl.addEventListener('playing', onReady, { once: true });
         }
       } else {
         inactiveEl.addEventListener('seeked', onReady, { once: true });
+        inactiveEl.addEventListener('canplay', onReady, { once: true });
+        inactiveEl.addEventListener('loadeddata', onReady, { once: true });
         try {
           inactiveEl.currentTime = liveTime;
         } catch (e) {
@@ -937,16 +954,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setVideoSource(inactiveEl, newSrc);
     }
 
-    // Safety timeout: if inactiveEl doesn't reach readyState >= 2 within 2500ms, fallback to direct swap
+    // Fast safety timeout: if inactiveEl doesn't reach readyState >= 2 within 1200ms, fallback to direct swap
     safetyTimeout = setTimeout(() => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
-      console.warn('[VideoPlayer] Swap safety timeout (2500ms) reached.');
+      console.warn('[VideoPlayer] Swap safety timeout (1200ms) reached.');
       if (inactiveEl.readyState >= 2) {
         executeSwap();
       } else {
         applyDirectFallback();
       }
-    }, 2500);
+    }, 1200);
   }, [isMuted, volume, playbackRate, setVideoSource]);
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
@@ -958,6 +975,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const activeEl = getActiveEl();
       if (!activeEl || activeEl.paused) return;
 
+      // Don't auto-downgrade if user manually selected a quality recently
+      if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
+
       if (qualityMode === 'auto') {
         // Drop straight to lowest quality for instant continuous playback
         const lowestSrc = src144 || src360 || src;
@@ -966,7 +986,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           initiateQualitySwap(lowestSrc);
         }
       }
-    }, 450);
+    }, 600);
   }, [qualityMode, src144, src360, src, initiateQualitySwap]);
 
   const handlePlaying = useCallback(() => {
@@ -979,6 +999,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   // ─── Manual quality selector ──────────────────────────────────────────
   const handleQualityChange = useCallback((mode) => {
+    lastManualQualityChangeRef.current = Date.now();
     setQualityMode(mode);
     setIsQualityMenuOpen(false);
 
@@ -999,6 +1020,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (!conn) return;
     const onChange = () => {
+      if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       const next = getBestSrc();
       const activeEl = getActiveEl();
       if (activeEl && next !== activeEl.src && next !== activeEl.currentSrc) {
@@ -1013,6 +1035,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   useEffect(() => {
     if (qualityMode !== 'auto') return;
     const id = setInterval(() => {
+      if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       if (isSlowConnection()) return;
       const next = getBestSrc();
       const activeEl = getActiveEl();
@@ -1030,6 +1053,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     let lastTime = 0;
     let lastCheck = Date.now();
     const id = setInterval(() => {
+      if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       const video = getActiveEl();
       if (!video || video.paused || video.ended) {
         lastCheck = Date.now(); lastTime = video?.currentTime ?? 0; return;

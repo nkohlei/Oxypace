@@ -32,10 +32,10 @@ const gifUpload = multer({
     },
 });
 
-// ── In-Memory Fast LRU Media Cache (Avatars, Thumbnails, Banners <= 1.5MB) ──
+// ── In-Memory Fast LRU Media Cache (Avatars, Thumbnails, Banners, Photos <= 8MB) ──
 const MEDIA_CACHE = new Map();
-const MAX_CACHE_ITEMS = 1200;
-const MAX_CACHE_BYTES = 80 * 1024 * 1024; // 80 MB limit
+const MAX_CACHE_ITEMS = 2000;
+const MAX_CACHE_BYTES = 256 * 1024 * 1024; // 256 MB high-speed RAM cache limit
 let currentCacheBytes = 0;
 
 function getCachedMedia(key) {
@@ -53,7 +53,7 @@ function getCachedMedia(key) {
 }
 
 function setCachedMedia(key, { buffer, contentType, contentLength, etag }) {
-    if (!buffer || buffer.length > 1.5 * 1024 * 1024) return;
+    if (!buffer || buffer.length > 8 * 1024 * 1024) return;
     if (MEDIA_CACHE.has(key)) {
         currentCacheBytes -= MEDIA_CACHE.get(key).buffer.length;
         MEDIA_CACHE.delete(key);
@@ -72,9 +72,35 @@ function setCachedMedia(key, { buffer, contentType, contentLength, etag }) {
         contentType,
         contentLength,
         etag: etag || `"${Date.now()}"`,
-        expiresAt: Date.now() + (3 * 60 * 60 * 1000) // 3 hours TTL
+        expiresAt: Date.now() + (6 * 60 * 60 * 1000) // 6 hours TTL
     });
     currentCacheBytes += buffer.length;
+}
+
+// ── In-Memory Fast Video Metadata Cache (Zero R2 roundtrip for Range byte seeks) ──
+const VIDEO_META_CACHE = new Map();
+const MAX_VIDEO_META_ITEMS = 5000;
+
+function getVideoMetadata(key) {
+    const item = VIDEO_META_CACHE.get(key);
+    if (!item) return null;
+    if (Date.now() > item.expiresAt) {
+        VIDEO_META_CACHE.delete(key);
+        return null;
+    }
+    return item;
+}
+
+function setVideoMetadata(key, totalSize, contentType) {
+    if (VIDEO_META_CACHE.size >= MAX_VIDEO_META_ITEMS) {
+        const oldestKey = VIDEO_META_CACHE.keys().next().value;
+        if (oldestKey) VIDEO_META_CACHE.delete(oldestKey);
+    }
+    VIDEO_META_CACHE.set(key, {
+        totalSize,
+        contentType,
+        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours TTL
+    });
 }
 
 async function streamToBuffer(readableStream) {
@@ -762,9 +788,26 @@ router.get('/*', async (req, res) => {
         // A. Video/Audio or Range Requests (Must be proxied for HTTP 206)
         if (range) {
             try {
-                const headCommand = new HeadObjectCommand({ Bucket: bucketName, Key: filePath });
-                const headResponse = await r2.send(headCommand);
-                const totalSize = headResponse.ContentLength;
+                let totalSize = 0;
+                let detContentType = 'video/mp4';
+                const cachedMeta = getVideoMetadata(filePath);
+
+                if (cachedMeta) {
+                    totalSize = cachedMeta.totalSize;
+                    detContentType = cachedMeta.contentType;
+                } else {
+                    const headCommand = new HeadObjectCommand({ Bucket: bucketName, Key: filePath });
+                    const headResponse = await r2.send(headCommand);
+                    totalSize = headResponse.ContentLength;
+
+                    detContentType = headResponse.ContentType || 'video/mp4';
+                    const ext = filePath.split('.').pop().toLowerCase();
+                    if (['mp4', 'mov', 'm4v'].includes(ext)) detContentType = 'video/mp4';
+                    else if (ext === 'webm') detContentType = 'video/webm';
+                    else if (ext === 'ogg') detContentType = 'video/ogg';
+
+                    setVideoMetadata(filePath, totalSize, detContentType);
+                }
 
                 const parts = range.replace(/bytes=/, "").split("-");
                 const start = parseInt(parts[0], 10);
@@ -784,23 +827,24 @@ router.get('/*', async (req, res) => {
 
                 const response = await r2.send(getCommand);
                 
-                // Determine the correct Content-Type
-                let contentType = response.ContentType || 'video/mp4';
-                const ext = filePath.split('.').pop().toLowerCase();
-                if (['mp4', 'mov', 'm4v'].includes(ext)) contentType = 'video/mp4';
-                else if (ext === 'webm') contentType = 'video/webm';
-                else if (ext === 'ogg') contentType = 'video/ogg';
+                // Fast cleanup: when client seeks or closes request, abort upstream R2 connection immediately
+                req.on('close', () => {
+                    try {
+                        if (response?.Body?.destroy) response.Body.destroy();
+                    } catch (_) {}
+                });
 
                 res.writeHead(206, {
                     'Content-Range': `bytes ${start}-${end}/${totalSize}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': chunksize,
-                    'Content-Type': contentType,
+                    'Content-Type': detContentType,
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges, Content-Length',
                     'Cross-Origin-Resource-Policy': 'cross-origin',
                     'Cache-Control': 'public, max-age=31536000, immutable',
-                    'Vary': 'Range'
+                    'Vary': 'Range',
+                    'Connection': 'keep-alive'
                 });
 
                 return response.Body.pipe(res);
@@ -884,8 +928,8 @@ router.get('/*', async (req, res) => {
         const contentType = response.ContentType || 'image/jpeg';
         const contentLength = response.ContentLength;
 
-        // 4. Cache small images (<= 1.5MB) in memory for instant subsequent loads
-        if (contentLength && contentLength <= 1.5 * 1024 * 1024) {
+        // 4. Cache images (<= 8MB) in memory for instant subsequent loads
+        if (contentLength && contentLength <= 8 * 1024 * 1024) {
             try {
                 const buffer = await streamToBuffer(response.Body);
                 setCachedMedia(targetKey, {

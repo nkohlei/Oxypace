@@ -27,15 +27,54 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.1)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.2)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.4.2',
+        versionCode: 242,
+        releaseDate: '22 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Büyük Şirket Standartlarında Kesintisiz Video Kalite Geçişi, Progressive Ultra HD Görsel Yakınlaştırma & Sıfır Gecikmeli Önbellek Pipeline',
+        summary: 'Video gönderilerinde kalite seçimi yapıldığında yaşanan donma ve gecikmeler, sıfır roundtrip bellek içi meta önbellekleme, akıllı çift yönlü socket temizliği ve anlık doğrudan aktarım (seamless handover) mimarisi ile kökten giderildi. Yüksek çözünürlüklü görsel postlarda yakınlaştırma ve lightbox ekranı büyük şirket standartlarında kademeli (progressive) render, anlık görsel önbellek transferi ve komşu slaytlar için akıllı arka plan prefetching ile donatıldı.',
+        category: 'perf',
+        apkSize: '78.8 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Video Kalite Seçiminde Sıfır Bekleme: 1200ms hızlı hazırlık ve anında doğrudan aktarım (seamless handover) motoru',
+            'Cloudflare R2 Video Range İstekleri İçin Bellek İçi Meta Önbellekleme (HeadObjectCommand tur süresi 0ms\'ye indirildi)',
+            'Yüksek Çözünürlüklü Görsellerde Kademeli (Progressive) Ultra HD Yakınlaştırma & Canlı Durum Rozeti',
+            'Akıllı Komşu Görsel Prefetching ile Galeri Slaytlarında 0ms Sıfır Gecikmeli Kaydırma',
+            'Sunucu Tarafında 256MB LRU Bellek İçi Önbellek & 8MB\'a Kadar Orijinal Fotoğraf RAM Hızlandırması',
+            'Video Oynatıcı Container İzolasyonu ile Kardeş Oynatıcıların Birbirini Yanlışlıkla Durdurmasının Engellenmesi'
+        ],
+        changes: [
+            { type: 'perf', text: 'routes/media.js içinde video byte-range istekleri için VIDEO_META_CACHE LRU tablosu kuruldu, R2 HeadObjectCommand gereksinimi ortadan kaldırılarak arama gecikmesi sıfırlandı.' },
+            { type: 'perf', text: 'routes/media.js istemci bağlantıyı kestiğinde veya kalite değiştirdiğinde R2 upstream socket akışının anında sonlandırılması sağlandı.' },
+            { type: 'perf', text: 'routes/media.js bellek içi LRU medya önbellek limiti 256MB\'a çıkarıldı, fotoğraf önbellek tavanı 8MB\'a yükseltilerek yüksek çözünürlüklü görsellerin RAM üzerinden anında gelmesi sağlandı.' },
+            { type: 'fix', text: 'VideoPlayer.jsx içinde pauseAllOtherVideos fonksiyonuna container kontrolü eklenerek kalite geçişi sırasında aynı oynatıcıdaki kardeş elementin durdurulması engellendi.' },
+            { type: 'perf', text: 'VideoPlayer.jsx kalite değişiminde arka plan dekoderinin kilitlenmesini önleyen 1200ms hızlı geçiş zamanlayıcısı ve doğrudan kesintisiz kaynak aktarımı (direct seamless handover) uygulandı.' },
+            { type: 'feat', text: 'PostImageGallery.jsx içinde LightboxModal için iki katmanlı kademeli (progressive) Ultra HD yükleme motoru ve canlı durum rozeti entegre edildi.' },
+            { type: 'perf', text: 'PostImageGallery.jsx içinde komşu görseller (currentIndex + 1 ve currentIndex - 1) otomatik arka plan Image() nesnesiyle önbelleğe alınarak slayt geçişleri anlık hale getirildi.' },
+            { type: 'build', text: 'Android Release APK v2.4.2 (versionCode 242) derlendi ve dağıtım dizinlerine senkronize edildi.' }
+        ],
+        affectedFiles: [
+            'routes/media.js',
+            'client/src/components/VideoPlayer.jsx',
+            'client/src/components/PostImageGallery.jsx',
+            'client/src/components/PostImageGallery.css',
+            'android/app/build.gradle',
+            'server.js'
+        ]
+    },
     {
         version: 'v2.4.1',
         versionCode: 241,
         releaseDate: '22 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '131f9cc',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Yeni Nesil X/Twitter Rozet Motoru, Dinamik Metalik Shader, Profil Üyelik & Arkadaşlık 2x2 Grid Yönetimi, Mobil Portal İyileştirmeleri',
         summary: 'Özel rozet sistemi X/Twitter doğrulama rozetleri, 10 ve 12 köşeli rozetler (rosette), dinamik metalik shader ve agresif monokrom tasarım ile yeniden tasarlandı. Profil sayfasına 2x2 grid yapısında üyelik ve arkadaşlık yönetimi, minimal arama ve PDF gönderi desteği eklendi. Mobil portal bilgi ekranı istatistikleri ve butonları kompakt hale getirildi, animasyonlu GIF kırpma ve oynatma optimizasyonları yapıldı.',
         category: 'feat',
@@ -625,7 +664,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.1': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.2': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'

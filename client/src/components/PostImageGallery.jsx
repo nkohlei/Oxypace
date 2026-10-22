@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { ChevronLeft, ChevronRight, ZoomIn, Image } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, Image, Sparkles, CheckCircle2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import './PostImageGallery.css';
 
@@ -316,6 +316,8 @@ const LightboxModal = ({
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
+    const [isHighResLoaded, setIsHighResLoaded] = useState(false);
+    const [highResLoading, setHighResLoading] = useState(true);
 
     const imgRef = useRef(null);
     const containerRef = useRef(null);
@@ -327,13 +329,60 @@ const LightboxModal = ({
     const lastTapRef = useRef(0);
     const hasDraggedRef = useRef(false);
 
-    // Reset zoom when active image changes
+    // Reset zoom & prefetch high-res quality when active image changes
     useEffect(() => {
         setScale(1);
         setPosition({ x: 0, y: 0 });
         setIsDragging(false);
         hasDraggedRef.current = false;
-    }, [currentIndex]);
+
+        let isMounted = true;
+        setIsHighResLoaded(false);
+        setHighResLoading(true);
+
+        const currentSrc = getImageUrl(images[currentIndex]);
+        if (!currentSrc) {
+            setHighResLoading(false);
+            return;
+        }
+
+        const preloader = new window.Image();
+        preloader.decoding = 'async';
+        preloader.src = currentSrc;
+
+        if (preloader.complete && preloader.naturalWidth > 0) {
+            setIsHighResLoaded(true);
+            setHighResLoading(false);
+        } else {
+            preloader.onload = () => {
+                if (isMounted) {
+                    setIsHighResLoaded(true);
+                    setHighResLoading(false);
+                }
+            };
+            preloader.onerror = () => {
+                if (isMounted) {
+                    setHighResLoading(false);
+                }
+            };
+        }
+
+        // Prefetch adjacent images for instant next/prev sliding (0ms delay)
+        if (images.length > 1) {
+            const nextIdx = (currentIndex + 1) % images.length;
+            const prevIdx = (currentIndex - 1 + images.length) % images.length;
+            const nextImg = new window.Image();
+            nextImg.src = getImageUrl(images[nextIdx]);
+            if (nextIdx !== prevIdx) {
+                const prevImg = new window.Image();
+                prevImg.src = getImageUrl(images[prevIdx]);
+            }
+        }
+
+        return () => {
+            isMounted = false;
+        };
+    }, [currentIndex, images]);
 
     // Handle mouse wheel zoom centered on cursor
     useEffect(() => {
@@ -543,6 +592,19 @@ const LightboxModal = ({
             className="oxypace-lightbox-backdrop"
             onClick={handleBackdropClick}
         >
+            {/* Top HD Status Pill Indicator */}
+            {highResLoading ? (
+                <div className="oxypace-lightbox-hd-badge loading">
+                    <Sparkles size={13} className="oxypace-hd-spin" />
+                    <span>Ultra HD • Yükleniyor...</span>
+                </div>
+            ) : isHighResLoaded ? (
+                <div className="oxypace-lightbox-hd-badge ready">
+                    <CheckCircle2 size={13} />
+                    <span>Ultra HD • Orijinal Netlik</span>
+                </div>
+            ) : null}
+
             <div className="oxypace-lightbox-content" onClick={handleBackdropClick}>
                 {/* Main Enlarge Image Display with Wheel & Touch Zoom */}
                 <div
@@ -566,7 +628,7 @@ const LightboxModal = ({
                         ref={imgRef}
                         src={getImageUrl(images[currentIndex])}
                         alt={`Büyütülmüş Görsel ${currentIndex + 1}`}
-                        className="oxypace-lightbox-img"
+                        className={`oxypace-lightbox-img ${isHighResLoaded ? 'hd-ready' : 'hd-loading'}`}
                         draggable={false}
                         onClick={(e) => {
                             // Tapping or clicking on the image itself must never close the modal
@@ -574,10 +636,11 @@ const LightboxModal = ({
                         }}
                         style={{
                             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                            transition: isDragging || isPinchingRef.current ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                            transition: isDragging || isPinchingRef.current ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease',
                             transformOrigin: 'center center',
                             willChange: 'transform',
                             cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+                            imageRendering: isHighResLoaded ? 'high-quality' : 'auto',
                         }}
                     />
                 </div>
