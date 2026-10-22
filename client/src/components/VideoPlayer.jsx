@@ -110,7 +110,6 @@ const pauseAllOtherVideos = (currentEl) => {
       if (myContainer && otherContainer && myContainer === otherContainer) {
         return;
       }
-      v.dataset.userPaused = 'true';
       try {
         v.pause();
       } catch (e) {}
@@ -193,9 +192,9 @@ const checkCenterVideo = () => {
     return;
   }
 
-  // 1. CRITICAL: Pause ANY playing video in DOM that is not sufficiently visible on screen
+  // 1. CRITICAL: Pause ANY playing video in DOM that is not sufficiently visible on screen (< 20%)
   document.querySelectorAll('video').forEach(video => {
-    if (!video.paused && !isElementVisibleOnScreen(video, 0.35)) {
+    if (!video.paused && !isElementVisibleOnScreen(video, 0.2)) {
       try {
         video.pause();
       } catch (e) {}
@@ -204,11 +203,11 @@ const checkCenterVideo = () => {
 
   if (mountedVideos.size === 0) return;
 
-  // 2. If any video is actively playing and STILL visible on screen, KEEP it playing
+  // 2. If any video is actively playing and STILL visible on screen (>= 25%), KEEP it playing
   // and ensure all other videos are paused.
   let currentlyPlaying = null;
   mountedVideos.forEach(video => {
-    if (video && !video.paused && isElementVisibleOnScreen(video, 0.35)) {
+    if (video && !video.paused && isElementVisibleOnScreen(video, 0.25)) {
       currentlyPlaying = video;
     }
   });
@@ -218,13 +217,13 @@ const checkCenterVideo = () => {
     return;
   }
 
-  // 3. If no video is currently playing, pick the one closest to screen center (that is well-visible)
+  // 3. If no video is currently playing, pick the one closest to screen center (that is at least 25% visible)
   const centerY = window.innerHeight / 2;
   let closestVideo = null;
   let minDistance = Infinity;
 
   mountedVideos.forEach(video => {
-    if (!video || !isElementVisibleOnScreen(video, 0.4)) return;
+    if (!video || !isElementVisibleOnScreen(video, 0.25)) return;
     const rect = video.getBoundingClientRect();
     const vCenter = rect.top + rect.height / 2;
     const distance = Math.abs(vCenter - centerY);
@@ -239,14 +238,27 @@ const checkCenterVideo = () => {
 
   mountedVideos.forEach(video => {
     if (video === closestVideo) {
-      // Feed videos must ONLY autoplay if autoplay setting is not off, user hasn't paused it, and video is MUTED.
-      // Browsers reject unmuted autoplay with DOMException, causing black screen and state desync.
-      if (!isAutoplayOff && video.dataset.userPaused !== 'true' && video.paused && video.muted) {
+      // Feed videos autoplay when autoplay is NOT off and the user hasn't explicitly clicked pause
+      if (!isAutoplayOff && video.dataset.userPaused !== 'true' && video.paused) {
         pauseAllOtherVideos(video);
         const playPromise = video.play();
         if (playPromise && playPromise.catch) {
-          playPromise.catch(() => {
-            try { video.pause(); } catch (_) {}
+          playPromise.catch((err) => {
+            // If browser blocked unmuted autoplay, mute the video and retry play immediately
+            if (err && err.name === 'NotAllowedError') {
+              video.muted = true;
+              try {
+                useGlobalStore.getState().setIsMuted(true);
+              } catch (_) {}
+              const retryPromise = video.play();
+              if (retryPromise && retryPromise.catch) {
+                retryPromise.catch(() => {
+                  try { video.pause(); } catch (_) {}
+                });
+              }
+            } else {
+              try { video.pause(); } catch (_) {}
+            }
           });
         }
       }
@@ -1146,6 +1158,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       waitingTimerRef.current = null; 
     }
     setIsWaiting(false);
+    handleGlobalScroll();
   }, []);
 
   const handlePlaying = useCallback(() => {
@@ -1155,6 +1168,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
     setIsWaiting(false);
     setIsPaused(false);
+    setHasStartedPlayback(true);
   }, []);
 
   // ─── Manual quality selector ──────────────────────────────────────────
@@ -1239,6 +1253,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (!el) return;
     mountedVideos.add(el);
     handleGlobalScroll();
+    const mountTimer = setTimeout(handleGlobalScroll, 250);
 
     // Pause immediately if tab/window visibility changes to hidden
     const handleVisibilityChange = () => {
@@ -1254,8 +1269,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (container && typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-          if (!entry.isIntersecting || entry.intersectionRatio < 0.35) {
-            // Pauses immediately when it goes out of view or below 35% visible
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.2) {
+            // Pauses immediately when it goes out of view or below 20% visible
             const containerVideos = container.querySelectorAll('video');
             containerVideos.forEach(v => {
               if (!v.paused) {
@@ -1273,6 +1288,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
 
     return () => {
+      clearTimeout(mountTimer);
       mountedVideos.delete(el);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (observer) {
@@ -1363,6 +1379,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
     handleCaptureFrame(el);
     handleTimeUpdate();
+    handleGlobalScroll();
     if (watchParty && onReady) {
       onReady();
     }
@@ -1685,8 +1702,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         aria-hidden="true"
       />
 
-      {/* Mandatory Cover Poster: stays locked until user actively starts playback and video renders */}
-      {(!hasStartedPlayback || isPaused || currentTime < 0.05) && (
+      {/* Mandatory Cover Poster: stays locked until playback actively starts */}
+      {!hasStartedPlayback && (
         <div
           className={`native-cover-poster ${!effectivePoster ? 'native-fallback-cover' : ''}`}
           style={effectivePoster ? { backgroundImage: `url(${effectivePoster})` } : undefined}
