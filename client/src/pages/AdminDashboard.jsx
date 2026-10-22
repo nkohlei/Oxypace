@@ -2047,20 +2047,17 @@ const AdminDashboard = () => {
 
     const handlePortalBadge = async (portalId, newBadge) => {
         try {
-            // If selecting multiple badges is desired, logic would differ.
-            // For now, assuming single badge selection like users for simplicity, or toggle.
-            // To match user experience, let's treat it as a single primary badge or toggle verified.
-            // But the backend expects an array. Let's send it as a single-item array for now.
-
             const badges = newBadge === 'none' ? [] : [newBadge];
 
             await axios.put(`/api/admin/portals/${portalId}`, { badges });
-            setPortals(portals.map(p =>
-                p._id === portalId ? { ...p, badges } : p
+            setPortals(prev => prev.map(p =>
+                p._id === portalId ? { ...p, badges, isVerified: badges.length > 0 } : p
             ));
-            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, badges } : prev);
+            setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, badges, isVerified: badges.length > 0 } : prev);
+            refreshBadges();
+            alert('Portal rozeti başarıyla güncellendi.');
         } catch (err) {
-            alert('Rozet güncellenemedi.');
+            alert(err.response?.data?.message || 'Rozet güncellenemedi.');
         }
     };
 
@@ -2073,8 +2070,8 @@ const AdminDashboard = () => {
                 borderStyle
             });
             const badgeObj = { url: badgeUrl, name: badgeName, shape, borderStyle };
-            setPortals(
-                portals.map((p) =>
+            setPortals(prev =>
+                prev.map((p) =>
                     p._id === portalId
                         ? { ...p, customBadge: badgeObj }
                         : p
@@ -2083,7 +2080,7 @@ const AdminDashboard = () => {
             setDetailPortal(prev => prev && prev._id === portalId ? { ...prev, customBadge: badgeObj } : prev);
             alert('Özel rozet portala atandı.');
         } catch (err) {
-            alert('Rozet portala atanamadı.');
+            alert(err.response?.data?.message || 'Rozet portala atanamadı.');
         }
     };
 
@@ -2673,28 +2670,41 @@ const AdminDashboard = () => {
     };
 
     // Direct Badge Assignment Handlers
-    const openAssignModal = (badge, targetType = 'user') => {
+    const openAssignModal = async (badge, targetType = 'user') => {
         setAssignTargetBadge(badge);
         setAssignType(targetType);
         setAssignQuery('');
-        setAssignResults([]);
         setAssignSuccessMsg('');
         setAssignModalOpen(true);
+        setAssignLoading(true);
+        try {
+            if (targetType === 'user') {
+                const { data } = await axios.get('/api/admin/users');
+                setAssignResults(Array.isArray(data) ? data : (data.users || []));
+            } else {
+                const { data } = await axios.get('/api/admin/portals');
+                setAssignResults(Array.isArray(data) ? data : (data.portals || []));
+            }
+        } catch (err) {
+            console.error('Assign initial fetch error:', err);
+            setAssignResults([]);
+        } finally {
+            setAssignLoading(false);
+        }
     };
 
     const handleAssignSearch = async (query) => {
         setAssignQuery(query);
-        if (!query || query.trim().length < 1) {
-            setAssignResults([]);
-            return;
-        }
         setAssignLoading(true);
         try {
+            const trimmed = (query || '').trim();
+            const endpoint = assignType === 'user'
+                ? `/api/admin/users${trimmed ? `?q=${encodeURIComponent(trimmed)}` : ''}`
+                : `/api/admin/portals${trimmed ? `?q=${encodeURIComponent(trimmed)}` : ''}`;
+            const { data } = await axios.get(endpoint);
             if (assignType === 'user') {
-                const { data } = await axios.get(`/api/admin/users?q=${encodeURIComponent(query)}`);
                 setAssignResults(Array.isArray(data) ? data : (data.users || []));
             } else {
-                const { data } = await axios.get(`/api/admin/portals?q=${encodeURIComponent(query)}`);
                 setAssignResults(Array.isArray(data) ? data : (data.portals || []));
             }
         } catch (err) {
@@ -2718,7 +2728,7 @@ const AdminDashboard = () => {
                 const existingBadges = targetItem.badges || [];
                 const updatedBadges = existingBadges.includes(assignTargetBadge.slug)
                     ? existingBadges
-                    : [...existingBadges, assignTargetBadge.slug];
+                    : [assignTargetBadge.slug, ...existingBadges.filter(b => b !== assignTargetBadge.slug)];
                 await axios.put(`/api/admin/portals/${targetItem._id}`, { badges: updatedBadges });
                 setAssignSuccessMsg(`"${assignTargetBadge.name}" rozeti "${targetItem.name}" portalına başarıyla atandı!`);
                 setAssignResults(prev => prev.map(p => p._id === targetItem._id ? { ...p, badges: updatedBadges, isVerified: true } : p));

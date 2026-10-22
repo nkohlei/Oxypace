@@ -348,7 +348,7 @@ router.post(
                 .populate('portal')
                 .populate({
                     path: 'promotedPortal',
-                    select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges isVerified isNSFW status'
+                    select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status'
                 })
                 .populate({
                     path: 'quotedPost',
@@ -359,7 +359,7 @@ router.post(
                         },
                         { 
                             path: 'portal', 
-                            select: 'name avatar icon privacy members blockedUsers allowedUsers' 
+                            select: 'name avatar icon privacy members blockedUsers allowedUsers badges customBadge isVerified' 
                         },
                         {
                             path: 'quotedPost',
@@ -370,7 +370,7 @@ router.post(
                                 },
                                 { 
                                     path: 'portal', 
-                                    select: 'name avatar icon privacy members blockedUsers allowedUsers' 
+                                    select: 'name avatar icon privacy members blockedUsers allowedUsers badges customBadge isVerified' 
                                 }
                             ]
                         }

@@ -1540,6 +1540,7 @@ const Profile = () => {
                                                                                 )}
                                                                             </div>
                                                                             <span className="badge-portal-name">{post.portal.name || 'Portal'}</span>
+                                                                            <PortalBadges portal={post.portal} size={14} />
                                                                             {post.channel && (
                                                                                 <>
                                                                                     <svg className="badge-separator" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">

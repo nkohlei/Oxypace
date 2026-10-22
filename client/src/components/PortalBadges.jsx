@@ -6,24 +6,28 @@ import './PortalBadges.css';
 const PortalBadges = ({ portal, size = 18 }) => {
     if (!portal) return null;
 
-    const systemBadge = portal.isVerified
-        ? 'verified'
-        : (portal.badges && portal.badges.length > 0 && portal.badges[0] !== 'none'
-            ? portal.badges[0]
-            : null);
+    // Badges list from portal
+    const rawBadges = Array.isArray(portal.badges)
+        ? portal.badges.filter(b => b && typeof b === 'string' && b !== 'none')
+        : (typeof portal.badges === 'string' && portal.badges !== 'none' ? [portal.badges] : []);
+
+    // Fallback: If badges array is empty, but isVerified is true, use 'verified'
+    const systemBadges = rawBadges.length > 0
+        ? rawBadges
+        : (portal.isVerified ? ['verified'] : []);
 
     const hasCustom = Boolean(portal.customBadge && portal.customBadge.url);
 
-    if (!systemBadge && !hasCustom) return null;
+    if (systemBadges.length === 0 && !hasCustom) return null;
 
     const shape = portal.customBadge?.shape || 'round';
     const borderStyle = portal.customBadge?.borderStyle || 'thin';
 
     return (
         <span className="portal-badges-container" onClick={(e) => e.stopPropagation()}>
-            {systemBadge && (
-                <Badge type={systemBadge} size={size} />
-            )}
+            {systemBadges.map((slug, idx) => (
+                <Badge key={`${slug}-${idx}`} type={slug} size={size} />
+            ))}
             {hasCustom && (
                 <span
                     className={`custom-badge-frame shape-${shape} border-${borderStyle}`}
@@ -45,3 +49,4 @@ const PortalBadges = ({ portal, size = 18 }) => {
 };
 
 export default PortalBadges;
+

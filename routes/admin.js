@@ -323,12 +323,16 @@ router.put(['/portals/:id', '/portals/:id/status'], protect, admin, async (req, 
             updateData.statusReason = '';
         }
 
-        // Validate badges array
+        // Validate badges array or string
         if (badges !== undefined) {
-            if (!Array.isArray(badges) || badges.some(b => typeof b !== 'string')) {
+            let normalizedBadges = badges;
+            if (typeof normalizedBadges === 'string') {
+                normalizedBadges = normalizedBadges === 'none' || !normalizedBadges.trim() ? [] : [normalizedBadges.trim()];
+            }
+            if (!Array.isArray(normalizedBadges) || normalizedBadges.some(b => typeof b !== 'string')) {
                 return res.status(400).json({ message: 'Rozetler dizi formatında olmalı.' });
             }
-            const cleanBadges = badges.map(b => b.trim().toLowerCase().slice(0, 50));
+            const cleanBadges = normalizedBadges.map(b => b.trim().toLowerCase().slice(0, 50)).filter(Boolean);
             updateData.badges = cleanBadges;
             if (isVerified === undefined) {
                 updateData.isVerified = cleanBadges.length > 0;

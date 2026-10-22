@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import Badge from './Badge';
+import PortalBadges from './PortalBadges';
 import {
     Layers,
     Radio,
@@ -398,7 +399,7 @@ const TanitimShowcase = () => {
                                 <div className="hero-identity-col">
                                     <div className="hero-name-row">
                                         <h3 className="hero-portal-name">{globalPortal.name}</h3>
-                                        <Badge type={globalPortal.isVerified ? 'verified' : 'official'} size={18} />
+                                        <PortalBadges portal={globalPortal} size={18} />
                                         <span className="hero-privacy-tag">
                                             {globalPortal.privacy === 'private' ? (
                                                 <><Lock size={11} /> GİZLİ</>
@@ -507,7 +508,7 @@ const TanitimShowcase = () => {
                                 <div className="classic-card-body">
                                     <div className="classic-card-title-row">
                                         <h4 className="classic-card-title">{p.name}</h4>
-                                        <Badge type={p.isVerified ? 'verified' : p.badges?.[0]} size={16} />
+                                        <PortalBadges portal={p} size={16} />
                                     </div>
 
                                     <p className="classic-card-desc">
