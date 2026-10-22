@@ -241,6 +241,7 @@
     align-items: center;
     margin-bottom: 0;
     line-height: 1;
+    transform: translateY(2.5px);
 }
 
 .badge-alignment-container .user-badges-container,
