@@ -242,14 +242,6 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
                 aria-hidden="true"
             />
 
-            {!isLoaded && (
-                <div className="gallery-skeleton-placeholder">
-                    <div className="gallery-skeleton-shimmer" />
-                    <div className="gallery-skeleton-content">
-                        <Image size={32} className="gallery-skeleton-icon" />
-                    </div>
-                </div>
-            )}
             <img
                 ref={imgRef}
                 src={resolvedUrl}
@@ -269,7 +261,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
 };
 
 /**
- * Multi image carousel slide with skeleton placeholder
+ * Multi image carousel slide with Twitter-style progressive blur
  */
 const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
     const [isLoaded, setIsLoaded] = useState(false);
@@ -295,14 +287,6 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
                 aria-hidden="true"
             />
 
-            {!isLoaded && (
-                <div className="gallery-skeleton-placeholder">
-                    <div className="gallery-skeleton-shimmer" />
-                    <div className="gallery-skeleton-content">
-                        <Image size={28} className="gallery-skeleton-icon" />
-                    </div>
-                </div>
-            )}
             <img
                 ref={imgRef}
                 src={resolvedUrl}

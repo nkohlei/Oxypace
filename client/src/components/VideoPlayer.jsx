@@ -322,9 +322,25 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
+  const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
+  const [isAutoplayOff, setIsAutoplayOff] = useState(() => typeof window !== 'undefined' && localStorage.getItem('video_autoplay') === 'off');
   const [derivedPoster, setDerivedPoster] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
+
+  // Sync autoplay preference reactively from settings
+  useEffect(() => {
+    const handleAutoplayChange = (e) => {
+      setIsAutoplayOff(e.detail === 'off');
+    };
+    window.addEventListener('video-autoplay-changed', handleAutoplayChange);
+    return () => window.removeEventListener('video-autoplay-changed', handleAutoplayChange);
+  }, []);
+
+  // Reset playback status when source changes
+  useEffect(() => {
+    setHasStartedPlayback(false);
+  }, [src, videoUrl]);
 
   // Dynamic fallback frame extraction if poster is not provided by backend/props
   const handleCaptureFrame = useCallback((videoEl) => {
@@ -348,6 +364,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, [poster, derivedPoster]);
 
   const effectivePoster = poster || derivedPoster;
+
+  // Center play button condition: ONLY at the beginning, ONLY if autoplay is OFF, NEVER during pauses mid-video
+  const showCenterPlayBtn = isAutoplayOff && !hasStartedPlayback && currentTime < 0.2 && isPaused && !watchParty && !isAdPlaying;
 
   const [volumeSliderOpen, setVolumeSliderOpen] = useState(false);
   const [qualityMode, setQualityMode] = useState('auto');
@@ -1092,6 +1111,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       waitingTimerRef.current = null; 
     }
     setIsWaiting(false);
+    setHasStartedPlayback(true);
+    setIsPaused(false);
   }, []);
 
   // ─── Manual quality selector ──────────────────────────────────────────
@@ -1235,19 +1256,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (waitingTimerRef.current)    clearTimeout(waitingTimerRef.current);
   }, []);
 
-  // ─── Controls auto-hide ───────────────────────────────────────────────
-  const startControlsTimeout = useCallback((ms = 1500) => {
+  // ─── Controls auto-hide (Equal 2s timeout for both playing and paused states) ───────────────────
+  const startControlsTimeout = useCallback((ms = 2000) => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     if (isSettingsOpen || isQualityMenuOpen) return;
-    const el = getActiveEl();
-    if (el && !el.paused) {
-      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), ms);
-    }
+    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), ms);
   }, [isSettingsOpen, isQualityMenuOpen]);
 
   useEffect(() => {
-    if (isPaused) { setShowControls(true); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); }
-    else          { startControlsTimeout(1500); }
+    setShowControls(true);
+    startControlsTimeout(2000);
   }, [isPaused, startControlsTimeout]);
 
   // ─── Ad control functions ─────────────────────────────────────────────
@@ -1336,6 +1354,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setProgress((targetTime / duration) * 100);
   }, [duration, activeVideo, watchParty, onSeek]);
 
+  // ─── Prominent Center Play Button Click Handler ───────────────────────
+  const handleCenterPlayClick = useCallback((e) => {
+    e.stopPropagation();
+    const el = getActiveEl();
+    if (!el) return;
+    pauseAllOtherVideos(el);
+    el.dataset.userPaused = 'false';
+    el.play().catch(() => {});
+    setIsPaused(false);
+    setHasStartedPlayback(true);
+    setShowControls(true);
+    startControlsTimeout(2000);
+    if (onPlay) onPlay(el.currentTime);
+  }, [activeVideo, onPlay, startControlsTimeout]);
+
   // ─── Video Area Click: 1st tap shows controls, 2nd tap pauses/plays ───
   const handleVideoAreaClick = useCallback((e) => {
     e.stopPropagation();
@@ -1345,10 +1378,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       return;
     }
 
+    // If center play button is showing on cover, clicking starts playback immediately
+    if (showCenterPlayBtn) {
+      handleCenterPlayClick(e);
+      return;
+    }
+
     // 1st click: If controls are currently hidden, first click ONLY reveals the controls!
     if (!showControls) {
       setShowControls(true);
-      startControlsTimeout(2500);
+      startControlsTimeout(2000);
       return;
     }
 
@@ -1361,6 +1400,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         pauseAllOtherVideos(el);
         el.play().catch(() => {});
         setIsPaused(false);
+        setHasStartedPlayback(true);
         if (onPlay) onPlay(el.currentTime);
         startControlsTimeout(2000);
       } else {
@@ -1368,6 +1408,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         setIsPaused(true);
         if (onPause) onPause(el.currentTime);
         setShowControls(true);
+        startControlsTimeout(2000);
       }
       return;
     }
@@ -1376,13 +1417,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       pauseAllOtherVideos(el);
       el.dataset.userPaused = 'false';
       el.play().catch(() => {});
+      setIsPaused(false);
+      setHasStartedPlayback(true);
       startControlsTimeout(2000);
     } else {
       el.dataset.userPaused = 'true';
       el.pause();
+      setIsPaused(true);
       setShowControls(true);
+      startControlsTimeout(2000);
     }
-  }, [showControls, isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
+  }, [showCenterPlayBtn, handleCenterPlayClick, showControls, isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
 
   // ─── Dedicated Play/Pause Button Click (Direct toggle) ─────────────────
   const handlePlayPauseBtnClick = useCallback((e) => {
@@ -1400,6 +1445,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         pauseAllOtherVideos(el);
         el.play().catch(() => {});
         setIsPaused(false);
+        setHasStartedPlayback(true);
         if (onPlay) onPlay(el.currentTime);
         startControlsTimeout(2000);
       } else {
@@ -1407,6 +1453,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         setIsPaused(true);
         if (onPause) onPause(el.currentTime);
         setShowControls(true);
+        startControlsTimeout(2000);
       }
       return;
     }
@@ -1415,26 +1462,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       pauseAllOtherVideos(el);
       el.dataset.userPaused = 'false';
       el.play().catch(() => {});
+      setIsPaused(false);
+      setHasStartedPlayback(true);
       startControlsTimeout(2000);
     } else {
       el.dataset.userPaused = 'true';
       el.pause();
+      setIsPaused(true);
       setShowControls(true);
+      startControlsTimeout(2000);
     }
   }, [isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
-
-  // Prominent center play button click handler
-  const handleCenterPlayClick = useCallback((e) => {
-    e.stopPropagation();
-    const el = getActiveEl();
-    if (!el) return;
-    pauseAllOtherVideos(el);
-    el.dataset.userPaused = 'false';
-    el.play().catch(() => {});
-    setIsPaused(false);
-    startControlsTimeout(2000);
-    if (onPlay) onPlay(el.currentTime);
-  }, [activeVideo, onPlay, startControlsTimeout]);
 
   const handleVideoClick = handleVideoAreaClick;
 
@@ -1471,11 +1509,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       if (!showControls) setShowControls(true);
       return;
     }
-    const el = getActiveEl();
-    if (el?.paused) {
-      if (!showControls) setShowControls(true);
-      return;
-    }
     const isFs = !!document.fullscreenElement;
     if (isFs) {
       const t = 10;
@@ -1489,19 +1522,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setShowControls(true);
     }
     startControlsTimeout(2000);
-  }, [isSettingsOpen, isQualityMenuOpen, showControls, startControlsTimeout, activeVideo]);
+  }, [isSettingsOpen, isQualityMenuOpen, showControls, startControlsTimeout]);
 
   const handleMouseEnter = useCallback(() => {
-    const el = getActiveEl();
-    if (el?.paused) {
-      if (!showControls) setShowControls(true);
-      return;
-    }
     if (!showControls) {
       setShowControls(true);
     }
     startControlsTimeout(2000);
-  }, [showControls, startControlsTimeout, activeVideo]);
+  }, [showControls, startControlsTimeout]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -1626,8 +1654,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         />
       )}
 
-      {/* Sleek Center Play Button Overlay on Video Cover */}
-      {!watchParty && !isAdPlaying && isPaused && (
+      {/* Glassmorphic Center Play Button Overlay on Video Cover (Only when autoplay is OFF and before playback has ever started) */}
+      {showCenterPlayBtn && (
         <div
           className="native-center-play-overlay"
           onClick={handleCenterPlayClick}
@@ -1697,13 +1725,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         </div>
       )}
 
-      {!watchParty && (
+      {!showCenterPlayBtn && !watchParty && (
         <button className={`native-mute-toggle ${!showControls ? 'controls-hidden' : ''}`} onClick={toggleMute} aria-label="Sesi Kapat / Aç">
           {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>
       )}
 
-      <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
+      {!showCenterPlayBtn && (
+        <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
         <div className={`native-progress-area ${isAdPlaying ? 'ad-locked' : ''}`} style={isAdPlaying ? { pointerEvents: 'none' } : {}} onClick={handleScrub}>
           <div className="native-progress-track">
             <div className="native-progress-fill" style={{ width: `${progress}%` }}>
@@ -1820,6 +1849,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };
