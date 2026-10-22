@@ -349,18 +349,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const effectivePoster = poster || derivedPoster;
 
-  // Prominent center play button click handler
-  const handleCenterPlayClick = useCallback((e) => {
-    e.stopPropagation();
-    const el = getActiveEl();
-    if (!el) return;
-    pauseAllOtherVideos(el);
-    el.dataset.userPaused = 'false';
-    el.play().catch(() => {});
-    setIsPaused(false);
-    startControlsTimeout(2000);
-    if (onPlay) onPlay(el.currentTime);
-  }, [activeVideo, onPlay, startControlsTimeout]);
   const [volumeSliderOpen, setVolumeSliderOpen] = useState(false);
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
@@ -1434,6 +1422,19 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setShowControls(true);
     }
   }, [isSettingsOpen, isQualityMenuOpen, activeVideo, startControlsTimeout, watchParty, onPlay, onPause]);
+
+  // Prominent center play button click handler
+  const handleCenterPlayClick = useCallback((e) => {
+    e.stopPropagation();
+    const el = getActiveEl();
+    if (!el) return;
+    pauseAllOtherVideos(el);
+    el.dataset.userPaused = 'false';
+    el.play().catch(() => {});
+    setIsPaused(false);
+    startControlsTimeout(2000);
+    if (onPlay) onPlay(el.currentTime);
+  }, [activeVideo, onPlay, startControlsTimeout]);
 
   const handleVideoClick = handleVideoAreaClick;
 
