@@ -202,6 +202,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [aspectRatio, setAspectRatio] = useState('16 / 9');
     const imgRef = useRef(null);
+    const resolvedUrl = getImageUrl(imgUrl);
 
     useEffect(() => {
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
@@ -234,6 +235,13 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
             onClick={(e) => isLoaded && onOpenLightbox(0, e)}
             title={isLoaded ? 'Görseli büyüt' : undefined}
         >
+            {/* Ambient progressive blur backdrop: eliminates pure black box */}
+            <div
+                className="gallery-blur-backdrop"
+                style={{ backgroundImage: `url(${resolvedUrl})` }}
+                aria-hidden="true"
+            />
+
             {!isLoaded && (
                 <div className="gallery-skeleton-placeholder">
                     <div className="gallery-skeleton-shimmer" />
@@ -244,12 +252,12 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
             )}
             <img
                 ref={imgRef}
-                src={getImageUrl(imgUrl)}
+                src={resolvedUrl}
                 alt="Gönderi görseli"
                 loading="lazy"
                 decoding="async"
                 onLoad={handleLoad}
-                className={`gallery-image single-img ${isLoaded ? 'loaded' : 'loading'}`}
+                className={`gallery-image single-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
             />
             {isLoaded && (
                 <div className="gallery-zoom-hint">
@@ -266,6 +274,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
 const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const imgRef = useRef(null);
+    const resolvedUrl = getImageUrl(imgUrl);
 
     useEffect(() => {
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
@@ -279,6 +288,13 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
             onClick={(e) => isLoaded && onOpenLightbox(index, e)}
             title={isLoaded ? 'Görseli büyütmek için tıkla' : undefined}
         >
+            {/* Ambient progressive blur backdrop: eliminates pure black box */}
+            <div
+                className="gallery-blur-backdrop"
+                style={{ backgroundImage: `url(${resolvedUrl})` }}
+                aria-hidden="true"
+            />
+
             {!isLoaded && (
                 <div className="gallery-skeleton-placeholder">
                     <div className="gallery-skeleton-shimmer" />
@@ -289,12 +305,12 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
             )}
             <img
                 ref={imgRef}
-                src={getImageUrl(imgUrl)}
+                src={resolvedUrl}
                 alt={`Görsel ${index + 1}`}
                 loading="lazy"
                 decoding="async"
                 onLoad={() => setIsLoaded(true)}
-                className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'loading'}`}
+                className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
             />
         </div>
     );

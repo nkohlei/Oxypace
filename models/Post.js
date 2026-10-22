@@ -88,6 +88,10 @@ const postSchema = new mongoose.Schema(
             p1080: { type: String, default: '' },
             p2160: { type: String, default: '' }
         },
+        videoThumbnail: {
+            type: String,
+            default: '',
+        },
         video144: {
             type: String,
             default: '',

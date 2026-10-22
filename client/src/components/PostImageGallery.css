@@ -13,7 +13,7 @@
     border-radius: 14px;
     overflow: hidden;
     cursor: default;
-    background: #000000;
+    background: radial-gradient(circle at center, rgba(30, 41, 59, 0.45) 0%, rgba(10, 15, 26, 0.85) 100%);
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
     display: flex;
     align-items: center;
@@ -30,25 +30,56 @@
     border-color: rgba(255, 255, 255, 0.18);
 }
 
+/* Ambient Progressive Blur Backdrop */
+.gallery-blur-backdrop {
+    position: absolute;
+    inset: -15%;
+    width: 130%;
+    height: 130%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(36px) brightness(0.7);
+    -webkit-filter: blur(36px) brightness(0.7);
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 0;
+    transform: translateZ(0);
+    transition: opacity 0.5s ease-out;
+}
+
+.gallery-single-image-wrapper.is-loaded .gallery-blur-backdrop,
+.post-gallery-slide.is-loaded .gallery-blur-backdrop {
+    opacity: 0;
+}
+
 .gallery-single-image-wrapper .gallery-image.single-img {
     width: 100%;
     height: 100%;
     max-height: 600px;
     object-fit: contain;
     display: block;
-    opacity: 0;
-    /* Only animate opacity; transform inside a backdrop-filter stacking context
-       forces an expensive GPU compositing pass on every frame — causes hover freeze */
-    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 1;
     transform: translateZ(0);
-    will-change: opacity;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
     image-rendering: auto;
 }
 
-.gallery-single-image-wrapper .gallery-image.single-img.loaded {
+.gallery-single-image-wrapper .gallery-image.single-img.is-loading-blur,
+.post-gallery-slide .gallery-image.slide-img.is-loading-blur {
+    opacity: 0.85;
+    filter: blur(18px);
+    -webkit-filter: blur(18px);
+    transform: scale(1.04) translateZ(0);
+    transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
+.gallery-single-image-wrapper .gallery-image.single-img.loaded,
+.post-gallery-slide .gallery-image.slide-img.loaded {
     opacity: 1;
+    filter: blur(0px);
+    -webkit-filter: blur(0px);
+    transform: scale(1) translateZ(0);
+    transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
 }
 
 /* Removed: scale(1.012) hover was triggering full composite repass through backdrop-filter parent */

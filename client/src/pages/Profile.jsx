@@ -1713,6 +1713,7 @@ const Profile = () => {
                                                                                 {post.mediaType === 'video' ? (
                                                                                     <VideoPlayer
                                                                                         src={getImageUrl(post.media)}
+                                                                                        poster={post.videoThumbnail ? getImageUrl(post.videoThumbnail) : null}
                                                                                         qualities={post.videoQualities}
                                                                                         videoUrl={getImageUrl(post.videoUrl)}
                                                                                         lowVideoUrl={getImageUrl(post.lowVideoUrl)}

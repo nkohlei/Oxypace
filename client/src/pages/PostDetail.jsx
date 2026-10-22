@@ -653,6 +653,7 @@ const PostDetail = () => {
                                         <div className="pd-media-item">
                                             <VideoPlayer 
                                                 src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)} 
+                                                poster={post.videoThumbnail ? getImageUrl(post.videoThumbnail) : null}
                                                 qualities={post.videoQualities} 
                                                 videoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.videoUrl)} 
                                                 lowVideoUrl={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.lowVideoUrl)} 

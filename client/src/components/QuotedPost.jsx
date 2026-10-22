@@ -197,6 +197,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                             <div className="quoted-video-wrapper">
                                 <VideoPlayer
                                     src={getImageUrl(activePost.media)}
+                                    poster={activePost.videoThumbnail ? getImageUrl(activePost.videoThumbnail) : null}
                                     qualities={activePost.videoQualities}
                                     videoUrl={getImageUrl(activePost.videoUrl)}
                                     lowVideoUrl={getImageUrl(activePost.lowVideoUrl)}

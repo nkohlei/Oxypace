@@ -234,9 +234,12 @@ const checkCenterVideo = () => {
     }
   });
 
+  // Autoplay preference check: If turned off in settings, do NOT auto-start center videos on scroll
+  const isAutoplayOff = typeof window !== 'undefined' && localStorage.getItem('video_autoplay') === 'off';
+
   mountedVideos.forEach(video => {
     if (video === closestVideo) {
-      if (video.dataset.userPaused !== 'true' && video.paused) {
+      if (!isAutoplayOff && video.dataset.userPaused !== 'true' && video.paused) {
         pauseAllOtherVideos(video);
         video.play().catch(() => {});
       }
@@ -279,6 +282,19 @@ if (typeof window !== 'undefined') {
   };
   document.addEventListener('fullscreenchange', onFullscreenChange);
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+  // Instant response when user toggles video autoplay in Settings
+  window.addEventListener('video-autoplay-changed', (e) => {
+    if (e.detail === 'off') {
+      mountedVideos.forEach(video => {
+        if (!video.paused && !video.closest('.watch-party-container')) {
+          video.pause();
+        }
+      });
+    } else if (e.detail === 'on') {
+      checkCenterVideo();
+    }
+  });
 }
 
 const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, serverNow: serverNowProp, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
@@ -305,9 +321,46 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused, setIsPaused] = useState(true);
+  const [derivedPoster, setDerivedPoster] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
+
+  // Dynamic fallback frame extraction if poster is not provided by backend/props
+  const handleCaptureFrame = useCallback((videoEl) => {
+    if (poster || derivedPoster || !videoEl) return;
+    try {
+      const width = videoEl.videoWidth;
+      const height = videoEl.videoHeight;
+      if (!width || !height) return;
+      const canvas = document.createElement('canvas');
+      const maxDim = 854;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+      const url = canvas.toDataURL('image/jpeg', 0.85);
+      if (url && url.length > 100) {
+        setDerivedPoster(url);
+      }
+    } catch (_) {}
+  }, [poster, derivedPoster]);
+
+  const effectivePoster = poster || derivedPoster;
+
+  // Prominent center play button click handler
+  const handleCenterPlayClick = useCallback((e) => {
+    e.stopPropagation();
+    const el = getActiveEl();
+    if (!el) return;
+    pauseAllOtherVideos(el);
+    el.dataset.userPaused = 'false';
+    el.play().catch(() => {});
+    setIsPaused(false);
+    startControlsTimeout(2000);
+    if (onPlay) onPlay(el.currentTime);
+  }, [activeVideo, onPlay, startControlsTimeout]);
   const [volumeSliderOpen, setVolumeSliderOpen] = useState(false);
   const [qualityMode, setQualityMode] = useState('auto');
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
@@ -1260,11 +1313,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (el.videoWidth && el.videoHeight && !naturalDimensions) {
       setNaturalDimensions({ width: el.videoWidth, height: el.videoHeight });
     }
+    handleCaptureFrame(el);
     handleTimeUpdate();
     if (watchParty && onReady) {
       onReady();
     }
-  }, [activeVideo, naturalDimensions, handleTimeUpdate, watchParty, onReady]);
+  }, [activeVideo, naturalDimensions, handleTimeUpdate, watchParty, onReady, handleCaptureFrame]);
 
   const handleScrub = useCallback((e) => {
     e.stopPropagation();
@@ -1455,17 +1509,20 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const hasDimensions = naturalDimensions && naturalDimensions.width && naturalDimensions.height;
   const isTweet = className && className.includes('quoted-player');
 
+  const richVideoBg = 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.5) 0%, rgba(10, 15, 26, 0.95) 100%), #0a0e17';
+
   let containerStyle = {};
   if (watchParty) {
     containerStyle = {
       width: '100%',
       height: '100%',
-      background: '#000000',
+      background: '#0a0e17',
     };
   } else if (isTweet) {
     containerStyle = {
       aspectRatio: '16/9',
       width: '100%',
+      background: richVideoBg,
     };
   } else if (hasDimensions) {
     const { width, height } = naturalDimensions;
@@ -1475,22 +1532,27 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const isAbsurd = ratio < 0.5625 || ratio > 1.7778;
     
     if (isAbsurd) {
-      // Absurd ratio: clamp the container to the nearest boundary and show black background
+      // Absurd ratio: clamp the container to the nearest boundary with rich modern gradient
       const clampedRatio = ratio < 0.5625 ? 0.5625 : 1.7778;
       containerStyle = {
         aspectRatio: `${clampedRatio}`,
-        background: '#000000',
+        background: richVideoBg,
         width: '100%',
       };
     } else {
-      // Normal ratio: use the exact original aspect ratio and black background if it is taller than 16:9
+      // Normal ratio: use the exact original aspect ratio and rich gradient if it is taller than 16:9
       containerStyle = {
         aspectRatio: `${width}/${height}`,
-        background: ratio < 1.7778 ? '#000000' : 'transparent',
+        background: ratio < 1.7778 ? richVideoBg : 'transparent',
         boxShadow: ratio < 1.7778 ? '0 10px 40px -15px rgba(0, 0, 0, 0.7)' : 'none',
         width: '100%',
       };
     }
+  } else {
+    containerStyle = {
+      background: richVideoBg,
+      width: '100%',
+    };
   }
 
   const videoStyle = (id) => {
@@ -1545,10 +1607,43 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         </div>
       )}
 
+      {/* Ambient backdrop for zero-black letterboxing & deep atmospheric diffusion */}
+      {effectivePoster && (
+        <div
+          className="native-player-backdrop"
+          style={{ backgroundImage: `url(${effectivePoster})` }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mandatory Cover Poster: locked and crisp until playback begins */}
+      {effectivePoster && isPaused && currentTime < 0.2 && (
+        <div
+          className="native-cover-poster"
+          style={{ backgroundImage: `url(${effectivePoster})` }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sleek Center Play Button Overlay on Video Cover */}
+      {!watchParty && !isAdPlaying && isPaused && (
+        <div
+          className="native-center-play-overlay"
+          onClick={handleCenterPlayClick}
+          aria-label="Videoyu Oynat"
+          role="button"
+          tabIndex={0}
+        >
+          <div className="native-center-play-btn">
+            <Play className="native-center-play-icon" />
+          </div>
+        </div>
+      )}
+
       {/* VIDEO A */}
       <video
         ref={videoRefA}
-        poster={poster}
+        poster={effectivePoster || undefined}
         className="native-video-element"
         style={videoStyle('A')}
         playsInline loop={!isAdPlaying} preload="auto"
@@ -1567,7 +1662,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       {/* VIDEO B */}
       <video
         ref={videoRefB}
-        poster={poster}
+        poster={effectivePoster || undefined}
         className="native-video-element"
         style={videoStyle('B')}
         playsInline loop={!isAdPlaying} preload="auto"

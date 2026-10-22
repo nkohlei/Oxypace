@@ -247,6 +247,47 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const finalQualities = { ...initialQualities };
         let lastUpdatedProgress = 0;
 
+        // Ensure post has a video cover thumbnail (fallback via ffmpeg)
+        try {
+            const existingPostDoc = await Post.findById(postId);
+            if (existingPostDoc && !existingPostDoc.videoThumbnail) {
+                const tempThumb = path.join(process.cwd(), 'temp_media', `thumb-${postId}.jpg`);
+                const r2ThumbKey = `${folder}/thumb_${postId}.jpg`;
+                await new Promise((resolveThumb) => {
+                    ffmpeg(localInputPath)
+                        .screenshots({
+                            timestamps: ['0.5'],
+                            filename: `thumb-${postId}.jpg`,
+                            folder: path.join(process.cwd(), 'temp_media'),
+                            size: '1280x?'
+                        })
+                        .on('end', resolveThumb)
+                        .on('error', (thumbErr) => {
+                            console.warn('[VideoTranscoder] Fallback thumbnail screenshot failed:', thumbErr.message);
+                            resolveThumb();
+                        });
+                });
+
+                if (fs.existsSync(tempThumb)) {
+                    const thumbStream = fs.createReadStream(tempThumb);
+                    const thumbStat = fs.statSync(tempThumb);
+                    await r2.send(new PutObjectCommand({
+                        Bucket: bucketName,
+                        Key: r2ThumbKey,
+                        ContentType: 'image/jpeg',
+                        ContentLength: thumbStat.size,
+                        Body: thumbStream
+                    }));
+                    const thumbUrl = constructProxiedUrl(r2ThumbKey);
+                    await Post.findByIdAndUpdate(postId, { videoThumbnail: thumbUrl });
+                    safeUnlink(tempThumb);
+                    console.log(`[VideoTranscoder] Fallback thumbnail created & saved: ${thumbUrl}`);
+                }
+            }
+        } catch (err) {
+            console.warn('[VideoTranscoder] Non-blocking error generating fallback thumbnail:', err.message);
+        }
+
         for (const job of jobs) {
             const tempOut = path.join(process.cwd(), 'temp_media', `${job.label}-${postId}.mp4`);
             const r2Key   = `${folder}/video_${job.label}_${postId}.mp4`;

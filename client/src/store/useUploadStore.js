@@ -2,21 +2,71 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { AdaptiveProgressCounter } from '../utils/downloadHelper';
 
-// Extract video dimensions from file blob
-const getVideoDimensions = (file) => new Promise((resolve) => {
+// Extract video dimensions and poster blob from file blob
+const getVideoMetadataAndPoster = (file) => new Promise((resolve) => {
     try {
         const v = document.createElement('video');
         v.preload = 'metadata';
+        v.muted = true;
+        v.playsInline = true;
+
+        let finished = false;
+        const cleanup = () => {
+            if (finished) return;
+            finished = true;
+            try { URL.revokeObjectURL(v.src); } catch (_) {}
+        };
+
+        const timeout = setTimeout(() => {
+            cleanup();
+            resolve({ width: v.videoWidth || 0, height: v.videoHeight || 0, posterBlob: null });
+        }, 5000);
+
         v.onloadedmetadata = () => {
             const width = v.videoWidth || 0;
             const height = v.videoHeight || 0;
-            try { URL.revokeObjectURL(v.src); } catch (_) {}
-            resolve({ width, height });
+            if (v.duration > 0.5) {
+                v.currentTime = Math.min(0.5, v.duration / 3);
+            } else {
+                v.currentTime = 0.05;
+            }
         };
-        v.onerror = () => resolve({ width: 0, height: 0 });
+
+        v.onseeked = () => {
+            clearTimeout(timeout);
+            try {
+                const width = v.videoWidth || 0;
+                const height = v.videoHeight || 0;
+                if (!width || !height) {
+                    cleanup();
+                    return resolve({ width, height, posterBlob: null });
+                }
+                const canvas = document.createElement('canvas');
+                const maxDim = 1280;
+                const scale = Math.min(1, maxDim / Math.max(width, height));
+                canvas.width = Math.round(width * scale);
+                canvas.height = Math.round(height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    cleanup();
+                    resolve({ width, height, posterBlob: blob });
+                }, 'image/jpeg', 0.85);
+            } catch (e) {
+                cleanup();
+                resolve({ width: v.videoWidth || 0, height: v.videoHeight || 0, posterBlob: null });
+            }
+        };
+
+        v.onerror = () => {
+            clearTimeout(timeout);
+            cleanup();
+            resolve({ width: 0, height: 0, posterBlob: null });
+        };
+
         v.src = URL.createObjectURL(file);
     } catch (_) {
-        resolve({ width: 0, height: 0 });
+        resolve({ width: 0, height: 0, posterBlob: null });
     }
 });
 
@@ -68,8 +118,8 @@ export const useUploadStore = create((set, get) => ({
         }));
 
         try {
-            // Read dimensions in background while uploading
-            const dimPromise = getVideoDimensions(file);
+            // Read dimensions and poster frame in background while uploading
+            const metaPromise = getVideoMetadataAndPoster(file);
 
             const counter = new AdaptiveProgressCounter(
                 (p) => {
@@ -86,7 +136,7 @@ export const useUploadStore = create((set, get) => ({
                 }
             );
 
-            // 1. Upload to R2
+            // 1. Upload video to R2
             const mediaKey = await uploadBlobToR2(
                 file,
                 file.name,
@@ -98,7 +148,23 @@ export const useUploadStore = create((set, get) => ({
 
             counter.finish();
 
-            const { width, height } = await dimPromise;
+            const { width, height, posterBlob } = await metaPromise;
+
+            // 1b. If we captured a poster frame, upload it as thumbnail
+            let videoThumbnailKey = null;
+            if (posterBlob) {
+                try {
+                    videoThumbnailKey = await uploadBlobToR2(
+                        posterBlob,
+                        `thumb_${Date.now()}.jpg`,
+                        'image/jpeg',
+                        'post',
+                        portalId
+                    );
+                } catch (thumbErr) {
+                    console.warn('[useUploadStore] Poster upload failed:', thumbErr);
+                }
+            }
 
             // 2. Set stage to complete
             set((state) => {
@@ -122,6 +188,7 @@ export const useUploadStore = create((set, get) => ({
                 mediaType: 'video',
                 videoWidth: width,
                 videoHeight: height,
+                videoThumbnailKey,
             };
 
             const response = await axios.post('/api/posts', postData);

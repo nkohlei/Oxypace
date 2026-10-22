@@ -318,11 +318,21 @@ router.post(
                 }
             }
 
+            // Extract videoThumbnail if provided (e.g. from client canvas upload or payload)
+            if (req.body.videoThumbnailKey) {
+                postData.videoThumbnail = constructProxiedUrl(req.body.videoThumbnailKey);
+            } else if (req.body.videoThumbnail) {
+                postData.videoThumbnail = req.body.videoThumbnail.startsWith('http')
+                    ? req.body.videoThumbnail
+                    : constructProxiedUrl(req.body.videoThumbnail);
+            }
+
             console.log('📤 About to create post with data:', {
                 author: postData.author,
                 content: postData.content ? postData.content.substring(0, 50) : '(empty)',
                 media: postData.media,
                 mediaType: postData.mediaType,
+                videoThumbnail: postData.videoThumbnail || '(none)',
                 portal: postData.portal,
             });
 

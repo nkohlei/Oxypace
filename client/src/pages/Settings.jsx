@@ -42,9 +42,10 @@ const Settings = () => {
         readReceipts: true,
     });
     const [videoSettings, setVideoSettings] = useState({
-        playbackQuality: 'auto',
-        downloadQuality: 'ask',
-        downloadFormat: 'ask',
+        playbackQuality: localStorage.getItem('video_playback_quality') || 'auto',
+        downloadQuality: localStorage.getItem('video_download_quality') || 'ask',
+        downloadFormat: localStorage.getItem('video_download_format') || 'ask',
+        autoplay: localStorage.getItem('video_autoplay') || 'on',
     });
     // Watch Party Subtitle Engine Studio States
     const [wpSubScale, setWpSubScale] = useState(() => {
@@ -417,6 +418,9 @@ const Settings = () => {
                     if (response.data.settings.video.downloadFormat) {
                         localStorage.setItem('video_download_format', response.data.settings.video.downloadFormat);
                     }
+                    if (response.data.settings.video.autoplay) {
+                        localStorage.setItem('video_autoplay', response.data.settings.video.autoplay);
+                    }
                 }
             }
         } catch (error) {
@@ -436,6 +440,9 @@ const Settings = () => {
             localStorage.setItem('video_download_quality', value);
         } else if (setting === 'downloadFormat') {
             localStorage.setItem('video_download_format', value);
+        } else if (setting === 'autoplay') {
+            localStorage.setItem('video_autoplay', value);
+            window.dispatchEvent(new CustomEvent('video-autoplay-changed', { detail: value }));
         }
 
         try {
@@ -1727,6 +1734,30 @@ const Settings = () => {
                                 type="button"
                                 className={`segment-btn ${(videoSettings.playbackQuality || 'auto') === opt.value ? 'active' : ''}`}
                                 onClick={() => handleVideoSelectChange('playbackQuality', opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Otomatik Video Oynatma</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc" style={{ marginBottom: '12px' }}>
+                        Post akış sayfalarında gezinirken videoların otomatik olarak başlamasını veya kapak görseli üzerindeki oynat butonuna basılarak başlatılmasını seçin.
+                    </p>
+                    <div className="segmented-options-group">
+                        {[
+                            { value: 'on', label: 'Açık (Akışta Otomatik Oynat)' },
+                            { value: 'off', label: 'Kapalı (Tıklayınca Oynat)' }
+                        ].map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                className={`segment-btn ${(videoSettings.autoplay || 'on') === opt.value ? 'active' : ''}`}
+                                onClick={() => handleVideoSelectChange('autoplay', opt.value)}
                             >
                                 {opt.label}
                             </button>
