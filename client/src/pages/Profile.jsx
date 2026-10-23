@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
+import { preloadImage } from '../utils/preloadUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 import { useUploadStore } from '../store/useUploadStore';
@@ -37,7 +38,18 @@ const Profile = () => {
     const { user: currentUser, updateUser } = useAuth();
     const isOwnProfile = !username || (currentUser && currentUser.username === username);
     const { socket, connected } = useSocket();
-    const [profileUser, setProfileUser] = useState(null);
+    const [profileUser, setProfileUser] = useState(() => {
+        if (isOwnProfile && currentUser) {
+            return currentUser;
+        }
+        if (username) {
+            try {
+                const cached = sessionStorage.getItem(`oxypace_cached_profile_${username}`);
+                if (cached) return JSON.parse(cached);
+            } catch (_) {}
+        }
+        return null;
+    });
     const [editing, setEditing] = useState(false);
 
     useEffect(() => {
@@ -53,12 +65,12 @@ const Profile = () => {
     }, [socket, connected]);
     const [showReportModal, setShowReportModal] = useState(false);
     const [selectedPortalForInfo, setSelectedPortalForInfo] = useState(null);
-    const [formData, setFormData] = useState({
-        username: '',
-        displayName: '',
-        bio: '',
+    const [formData, setFormData] = useState(() => ({
+        username: (isOwnProfile ? currentUser?.username : profileUser?.username) || '',
+        displayName: (isOwnProfile ? currentUser?.profile?.displayName : profileUser?.profile?.displayName) || '',
+        bio: (isOwnProfile ? currentUser?.profile?.bio : profileUser?.profile?.bio) || '',
         portalVisibility: 'public', // Default
-    });
+    }));
 
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
@@ -280,7 +292,16 @@ const Profile = () => {
     };
 
     // Posts State
-    const [userPosts, setUserPosts] = useState([]);
+    const [userPosts, setUserPosts] = useState(() => {
+        try {
+            const cacheKey = username ? `oxypace_profile_posts_${username}` : (currentUser?._id ? `oxypace_profile_posts_${currentUser._id}` : null);
+            if (cacheKey) {
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) return JSON.parse(cached);
+            }
+        } catch (_) {}
+        return [];
+    });
     const [postsLoading, setPostsLoading] = useState(false);
     const [postsError, setPostsError] = useState('');
     const [savedPosts, setSavedPosts] = useState([]);
@@ -354,6 +375,9 @@ const Profile = () => {
         try {
             const response = await axios.get('/api/users/me');
             setProfileUser(response.data);
+            if (response.data?.avatar) preloadImage(response.data.avatar, 'original');
+            if (response.data?.coverImage) preloadImage(response.data.coverImage, 'original');
+            if (response.data?.customBadge?.url) preloadImage(response.data.customBadge.url, 'original');
             const initData = {
                 username: response.data.username || '',
                 displayName: response.data.profile?.displayName || '',
@@ -370,13 +394,16 @@ const Profile = () => {
     // Fetch user posts
     const fetchUserPosts = useCallback(async (userId) => {
         if (!userId) return;
-        setPostsLoading(true);
         setPostsError('');
         try {
             const res = await axios.get(`/api/posts/user/${userId}`);
             // Handle both {posts: [...]} and direct array response formats
             const postsData = Array.isArray(res.data) ? res.data : (res.data?.posts || []);
             setUserPosts(postsData);
+            try {
+                const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
+                sessionStorage.setItem(cacheKey, JSON.stringify(postsData));
+            } catch (_) {}
         } catch (err) {
             console.error('Failed to fetch user posts:', err);
             if (err.response?.status === 404) {
@@ -384,11 +411,10 @@ const Profile = () => {
             } else {
                 setPostsError('error');
             }
-            setUserPosts([]);
         } finally {
             setPostsLoading(false);
         }
-    }, []);
+    }, [username]);
 
     // Fetch posts when profile user is loaded or tab switches to posts
     useEffect(() => {
@@ -664,6 +690,12 @@ const Profile = () => {
         try {
             const response = await axios.get(`/api/users/${username}`);
             setProfileUser(response.data);
+            try {
+                sessionStorage.setItem(`oxypace_cached_profile_${username}`, JSON.stringify(response.data));
+            } catch (_) {}
+            if (response.data?.avatar) preloadImage(response.data.avatar, 'original');
+            if (response.data?.coverImage) preloadImage(response.data.coverImage, 'original');
+            if (response.data?.customBadge?.url) preloadImage(response.data.customBadge.url, 'original');
         } catch (err) {
             console.error('Failed to fetch user profile:', err);
             setError('Kullanıcı bulunamadı');

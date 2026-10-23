@@ -124,40 +124,15 @@ const isElementVisibleOnScreen = (el, minVisibleRatio = 0.35) => {
   const rect = el.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return false;
 
-  const style = window.getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
-
   const isFs = !!document.fullscreenElement;
   const TOP_NAVBAR_OFFSET = isFs ? 0 : 50;
-  let clipTop = TOP_NAVBAR_OFFSET;
-  let clipBottom = window.innerHeight || document.documentElement.clientHeight;
-  let clipLeft = 0;
-  let clipRight = window.innerWidth || document.documentElement.clientWidth;
+  const winHeight = window.innerHeight || document.documentElement.clientHeight;
+  const winWidth = window.innerWidth || document.documentElement.clientWidth;
 
-  // Intersect with every scrollable / clipping ancestor container
-  let parent = el.parentElement;
-  while (parent && parent !== document.body && parent !== document.documentElement) {
-    const pStyle = window.getComputedStyle(parent);
-    const overflowY = pStyle.overflowY;
-    const overflowX = pStyle.overflowX;
-    const isScrollableOrClipped = 
-      overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'hidden' ||
-      overflowX === 'auto' || overflowX === 'scroll' || overflowX === 'hidden';
-
-    if (isScrollableOrClipped) {
-      const pRect = parent.getBoundingClientRect();
-      clipTop = Math.max(clipTop, pRect.top);
-      clipBottom = Math.min(clipBottom, pRect.bottom);
-      clipLeft = Math.max(clipLeft, pRect.left);
-      clipRight = Math.min(clipRight, pRect.right);
-    }
-    parent = parent.parentElement;
-  }
-
-  const visibleTop = Math.max(rect.top, clipTop);
-  const visibleBottom = Math.min(rect.bottom, clipBottom);
-  const visibleLeft = Math.max(rect.left, clipLeft);
-  const visibleRight = Math.min(rect.right, clipRight);
+  const visibleTop = Math.max(rect.top, TOP_NAVBAR_OFFSET);
+  const visibleBottom = Math.min(rect.bottom, winHeight);
+  const visibleLeft = Math.max(rect.left, 0);
+  const visibleRight = Math.min(rect.right, winWidth);
 
   const visibleHeight = Math.max(0, visibleBottom - visibleTop);
   const visibleWidth = Math.max(0, visibleRight - visibleLeft);
@@ -166,9 +141,7 @@ const isElementVisibleOnScreen = (el, minVisibleRatio = 0.35) => {
 
   const visibleArea = visibleHeight * visibleWidth;
   const totalArea = rect.height * rect.width;
-  const ratio = totalArea > 0 ? (visibleArea / totalArea) : 0;
-
-  return ratio >= minVisibleRatio;
+  return totalArea > 0 && (visibleArea / totalArea) >= minVisibleRatio;
 };
 
 const checkCenterVideo = () => {
@@ -623,10 +596,22 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   };
 
   const getBestSrc = useCallback(() => {
-    if (isSlowConnection() && src144) return src144;
-    if (src2160) return src2160;
+    const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+    if (isSlowConnection() && (src144 || src360)) return src360 || src144;
+
+    // Mobile hardware decoder optimization: 720p delivers crystal clarity with zero frame drops or memory lockups
+    if (isMobile) {
+      if (src720) return src720;
+      if (src1080) return src1080;
+      if (src360) return src360;
+      if (src144) return src144;
+      return rawBase || src2160;
+    }
+
+    // Desktop feed optimization: 1080p preferred over 4K for smooth playback
     if (src1080) return src1080;
     if (src720) return src720;
+    if (src2160) return src2160;
     if (src360) return src360;
     if (src144) return src144;
     return rawBase;
@@ -835,7 +820,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   }, [initHls]);
 
-  // Clean up HLS instance and pending swap on unmount
+  // Clean up HLS instance, video decoders, and pending swap on unmount
   useEffect(() => {
     return () => {
       if (cleanupSwapRef.current) {
@@ -843,8 +828,24 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         cleanupSwapRef.current = null;
       }
       if (hlsInstanceRef.current) {
-        hlsInstanceRef.current.destroy();
+        try {
+          hlsInstanceRef.current.destroy();
+        } catch (_) {}
       }
+      try {
+        if (videoRefA.current) {
+          videoRefA.current.pause();
+          videoRefA.current.removeAttribute('src');
+          videoRefA.current.load();
+        }
+      } catch (_) {}
+      try {
+        if (videoRefB.current) {
+          videoRefB.current.pause();
+          videoRefB.current.removeAttribute('src');
+          videoRefB.current.load();
+        }
+      } catch (_) {}
     };
   }, []);
 
@@ -1739,7 +1740,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         poster={effectivePoster || undefined}
         className="native-video-element"
         style={videoStyle('A')}
-        playsInline loop={!isAdPlaying} preload="auto"
+        playsInline loop={!isAdPlaying}
+        preload={activeVideo === 'A' ? "metadata" : "none"}
         muted={isMuted}
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoAreaClick}
@@ -1759,7 +1761,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         poster={effectivePoster || undefined}
         className="native-video-element"
         style={videoStyle('B')}
-        playsInline loop={!isAdPlaying} preload="auto"
+        playsInline loop={!isAdPlaying}
+        preload={activeVideo === 'B' ? "metadata" : "none"}
         muted={isMuted}
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoAreaClick}

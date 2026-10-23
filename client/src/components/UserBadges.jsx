@@ -35,6 +35,8 @@ const UserBadges = ({ user, size = 18 }) => {
                         src={getImageUrl(user.customBadge.url)}
                         alt={user.customBadge.name || 'Özel Rozet'}
                         className="custom-badge-icon"
+                        loading="eager"
+                        decoding="async"
                     />
                 </span>
             )}

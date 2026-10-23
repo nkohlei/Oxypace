@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
+import { preloadPortals, preloadUsers } from '../utils/preloadUtils';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import PortalBadges from '../components/PortalBadges';
@@ -15,7 +16,17 @@ const Search = () => {
     const { user, updateUser } = useAuth(); // Auth context
     const [query, setQuery] = useState('');
     const [userResults, setUserResults] = useState([]);
-    const [portalResults, setPortalResults] = useState([]);
+    const [portalResults, setPortalResults] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('oxypace_cached_explore_portals');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                preloadPortals(parsed);
+                return parsed;
+            }
+        } catch (_) {}
+        return [];
+    });
     const [selectedPortalForInfo, setSelectedPortalForInfo] = useState(null);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
@@ -30,10 +41,18 @@ const Search = () => {
     }, [query]);
 
     const fetchPortals = async (keyword = '') => {
-        setLoading(true);
+        if (!keyword && portalResults.length === 0) {
+            setLoading(true);
+        }
         try {
             const res = await axios.get(`/api/portals?keyword=${keyword}`);
-            setPortalResults(res.data);
+            if (Array.isArray(res.data)) {
+                setPortalResults(res.data);
+                if (!keyword) {
+                    sessionStorage.setItem('oxypace_cached_explore_portals', JSON.stringify(res.data));
+                }
+                preloadPortals(res.data);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -342,7 +361,7 @@ const Search = () => {
                                                             src={getImageUrl(portal.avatar)}
                                                             alt={portal.name}
                                                             className="card-icon-img"
-                                                            loading="lazy"
+                                                            loading="eager"
                                                             decoding="async"
                                                             width="48"
                                                             height="48"

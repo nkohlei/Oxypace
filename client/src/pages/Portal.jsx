@@ -17,6 +17,7 @@ import MembersSidebar from '../components/MembersSidebar';
 import TanitimShowcase from '../components/TanitimShowcase';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
+import { preloadImage, preloadUsers } from '../utils/preloadUtils';
 import { useUI } from '../context/UIContext';
 const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
 const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
@@ -52,6 +53,10 @@ const Portal = () => {
         if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
             return location.state.portal;
         }
+        try {
+            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`);
+            if (cached) return JSON.parse(cached);
+        } catch (_) {}
         return null;
     });
 
@@ -62,7 +67,16 @@ const Portal = () => {
     }, [id, location.state]);
     const posts = useGlobalStore((state) => state.posts);
     const setPosts = useGlobalStore((state) => state.setPosts);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
+            return false;
+        }
+        try {
+            return !sessionStorage.getItem(`oxypace_portal_cache_${id}`);
+        } catch (_) {
+            return true;
+        }
+    });
 
     const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
     const [error, setError] = useState('');
@@ -987,6 +1001,18 @@ const Portal = () => {
         try {
             const res = await axios.get(`/api/portals/${id}`);
             setPortal(res.data);
+            try {
+                sessionStorage.setItem(`oxypace_portal_cache_${id}`, JSON.stringify(res.data));
+            } catch (_) {}
+            if (res.data?.avatar) preloadImage(res.data.avatar, 'original');
+            const b = res.data?.coverImage || res.data?.banner;
+            if (b) preloadImage(b, 'original');
+            const allMembers = [
+                res.data.owner,
+                ...(res.data.admins || []),
+                ...(res.data.members || [])
+            ].filter(Boolean);
+            preloadUsers(allMembers);
             setEditFormData({
                 name: res.data.name,
                 description: res.data.description || '',

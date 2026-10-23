@@ -61,9 +61,31 @@ export const getImageUrl = (path, sizeType = 'original') => {
         // Normalize internal R2 relative path
         let relativePath = cleanPath;
 
+        // Strip initial proxy prefix if present
         if (relativePath.includes('/api/media/')) {
             relativePath = relativePath.substring(relativePath.indexOf('/api/media/') + 11);
-        } else if (relativePath.startsWith(r2DevDomain)) {
+        }
+
+        // Recursively decode URL-encoded components (e.g. %3A%2F%2F from double-wrapped legacy proxies)
+        let decodeCycles = 0;
+        while (typeof relativePath === 'string' && decodeCycles < 4 && (relativePath.includes('%2F') || relativePath.includes('%3A') || relativePath.includes('%2f') || relativePath.includes('%3a'))) {
+            try {
+                const decoded = decodeURIComponent(relativePath);
+                if (decoded === relativePath) break;
+                relativePath = decoded;
+                decodeCycles++;
+            } catch (_) {
+                break;
+            }
+        }
+
+        // Re-strip nested proxy prefix if revealed after decoding
+        if (relativePath.includes('/api/media/')) {
+            relativePath = relativePath.substring(relativePath.indexOf('/api/media/') + 11);
+        }
+
+        // Strip known R2 domains and prefixes
+        if (relativePath.startsWith(r2DevDomain)) {
             relativePath = relativePath.substring(r2DevDomain.length);
         } else if (relativePath.startsWith('https://oxypace.com.tr/r2-media/')) {
             relativePath = relativePath.substring('https://oxypace.com.tr/r2-media/'.length);

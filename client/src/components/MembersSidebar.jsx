@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
+import UserBadges from './UserBadges';
 
 const MembersSidebar = ({ members = [], onClose }) => {
     const { onlineUsers } = useSocket();
@@ -121,7 +122,13 @@ const MembersSidebar = ({ members = [], onClose }) => {
                     <Link to={`/profile/${username}`} key={user._id || user.id || index} className="member-item member-link">
                         <div className="member-avatar-wrapper">
                             {avatar ? (
-                                <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
+                                <img
+                                    src={getImageUrl(avatar, 'thumbnail')}
+                                    alt=""
+                                    className="member-avatar"
+                                    loading="eager"
+                                    decoding="async"
+                                />
                             ) : (
                                 <div className="member-avatar-placeholder">
                                     {displayName[0]?.toUpperCase() || username[0]?.toUpperCase() || '?'}
@@ -129,7 +136,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                             )}
                             <div className="status-indicator online"></div>
                         </div>
-                        <div className="member-info">
+                        <div className="member-info" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span className="member-name active-role" style={{ color: isOwner ? '#f1c40f' : isAdmin ? '#3498db' : '#2ecc71' }}>
                                 {displayName}
                                 {isOwner && (
@@ -139,6 +146,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                                     <span style={{ marginLeft: '4px' }} title="Yönetici">🛡️</span>
                                 )}
                             </span>
+                            <UserBadges user={user} size={13} />
                         </div>
                     </Link>
                 );
@@ -161,7 +169,13 @@ const MembersSidebar = ({ members = [], onClose }) => {
                     <Link to={`/profile/${username}`} key={user._id || user.id || `offline-${index}`} className="member-item offline member-link">
                         <div className="member-avatar-wrapper">
                             {avatar ? (
-                                <img src={getImageUrl(avatar)} alt="" className="member-avatar" />
+                                <img
+                                    src={getImageUrl(avatar, 'thumbnail')}
+                                    alt=""
+                                    className="member-avatar"
+                                    loading="eager"
+                                    decoding="async"
+                                />
                             ) : (
                                 <div
                                     className="member-avatar-placeholder"
@@ -173,7 +187,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                         </div>
                         <div className="member-info" style={{ flex: 1 }}>
                             <div className="member-name-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span className="member-name">
+                                <span className="member-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     {displayName}
                                     {isOwner && (
                                         <span style={{ marginLeft: '4px' }} title="Portal Sahibi">👑</span>
@@ -181,6 +195,7 @@ const MembersSidebar = ({ members = [], onClose }) => {
                                     {!isOwner && isAdmin && (
                                         <span style={{ marginLeft: '4px' }} title="Yönetici">🛡️</span>
                                     )}
+                                    <UserBadges user={user} size={13} />
                                 </span>
                                 {user.lastActive && (
                                     <span className="last-active-time" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>

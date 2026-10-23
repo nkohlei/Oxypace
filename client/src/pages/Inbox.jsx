@@ -16,6 +16,7 @@ import UserBadges from '../components/UserBadges';
 import UserBar from '../components/UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { dismissDeliveredMessageNotifications, setActiveChatPartner } from '../utils/notificationUtils';
+import { preloadUsers } from '../utils/preloadUtils';
 import './Inbox.css';
 
 const formatDateDivider = (dateStr) => {
@@ -52,12 +53,28 @@ const Inbox = () => {
     const { user } = useAuth();
     const { socket } = useSocket();
     const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
-    const [conversations, setConversations] = useState([]);
+    const [conversations, setConversations] = useState(() => {
+        try {
+            const cached = localStorage.getItem('oxypace_cached_conversations');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                preloadUsers(parsed.map(c => c.user).filter(Boolean));
+                return parsed;
+            }
+        } catch (_) {}
+        return [];
+    });
     const [selectedUser, setSelectedUser] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        try {
+            return !localStorage.getItem('oxypace_cached_conversations');
+        } catch (_) {
+            return true;
+        }
+    });
     const [messagesLoading, setMessagesLoading] = useState(false);
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
@@ -468,12 +485,16 @@ const Inbox = () => {
                     return conv;
                 });
                 setConversations(sanitized);
+                try {
+                    localStorage.setItem('oxypace_cached_conversations', JSON.stringify(sanitized));
+                } catch (_) {}
+                preloadUsers(sanitized.map(c => c.user).filter(Boolean));
             } else {
                 setConversations([]);
             }
         } catch (err) {
             console.error('Failed to fetch conversations:', err);
-            setConversations([]);
+            if (conversations.length === 0) setConversations([]);
         } finally {
             setLoading(false);
         }

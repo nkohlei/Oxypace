@@ -8,6 +8,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useUploadStore } from '../store/useUploadStore';
 import CreatePortalModal from './CreatePortalModal';
 import { getImageUrl } from '../utils/imageUtils';
+import { preloadPortals } from '../utils/preloadUtils';
 import { MessageSquare, Compass, Plus, Save, ArrowUpDown } from 'lucide-react';
 import './PortalSidebar.css';
 
@@ -134,6 +135,7 @@ const PortalSidebar = () => {
             // Sync unread counts from server to ensure offline accuracy
             syncUnreadCounts();
             fetchUnreadMessagesCount();
+            preloadPortals(filtered);
         }
     }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount, orderedPortals]);
 
