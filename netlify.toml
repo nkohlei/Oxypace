@@ -320,3 +320,12 @@
   for = "*.css"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/r2-media/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Expose-Headers = "Content-Range, Accept-Ranges, Content-Length, ETag"
+    Cross-Origin-Resource-Policy = "cross-origin"
+    Cache-Control = "public, max-age=31536000, immutable"
+

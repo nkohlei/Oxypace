@@ -365,6 +365,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             alt="Profile"
                                             className="nav-profile-img"
                                             size={28}
+                                            loading="eager"
                                         />
                                         {unreadCount > 0 && (
                                             <span className="nav-badge count-badge">

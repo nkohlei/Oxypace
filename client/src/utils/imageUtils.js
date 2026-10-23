@@ -11,7 +11,7 @@ export const getImageUrl = (path, sizeType = 'original') => {
         return null;
     }
 
-    let cleanPath = path;
+    let cleanPath = path.trim();
 
     // Fix legacy URLs stored with 'undefined' prefix
     if (cleanPath.startsWith('undefined/')) {
@@ -21,162 +21,107 @@ export const getImageUrl = (path, sizeType = 'original') => {
         cleanPath = cleanPath.replace('undefined', '');
     }
 
-    if (cleanPath.startsWith('/api/proxy') || cleanPath.startsWith('api/proxy')) {
-        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    // Direct data or blob URLs
+    if (cleanPath.startsWith('blob:') || cleanPath.startsWith('data:')) {
+        return cleanPath;
     }
 
-    if (cleanPath.startsWith('http') && !cleanPath.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) {
-        const cleanUrlForCheck = cleanPath.split('?')[0].split('#')[0];
-        const ext = cleanUrlForCheck.split('.').pop().toLowerCase();
-        
-        if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
-            return cleanPath;
-        }
-    }
-
-    const isNative = Capacitor.isNativePlatform();
-    const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
-    const r2Domain = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev').replace(/\/$/, '');
-    const baseUrl = ((!isNative && !isElectron && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
-
-    // 0. STATIC ASSETS: Don't proxy or transform local system assets
+    // Static system assets (local to the app/web bundle)
     if (cleanPath.startsWith('/system/') || cleanPath.startsWith('system/')) {
         return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     }
 
-    // 1. MOBILE NATIVE & DESKTOP FLOW: Route through backend API proxy
-    if (isNative || isElectron) {
+    // Local API proxy routes
+    if (cleanPath.startsWith('/api/proxy') || cleanPath.startsWith('api/proxy')) {
+        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    }
+
+    const isNative = Capacitor.isNativePlatform();
+    const isElectron = typeof window !== 'undefined' && (
+        !!window.desktopAPI?.isElectron ||
+        (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1)
+    );
+
+    // Edge CDN base for R2 media (Direct Cloudflare Edge CDN proxied via Netlify to bypass ISP DPI / SNI blocks)
+    // On native mobile or Electron, must be absolute HTTPS. On web in production, can be relative.
+    const edgeMediaBase = (isNative || isElectron || import.meta.env.DEV)
+        ? 'https://oxypace.com.tr/r2-media'
+        : '/r2-media';
+
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+    const r2DevDomain = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+
+    try {
+        // Check if media is video or audio stream
+        const cleanForExt = cleanPath.split('?')[0].split('#')[0];
+        const lastDotIdx = cleanForExt.lastIndexOf('.');
+        const ext = lastDotIdx !== -1 ? cleanForExt.substring(lastDotIdx + 1).toLowerCase() : '';
+        const isVideoOrAudio = ['mp4', 'webm', 'ogg', 'mov', 'm4v', 'm3u8', 'mpd'].includes(ext);
+
+        // Normalize internal R2 relative path
         let relativePath = cleanPath;
+
         if (relativePath.includes('/api/media/')) {
             relativePath = relativePath.substring(relativePath.indexOf('/api/media/') + 11);
-        } else if (relativePath.startsWith(r2Domain)) {
-            relativePath = relativePath.substring(r2Domain.length);
+        } else if (relativePath.startsWith(r2DevDomain)) {
+            relativePath = relativePath.substring(r2DevDomain.length);
+        } else if (relativePath.startsWith('https://oxypace.com.tr/r2-media/')) {
+            relativePath = relativePath.substring('https://oxypace.com.tr/r2-media/'.length);
         } else if (relativePath.startsWith('/r2-media/')) {
             relativePath = relativePath.substring(10);
         } else if (relativePath.startsWith('r2-media/')) {
             relativePath = relativePath.substring(9);
         }
+
         if (relativePath.startsWith('/')) {
             relativePath = relativePath.substring(1);
         }
+
+        // Normalize legacy post folder structure
         if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
             relativePath = `posts/general/${relativePath}`;
         }
 
-        if (relativePath.startsWith('blob:')) {
-            return relativePath;
+        // --- 1. EXTERNAL 3RD-PARTY MEDIA ---
+        // (URLs that are not internal R2 assets)
+        if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+            // If it's a direct third-party video/stream, return as-is
+            if (isVideoOrAudio) {
+                return cleanPath;
+            }
+            // For external third-party images (news, embeds), proxy through backend to bypass CORS & Referer protection
+            return `${apiBaseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
         }
 
-        // Apply optimization suffix (thumbnail/medium/lowres) if requested (avatars only)
-        if (sizeType && sizeType !== 'original') {
-            const isCustomUpload = relativePath.includes('avatars/');
-            if (isCustomUpload && !relativePath.startsWith('data:') && !relativePath.startsWith('blob:')) {
-                let targetPath = relativePath.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
-                const pathParts = targetPath.split('?');
-                const pathPart = pathParts[0];
-                const queryPart = pathParts[1] ? `?${pathParts[1]}` : '';
-                const lastDotIdx = pathPart.lastIndexOf('.');
-                if (lastDotIdx !== -1) {
-                    const ext = pathPart.substring(lastDotIdx).toLowerCase();
-                    if (ext === '.gif') {
-                        // Preserve original GIF animation, do not replace with static webp
-                        return relativePath.startsWith('http')
-                            ? `${baseUrl}/api/media/${encodeURIComponent(relativePath)}`
-                            : `${baseUrl}/api/media/${relativePath}`;
-                    }
-                    const pathWithoutExt = pathPart.substring(0, lastDotIdx);
-                    const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
-                    if (!isLegacyAvatar) {
-                        relativePath = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
-                    }
+        // --- 2. INTERNAL R2 VIDEO & AUDIO ---
+        // Video files require HTTP 206 Partial Content Range streaming which backend handles
+        if (isVideoOrAudio) {
+            return `${apiBaseUrl}/api/media/${relativePath}`;
+        }
+
+        // --- 3. INTERNAL R2 IMAGES (AVATARS, BANNERS, POSTS, UPLOADS) ---
+        // Apply thumbnail/medium suffix ONLY if requested AND only if file was created as .webp
+        // (Avoids phantom 404s on legacy JPG/PNG avatars that never had a -thumbnail.webp generated)
+        if (sizeType && sizeType !== 'original' && relativePath.includes('avatars/')) {
+            const pathParts = relativePath.split('?');
+            const mainPath = pathParts[0];
+            const query = pathParts[1] ? `?${pathParts[1]}` : '';
+            const dotIdx = mainPath.lastIndexOf('.');
+
+            if (dotIdx !== -1) {
+                const fileExt = mainPath.substring(dotIdx).toLowerCase();
+                const pathWithoutExt = mainPath.substring(0, dotIdx);
+                const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
+
+                // ONLY convert if it's already a modern .webp avatar and not a GIF or legacy placeholder
+                if (fileExt === '.webp' && !isLegacyAvatar && !mainPath.includes('-thumbnail') && !mainPath.includes('-medium') && !mainPath.includes('-lowres')) {
+                    relativePath = `${pathWithoutExt}-${sizeType}.webp${query}`;
                 }
             }
         }
 
-        if (relativePath.startsWith('http')) {
-            return `${baseUrl}/api/media/${encodeURIComponent(relativePath)}`;
-        }
-        return `${baseUrl}/api/media/${relativePath}`;
-    }
-
-    // 2. WEB PRODUCTION FLOW: Fast Edge CDN via /r2-media/
-    if (cleanPath.startsWith('/r2-media/') || cleanPath.startsWith('r2-media/')) {
-        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
-    }
-
-    try {
-        let absoluteUrl = cleanPath;
-
-        if (cleanPath.includes('/api/media/')) {
-            const proxyTarget = cleanPath.substring(cleanPath.indexOf('/api/media/') + 11);
-            if (!proxyTarget.startsWith('http') && !import.meta.env.DEV) {
-                let target = proxyTarget;
-                if (target.startsWith('post-') && !target.startsWith('posts/')) {
-                    target = `posts/general/${target}`;
-                }
-                absoluteUrl = `/r2-media/${target}`;
-            } else if (!proxyTarget.startsWith('http') && import.meta.env.DEV) {
-                let target = proxyTarget;
-                if (target.startsWith('post-') && !target.startsWith('posts/')) {
-                    target = `posts/general/${target}`;
-                }
-                absoluteUrl = `${r2Domain}/${target}`;
-            } else {
-                absoluteUrl = `${baseUrl}/api/media/${proxyTarget}`;
-            }
-        } else if (cleanPath.startsWith(r2Domain)) {
-            let relativePath = cleanPath.substring(r2Domain.length);
-            if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
-            if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
-                relativePath = `posts/general/${relativePath}`;
-            }
-            if (!import.meta.env.DEV) {
-                absoluteUrl = `/r2-media/${relativePath}`;
-            } else {
-                absoluteUrl = `${r2Domain}/${relativePath}`;
-            }
-        } else if (cleanPath.startsWith('blob:')) {
-            return cleanPath;
-        } else if (!cleanPath.startsWith('http')) {
-            let relativePath = cleanPath;
-            if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
-            if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
-                relativePath = `posts/general/${relativePath}`;
-            }
-            if (!import.meta.env.DEV) {
-                absoluteUrl = `/r2-media/${relativePath}`;
-            } else {
-                absoluteUrl = `${r2Domain}/${relativePath}`;
-            }
-        } else {
-            absoluteUrl = `${baseUrl}/api/media/${encodeURIComponent(cleanPath)}`;
-        }
-
-        // Apply optimization suffix (thumbnail/medium/lowres) if requested (avatars only)
-        if (sizeType && sizeType !== 'original') {
-            const isCustomUpload = absoluteUrl.includes('/avatars/');
-            if (isCustomUpload && !absoluteUrl.startsWith('data:') && !absoluteUrl.startsWith('blob:')) {
-                let targetUrl = absoluteUrl.replace(/-medium\.webp/g, '').replace(/-thumbnail\.webp/g, '').replace(/-lowres\.webp/g, '');
-                const urlParts = targetUrl.split('?');
-                const pathPart = urlParts[0];
-                const queryPart = urlParts[1] ? `?${urlParts[1]}` : '';
-                const lastDotIdx = pathPart.lastIndexOf('.');
-                if (lastDotIdx !== -1) {
-                    const ext = pathPart.substring(lastDotIdx).toLowerCase();
-                    if (ext === '.gif') {
-                        // Preserve original GIF animation, do not replace with static webp
-                        return absoluteUrl;
-                    }
-                    const pathWithoutExt = pathPart.substring(0, lastDotIdx);
-                    const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
-                    if (!isLegacyAvatar) {
-                        absoluteUrl = `${pathWithoutExt}-${sizeType}.webp${queryPart}`;
-                    }
-                }
-            }
-        }
-
-        return absoluteUrl;
+        // Serve internal R2 images via Edge CDN
+        return `${edgeMediaBase}/${relativePath}`;
     } catch (err) {
         console.error('getImageUrl Error:', err);
         return cleanPath;

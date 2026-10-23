@@ -1032,6 +1032,9 @@ const Portal = () => {
     channelRef.current = currentChannel;
 
     const fetchChannelPosts = useCallback(async (isLoadMore = false) => {
+        const currentChannelId = channelRef.current;
+        const cacheKey = `portal_posts_${id}_${currentChannelId}`;
+
         if (!isLoadMore) {
             // Cancel previous request if any
             if (abortControllerRef.current) {
@@ -1040,8 +1043,23 @@ const Portal = () => {
             // Create new controller
             abortControllerRef.current = new AbortController();
 
-            setContentLoading(true);
-            setPosts([]); // Clear posts immediately
+            let hasCachedPosts = false;
+            try {
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setPosts(parsed);
+                        setContentLoading(false);
+                        hasCachedPosts = true;
+                    }
+                }
+            } catch (_) {}
+
+            if (!hasCachedPosts) {
+                setContentLoading(true);
+                setPosts([]); // Clear posts only if no cache exists
+            }
             setHasMore(true);
         } else {
             setLoadingMore(true);
@@ -1053,11 +1071,6 @@ const Portal = () => {
                 signal: abortControllerRef.current?.signal, // Attach signal
                 ...(token && { headers: { Authorization: `Bearer ${token}` } })
             };
-
-            // Use refs to get current values inside async function/callbacks
-            // We MUST use channelRef.current because currentChannel might be stale 
-            // (fetchChannelPosts depends only on [id], so it captures the initial currentChannel of the route)
-            const currentChannelId = channelRef.current;
 
             // Safety check: if we are loading more but channel changed, abort silently
             if (isLoadMore && currentChannelId !== channelRef.current) return;
@@ -1095,6 +1108,9 @@ const Portal = () => {
                 });
             } else {
                 setPosts(newPosts);
+                try {
+                    sessionStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 15)));
+                } catch (_) {}
             }
 
             setError('');

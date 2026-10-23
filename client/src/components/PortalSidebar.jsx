@@ -294,6 +294,8 @@ const PortalSidebar = () => {
                                                 } 
                                                 alt={portal.name} 
                                                 draggable="false" 
+                                                loading="eager"
+                                                decoding="async"
                                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
                                                 onError={() => handlePortalImageError(portal._id)}
                                             />

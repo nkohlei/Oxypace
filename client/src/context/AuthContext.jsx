@@ -16,9 +16,20 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 const AuthSync = registerPlugin('AuthSync');
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        try {
+            const cached = localStorage.getItem('user');
+            return cached ? JSON.parse(cached) : null;
+        } catch (_) {
+            return null;
+        }
+    });
     const [token, setToken] = useState(() => localStorage.getItem('token'));
-    const [loading, setLoading] = useState(() => !!localStorage.getItem('token'));
+    const [loading, setLoading] = useState(() => {
+        const hasToken = !!localStorage.getItem('token');
+        const hasUser = !!localStorage.getItem('user');
+        return hasToken && !hasUser;
+    });
 
     // Set axios default header & sync with native Android for notification direct replies
     useEffect(() => {
@@ -31,19 +42,15 @@ export const AuthProvider = ({ children }) => {
             if (Capacitor.isNativePlatform()) {
                 AuthSync.syncAuth({ token, serverUrl: prodServerUrl }).catch(() => {});
             }
-            // If user is already set (e.g. via login), don't re-fetch
-            if (!user) {
-                fetchUser(token);
-            } else {
-                setLoading(false);
-            }
+            // Always fetch fresh user profile in background (Stale-While-Revalidate)
+            fetchUser(token);
         } else {
             setLoading(false);
             if (Capacitor.isNativePlatform()) {
                 AuthSync.syncAuth({ token: '', serverUrl: prodServerUrl }).catch(() => {});
             }
         }
-    }, [token, user]);
+    }, [token]);
 
     useEffect(() => {
         if (user && user._id) {
@@ -75,6 +82,9 @@ export const AuthProvider = ({ children }) => {
                 userData.securityQuestionsConfigured = true;
             }
             setUser(userData);
+            try {
+                localStorage.setItem('user', JSON.stringify(userData));
+            } catch (_) {}
         } catch (error) {
             console.error('Failed to fetch user:', error);
             // Only logout if it's a 401 (Unauthorized) to avoid logout on network errors
@@ -96,6 +106,9 @@ export const AuthProvider = ({ children }) => {
             userData.securityQuestionsConfigured = true;
         }
         setUser(userData);
+        try {
+            localStorage.setItem('user', JSON.stringify(userData));
+        } catch (_) {}
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     };
 
@@ -114,7 +127,6 @@ export const AuthProvider = ({ children }) => {
         useGlobalStore.getState().resetStore();
     };
 
-
     const updateUser = (userData) => {
         setUser(prevUser => {
             if (!prevUser) return userData;
@@ -126,11 +138,15 @@ export const AuthProvider = ({ children }) => {
                 ? userData.securityQuestionsConfigured 
                 : prevConfigured;
 
-            return {
+            const updated = {
                 ...prevUser,
                 ...userData,
                 securityQuestionsConfigured: newConfigured
             };
+            try {
+                localStorage.setItem('user', JSON.stringify(updated));
+            } catch (_) {}
+            return updated;
         });
     };
 

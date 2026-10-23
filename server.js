@@ -383,12 +383,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.3',
-        versionCode: 243,
-        minSupportedVersionCode: 243,
+        latestVersion: '2.4.4',
+        versionCode: 244,
+        minSupportedVersionCode: 244,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.3: Mobil uygulama karşılama ve onboarding deneyimi restore edildi; video oynatıcıda kapak görseli koruması, merkez oynat buton etkileşimi, kademeli görsel blur-up geçişleri ve akıcı performans optimizasyonları.',
+        changelog: 'Oxypace 2.4.4: Ultra hızlı Netlify Edge CDN medya pipeline entegrasyonu, avatar 404 gecikme döngülerinin giderilmesi, anlık açılış Stale-While-Revalidate profil ve kanal akış önbelleği, sıfır gecikmeli medya deneyimi.',
     });
 });
 
