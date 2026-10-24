@@ -100,9 +100,22 @@ const findWorkingReferer = async (targetUrl) => {
 };
 
 
+// Live call videos (WebRTC camera / screen share) are bound via srcObject = MediaStream.
+// They must NEVER be controlled by the feed's single-video autoplay logic, otherwise
+// starting one participant's camera pauses every other participant's camera.
+const isLiveStreamVideo = (v) => {
+  if (!v) return false;
+  try {
+    if (typeof MediaStream !== 'undefined' && v.srcObject instanceof MediaStream) return true;
+    if (v.closest?.('.vc-container, .global-video-pip-window, .conference-container, [data-live-call]')) return true;
+  } catch (e) {}
+  return false;
+};
+
 const pauseAllOtherVideos = (currentEl) => {
   if (typeof document === 'undefined') return;
   document.querySelectorAll('video').forEach((v) => {
+    if (isLiveStreamVideo(v)) return;
     if (v !== currentEl && !v.paused) {
       // Don't pause a sibling video within the SAME player container during quality swaps
       const myContainer = currentEl?.closest?.('.native-player-container');
@@ -150,6 +163,7 @@ const checkCenterVideo = () => {
   // 0. If document/tab is hidden in background, pause ALL playing videos
   if (document.hidden) {
     document.querySelectorAll('video').forEach(video => {
+      if (isLiveStreamVideo(video)) return;
       if (!video.paused) video.pause();
     });
     return;
@@ -159,6 +173,7 @@ const checkCenterVideo = () => {
   const isFs = !!document.fullscreenElement;
   if (isFs) {
     document.querySelectorAll('video').forEach(video => {
+      if (isLiveStreamVideo(video)) return;
       const amIFs = document.fullscreenElement.contains(video);
       if (!amIFs && !video.paused) video.pause();
     });
@@ -167,6 +182,7 @@ const checkCenterVideo = () => {
 
   // 1. CRITICAL: Pause ANY playing video in DOM that is not sufficiently visible on screen (< 20%)
   document.querySelectorAll('video').forEach(video => {
+    if (isLiveStreamVideo(video)) return;
     if (!video.paused && !isElementVisibleOnScreen(video, 0.2)) {
       try {
         video.pause();
@@ -251,6 +267,8 @@ if (typeof window !== 'undefined') {
   window.addEventListener('play', (e) => {
     const target = e.target;
     if (target && target.tagName === 'VIDEO') {
+      // A live call camera starting must not pause other cameras or the watch-party player
+      if (isLiveStreamVideo(target)) return;
       pauseAllOtherVideos(target);
     }
   }, true);
