@@ -1021,11 +1021,11 @@ router.post('/:id/channels', protect, mongoIdValidation('id'), async (req, res) 
             return res.status(404).json({ message: 'Portal not found' });
         }
 
-        // Authorization: Owner or Admin
+        // Authorization: Owner or Admin or Site Admin
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin && !req.user.isAdmin) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
@@ -1070,7 +1070,7 @@ router.delete('/:id/channels/:channelId', protect, mongoIdValidation('id'), mong
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin && !req.user.isAdmin) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
@@ -1109,7 +1109,7 @@ router.put('/:id/channels/reorder', protect, mongoIdValidation('id'), async (req
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin && !req.user.isAdmin) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
@@ -1144,7 +1144,7 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
         const isOwner = portal.owner.toString() === req.user._id.toString();
         const isAdmin = portal.admins.includes(req.user._id);
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin && !req.user.isAdmin) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 

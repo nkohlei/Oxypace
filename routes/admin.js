@@ -161,9 +161,36 @@ router.get('/users', protect, admin, async (req, res) => {
 
         const users = await User.find(query)
             .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals')
-            .populate('joinedPortals', 'name avatar')
+            .populate('joinedPortals', 'name avatar members channels')
             .sort({ createdAt: -1 })
-            .limit(100);
+            .limit(100)
+            .lean();
+
+        // Cross-query Portals where these users are members or owners to guarantee complete memberPortals
+        const userIds = users.map(u => u._id);
+        const portalsForUsers = await Portal.find({
+            $or: [
+                { members: { $in: userIds } },
+                { owner: { $in: userIds } }
+            ]
+        }).select('name avatar members channels owner').lean();
+
+        users.forEach(u => {
+            const uIdStr = String(u._id);
+            const userP = portalsForUsers.filter(p =>
+                (p.owner && String(p.owner) === uIdStr) ||
+                (Array.isArray(p.members) && p.members.some(m => String(m) === uIdStr)) ||
+                (Array.isArray(u.joinedPortals) && u.joinedPortals.some(jp => String(jp._id || jp) === String(p._id)))
+            );
+            u.memberPortals = userP.map(p => ({
+                _id: p._id,
+                name: p.name,
+                avatar: p.avatar,
+                isOwner: String(p.owner) === uIdStr,
+                memberCount: p.members?.length || 0,
+                channelCount: p.channels?.length || 0
+            }));
+        });
 
         res.json(users);
     } catch (error) {
@@ -185,12 +212,21 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        // Count posts and fetch recent post summaries & audit logs
-        const [totalPosts, recentPosts, recentActivities, ownedPortals] = await Promise.all([
+        // Count posts and fetch recent post summaries & audit logs & member portals
+        const [totalPosts, recentPosts, recentActivities, ownedPortals, memberPortals] = await Promise.all([
             Post.countDocuments({ author: user._id }),
             Post.find({ author: user._id }).sort({ createdAt: -1 }).limit(10).populate('portal', 'name avatar').lean(),
             ActivityLog.find({ $or: [{ user: user._id }, { username: user.username }] }).sort({ createdAt: -1 }).limit(50).lean(),
-            Portal.find({ owner: user._id }).select('name avatar members createdAt isVerified').lean()
+            Portal.find({ owner: user._id }).select('name avatar members channels createdAt isVerified isReadOnly isNSFW').lean(),
+            Portal.find({
+                $or: [
+                    { members: user._id },
+                    { owner: user._id },
+                    { _id: { $in: user.joinedPortals || [] } }
+                ]
+            }).select('name avatar description members channels isVerified badges isReadOnly isNSFW createdAt owner')
+              .populate('owner', 'username profile.displayName')
+              .lean()
         ]);
 
         // Aggregate unique IP addresses known for this user
@@ -211,6 +247,7 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
             recentPosts,
             recentActivities,
             ownedPortals,
+            memberPortals,
             allKnownIPs: Array.from(ipSet)
         });
     } catch (error) {
@@ -375,31 +412,181 @@ router.get('/portals', protect, admin, async (req, res) => {
 router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
-            .populate('owner', 'username profile.displayName profile.avatar email')
-            .populate('members.user', 'username profile.displayName profile.avatar')
+            .populate('owner', 'username profile.displayName profile.avatar email createdAt lastActive')
+            .populate('admins', 'username profile.displayName profile.avatar email')
+            .populate({
+                path: 'members',
+                select: 'username profile.displayName profile.avatar email createdAt lastActive isVerified'
+            })
+            .populate('blockedUsers', 'username profile.displayName profile.avatar')
+            .populate('joinRequests', 'username profile.displayName profile.avatar')
             .lean();
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal bulunamadı.' });
         }
 
-        const [postCount, recentPosts] = await Promise.all([
+        const [postCount, recentPosts, channelPostCounts, recentActivities] = await Promise.all([
             Post.countDocuments({ portal: portal._id }),
             Post.find({ portal: portal._id })
                 .populate('author', 'username profile.displayName profile.avatar')
                 .sort({ createdAt: -1 })
                 .limit(10)
-                .lean()
+                .lean(),
+            Post.aggregate([
+                { $match: { portal: portal._id } },
+                { $group: { _id: '$channel', count: { $sum: 1 } } }
+            ]),
+            ActivityLog.find({
+                $or: [
+                    { portal: portal._id },
+                    { 'details.portalId': String(portal._id) },
+                    { 'details.portalName': portal.name }
+                ]
+            }).sort({ createdAt: -1 }).limit(30).lean()
         ]);
+
+        const channelStats = {};
+        if (Array.isArray(channelPostCounts)) {
+            channelPostCounts.forEach(c => {
+                if (c._id) channelStats[String(c._id)] = c.count;
+            });
+        }
 
         res.json({
             portal,
             postCount,
-            recentPosts
+            recentPosts,
+            channelStats,
+            recentActivities
         });
     } catch (error) {
         console.error('Fetch portal dossier error:', error);
         res.status(500).json({ message: 'Portal detayları getirilemedi.' });
+    }
+});
+
+// @route   POST /api/admin/portals/:id/channels
+// @desc    Admin add channel to portal
+// @access  Private/Admin
+router.post('/portals/:id/channels', protect, admin, async (req, res) => {
+    try {
+        const { name, type = 'text', roomMode = 'free', maxParticipants = 25, isPrivate = false } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ message: 'Kanal adı gereklidir.' });
+        }
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı.' });
+        }
+        const newChannel = {
+            name: name.trim().toLowerCase().replace(/\s+/g, '-'),
+            type: ['text', 'voice', 'conference', 'image'].includes(type) ? type : 'text',
+            roomMode: ['free', 'stage'].includes(roomMode) ? roomMode : 'free',
+            maxParticipants: Number(maxParticipants) || 25,
+            isPrivate: !!isPrivate,
+            order: portal.channels.length
+        };
+        portal.channels.push(newChannel);
+        await portal.save();
+
+        logActivity({
+            action: 'portal_channel_create',
+            category: 'portal',
+            user: req.user._id,
+            username: req.user.username,
+            req,
+            portal: portal._id,
+            details: { portalName: portal.name, channelName: newChannel.name, channelType: newChannel.type }
+        });
+
+        res.json({ message: 'Kanal başarıyla eklendi.', channels: portal.channels });
+    } catch (error) {
+        console.error('Admin create channel error:', error);
+        res.status(500).json({ message: 'Kanal eklenemedi.' });
+    }
+});
+
+// @route   PUT /api/admin/portals/:id/channels/:channelId
+// @desc    Admin edit channel in portal
+// @access  Private/Admin
+router.put('/portals/:id/channels/:channelId', protect, admin, async (req, res) => {
+    try {
+        const { name, type, roomMode, maxParticipants, isPrivate } = req.body;
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı.' });
+        }
+        const channel = portal.channels.id(req.params.channelId);
+        if (!channel) {
+            return res.status(404).json({ message: 'Kanal bulunamadı.' });
+        }
+        if (name && name.trim()) {
+            channel.name = name.trim().toLowerCase().replace(/\s+/g, '-');
+        }
+        if (type && ['text', 'voice', 'conference', 'image'].includes(type)) {
+            channel.type = type;
+        }
+        if (roomMode && ['free', 'stage'].includes(roomMode)) {
+            channel.roomMode = roomMode;
+        }
+        if (maxParticipants !== undefined) {
+            channel.maxParticipants = Number(maxParticipants) || 25;
+        }
+        if (isPrivate !== undefined) {
+            channel.isPrivate = !!isPrivate;
+        }
+        await portal.save();
+
+        logActivity({
+            action: 'portal_channel_update',
+            category: 'portal',
+            user: req.user._id,
+            username: req.user.username,
+            req,
+            portal: portal._id,
+            details: { portalName: portal.name, channelName: channel.name, channelId: channel._id }
+        });
+
+        res.json({ message: 'Kanal başarıyla güncellendi.', channel, channels: portal.channels });
+    } catch (error) {
+        console.error('Admin update channel error:', error);
+        res.status(500).json({ message: 'Kanal güncellenemedi.' });
+    }
+});
+
+// @route   DELETE /api/admin/portals/:id/channels/:channelId
+// @desc    Admin delete channel from portal
+// @access  Private/Admin
+router.delete('/portals/:id/channels/:channelId', protect, admin, async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı.' });
+        }
+        if (portal.channels.length <= 1) {
+            return res.status(400).json({ message: 'Portalın son kalan kanalı silinemez.' });
+        }
+        const chToDelete = portal.channels.id(req.params.channelId);
+        const chName = chToDelete ? chToDelete.name : req.params.channelId;
+
+        portal.channels = portal.channels.filter(c => String(c._id) !== String(req.params.channelId));
+        await portal.save();
+
+        logActivity({
+            action: 'portal_channel_delete',
+            category: 'portal',
+            user: req.user._id,
+            username: req.user.username,
+            req,
+            portal: portal._id,
+            details: { portalName: portal.name, deletedChannelName: chName }
+        });
+
+        res.json({ message: 'Kanal silindi.', channels: portal.channels });
+    } catch (error) {
+        console.error('Admin delete channel error:', error);
+        res.status(500).json({ message: 'Kanal silinemedi.' });
     }
 });
 

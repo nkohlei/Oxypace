@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield, Volume2, Video, Hash, Radio, Lock, Unlock, MessageSquare } from 'lucide-react';
 import Badge from '../components/Badge';
 import PortalBadges from '../components/PortalBadges';
 import UserBadges from '../components/UserBadges';
@@ -577,12 +577,13 @@ const FeedbackResponseModal = ({ isOpen, onClose, feedback, onSubmit }) => {
 };
 
 
-// Portal Detail / Management Modal
+// Portal Detay & Kanallar Dosyası (Comprehensive Portal Dossier & Channel Manager)
 const PortalDetailModal = ({
     isOpen,
     onClose,
     portal,
-    contextBadges,
+    loading = false,
+    contextBadges = [],
     customBadges = [],
     handlePortalBadge,
     handlePortalCustomBadgeAssign,
@@ -594,257 +595,1066 @@ const PortalDetailModal = ({
     ownershipTarget,
     setOwnershipTarget,
     handleTransferOwnership,
-    transferring
+    transferring,
+    onAddChannel,
+    onEditChannel,
+    onDeleteChannel,
+    openPortalPosts,
+    openUserDossier
 }) => {
     if (!isOpen || !portal) return null;
 
+    const [activeSubTab, setActiveSubTab] = useState('channels'); // 'channels', 'identity', 'members', 'security', 'activity'
+    const [showAddChannel, setShowAddChannel] = useState(false);
+    const [submittingChannel, setSubmittingChannel] = useState(false);
+    const [newChannel, setNewChannel] = useState({
+        name: '',
+        type: 'text',
+        roomMode: 'free',
+        maxParticipants: 25,
+        isPrivate: false
+    });
+    const [editingChannelId, setEditingChannelId] = useState(null);
+    const [editChannelForm, setEditChannelForm] = useState({
+        name: '',
+        type: 'text',
+        roomMode: 'free',
+        maxParticipants: 25,
+        isPrivate: false
+    });
+    const [memberSearchTerm, setMemberSearchTerm] = useState('');
+
     const activeAlerts = portal.alerts ? portal.alerts.filter(a => new Date(a.expiresAt) > new Date() && a.isActive !== false) : [];
-    const defaultBanner = 'linear-gradient(45deg, #4f46e5, #9333ea)';
+    const channels = portal.channels || [];
+    const channelStats = portal.channelStats || {};
+    const members = Array.isArray(portal.members) ? portal.members : [];
+    const admins = Array.isArray(portal.admins) ? portal.admins : [];
+    const blockedUsers = Array.isArray(portal.blockedUsers) ? portal.blockedUsers : [];
+    const joinRequests = Array.isArray(portal.joinRequests) ? portal.joinRequests : [];
+
+    const handleCreateChannelSubmit = async (e) => {
+        e.preventDefault();
+        if (!newChannel.name.trim()) {
+            alert('Kanal adı gereklidir.');
+            return;
+        }
+        setSubmittingChannel(true);
+        try {
+            const success = await onAddChannel(portal._id, newChannel);
+            if (success) {
+                setNewChannel({ name: '', type: 'text', roomMode: 'free', maxParticipants: 25, isPrivate: false });
+                setShowAddChannel(false);
+            }
+        } finally {
+            setSubmittingChannel(false);
+        }
+    };
+
+    const handleStartEditChannel = (ch) => {
+        setEditingChannelId(ch._id);
+        setEditChannelForm({
+            name: ch.name || '',
+            type: ch.type || 'text',
+            roomMode: ch.roomMode || 'free',
+            maxParticipants: ch.maxParticipants || 25,
+            isPrivate: !!ch.isPrivate
+        });
+    };
+
+    const handleSaveEditChannel = async (chId) => {
+        if (!editChannelForm.name.trim()) {
+            alert('Kanal adı boş olamaz.');
+            return;
+        }
+        const success = await onEditChannel(portal._id, chId, editChannelForm);
+        if (success) {
+            setEditingChannelId(null);
+        }
+    };
+
+    const copyToClipboard = (text, label) => {
+        navigator.clipboard.writeText(text);
+        alert(`${label} panoya kopyalandı: ${text}`);
+    };
+
+    const getChannelIcon = (type) => {
+        switch(type) {
+            case 'voice': return <Volume2 size={15} />;
+            case 'conference': return <Video size={15} />;
+            case 'image': return <Image size={15} />;
+            default: return <Hash size={15} />;
+        }
+    };
+
+    const getChannelTypeLabel = (type) => {
+        switch(type) {
+            case 'voice': return 'SESLİ SOHBET';
+            case 'conference': return 'CANLI KONFERANS';
+            case 'image': return 'GÖRSEL GALERİ';
+            default: return 'METİN';
+        }
+    };
+
+    // Filter populated members by search
+    const filteredMembers = members.filter(m => {
+        if (!memberSearchTerm.trim()) return true;
+        const term = memberSearchTerm.toLowerCase();
+        if (typeof m === 'object' && m !== null) {
+            return (m.username && m.username.toLowerCase().includes(term)) ||
+                   (m.profile?.displayName && m.profile.displayName.toLowerCase().includes(term)) ||
+                   (m.email && m.email.toLowerCase().includes(term));
+        }
+        return false;
+    });
 
     return (
-        <div className="modal-overlay-modern">
-            <div className="modal-content-modern portal-detail-modal">
-                <div className="portal-detail-header-banner" style={{ background: portal.banner ? `url(${getImageUrl(portal.banner)}) center/cover` : defaultBanner }}>
-                    <button className="close-btn-modern" onClick={onClose} style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.5)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: 'none' }}>&times;</button>
+        <div className="modal-overlay-modern" onClick={onClose}>
+            <div className="modal-content-modern portal-dossier-modal" onClick={(e) => e.stopPropagation()}>
+                {/* Header Banner */}
+                <div className="portal-detail-header-banner" style={{ background: portal.banner ? `url(${getImageUrl(portal.banner)}) center/cover` : '#141414' }}>
+                    <div className="portal-banner-overlay" />
+                    <button
+                        className="close-btn-modern"
+                        onClick={onClose}
+                        style={{
+                            position: 'absolute',
+                            top: '14px',
+                            right: '14px',
+                            background: '#000000',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            border: '1px solid #333333',
+                            cursor: 'pointer',
+                            zIndex: 10
+                        }}
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
 
-                <div className="portal-detail-avatar-container">
-                    {portal.avatar ? (
-                        <img src={getImageUrl(portal.avatar)} alt="" className="portal-detail-avatar" />
-                    ) : (
-                        <div className="portal-detail-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3b82f6', color: 'white', fontWeight: 'bold', fontSize: '2rem' }}>
-                            {portal.name.substring(0, 2).toUpperCase()}
+                {/* Portal Identity & Primary Bar */}
+                <div className="portal-detail-identity-bar">
+                    <AdminMedia
+                        src={portal.avatar}
+                        alt={portal.name}
+                        className="portal-detail-avatar-box"
+                        isAvatar={true}
+                        fallbackText={portal.name?.substring(0, 2).toUpperCase()}
+                    />
+                    <div className="portal-detail-primary-info">
+                        <div className="portal-detail-heading-row">
+                            <h2 className="portal-detail-name">
+                                {portal.name}
+                                <PortalBadges portal={portal} size={20} />
+                                {portal.isNSFW && <span className="mono-tag" style={{ background: '#000', color: '#fff', border: '1px solid #fff' }}>+18 NSFW</span>}
+                                {portal.isReadOnly && <span className="mono-tag muted">SALT OKUNUR</span>}
+                                <span className={`badge-pill-status ${portal.status}`}>
+                                    {portal.status === 'active' ? 'AKTİF' : portal.status === 'suspended' ? 'ASKIDA' : 'KAPALI'}
+                                </span>
+                            </h2>
+                        </div>
+                        <div className="portal-detail-quick-meta">
+                            <span className="quick-meta-item">
+                                ID: <span className="mono-code" onClick={() => copyToClipboard(portal._id, 'Portal ID')}>{portal._id} <Copy size={11} style={{ verticalAlign: 'middle' }} /></span>
+                            </span>
+                            <span className="quick-meta-item">
+                                Kurucu:{' '}
+                                {portal.owner ? (
+                                    <strong
+                                        className="portal-owner-link"
+                                        onClick={() => openUserDossier && openUserDossier(portal.owner)}
+                                        title="Kurucunun şeceresini aç"
+                                    >
+                                        @{typeof portal.owner === 'object' ? portal.owner.username : portal.owner}
+                                    </strong>
+                                ) : (
+                                    'Bilinmiyor'
+                                )}
+                            </span>
+                            <span className="quick-meta-item">👥 {members.length} Üye</span>
+                            <span className="quick-meta-item">📻 {channels.length} Kanal</span>
+                            <span className="quick-meta-item">📝 {portal.postCount || 0} Gönderi</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sub-Tab Navigation */}
+                <div className="portal-dossier-subtabs-nav">
+                    <button
+                        type="button"
+                        className={`portal-subtab-btn ${activeSubTab === 'channels' ? 'active' : ''}`}
+                        onClick={() => setActiveSubTab('channels')}
+                    >
+                        <Radio size={14} />
+                        <span>KANALLAR & ODALAR ({channels.length})</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`portal-subtab-btn ${activeSubTab === 'identity' ? 'active' : ''}`}
+                        onClick={() => setActiveSubTab('identity')}
+                    >
+                        <Globe size={14} />
+                        <span>GENEL & KİMLİK BİLGİLERİ</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`portal-subtab-btn ${activeSubTab === 'members' ? 'active' : ''}`}
+                        onClick={() => setActiveSubTab('members')}
+                    >
+                        <Users size={14} />
+                        <span>ÜYELER & YÖNETİCİLER ({members.length})</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`portal-subtab-btn ${activeSubTab === 'security' ? 'active' : ''}`}
+                        onClick={() => setActiveSubTab('security')}
+                    >
+                        <ShieldCheck size={14} />
+                        <span>GÜVENLİK & AYARLAR</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`portal-subtab-btn ${activeSubTab === 'activity' ? 'active' : ''}`}
+                        onClick={() => setActiveSubTab('activity')}
+                    >
+                        <History size={14} />
+                        <span>PORTAL GÜNLÜĞÜ</span>
+                    </button>
+                </div>
+
+                {/* Modal Body Scroller */}
+                <div className="detail-modal-body-scroller">
+                    {loading && (
+                        <div className="admin-loading" style={{ margin: '10px 0' }}>
+                            Portal dosyası ve kanal istatistikleri senkronize ediliyor...
                         </div>
                     )}
-                    <div className="portal-detail-title-info">
-                        <h2>
-                            {portal.name}
-                            <PortalBadges portal={portal} size={20} />
-                            {portal.isNSFW && <span className="nsfw-badge-admin">+18</span>}
-                        </h2>
-                        <p>Sahibi: <strong>@{portal.owner?.username || 'Bilinmiyor'}</strong></p>
-                    </div>
-                </div>
 
-                <div className="detail-modal-body-scroller">
-                    {/* Description */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Açıklama</h4>
-                        <p style={{ margin: 0, fontSize: '14px', color: '#ccc', lineHeight: '1.5' }}>
-                            {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
-                        </p>
-                    </div>
-
-                    {/* Read-Only mode */}
-                    <div className="read-only-toggle-container">
-                        <div className="read-only-info">
-                            <strong>Karantina / Salt Okunur Mod</strong>
-                            <span>Aktif edildiğinde bu portala yeni gönderi gönderilmesi tamamen engellenir.</span>
-                        </div>
-                        <div 
-                            className={`read-only-toggle-switch ${portal.isReadOnly ? 'active' : ''}`}
-                            onClick={() => handleReadOnlyToggle(portal._id, portal.isReadOnly)}
-                        />
-                    </div>
-
-                    {/* Management Controls */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Portal Ayarları</h4>
-                        <div className="flex-control-row" style={{ gap: '15px' }}>
-                            <div>
-                                <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Rozet Ata</span>
-                                <select
-                                    className="badge-select"
-                                    value={portal.badges && portal.badges.length > 0 ? portal.badges[0] : 'none'}
-                                    onChange={(e) => handlePortalBadge(portal._id, e.target.value)}
-                                    style={{ width: '150px' }}
-                                >
-                                    <option value="none">Rozet Yok</option>
-                                    {(() => {
-                                        const portalBadges = contextBadges.filter(b => b.category === 'portal' || b.category === 'both');
-                                        const slugs = new Set(portalBadges.map(b => b.slug));
-                                        const LEGACY = [
-                                            { slug: 'blue', name: 'Mavi Onay' },
-                                            { slug: 'gold', name: 'Altın Onay' },
-                                            { slug: 'verified', name: 'Onaylı Portal' },
-                                            { slug: 'partner', name: 'Partner' },
-                                            { slug: 'official', name: 'Resmi Hesap' },
-                                        ];
-                                        const merged = [...portalBadges];
-                                        LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
-                                        const currentBadge = portal.badges?.[0];
-                                        if (currentBadge && currentBadge !== 'none' && !slugs.has(currentBadge) && !LEGACY.find(l => l.slug === currentBadge)) {
-                                            merged.push({ slug: currentBadge, name: currentBadge });
-                                        }
-                                        return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
-                                    })()}
-                                </select>
+                    {/* SUBTAB 1: KANALLAR & ODALAR */}
+                    {activeSubTab === 'channels' && (
+                        <div className="portal-subtab-pane">
+                            {/* Channels Quick Metrics */}
+                            <div className="portal-channels-metrics-grid">
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">TOPLAM KANAL</span>
+                                    <strong className="p-metric-val">{channels.length}</strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">METİN KANALLARI</span>
+                                    <strong className="p-metric-val">
+                                        {channels.filter(c => !c.type || c.type === 'text').length}
+                                    </strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">SES & CANLI SAHNE</span>
+                                    <strong className="p-metric-val">
+                                        {channels.filter(c => c.type === 'voice' || c.type === 'conference').length}
+                                    </strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">ÖZEL / KİLİTLİ</span>
+                                    <strong className="p-metric-val">
+                                        {channels.filter(c => c.isPrivate).length}
+                                    </strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">TOPLAM PORTAL POST</span>
+                                    <strong className="p-metric-val">{portal.postCount || 0}</strong>
+                                </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>+18 NSFW Durumu</span>
-                                <label className="nsfw-toggle-label">
-                                    <input
-                                        type="checkbox"
-                                        checked={portal.isNSFW || false}
-                                        onChange={() => handleNSFWToggle(portal._id, portal.isNSFW)}
-                                        className="nsfw-toggle-input"
-                                    />
-                                    <span className="nsfw-toggle-slider"></span>
-                                    <span className="nsfw-toggle-text">+18 NSFW</span>
-                                </label>
-                            </div>
-
-                            <div>
-                                <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Portal Durumu</span>
-                                <span className={`badge-pill-status ${portal.status}`} style={{ display: 'inline-block', padding: '6px 12px', borderRadius: '8px' }}>
-                                    {portal.status === 'active' ? 'Aktif' : portal.status === 'suspended' ? 'Askıya Alındı' : 'Kapatıldı'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Custom Badge Assignment */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Özel İkon Rozeti (Yönetici Rozeti)</h4>
-                        <select
-                            className="badge-select"
-                            value={portal.customBadge?.url || ''}
-                            onChange={(e) => {
-                                const selectedUrl = e.target.value;
-                                const selectedBadge = customBadges.find(b => b.url === selectedUrl);
-                                handlePortalCustomBadgeAssign(
-                                    portal._id,
-                                    selectedBadge ? selectedBadge.url : '',
-                                    selectedBadge ? selectedBadge.name : '',
-                                    selectedBadge ? (selectedBadge.shape || 'round') : 'round',
-                                    selectedBadge ? (selectedBadge.borderStyle || 'thin') : 'thin'
-                                );
-                            }}
-                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
-                        >
-                            <option value="">Rozet Yok</option>
-                            {customBadges.map((badge) => (
-                                <option key={badge._id} value={badge.url}>
-                                    {badge.name}
-                                </option>
-                            ))}
-                        </select>
-                        {portal.customBadge?.url && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
-                                <span
-                                    className={`custom-badge-frame shape-${portal.customBadge.shape || 'round'} border-${portal.customBadge.borderStyle || 'thin'}`}
-                                    style={{ width: '22px', height: '22px' }}
-                                >
-                                    <img src={portal.customBadge.url} alt={portal.customBadge.name} className="custom-badge-icon" />
-                                </span>
-                                <span style={{ fontSize: '13px', color: '#fff' }}>{portal.customBadge.name}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Sahiplik Devri (Transfer Ownership) */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Sahiplik Devri (Transfer Ownership)</h4>
-                        <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#888' }}>
-                            Portal sahipliğini başka bir kullanıcının ID'si veya kullanıcı adı (@username) ile devredebilirsiniz.
-                        </p>
-                        <div className="transfer-ownership-box">
-                            <input
-                                type="text"
-                                className="transfer-ownership-input"
-                                placeholder="Kullanıcı adı veya ID girin..."
-                                value={ownershipTarget}
-                                onChange={(e) => setOwnershipTarget(e.target.value)}
-                            />
-                            <button
-                                className="btn-transfer-action"
-                                onClick={() => handleTransferOwnership(portal._id)}
-                                disabled={transferring || !ownershipTarget.trim()}
-                            >
-                                {transferring ? 'Devrediliyor...' : 'Devret'}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Actions and Status Operations */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Yönetim Eylemleri</h4>
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            <button
-                                className="btn-modern-primary"
-                                onClick={() => openAlertModal(portal._id, portal.name)}
-                                style={{ background: 'linear-gradient(135deg, #ff9800, #ff5722)', textTransform: 'none', padding: '10px 16px' }}
-                            >
-                                📢 Uyarı Yayınla
-                            </button>
-
-                            {portal.status !== 'suspended' && (
+                            {/* Header row with Add Channel toggle */}
+                            <div className="channels-section-header">
+                                <div>
+                                    <h4 className="detail-section-title" style={{ margin: 0 }}>
+                                        Portal İçi Kanallar ve Canlı Odalar
+                                    </h4>
+                                    <span style={{ fontSize: '12px', color: '#888888' }}>
+                                        Bu portalda bulunan tüm metin, ses ve konferans kanallarını yapılandırın veya postlarını filtreleyin.
+                                    </span>
+                                </div>
                                 <button
-                                    className="btn-modern-primary"
-                                    onClick={() => {
-                                        onClose();
-                                        initiatePortalStatusChange(portal._id, 'suspend');
-                                    }}
-                                    style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid #fbbf24', textTransform: 'none', padding: '10px 16px' }}
+                                    type="button"
+                                    className="user-box-btn"
+                                    onClick={() => setShowAddChannel(!showAddChannel)}
+                                    style={{ background: showAddChannel ? '#222222' : '#ffffff', color: showAddChannel ? '#ffffff' : '#000000', fontWeight: 700 }}
                                 >
-                                    ⛔ Askıya Al
+                                    {showAddChannel ? '✖ İptal' : '➕ Yeni Kanal Ekle'}
                                 </button>
-                            )}
+                            </div>
 
-                            {portal.status !== 'active' && (
-                                <button
-                                    className="btn-modern-primary"
-                                    onClick={() => {
-                                        onClose();
-                                        initiatePortalStatusChange(portal._id, 'activate');
-                                    }}
-                                    style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid #4ade80', textTransform: 'none', padding: '10px 16px' }}
-                                >
-                                    ✅ Aktifleştir
-                                </button>
-                            )}
-
-                            {portal.status !== 'closed' && (
-                                <button
-                                    className="btn-modern-primary"
-                                    onClick={() => {
-                                        onClose();
-                                        initiatePortalStatusChange(portal._id, 'close');
-                                    }}
-                                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid #f87171', textTransform: 'none', padding: '10px 16px' }}
-                                >
-                                    ❌ Kapat (Hukuki)
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Timed alerts / announcements list */}
-                    {activeAlerts.length > 0 && (
-                        <div className="detail-section-card" style={{ border: '1px solid rgba(255, 87, 34, 0.2)', background: 'rgba(255, 87, 34, 0.02)' }}>
-                            <h4 className="detail-section-title" style={{ color: '#ff5722' }}>📢 Aktif Portal Uyarıları</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {activeAlerts.map(alert => (
-                                    <div key={alert._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                            <span style={{ fontSize: '13px', color: '#e0e0e0', lineHeight: '1.4' }}>{alert.message}</span>
-                                            <span style={{ fontSize: '11px', color: '#888' }}>Bitiş: {new Date(alert.expiresAt).toLocaleString()}</span>
+                            {/* Add Channel Inline Form */}
+                            {showAddChannel && (
+                                <form onSubmit={handleCreateChannelSubmit} className="add-channel-panel">
+                                    <h5 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#ffffff', letterSpacing: '0.5px' }}>
+                                        ➕ Yeni Kanal Yapılandır
+                                    </h5>
+                                    <div className="add-channel-grid">
+                                        <div className="form-group-modern" style={{ flex: 1, minWidth: '180px' }}>
+                                            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '4px' }}>Kanal Adı</label>
+                                            <input
+                                                type="text"
+                                                className="reason-input-modern"
+                                                placeholder="Örn: sohbet-genel"
+                                                value={newChannel.name}
+                                                onChange={(e) => setNewChannel({ ...newChannel, name: e.target.value })}
+                                                required
+                                                maxLength={20}
+                                                style={{ height: '36px', padding: '6px 10px', fontSize: '13px' }}
+                                            />
                                         </div>
-                                        <button 
-                                            onClick={() => handleRemoveAlert(portal._id, alert._id)}
-                                            style={{ background: 'transparent', color: '#ff4b4b', border: '1px solid #ff4b4b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                        <div className="form-group-modern" style={{ width: '160px' }}>
+                                            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '4px' }}>Kanal Türü</label>
+                                            <select
+                                                className="badge-select"
+                                                value={newChannel.type}
+                                                onChange={(e) => setNewChannel({ ...newChannel, type: e.target.value })}
+                                                style={{ width: '100%', height: '36px', fontSize: '12px', padding: '6px' }}
+                                            >
+                                                <option value="text">💬 Metin Sohbet</option>
+                                                <option value="voice">🔊 Sesli Sohbet</option>
+                                                <option value="conference">🎙️ Canlı Sahne</option>
+                                                <option value="image">🖼️ Görsel Galeri</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group-modern" style={{ width: '150px' }}>
+                                            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '4px' }}>Oda Modu</label>
+                                            <select
+                                                className="badge-select"
+                                                value={newChannel.roomMode}
+                                                onChange={(e) => setNewChannel({ ...newChannel, roomMode: e.target.value })}
+                                                style={{ width: '100%', height: '36px', fontSize: '12px', padding: '6px' }}
+                                            >
+                                                <option value="free">Serbest Katılım</option>
+                                                <option value="stage">Sahne (Sadece Yetkili)</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group-modern" style={{ width: '110px' }}>
+                                            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '4px' }}>Katılımcı Sınırı</label>
+                                            <input
+                                                type="number"
+                                                className="reason-input-modern"
+                                                value={newChannel.maxParticipants}
+                                                onChange={(e) => setNewChannel({ ...newChannel, maxParticipants: e.target.value })}
+                                                min={2}
+                                                max={100}
+                                                style={{ height: '36px', padding: '6px 10px', fontSize: '13px' }}
+                                            />
+                                        </div>
+                                        <div className="form-group-modern" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#ccc', margin: '14px 0 0 0' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newChannel.isPrivate}
+                                                    onChange={(e) => setNewChannel({ ...newChannel, isPrivate: e.target.checked })}
+                                                />
+                                                <span>🔒 Özel Kanal</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+                                        <button
+                                            type="button"
+                                            className="btn-modern-ghost"
+                                            onClick={() => setShowAddChannel(false)}
+                                            style={{ padding: '6px 14px', fontSize: '12px' }}
                                         >
-                                            Kaldır
+                                            İptal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="user-box-btn"
+                                            disabled={submittingChannel}
+                                            style={{ minWidth: '120px', padding: '6px 14px', fontSize: '12px' }}
+                                        >
+                                            {submittingChannel ? 'Kaydediliyor...' : '✓ Kanalı Oluştur'}
                                         </button>
                                     </div>
-                                ))}
+                                </form>
+                            )}
+
+                            {/* Channels Table / Grid */}
+                            {channels.length === 0 ? (
+                                <p className="no-data">Bu portalda henüz yapılandırılmış kanal bulunmuyor.</p>
+                            ) : (
+                                <div className="portal-channels-list">
+                                    {channels.map((ch) => {
+                                        const isEditing = editingChannelId === ch._id;
+                                        const pCount = channelStats[String(ch._id)] || channelStats[String(ch.name)] || 0;
+
+                                        if (isEditing) {
+                                            return (
+                                                <div key={ch._id} className="channel-inspect-card editing">
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', width: '100%' }}>
+                                                        <div>
+                                                            <span style={{ fontSize: '10px', color: '#888' }}>Kanal Adı</span>
+                                                            <input
+                                                                type="text"
+                                                                className="reason-input-modern"
+                                                                value={editChannelForm.name}
+                                                                onChange={(e) => setEditChannelForm({ ...editChannelForm, name: e.target.value })}
+                                                                style={{ height: '32px', fontSize: '12px' }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ fontSize: '10px', color: '#888' }}>Tür</span>
+                                                            <select
+                                                                className="badge-select"
+                                                                value={editChannelForm.type}
+                                                                onChange={(e) => setEditChannelForm({ ...editChannelForm, type: e.target.value })}
+                                                                style={{ width: '100%', height: '32px', fontSize: '11px' }}
+                                                            >
+                                                                <option value="text">💬 Metin</option>
+                                                                <option value="voice">🔊 Ses</option>
+                                                                <option value="conference">🎙️ Sahne</option>
+                                                                <option value="image">🖼️ Galeri</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ fontSize: '10px', color: '#888' }}>Oda Modu</span>
+                                                            <select
+                                                                className="badge-select"
+                                                                value={editChannelForm.roomMode}
+                                                                onChange={(e) => setEditChannelForm({ ...editChannelForm, roomMode: e.target.value })}
+                                                                style={{ width: '100%', height: '32px', fontSize: '11px' }}
+                                                            >
+                                                                <option value="free">Serbest</option>
+                                                                <option value="stage">Sahne</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ fontSize: '10px', color: '#888' }}>Maks. Katılımcı</span>
+                                                            <input
+                                                                type="number"
+                                                                className="reason-input-modern"
+                                                                value={editChannelForm.maxParticipants}
+                                                                onChange={(e) => setEditChannelForm({ ...editChannelForm, maxParticipants: e.target.value })}
+                                                                style={{ height: '32px', fontSize: '12px' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', paddingTop: '16px' }}>
+                                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#ccc' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={editChannelForm.isPrivate}
+                                                                    onChange={(e) => setEditChannelForm({ ...editChannelForm, isPrivate: e.target.checked })}
+                                                                />
+                                                                <span>Özel</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px', justifyContent: 'flex-end', width: '100%' }}>
+                                                        <button
+                                                            type="button"
+                                                            className="btn-modern-ghost"
+                                                            onClick={() => setEditingChannelId(null)}
+                                                            style={{ padding: '4px 10px', fontSize: '11px' }}
+                                                        >
+                                                            İptal
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="user-box-btn"
+                                                            onClick={() => handleSaveEditChannel(ch._id)}
+                                                            style={{ padding: '4px 12px', fontSize: '11px' }}
+                                                        >
+                                                            Kaydet
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={ch._id} className="channel-inspect-card">
+                                                <div className="channel-card-left">
+                                                    <div className="channel-type-icon-box">
+                                                        {getChannelIcon(ch.type)}
+                                                    </div>
+                                                    <div className="channel-meta-content">
+                                                        <div className="channel-title-row">
+                                                            <strong className="channel-name-tag">#{ch.name}</strong>
+                                                            <span className="mono-tag" style={{ fontSize: '9px' }}>
+                                                                {getChannelTypeLabel(ch.type)}
+                                                            </span>
+                                                            {ch.roomMode === 'stage' && (
+                                                                <span className="mono-tag inverted" style={{ fontSize: '9px' }}>
+                                                                    SAHNE
+                                                                </span>
+                                                            )}
+                                                            {ch.isPrivate && (
+                                                                <span className="mono-tag" style={{ fontSize: '9px', border: '1px solid #ffffff' }}>
+                                                                    🔒 ÖZEL
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="channel-sub-info">
+                                                            <span>ID: <code style={{ fontFamily: 'monospace' }}>{ch._id}</code></span>
+                                                            <span>• Maks: {ch.maxParticipants || 25} kişi</span>
+                                                            <span>• {pCount} Paylaşım / Post</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="channel-card-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="user-box-btn"
+                                                        style={{ padding: '4px 10px', fontSize: '11px' }}
+                                                        title="Bu kanaldaki tüm gönderileri görüntüle ve filtrele"
+                                                        onClick={() => {
+                                                            onClose();
+                                                            openPortalPosts(portal, ch._id);
+                                                        }}
+                                                    >
+                                                        📝 Postlar ({pCount})
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="user-box-btn"
+                                                        style={{ padding: '4px 8px', fontSize: '11px' }}
+                                                        title="Kanal ayarlarını düzenle"
+                                                        onClick={() => handleStartEditChannel(ch)}
+                                                    >
+                                                        ✏️ Düzenle
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="user-box-btn"
+                                                        style={{ padding: '4px 8px', fontSize: '11px', color: '#ff6b6b' }}
+                                                        title="Kanalı sil"
+                                                        onClick={() => onDeleteChannel(portal._id, ch._id)}
+                                                    >
+                                                        🗑️ Sil
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* SUBTAB 2: GENEL & KİMLİK BİLGİLERİ */}
+                    {activeSubTab === 'identity' && (
+                        <div className="portal-subtab-pane">
+                            <div className="dossier-grid">
+                                {/* Kimlik Tablosu */}
+                                <div className="dossier-section-box">
+                                    <h4 className="dossier-section-title">KİMLİK & SİSTEM REFERANSLARI</h4>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Portal ID</span>
+                                        <span className="val" style={{ fontFamily: 'monospace' }}>
+                                            {portal._id}{' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(portal._id, 'Portal ID')}
+                                                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: 0 }}
+                                            >
+                                                <Copy size={11} />
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Portal Adı</span>
+                                        <span className="val"><strong>{portal.name}</strong></span>
+                                    </div>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Kategori</span>
+                                        <span className="val">{portal.category || 'Genel'}</span>
+                                    </div>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Tema / Vurgu Rengi</span>
+                                        <span className="val" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: portal.themeColor || '#ffffff', display: 'inline-block', border: '1px solid #444' }} />
+                                            {portal.themeColor || '#ffffff'}
+                                        </span>
+                                    </div>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Oluşturulma Tarihi</span>
+                                        <span className="val">{portal.createdAt ? new Date(portal.createdAt).toLocaleString('tr-TR') : '-'}</span>
+                                    </div>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Son Güncelleme</span>
+                                        <span className="val">{portal.updatedAt ? new Date(portal.updatedAt).toLocaleString('tr-TR') : '-'}</span>
+                                    </div>
+                                    <div className="dossier-key-val">
+                                        <span className="label">Toplam Gönderi</span>
+                                        <span className="val">{portal.postCount || 0} Gönderi</span>
+                                    </div>
+                                </div>
+
+                                {/* Kurucu Profil Kartı */}
+                                <div className="dossier-section-box">
+                                    <h4 className="dossier-section-title">PORTAL KURUCUSU (OWNER)</h4>
+                                    {portal.owner && typeof portal.owner === 'object' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <AdminMedia
+                                                    src={portal.owner.profile?.avatar}
+                                                    alt={portal.owner.username}
+                                                    isAvatar={true}
+                                                    style={{ width: '48px', height: '48px', borderRadius: '8px' }}
+                                                />
+                                                <div>
+                                                    <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>
+                                                        {portal.owner.profile?.displayName || portal.owner.username}
+                                                    </div>
+                                                    <div style={{ color: '#888', fontSize: '12px' }}>@{portal.owner.username}</div>
+                                                    <div style={{ color: '#666', fontSize: '11px' }}>{portal.owner.email}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="dossier-key-val" style={{ marginTop: '4px' }}>
+                                                <span className="label">Kurucu Kayıt Tarihi</span>
+                                                <span className="val">{portal.owner.createdAt ? new Date(portal.owner.createdAt).toLocaleDateString('tr-TR') : '-'}</span>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                className="user-box-btn"
+                                                onClick={() => {
+                                                    onClose();
+                                                    openUserDossier(portal.owner);
+                                                }}
+                                                style={{ marginTop: '8px', width: '100%' }}
+                                            >
+                                                📋 Kurucu Şecere Dosyasını İncele →
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span style={{ fontSize: '12px', color: '#888' }}>
+                                            Kurucu ID: {typeof portal.owner === 'string' ? portal.owner : 'Bilinmiyor'}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Açıklama & Ek Politikalar */}
+                                <div className="dossier-section-box" style={{ gridColumn: '1 / -1' }}>
+                                    <h4 className="dossier-section-title">AÇIKLAMA & TOPLULUK KURALLARI</h4>
+                                    <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#cccccc', lineHeight: 1.6 }}>
+                                        {portal.description || 'Bu topluluk hakkında henüz bir açıklama eklenmemiş.'}
+                                    </p>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                                        <div style={{ background: '#111111', border: '1px solid #222222', padding: '10px', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '11px', color: '#777777', display: 'block' }}>LOKASYON / COĞRAFYA</span>
+                                            <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                                                {portal.location?.name || (portal.location?.coordinates ? `${portal.location.coordinates[1]}, ${portal.location.coordinates[0]}` : 'Küresel / Tanımsız')}
+                                            </strong>
+                                        </div>
+                                        <div style={{ background: '#111111', border: '1px solid #222222', padding: '10px', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '11px', color: '#777777', display: 'block' }}>WATCH PARTY (ORTAK İZLEME)</span>
+                                            <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                                                {portal.watchPartySettings?.allowEveryone ? 'Tüm Üyeler Başlatabilir' : 'Sadece Yöneticiler'}
+                                            </strong>
+                                        </div>
+                                        <div style={{ background: '#111111', border: '1px solid #222222', padding: '10px', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '11px', color: '#777777', display: 'block' }}>GİZLİLİK VE ERİŞİM</span>
+                                            <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                                                {portal.isPrivate ? 'Özel / Onaylı Katılım' : 'Açık / Herkese Görünür'}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
+
+                    {/* SUBTAB 3: ÜYELER & YÖNETİCİLER */}
+                    {activeSubTab === 'members' && (
+                        <div className="portal-subtab-pane">
+                            {/* Member stats */}
+                            <div className="portal-channels-metrics-grid">
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">TOPLAM ÜYE</span>
+                                    <strong className="p-metric-val">{members.length}</strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">YÖNETİCİLER (ADMINS)</span>
+                                    <strong className="p-metric-val">{admins.length}</strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">ENGELLENEN KULLANICILAR</span>
+                                    <strong className="p-metric-val">{blockedUsers.length}</strong>
+                                </div>
+                                <div className="p-metric-card">
+                                    <span className="p-metric-label">BEKLEYEN İSTEKLER</span>
+                                    <strong className="p-metric-val">{joinRequests.length}</strong>
+                                </div>
+                            </div>
+
+                            {/* Admins Breakdown */}
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">PORTAL YÖNETİCİLERİ ({admins.length})</h4>
+                                {admins.length === 0 ? (
+                                    <span style={{ fontSize: '12px', color: '#666' }}>Özel yetkili yönetici atanmamış (Yalnızca kurucu yetkilidir).</span>
+                                ) : (
+                                    <div className="dossier-portals-grid">
+                                        {admins.map((adm, i) => (
+                                            <div key={adm._id || i} className="dossier-portal-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <AdminMedia
+                                                        src={adm.profile?.avatar}
+                                                        alt={adm.username}
+                                                        isAvatar={true}
+                                                        style={{ width: '32px', height: '32px', borderRadius: '6px' }}
+                                                    />
+                                                    <div>
+                                                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>
+                                                            {adm.profile?.displayName || adm.username}
+                                                        </div>
+                                                        <div style={{ fontSize: '10px', color: '#888' }}>@{adm.username}</div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="user-box-btn"
+                                                    style={{ padding: '3px 8px', fontSize: '10px' }}
+                                                    onClick={() => {
+                                                        onClose();
+                                                        openUserDossier(adm);
+                                                    }}
+                                                >
+                                                    Şecere →
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Filterable Populated Members List */}
+                            <div className="detail-section-card">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                                    <h4 className="detail-section-title" style={{ margin: 0 }}>
+                                        KAYITLI ÜYELER LİSTESİ ({filteredMembers.length} / {members.length})
+                                    </h4>
+                                    <input
+                                        type="text"
+                                        placeholder="Üye ara (@kullanıcı adı veya isim)..."
+                                        value={memberSearchTerm}
+                                        onChange={(e) => setMemberSearchTerm(e.target.value)}
+                                        style={{ background: '#0a0a0a', border: '1px solid #333333', color: '#ffffff', padding: '6px 10px', fontSize: '11px', borderRadius: '6px', minWidth: '200px' }}
+                                    />
+                                </div>
+
+                                {filteredMembers.length === 0 ? (
+                                    <span style={{ fontSize: '12px', color: '#666' }}>Eşleşen üye bulunamadı.</span>
+                                ) : (
+                                    <div className="portal-members-card-grid">
+                                        {filteredMembers.map((m, i) => {
+                                            const isObj = typeof m === 'object' && m !== null;
+                                            const username = isObj ? m.username : String(m);
+                                            const displayName = isObj ? (m.profile?.displayName || m.username) : username;
+                                            const avatar = isObj ? m.profile?.avatar : null;
+
+                                            return (
+                                                <div key={isObj ? m._id : i} className="portal-member-chip-card">
+                                                    <AdminMedia
+                                                        src={avatar}
+                                                        alt={username}
+                                                        isAvatar={true}
+                                                        style={{ width: '28px', height: '28px', borderRadius: '6px' }}
+                                                    />
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {displayName}
+                                                        </div>
+                                                        <div style={{ fontSize: '10px', color: '#777' }}>@{username}</div>
+                                                    </div>
+                                                    {isObj && (
+                                                        <button
+                                                            type="button"
+                                                            className="user-box-btn"
+                                                            style={{ padding: '3px 6px', fontSize: '9px' }}
+                                                            title="Kullanıcı şeceresini aç"
+                                                            onClick={() => {
+                                                                onClose();
+                                                                openUserDossier(m);
+                                                            }}
+                                                        >
+                                                            Şecere
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SUBTAB 4: GÜVENLİK & AYARLAR */}
+                    {activeSubTab === 'security' && (
+                        <div className="portal-subtab-pane">
+                            {/* Karantina / Salt Okunur Mod */}
+                            <div className="read-only-toggle-container">
+                                <div className="read-only-info">
+                                    <strong>🛡️ Karantina / Salt Okunur Mod</strong>
+                                    <span>Aktif edildiğinde bu portala gönderi ve yorum paylaşımı platform düzeyinde tamamen dondurulur.</span>
+                                </div>
+                                <div 
+                                    className={`read-only-toggle-switch ${portal.isReadOnly ? 'active' : ''}`}
+                                    onClick={() => handleReadOnlyToggle(portal._id, portal.isReadOnly)}
+                                />
+                            </div>
+
+                            {/* Rozet ve NSFW Ayarları */}
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">PORTAL GÜVENLİK & ROZET YAPILANDIRMASI</h4>
+                                <div className="flex-control-row" style={{ gap: '16px', flexWrap: 'wrap' }}>
+                                    <div>
+                                        <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Doğrulama Rozeti</span>
+                                        <select
+                                            className="badge-select"
+                                            value={portal.badges && portal.badges.length > 0 ? portal.badges[0] : 'none'}
+                                            onChange={(e) => handlePortalBadge(portal._id, e.target.value)}
+                                            style={{ minWidth: '160px' }}
+                                        >
+                                            <option value="none">Rozet Yok</option>
+                                            {(() => {
+                                                const portalBadges = contextBadges.filter(b => b.category === 'portal' || b.category === 'both');
+                                                const slugs = new Set(portalBadges.map(b => b.slug));
+                                                const LEGACY = [
+                                                    { slug: 'blue', name: 'Mavi Onay' },
+                                                    { slug: 'gold', name: 'Altın Onay' },
+                                                    { slug: 'verified', name: 'Onaylı Portal' },
+                                                    { slug: 'partner', name: 'Partner' },
+                                                    { slug: 'official', name: 'Resmi Hesap' },
+                                                ];
+                                                const merged = [...portalBadges];
+                                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
+                                                const currentBadge = portal.badges?.[0];
+                                                if (currentBadge && currentBadge !== 'none' && !slugs.has(currentBadge) && !LEGACY.find(l => l.slug === currentBadge)) {
+                                                    merged.push({ slug: currentBadge, name: currentBadge });
+                                                }
+                                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
+                                            })()}
+                                        </select>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>+18 NSFW Durumu</span>
+                                        <label className="nsfw-toggle-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={portal.isNSFW || false}
+                                                onChange={() => handleNSFWToggle(portal._id, portal.isNSFW)}
+                                                className="nsfw-toggle-input"
+                                            />
+                                            <span className="nsfw-toggle-slider"></span>
+                                            <span className="nsfw-toggle-text">+18 NSFW İçerik</span>
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Portal Durumu</span>
+                                        <span className={`badge-pill-status ${portal.status}`}>
+                                            {portal.status === 'active' ? 'Aktif' : portal.status === 'suspended' ? 'Askıya Alındı' : 'Kapatıldı'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Custom Badge Assignment */}
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">Özel İkon Rozeti (Yönetici Rozeti)</h4>
+                                <select
+                                    className="badge-select"
+                                    value={portal.customBadge?.url || ''}
+                                    onChange={(e) => {
+                                        const selectedUrl = e.target.value;
+                                        const selectedBadge = customBadges.find(b => b.url === selectedUrl);
+                                        handlePortalCustomBadgeAssign(
+                                            portal._id,
+                                            selectedBadge ? selectedBadge.url : '',
+                                            selectedBadge ? selectedBadge.name : '',
+                                            selectedBadge ? (selectedBadge.shape || 'round') : 'round',
+                                            selectedBadge ? (selectedBadge.borderStyle || 'thin') : 'thin'
+                                        );
+                                    }}
+                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                                >
+                                    <option value="">Rozet Yok</option>
+                                    {customBadges.map((badge) => (
+                                        <option key={badge._id} value={badge.url}>
+                                            {badge.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {portal.customBadge?.url && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                                        <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
+                                        <span
+                                            className={`custom-badge-frame shape-${portal.customBadge.shape || 'round'} border-${portal.customBadge.borderStyle || 'thin'}`}
+                                            style={{ width: '22px', height: '22px' }}
+                                        >
+                                            <img src={portal.customBadge.url} alt={portal.customBadge.name} className="custom-badge-icon" />
+                                        </span>
+                                        <span style={{ fontSize: '13px', color: '#fff' }}>{portal.customBadge.name}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sahiplik Devri (Transfer Ownership) */}
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">Sahiplik Devri (Transfer Ownership)</h4>
+                                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#888' }}>
+                                    Portal sahipliğini başka bir kullanıcının ID'si veya kullanıcı adı (@username) ile doğrudan devredebilirsiniz.
+                                </p>
+                                <div className="transfer-ownership-box">
+                                    <input
+                                        type="text"
+                                        className="transfer-ownership-input"
+                                        placeholder="Hedef kullanıcı adı veya ID..."
+                                        value={ownershipTarget}
+                                        onChange={(e) => setOwnershipTarget(e.target.value)}
+                                    />
+                                    <button
+                                        className="btn-transfer-action"
+                                        onClick={() => handleTransferOwnership(portal._id)}
+                                        disabled={transferring || !ownershipTarget.trim()}
+                                    >
+                                        {transferring ? 'Devrediliyor...' : 'Devret'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Actions and Status Operations */}
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">DOĞRUDAN YÖNETİM EYLEMLERİ</h4>
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                    <button
+                                        type="button"
+                                        className="user-box-btn"
+                                        onClick={() => {
+                                            onClose();
+                                            openPortalPosts(portal);
+                                        }}
+                                        style={{ background: '#ffffff', color: '#000000', fontWeight: 700 }}
+                                    >
+                                        📝 Portal Gönderi Arşivini Aç ({portal.postCount || 0})
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="user-box-btn"
+                                        onClick={() => openAlertModal(portal._id, portal.name)}
+                                    >
+                                        📢 Topluluk Uyarısı Yayınla
+                                    </button>
+
+                                    {portal.status !== 'suspended' && (
+                                        <button
+                                            type="button"
+                                            className="user-box-btn"
+                                            onClick={() => {
+                                                onClose();
+                                                initiatePortalStatusChange(portal._id, 'suspend');
+                                            }}
+                                            style={{ color: '#fbbf24' }}
+                                        >
+                                            ⛔ Askıya Al
+                                        </button>
+                                    )}
+
+                                    {portal.status !== 'active' && (
+                                        <button
+                                            type="button"
+                                            className="user-box-btn"
+                                            onClick={() => {
+                                                onClose();
+                                                initiatePortalStatusChange(portal._id, 'activate');
+                                            }}
+                                            style={{ color: '#4ade80' }}
+                                        >
+                                            ✅ Aktifleştir
+                                        </button>
+                                    )}
+
+                                    {portal.status !== 'closed' && (
+                                        <button
+                                            type="button"
+                                            className="user-box-btn"
+                                            onClick={() => {
+                                                onClose();
+                                                initiatePortalStatusChange(portal._id, 'close');
+                                            }}
+                                            style={{ color: '#f87171' }}
+                                        >
+                                            ❌ Hukuki Kapat
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Timed alerts / announcements list */}
+                            {activeAlerts.length > 0 && (
+                                <div className="detail-section-card" style={{ border: '1px solid #333333', background: '#0e0e0e' }}>
+                                    <h4 className="detail-section-title" style={{ color: '#ffffff' }}>📢 Aktif Portal Uyarıları</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {activeAlerts.map(alert => (
+                                            <div key={alert._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#161616', padding: '10px 14px', borderRadius: '8px', border: '1px solid #282828' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '13px', color: '#e0e0e0', lineHeight: '1.4' }}>{alert.message}</span>
+                                                    <span style={{ fontSize: '11px', color: '#888' }}>Bitiş: {new Date(alert.expiresAt).toLocaleString()}</span>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => handleRemoveAlert(portal._id, alert._id)}
+                                                    className="user-box-btn"
+                                                    style={{ color: '#ff4b4b' }}
+                                                >
+                                                    Kaldır
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* SUBTAB 5: PORTAL GÜNLÜĞÜ (AUDIT LOGS) */}
+                    {activeSubTab === 'activity' && (
+                        <div className="portal-subtab-pane">
+                            <h4 className="detail-section-title">PORTAL İŞLEM VE DENETİM GÜNLÜĞÜ</h4>
+                            {(portal.recentActivities || []).length === 0 ? (
+                                <p className="no-data">Bu portala ait son işlem günlüğü bulunamadı.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {portal.recentActivities.map((act, i) => (
+                                        <div key={act._id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#161616', border: '1px solid #222222', padding: '8px 12px', borderRadius: '8px', fontSize: '11px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span className="mono-tag" style={{ fontSize: '9px' }}>{act.action}</span>
+                                                <span style={{ color: '#cccccc' }}>
+                                                    {act.details?.channelName ? `Kanal: #${act.details.channelName}` : act.details?.reason || act.details?.title || act.action}
+                                                </span>
+                                            </div>
+                                            <span style={{ color: '#777777', fontFamily: 'monospace' }}>
+                                                {act.createdAt ? new Date(act.createdAt).toLocaleString('tr-TR') : '-'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-                <div className="modal-footer-modern" style={{ padding: '10px 28px 24px' }}>
+
+                {/* Modal Footer */}
+                <div className="modal-footer-modern" style={{ padding: '12px 24px', borderTop: '1px solid #222222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '12px', color: '#777' }}>
+                        Portal ID: <span style={{ fontFamily: 'monospace' }}>{portal._id}</span>
+                    </div>
                     <button type="button" className="btn-modern-ghost" onClick={onClose}>
                         Kapat
                     </button>
@@ -1311,6 +2121,7 @@ const AdminDashboard = () => {
     // Portal Detail Modal State
     const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [detailPortal, setDetailPortal] = useState(null);
+    const [loadingPortalDossier, setLoadingPortalDossier] = useState(false);
     const [ownershipTarget, setOwnershipTarget] = useState('');
     const [transferring, setTransferring] = useState(false);
 
@@ -2258,10 +3069,74 @@ const AdminDashboard = () => {
         }
     };
 
-    const openPortalDetail = (portal) => {
+    const openPortalDetail = async (portal) => {
         setDetailPortal(portal);
         setOwnershipTarget('');
         setDetailModalOpen(true);
+        setLoadingPortalDossier(true);
+        try {
+            const { data } = await axios.get(`/api/admin/portals/${portal._id}/dossier`);
+            if (data && data.portal) {
+                setDetailPortal(prev => ({
+                    ...(prev || {}),
+                    ...(data.portal || {}),
+                    channelStats: data.channelStats || {},
+                    postCount: data.postCount || 0,
+                    recentActivities: data.recentActivities || [],
+                    recentPosts: data.recentPosts || []
+                }));
+            }
+        } catch (err) {
+            console.error('Portal dossier fetch error:', err);
+        } finally {
+            setLoadingPortalDossier(false);
+        }
+    };
+
+    const handleAdminAddChannel = async (portalId, channelData) => {
+        try {
+            const { data } = await axios.post(`/api/admin/portals/${portalId}/channels`, channelData);
+            alert(data.message || 'Kanal başarıyla eklendi.');
+            setDetailPortal(prev => prev ? { ...prev, channels: data.channels } : prev);
+            setPortals(prev => prev.map(p => p._id === portalId ? { ...p, channels: data.channels } : p));
+            return true;
+        } catch (err) {
+            alert(err.response?.data?.message || 'Kanal eklenemedi.');
+            return false;
+        }
+    };
+
+    const handleAdminEditChannel = async (portalId, channelId, channelData) => {
+        try {
+            const { data } = await axios.put(`/api/admin/portals/${portalId}/channels/${channelId}`, channelData);
+            alert('Kanal başarıyla güncellendi.');
+            setDetailPortal(prev => {
+                if (!prev) return prev;
+                const updatedChannels = (prev.channels || []).map(ch => ch._id === channelId ? { ...ch, ...channelData } : ch);
+                return { ...prev, channels: updatedChannels };
+            });
+            setPortals(prev => prev.map(p => {
+                if (p._id !== portalId) return p;
+                const updatedChannels = (p.channels || []).map(ch => ch._id === channelId ? { ...ch, ...channelData } : ch);
+                return { ...p, channels: updatedChannels };
+            }));
+            return true;
+        } catch (err) {
+            alert(err.response?.data?.message || 'Kanal güncellenemedi.');
+            return false;
+        }
+    };
+
+    const handleAdminDeleteChannel = async (portalId, channelId) => {
+        if (!window.confirm('Bu kanalı kalıcı olarak silmek istediğinize emin misiniz?')) return;
+        try {
+            const { data } = await axios.delete(`/api/admin/portals/${portalId}/channels/${channelId}`);
+            alert('Kanal silindi.');
+            setDetailPortal(prev => prev ? { ...prev, channels: data.channels } : prev);
+            setPortals(prev => prev.map(p => p._id === portalId ? { ...p, channels: data.channels } : p));
+        } catch (err) {
+            alert(err.response?.data?.message || 'Kanal silinemedi.');
+        }
     };
 
     const handleReadOnlyToggle = async (portalId, currentReadOnly) => {
@@ -4569,6 +5444,43 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
 
+                                    {/* Üye Olduğu Portallar (Member Portals) */}
+                                    <div className="user-box-portals-section">
+                                        <div className="user-box-portals-header">
+                                            <span className="user-box-portals-title">
+                                                🌐 ÜYE OLDUĞU PORTALLAR ({user.memberPortals?.length || 0})
+                                            </span>
+                                        </div>
+                                        {user.memberPortals && user.memberPortals.length > 0 ? (
+                                            <div className="user-box-portals-chips">
+                                                {user.memberPortals.map((mp) => (
+                                                    <div
+                                                        key={mp._id}
+                                                        className="user-portal-chip-item"
+                                                        onClick={() => openPortalDetail(mp)}
+                                                        title={`${mp.name} (${mp.isOwner ? 'Kurucu' : 'Üye'}) - Portal Detaylarını Aç`}
+                                                    >
+                                                        <AdminMedia
+                                                            src={mp.avatar}
+                                                            alt={mp.name}
+                                                            className="user-portal-chip-avatar"
+                                                            isAvatar={true}
+                                                            fallbackText={mp.name?.substring(0, 2).toUpperCase()}
+                                                        />
+                                                        <span className="user-portal-chip-name">{mp.name}</span>
+                                                        {mp.isOwner ? (
+                                                            <span className="user-portal-chip-badge owner">KURUCU</span>
+                                                        ) : (
+                                                            <span className="user-portal-chip-badge">ÜYE</span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="user-box-portals-none">Kayıtlı portal üyeliği bulunamadı.</span>
+                                        )}
+                                    </div>
+
                                     {/* Action Buttons */}
                                     <div className="user-box-actions">
                                         <button
@@ -6393,6 +7305,7 @@ const AdminDashboard = () => {
                 isOpen={detailModalOpen}
                 onClose={() => setDetailModalOpen(false)}
                 portal={detailPortal}
+                loading={loadingPortalDossier}
                 contextBadges={contextBadges}
                 customBadges={customBadges}
                 handlePortalBadge={handlePortalBadge}
@@ -6406,6 +7319,11 @@ const AdminDashboard = () => {
                 setOwnershipTarget={setOwnershipTarget}
                 handleTransferOwnership={handleTransferOwnership}
                 transferring={transferring}
+                onAddChannel={handleAdminAddChannel}
+                onEditChannel={handleAdminEditChannel}
+                onDeleteChannel={handleAdminDeleteChannel}
+                openPortalPosts={openPortalPosts}
+                openUserDossier={openUserDossier}
             />
 
             {/* User Detail / Management Modal */}
@@ -7390,6 +8308,61 @@ const AdminDashboard = () => {
                                                 <span style={{ fontSize: '11px', color: '#666' }}>Kullanıcıya ait son işlem günlüğü bulunamadı.</span>
                                             )}
                                         </div>
+                                    </div>
+
+                                    {/* Üye Olduğu Portallar & Topluluklar */}
+                                    <div className="dossier-section-box" style={{ gridColumn: '1 / -1' }}>
+                                        <h4 className="dossier-section-title">
+                                            🌐 ÜYE OLDUĞU PORTALLAR & TOPLULUKLAR ({(userDossierData.memberPortals || []).length})
+                                        </h4>
+                                        {(userDossierData.memberPortals || []).length > 0 ? (
+                                            <div className="dossier-portals-grid">
+                                                {userDossierData.memberPortals.map((p) => (
+                                                    <div key={p._id} className="dossier-portal-card">
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            <AdminMedia
+                                                                src={p.avatar}
+                                                                alt={p.name}
+                                                                className="dossier-portal-avatar"
+                                                                isAvatar={true}
+                                                                fallbackText={p.name?.substring(0, 2).toUpperCase()}
+                                                            />
+                                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    <strong style={{ color: '#fff', fontSize: '13px' }}>{p.name}</strong>
+                                                                    {p.isOwner ? (
+                                                                        <span className="mono-tag inverted" style={{ fontSize: '9px' }}>KURUCU</span>
+                                                                    ) : (
+                                                                        <span className="mono-tag" style={{ fontSize: '9px' }}>ÜYE</span>
+                                                                    )}
+                                                                    {p.isReadOnly && <span className="mono-tag muted" style={{ fontSize: '9px' }}>SALT OKUNUR</span>}
+                                                                    {p.isNSFW && <span className="mono-tag" style={{ fontSize: '9px' }}>+18</span>}
+                                                                </div>
+                                                                <span style={{ fontSize: '11px', color: '#777', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                    {p.description || 'Açıklama belirtilmemiş.'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #222', fontSize: '11px', color: '#888' }}>
+                                                            <span>👥 {p.members?.length || p.memberCount || 0} Üye • 📻 {p.channels?.length || p.channelCount || 0} Kanal</span>
+                                                            <button
+                                                                type="button"
+                                                                className="user-box-btn"
+                                                                style={{ padding: '4px 8px', fontSize: '10px' }}
+                                                                onClick={() => {
+                                                                    setUserDossierOpen(false);
+                                                                    openPortalDetail(p);
+                                                                }}
+                                                            >
+                                                                Portala Git →
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span style={{ fontSize: '11px', color: '#666' }}>Kullanıcının kayıtlı olduğu herhangi bir portal bulunamadı.</span>
+                                        )}
                                     </div>
                                 </div>
                             )}
