@@ -573,9 +573,29 @@ export const VoiceProvider = ({ children }) => {
                 detachVAD(p.userId);
             }
 
+            // Recover live video track from peer connection transceivers if rTracks.video is missing or ended
+            let remoteVideo = rTracks.video;
+            if (!remoteVideo || remoteVideo.readyState === 'ended') {
+                const pc = peerConnectionsRef.current.get(p.userId);
+                if (pc) {
+                    const videoTransceiver = pc.getTransceivers?.().find(t => 
+                        t.receiver?.track?.kind === 'video' && 
+                        t.receiver.track.readyState !== 'ended' &&
+                        t.receiver.track !== rTracks.screen
+                    );
+                    if (videoTransceiver?.receiver?.track) {
+                        remoteVideo = videoTransceiver.receiver.track;
+                        if (!remoteTracksRef.current.has(p.userId)) {
+                            remoteTracksRef.current.set(p.userId, {});
+                        }
+                        remoteTracksRef.current.get(p.userId).video = remoteVideo;
+                    }
+                }
+            }
+
             // Valid active camera track for remote user
-            const activeVideoTrack = (rState.isCameraOn && rTracks.video && rTracks.video.readyState !== 'ended') 
-                ? rTracks.video 
+            const activeVideoTrack = (rState.isCameraOn && remoteVideo && remoteVideo.readyState !== 'ended') 
+                ? remoteVideo 
                 : null;
 
             // Camera/Avatar card
@@ -701,9 +721,20 @@ export const VoiceProvider = ({ children }) => {
 
         // Add local camera/mic stream tracks
         if (localStreamRef.current) {
+            let videoTracks = localStreamRef.current.getVideoTracks();
+            if (videoTracks.length === 0) {
+                const pTrack = createPlaceholderVideoTrack();
+                if (pTrack) {
+                    localStreamRef.current.addTrack(pTrack);
+                }
+            }
             localStreamRef.current.getTracks().forEach(track => {
-                const sender = pc.addTrack(track, localStreamRef.current);
-                console.log(`[WebRTC] Added local track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
+                try {
+                    const sender = pc.addTrack(track, localStreamRef.current);
+                    console.log(`[WebRTC] Added local track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
+                } catch (addErr) {
+                    console.warn(`[WebRTC] addTrack warning for ${targetUserId}:`, addErr);
+                }
             });
         }
 
@@ -793,6 +824,8 @@ export const VoiceProvider = ({ children }) => {
             if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 remoteTracksRef.current.delete(targetUserId);
                 updateParticipantList();
+            } else if (pc.connectionState === 'connected') {
+                updateParticipantList();
             }
         };
 
@@ -825,6 +858,16 @@ export const VoiceProvider = ({ children }) => {
                 remoteTracksRef.current.set(targetUserId, {});
             }
             const tracks = remoteTracksRef.current.get(targetUserId);
+
+            // Track lifecycle listeners to immediately reflect frame delivery or track changes
+            event.track.onended = () => {
+                console.log(`[WebRTC] Remote track ended: ${event.track.id} (${event.track.kind}) for ${targetUserId}`);
+                updateParticipantList();
+            };
+            event.track.onunmute = () => {
+                console.log(`[WebRTC] Remote track unmuted: ${event.track.id} (${event.track.kind}) for ${targetUserId}`);
+                updateParticipantList();
+            };
 
             if (event.track.kind === 'audio') {
                 const isScreenAudio = stream.id.includes('screen') || 
@@ -1215,6 +1258,23 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
 
+            if (isCameraOn) {
+                const pc = peerConnectionsRef.current.get(userId);
+                if (pc) {
+                    const videoTransceiver = pc.getTransceivers?.().find(t => 
+                        t.receiver?.track?.kind === 'video' && 
+                        t.receiver.track.readyState !== 'ended' &&
+                        t.receiver.track !== rTracks?.screen
+                    );
+                    if (videoTransceiver?.receiver?.track) {
+                        if (!remoteTracksRef.current.has(userId)) {
+                            remoteTracksRef.current.set(userId, {});
+                        }
+                        remoteTracksRef.current.get(userId).video = videoTransceiver.receiver.track;
+                    }
+                }
+            }
+
             updateParticipantList();
         };
 
@@ -1391,6 +1451,7 @@ export const VoiceProvider = ({ children }) => {
                         sdp: prioritizedAnswer
                     });
                     console.log(`[Socket] video-answer gönderildi to ${senderId}`);
+                    updateParticipantList();
                 } else {
                     console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
                 }
@@ -1424,6 +1485,7 @@ export const VoiceProvider = ({ children }) => {
 
                     // Process any ICE candidates that arrived early
                     await processQueuedCandidates(senderId, pc);
+                    updateParticipantList();
                 } catch (err) {
                     console.error("Error setting video answer from remote:", err);
                 }
@@ -1460,7 +1522,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:video-answer', handleVideoAnswer);
             socket.off('voice:new-ice-candidate', handleNewIceCandidate);
         };
-    }, [socket, getOrCreatePC, safeEmit, renegotiatePeer]);
+    }, [socket, getOrCreatePC, safeEmit, renegotiatePeer, updateParticipantList]);
 
     // Reconnection listener to recover signalling state automatically
     useEffect(() => {
@@ -1604,10 +1666,10 @@ export const VoiceProvider = ({ children }) => {
             if (cameraTrack) {
                 cameraTrack.enabled = true;
                 
-                // Remove any existing placeholder track from the local stream
+                // Remove any existing placeholder track from local stream WITHOUT stopping it
+                // Stopping an active placeholder kills the remote peer receiver track in WebRTC
                 const placeholder = localStreamRef.current.getVideoTracks().find(t => t.isPlaceholder);
                 if (placeholder) {
-                    try { placeholder.stop(); } catch (e) {}
                     try { localStreamRef.current.removeTrack(placeholder); } catch (e) {}
                 }
 
@@ -1616,14 +1678,16 @@ export const VoiceProvider = ({ children }) => {
 
                 // Swap placeholder track with real camera track on all active peer connections
                 let needsRenegotiate = false;
-                peerConnectionsRef.current.forEach(pc => {
+                for (const pc of peerConnectionsRef.current.values()) {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !isScreenSender(s)) ||
                                         pc.getTransceivers().find(t => (t.sender?.track?.kind === 'video' || t.receiver?.track?.kind === 'video') && !isScreenSender(t.sender))?.sender;
                     if (videoSender) {
-                        videoSender.replaceTrack(cameraTrack).catch(e => {
+                        try {
+                            await videoSender.replaceTrack(cameraTrack);
+                        } catch (e) {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
-                        });
+                        }
                     } else {
                         try {
                             pc.addTrack(cameraTrack, localStreamRef.current);
@@ -1632,20 +1696,14 @@ export const VoiceProvider = ({ children }) => {
                             console.warn("[WebRTC] addTrack error (ON):", addErr);
                         }
                     }
-                });
+                }
                 if (needsRenegotiate) {
-                    renegotiateAll();
+                    await renegotiateAll();
                 }
             }
         } else {
             // Turning camera OFF
-            if (cameraTrack) {
-                cameraTrack.enabled = false;
-                try { cameraTrack.stop(); } catch (e) {} // Releases camera hardware and indicator light
-                try { localStreamRef.current.removeTrack(cameraTrack); } catch (e) {}
-            }
-
-            // Create a new placeholder track so the transceiver remains active
+            // 1. Create a new placeholder track so the transceiver remains active
             const placeholderTrack = createPlaceholderVideoTrack();
             if (placeholderTrack) {
                 localStreamRef.current.addTrack(placeholderTrack);
@@ -1653,17 +1711,26 @@ export const VoiceProvider = ({ children }) => {
                 const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
                 const isScreenSender = (s) => (screenTrack && s.track === screenTrack) || (s.track?.label?.toLowerCase().includes('screen'));
 
-                // Swap camera track with placeholder track on all active peer connections
-                peerConnectionsRef.current.forEach(pc => {
+                // 2. Swap camera track with placeholder track on all active peer connections FIRST
+                for (const pc of peerConnectionsRef.current.values()) {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !isScreenSender(s)) ||
                                         pc.getTransceivers().find(t => (t.sender?.track?.kind === 'video' || t.receiver?.track?.kind === 'video') && !isScreenSender(t.sender))?.sender;
                     if (videoSender) {
-                        videoSender.replaceTrack(placeholderTrack).catch(e => {
+                        try {
+                            await videoSender.replaceTrack(placeholderTrack);
+                        } catch (e) {
                             console.warn("[WebRTC] replaceTrack error (OFF):", e);
-                        });
+                        }
                     }
-                });
+                }
+            }
+
+            // 3. ONLY AFTER replaceTrack completes, safely stop cameraTrack to turn off the physical camera hardware/LED
+            if (cameraTrack) {
+                cameraTrack.enabled = false;
+                try { cameraTrack.stop(); } catch (e) {}
+                try { localStreamRef.current.removeTrack(cameraTrack); } catch (e) {}
             }
         }
 
@@ -1918,14 +1985,7 @@ export const VoiceProvider = ({ children }) => {
 
         if (localState.isCameraOn && localStreamRef.current) {
             try {
-                // 1. First stop and remove existing non-placeholder video tracks so the camera sensor is released on Android
-                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder);
-                oldTracks.forEach(t => {
-                    try { t.stop(); } catch (e) {}
-                    try { localStreamRef.current.removeTrack(t); } catch (e) {}
-                });
-
-                // 2. Request new video stream with the new facingMode
+                // 1. Request new video stream with the new facingMode FIRST before stopping old tracks
                 let newStream = null;
                 try {
                     newStream = await navigator.mediaDevices.getUserMedia({
@@ -1968,27 +2028,35 @@ export const VoiceProvider = ({ children }) => {
                 newVideoTrack.enabled = true;
                 localStreamRef.current.addTrack(newVideoTrack);
 
-                // 3. Replace track on all active peer connections
-                peerConnectionsRef.current.forEach(pc => {
+                // 2. Replace track on all active peer connections FIRST
+                for (const pc of peerConnectionsRef.current.values()) {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
                                         pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender ||
                                         pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'video')?.sender;
                     if (videoSender) {
-                        videoSender.replaceTrack(newVideoTrack).catch(e => {
+                        try {
+                            await videoSender.replaceTrack(newVideoTrack);
+                        } catch (e) {
                             console.warn("[WebRTC] replaceTrack error in toggleFacingMode:", e);
-                        });
+                        }
                     }
+                }
+
+                // 3. ONLY AFTER replaceTrack completes, safely stop old camera tracks
+                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder && t.id !== newVideoTrack.id);
+                oldTracks.forEach(t => {
+                    try { t.stop(); } catch (e) {}
+                    try { localStreamRef.current.removeTrack(t); } catch (e) {}
                 });
 
                 // 4. Update React participant list so local camera card immediately shows the switched camera
                 updateParticipantList();
-                renegotiateAll();
             } catch (err) {
                 console.error("[WebRTC] Failed to switch camera facingMode:", err);
             }
         }
-    }, [facingMode, localState.isCameraOn, availableDevices, updateParticipantList, renegotiateAll]);
+    }, [facingMode, localState.isCameraOn, availableDevices, updateParticipantList]);
 
     const setAudioOutput = useCallback(async (deviceId) => {
         setSelectedAudioOutput(deviceId);
@@ -2052,24 +2120,28 @@ export const VoiceProvider = ({ children }) => {
             const newVideoTrack = newStream.getVideoTracks()[0];
             if (!newVideoTrack) return;
 
-            const oldVideoTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder);
-            if (oldVideoTrack) {
-                oldVideoTrack.stop();
-                localStreamRef.current.removeTrack(oldVideoTrack);
-            }
             newVideoTrack.enabled = true;
             localStreamRef.current.addTrack(newVideoTrack);
 
-            // Replace track on all active peer connections
-            peerConnectionsRef.current.forEach(pc => {
+            // Replace track on all active peer connections FIRST
+            for (const pc of peerConnectionsRef.current.values()) {
                 const senders = pc.getSenders();
                 const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
                                     pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender;
                 if (videoSender) {
-                    videoSender.replaceTrack(newVideoTrack).catch(err => {
+                    try {
+                        await videoSender.replaceTrack(newVideoTrack);
+                    } catch (err) {
                         console.warn("[WebRTC] Error replacing video track on peer connection:", err);
-                    });
+                    }
                 }
+            }
+
+            // ONLY AFTER replaceTrack completes, stop old camera track
+            const oldVideoTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder && t.id !== newVideoTrack.id);
+            oldVideoTracks.forEach(oldVideoTrack => {
+                try { oldVideoTrack.stop(); } catch (e) {}
+                try { localStreamRef.current.removeTrack(oldVideoTrack); } catch (e) {}
             });
 
             updateParticipantList();
