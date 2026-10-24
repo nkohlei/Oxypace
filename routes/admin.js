@@ -274,7 +274,7 @@ router.get('/portals', protect, admin, async (req, res) => {
         }
 
         const portals = await import('../models/Portal.js').then(m => m.default.find(query)
-            .select('name description owner avatar banner themeColor isVerified badges customBadge status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members')
+            .select('name description owner avatar banner themeColor isVerified badges customBadge status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members channels')
             .populate('owner', 'username profile.displayName')
             .sort({ createdAt: -1 })
             .limit(50));
@@ -1399,7 +1399,7 @@ router.post('/mass-notification', protect, admin, async (req, res) => {
 router.get('/bots', protect, admin, async (req, res) => {
     try {
         const bots = await User.find({ isBot: true }).select('username email profile verificationBadge isBanned createdAt');
-        const configs = await BotConfig.find().populate('defaultPortal', 'name avatar');
+        const configs = await BotConfig.find().populate('defaultPortal', 'name avatar channels');
         
         const configsMap = {};
         configs.forEach(c => {

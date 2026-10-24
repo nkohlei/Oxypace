@@ -14,7 +14,9 @@ const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 export const BOT_CONFIGS = [
     {
         botUsername: 'GamesNews',
+        portalId: '698cf346bb064b2d0bc7881b',
         portalName: 'OXYᴳᴬᴹᴱ', 
+        channelId: '698d1824db5ccf0a4f06c9a1',
         channelName: 'Game News 🐦‍🔥',
         email: 'gamesnews@oxypace.com',
         profile: {
@@ -29,7 +31,9 @@ export const BOT_CONFIGS = [
     },
     {
         botUsername: 'TechNews',
+        portalId: '69485e416ce2eac8943a5de2',
         portalName: 'Oxypace Global',
+        channelId: '69835873dff9f89766c44c26',
         channelName: 'Tech News 🚀',
         email: 'technews@oxypace.com',
         profile: {
@@ -44,7 +48,9 @@ export const BOT_CONFIGS = [
     },
     {
         botUsername: 'SportNews',
+        portalId: '69485e416ce2eac8943a5de2',
         portalName: 'Oxypace Global',
+        channelId: '69835858dff9f89766c44c20',
         channelName: 'Sports News 🏆',
         email: 'sportsbot@oxypace.com',
         profile: {
@@ -59,8 +65,10 @@ export const BOT_CONFIGS = [
     },
     {
         botUsername: 'Space',
+        portalId: '69d1731c7bfba7599e161b99',
         portalName: 'Space',
-        channelName: 'Gelişmeler, Bilgiler ve Eğlenmeler',
+        channelId: '6adcc0a9d676dee7e7dbe559',
+        channelName: 'Gelişimler',
         email: 'spacebot@oxypace.com',
         profile: {
             displayName: 'Space Bot',
@@ -77,7 +85,8 @@ export const BOT_CONFIGS = [
     {
         botUsername: 'MovieNewsBot',
         portalId: '69a48a87c86222e58be4972c',
-        portalName: 'Oxynema',
+        portalName: 'Oxynema | Movie&List',
+        channelId: '69a48a87c86222e58be4972d',
         channelName: 'Movie News',
         email: 'movienewsbot@oxypace.com',
         profile: {
@@ -212,13 +221,13 @@ const translateAndRefine = async (text) => {
 };
 
 
-// Auto-create bot accounts if they do not exist
+// Auto-create bot accounts and sync BotConfig if they do not exist
 async function ensureBotAccountsExist() {
-    console.log('🤖 Checking bot accounts database registration...');
+    console.log('🤖 Checking bot accounts and BotConfig registrations...');
     for (const config of BOT_CONFIGS) {
         try {
-            const exists = await User.findOne({ username: config.botUsername });
-            if (!exists) {
+            let botUser = await User.findOne({ username: config.botUsername });
+            if (!botUser) {
                 const crypto = await import('crypto');
                 const fs = await import('fs');
                 const path = await import('path');
@@ -227,7 +236,7 @@ async function ensureBotAccountsExist() {
                 const password = crypto.randomBytes(16).toString('hex');
                 const email = config.email;
                 
-                const botUser = new User({
+                botUser = new User({
                     email,
                     username: config.botUsername,
                     password,
@@ -248,8 +257,33 @@ async function ensureBotAccountsExist() {
                 console.log(`🤖 BOT ACCOUNT CREATED: ${config.botUsername}`);
                 console.log(`📧 Email: ${email}`);
                 console.log(`🔑 Password: ${password}`);
-                console.log(`⚠️ PLEASE NOTE THIS PASSWORD DOWN! Saved to: scratch/movie_news_bot_credentials.txt`);
                 console.log(`======================================================\n`);
+            }
+
+            // Sync BotConfig in DB if missing or incomplete
+            let botConfig = await BotConfig.findOne({ bot: botUser._id });
+            if (!botConfig) {
+                let targetPortal = null;
+                if (config.portalId) targetPortal = await Portal.findById(config.portalId);
+                if (!targetPortal && config.portalName) targetPortal = await Portal.findOne({ name: config.portalName });
+
+                let targetChannelId = 'general';
+                if (targetPortal && targetPortal.channels && targetPortal.channels.length > 0) {
+                    const matched = targetPortal.channels.find(c => 
+                        (config.channelId && c._id.toString() === config.channelId.toString()) ||
+                        (config.channelName && c.name.toLowerCase() === config.channelName.toLowerCase())
+                    ) || targetPortal.channels[0];
+                    if (matched) targetChannelId = matched._id.toString();
+                }
+
+                botConfig = new BotConfig({
+                    bot: botUser._id,
+                    defaultPortal: targetPortal ? targetPortal._id : null,
+                    defaultChannel: targetChannelId,
+                    feeds: config.feeds || []
+                });
+                await botConfig.save();
+                console.log(`🤖 Initialized BotConfig for "${config.botUsername}" -> Portal: "${targetPortal?.name || 'N/A'}", Channel ID: "${targetChannelId}"`);
             }
         } catch (err) {
             console.error(`❌ Failed to auto-create bot user "${config.botUsername}":`, err.message);
@@ -302,96 +336,150 @@ export default async function startBotLoop(io) {
 
     const runScrapeCycle = async () => {
         console.log(`🕒 [${new Date().toLocaleTimeString()}] Starting Bot Scrape Cycle...`);
-        
-        // 1. Process hardcoded bots
-        for (const config of BOT_CONFIGS) {
-            try {
-                const user = await User.findOne({ username: config.botUsername });
-                if (!user) {
-                    console.error(`❌ Bot user "${config.botUsername}" not found.`);
-                    continue;
-                }
 
-                let portal = null;
-                if (config.portalId) {
-                    portal = await Portal.findById(config.portalId);
-                }
-                
-                if (!portal) {
-                    portal = await Portal.findOne({ name: config.portalName });
-                }
-
-                if (!portal) {
-                    console.error(`❌ Portal not found for bot "${config.botUsername}". Checked ID: ${config.portalId || 'N/A'}, Name: ${config.portalName}`);
-                    continue;
-                }
-
-                let channel = portal.channels.find(c => c.name === config.channelName);
-                if (!channel) {
-                    console.log(`📡 Creating missing channel "${config.channelName}" on portal "${portal.name}"`);
-                    portal.channels.push({
-                        name: config.channelName,
-                        type: 'text'
-                    });
-                    await portal.save();
-                    // Retrieve it again to get the generated _id
-                    channel = portal.channels.find(c => c.name === config.channelName);
-                }
-
-                await checkNewsForBot({ user, portal, channel, feeds: config.feeds });
-                
-            } catch (err) {
-                console.error(`❌ Error processing bot "${config.botUsername}":`, err.message);
-            }
-        }
-
-        // 2. Process dynamic bots from database
         try {
-            const dynamicConfigs = await BotConfig.find().populate('bot');
-            for (const dConfig of dynamicConfigs) {
-                if (!dConfig.bot) continue;
-                if (dConfig.bot.isBanned) {
-                    console.log(`🚫 Skipping banned bot "${dConfig.bot.username}"`);
-                    continue;
-                }
-                if (!dConfig.feeds || dConfig.feeds.length === 0) continue;
+            // Fetch all bot configurations from database
+            let botConfigs = await BotConfig.find().populate('bot');
 
-                let portal = null;
-                if (dConfig.defaultPortal) {
-                    portal = await Portal.findById(dConfig.defaultPortal);
-                }
+            // Ensure any hardcoded bot is present in the list
+            for (const config of BOT_CONFIGS) {
+                if (!botConfigs.some(bc => bc.bot && bc.bot.username === config.botUsername)) {
+                    try {
+                        const user = await User.findOne({ username: config.botUsername });
+                        if (user) {
+                            let portal = null;
+                            if (config.portalId) portal = await Portal.findById(config.portalId);
+                            if (!portal && config.portalName) portal = await Portal.findOne({ name: config.portalName });
 
-                if (!portal) {
-                    // Try to fallback to user's first joined portal if any
-                    if (dConfig.bot.joinedPortals && dConfig.bot.joinedPortals.length > 0) {
-                        portal = await Portal.findById(dConfig.bot.joinedPortals[0]);
+                            let channelId = 'general';
+                            if (portal && portal.channels && portal.channels.length > 0) {
+                                const matched = portal.channels.find(c => 
+                                    (config.channelId && c._id.toString() === config.channelId.toString()) ||
+                                    (config.channelName && c.name.toLowerCase() === config.channelName.toLowerCase())
+                                ) || portal.channels[0];
+                                if (matched) channelId = matched._id.toString();
+                            }
+
+                            const newConfig = await BotConfig.create({
+                                bot: user._id,
+                                defaultPortal: portal ? portal._id : null,
+                                defaultChannel: channelId,
+                                feeds: config.feeds || []
+                            });
+                            newConfig.bot = user;
+                            botConfigs.push(newConfig);
+                        }
+                    } catch (seedErr) {
+                        console.error(`Error auto-seeding BotConfig for "${config.botUsername}":`, seedErr.message);
                     }
                 }
+            }
 
-                if (!portal) {
-                    console.log(`⚠️ No target portal for dynamic bot "${dConfig.bot.username}". Skipping.`);
-                    continue;
+            // Process each active bot
+            for (const dConfig of botConfigs) {
+                try {
+                    if (!dConfig.bot) continue;
+                    if (dConfig.bot.isBanned) {
+                        console.log(`🚫 Skipping banned bot "${dConfig.bot.username}"`);
+                        continue;
+                    }
+
+                    // Feeds check (fallback to hardcoded BOT_CONFIGS if empty in DB)
+                    let feeds = dConfig.feeds;
+                    if (!feeds || feeds.length === 0) {
+                        const fallbackConfig = BOT_CONFIGS.find(b => b.botUsername === dConfig.bot.username);
+                        if (fallbackConfig && fallbackConfig.feeds && fallbackConfig.feeds.length > 0) {
+                            feeds = fallbackConfig.feeds;
+                            dConfig.feeds = feeds;
+                            await dConfig.save().catch(() => {});
+                        }
+                    }
+                    if (!feeds || feeds.length === 0) continue;
+
+                    // Resolve target portal
+                    let portal = null;
+                    if (dConfig.defaultPortal) {
+                        portal = await Portal.findById(dConfig.defaultPortal);
+                    }
+                    if (!portal) {
+                        const fallbackConfig = BOT_CONFIGS.find(b => b.botUsername === dConfig.bot.username);
+                        if (fallbackConfig) {
+                            if (fallbackConfig.portalId) portal = await Portal.findById(fallbackConfig.portalId);
+                            if (!portal && fallbackConfig.portalName) portal = await Portal.findOne({ name: fallbackConfig.portalName });
+                        }
+                    }
+                    if (!portal && dConfig.bot.joinedPortals && dConfig.bot.joinedPortals.length > 0) {
+                        portal = await Portal.findById(dConfig.bot.joinedPortals[0]);
+                    }
+
+                    if (!portal) {
+                        console.warn(`⚠️ Target portal not found for bot "${dConfig.bot.username}". Skipping.`);
+                        continue;
+                    }
+
+                    // Resolve target channel without EVER creating clone channels
+                    let channel = null;
+                    const targetChannelStr = String(dConfig.defaultChannel || '').trim();
+
+                    // 1. Exact ID match (channel ID never changes even when renamed!)
+                    if (targetChannelStr) {
+                        channel = portal.channels.find(c => c._id.toString() === targetChannelStr);
+                    }
+
+                    // 2. Exact or case-insensitive Name match
+                    if (!channel && targetChannelStr && targetChannelStr !== 'general') {
+                        channel = portal.channels.find(c => c.name.toLowerCase() === targetChannelStr.toLowerCase());
+                    }
+
+                    // 3. Fallback for renamed channels: check previous post history for this bot in this portal
+                    if (!channel) {
+                        try {
+                            const lastPost = await Post.findOne({ portal: portal._id, author: dConfig.bot._id }).sort({ createdAt: -1 });
+                            if (lastPost && lastPost.channel) {
+                                const lastChStr = lastPost.channel.toString();
+                                channel = portal.channels.find(c => 
+                                    c._id.toString() === lastChStr || 
+                                    c.name.toLowerCase() === lastChStr.toLowerCase()
+                                );
+                                if (channel) {
+                                    console.log(`🔄 [${dConfig.bot.username}] Channel was renamed. Resolved active channel "${channel.name}" (ID: ${channel._id}) from previous post history.`);
+                                    dConfig.defaultChannel = channel._id.toString();
+                                    await dConfig.save().catch(() => {});
+                                }
+                            }
+                        } catch (historyErr) {
+                            console.error(`Error resolving channel by history for "${dConfig.bot.username}":`, historyErr.message);
+                        }
+                    }
+
+                    // 4. Fallback to portal's primary / general channel if still not found
+                    if (!channel && portal.channels && portal.channels.length > 0) {
+                        channel = portal.channels.find(c => c.name.toLowerCase() === 'general' || c.name.toLowerCase() === 'genel') || portal.channels[0];
+                        if (channel) {
+                            console.log(`ℹ️ [${dConfig.bot.username}] Defaulted to primary channel "${channel.name}" on portal "${portal.name}".`);
+                            dConfig.defaultChannel = channel._id.toString();
+                            await dConfig.save().catch(() => {});
+                        }
+                    }
+
+                    if (!channel) {
+                        console.warn(`⚠️ No channel available in portal "${portal.name}" for bot "${dConfig.bot.username}". Skipping.`);
+                        continue;
+                    }
+
+                    await checkNewsForBot({
+                        user: dConfig.bot,
+                        portal,
+                        channel,
+                        feeds
+                    });
+
+                } catch (botErr) {
+                    console.error(`❌ Error processing bot "${dConfig.bot?.username || 'unknown'}":`, botErr.message);
                 }
-
-                let channel = portal.channels.find(c => c._id.toString() === dConfig.defaultChannel || c.name === dConfig.defaultChannel);
-                if (!channel) {
-                    channel = portal.channels.find(c => c.name.toLowerCase() === 'general' || c.name.toLowerCase() === 'genel') || portal.channels[0];
-                }
-
-                if (!channel) {
-                    console.log(`⚠️ No channel available in portal "${portal.name}" for bot "${dConfig.bot.username}". Skipping.`);
-                    continue;
-                }
-
-                await checkNewsForBot({
-                    user: dConfig.bot,
-                    portal,
-                    channel,
-                    feeds: dConfig.feeds
-                });
             }
         } catch (dbErr) {
-            console.error('❌ Error processing dynamic bots:', dbErr.message);
+            console.error('❌ Error processing bots scrape cycle:', dbErr.message);
         }
     };
 

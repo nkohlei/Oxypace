@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Portal from '../models/Portal.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
+import BotConfig from '../models/BotConfig.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
@@ -1065,6 +1066,17 @@ router.delete('/:id/channels/:channelId', protect, mongoIdValidation('id'), mong
             (ch) => ch._id.toString() !== req.params.channelId
         );
         await portal.save();
+
+        try {
+            const fallbackChannelId = portal.channels[0] ? portal.channels[0]._id.toString() : 'general';
+            await BotConfig.updateMany(
+                { defaultPortal: portal._id, defaultChannel: req.params.channelId },
+                { $set: { defaultChannel: fallbackChannelId } }
+            );
+        } catch (botErr) {
+            console.error('Error syncing BotConfig on channel deletion:', botErr);
+        }
+
         res.json(portal.channels);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -1137,7 +1149,18 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
             if (trimmedName.length > 20) {
                 return res.status(400).json({ message: 'Kanal adı en fazla 20 karakter olabilir' });
             }
+            const oldName = channel.name;
             channel.name = trimmedName;
+
+            try {
+                // Ensure any bot targeting this channel by either its old name or ID points directly to channel ID
+                await BotConfig.updateMany(
+                    { defaultPortal: portal._id, defaultChannel: { $in: [oldName, req.params.channelId] } },
+                    { $set: { defaultChannel: req.params.channelId } }
+                );
+            } catch (botErr) {
+                console.error('Error syncing BotConfig on channel rename:', botErr);
+            }
         }
         if (isPrivate !== undefined) {
             channel.isPrivate = isPrivate;
