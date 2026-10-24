@@ -173,11 +173,6 @@ const Login = ({ isModal = false, onClose = null }) => {
             if (isModal) {
                 const loggedInUser = response.data?.user;
                 const loggedInToken = response.data?.token;
-                if (user && (loggedInUser?._id === user._id || loggedInUser?.id === user.id)) {
-                    setError('Bu hesap zaten şu an aktif olan oturumunuzdur.');
-                    setLoading(false);
-                    return;
-                }
                 addAndSwitchAccount(loggedInToken, loggedInUser);
                 if (onClose) onClose();
             } else {
@@ -257,10 +252,12 @@ const Login = ({ isModal = false, onClose = null }) => {
 
     return (
         <div 
-            className={`auth-container ${isModal ? 'auth-modal-mode' : ''}`}
+            className={isModal ? "auth-modal-overlay" : "auth-container"}
             onClick={isModal ? onClose : undefined}
+            role={isModal ? "dialog" : undefined}
+            aria-modal={isModal ? "true" : undefined}
         >
-            <WarpGridBackground />
+            {!isModal && <WarpGridBackground />}
 
             <div className="auth-wrapper" onClick={isModal ? (e) => e.stopPropagation() : undefined}>
                 {/* Circular Outer Left Back Button */}

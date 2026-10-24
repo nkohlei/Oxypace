@@ -205,7 +205,10 @@ export const AuthProvider = ({ children }) => {
         if (!newToken || !newUserData || !newUserData._id) return;
 
         const list = getStoredAccounts();
-        const filtered = list.filter(a => a.userId !== newUserData._id && a.userId !== user?._id);
+        const newId = String(newUserData._id);
+        const currentId = user?._id ? String(user._id) : null;
+
+        const filtered = list.filter(a => String(a.userId) !== newId && String(a.userId) !== currentId);
 
         const reordered = [
             {
@@ -221,7 +224,7 @@ export const AuthProvider = ({ children }) => {
             }
         ];
 
-        if (user && user._id && token) {
+        if (user && user._id && token && currentId !== newId) {
             reordered.push({
                 userId: user._id,
                 username: user.username,
@@ -241,7 +244,7 @@ export const AuthProvider = ({ children }) => {
         login(newToken, newUserData);
         sessionStorage.setItem('oxypace_fresh_login', 'true');
 
-        window.location.href = '/messages';
+        window.location.reload();
     };
 
     const removeSavedAccount = (targetUserId) => {

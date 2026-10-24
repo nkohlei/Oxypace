@@ -21,8 +21,38 @@
     display: none;
 }
 
-.auth-container.auth-modal-mode {
+/* ===================== Auth In-Page Modal Overlay ===================== */
+.auth-modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
     z-index: 9999999 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    animation: authOverlayFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+html.light .auth-modal-overlay,
+:root[data-theme="light"] .auth-modal-overlay {
+    background: rgba(255, 255, 255, 0.65) !important;
+}
+
+@keyframes authOverlayFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 /* ===================== Auth Wrapper ===================== */
