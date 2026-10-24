@@ -50,32 +50,64 @@ const Portal = () => {
     const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
 
     const [portal, setPortal] = useState(() => {
-        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
-            return location.state.portal;
-        }
+        // 1. Check sessionStorage cache first for complete portal with channels
         try {
             const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`);
-            if (cached) return JSON.parse(cached);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
+                    return parsed;
+                }
+            }
         } catch (_) {}
+
+        // 2. Only use location.state.portal if it has channels
+        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
+            if (Array.isArray(location.state.portal.channels) && location.state.portal.channels.length > 0) {
+                return location.state.portal;
+            }
+        }
         return null;
     });
 
     useEffect(() => {
         if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
-            setPortal(location.state.portal);
+            setPortal((prev) => {
+                // If incoming has channels, safely use it
+                if (Array.isArray(location.state.portal.channels) && location.state.portal.channels.length > 0) {
+                    return location.state.portal;
+                }
+                // Never wipe out existing channels if incoming state has no channels
+                if (prev && Array.isArray(prev.channels) && prev.channels.length > 0) {
+                    return {
+                        ...location.state.portal,
+                        channels: prev.channels,
+                        roles: prev.roles || location.state.portal.roles,
+                        members: prev.members || location.state.portal.members,
+                    };
+                }
+                return prev || null;
+            });
         }
     }, [id, location.state]);
     const posts = useGlobalStore((state) => state.posts);
     const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(() => {
-        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
-            return false;
-        }
         try {
-            return !sessionStorage.getItem(`oxypace_portal_cache_${id}`);
-        } catch (_) {
-            return true;
+            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
+                    return false;
+                }
+            }
+        } catch (_) {}
+        if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
+            if (Array.isArray(location.state.portal.channels) && location.state.portal.channels.length > 0) {
+                return false;
+            }
         }
+        return true;
     });
 
     const [contentLoading, setContentLoading] = useState(false); // New state for channel content loading
@@ -480,6 +512,18 @@ const Portal = () => {
         animationFrameRef.current = requestAnimationFrame(animateScroll);
     }, []);
 
+    // Listen to sidebar/header scroll top event & heal channel data if missing
+    useEffect(() => {
+        const handleScrollTopEvent = () => {
+            scrollToTop();
+            if (!portal || !Array.isArray(portal.channels) || portal.channels.length === 0) {
+                fetchPortalData();
+            }
+        };
+        window.addEventListener('oxypace:scroll_portal_top', handleScrollTopEvent);
+        return () => window.removeEventListener('oxypace:scroll_portal_top', handleScrollTopEvent);
+    }, [scrollToTop, portal?._id, portal?.channels?.length]);
+
     const handleChannelSelect = (channelId) => {
         setCurrentChannel(channelId);
         setShowScrollTop(false); // Reset scroll button when changing channels
@@ -852,11 +896,22 @@ const Portal = () => {
     const avatarInputRef = useRef(null);
     const bannerInputRef = useRef(null);
 
+    const isFetchingPortalRef = useRef(false);
+
     useEffect(() => {
         if (id && !authLoading) {
             fetchPortalData();
         }
     }, [id, authLoading]);
+
+    // Self-healing guard: If id is active but portal data is missing channels, fetch immediately!
+    useEffect(() => {
+        if (id && !authLoading && !isFetchingPortalRef.current) {
+            if (!portal || !Array.isArray(portal.channels) || portal.channels.length === 0 || String(portal._id) !== String(id)) {
+                fetchPortalData();
+            }
+        }
+    }, [id, authLoading, portal?._id, portal?.channels?.length]);
 
     useEffect(() => {
         if (searchParams.get('openSettings') === 'true') {
@@ -992,8 +1047,11 @@ const Portal = () => {
     }, [portal, user]);
 
     const fetchPortalData = async () => {
-        // Only show full page spinner on initial portal load, not channel switches
-        if (!portal || portal._id !== id) {
+        if (isFetchingPortalRef.current) return;
+        isFetchingPortalRef.current = true;
+
+        // Only show full page spinner on initial portal load or if channels are missing, not channel switches
+        if (!portal || String(portal._id) !== String(id) || !Array.isArray(portal.channels) || portal.channels.length === 0) {
             setLoading(true);
             setShowScrollTop(false); // Reset scroll button when changing portals
         }
@@ -1018,6 +1076,7 @@ const Portal = () => {
                 description: res.data.description || '',
                 privacy: res.data.privacy || 'public',
             });
+            setError('');
         } catch (err) {
             if (err.response && err.response.status === 403) {
                 const data = err.response.data;
@@ -1040,6 +1099,7 @@ const Portal = () => {
             }
             console.error(err);
         } finally {
+            isFetchingPortalRef.current = false;
             setLoading(false);
         }
     };
@@ -1420,8 +1480,8 @@ const Portal = () => {
         );
     }
 
-    // Error State (Blocked/Not Found)
-    if (error === 'blocked') {
+    // Error State (Blocked/Not Found/Generic Error)
+    if (error && error !== 'suspended') {
         return (
             <div className="app-wrapper full-height">
                 <Navbar />
@@ -1436,8 +1496,8 @@ const Portal = () => {
                     }}
                 >
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
-                    <h2>Sonuç Bulunamadı</h2>
-                    <p>Aradığınız portala ulaşılamıyor.</p>
+                    <h2>{error === 'blocked' ? 'Sonuç Bulunamadı' : 'Bir Hata Oluştu'}</h2>
+                    <p>{error === 'blocked' ? 'Aradığınız portala ulaşılamıyor.' : (error || 'Portal yüklenirken bir sorun oluştu.')}</p>
                     <button
                         onClick={() => navigate('/')}
                         className="btn-save"
@@ -1451,7 +1511,7 @@ const Portal = () => {
     }
 
     // Loading State
-    if (loading || authLoading || !portal) {
+    if (loading || authLoading || !portal || !Array.isArray(portal.channels) || portal.channels.length === 0) {
         return (
             <div className="app-wrapper full-height">
                 <Navbar />

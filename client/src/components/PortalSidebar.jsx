@@ -232,12 +232,27 @@ const PortalSidebar = () => {
     };
 
     const isPortalActive = (portalId) => {
-        return location.pathname === `/portal/${portalId}`;
+        if (!portalId) return false;
+        const strId = String(portalId);
+        return location.pathname === `/portal/${strId}` || location.pathname.startsWith(`/portal/${strId}/`);
     };
 
     const handleNavigation = (path, options) => {
         navigate(path, options);
         closeSidebar();
+    };
+
+    const handlePortalClick = (targetPortal) => {
+        if (isReordering || !targetPortal?._id) return;
+        const targetId = String(targetPortal._id);
+        if (isPortalActive(targetId)) {
+            // Already inside this portal: smooth scroll feed to top and close mobile sidebar
+            window.dispatchEvent(new CustomEvent('oxypace:scroll_portal_top'));
+            closeSidebar();
+            return;
+        }
+        // Navigate to different portal without passing shallow, channel-less state
+        handleNavigation(`/portal/${targetId}`);
     };
 
     return (
@@ -274,7 +289,7 @@ const PortalSidebar = () => {
                                 draggable={isReordering}
                                 className={`sidebar-item ${isPortalActive(portal._id) ? 'active' : ''} ${isReordering ? 'reordering' : ''} ${draggedIndex === index ? 'dragging' : ''} ${filteredCount > 0 ? 'has-unread' : ''}`}
                                 title={`${portal.name} • ${portal.postCount || 0} gönderi`}
-                                onClick={() => !isReordering && handleNavigation(`/portal/${portal._id}`, { state: { portal } })}
+                                onClick={() => handlePortalClick(portal)}
                                 onDragStart={(e) => handleDragStart(e, index)}
                                 onDragOver={(e) => handleDragOver(e, index)}
                                 onDragEnd={handleDragEnd}
