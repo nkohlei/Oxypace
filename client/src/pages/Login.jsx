@@ -253,13 +253,12 @@ const Login = ({ isModal = false, onClose = null }) => {
     return (
         <div 
             className={isModal ? "auth-modal-overlay" : "auth-container"}
-            onClick={isModal ? onClose : undefined}
             role={isModal ? "dialog" : undefined}
             aria-modal={isModal ? "true" : undefined}
         >
             {!isModal && <WarpGridBackground />}
 
-            <div className="auth-wrapper" onClick={isModal ? (e) => e.stopPropagation() : undefined}>
+            <div className="auth-wrapper">
                 {/* Circular Outer Left Back Button */}
                 {isModal ? (
                     <button
