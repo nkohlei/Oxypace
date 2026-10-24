@@ -21,6 +21,10 @@
     display: none;
 }
 
+.auth-container.auth-modal-mode {
+    z-index: 9999999 !important;
+}
+
 /* ===================== Auth Wrapper ===================== */
 .auth-wrapper {
     position: relative;

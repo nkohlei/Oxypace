@@ -8,7 +8,7 @@ import { getDeviceInfo } from '../utils/deviceHelper';
 import WarpGridBackground from '../components/WarpGridBackground';
 import './Auth.css';
 
-const Login = () => {
+const Login = ({ isModal = false, onClose = null }) => {
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -16,16 +16,27 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login, user } = useAuth();
+    const { login, user, addAndSwitchAccount } = useAuth();
     const navigate = useNavigate();
 
-    // Oturumu açık olan kullanıcıyı doğrudan portal mesajlar modülüne yönlendir
+    // Oturumu açık olan kullanıcıyı doğrudan portal mesajlar modülüne yönlendir (modal modunda yönlendirilmez)
     useEffect(() => {
+        if (isModal) return;
         const token = localStorage.getItem('token');
         if (token && token !== 'null' && token !== 'undefined') {
             navigate('/messages', { replace: true });
         }
-    }, [navigate]);
+    }, [navigate, isModal]);
+
+    // Modal modunda ESC tuşu ile kapatma desteği
+    useEffect(() => {
+        if (!isModal || !onClose) return;
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isModal, onClose]);
 
     // Recovery Flow States
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);
@@ -159,8 +170,20 @@ const Login = () => {
             };
             const response = await axios.post('/api/auth/login', payload);
             sessionStorage.setItem('oxypace_fresh_login', 'true');
-            login(response.data.token, response.data.user);
-            navigate('/messages', { replace: true });
+            if (isModal) {
+                const loggedInUser = response.data?.user;
+                const loggedInToken = response.data?.token;
+                if (user && (loggedInUser?._id === user._id || loggedInUser?.id === user.id)) {
+                    setError('Bu hesap zaten şu an aktif olan oturumunuzdur.');
+                    setLoading(false);
+                    return;
+                }
+                addAndSwitchAccount(loggedInToken, loggedInUser);
+                if (onClose) onClose();
+            } else {
+                login(response.data.token, response.data.user);
+                navigate('/messages', { replace: true });
+            }
         } catch (err) {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {
                 if (window.confirm("Bu hesap silinmiştir. Kurtarmak istiyor musunuz?")) {
@@ -233,17 +256,35 @@ const Login = () => {
     }, []);
 
     return (
-        <div className="auth-container">
+        <div 
+            className={`auth-container ${isModal ? 'auth-modal-mode' : ''}`}
+            onClick={isModal ? onClose : undefined}
+        >
             <WarpGridBackground />
 
-            <div className="auth-wrapper">
+            <div className="auth-wrapper" onClick={isModal ? (e) => e.stopPropagation() : undefined}>
                 {/* Circular Outer Left Back Button */}
-                <a href="/" className="auth-circle-back-btn" title="Ana Sayfaya Dön">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12" />
-                        <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                </a>
+                {isModal ? (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="auth-circle-back-btn"
+                        title="Kapat"
+                        aria-label="Kapat"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12" />
+                            <polyline points="12 19 5 12 12 5" />
+                        </svg>
+                    </button>
+                ) : (
+                    <a href="/" className="auth-circle-back-btn" title="Ana Sayfaya Dön">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12" />
+                            <polyline points="12 19 5 12 12 5" />
+                        </svg>
+                    </a>
+                )}
 
                 <div className="auth-card fade-in">
                     <div className="auth-header">
@@ -336,13 +377,13 @@ const Login = () => {
                                 style={{ width: '20px', height: '20px' }}
                             ></div>
                         ) : (
-                            'Giriş Yap'
+                            'GİRİŞ YAP'
                         )}
                     </button>
                 </form>
 
                 <div className="auth-divider">
-                    <span>veya</span>
+                    <span>VEYA</span>
                 </div>
 
                 <button onClick={handleGoogleLogin} className="btn-google">
