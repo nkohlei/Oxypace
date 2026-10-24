@@ -4482,9 +4482,22 @@ body.light .modal-overlay-modern,
     box-sizing: border-box;
 }
 
-/* Global sharp borders & zero pills */
+/* ========================================================
+   MODERN SOFT-CORNER GEOMETRY (YUMUŞAK KÖŞELİ YAPILAR)
+   - Rectangles with elegant soft corners
+   - Strictly NO knife-sharp 0px edges
+   - Strictly NO oval / capsule / pill rounded ends
+   ======================================================== */
+
+/* Buttons & Interactive Controls (Soft 8px Corners, Never Pills) */
 .admin-layout .btn-modern-primary,
 .admin-layout .btn-modern-ghost,
+.admin-layout .btn-primary-sharp,
+.admin-layout .btn-secondary-sharp,
+.admin-layout .btn-danger-sharp,
+.admin-layout .user-box-btn,
+.admin-layout .post-delete-btn,
+.admin-layout .activity-subnav-btn,
 .admin-layout .admin-tab,
 .admin-layout .sidebar-nav-item,
 .admin-layout .sidebar-home-btn,
@@ -4493,33 +4506,105 @@ body.light .modal-overlay-modern,
 .admin-layout .close-btn-modern,
 .admin-layout .ban-btn-admin,
 .admin-layout .btn-transfer-action,
-.admin-layout button,
-.admin-layout input,
-.admin-layout textarea,
-.admin-layout select,
-.admin-layout .modal-content-modern,
-.admin-layout .admin-card,
-.admin-layout .metric-card-modern,
-.admin-layout .detail-section-card,
-.admin-layout .system-card,
-.admin-layout .card-icon-wrapper,
-.admin-layout .card-icon-placeholder,
-.admin-layout .portal-detail-avatar,
-.admin-layout .admin-user-avatar-img,
-.admin-layout .avatar-wrapper-modern,
-.admin-layout .user-list-avatar,
-.admin-layout .badge-pill-status,
-.admin-layout .category-chip,
-.admin-layout .nsfw-badge-admin,
-.admin-layout .read-only-badge,
-.admin-layout .snav-badge,
-.admin-layout .tab-badge {
-    border-radius: 0px !important;
+.admin-layout .unban-btn-admin,
+.admin-layout .btn-revoke-tourist,
+.admin-layout .btn-modern-secondary,
+.admin-layout .reject-btn,
+.admin-layout .approve-btn,
+.admin-layout button {
+    border-radius: 8px !important;
     box-shadow: none !important;
     text-shadow: none !important;
 }
 
-/* Strip all neon glows and cyan drop-shadows */
+/* Inputs, Textareas, Selects & Search Bars (Soft 8px Corners) */
+.admin-layout input,
+.admin-layout textarea,
+.admin-layout select,
+.admin-layout .search-input-modern,
+.admin-layout .reason-input-modern,
+.admin-layout .badge-select,
+.admin-layout .users-search input {
+    background: #0d0d0d !important;
+    border: 1px solid #282828 !important;
+    color: #ffffff !important;
+    border-radius: 8px !important;
+}
+.admin-layout input:focus,
+.admin-layout textarea:focus,
+.admin-layout select:focus {
+    border-color: #ffffff !important;
+    outline: none !important;
+}
+
+/* Cards, Containers, Sections & Boxes (Soft 12px Corners) */
+.admin-layout .admin-card,
+.admin-layout .metric-card-modern,
+.admin-layout .detail-section-card,
+.admin-layout .system-card,
+.admin-layout .admin-user-box-card,
+.admin-layout .admin-portal-box-card,
+.admin-layout .post-inspect-card,
+.admin-layout .dossier-section-box,
+.admin-layout .custom-badge-form-card,
+.admin-layout .custom-badges-list-card,
+.admin-layout .custom-badge-item-card,
+.admin-layout .feedback-dashboard-card-v2,
+.admin-layout .request-card,
+.admin-layout .tourist-admin-card,
+.admin-layout .permissions-grid,
+.admin-layout .user-box-stats,
+.admin-layout .user-list-item {
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+/* Modals & Dialogs (Soft 14px Corners) */
+.admin-layout .modal-content-modern,
+.admin-layout .dossier-modal,
+.admin-layout .posts-inspector-modal,
+.admin-layout .edit-permissions-modal {
+    border-radius: 14px !important;
+    background: #0a0a0a !important;
+    border: 1px solid #333333 !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Tags, Chips, Badges & Labels (Soft 6px Corners, Never Pills) */
+.admin-layout .mono-tag,
+.admin-layout .dossier-chip,
+.admin-layout .tab-badge,
+.admin-layout .snav-badge,
+.admin-layout .badge-pill-status,
+.admin-layout .category-chip,
+.admin-layout .nsfw-badge-admin,
+.admin-layout .read-only-badge,
+.admin-layout .post-inspect-channel,
+.admin-layout .status-badge-neon,
+.admin-layout .time-left-badge,
+.admin-layout .badge-pill {
+    border-radius: 6px !important;
+}
+
+/* Avatars, Media & Thumbnails (Soft 8px Corners) */
+.admin-layout .user-box-avatar,
+.admin-layout .portal-box-avatar,
+.admin-layout .admin-user-avatar-img,
+.admin-layout .avatar-wrapper-modern,
+.admin-layout .user-list-avatar,
+.admin-layout .portal-detail-avatar,
+.admin-layout .card-icon-wrapper,
+.admin-layout .card-icon-placeholder,
+.admin-layout .post-inspect-media-container,
+.admin-layout .post-inspect-media {
+    border-radius: 8px !important;
+}
+.portal-box-banner {
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Clean Monochromatic Palette & Strip Neon/Drop-Shadows */
 .admin-layout .btn-glow-cyan,
 .admin-layout .status-badge-neon,
 .admin-layout .sidebar-brand-icon,
@@ -4528,7 +4613,7 @@ body.light .modal-overlay-modern,
     filter: none !important;
 }
 
-/* Primary High Contrast Sharp Buttons */
+/* Primary High Contrast Buttons */
 .admin-layout .btn-modern-primary,
 .admin-layout .btn-primary-sharp {
     background: #ffffff !important;
@@ -4547,7 +4632,7 @@ body.light .modal-overlay-modern,
     border-color: #cccccc !important;
 }
 
-/* Secondary / Ghost Sharp Buttons */
+/* Secondary / Ghost Buttons */
 .admin-layout .btn-modern-ghost,
 .admin-layout .btn-secondary-sharp {
     background: transparent !important;
@@ -4564,20 +4649,22 @@ body.light .modal-overlay-modern,
     color: #ffffff !important;
 }
 
-/* Danger / Action Sharp Buttons */
-.admin-layout .btn-danger-sharp {
+/* Danger Buttons */
+.admin-layout .btn-danger-sharp,
+.admin-layout .btn-revoke-tourist {
     background: #141414 !important;
     color: #ffffff !important;
     border: 1px solid #444444 !important;
     font-weight: 600 !important;
     cursor: pointer !important;
 }
-.admin-layout .btn-danger-sharp:hover {
+.admin-layout .btn-danger-sharp:hover,
+.admin-layout .btn-revoke-tourist:hover {
     background: #222222 !important;
     border-color: #888888 !important;
 }
 
-/* Sidebar active states in monochrome */
+/* Sidebar Active States */
 .admin-layout .sidebar-nav-item.active {
     background: #ffffff !important;
     color: #000000 !important;
@@ -4598,34 +4685,10 @@ body.light .modal-overlay-modern,
     transform: none !important;
 }
 
-/* Inputs and Selects */
-.admin-layout input,
-.admin-layout textarea,
-.admin-layout select,
-.admin-layout .search-input-modern,
-.admin-layout .reason-input-modern {
-    background: #0d0d0d !important;
-    border: 1px solid #282828 !important;
-    color: #ffffff !important;
-    border-radius: 0px !important;
-}
-.admin-layout input:focus,
-.admin-layout textarea:focus,
-.admin-layout select:focus {
-    border-color: #ffffff !important;
-    outline: none !important;
-}
-
-/* Modal Overlays and Content */
+/* Modal Overlay & Base */
 .admin-layout .modal-overlay-modern {
     background: rgba(0, 0, 0, 0.88) !important;
     backdrop-filter: blur(8px) !important;
-}
-.admin-layout .modal-content-modern {
-    background: #0f0f0f !important;
-    border: 1px solid #2c2c2c !important;
-    border-radius: 0px !important;
-    color: #ffffff !important;
 }
 .admin-layout .modal-header-modern {
     border-bottom: 1px solid #222222 !important;
@@ -4635,14 +4698,17 @@ body.light .modal-overlay-modern,
     background: #0a0a0a !important;
 }
 
-/* USER BOX GRID & CARDS */
+/* ========================================================
+   BOX GRIDS & CARDS (USERS, PORTALS, LOGS, PERMISSIONS)
+   ======================================================== */
+
+/* USERS BOX GRID */
 .admin-users-box-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 16px;
     margin-top: 20px;
 }
-
 .admin-user-box-card {
     background: #111111;
     border: 1px solid #222222;
@@ -4670,7 +4736,6 @@ body.light .modal-overlay-modern,
     border: 1px solid #2b2b2b;
     flex-shrink: 0;
     object-fit: cover;
-    border-radius: 0px !important;
 }
 .user-box-meta {
     flex: 1;
@@ -4699,7 +4764,7 @@ body.light .modal-overlay-modern,
     text-overflow: ellipsis;
 }
 
-/* Tags & Badges Row */
+/* Tags & Badges */
 .user-box-tags {
     display: flex;
     flex-wrap: wrap;
@@ -4714,7 +4779,6 @@ body.light .modal-overlay-modern,
     border: 1px solid #333333;
     background: #181818;
     color: #ffffff;
-    border-radius: 0px !important;
 }
 .mono-tag.inverted {
     background: #ffffff;
@@ -4740,6 +4804,7 @@ body.light .modal-overlay-modern,
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
 }
 .user-stat-label {
     font-size: 10px;
@@ -4752,6 +4817,9 @@ body.light .modal-overlay-modern,
     font-weight: 600;
     color: #dddddd;
     font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* User Card Actions */
@@ -4765,7 +4833,7 @@ body.light .modal-overlay-modern,
 }
 .user-box-btn {
     flex: 1;
-    min-width: 90px;
+    min-width: 80px;
     padding: 8px 10px;
     font-size: 11px;
     font-weight: 700;
@@ -4776,7 +4844,6 @@ body.light .modal-overlay-modern,
     border: 1px solid #333333;
     background: #161616;
     color: #ffffff;
-    border-radius: 0px !important;
     transition: all 0.15s ease;
 }
 .user-box-btn:hover {
@@ -4788,7 +4855,7 @@ body.light .modal-overlay-modern,
 /* PORTALS BOX GRID & CARDS */
 .admin-portals-box-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 16px;
     margin-top: 20px;
 }
@@ -4798,7 +4865,6 @@ body.light .modal-overlay-modern,
     display: flex;
     flex-direction: column;
     transition: border-color 0.15s ease;
-    border-radius: 0px !important;
 }
 .admin-portal-box-card:hover {
     border-color: #555555;
@@ -4810,6 +4876,7 @@ body.light .modal-overlay-modern,
     border-bottom: 1px solid #222222;
     position: relative;
     background-color: #1a1a1a;
+    overflow: hidden;
 }
 .portal-box-content {
     padding: 16px;
@@ -4828,7 +4895,6 @@ body.light .modal-overlay-modern,
     height: 48px;
     border: 1px solid #2e2e2e;
     object-fit: cover;
-    border-radius: 0px !important;
 }
 .portal-box-title {
     font-size: 16px;
@@ -4837,26 +4903,40 @@ body.light .modal-overlay-modern,
     display: flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .portal-box-owner {
     font-size: 12px;
     color: #888888;
 }
 
-/* PLATFORM LOGS TABLE & CARDS */
+/* PLATFORM LOGS & AUDIT TRAIL */
 .logs-container {
     display: flex;
     flex-direction: column;
     gap: 16px;
-}
-.logs-table {
     width: 100%;
-    border-collapse: collapse;
+    max-width: 100%;
+}
+.logs-table-wrapper,
+.table-wrapper,
+.tourist-admins-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid #222222;
     background: #111111;
+}
+.logs-table,
+.tourist-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 12px;
 }
-.logs-table th {
+.logs-table th,
+.tourist-table th {
     background: #0a0a0a;
     color: #888888;
     text-transform: uppercase;
@@ -4865,13 +4945,16 @@ body.light .modal-overlay-modern,
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #222222;
+    white-space: nowrap;
 }
-.logs-table td {
+.logs-table td,
+.tourist-table td {
     padding: 12px;
     border-bottom: 1px solid #1a1a1a;
     color: #cccccc;
 }
-.logs-table tr:hover td {
+.logs-table tr:hover td,
+.tourist-table tr:hover td {
     background: #161616;
 }
 
@@ -4897,28 +4980,23 @@ body.light .modal-overlay-modern,
     height: 16px;
     accent-color: #ffffff;
     cursor: pointer;
+    border-radius: 4px !important;
 }
 
-/* ========================================================
-   BRUTALIST MONOCHROME MODALS (DOSSIER, POSTS, PERMISSIONS)
-   ======================================================== */
+/* MODALS (DOSSIER, POSTS, PERMISSIONS) */
 .dossier-modal,
 .posts-inspector-modal,
 .edit-permissions-modal {
     width: 950px !important;
     max-width: 96vw !important;
     max-height: 88vh !important;
-    background: #0a0a0a !important;
-    border: 1px solid #333333 !important;
     display: flex !important;
     flex-direction: column !important;
-    border-radius: 0px !important;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.9) !important;
 }
 
 .dossier-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     gap: 16px;
 }
 
@@ -4929,7 +5007,6 @@ body.light .modal-overlay-modern,
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-radius: 0px !important;
 }
 
 .dossier-section-title {
@@ -4981,7 +5058,6 @@ body.light .modal-overlay-modern,
     color: #dddddd;
     border: 1px solid #2e2e2e;
     padding: 3px 8px;
-    border-radius: 0px !important;
 }
 
 /* Post Inspector Cards */
@@ -5001,7 +5077,6 @@ body.light .modal-overlay-modern,
     display: flex;
     flex-direction: column;
     gap: 12px;
-    border-radius: 0px !important;
     transition: border-color 0.15s ease;
 }
 
@@ -5079,7 +5154,6 @@ body.light .modal-overlay-modern,
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-radius: 0px !important;
     transition: all 0.15s ease;
 }
 
@@ -5089,7 +5163,7 @@ body.light .modal-overlay-modern,
     border-color: #ffffff;
 }
 
-/* Activity sub-navigation */
+/* Activity Sub-Navigation */
 .activity-subnav {
     display: flex;
     gap: 12px;
@@ -5108,7 +5182,6 @@ body.light .modal-overlay-modern,
     text-transform: uppercase;
     letter-spacing: 0.5px;
     cursor: pointer;
-    border-radius: 0px !important;
     transition: all 0.15s ease;
 }
 
@@ -5117,6 +5190,197 @@ body.light .modal-overlay-modern,
     background: #ffffff;
     color: #000000;
     border-color: #ffffff;
+}
+
+/* ========================================================
+   COMPREHENSIVE MOBILE SYNCHRONIZATION & RESPONSIVENESS
+   - Zero horizontal overflow
+   - Zero element collisions or clipping
+   - Flawless usability on smartphones & tablets
+   ======================================================== */
+
+@media (max-width: 1023px) {
+    .admin-layout {
+        overflow-x: hidden;
+    }
+    .admin-content {
+        padding: 20px 16px;
+        overflow-x: hidden;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 1-Column Responsive Grids */
+    .admin-users-box-grid,
+    .admin-portals-box-grid,
+    .badge-grid,
+    .requests-grid,
+    .feedback-list-grid,
+    .dossier-grid,
+    .permissions-grid,
+    .stats-overview-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .preset-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Cards Responsive Padding & Layout */
+    .admin-user-box-card,
+    .admin-portal-box-card,
+    .post-inspect-card,
+    .dossier-section-box,
+    .tourist-admin-card {
+        padding: 14px !important;
+    }
+
+    .user-box-actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+    }
+    .user-box-btn {
+        min-width: 0 !important;
+        width: 100% !important;
+        padding: 8px 4px !important;
+        font-size: 10px !important;
+    }
+
+    .portal-box-banner {
+        height: 75px !important;
+    }
+    .portal-box-content {
+        padding: 12px !important;
+        gap: 10px !important;
+    }
+
+    /* Activity Subnav Swipe/Scroll on Mobile */
+    .activity-subnav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        gap: 8px;
+        padding-bottom: 8px;
+    }
+    .activity-subnav-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-size: 11px;
+        padding: 8px 14px;
+    }
+
+    /* Tables Full Horizontal Scroll Wrapper */
+    .logs-container {
+        overflow: hidden;
+    }
+    .logs-table-wrapper,
+    .tourist-admins-table-wrapper,
+    .table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        display: block;
+        max-width: 100%;
+    }
+    .logs-table,
+    .tourist-table {
+        min-width: 620px !important;
+    }
+
+    /* Modals Mobile Sizing */
+    .dossier-modal,
+    .posts-inspector-modal,
+    .edit-permissions-modal,
+    .modal-content-modern {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+        margin: 10px auto !important;
+        padding: 14px 12px !important;
+    }
+
+    .modal-header-modern {
+        padding: 12px 14px !important;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .modal-header-modern h2 {
+        font-size: 13px !important;
+    }
+    .modal-body-modern {
+        padding: 12px 10px !important;
+    }
+    .modal-footer-modern {
+        padding: 12px 14px !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    .modal-footer-modern button {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+    }
+
+    /* Search and Filters Mobile Stacking */
+    .users-search {
+        width: 100%;
+        margin-bottom: 12px;
+    }
+    .users-search input {
+        width: 100% !important;
+        padding: 10px 12px !important;
+        font-size: 13px !important;
+    }
+
+    /* Dossier Key-Val Mobile Clean Stacking */
+    .dossier-key-val {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 2px !important;
+        padding: 6px 0 !important;
+    }
+    .dossier-key-val span.label {
+        font-size: 10px !important;
+        min-width: 0 !important;
+    }
+    .dossier-key-val span.val {
+        font-size: 11px !important;
+        text-align: left !important;
+    }
+
+    /* Post Inspector Mobile Header & Footer */
+    .post-inspect-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+    .post-inspect-footer {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .post-delete-btn {
+        width: 100% !important;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-content {
+        padding: 14px 10px !important;
+    }
+    .user-box-actions {
+        grid-template-columns: 1fr !important;
+    }
+    .user-box-stats {
+        grid-template-columns: 1fr !important;
+        gap: 6px !important;
+    }
+    .user-stat-item {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
 }
 
 

@@ -3635,7 +3635,7 @@ const AdminDashboard = () => {
                                                 className="btn-modern-primary"
                                                 onClick={handleAssignTouristAdmin}
                                                 disabled={assigningTourist}
-                                                style={{ width: '100%', padding: '14px', borderRadius: 0, fontWeight: 700, letterSpacing: '1px' }}
+                                                style={{ width: '100%', padding: '14px', borderRadius: '8px', fontWeight: 700, letterSpacing: '1px' }}
                                             >
                                                 {assigningTourist ? 'ATANIYOR...' : '💼 TURİST ADMIN OLARAK ATA'}
                                             </button>
@@ -3715,14 +3715,14 @@ const AdminDashboard = () => {
                                                                             setEditPermissionsModalOpen(true);
                                                                         }}
                                                                         className="btn-modern-secondary"
-                                                                        style={{ padding: '6px 10px', fontSize: '11px', borderRadius: 0, textTransform: 'uppercase' }}
+                                                                        style={{ padding: '6px 10px', fontSize: '11px', borderRadius: '8px', textTransform: 'uppercase' }}
                                                                     >
                                                                         İzinleri Düzenle
                                                                     </button>
                                                                     <button 
                                                                         onClick={() => handleRevokeTouristAdmin(admin._id)}
                                                                         className="btn-revoke-tourist"
-                                                                        style={{ borderRadius: 0 }}
+                                                                        style={{ borderRadius: '8px' }}
                                                                     >
                                                                         Yetkiyi Kaldır
                                                                     </button>
@@ -4082,7 +4082,7 @@ const AdminDashboard = () => {
                                                                     config: { ...editingBot.config, defaultPortal: portalVal, defaultChannel: 'general' }
                                                                 });
                                                             }}
-                                                            style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
+                                                            style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
                                                         >
                                                             <option value="">Portal Seçin (Pasif / Genel)</option>
                                                             {portals.map(p => (
@@ -4104,7 +4104,7 @@ const AdminDashboard = () => {
                                                                         ...editingBot,
                                                                         config: { ...editingBot.config, defaultChannel: e.target.value }
                                                                     })}
-                                                                    style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
+                                                                    style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
                                                                 >
                                                                     <option value="general"># Genel Akış / Ana Kanal (general)</option>
                                                                     {channels.map(ch => (
@@ -4205,7 +4205,7 @@ const AdminDashboard = () => {
                                                         className="badge-select"
                                                         value={botPostData.portalId}
                                                         onChange={(e) => setBotPostData({ ...botPostData, portalId: e.target.value, channel: 'general' })}
-                                                        style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
+                                                        style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
                                                     >
                                                         <option value="">Global Akış (Portal Dışı)</option>
                                                         {portals.map(p => (
@@ -4223,7 +4223,7 @@ const AdminDashboard = () => {
                                                                 className="badge-select"
                                                                 value={botPostData.channel || 'general'}
                                                                 onChange={(e) => setBotPostData({ ...botPostData, channel: e.target.value })}
-                                                                style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
+                                                                style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
                                                             >
                                                                 <option value="general"># Genel Akış / Ana Kanal (general)</option>
                                                                 {channels.map(ch => (
@@ -5355,7 +5355,7 @@ const AdminDashboard = () => {
                                                     fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
                                                 }
                                             }}
-                                            style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '10px 14px', borderRadius: '0px' }}
+                                            style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '10px 14px', borderRadius: '8px' }}
                                         />
                                         <button
                                             type="button"
@@ -5504,7 +5504,7 @@ const AdminDashboard = () => {
                                 ) : (
                                     <div className="users-list">
                                         {activeSessions.map((session) => (
-                                            <div key={session.userId} className="user-list-item" style={{ padding: '14px 18px', borderRadius: 0, border: '1px solid #222', background: '#111', marginBottom: '8px' }}>
+                                            <div key={session.userId} className="user-list-item" style={{ padding: '14px 18px', borderRadius: '10px', border: '1px solid #222', background: '#111', marginBottom: '8px' }}>
                                                 <div className="user-item-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                     <AdminMedia
                                                         src={session.avatar}
@@ -7433,7 +7433,7 @@ const AdminDashboard = () => {
                             <button className="close-btn-modern" onClick={() => setUserPostsOpen(false)}>&times;</button>
                         </div>
 
-                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #222', background: '#0e0e0e', display: 'flex', gap: '8px' }}>
+                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #222', background: '#0e0e0e', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <input
                                 type="text"
                                 placeholder="Gönderiler içinde kelime ara..."
@@ -7444,7 +7444,7 @@ const AdminDashboard = () => {
                                         openUserPosts(userPostsUser, userPostsSearch);
                                     }
                                 }}
-                                style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 12px', fontSize: '12px' }}
+                                style={{ flex: 1, minWidth: '180px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 12px', fontSize: '12px', borderRadius: '8px' }}
                             />
                             <button
                                 type="button"
@@ -7535,8 +7535,8 @@ const AdminDashboard = () => {
                         </div>
 
                         {/* Search & Channel Filter Bar */}
-                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #222', background: '#0e0e0e', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            <div style={{ flex: 1, minWidth: '220px' }}>
+                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #222', background: '#0e0e0e', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '180px' }}>
                                 <input
                                     type="text"
                                     placeholder="Portal gönderileri içinde kelime ara..."
@@ -7547,10 +7547,10 @@ const AdminDashboard = () => {
                                             openPortalPosts(selectedPortalForPosts, portalPostsChannelFilter, portalPostsSearch);
                                         }
                                     }}
-                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 12px', fontSize: '12px' }}
+                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 12px', fontSize: '12px', borderRadius: '8px' }}
                                 />
                             </div>
-                            <div style={{ width: '220px' }}>
+                            <div style={{ flex: 1, minWidth: '180px' }}>
                                 <select
                                     className="badge-select"
                                     value={portalPostsChannelFilter}
@@ -7559,7 +7559,7 @@ const AdminDashboard = () => {
                                         setPortalPostsChannelFilter(chId);
                                         openPortalPosts(selectedPortalForPosts, chId, portalPostsSearch);
                                     }}
-                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 10px', fontSize: '12px', borderRadius: 0 }}
+                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 10px', fontSize: '12px', borderRadius: '8px' }}
                                 >
                                     <option value="all">Tüm Kanallar</option>
                                     <option value="general"># Genel Akış (general)</option>
