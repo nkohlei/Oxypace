@@ -28,15 +28,6 @@ const Login = ({ isModal = false, onClose = null }) => {
         }
     }, [navigate, isModal]);
 
-    // Modal modunda ESC tuşu ile kapatma desteği
-    useEffect(() => {
-        if (!isModal || !onClose) return;
-        const handleKeyDown = (e) => {
-            if (e.key === 'Escape') onClose();
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isModal, onClose]);
 
     // Recovery Flow States
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);
