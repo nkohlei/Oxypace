@@ -26,7 +26,15 @@ const AdminMedia = ({ src, alt = '', className = '', style = {}, isAvatar = fals
 
     const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666666'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
 
-    if (!src || failed) {
+    let cleanSrc = src;
+    if (Array.isArray(cleanSrc)) {
+        cleanSrc = cleanSrc.length > 0 ? cleanSrc[0] : '';
+    }
+    if (cleanSrc && typeof cleanSrc === 'object') {
+        cleanSrc = cleanSrc.url || cleanSrc.src || cleanSrc.media || cleanSrc.path || cleanSrc.uri || '';
+    }
+
+    if (!cleanSrc || typeof cleanSrc !== 'string' || failed) {
         if (isAvatar) {
             return <img src={defaultAvatarSvg} alt="" className={className} style={{ objectFit: 'cover', ...style }} />;
         }
@@ -37,7 +45,18 @@ const AdminMedia = ({ src, alt = '', className = '', style = {}, isAvatar = fals
         );
     }
 
-    const resolvedUrl = src.startsWith('data:') || src.startsWith('blob:') ? src : getImageUrl(src);
+    const resolvedUrl = (typeof cleanSrc === 'string' && (cleanSrc.startsWith('data:') || cleanSrc.startsWith('blob:'))) ? cleanSrc : getImageUrl(cleanSrc);
+
+    if (!resolvedUrl) {
+        if (isAvatar) {
+            return <img src={defaultAvatarSvg} alt="" className={className} style={{ objectFit: 'cover', ...style }} />;
+        }
+        return (
+            <div className={className} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#161616', color: '#666666', border: '1px solid #282828', fontSize: '11px', fontWeight: 600, ...style }}>
+                {fallbackText}
+            </div>
+        );
+    }
 
     return (
         <img
@@ -2922,6 +2941,8 @@ const AdminDashboard = () => {
 
     const openPortalPosts = async (portal, channelId = 'all', searchQuery = '') => {
         setSelectedPortalForPosts(portal);
+        setPortalPostsChannelFilter(channelId);
+        setPortalPostsSearch(searchQuery);
         setPortalPostsOpen(true);
         setLoadingPortalPosts(true);
         try {
@@ -4952,9 +4973,11 @@ const AdminDashboard = () => {
                                                             value={editingBot.config?.defaultPortal?._id || editingBot.config?.defaultPortal || ''}
                                                             onChange={(e) => {
                                                                 const portalVal = e.target.value;
+                                                                const pObj = portals.find(p => String(p._id) === String(portalVal));
+                                                                const firstChId = pObj?.channels?.[0]?._id || 'general';
                                                                 setEditingBot({
                                                                     ...editingBot,
-                                                                    config: { ...editingBot.config, defaultPortal: portalVal, defaultChannel: 'general' }
+                                                                    config: { ...editingBot.config, defaultPortal: portalVal, defaultChannel: firstChId }
                                                                 });
                                                             }}
                                                             style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
@@ -4974,19 +4997,22 @@ const AdminDashboard = () => {
                                                             return (
                                                                 <select
                                                                     className="badge-select"
-                                                                    value={editingBot.config?.defaultChannel || 'general'}
+                                                                    value={editingBot.config?.defaultChannel || (channels[0]?._id || 'general')}
                                                                     onChange={(e) => setEditingBot({
                                                                         ...editingBot,
                                                                         config: { ...editingBot.config, defaultChannel: e.target.value }
                                                                     })}
                                                                     style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
                                                                 >
-                                                                    <option value="general"># Genel Akış / Ana Kanal (general)</option>
-                                                                    {channels.map(ch => (
-                                                                        <option key={ch._id} value={ch._id}>
-                                                                            #{ch.name} (Kanal ID: {ch._id})
-                                                                        </option>
-                                                                    ))}
+                                                                    {channels.length === 0 ? (
+                                                                        <option value="general"># Varsayılan Kanal</option>
+                                                                    ) : (
+                                                                        channels.map(ch => (
+                                                                            <option key={ch._id} value={ch._id}>
+                                                                                #{ch.name} (Kanal ID: {ch._id})
+                                                                            </option>
+                                                                        ))
+                                                                    )}
                                                                 </select>
                                                             );
                                                         })()}
@@ -5096,16 +5122,19 @@ const AdminDashboard = () => {
                                                         return (
                                                             <select
                                                                 className="badge-select"
-                                                                value={botPostData.channel || 'general'}
+                                                                value={botPostData.channel || (channels[0]?._id || 'general')}
                                                                 onChange={(e) => setBotPostData({ ...botPostData, channel: e.target.value })}
                                                                 style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
                                                             >
-                                                                <option value="general"># Genel Akış / Ana Kanal (general)</option>
-                                                                {channels.map(ch => (
-                                                                    <option key={ch._id} value={ch._id}>
-                                                                        #{ch.name} (Kanal ID: {ch._id})
-                                                                    </option>
-                                                                ))}
+                                                                {channels.length === 0 ? (
+                                                                    <option value="general"># Varsayılan Kanal</option>
+                                                                ) : (
+                                                                    channels.map(ch => (
+                                                                        <option key={ch._id} value={ch._id}>
+                                                                            #{ch.name} (Kanal ID: {ch._id})
+                                                                        </option>
+                                                                    ))
+                                                                )}
                                                             </select>
                                                         );
                                                     })()}
@@ -8455,10 +8484,31 @@ const AdminDashboard = () => {
 
                                         {post.media && (
                                             <div className="post-inspect-media-container">
-                                                {post.mediaType === 'video' ? (
-                                                    <video src={getImageUrl(post.media)} controls style={{ maxHeight: '240px' }} />
+                                                {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
+                                                    <video
+                                                        src={getImageUrl(Array.isArray(post.media) ? post.media[0] : post.media)}
+                                                        controls
+                                                        style={{ maxHeight: '240px', maxWidth: '100%', borderRadius: '6px' }}
+                                                    />
+                                                ) : Array.isArray(post.media) ? (
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {post.media.map((item, mIdx) => (
+                                                            <AdminMedia
+                                                                key={mIdx}
+                                                                src={item}
+                                                                alt=""
+                                                                className="post-inspect-media"
+                                                                style={{ maxHeight: '180px', maxWidth: '240px', objectFit: 'cover', borderRadius: '6px' }}
+                                                            />
+                                                        ))}
+                                                    </div>
                                                 ) : (
-                                                    <AdminMedia src={post.media} alt="" className="post-inspect-media" />
+                                                    <AdminMedia
+                                                        src={post.media}
+                                                        alt=""
+                                                        className="post-inspect-media"
+                                                        style={{ maxHeight: '240px', maxWidth: '100%', objectFit: 'contain', borderRadius: '6px' }}
+                                                    />
                                                 )}
                                             </div>
                                         )}
@@ -8534,8 +8584,7 @@ const AdminDashboard = () => {
                                     }}
                                     style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 10px', fontSize: '12px', borderRadius: '8px' }}
                                 >
-                                    <option value="all">Tüm Kanallar</option>
-                                    <option value="general"># Genel Akış (general)</option>
+                                    <option value="all">Tüm Kanallar ({selectedPortalForPosts.channels?.length || 0})</option>
                                     {(selectedPortalForPosts.channels || []).map(ch => (
                                         <option key={ch._id} value={ch._id}>#{ch.name}</option>
                                     ))}
@@ -8565,7 +8614,7 @@ const AdminDashboard = () => {
                                                     @{post.author?.username || 'Bilinmiyor'}
                                                 </span>
                                                 <span className="post-inspect-channel">
-                                                    #{post.channel?.name || post.channel || 'general'}
+                                                    #{post.channelName || post.channel?.name || (typeof post.channel === 'string' && post.channel !== 'general' ? post.channel : (selectedPortalForPosts.channels?.[0]?.name || 'genel'))}
                                                 </span>
                                             </div>
                                             <span style={{ fontFamily: 'monospace' }}>
@@ -8579,10 +8628,31 @@ const AdminDashboard = () => {
 
                                         {post.media && (
                                             <div className="post-inspect-media-container">
-                                                {post.mediaType === 'video' ? (
-                                                    <video src={getImageUrl(post.media)} controls style={{ maxHeight: '240px' }} />
+                                                {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
+                                                    <video
+                                                        src={getImageUrl(Array.isArray(post.media) ? post.media[0] : post.media)}
+                                                        controls
+                                                        style={{ maxHeight: '240px', maxWidth: '100%', borderRadius: '6px' }}
+                                                    />
+                                                ) : Array.isArray(post.media) ? (
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {post.media.map((item, mIdx) => (
+                                                            <AdminMedia
+                                                                key={mIdx}
+                                                                src={item}
+                                                                alt=""
+                                                                className="post-inspect-media"
+                                                                style={{ maxHeight: '180px', maxWidth: '240px', objectFit: 'cover', borderRadius: '6px' }}
+                                                            />
+                                                        ))}
+                                                    </div>
                                                 ) : (
-                                                    <AdminMedia src={post.media} alt="" className="post-inspect-media" />
+                                                    <AdminMedia
+                                                        src={post.media}
+                                                        alt=""
+                                                        className="post-inspect-media"
+                                                        style={{ maxHeight: '240px', maxWidth: '100%', objectFit: 'contain', borderRadius: '6px' }}
+                                                    />
                                                 )}
                                             </div>
                                         )}

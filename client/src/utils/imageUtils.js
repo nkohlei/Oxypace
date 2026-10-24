@@ -7,7 +7,11 @@ export const getImageUrl = (path, sizeType = 'original') => {
         path = path[0] || '';
     }
 
-    if (typeof path !== 'string') {
+    if (path && typeof path === 'object') {
+        path = path.url || path.src || path.media || path.path || path.uri || null;
+    }
+
+    if (!path || typeof path !== 'string') {
         return null;
     }
 

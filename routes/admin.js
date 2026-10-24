@@ -426,17 +426,13 @@ router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Portal bulunamadı.' });
         }
 
-        const [postCount, recentPosts, channelPostCounts, recentActivities] = await Promise.all([
+        const [postCount, recentPosts, recentActivities] = await Promise.all([
             Post.countDocuments({ portal: portal._id }),
             Post.find({ portal: portal._id })
                 .populate('author', 'username profile.displayName profile.avatar')
                 .sort({ createdAt: -1 })
                 .limit(10)
                 .lean(),
-            Post.aggregate([
-                { $match: { portal: portal._id } },
-                { $group: { _id: '$channel', count: { $sum: 1 } } }
-            ]),
             ActivityLog.find({
                 $or: [
                     { portal: portal._id },
@@ -446,11 +442,42 @@ router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
             }).sort({ createdAt: -1 }).limit(30).lean()
         ]);
 
+        // Calculate channel stats with 100% precision for every channel in portal.channels
         const channelStats = {};
-        if (Array.isArray(channelPostCounts)) {
-            channelPostCounts.forEach(c => {
-                if (c._id) channelStats[String(c._id)] = c.count;
-            });
+        const channels = portal.channels || [];
+        
+        if (channels.length > 0) {
+            await Promise.all(channels.map(async (ch, idx) => {
+                const targetIdStr = ch._id.toString();
+                const isPrimary = idx === 0;
+                let chQuery = { portal: portal._id };
+
+                if (isPrimary) {
+                    const otherChannelIds = [];
+                    channels.forEach((c, cIdx) => {
+                        if (cIdx !== 0) {
+                            otherChannelIds.push(c._id.toString());
+                            try {
+                                otherChannelIds.push(new mongoose.Types.ObjectId(c._id));
+                            } catch (e) {}
+                            if (c.name) otherChannelIds.push(c.name);
+                        }
+                    });
+                    if (otherChannelIds.length > 0) {
+                        chQuery.channel = { $nin: otherChannelIds };
+                    }
+                } else {
+                    const directMatches = [targetIdStr, ch.name];
+                    try {
+                        directMatches.push(new mongoose.Types.ObjectId(targetIdStr));
+                    } catch (e) {}
+                    chQuery.channel = { $in: directMatches };
+                }
+
+                const count = await Post.countDocuments(chQuery);
+                channelStats[targetIdStr] = count;
+                channelStats[ch.name] = count;
+            }));
         }
 
         res.json({
@@ -596,10 +623,48 @@ router.delete('/portals/:id/channels/:channelId', protect, admin, async (req, re
 router.get('/portals/:id/posts', protect, admin, async (req, res) => {
     try {
         const { q, channelId, limit = 50, page = 1 } = req.query;
-        let query = { portal: req.params.id };
+        const portal = await Portal.findById(req.params.id).lean();
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı.' });
+        }
+
+        let query = { portal: portal._id };
 
         if (channelId && channelId !== 'all') {
-            query.channel = channelId;
+            const channels = portal.channels || [];
+            const targetChannel = channels.find(c => 
+                c._id.toString() === String(channelId) || 
+                c.name.toLowerCase() === String(channelId).toLowerCase()
+            );
+
+            if (targetChannel) {
+                const targetIdStr = targetChannel._id.toString();
+                const isPrimary = channels.length > 0 && channels[0]._id.toString() === targetIdStr;
+
+                if (isPrimary) {
+                    const otherChannelIds = [];
+                    channels.forEach((c, idx) => {
+                        if (idx !== 0) {
+                            otherChannelIds.push(c._id.toString());
+                            try {
+                                otherChannelIds.push(new mongoose.Types.ObjectId(c._id));
+                            } catch (e) {}
+                            if (c.name) otherChannelIds.push(c.name);
+                        }
+                    });
+                    if (otherChannelIds.length > 0) {
+                        query.channel = { $nin: otherChannelIds };
+                    }
+                } else {
+                    const directMatches = [targetIdStr, targetChannel.name];
+                    try {
+                        directMatches.push(new mongoose.Types.ObjectId(targetIdStr));
+                    } catch (e) {}
+                    query.channel = { $in: directMatches };
+                }
+            } else {
+                query.channel = channelId;
+            }
         }
 
         if (q) {
@@ -618,7 +683,32 @@ router.get('/portals/:id/posts', protect, admin, async (req, res) => {
             Post.countDocuments(query)
         ]);
 
-        res.json({ posts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+        // Resolve channel display name from portal.channels for each post
+        const portalChannels = portal.channels || [];
+        const formattedPosts = posts.map(p => {
+            let channelName = '';
+            const chIdStr = p.channel ? String(p.channel) : '';
+            const matchedCh = portalChannels.find(c => 
+                c._id.toString() === chIdStr || 
+                c.name.toLowerCase() === chIdStr.toLowerCase()
+            );
+
+            if (matchedCh) {
+                channelName = matchedCh.name;
+            } else if (chIdStr === 'general' || !chIdStr) {
+                channelName = portalChannels[0]?.name || 'Genel';
+            } else {
+                channelName = chIdStr;
+            }
+
+            return {
+                ...p,
+                channelName,
+                channel: matchedCh ? { _id: matchedCh._id, name: matchedCh.name } : { _id: chIdStr, name: channelName }
+            };
+        });
+
+        res.json({ posts: formattedPosts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
     } catch (error) {
         console.error('Fetch portal posts error:', error);
         res.status(500).json({ message: 'Portal gönderileri getirilemedi.' });
