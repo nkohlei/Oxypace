@@ -15,23 +15,40 @@ const CallManager = registerPlugin('CallManager');
 const VideoRenderer = React.memo(({ participant, className }) => {
     const videoRef = useRef(null);
     const rawTrackObj = participant?.screenShareTrack || participant?.videoTrack;
-    const rawTrack = rawTrackObj?.track || rawTrackObj;
+    const rawTrack = rawTrackObj?.mediaStreamTrack || rawTrackObj?.track || (rawTrackObj instanceof MediaStreamTrack ? rawTrackObj : (rawTrackObj instanceof MediaStream ? rawTrackObj.getVideoTracks()[0] : null));
 
     useEffect(() => {
         const el = videoRef.current;
-        if (el && rawTrack && (participant?.isCameraOn || participant?.isScreenSharing)) {
+        if (!el) return;
+
+        if (rawTrack && (participant?.isCameraOn || participant?.isScreenSharing)) {
             const currentStream = el.srcObject;
-            if (currentStream && currentStream.getVideoTracks()[0]?.id === rawTrack.id) {
+            if (currentStream && currentStream.getVideoTracks?.()[0]?.id === rawTrack.id && currentStream.active) {
+                if (el.paused) el.play().catch(() => {});
                 return;
             }
 
-            if (rawTrackObj?.attach) {
+            if (typeof rawTrackObj?.attach === 'function') {
                 rawTrackObj.attach(el);
             } else {
                 el.srcObject = new MediaStream([rawTrack]);
                 el.play().catch(e => console.warn("[PiP] Video play error:", e));
             }
+        } else {
+            if (typeof rawTrackObj?.detach === 'function') {
+                rawTrackObj.detach(el);
+            } else {
+                el.srcObject = null;
+            }
         }
+
+        return () => {
+            if (typeof rawTrackObj?.detach === 'function') {
+                rawTrackObj.detach(el);
+            } else if (el) {
+                el.srcObject = null;
+            }
+        };
     }, [rawTrack?.id, participant?.isCameraOn, participant?.isScreenSharing]);
 
     if ((participant?.isCameraOn || participant?.isScreenSharing) && rawTrack) {

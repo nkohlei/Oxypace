@@ -22,14 +22,19 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
         const el = videoEl.current;
         if (!el || !track) return;
 
+        const rawTrack = track.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
+
         if (typeof track.attach === 'function') {
             track.attach(el);
         } else if (track instanceof MediaStream) {
-            el.srcObject = track;
-        } else if (track instanceof MediaStreamTrack) {
-            el.srcObject = new MediaStream([track]);
-        } else if (track.mediaStreamTrack) {
-            el.srcObject = new MediaStream([track.mediaStreamTrack]);
+            if (el.srcObject !== track) {
+                el.srcObject = track;
+            }
+        } else if (rawTrack) {
+            const currentTrack = el.srcObject?.getVideoTracks?.()[0];
+            if (!currentTrack || currentTrack.id !== rawTrack.id || !el.srcObject?.active) {
+                el.srcObject = new MediaStream([rawTrack]);
+            }
         }
 
         const playPromise = el.play?.();

@@ -363,17 +363,40 @@ const UserBar = ({ currentChannelId }) => {
 // Sub-component to render pinned participant video
 const MiniVideo = ({ participant }) => {
     const videoEl = React.useRef(null);
+    const track = participant?.videoTrack;
 
     React.useEffect(() => {
-        if (videoEl.current && participant?.videoTrack) {
-            participant.videoTrack.attach(videoEl.current);
+        const el = videoEl.current;
+        if (!el || !track || !participant?.isCameraOn) return;
+
+        const rawTrack = track.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
+
+        if (typeof track.attach === 'function') {
+            track.attach(el);
+        } else if (track instanceof MediaStream) {
+            if (el.srcObject !== track) {
+                el.srcObject = track;
+            }
+        } else if (rawTrack) {
+            const currentTrack = el.srcObject?.getVideoTracks?.()[0];
+            if (!currentTrack || currentTrack.id !== rawTrack.id || !el.srcObject?.active) {
+                el.srcObject = new MediaStream([rawTrack]);
+            }
         }
+
+        const playPromise = el.play?.();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+        }
+
         return () => {
-            if (participant?.videoTrack) {
-                participant.videoTrack.detach();
+            if (typeof track.detach === 'function') {
+                track.detach(el);
+            } else if (el) {
+                el.srcObject = null;
             }
         };
-    }, [participant?.videoTrack]);
+    }, [track, participant?.isCameraOn]);
 
     return (
         <div style={{ width: '100%', height: '140px', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', marginTop: '4px' }}>

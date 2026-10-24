@@ -67,9 +67,10 @@ const createPlaceholderVideoTrack = () => {
 
 // Helper to prioritize universally supported H264/VP8 codecs in SDP and enable high-fidelity stereo Opus audio
 const prioritizeVideoCodec = (sdp) => {
+    if (!sdp) return sdp;
     let result = sdp;
     // Optimize audio bitrate and stereo fidelity for Opus so shared media/mic sounds crisp and not like a telephone call
-    if (result && result.includes('opus/48000')) {
+    if (result.includes('opus/48000')) {
         result = result.replace(
             /(a=fmtp:\d+ [^\r\n]*)/g,
             (match) => {
@@ -85,51 +86,59 @@ const prioritizeVideoCodec = (sdp) => {
         );
     }
 
-    const lines = result.split('\r\n');
-    let mVideoIndex = -1;
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('m=video ')) {
-            mVideoIndex = i;
-            break;
-        }
-    }
-    if (mVideoIndex === -1) return result;
-
-    const codecs = [];
-    for (const line of lines) {
-        if (line.startsWith('a=rtpmap:')) {
-            const match = line.match(/^a=rtpmap:(\d+)\s+([A-Za-z0-9-]+)\//);
-            if (match) {
-                codecs.push({
-                    payloadType: match[1],
-                    name: match[2].toUpperCase()
-                });
+    try {
+        const lines = result.split('\r\n');
+        // Collect video RTPMAP payloads
+        const videoCodecs = [];
+        for (const line of lines) {
+            if (line.startsWith('a=rtpmap:')) {
+                const match = line.match(/^a=rtpmap:(\d+)\s+([A-Za-z0-9-]+)\//);
+                if (match) {
+                    videoCodecs.push({
+                        payloadType: match[1],
+                        name: match[2].toUpperCase()
+                    });
+                }
             }
         }
+
+        // Process all m=video lines
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('m=video ')) {
+                const parts = lines[i].split(' ');
+                if (parts.length >= 4) {
+                    const media = parts[0];
+                    const port = parts[1];
+                    const proto = parts[2];
+                    const formats = parts.slice(3);
+
+                    // Find preferred formats that actually exist in this m=video line
+                    const validPreferred = formats.filter(fmt => {
+                        const codec = videoCodecs.find(c => c.payloadType === fmt);
+                        return codec && (codec.name === 'H264' || codec.name === 'VP8');
+                    });
+
+                    // Sort H264 first, then VP8
+                    validPreferred.sort((a, b) => {
+                        const nameA = videoCodecs.find(c => c.payloadType === a)?.name;
+                        const nameB = videoCodecs.find(c => c.payloadType === b)?.name;
+                        if (nameA === 'H264' && nameB !== 'H264') return -1;
+                        if (nameA !== 'H264' && nameB === 'H264') return 1;
+                        return 0;
+                    });
+
+                    if (validPreferred.length > 0) {
+                        const otherFormats = formats.filter(f => !validPreferred.includes(f));
+                        lines[i] = `${media} ${port} ${proto} ${[...validPreferred, ...otherFormats].join(' ')}`;
+                    }
+                }
+            }
+        }
+        return lines.join('\r\n');
+    } catch (e) {
+        console.warn("[WebRTC] prioritizeVideoCodec fallback to original sdp:", e);
+        return sdp;
     }
-
-    const preferredPayloads = codecs
-        .filter(c => c.name === 'H264' || c.name === 'VP8')
-        .sort((a, b) => {
-            if (a.name === 'H264') return -1;
-            if (b.name === 'H264') return 1;
-            return 0;
-        })
-        .map(c => c.payloadType);
-
-    if (preferredPayloads.length === 0) return sdp;
-
-    const parts = lines[mVideoIndex].split(' ');
-    const media = parts[0];
-    const port = parts[1];
-    const proto = parts[2];
-    const formats = parts.slice(3);
-
-    const otherFormats = formats.filter(f => !preferredPayloads.includes(f));
-    const newFormats = [...preferredPayloads, ...otherFormats];
-
-    lines[mVideoIndex] = `${media} ${port} ${proto} ${newFormats.join(' ')}`;
-    return lines.join('\r\n');
 };
 
 export const VoiceProvider = ({ children }) => {
@@ -350,6 +359,11 @@ export const VoiceProvider = ({ children }) => {
             track,
             attach: (el) => {
                 if (el) {
+                    const currentTrack = el.srcObject?.getVideoTracks()[0] || el.srcObject?.getAudioTracks()[0];
+                    if (currentTrack && currentTrack.id === track.id && el.srcObject.active) {
+                        if (el.paused) el.play().catch(() => {});
+                        return;
+                    }
                     el.srcObject = new MediaStream([track]);
                     el.autoplay = true;
                     el.playsInline = true;
@@ -357,7 +371,7 @@ export const VoiceProvider = ({ children }) => {
                         el.muted = true; // Video elements are only for visual rendering, audio is handled by GlobalAudioRenderer
                     }
                     el.play().catch(e => console.warn("[WebRTC] Autoplay prevented on element, but it is muted:", e));
-                    console.log(`[WebRTC] Attached track ${track.id} to element. Autoplay: ${el.autoplay}, playsInline: ${el.playsInline}, muted: ${el.muted}`);
+                    console.log(`[WebRTC] Attached track ${track.id} (${track.kind}) to element.`);
                 }
             },
             detach: (el) => {
@@ -491,11 +505,11 @@ export const VoiceProvider = ({ children }) => {
             let localScreenTrack = null;
 
             if (localStreamRef.current) {
-                localVideoTrack = localStreamRef.current.getVideoTracks()[0] || null;
-                localAudioTrack = localStreamRef.current.getAudioTracks()[0] || null;
+                localVideoTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder && t.readyState === 'live') || null;
+                localAudioTrack = localStreamRef.current.getAudioTracks().find(t => t.readyState === 'live') || localStreamRef.current.getAudioTracks()[0] || null;
             }
             if (screenStreamRef.current) {
-                localScreenTrack = screenStreamRef.current.getVideoTracks()[0] || null;
+                localScreenTrack = screenStreamRef.current.getVideoTracks().find(t => t.readyState === 'live') || null;
             }
 
             if (localAudioTrack && !localState.isMuted) {
@@ -515,7 +529,7 @@ export const VoiceProvider = ({ children }) => {
                 isCameraOn: localState.isCameraOn,
                 isScreenSharing: false,
                 isSpeaking: speakingMapRef.current.get(localUserId) || false,
-                videoTrack: makeTrackObject(localVideoTrack),
+                videoTrack: (localState.isCameraOn && localVideoTrack) ? makeTrackObject(localVideoTrack) : null,
                 audioTrack: makeTrackObject(localAudioTrack),
                 screenShareTrack: null,
             });
@@ -553,6 +567,11 @@ export const VoiceProvider = ({ children }) => {
                 detachVAD(p.userId);
             }
 
+            // Valid active camera track for remote user
+            const activeVideoTrack = (rState.isCameraOn && rTracks.video && rTracks.video.readyState !== 'ended') 
+                ? rTracks.video 
+                : null;
+
             // Camera/Avatar card
             list.push({
                 identity: p.userId,
@@ -564,14 +583,14 @@ export const VoiceProvider = ({ children }) => {
                 isCameraOn: rState.isCameraOn,
                 isScreenSharing: false,
                 isSpeaking: speakingMapRef.current.get(p.userId) || false,
-                videoTrack: makeTrackObject(rTracks.video),
+                videoTrack: makeTrackObject(activeVideoTrack),
                 audioTrack: makeTrackObject(rTracks.audio),
                 screenShareTrack: null,
             });
 
             // Independent screenshare card
             const effectiveScreenTrack = rTracks.screen || (rState.isScreenSharing && !rState.isCameraOn ? rTracks.video : null);
-            if ((rState.isScreenSharing || rTracks.screen) && (rTracks.screen || effectiveScreenTrack)) {
+            if ((rState.isScreenSharing || rTracks.screen) && effectiveScreenTrack && effectiveScreenTrack.readyState !== 'ended') {
                 list.push({
                     identity: `${p.userId}-screen`,
                     name: `${p.username} (Ekran)`,
@@ -584,7 +603,7 @@ export const VoiceProvider = ({ children }) => {
                     isSpeaking: false,
                     videoTrack: null,
                     audioTrack: rTracks.screenAudio ? makeTrackObject(rTracks.screenAudio) : null,
-                    screenShareTrack: makeTrackObject(rTracks.screen || effectiveScreenTrack),
+                    screenShareTrack: makeTrackObject(effectiveScreenTrack),
                 });
             }
         });
@@ -614,28 +633,39 @@ export const VoiceProvider = ({ children }) => {
         };
     }, [enumerateDevices]);
 
-    // Renegotiate all WebRTC connections (e.g. after adding screen share)
-    const renegotiateAll = useCallback(async () => {
-        for (const [targetUserId, pc] of peerConnectionsRef.current.entries()) {
-            try {
-                console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}`);
-                const offer = await pc.createOffer();
-                const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
-                await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
-                const currentRoom = activeRoomRef.current;
-                if (currentRoom) {
-                    safeEmit('voice:video-offer', {
-                        roomName: currentRoom.roomName,
-                        targetUserId,
-                        sdp: prioritizedOffer
-                    });
-                    console.log(`[Socket] video-offer gönderildi to ${targetUserId}`);
-                }
-            } catch (err) {
-                console.error("Renegotiation failed for:", targetUserId, err);
+    // Renegotiate a specific WebRTC peer connection
+    const renegotiatePeer = useCallback(async (targetUserId) => {
+        const pc = peerConnectionsRef.current.get(targetUserId);
+        if (!pc) return;
+        try {
+            if (pc.signalingState !== 'stable') {
+                console.log(`[WebRTC] renegotiatePeer postponed for ${targetUserId} because state is ${pc.signalingState}`);
+                return;
             }
+            console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}`);
+            const offer = await pc.createOffer();
+            const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+            await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
+            const currentRoom = activeRoomRef.current;
+            if (currentRoom) {
+                safeEmit('voice:video-offer', {
+                    roomName: currentRoom.roomName,
+                    targetUserId,
+                    sdp: prioritizedOffer
+                });
+                console.log(`[Socket] video-offer gönderildi to ${targetUserId}`);
+            }
+        } catch (err) {
+            console.error(`Renegotiation failed for ${targetUserId}:`, err);
         }
     }, [safeEmit]);
+
+    // Renegotiate all WebRTC connections (e.g. after adding screen share or camera)
+    const renegotiateAll = useCallback(async () => {
+        for (const targetUserId of peerConnectionsRef.current.keys()) {
+            await renegotiatePeer(targetUserId);
+        }
+    }, [renegotiatePeer]);
 
     // Helper to process queued candidates for a peer
     const processQueuedCandidates = async (userId, pc) => {
@@ -722,8 +752,9 @@ export const VoiceProvider = ({ children }) => {
                     return;
                 }
                 const isScreenLive = screenStreamRef.current?.getVideoTracks().some(t => t.readyState === 'live');
-                if (!isOfferCreator && !isScreenLive) {
-                    console.log(`[WebRTC] onnegotiationneeded ignored for non-offer creator ${targetUserId}`);
+                const isCameraLive = localStreamRef.current?.getVideoTracks().some(t => !t.isPlaceholder && t.readyState === 'live');
+                if (!isOfferCreator && !isScreenLive && !isCameraLive) {
+                    console.log(`[WebRTC] onnegotiationneeded ignored for idle non-offer creator ${targetUserId}`);
                     return;
                 }
                 console.log(`[WebRTC] onnegotiationneeded triggered for user ${targetUserId}`);
@@ -805,22 +836,22 @@ export const VoiceProvider = ({ children }) => {
                 }
             } else if (event.track.kind === 'video') {
                 const rState = remoteStatesRef.current.get(targetUserId);
-                // Determine if screenshare: check content hint, stream ID, track label, remote state or video slot occupancy
-                const isScreen = event.track.contentHint === 'text' || 
-                                 event.track.contentHint === 'detail' ||
-                                 stream.id.includes('screen') || 
-                                 (event.track.label && event.track.label.toLowerCase().includes('screen')) ||
-                                 (rState && rState.isScreenSharing && !tracks.screen) ||
-                                 (tracks.video && tracks.video.id !== event.track.id) ||
-                                 (tracks.camStreamId && stream.id !== tracks.camStreamId);
+                // Track is explicitly a screenshare if:
+                // 1. Content hint is text/detail (set by screenshare)
+                // 2. Stream ID or track label explicitly contains 'screen'
+                // 3. Remote user is marked as screen sharing AND camera is not on AND we don't have a screen track yet
+                const isExplicitScreen = event.track.contentHint === 'text' || 
+                                         event.track.contentHint === 'detail' ||
+                                         (stream.id && stream.id.toLowerCase().includes('screen')) || 
+                                         (event.track.label && event.track.label.toLowerCase().includes('screen'));
+                
+                const isScreen = isExplicitScreen || (rState?.isScreenSharing && !rState?.isCameraOn && !tracks.screen);
 
                 if (isScreen) {
                     tracks.screen = event.track;
                     console.log(`[WebRTC] remote screenShareTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 } else {
-                    if (!tracks.camStreamId) {
-                        tracks.camStreamId = stream.id;
-                    }
+                    tracks.camStreamId = stream.id;
                     tracks.video = event.track;
                     console.log(`[WebRTC] remote videoTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 }
@@ -1165,13 +1196,15 @@ export const VoiceProvider = ({ children }) => {
 
             const rTracks = remoteTracksRef.current.get(userId);
             if (rTracks) {
-                if (isScreenSharing && !rTracks.screen && rTracks.video) {
+                if (isScreenSharing && !rTracks.screen && rTracks.video && !isCameraOn) {
                     // Track was initially classified as video track because camera was off
                     rTracks.screen = rTracks.video;
-                    if (!isCameraOn) {
-                        rTracks.video = null;
-                    }
+                    rTracks.video = null;
                 } else if (!isScreenSharing && rTracks.screen) {
+                    // If remote user is NOT screen sharing, but camera is ON, recover the track if video slot is empty
+                    if (isCameraOn && (!rTracks.video || rTracks.video.readyState === 'ended')) {
+                        rTracks.video = rTracks.screen;
+                    }
                     rTracks.screen = null;
                 }
             }
@@ -1355,6 +1388,17 @@ export const VoiceProvider = ({ children }) => {
                 } else {
                     console.error(`[WebRTC] handleVideoOffer: activeRoom is null, cannot send answer to ${senderId}`);
                 }
+
+                if (offerCollision) {
+                    // Polite peer rolled back its own offer to answer remote offer.
+                    // Now that remote offer is resolved and answered, re-trigger renegotiation to push local tracks.
+                    setTimeout(() => {
+                        const currentPc = peerConnectionsRef.current.get(senderId);
+                        if (currentPc && currentPc.signalingState === 'stable') {
+                            renegotiatePeer(senderId);
+                        }
+                    }, 300);
+                }
             } catch (err) {
                 console.error("Error setting video offer from remote:", err);
             }
@@ -1410,7 +1454,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:video-answer', handleVideoAnswer);
             socket.off('voice:new-ice-candidate', handleNewIceCandidate);
         };
-    }, [socket, getOrCreatePC, safeEmit]);
+    }, [socket, getOrCreatePC, safeEmit, renegotiatePeer]);
 
     // Reconnection listener to recover signalling state automatically
     useEffect(() => {
@@ -1518,8 +1562,8 @@ export const VoiceProvider = ({ children }) => {
             localStreamRef.current = new MediaStream();
         }
         
-        // Find the active camera track (any video track that is not the placeholder)
-        let cameraTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder);
+        // Find the active camera track (any live video track that is not the placeholder)
+        let cameraTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder && t.readyState === 'live');
         const willCameraOn = !localState.isCameraOn;
 
         if (willCameraOn) {
@@ -1554,19 +1598,21 @@ export const VoiceProvider = ({ children }) => {
             if (cameraTrack) {
                 cameraTrack.enabled = true;
                 
-                // Remove the placeholder track from the local stream
+                // Remove any existing placeholder track from the local stream
                 const placeholder = localStreamRef.current.getVideoTracks().find(t => t.isPlaceholder);
                 if (placeholder) {
-                    placeholder.stop();
-                    localStreamRef.current.removeTrack(placeholder);
+                    try { placeholder.stop(); } catch (e) {}
+                    try { localStreamRef.current.removeTrack(placeholder); } catch (e) {}
                 }
+
+                const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
+                const isScreenSender = (s) => (screenTrack && s.track === screenTrack) || (s.track?.label?.toLowerCase().includes('screen'));
 
                 // Swap placeholder track with real camera track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
                     const senders = pc.getSenders();
-                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
-                                        pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender ||
-                                        pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'video')?.sender;
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !isScreenSender(s)) ||
+                                        pc.getTransceivers().find(t => (t.sender?.track?.kind === 'video' || t.receiver?.track?.kind === 'video') && !isScreenSender(t.sender))?.sender;
                     if (videoSender) {
                         videoSender.replaceTrack(cameraTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
@@ -1585,21 +1631,23 @@ export const VoiceProvider = ({ children }) => {
             // Turning camera OFF
             if (cameraTrack) {
                 cameraTrack.enabled = false;
-                cameraTrack.stop(); // Stops the camera light
-                localStreamRef.current.removeTrack(cameraTrack);
+                try { cameraTrack.stop(); } catch (e) {} // Releases camera hardware and indicator light
+                try { localStreamRef.current.removeTrack(cameraTrack); } catch (e) {}
             }
 
-            // Create a new placeholder track
+            // Create a new placeholder track so the transceiver remains active
             const placeholderTrack = createPlaceholderVideoTrack();
             if (placeholderTrack) {
                 localStreamRef.current.addTrack(placeholderTrack);
                 
+                const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
+                const isScreenSender = (s) => (screenTrack && s.track === screenTrack) || (s.track?.label?.toLowerCase().includes('screen'));
+
                 // Swap camera track with placeholder track on all active peer connections
                 peerConnectionsRef.current.forEach(pc => {
                     const senders = pc.getSenders();
-                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
-                                        pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'video')?.sender ||
-                                        pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'video')?.sender;
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !isScreenSender(s)) ||
+                                        pc.getTransceivers().find(t => (t.sender?.track?.kind === 'video' || t.receiver?.track?.kind === 'video') && !isScreenSender(t.sender))?.sender;
                     if (videoSender) {
                         videoSender.replaceTrack(placeholderTrack).catch(e => {
                             console.warn("[WebRTC] replaceTrack error (OFF):", e);
@@ -1611,9 +1659,10 @@ export const VoiceProvider = ({ children }) => {
 
         setLocalState(prev => {
             const next = { ...prev, isCameraOn: willCameraOn };
-            if (activeRoom) {
+            const curRoom = activeRoomRef.current || activeRoom;
+            if (curRoom) {
                 safeEmit('voice:state-update', {
-                    roomName: activeRoom.roomName,
+                    roomName: curRoom.roomName,
                     userId: user?._id?.toString(),
                     isMuted: next.isMuted,
                     isCameraOn: next.isCameraOn,
@@ -1622,7 +1671,9 @@ export const VoiceProvider = ({ children }) => {
             }
             return next;
         });
-    }, [localState, activeRoom, user, safeEmit, facingMode, renegotiateAll]);
+
+        updateParticipantList();
+    }, [localState, activeRoom, user, safeEmit, facingMode, renegotiateAll, updateParticipantList]);
 
     const stopScreenShareAndRevert = useCallback(() => {
         window.onNativeScreenFrame = null;
