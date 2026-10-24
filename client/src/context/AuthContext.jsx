@@ -31,6 +31,47 @@ export const AuthProvider = ({ children }) => {
         return hasToken && !hasUser;
     });
 
+    // Multi-Account Management
+    const getStoredAccounts = () => {
+        try {
+            const raw = localStorage.getItem('oxypace_saved_accounts');
+            return raw ? JSON.parse(raw) : [];
+        } catch (_) {
+            return [];
+        }
+    };
+
+    const persistAccounts = (accounts) => {
+        try {
+            localStorage.setItem('oxypace_saved_accounts', JSON.stringify(accounts));
+        } catch (_) {}
+    };
+
+    const [savedAccounts, setSavedAccounts] = useState(() => getStoredAccounts());
+
+    // Keep active user synchronized in saved accounts list
+    useEffect(() => {
+        if (user && user._id && token) {
+            setSavedAccounts(prev => {
+                const filtered = prev.filter(acc => acc.userId !== user._id);
+                const currentAccount = {
+                    userId: user._id,
+                    username: user.username,
+                    email: user.email,
+                    profile: {
+                        avatar: user.profile?.avatar,
+                        displayName: user.profile?.displayName,
+                    },
+                    token: token,
+                    lastActive: Date.now()
+                };
+                const updated = [currentAccount, ...filtered];
+                persistAccounts(updated);
+                return updated;
+            });
+        }
+    }, [user?._id, user?.username, user?.profile?.avatar, token]);
+
     // Set axios default header & sync with native Android for notification direct replies
     useEffect(() => {
         const prodServerUrl = 'https://oxypace.com.tr';
@@ -112,8 +153,114 @@ export const AuthProvider = ({ children }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     };
 
-    const logout = () => {
+    const switchAccount = (targetUserId) => {
+        const list = getStoredAccounts();
+        const target = list.find(a => a.userId === targetUserId);
+        if (!target || !target.token) return false;
+
+        // Ensure current account is up-to-date in saved list before switching
+        if (user && user._id && token) {
+            const filtered = list.filter(a => a.userId !== user._id && a.userId !== targetUserId);
+            const reordered = [
+                {
+                    ...target,
+                    lastActive: Date.now()
+                },
+                {
+                    userId: user._id,
+                    username: user.username,
+                    email: user.email,
+                    profile: {
+                        avatar: user.profile?.avatar,
+                        displayName: user.profile?.displayName,
+                    },
+                    token: token,
+                    lastActive: Date.now()
+                },
+                ...filtered
+            ];
+            persistAccounts(reordered);
+        }
+
+        localStorage.setItem('token', target.token);
+        localStorage.setItem('user', JSON.stringify({
+            _id: target.userId,
+            username: target.username,
+            email: target.email,
+            profile: target.profile
+        }));
         try {
+            document.cookie = `token=${encodeURIComponent(target.token)}; path=/; max-age=31536000; SameSite=Lax`;
+        } catch (_) {}
+
+        localStorage.removeItem('_oxypace_uid');
+        sessionStorage.clear();
+        sessionStorage.setItem('oxypace_fresh_login', 'true');
+
+        window.location.href = '/messages';
+        return true;
+    };
+
+    const addAndSwitchAccount = (newToken, newUserData) => {
+        if (!newToken || !newUserData || !newUserData._id) return;
+
+        const list = getStoredAccounts();
+        const filtered = list.filter(a => a.userId !== newUserData._id && a.userId !== user?._id);
+
+        const reordered = [
+            {
+                userId: newUserData._id,
+                username: newUserData.username,
+                email: newUserData.email,
+                profile: {
+                    avatar: newUserData.profile?.avatar,
+                    displayName: newUserData.profile?.displayName,
+                },
+                token: newToken,
+                lastActive: Date.now()
+            }
+        ];
+
+        if (user && user._id && token) {
+            reordered.push({
+                userId: user._id,
+                username: user.username,
+                email: user.email,
+                profile: {
+                    avatar: user.profile?.avatar,
+                    displayName: user.profile?.displayName,
+                },
+                token: token,
+                lastActive: Date.now()
+            });
+        }
+
+        reordered.push(...filtered);
+        persistAccounts(reordered);
+
+        login(newToken, newUserData);
+        sessionStorage.setItem('oxypace_fresh_login', 'true');
+
+        window.location.href = '/messages';
+    };
+
+    const removeSavedAccount = (targetUserId) => {
+        setSavedAccounts(prev => {
+            const updated = prev.filter(a => a.userId !== targetUserId);
+            persistAccounts(updated);
+            return updated;
+        });
+    };
+
+    const logout = (removeCurrent = true) => {
+        try {
+            if (removeCurrent && user?._id) {
+                setSavedAccounts(prev => {
+                    const updated = prev.filter(a => a.userId !== user._id);
+                    persistAccounts(updated);
+                    return updated;
+                });
+            }
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             localStorage.removeItem('_oxypace_uid'); // presence cache temizle
@@ -196,6 +343,10 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUser,
+        savedAccounts,
+        switchAccount,
+        addAndSwitchAccount,
+        removeSavedAccount,
         isAuthenticated: !!token && !!user,
     };
 

@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
-import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Forward } from 'lucide-react';
+import { Moon, Sun, User, Shield, Bookmark, MessageSquare, Bell, Settings, LogOut, Plus, Forward, ChevronDown, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
@@ -14,12 +14,15 @@ import { ConnectionState } from 'livekit-client';
 import './Navbar.css';
 import UserAvatar from './UserAvatar';
 import GhostModeBar from './GhostModeBar';
+import AddAccountModal from './AddAccountModal';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useUploadStore } from '../store/useUploadStore';
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
-    const { user, token, logout } = useAuth();
+    const { user, token, logout, savedAccounts, switchAccount, removeSavedAccount } = useAuth();
+    const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
+    const [showAddAccountModal, setShowAddAccountModal] = useState(false);
     const isGhostMode = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
@@ -198,6 +201,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             }
             if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setShowMenu(false);
+                setShowAccountSwitcher(false);
             }
         };
 
@@ -234,6 +238,8 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     if (isGuest && !isHomePage) {
         return null;
     }
+
+    const otherAccounts = (savedAccounts || []).filter(acc => acc.userId !== user?._id);
 
     return (
         <>
@@ -354,7 +360,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                 <button
                                     id="tour-step-profile"
                                     className={`header-icon profile-unified-btn ${showMenu ? 'active' : ''} ${unreadCount > 0 ? 'has-unread' : ''} ${adminPendingCount > 0 ? 'has-admin-unread' : ''}`}
-                                    onClick={() => setShowMenu(!showMenu)}
+                                    onClick={() => {
+                                        setShowMenu(prev => !prev);
+                                        setShowAccountSwitcher(false);
+                                    }}
                                     title="Profilim ve Menü"
                                     aria-expanded={showMenu}
                                     aria-haspopup="true"
@@ -397,23 +406,112 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                             )}
                             {showMenu && (
                                 <div className="header-dropdown glass-panel">
-                                    {/* Dropdown Header - Link to Profile */}
-                                    <Link 
-                                        to="/profile" 
-                                        className="dropdown-user-info"
-                                        onClick={() => setShowMenu(false)}
-                                    >
-                                         <UserAvatar
-                                             src={user?.profile?.avatar}
-                                             alt="Avatar"
-                                             className="dropdown-avatar"
-                                             size={40}
-                                         />
-                                         <div className="dropdown-user-details">
-                                             <span className="dropdown-username">{user?.username}</span>
-                                             <span className="dropdown-user-status">giriş yapıldı</span>
-                                         </div>
-                                     </Link>
+                                    {/* Dropdown Header Row - Link to Profile & Account Switcher Toggle */}
+                                    <div className="dropdown-header-row">
+                                        <Link 
+                                            to="/profile" 
+                                            className="dropdown-user-info"
+                                            onClick={() => {
+                                                setShowMenu(false);
+                                                setShowAccountSwitcher(false);
+                                            }}
+                                        >
+                                             <UserAvatar
+                                                 src={user?.profile?.avatar}
+                                                 alt="Avatar"
+                                                 className="dropdown-avatar"
+                                                 size={40}
+                                             />
+                                             <div className="dropdown-user-details">
+                                                 <span className="dropdown-username">{user?.username}</span>
+                                                 <span className="dropdown-user-status">giriş yapıldı</span>
+                                             </div>
+                                         </Link>
+
+                                        <button
+                                            type="button"
+                                            className={`dropdown-switch-toggle-btn ${showAccountSwitcher ? 'active' : ''}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowAccountSwitcher(prev => !prev);
+                                            }}
+                                            title={showAccountSwitcher ? "Hesap Menüsünü Kapat" : "Hesap Değiştir"}
+                                            aria-label="Hesap Değiştir"
+                                            aria-expanded={showAccountSwitcher}
+                                        >
+                                            <ChevronDown size={18} className={`switch-arrow-icon ${showAccountSwitcher ? 'rotated' : ''}`} />
+                                        </button>
+                                    </div>
+
+                                    {/* Expandable Multi-Account Switcher Section */}
+                                    {showAccountSwitcher && (
+                                        <div className="dropdown-account-switcher-drawer animation-slide-down">
+                                            <div className="account-switcher-header">
+                                                <span className="account-switcher-title">Kayıtlı Hesaplar</span>
+                                            </div>
+
+                                            {otherAccounts.length > 0 ? (
+                                                <div className="saved-accounts-list">
+                                                    {otherAccounts.map((acc) => (
+                                                        <div 
+                                                            key={acc.userId}
+                                                            className="saved-account-row"
+                                                            onClick={() => {
+                                                                setShowMenu(false);
+                                                                setShowAccountSwitcher(false);
+                                                                switchAccount(acc.userId);
+                                                            }}
+                                                            title={`@${acc.username} hesabına geçiş yap`}
+                                                            role="button"
+                                                            tabIndex={0}
+                                                        >
+                                                            <UserAvatar
+                                                                src={acc.profile?.avatar}
+                                                                alt={acc.username}
+                                                                size={34}
+                                                                className="saved-account-avatar"
+                                                            />
+                                                            <div className="saved-account-details">
+                                                                <span className="saved-account-name">{acc.username}</span>
+                                                                <span className="saved-account-action">Geçiş Yap</span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="saved-account-remove-btn"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    removeSavedAccount(acc.userId);
+                                                                }}
+                                                                title="Bu hesabı listeden kaldır"
+                                                                aria-label="Hesabı kaldır"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="no-saved-accounts-message">
+                                                    Başka kayıtlı hesap bulunmuyor
+                                                </div>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                className="dropdown-add-account-btn"
+                                                onClick={() => {
+                                                    setShowMenu(false);
+                                                    setShowAccountSwitcher(false);
+                                                    setShowAddAccountModal(true);
+                                                }}
+                                            >
+                                                <div className="add-account-icon-badge">
+                                                    <Plus size={16} />
+                                                </div>
+                                                <span>Hesap Ekle</span>
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {(user?.isAdmin || user?.isTouristAdmin || user?.username === 'oxypace') && (
                                         <Link
@@ -472,7 +570,10 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                 </div>
             </Link>
 
-
+            <AddAccountModal
+                isOpen={showAddAccountModal}
+                onClose={() => setShowAddAccountModal(false)}
+            />
         </>
     );
 };
