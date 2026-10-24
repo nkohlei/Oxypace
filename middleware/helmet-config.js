@@ -6,29 +6,40 @@ import helmet from 'helmet';
  */
 export const helmetConfig = helmet({
     // Content Security Policy - Prevents XSS attacks
-    contentSecurityPolicy: {
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://pagead2.googlesyndication.com', 'https://www.googletagservices.com', 'https://adservice.google.com'],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'", 
+                "'unsafe-eval'", 
+                "'wasm-unsafe-eval'", 
+                'https://accounts.google.com', 
+                'https://pagead2.googlesyndication.com', 
+                'https://www.googletagservices.com', 
+                'https://adservice.google.com'
+            ],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
             imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:', 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-            mediaSrc: ["'self'", 'blob:', 'data:', 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev'],
+            mediaSrc: ["'self'", 'blob:', 'data:', 'https:', 'http:', 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev'],
             connectSrc: [
                 "'self'",
-                'https://accounts.google.com',
-                'https://oauth2.googleapis.com',
+                'https:',
+                'http:',
                 'wss:',
                 'ws:',
+                'https://accounts.google.com',
+                'https://oauth2.googleapis.com',
                 process.env.CLIENT_URL || 'http://localhost:5173',
             ],
             frameSrc: ["'self'", 'https://accounts.google.com'],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'", 'https://accounts.google.com'],
-            upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+            upgradeInsecureRequests: [],
         },
-    },
+    } : false,
     // X-Content-Type-Options: nosniff
     noSniff: true,
     // X-Frame-Options: DENY (Clickjacking protection)

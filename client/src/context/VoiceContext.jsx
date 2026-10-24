@@ -357,6 +357,9 @@ export const VoiceProvider = ({ children }) => {
         if (!track) return null;
         return {
             track,
+            id: track.id,
+            kind: track.kind,
+            mediaStreamTrack: track,
             attach: (el) => {
                 if (el) {
                     const currentTrack = el.srcObject?.getVideoTracks()[0] || el.srcObject?.getAudioTracks()[0];
@@ -375,9 +378,12 @@ export const VoiceProvider = ({ children }) => {
                 }
             },
             detach: (el) => {
-                if (el) {
-                    el.srcObject = null;
-                    console.log(`[WebRTC] Detached track ${track.id} from element`);
+                if (el && el.srcObject) {
+                    const currentTrack = el.srcObject?.getVideoTracks()[0] || el.srcObject?.getAudioTracks()[0];
+                    if (!currentTrack || currentTrack.id === track.id) {
+                        el.srcObject = null;
+                        console.log(`[WebRTC] Detached track ${track.id} from element`);
+                    }
                 }
             }
         };
@@ -1609,6 +1615,7 @@ export const VoiceProvider = ({ children }) => {
                 const isScreenSender = (s) => (screenTrack && s.track === screenTrack) || (s.track?.label?.toLowerCase().includes('screen'));
 
                 // Swap placeholder track with real camera track on all active peer connections
+                let needsRenegotiate = false;
                 peerConnectionsRef.current.forEach(pc => {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !isScreenSender(s)) ||
@@ -1620,12 +1627,15 @@ export const VoiceProvider = ({ children }) => {
                     } else {
                         try {
                             pc.addTrack(cameraTrack, localStreamRef.current);
+                            needsRenegotiate = true;
                         } catch (addErr) {
                             console.warn("[WebRTC] addTrack error (ON):", addErr);
                         }
                     }
                 });
-                renegotiateAll();
+                if (needsRenegotiate) {
+                    renegotiateAll();
+                }
             }
         } else {
             // Turning camera OFF

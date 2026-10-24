@@ -14,12 +14,18 @@ import './VoiceChannel.css';
 
 const VideoRenderer = ({ track, isLocal, className }) => {
     const videoEl = React.useRef(null);
+    const rawTrack = track?.track || track?.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
+    const trackId = rawTrack?.id || track?.id;
 
     React.useEffect(() => {
         const el = videoEl.current;
-        if (!el || !track) return;
+        if (!el || !rawTrack) return;
 
-        const rawTrack = track.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
+        const currentTrack = el.srcObject?.getVideoTracks?.()[0];
+        if (currentTrack && currentTrack.id === rawTrack.id && el.srcObject?.active) {
+            if (el.paused) el.play().catch(() => {});
+            return;
+        }
 
         if (typeof track.attach === 'function') {
             track.attach(el);
@@ -28,10 +34,7 @@ const VideoRenderer = ({ track, isLocal, className }) => {
                 el.srcObject = track;
             }
         } else if (rawTrack) {
-            const currentTrack = el.srcObject?.getVideoTracks?.()[0];
-            if (!currentTrack || currentTrack.id !== rawTrack.id || !el.srcObject?.active) {
-                el.srcObject = new MediaStream([rawTrack]);
-            }
+            el.srcObject = new MediaStream([rawTrack]);
         }
 
         const playPromise = el.play?.();
@@ -40,13 +43,13 @@ const VideoRenderer = ({ track, isLocal, className }) => {
         }
 
         return () => {
-            if (typeof track.detach === 'function') {
+            if (typeof track?.detach === 'function') {
                 track.detach(el);
             } else if (el) {
                 el.srcObject = null;
             }
         };
-    }, [track]);
+    }, [trackId]);
 
     return (
         <video 

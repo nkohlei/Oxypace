@@ -364,12 +364,18 @@ const UserBar = ({ currentChannelId }) => {
 const MiniVideo = ({ participant }) => {
     const videoEl = React.useRef(null);
     const track = participant?.videoTrack;
+    const rawTrack = track?.track || track?.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
+    const trackId = rawTrack?.id || track?.id;
 
     React.useEffect(() => {
         const el = videoEl.current;
-        if (!el || !track || !participant?.isCameraOn) return;
+        if (!el || !rawTrack || !participant?.isCameraOn) return;
 
-        const rawTrack = track.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
+        const currentTrack = el.srcObject?.getVideoTracks?.()[0];
+        if (currentTrack && currentTrack.id === rawTrack.id && el.srcObject?.active) {
+            if (el.paused) el.play().catch(() => {});
+            return;
+        }
 
         if (typeof track.attach === 'function') {
             track.attach(el);
@@ -378,10 +384,7 @@ const MiniVideo = ({ participant }) => {
                 el.srcObject = track;
             }
         } else if (rawTrack) {
-            const currentTrack = el.srcObject?.getVideoTracks?.()[0];
-            if (!currentTrack || currentTrack.id !== rawTrack.id || !el.srcObject?.active) {
-                el.srcObject = new MediaStream([rawTrack]);
-            }
+            el.srcObject = new MediaStream([rawTrack]);
         }
 
         const playPromise = el.play?.();
@@ -390,13 +393,13 @@ const MiniVideo = ({ participant }) => {
         }
 
         return () => {
-            if (typeof track.detach === 'function') {
+            if (typeof track?.detach === 'function') {
                 track.detach(el);
             } else if (el) {
                 el.srcObject = null;
             }
         };
-    }, [track, participant?.isCameraOn]);
+    }, [trackId, participant?.isCameraOn]);
 
     return (
         <div style={{ width: '100%', height: '140px', backgroundColor: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', marginTop: '4px' }}>
