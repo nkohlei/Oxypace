@@ -1798,24 +1798,169 @@ router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, r
     }
 });
 
+// @route   GET /api/admin/activity-logs/stats
+// @desc    Get real-time telemetry metrics for platform activity logs
+// @access  Private/Admin
+router.get('/activity-logs/stats', protect, admin, async (req, res) => {
+    try {
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const [
+            total24h,
+            categoryStats,
+            severityStats,
+            recentSecurityAlerts,
+            topActiveUsers
+        ] = await Promise.all([
+            ActivityLog.countDocuments({ createdAt: { $gte: last24h } }),
+            ActivityLog.aggregate([
+                { $match: { createdAt: { $gte: last24h } } },
+                { $group: { _id: '$category', count: { $sum: 1 } } }
+            ]),
+            ActivityLog.aggregate([
+                { $match: { createdAt: { $gte: last24h } } },
+                { $group: { _id: '$severity', count: { $sum: 1 } } }
+            ]),
+            ActivityLog.find({
+                severity: { $in: ['security', 'critical'] },
+                createdAt: { $gte: last24h }
+            })
+                .populate('user', 'username profile.displayName profile.avatar')
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .lean(),
+            ActivityLog.aggregate([
+                { $match: { createdAt: { $gte: last24h }, user: { $ne: null } } },
+                { $group: { _id: '$username', count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 5 }
+            ])
+        ]);
+
+        const categories = {};
+        categoryStats.forEach(c => { if (c._id) categories[c._id] = c.count; });
+
+        const severities = {};
+        severityStats.forEach(s => { if (s._id) severities[s._id] = s.count; });
+
+        res.json({
+            total24h,
+            categories: {
+                auth: categories.auth || 0,
+                portal: categories.portal || 0,
+                rtc: categories.rtc || 0,
+                storage: categories.storage || 0,
+                bot: categories.bot || 0,
+                content: categories.content || 0,
+                system: categories.system || 0,
+            },
+            severities: {
+                info: severities.info || 0,
+                warning: severities.warning || 0,
+                critical: severities.critical || 0,
+                security: severities.security || 0,
+            },
+            recentSecurityAlerts,
+            topActiveUsers
+        });
+    } catch (error) {
+        console.error('Fetch activity logs stats error:', error);
+        res.status(500).json({ message: 'Log istatistikleri alınamadı.' });
+    }
+});
+
+// @route   GET /api/admin/activity-logs/export
+// @desc    Export platform activity logs as JSON or CSV
+// @access  Private/Admin
+router.get('/activity-logs/export', protect, admin, async (req, res) => {
+    try {
+        const { category, severity, q, format = 'json', limit = 1000 } = req.query;
+        let query = {};
+
+        if (category && category !== 'all') query.category = category;
+        if (severity && severity !== 'all') query.severity = severity;
+        if (q) {
+            const escaped = escapeRegex(q);
+            query.$or = [
+                { username: { $regex: escaped, $options: 'i' } },
+                { action: { $regex: escaped, $options: 'i' } },
+                { ip: { $regex: escaped, $options: 'i' } },
+                { targetName: { $regex: escaped, $options: 'i' } },
+                { portalName: { $regex: escaped, $options: 'i' } }
+            ];
+        }
+
+        const logs = await ActivityLog.find(query)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .lean();
+
+        if (format === 'csv') {
+            const headers = ['Tarih', 'Kategori', 'Eylem', 'Önem', 'Kullanıcı', 'IP', 'Ülke/Şehir', 'Hedef', 'Detay'];
+            const rows = logs.map(l => [
+                `"${new Date(l.createdAt).toISOString()}"`,
+                `"${l.category}"`,
+                `"${l.action}"`,
+                `"${l.severity}"`,
+                `"${l.username || 'Sistem'}"`,
+                `"${l.ip || ''}"`,
+                `"${l.country || ''} - ${l.city || ''}"`,
+                `"${l.targetName || l.targetId || ''}"`,
+                `"${(typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '')).replace(/"/g, '""')}"`
+            ]);
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="platform-logs-${Date.now()}.csv"`);
+            return res.send(csvContent);
+        }
+
+        res.setHeader('Content-Disposition', `attachment; filename="platform-logs-${Date.now()}.json"`);
+        res.json(logs);
+    } catch (error) {
+        console.error('Export activity logs error:', error);
+        res.status(500).json({ message: 'Log dışa aktarma başarısız.' });
+    }
+});
+
 // @route   GET /api/admin/activity-logs
-// @desc    Get system activity logs / user footprints
+// @desc    Get enterprise system activity logs / platform footprints
 // @access  Private/Admin
 router.get('/activity-logs', protect, admin, async (req, res) => {
     try {
-        const { q, category, action, userId, page = 1, limit = 50 } = req.query;
+        const {
+            q,
+            category,
+            severity,
+            action,
+            userId,
+            portalId,
+            startDate,
+            endDate,
+            page = 1,
+            limit = 50
+        } = req.query;
+
         let query = {};
 
-        if (userId) {
-            query.user = userId;
-        }
+        if (userId) query.user = userId;
+        if (portalId) query.portal = portalId;
 
         if (category && category !== 'all') {
             query.category = category;
         }
 
+        if (severity && severity !== 'all') {
+            query.severity = severity;
+        }
+
         if (action && action !== 'all') {
             query.action = action.toUpperCase();
+        }
+
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) query.createdAt.$lte = new Date(endDate);
         }
 
         if (q) {
@@ -1824,7 +1969,13 @@ router.get('/activity-logs', protect, admin, async (req, res) => {
                 { username: { $regex: escaped, $options: 'i' } },
                 { ip: { $regex: escaped, $options: 'i' } },
                 { action: { $regex: escaped, $options: 'i' } },
-                { targetId: { $regex: escaped, $options: 'i' } }
+                { targetId: { $regex: escaped, $options: 'i' } },
+                { targetName: { $regex: escaped, $options: 'i' } },
+                { portalName: { $regex: escaped, $options: 'i' } },
+                { 'details.reason': { $regex: escaped, $options: 'i' } },
+                { 'details.title': { $regex: escaped, $options: 'i' } },
+                { 'details.fileName': { $regex: escaped, $options: 'i' } },
+                { 'details.securityAlert': { $regex: escaped, $options: 'i' } }
             ];
         }
 
@@ -1832,6 +1983,7 @@ router.get('/activity-logs', protect, admin, async (req, res) => {
         const [logs, total] = await Promise.all([
             ActivityLog.find(query)
                 .populate('user', 'username profile.displayName profile.avatar')
+                .populate('portal', 'name avatar')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit))

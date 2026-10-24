@@ -11,6 +11,7 @@ import r2 from '../config/r2.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logActivity from '../utils/auditLogger.js';
 
 import Post from '../models/Post.js';
 
@@ -164,6 +165,24 @@ router.post('/presigned-url', auth, async (req, res) => {
 
         // Generate the presigned URL for PUT
         const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 3600 }); // Valid for 1 hour
+
+        logActivity({
+            user: req.user?._id,
+            username: req.user?.username,
+            action: 'SIGNED_URL_GENERATE',
+            category: 'storage',
+            req,
+            targetId: key,
+            targetName: fileName,
+            details: {
+                key,
+                fileName,
+                fileType,
+                fileSize,
+                purpose,
+                bucket: bucketName
+            }
+        });
 
         res.json({
             uploadUrl,
@@ -359,6 +378,24 @@ router.post('/upload', auth, (req, res, next) => {
         if (!req.file) {
             return res.status(400).json({ message: 'Lütfen yüklenecek bir dosya seçin.' });
         }
+
+        logActivity({
+            user: req.user?._id,
+            username: req.user?.username,
+            action: 'FILE_UPLOAD',
+            category: 'storage',
+            req,
+            targetId: req.file.key,
+            targetName: req.file.originalname,
+            details: {
+                key: req.file.key,
+                fileName: req.file.originalname,
+                sizeBytes: req.file.size,
+                mimeType: req.file.mimetype,
+                storageBucket: process.env.R2_BUCKET_NAME || 'cloudflare-r2'
+            }
+        });
+
         res.json({
             mediaKey: req.file.key,
         });

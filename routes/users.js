@@ -16,6 +16,7 @@ import Portal from '../models/Portal.js';
 import { pubClient } from '../sockets/redisAdapter.js';
 import { enrollInTanitimPortal } from '../utils/portalAutoEnroll.js';
 import { validateProfileFields } from '../utils/profanityFilter.js';
+import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -594,6 +595,12 @@ router.put('/me', protect, profileValidation, async (req, res) => {
         }
 
         const user = await User.findById(req.user._id);
+        const oldProfile = {
+            username: user.username,
+            displayName: user.profile?.displayName,
+            bio: user.profile?.bio,
+            avatar: user.profile?.avatar
+        };
 
         // Handle Username Change
         if (username && username !== user.username) {
@@ -623,6 +630,25 @@ router.put('/me', protect, profileValidation, async (req, res) => {
         }
 
         await user.save();
+
+        const newProfile = {
+            username: user.username,
+            displayName: user.profile?.displayName,
+            bio: user.profile?.bio,
+            avatar: user.profile?.avatar
+        };
+        const changedFields = Object.keys(newProfile).filter(k => oldProfile[k] !== newProfile[k]);
+        if (changedFields.length > 0) {
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'PROFILE_UPDATE',
+                category: 'auth',
+                req,
+                diff: { before: oldProfile, after: newProfile },
+                details: { changedFields }
+            });
+        }
 
         res.json({
             message: 'Profile updated successfully',
@@ -826,6 +852,15 @@ router.delete('/devices/:deviceId', protect, async (req, res) => {
             return dId !== targetIdStr && subId !== targetIdStr;
         });
         await user.save();
+
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'SESSION_REVOKE',
+            category: 'auth',
+            req,
+            details: { deviceId }
+        });
 
         res.json({ message: 'Cihaz kaydı silindi', devices: user.registeredDevices });
     } catch (error) {
@@ -1479,6 +1514,16 @@ router.put('/security-questions', protect, async (req, res) => {
         user.securityAnswers = updatedAnswers;
         await user.save();
 
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'SECURITY_QUESTIONS_UPDATE',
+            category: 'auth',
+            severity: 'warning',
+            req,
+            details: { count: updatedAnswers.length }
+        });
+
         res.json({ 
             message: 'Güvenlik soruları başarıyla güncellendi.', 
             securityAnswers: updatedAnswers 
@@ -1510,6 +1555,15 @@ router.put('/password', protect, async (req, res) => {
 
         user.password = newPassword; // Pre-save hook will hash it
         await user.save();
+
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'PASSWORD_CHANGE',
+            category: 'auth',
+            severity: 'warning',
+            req
+        });
 
         res.json({ message: 'Password updated successfully' });
     } catch (error) {
@@ -1578,6 +1632,16 @@ router.delete('/me', protect, async (req, res) => {
         user.deletionReason = req.body.reason || 'Kullanıcı kendi isteğiyle sildi';
         user.recoveryStatus = 'none';
         await user.save();
+
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'ACCOUNT_DELETE_REQUEST',
+            category: 'auth',
+            severity: 'critical',
+            req,
+            details: { reason: user.deletionReason }
+        });
 
         res.json({ message: 'Hesabınız başarıyla silinmek üzere işaretlendi.' });
     } catch (error) {

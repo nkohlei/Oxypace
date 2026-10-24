@@ -14,6 +14,7 @@ import upload from '../middleware/upload.js';
 import { escapeRegex } from '../utils/security.js';
 import { invalidatePortalRuleCache } from '../sockets/voiceHandler.js';
 import logActivity from '../utils/auditLogger.js';
+import ActivityLog from '../models/ActivityLog.js';
 
 /**
  * Foolproof channel query and filter generator for a portal.
@@ -824,6 +825,16 @@ router.post('/:id/join', protect, mongoIdValidation('id'), async (req, res) => {
             $addToSet: { joinedPortals: portal._id },
         });
 
+        logActivity({
+            user: req.user,
+            action: 'PORTAL_JOIN',
+            category: 'portal',
+            portal: portal._id,
+            portalName: portal.name,
+            req,
+            details: { username: req.user.username }
+        });
+
         res.json({ message: 'Portala başarıyla katıldınız', status: 'joined' });
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -858,6 +869,16 @@ router.post('/:id/leave', protect, mongoIdValidation('id'), async (req, res) => 
 
         await User.findByIdAndUpdate(req.user._id, {
             $pull: { joinedPortals: portal._id },
+        });
+
+        logActivity({
+            user: req.user,
+            action: 'PORTAL_LEAVE',
+            category: 'portal',
+            portal: portal._id,
+            portalName: portal.name,
+            req,
+            details: { username: req.user.username }
         });
 
         res.json({ message: 'Left portal successfully' });
@@ -1051,6 +1072,18 @@ router.post('/:id/channels', protect, mongoIdValidation('id'), async (req, res) 
 
         portal.channels.push(channelData);
         await portal.save();
+
+        logActivity({
+            user: req.user,
+            action: 'CHANNEL_CREATE',
+            category: 'portal',
+            portal: portal._id,
+            portalName: portal.name,
+            channel: trimmedName,
+            req,
+            details: { name: trimmedName, type: channelData.type || 'text', roomMode: channelData.roomMode || 'free' }
+        });
+
         res.json(portal.channels);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -1078,6 +1111,18 @@ router.delete('/:id/channels/:channelId', protect, mongoIdValidation('id'), mong
             (ch) => ch._id.toString() !== req.params.channelId
         );
         await portal.save();
+
+        logActivity({
+            user: req.user,
+            action: 'CHANNEL_DELETE',
+            category: 'portal',
+            severity: 'warning',
+            portal: portal._id,
+            portalName: portal.name,
+            targetId: req.params.channelId,
+            req,
+            details: { channelId: req.params.channelId }
+        });
 
         try {
             const fallbackChannelId = portal.channels[0] ? portal.channels[0]._id.toString() : 'general';
@@ -1710,10 +1755,61 @@ router.delete('/:id', protect, async (req, res) => {
         // 3. Delete the portal document
         await portal.deleteOne();
 
+        logActivity({
+            user: req.user,
+            action: 'PORTAL_DELETE',
+            category: 'portal',
+            severity: 'critical',
+            portal: portal._id,
+            portalName: portal.name,
+            req,
+            details: { name: portal.name }
+        });
+
         res.json({ message: 'Portal kalıcı olarak silindi' });
     } catch (error) {
         console.error('Portal delete error:', error);
         res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @route   GET /api/portals/:id/audit-logs
+// @desc    Get portal audit history for portal owner and admins
+// @access  Private (Portal Owner/Admin)
+router.get('/:id/audit-logs', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isPortalAdmin = Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isSystemAdmin = req.user.isAdmin;
+
+        if (!isOwner && !isPortalAdmin && !isSystemAdmin) {
+            return res.status(403).json({ message: 'Bu portalın denetim günlüğünü görüntüleme yetkiniz yok.' });
+        }
+
+        const { category, page = 1, limit = 50 } = req.query;
+        let query = { portal: portal._id };
+        if (category && category !== 'all') {
+            query.category = category;
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [logs, total] = await Promise.all([
+            ActivityLog.find(query)
+                .populate('user', 'username profile.displayName profile.avatar')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            ActivityLog.countDocuments(query)
+        ]);
+
+        res.json({ logs, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    } catch (err) {
+        console.error('Fetch portal audit logs error:', err);
+        res.status(500).json({ message: 'Portal denetim kayıtları getirilemedi' });
     }
 });
 

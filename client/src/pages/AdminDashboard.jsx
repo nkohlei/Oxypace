@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield, Volume2, Video, Hash, Radio, Lock, Unlock, MessageSquare } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield, Volume2, Video, Hash, Radio, Lock, Unlock, MessageSquare, Download, Pause, Play, Filter, Server, HardDrive, Terminal, Activity } from 'lucide-react';
 import Badge from '../components/Badge';
 import PortalBadges from '../components/PortalBadges';
 import UserBadges from '../components/UserBadges';
@@ -2012,7 +2012,13 @@ const AdminDashboard = () => {
     const [activityLogsLoading, setActivityLogsLoading] = useState(false);
     const [activityLogsSearch, setActivityLogsSearch] = useState('');
     const [activityLogsCategory, setActivityLogsCategory] = useState('all');
+    const [activityLogsSeverity, setActivityLogsSeverity] = useState('all');
     const [activityViewMode, setActivityViewMode] = useState('logs'); // 'logs' or 'live'
+    const [activityLiveEnabled, setActivityLiveEnabled] = useState(true);
+    const [activityStats, setActivityStats] = useState(null);
+    const [activityStatsLoading, setActivityStatsLoading] = useState(false);
+    const [inspectingLog, setInspectingLog] = useState(null);
+    const [copiedJson, setCopiedJson] = useState(false);
 
     // Tourist Admin Granular Permissions State
     const [touristPermissions, setTouristPermissions] = useState({
@@ -2520,7 +2526,8 @@ const AdminDashboard = () => {
         } else if (activeTab === 'ipbans') {
             fetchBannedIps();
         } else if (activeTab === 'activity') {
-            fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
+            fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, activityLogsSeverity);
+            fetchActivityStats();
         } else if (activeTab === 'tourist-admin' && isOxypace) {
             fetchTouristAdmins();
         } else if (activeTab === 'bots') {
@@ -2529,7 +2536,7 @@ const AdminDashboard = () => {
         }
     }, [activeTab, isOxypace]);
 
-    // Aktif oturum izleme WebSocket dinleyicisi
+    // Aktif oturum ve canlı log izleme WebSocket dinleyicisi
     useEffect(() => {
         if (activeTab === 'activity' && socket && connected) {
             socket.emit('join_admin_presence');
@@ -2538,12 +2545,24 @@ const AdminDashboard = () => {
                 setActiveSessions(data);
             });
 
+            socket.on('platform:log', (newLog) => {
+                if (!newLog || !activityLiveEnabled) return;
+                setActivityLogs((prev) => {
+                    if (activityLogsCategory !== 'all' && newLog.category !== activityLogsCategory) return prev;
+                    if (activityLogsSeverity !== 'all' && newLog.severity !== activityLogsSeverity) return prev;
+                    if (prev.some(l => l._id === newLog._id)) return prev;
+                    return [newLog, ...prev.slice(0, 49)];
+                });
+                setActivityLogsTotal((prev) => prev + 1);
+            });
+
             return () => {
                 socket.emit('leave_admin_presence');
                 socket.off('admin_presence_update');
+                socket.off('platform:log');
             };
         }
-    }, [activeTab, socket, connected]);
+    }, [activeTab, socket, connected, activityLiveEnabled, activityLogsCategory, activityLogsSeverity]);
 
     const fetchBannedIps = async () => {
         setLoading(true);
@@ -2967,10 +2986,26 @@ const AdminDashboard = () => {
         }
     };
 
-    const fetchActivityLogs = async (page = 1, query = '', category = 'all') => {
+    const fetchActivityStats = async () => {
+        setActivityStatsLoading(true);
+        try {
+            const { data } = await axios.get('/api/admin/activity-logs/stats');
+            setActivityStats(data);
+        } catch (err) {
+            console.error('Activity stats fetch error:', err);
+        } finally {
+            setActivityStatsLoading(false);
+        }
+    };
+
+    const fetchActivityLogs = async (page = 1, query = activityLogsSearch, category = activityLogsCategory, severity = activityLogsSeverity) => {
         setActivityLogsLoading(true);
         try {
-            const { data } = await axios.get(`/api/admin/activity-logs?page=${page}&q=${encodeURIComponent(query)}&category=${category}`);
+            let url = `/api/admin/activity-logs?page=${page}&q=${encodeURIComponent(query)}&category=${category}`;
+            if (severity && severity !== 'all') {
+                url += `&severity=${severity}`;
+            }
+            const { data } = await axios.get(url);
             setActivityLogs(data.logs || []);
             setActivityLogsTotal(data.total || 0);
             setActivityLogsPage(data.page || 1);
@@ -2979,6 +3014,14 @@ const AdminDashboard = () => {
         } finally {
             setActivityLogsLoading(false);
         }
+    };
+
+    const handleExportLogs = (format = 'csv') => {
+        let url = `/api/admin/activity-logs/export?format=${format}`;
+        if (activityLogsCategory && activityLogsCategory !== 'all') url += `&category=${activityLogsCategory}`;
+        if (activityLogsSeverity && activityLogsSeverity !== 'all') url += `&severity=${activityLogsSeverity}`;
+        if (activityLogsSearch) url += `&q=${encodeURIComponent(activityLogsSearch)}`;
+        window.open(url, '_blank');
     };
 
     const handleUpdateTouristPermissions = async (userId, newPermissions) => {
@@ -6268,10 +6311,11 @@ const AdminDashboard = () => {
                                 className={`activity-subnav-btn ${activityViewMode === 'logs' ? 'active' : ''}`}
                                 onClick={() => {
                                     setActivityViewMode('logs');
-                                    fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
+                                    fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, activityLogsSeverity);
+                                    fetchActivityStats();
                                 }}
                             >
-                                📜 Platform Günlüğü & Ayak İzleri
+                                📜 Platform Günlüğü & Telemetri
                             </button>
                             <button
                                 type="button"
@@ -6284,58 +6328,194 @@ const AdminDashboard = () => {
 
                         {activityViewMode === 'logs' && (
                             <div className="logs-container">
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '260px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Platform günlüğünde ara (Kullanıcı, eylem, IP, detay)..."
-                                            value={activityLogsSearch}
-                                            onChange={(e) => setActivityLogsSearch(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
-                                                }
-                                            }}
-                                            style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '10px 14px', borderRadius: '8px' }}
-                                        />
+                                {/* 24H Telemetry Stats Cards */}
+                                <div className="activity-stats-grid">
+                                    <div className="activity-stat-card">
+                                        <div className="stat-card-header">
+                                            <span className="stat-card-title">24S TOPLAM HAREKET</span>
+                                            <Activity size={16} className="stat-card-icon" />
+                                        </div>
+                                        <div className="stat-card-value">
+                                            {activityStats?.total24h?.toLocaleString() || '0'}
+                                        </div>
+                                        <div className="stat-card-footer">
+                                            <span>Sistem genelinde işlenen olaylar</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="activity-stat-card warning-border">
+                                        <div className="stat-card-header">
+                                            <span className="stat-card-title">GÜVENLİK & UYARILAR</span>
+                                            <ShieldAlert size={16} className="stat-card-icon warning-text" />
+                                        </div>
+                                        <div className="stat-card-value warning-text">
+                                            {(((activityStats?.bySeverity?.warning || 0) + (activityStats?.bySeverity?.critical || 0) + (activityStats?.bySeverity?.security || 0))).toLocaleString()}
+                                        </div>
+                                        <div className="stat-card-footer">
+                                            <span>Kritik hata, şüpheli giriş & ihlaller</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="activity-stat-card">
+                                        <div className="stat-card-header">
+                                            <span className="stat-card-title">CANLI RTC & İZLEME</span>
+                                            <Radio size={16} className="stat-card-icon" />
+                                        </div>
+                                        <div className="stat-card-value">
+                                            {activityStats?.rtcEventsCount?.toLocaleString() || '0'}
+                                        </div>
+                                        <div className="stat-card-footer">
+                                            <span>Oda katılımları, yayın ve watch party</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="activity-stat-card">
+                                        <div className="stat-card-header">
+                                            <span className="stat-card-title">DEPOLAMA & DOSYA</span>
+                                            <HardDrive size={16} className="stat-card-icon" />
+                                        </div>
+                                        <div className="stat-card-value">
+                                            {activityStats?.storageOpsCount?.toLocaleString() || '0'}
+                                        </div>
+                                        <div className="stat-card-footer">
+                                            <span>Yüklemeler & imzalı URL istekleri</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Controls Bar: Search, Real-Time Toggle & Exports */}
+                                <div className="activity-controls-bar">
+                                    <div className="controls-search-row">
+                                        <div className="search-input-wrap">
+                                            <Search size={14} className="search-icon-inside" />
+                                            <input
+                                                type="text"
+                                                placeholder="İşlem kodu, kullanıcı, IP, konum veya detay ara..."
+                                                value={activityLogsSearch}
+                                                onChange={(e) => setActivityLogsSearch(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, activityLogsSeverity);
+                                                    }
+                                                }}
+                                                className="activity-search-field"
+                                            />
+                                        </div>
                                         <button
                                             type="button"
-                                            onClick={() => fetchActivityLogs(1, activityLogsSearch, activityLogsCategory)}
+                                            onClick={() => fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, activityLogsSeverity)}
                                             className="user-box-btn"
-                                            style={{ minWidth: '90px' }}
+                                            style={{ minWidth: '85px' }}
                                         >
                                             Filtrele
                                         </button>
+
+                                        {/* Real-time Live Stream Toggle */}
+                                        <button
+                                            type="button"
+                                            className={`live-feed-toggle ${activityLiveEnabled ? 'active' : 'paused'}`}
+                                            onClick={() => setActivityLiveEnabled(!activityLiveEnabled)}
+                                            title={activityLiveEnabled ? 'Canlı akışı duraklat' : 'Canlı akışı devam ettir'}
+                                        >
+                                            <span className="live-dot-pulse"></span>
+                                            {activityLiveEnabled ? 'CANLI AKIŞ' : 'DURAKLATILDI'}
+                                        </button>
+
+                                        {/* Export Buttons */}
+                                        <div className="export-btn-group">
+                                            <button
+                                                type="button"
+                                                className="export-btn"
+                                                onClick={() => handleExportLogs('csv')}
+                                                title="Filtrelenmiş kayıtları CSV formatında indir"
+                                            >
+                                                <Download size={13} />
+                                                CSV
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="export-btn"
+                                                onClick={() => handleExportLogs('json')}
+                                                title="Filtrelenmiş kayıtları JSON formatında indir"
+                                            >
+                                                <Download size={13} />
+                                                JSON
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    {/* Category Pills */}
-                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                        {[
-                                            { id: 'all', label: 'TÜMÜ' },
-                                            { id: 'auth', label: 'KİMLİK & GİRİŞ' },
-                                            { id: 'post', label: 'GÖNDERİLER' },
-                                            { id: 'portal', label: 'PORTALLAR' },
-                                            { id: 'moderation', label: 'GÜVENLİK' },
-                                            { id: 'bot', label: 'BOTLAR' }
-                                        ].map(cat => (
-                                            <button
-                                                key={cat.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setActivityLogsCategory(cat.id);
-                                                    fetchActivityLogs(1, activityLogsSearch, cat.id);
-                                                }}
-                                                className={`mono-tag ${activityLogsCategory === cat.id ? 'inverted' : 'muted'}`}
-                                                style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '11px' }}
-                                            >
-                                                {cat.label}
-                                            </button>
-                                        ))}
+                                    {/* Category Subtabs */}
+                                    <div className="activity-category-row">
+                                        <span className="row-label">KATEGORİ:</span>
+                                        <div className="activity-category-pills">
+                                            {[
+                                                { id: 'all', label: 'TÜMÜ', icon: Globe },
+                                                { id: 'auth', label: 'KİMLİK & HESAP', icon: KeyRound },
+                                                { id: 'portal', label: 'PORTAL & KANAL', icon: Layers },
+                                                { id: 'rtc', label: 'CANLI RTC & İZLEME', icon: Radio },
+                                                { id: 'storage', label: 'DOSYA & DEPOLAMA', icon: HardDrive },
+                                                { id: 'bot', label: 'BOT & ENTEGRASYON', icon: Bot },
+                                                { id: 'content', label: 'İÇERİK & MESAJ', icon: MessageSquare },
+                                                { id: 'system', label: 'SİSTEM & TELEMETRİ', icon: Server }
+                                            ].map(cat => {
+                                                const IconComp = cat.icon;
+                                                const isActive = activityLogsCategory === cat.id;
+                                                const count = cat.id === 'all' 
+                                                    ? activityStats?.total24h 
+                                                    : activityStats?.byCategory?.[cat.id];
+                                                return (
+                                                    <button
+                                                        key={cat.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActivityLogsCategory(cat.id);
+                                                            fetchActivityLogs(1, activityLogsSearch, cat.id, activityLogsSeverity);
+                                                        }}
+                                                        className={`activity-cat-chip ${isActive ? 'active' : ''}`}
+                                                    >
+                                                        <IconComp size={12} />
+                                                        <span>{cat.label}</span>
+                                                        {count !== undefined && count > 0 && (
+                                                            <span className="cat-chip-count">{count > 999 ? `${(count/1000).toFixed(1)}k` : count}</span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Severity Filter Row */}
+                                    <div className="activity-severity-row">
+                                        <span className="row-label">ÖNEM:</span>
+                                        <div className="activity-severity-pills">
+                                            {[
+                                                { id: 'all', label: 'TÜM SEVİYELER', cls: 'all' },
+                                                { id: 'info', label: 'BİLGİ (INFO)', cls: 'info' },
+                                                { id: 'warning', label: 'UYARI (WARN)', cls: 'warning' },
+                                                { id: 'critical', label: 'KRİTİK (CRIT)', cls: 'critical' },
+                                                { id: 'security', label: 'GÜVENLİK (SEC)', cls: 'security' }
+                                            ].map(sev => {
+                                                const isActive = activityLogsSeverity === sev.id;
+                                                return (
+                                                    <button
+                                                        key={sev.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActivityLogsSeverity(sev.id);
+                                                            fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, sev.id);
+                                                        }}
+                                                        className={`severity-filter-chip ${sev.cls} ${isActive ? 'active' : ''}`}
+                                                    >
+                                                        {sev.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
 
                                 {activityLogsLoading ? (
-                                    <div className="admin-loading">Platform kayıtları taranıyor...</div>
+                                    <div className="admin-loading">Platform telemetri kayıtları taranıyor...</div>
                                 ) : activityLogs.length === 0 ? (
                                     <p className="no-data">Kriterlere uygun platform günlüğü kaydı bulunamadı.</p>
                                 ) : (
@@ -6343,55 +6523,118 @@ const AdminDashboard = () => {
                                         <table className="logs-table">
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '160px' }}>Tarih / Saat</th>
-                                                    <th style={{ width: '160px' }}>Kullanıcı</th>
-                                                    <th style={{ width: '150px' }}>Eylem Kodu</th>
+                                                    <th style={{ width: '140px' }}>Tarih / Saat</th>
+                                                    <th style={{ width: '180px' }}>Aktör & Konum</th>
                                                     <th style={{ width: '100px' }}>Kategori</th>
+                                                    <th style={{ width: '190px' }}>Eylem & Önem</th>
                                                     <th style={{ width: '180px' }}>IP & Cihaz</th>
+                                                    <th style={{ width: '150px' }}>Kapsam / Portal</th>
                                                     <th>İşlem Detayları & Ayak İzi</th>
+                                                    <th style={{ width: '70px', textAlign: 'center' }}>İncele</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {activityLogs.map((log) => (
-                                                    <tr key={log._id}>
-                                                        <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#888' }}>
-                                                            {new Date(log.createdAt).toLocaleString('tr-TR')}
-                                                        </td>
-                                                        <td>
-                                                            {log.user ? (
-                                                                <span
-                                                                    style={{ cursor: 'pointer', textDecoration: 'underline', color: '#fff', fontWeight: 600 }}
-                                                                    onClick={() => openUserDossier(log.user)}
-                                                                >
-                                                                    @{log.user.username}
+                                                {activityLogs.map((log) => {
+                                                    const sev = log.severity || 'info';
+                                                    return (
+                                                        <tr 
+                                                            key={log._id}
+                                                            onClick={() => setInspectingLog(log)}
+                                                            className={`log-row-interactive sev-${sev}`}
+                                                        >
+                                                            <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#888' }}>
+                                                                {new Date(log.createdAt).toLocaleString('tr-TR')}
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    {log.user ? (
+                                                                        <>
+                                                                            <AdminMedia
+                                                                                src={log.user.profile?.avatar}
+                                                                                alt=""
+                                                                                isAvatar
+                                                                                className="v2-avatar-tiny"
+                                                                                style={{ width: '22px', height: '22px', borderRadius: '4px', flexShrink: 0 }}
+                                                                            />
+                                                                            <div>
+                                                                                <span
+                                                                                    style={{ cursor: 'pointer', textDecoration: 'underline', color: '#fff', fontWeight: 600, fontSize: '12px' }}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        openUserDossier(log.user);
+                                                                                    }}
+                                                                                >
+                                                                                    @{log.user.username}
+                                                                                </span>
+                                                                                {log.country && (
+                                                                                    <div style={{ fontSize: '10px', color: '#777' }}>
+                                                                                        📍 {log.country} {log.city ? `(${log.city})` : ''}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </>
+                                                                    ) : (
+                                                                        <span style={{ color: '#888', fontSize: '12px' }}>
+                                                                            ⚙️ {log.actorUsername || 'Sistem'}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span className="mono-tag muted" style={{ fontSize: '9px', textTransform: 'uppercase' }}>
+                                                                    {log.category}
                                                                 </span>
-                                                            ) : (
-                                                                <span style={{ color: '#888' }}>{log.actorUsername || 'Sistem'}</span>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            <span className="mono-tag" style={{ fontSize: '10px' }}>
-                                                                {log.action}
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <span className="mono-tag muted" style={{ fontSize: '9px' }}>
-                                                                {log.category}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#aaa' }}>
-                                                            <div>{log.ip || '-'}</div>
-                                                            <div style={{ fontSize: '10px', color: '#666' }}>
-                                                                {log.deviceInfo?.browser || ''} {log.deviceInfo?.os || ''}
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ fontSize: '12px', color: '#ddd' }}>
-                                                            {log.details?.reason || log.details?.title || log.details?.snippet || (
-                                                                typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-')
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                    <span className="mono-tag action-code" style={{ fontSize: '10px' }}>
+                                                                        {log.action}
+                                                                    </span>
+                                                                    <span className={`severity-badge ${sev}`}>
+                                                                        {sev.toUpperCase()}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#aaa' }}>
+                                                                <div>{log.ip || '-'}</div>
+                                                                <div style={{ fontSize: '10px', color: '#666' }}>
+                                                                    {log.deviceInfo?.browser || ''} {log.deviceInfo?.os || ''} {log.deviceInfo?.device ? `(${log.deviceInfo.device})` : ''}
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ fontSize: '11px', color: '#aaa' }}>
+                                                                {log.portalName ? (
+                                                                    <span className="portal-badge-chip">
+                                                                        🏛️ {log.portalName}
+                                                                    </span>
+                                                                ) : log.portal ? (
+                                                                    <span className="portal-badge-chip">
+                                                                        🏛️ Portal
+                                                                    </span>
+                                                                ) : (
+                                                                    <span style={{ color: '#555' }}>-</span>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ fontSize: '12px', color: '#ddd' }}>
+                                                                {log.details?.reason || log.details?.title || log.details?.snippet || log.details?.fileName || (
+                                                                    typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-')
+                                                                )}
+                                                            </td>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="inspect-eye-btn"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setInspectingLog(log);
+                                                                    }}
+                                                                    title="Adli Günlük İnceleyicisi"
+                                                                >
+                                                                    <Eye size={13} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
@@ -6407,7 +6650,7 @@ const AdminDashboard = () => {
                                             type="button"
                                             className="user-box-btn"
                                             disabled={activityLogsPage <= 1}
-                                            onClick={() => fetchActivityLogs(activityLogsPage - 1, activityLogsSearch, activityLogsCategory)}
+                                            onClick={() => fetchActivityLogs(activityLogsPage - 1, activityLogsSearch, activityLogsCategory, activityLogsSeverity)}
                                             style={{ opacity: activityLogsPage <= 1 ? 0.4 : 1 }}
                                         >
                                             ← Önceki
@@ -6416,7 +6659,7 @@ const AdminDashboard = () => {
                                             type="button"
                                             className="user-box-btn"
                                             disabled={activityLogs.length < 50}
-                                            onClick={() => fetchActivityLogs(activityLogsPage + 1, activityLogsSearch, activityLogsCategory)}
+                                            onClick={() => fetchActivityLogs(activityLogsPage + 1, activityLogsSearch, activityLogsCategory, activityLogsSeverity)}
                                             style={{ opacity: activityLogs.length < 50 ? 0.4 : 1 }}
                                         >
                                             Sonraki →
@@ -8752,6 +8995,174 @@ const AdminDashboard = () => {
                                 style={{ minWidth: '160px' }}
                             >
                                 Değişiklikleri Kaydet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* FORENSIC LOG INSPECTOR MODAL */}
+            {inspectingLog && (
+                <div className="modal-overlay-modern" onClick={() => setInspectingLog(null)}>
+                    <div className="modal-content-modern inspector-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header-modern inspector-header">
+                            <div className="inspector-title-area">
+                                <span className={`severity-badge ${inspectingLog.severity || 'info'}`}>
+                                    {(inspectingLog.severity || 'info').toUpperCase()}
+                                </span>
+                                <span className="inspector-action-title">
+                                    {inspectingLog.action}
+                                </span>
+                                <span className="inspector-category-badge">
+                                    {inspectingLog.category?.toUpperCase()}
+                                </span>
+                            </div>
+                            <button className="close-btn-modern" onClick={() => setInspectingLog(null)}>&times;</button>
+                        </div>
+
+                        <div className="modal-body-modern inspector-body">
+                            {/* Metadata Grid */}
+                            <div className="inspector-section-grid">
+                                {/* Actor Box */}
+                                <div className="inspector-box">
+                                    <div className="inspector-box-title">👤 Aktör & Hesap</div>
+                                    {inspectingLog.user ? (
+                                        <div className="inspector-actor-detail">
+                                            <AdminMedia
+                                                src={inspectingLog.user.profile?.avatar}
+                                                alt=""
+                                                isAvatar
+                                                className="v2-avatar-tiny"
+                                                style={{ width: '36px', height: '36px', borderRadius: '6px' }}
+                                            />
+                                            <div>
+                                                <div style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>
+                                                    {inspectingLog.user.profile?.displayName || inspectingLog.user.username}
+                                                </div>
+                                                <div style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}>
+                                                    @{inspectingLog.user.username} • ID: {inspectingLog.user._id || inspectingLog.user}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: '#aaa', fontSize: '12px' }}>
+                                            ⚙️ Sistem / Otomasyon ({inspectingLog.actorUsername || 'system'})
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Network & Device Box */}
+                                <div className="inspector-box">
+                                    <div className="inspector-box-title">🌐 Ağ & Cihaz Ayak İzi</div>
+                                    <div className="inspector-key-value-list">
+                                        <div className="kv-item">
+                                            <span className="kv-key">IP Adresi:</span>
+                                            <span className="kv-val mono">{inspectingLog.ip || 'Bilinmiyor'}</span>
+                                        </div>
+                                        <div className="kv-item">
+                                            <span className="kv-key">Konum (GeoIP):</span>
+                                            <span className="kv-val">
+                                                {inspectingLog.country ? `📍 ${inspectingLog.country} ${inspectingLog.city ? '• ' + inspectingLog.city : ''}` : 'Bilinmiyor'}
+                                            </span>
+                                        </div>
+                                        <div className="kv-item">
+                                            <span className="kv-key">Cihaz / Tarayıcı:</span>
+                                            <span className="kv-val">
+                                                {inspectingLog.deviceInfo ? `${inspectingLog.deviceInfo.browser || '-'} / ${inspectingLog.deviceInfo.os || '-'} (${inspectingLog.deviceInfo.device || 'Desktop'})` : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="kv-item">
+                                            <span className="kv-key">Zaman Damgası:</span>
+                                            <span className="kv-val mono">
+                                                {new Date(inspectingLog.createdAt).toLocaleString('tr-TR')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Target & Scope Box */}
+                            {(inspectingLog.targetId || inspectingLog.portal || inspectingLog.portalName || inspectingLog.channel) && (
+                                <div className="inspector-box" style={{ marginTop: '12px' }}>
+                                    <div className="inspector-box-title">🎯 Hedef & Kapsam Bilgileri</div>
+                                    <div className="inspector-key-value-list horizontal">
+                                        {inspectingLog.portalName && (
+                                            <div className="kv-item">
+                                                <span className="kv-key">Portal:</span>
+                                                <span className="kv-val">🏛️ {inspectingLog.portalName}</span>
+                                            </div>
+                                        )}
+                                        {inspectingLog.channel && (
+                                            <div className="kv-item">
+                                                <span className="kv-key">Kanal:</span>
+                                                <span className="kv-val"># {inspectingLog.channel}</span>
+                                            </div>
+                                        )}
+                                        {inspectingLog.targetType && (
+                                            <div className="kv-item">
+                                                <span className="kv-key">Hedef Türü:</span>
+                                                <span className="kv-val mono">{inspectingLog.targetType}</span>
+                                            </div>
+                                        )}
+                                        {inspectingLog.targetId && (
+                                            <div className="kv-item">
+                                                <span className="kv-key">Hedef ID:</span>
+                                                <span className="kv-val mono">{inspectingLog.targetId}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Visual Before / After Diff */}
+                            {inspectingLog.diff && (inspectingLog.diff.before || inspectingLog.diff.after) && (
+                                <div className="inspector-box" style={{ marginTop: '12px' }}>
+                                    <div className="inspector-box-title">🔄 Değişiklik Karşılaştırması (Before / After Diff)</div>
+                                    <div className="diff-grid">
+                                        <div className="diff-column before">
+                                            <div className="diff-header">🔴 Önceki Değerler (Before)</div>
+                                            <pre className="diff-pre">
+                                                {JSON.stringify(inspectingLog.diff.before, null, 2)}
+                                            </pre>
+                                        </div>
+                                        <div className="diff-column after">
+                                            <div className="diff-header">🟢 Yeni Değerler (After)</div>
+                                            <pre className="diff-pre">
+                                                {JSON.stringify(inspectingLog.diff.after, null, 2)}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Raw Details / JSON Inspector */}
+                            <div className="inspector-box" style={{ marginTop: '12px' }}>
+                                <div className="inspector-box-title-row">
+                                    <span className="inspector-box-title">📋 Ham Veri & Metaveri (JSON Payload)</span>
+                                    <button
+                                        type="button"
+                                        className="copy-payload-btn"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(JSON.stringify(inspectingLog, null, 2));
+                                            setCopiedJson(true);
+                                            setTimeout(() => setCopiedJson(false), 2000);
+                                        }}
+                                    >
+                                        {copiedJson ? '✓ Kopyalandı' : 'Kopyala'}
+                                    </button>
+                                </div>
+                                <pre className="raw-json-block">
+                                    {JSON.stringify(inspectingLog.details || inspectingLog, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '12px 20px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                className="btn-modern-ghost"
+                                onClick={() => setInspectingLog(null)}
+                            >
+                                Kapat
                             </button>
                         </div>
                     </div>

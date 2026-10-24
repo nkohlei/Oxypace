@@ -23,6 +23,7 @@
 import jwt from 'jsonwebtoken';
 import { pubClient } from './redisAdapter.js';
 import Portal from '../models/Portal.js';
+import logActivity from '../utils/auditLogger.js';
 
 // roomName -> { participants: Map<userId, data>, startedAt, chatHistory, watchParty, ... }
 // Local per-worker cache / fallback only (see design notes above).
@@ -620,6 +621,23 @@ async function removeParticipant(roomName, userId, socketId = null) {
         username: participantInfo?.username || ''
     });
 
+    const parsedRoom = parseRoomName(roomName);
+    const durationSec = participantInfo?.joinedAt ? Math.round((Date.now() - participantInfo.joinedAt) / 1000) : 0;
+    logActivity({
+        user: sUserId,
+        username: participantInfo?.username || sUserId,
+        action: 'ROOM_LEAVE',
+        category: 'rtc',
+        portal: parsedRoom?.portalId,
+        details: {
+            roomName,
+            portalId: parsedRoom?.portalId,
+            channelId: parsedRoom?.channelId,
+            durationSec,
+            remainingParticipants: participants?.length || 0
+        }
+    });
+
     // A leaving user changes head count and voter set → re-check pending stop consensus
     try { await evaluateStopVote(roomName); } catch (err) { console.error('[Watch Party] re-evaluate failed:', err.message); }
 
@@ -790,6 +808,19 @@ export const initializeVoiceHandler = (io) => {
                     username: safeName,
                     avatar: safeAvatar
                 });
+                logActivity({
+                    user: sUserId,
+                    username: safeName,
+                    action: 'ROOM_JOIN',
+                    category: 'rtc',
+                    portal: parsedRoom.portalId,
+                    details: {
+                        roomName,
+                        portalId: parsedRoom.portalId,
+                        channelId: parsedRoom.channelId,
+                        participantCount: participants?.length || 1
+                    }
+                });
             }
 
             console.log(`🎙️ User ${safeName} joined voice room ${roomName} (${participants.length} participants)`);
@@ -891,6 +922,18 @@ export const initializeVoiceHandler = (io) => {
             }
 
             io.to(`voice:${roomName}`).emit('voice:state-update', { userId: sUserId, isMuted, isCameraOn, isScreenSharing });
+
+            if (isCameraOn || isScreenSharing) {
+                const parsed = parseRoomName(roomName);
+                logActivity({
+                    user: sUserId,
+                    username: socket.data?.voiceProfile?.username || socket.username || sUserId,
+                    action: 'STREAM_TOGGLE',
+                    category: 'rtc',
+                    portal: parsed?.portalId,
+                    details: { roomName, isCameraOn, isScreenSharing, isMuted }
+                });
+            }
         });
 
         // ─── Broadcast Chat Messages (sender identity is server side) ───
@@ -949,6 +992,16 @@ export const initializeVoiceHandler = (io) => {
             io.to(`voice:${roomName}`).emit('voice:watch-stop-vote-clear');
             io.to(`voice:${roomName}`).emit('voice:watch-state', watchPartyState);
             console.log(`[Watch Party] started in ${roomName} (isLive: ${!!isLive})`);
+
+            const parsed = parseRoomName(roomName);
+            logActivity({
+                user: myId(),
+                username: socket.data?.voiceProfile?.username || socket.username || 'Kullanıcı',
+                action: 'WP_START',
+                category: 'rtc',
+                portal: parsed?.portalId,
+                details: { roomName, url: url.trim(), title: clampString(title, MAX_TITLE_LENGTH), isLive: !!isLive }
+            });
         });
 
         const registerPlaybackEvent = (eventName, apply) => {
@@ -967,6 +1020,17 @@ export const initializeVoiceHandler = (io) => {
                 });
                 if (!updated) return; // no active watch party → nothing to synchronise
                 io.to(`voice:${roomName}`).emit(eventName, { time, serverTimestamp: now, senderId: myId() });
+
+                const parsed = parseRoomName(roomName);
+                const actionName = eventName === 'voice:watch-play' ? 'WP_PLAY' : (eventName === 'voice:watch-pause' ? 'WP_PAUSE' : 'WP_SEEK');
+                logActivity({
+                    user: myId(),
+                    username: socket.data?.voiceProfile?.username || socket.username || 'Kullanıcı',
+                    action: actionName,
+                    category: 'rtc',
+                    portal: parsed?.portalId,
+                    details: { roomName, time }
+                });
             });
         };
         registerPlaybackEvent('voice:watch-play', (wp, time) => { wp.isPlaying = true; wp.currentTime = time; });
@@ -1164,6 +1228,17 @@ export const initializeVoiceHandler = (io) => {
             const target = await canSignal(roomName, targetUserId);
             if (!target) return;
             io.to(target).emit('voice:ice-restart-request', { senderId: myId(), hard: !!hard });
+
+            const parsed = parseRoomName(roomName);
+            logActivity({
+                user: myId(),
+                username: socket.data?.voiceProfile?.username || socket.username || 'Kullanıcı',
+                action: 'ICE_CONNECTION_FAILED',
+                category: 'rtc',
+                severity: 'warning',
+                portal: parsed?.portalId,
+                details: { roomName, targetUserId: target, hard: !!hard }
+            });
         });
 
         // ─── Cleanup on Disconnect ───

@@ -4,6 +4,7 @@ import { mongoIdValidation } from '../middleware/validation.js';
 import Report from '../models/Report.js';
 import Post from '../models/Post.js';
 import User from '../models/User.js';
+import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -43,6 +44,17 @@ router.post('/', protect, async (req, res) => {
             targetUser: targetType === 'user' ? targetId : undefined,
             reason,
             details
+        });
+
+        logActivity({
+            user: req.user._id,
+            username: req.user.username,
+            action: 'REPORT_CREATED',
+            category: 'content',
+            severity: 'warning',
+            req,
+            targetId,
+            details: { targetType, reason, details }
         });
 
         res.status(201).json({ message: 'Bildiriminiz başarıyla iletildi.', report });

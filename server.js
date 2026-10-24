@@ -39,6 +39,7 @@ import ogRoutes from './routes/og.js';
 import hlsProxyRoutes from './routes/hlsProxy.js';
 import { initFirebase } from './utils/firebase.js';
 import { seedTanitimPortalOnBoot } from './services/tanitimService.js';
+import logActivity from './utils/auditLogger.js';
 
 // Initialize Firebase Admin SDK for FCM push notifications
 initFirebase();
@@ -307,6 +308,29 @@ app.use((req, res, next) => {
 app.use('/og', ogRoutes);
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Latency & System Telemetry Middleware (>800ms API calls logged)
+app.use('/api', (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (duration > 800 && !req.path.includes('/proxy') && !req.path.includes('/stream') && !req.path.includes('/upload')) {
+            logActivity({
+                action: 'HIGH_LATENCY',
+                category: 'system',
+                severity: 'warning',
+                req,
+                details: {
+                    method: req.method,
+                    path: req.originalUrl || req.url,
+                    statusCode: res.statusCode,
+                    durationMs: duration
+                }
+            });
+        }
+    });
+    next();
+});
+
 // Routes
 app.use('/api', hlsProxyRoutes);
 app.use('/api/media', hlsProxyRoutes);
@@ -345,6 +369,17 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
             return res.status(403).json({ error: 'Invalid signature' });
         }
     }
+
+    logActivity({
+        action: 'WEBHOOK_EXECUTED',
+        category: 'bot',
+        req,
+        details: {
+            service: 'github-deploy',
+            ref: req.body?.ref,
+            headCommit: req.body?.head_commit?.message?.substring(0, 100)
+        }
+    });
 
     console.log('🚀 [AutoDeploy] GitHub push event received! Updating backend...');
     res.status(200).json({ message: 'Deploy triggered successfully' });
@@ -598,6 +633,11 @@ const cleanupExpiredTouristAdmins = async () => {
 
         if (expiredUsers.length > 0) {
             console.log(`🧹 Found ${expiredUsers.length} expired tourist admins. Revoking permissions...`);
+            logActivity({
+                action: 'CRON_CLEANUP_EXPIRED_ADMINS',
+                category: 'system',
+                details: { count: expiredUsers.length }
+            });
             const Notification = await import('./models/Notification.js').then(m => m.default);
             for (const user of expiredUsers) {
                 user.isTouristAdmin = false;

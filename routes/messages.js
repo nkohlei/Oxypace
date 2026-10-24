@@ -11,7 +11,7 @@ import axios from 'axios';
 import r2 from '../config/r2.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
-
+import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -195,6 +195,23 @@ router.post(
             };
 
             const message = await Message.create(messageData);
+
+            logActivity({
+                user: req.user._id,
+                username: req.user.username,
+                action: 'MESSAGE_SEND',
+                category: 'content',
+                req,
+                targetId: message._id,
+                targetType: 'Message',
+                details: {
+                    recipientId,
+                    hasMedia: !!media,
+                    mediaType: mediaType || 'none',
+                    hasSharedPost: !!postId,
+                    hasSharedPortal: !!portalId
+                }
+            });
 
             const populatedMessage = await Message.findById(message._id)
                 .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')

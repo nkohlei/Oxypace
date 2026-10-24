@@ -340,6 +340,23 @@ router.post(
             const post = await Post.create(postData);
             console.log('✅ Post created successfully! ID:', post._id);
 
+            logActivity({
+                user: req.user._id,
+                username: req.user.username,
+                action: 'POST_CREATE',
+                category: 'content',
+                portal: post.portal,
+                targetId: post._id,
+                targetType: 'Post',
+                req,
+                details: {
+                    portalId: post.portal,
+                    channelId: post.channel,
+                    hasMedia: !!post.media,
+                    mediaType: post.mediaType
+                }
+            });
+
             if (post.mediaType === 'video') {
                 const videoKey = req.body.mediaKey || (req.file ? req.file.key : null);
                 if (videoKey) {

@@ -206,6 +206,15 @@ router.get('/verify-email', async (req, res) => {
         user.verificationToken = undefined;
         await user.save();
 
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'EMAIL_VERIFIED',
+            category: 'auth',
+            req,
+            details: { email: user.email }
+        });
+
         res.json({
             message: 'Email verified successfully! You can now log in.',
             success: true,
@@ -231,6 +240,13 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         const user = await User.findOne({ email }).populate('joinedPortals', 'name avatar');
 
         if (!user) {
+            logActivity({
+                action: 'LOGIN_FAILED',
+                category: 'auth',
+                severity: 'warning',
+                req,
+                details: { email, reason: 'USER_NOT_FOUND' }
+            });
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
@@ -238,11 +254,29 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         const isMatch = await user.comparePassword(password);
 
         if (!isMatch) {
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'LOGIN_FAILED',
+                category: 'auth',
+                severity: 'warning',
+                req,
+                details: { email, reason: 'INVALID_PASSWORD' }
+            });
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
         // Check if soft-deleted
         if (user.isDeleted) {
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'LOGIN_FAILED',
+                category: 'auth',
+                severity: 'warning',
+                req,
+                details: { email, reason: 'DELETED_ACCOUNT' }
+            });
             return res.status(403).json({
                 isDeleted: true,
                 message: 'Bu hesap silinmiştir. Kurtarmak istiyor musunuz?',
@@ -252,6 +286,15 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 
         // Check if verified
         if (!user.isVerified) {
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'LOGIN_FAILED',
+                category: 'auth',
+                severity: 'warning',
+                req,
+                details: { email, reason: 'UNVERIFIED_EMAIL' }
+            });
             return res.status(403).json({ message: 'Please verify your email before logging in' });
         }
 
@@ -264,6 +307,15 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
                 user.banExpiresAt = null;
                 await user.save();
             } else {
+                logActivity({
+                    user: user._id,
+                    username: user.username,
+                    action: 'LOGIN_FAILED',
+                    category: 'auth',
+                    severity: 'security',
+                    req,
+                    details: { email, reason: 'BANNED_USER', banReason: user.banReason }
+                });
                 const bannedDeviceToken = jwt.sign(
                     { banned: true, expiresAt: user.banExpiresAt },
                     process.env.JWT_SECRET
@@ -337,10 +389,10 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         logActivity({
             user: user._id,
             username: user.username,
-            action: 'LOGIN',
+            action: 'LOGIN_SUCCESS',
             category: 'auth',
             req,
-            details: { email: user.email, isNewDevice: !!isNewDevice }
+            details: { email: user.email, isNewDevice: !!isNewDevice, deviceName: formattedDeviceName, deviceType }
         });
 
         // Generate token
@@ -600,6 +652,15 @@ router.post('/google/validate', async (req, res) => {
             user.lastIP = incomingIP;
             await user.save();
 
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'LOGIN_SUCCESS',
+                category: 'auth',
+                req,
+                details: { method: 'google', email: user.email, isNewDevice: !!isNewDevice, deviceName: formattedDeviceName }
+            });
+
             const realToken = generateToken(decoded.id, user.isAdmin);
 
             res.cookie('token', realToken, {
@@ -806,10 +867,49 @@ router.post('/reset-password', newPasswordValidation, async (req, res) => {
 
         await user.save();
 
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'PASSWORD_RESET_SUCCESS',
+            category: 'auth',
+            severity: 'warning',
+            req,
+            details: { email: user.email }
+        });
+
         res.json({ message: 'Password has been reset successfully' });
     } catch (error) {
         console.error('Reset password error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/auth/logout
+// @desc    Logout user and clear cookies
+// @access  Public
+router.post('/logout', (req, res) => {
+    try {
+        const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                if (decoded?.id) {
+                    logActivity({
+                        user: decoded.id,
+                        action: 'LOGOUT',
+                        category: 'auth',
+                        req,
+                        details: { reason: 'USER_INITIATED' }
+                    });
+                }
+            } catch (e) {
+                // Token might be expired, ignore and clear cookie
+            }
+        }
+        res.clearCookie('token');
+        return res.json({ success: true, message: 'Başarıyla çıkış yapıldı' });
+    } catch (err) {
+        return res.status(500).json({ message: 'Çıkış işlemi sırasında hata oluştu' });
     }
 });
 
