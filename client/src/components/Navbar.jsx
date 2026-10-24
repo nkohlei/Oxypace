@@ -439,13 +439,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                             aria-label="Hesap Değiştir"
                                             aria-expanded={showAccountSwitcher}
                                         >
-                                            <ChevronDown size={18} className={`switch-arrow-icon ${showAccountSwitcher ? 'rotated' : ''}`} />
+                                            <ChevronDown size={15} className={`switch-arrow-icon ${showAccountSwitcher ? 'rotated' : ''}`} />
                                         </button>
                                     </div>
 
                                     {/* Expandable Multi-Account Switcher Section */}
                                     {showAccountSwitcher && (
-                                        <div className="dropdown-account-switcher-drawer animation-slide-down">
+                                        <div className="dropdown-account-switcher-drawer">
                                             <div className="account-switcher-header">
                                                 <span className="account-switcher-title">Kayıtlı Hesaplar</span>
                                             </div>
@@ -468,7 +468,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                                             <UserAvatar
                                                                 src={acc.profile?.avatar}
                                                                 alt={acc.username}
-                                                                size={34}
+                                                                size={30}
                                                                 className="saved-account-avatar"
                                                             />
                                                             <div className="saved-account-details">
@@ -485,7 +485,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                                                 title="Bu hesabı listeden kaldır"
                                                                 aria-label="Hesabı kaldır"
                                                             >
-                                                                <X size={14} />
+                                                                <X size={13} />
                                                             </button>
                                                         </div>
                                                     ))}
@@ -505,9 +505,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                                     setShowAddAccountModal(true);
                                                 }}
                                             >
-                                                <div className="add-account-icon-badge">
-                                                    <Plus size={16} />
-                                                </div>
+                                                <Plus size={14} />
                                                 <span>Hesap Ekle</span>
                                             </button>
                                         </div>
