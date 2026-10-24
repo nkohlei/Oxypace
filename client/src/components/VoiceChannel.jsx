@@ -15,48 +15,60 @@ import './VoiceChannel.css';
 
 const CallManager = registerPlugin('CallManager');
 
-const VideoRenderer = ({ track, isLocal, className, identity }) => {
-    const videoEl = React.useRef(null);
-    const rawTrack = track?.track || track?.mediaStreamTrack || (track instanceof MediaStreamTrack ? track : (track instanceof MediaStream ? track.getVideoTracks()[0] : null));
-    const trackId = rawTrack?.id || track?.id;
+// Standalone VideoRenderer outside main component scope matching GlobalVideoPIP architecture
+// to guarantee zero DOM re-creations / unmounts and simultaneous multi-camera rendering
+const VideoRenderer = React.memo(({ participant, isShowingScreen, className, identity, avatarUrl }) => {
+    const videoRef = useRef(null);
+    const rawTrackObj = isShowingScreen ? participant?.screenShareTrack : (participant?.videoTrack || participant?.screenShareTrack);
+    const rawTrack = rawTrackObj?.mediaStreamTrack || rawTrackObj?.track || (rawTrackObj instanceof MediaStreamTrack ? rawTrackObj : (rawTrackObj instanceof MediaStream ? rawTrackObj.getVideoTracks()[0] : null));
 
-    React.useEffect(() => {
-        const el = videoEl.current;
-        if (!el || !rawTrack) return;
+    const isVideoActive = isShowingScreen ? !!participant?.isScreenSharing : !!participant?.isCameraOn;
 
-        const currentTrack = el.srcObject?.getVideoTracks?.()[0];
-        if (currentTrack && currentTrack.id === rawTrack.id && el.srcObject?.active) {
-            if (el.paused) el.play().catch(() => {});
-            return;
-        }
+    useEffect(() => {
+        const el = videoRef.current;
+        if (!el) return;
 
-        if (typeof track.attach === 'function') {
-            track.attach(el);
-        } else if (track instanceof MediaStream) {
-            if (el.srcObject !== track) {
-                el.srcObject = track;
+        if (rawTrack && isVideoActive) {
+            const currentStream = el.srcObject;
+            if (currentStream && currentStream.getVideoTracks?.()[0]?.id === rawTrack.id && currentStream.active) {
+                if (el.paused) el.play().catch(() => {});
+                return;
             }
-        } else if (rawTrack) {
-            el.srcObject = new MediaStream([rawTrack]);
-        }
 
-        const playPromise = el.play?.();
-        if (playPromise !== undefined) {
-            playPromise.catch(() => {});
+            if (typeof rawTrackObj?.attach === 'function') {
+                rawTrackObj.attach(el);
+            } else {
+                el.srcObject = new MediaStream([rawTrack]);
+                el.play().catch(e => console.warn("[VoiceChannel] Video play error:", e));
+            }
+        } else {
+            if (typeof rawTrackObj?.detach === 'function') {
+                rawTrackObj.detach(el);
+            } else {
+                el.srcObject = null;
+            }
         }
 
         return () => {
-            if (typeof track?.detach === 'function') {
-                track.detach(el);
+            if (typeof rawTrackObj?.detach === 'function') {
+                rawTrackObj.detach(el);
             } else if (el) {
                 el.srcObject = null;
             }
         };
-    }, [trackId]);
+    }, [rawTrack?.id, participant?.isCameraOn, participant?.isScreenSharing, isShowingScreen, isVideoActive]);
+
+    // Continuous watch: guarantee element resumes playing if browser pauses it during renegotiation or local camera start
+    useEffect(() => {
+        const el = videoRef.current;
+        if (el && el.paused && isVideoActive && rawTrack) {
+            el.play().catch(() => {});
+        }
+    });
 
     // Live frame capture for the transparent overlay window (Electron only)
-    React.useEffect(() => {
-        if (!window.desktopAPI || !track) return; // Allow both local and remote feeds
+    useEffect(() => {
+        if (!window.desktopAPI || !rawTrackObj) return;
 
         let active = true;
         let timer = null;
@@ -64,10 +76,9 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
         const ctx = canvas.getContext('2d');
         
         const captureFrame = () => {
-            if (!active || !videoEl.current) return;
-            const video = videoEl.current;
+            if (!active || !videoRef.current) return;
+            const video = videoRef.current;
 
-            // Only capture if document is visible and video has valid dimensions
             if (!document.hidden && video.videoWidth > 0 && video.videoHeight > 0) {
                 canvas.width = 160;
                 canvas.height = 90;
@@ -80,7 +91,6 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
                     console.error("Frame capture error:", e);
                 }
             }
-            // Capture frame at optimized 150ms interval (~6.6 fps for lightweight overlay thumbnails)
             timer = setTimeout(captureFrame, 150);
         };
 
@@ -91,20 +101,36 @@ const VideoRenderer = ({ track, isLocal, className, identity }) => {
             if (timer) clearTimeout(timer);
             window.desktopAPI.sendVideoFrame({ identity, frame: null });
         };
-    }, [track, identity]);
+    }, [rawTrack?.id, identity]);
 
+    if (isVideoActive && rawTrack) {
+        return (
+            <video 
+                ref={videoRef} 
+                className={className} 
+                autoPlay 
+                playsInline 
+                muted={true} 
+            />
+        );
+    }
 
+    if (isShowingScreen) {
+        return (
+            <div className="vc-screenshare-placeholder-bg-mobile">
+                <div className="vc-card-avatar-area">
+                    <img className="vc-card-avatar" src={avatarUrl} alt="" />
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <video 
-            ref={videoEl} 
-            className={className} 
-            autoPlay 
-            muted={true} 
-            playsInline 
-        />
+        <div className="vc-card-avatar-area">
+            <img className="vc-card-avatar" src={avatarUrl} alt="" />
+        </div>
     );
-};
+});
 
 
 
@@ -569,35 +595,19 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             else handleFocus(p.identity);
         };
         const isShowingScreen = p.isScreenSharing;
-        const trackToRender = isShowingScreen ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
-        const shouldAttachVideo = true;
 
         return (
             <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={handleCardClick}>
                 <div className="vc-card-video-area">
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
-                    {trackToRender && shouldAttachVideo ? (
-                        <VideoRenderer 
-                            className={`vc-card-video ${isShowingScreen ? 'vc-screenshare-video-contained' : ''}`} 
-                            track={trackToRender} 
-                            isLocal={p.isLocal} 
-                            identity={p.identity}
-                        />
-
-                    ) : (
-                        isShowingScreen ? (
-                            <div className="vc-screenshare-placeholder-bg-mobile">
-                                <div className="vc-card-avatar-area">
-                                    <img className="vc-card-avatar" src={avatarUrl} alt="" />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="vc-card-avatar-area">
-                                <img className="vc-card-avatar" src={avatarUrl} alt="" />
-                            </div>
-                        )
-                    )}
+                    <VideoRenderer 
+                        participant={p}
+                        isShowingScreen={isShowingScreen}
+                        className={`vc-card-video ${isShowingScreen ? 'vc-screenshare-video-contained' : ''}`}
+                        avatarUrl={avatarUrl}
+                        identity={p.identity}
+                    />
                 </div>
                 <div className="vc-card-info">
                     <span className="vc-card-name">{p.name} {p.isLocal && '(Sen)'}</span>
