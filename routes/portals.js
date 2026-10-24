@@ -13,6 +13,7 @@ import multer from 'multer';
 import upload from '../middleware/upload.js';
 import { escapeRegex } from '../utils/security.js';
 import { invalidatePortalRuleCache } from '../sockets/voiceHandler.js';
+import logActivity from '../utils/auditLogger.js';
 
 /**
  * Foolproof channel query and filter generator for a portal.
@@ -123,6 +124,17 @@ router.post('/', protect, async (req, res) => {
         // Add to user's joined portals
         await User.findByIdAndUpdate(req.user._id, {
             $addToSet: { joinedPortals: portal._id },
+        });
+
+        logActivity({
+            user: req.user._id,
+            username: req.user.username,
+            action: 'PORTAL_CREATE',
+            category: 'portal',
+            req,
+            targetId: portal._id,
+            targetType: 'Portal',
+            details: { name: portal.name, privacy: portal.privacy }
         });
 
         res.status(201).json(portal);

@@ -4,24 +4,7 @@ let lastFetched = 0;
 const BACKEND_URL = "https://api.oxypace.com.tr";
 
 async function getMaintenanceStatus() {
-  const now = Date.now();
-  // Son fetch işleminden beri 60 saniye geçmediyse önbellekteki değeri dön (Performans için)
-  if (isMaintenanceCached !== null && (now - lastFetched < 60000)) {
-    return isMaintenanceCached;
-  }
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 saniyeden fazla bekletme
-    const res = await fetch(`${BACKEND_URL}/api/auth/maintenance-status`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!res.ok) return false;
-    const data = await res.json();
-    isMaintenanceCached = !!data.active;
-    lastFetched = now;
-    return isMaintenanceCached;
-  } catch (e) {
-    return false; // Hata durumunda siteyi açık tut (fail-safe)
-  }
+  return false;
 }
 
 /**

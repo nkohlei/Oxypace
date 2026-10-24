@@ -13,6 +13,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
 import { transcodeVideoInBackground } from '../utils/videoTranscoder.js';
 import path from 'path';
+import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -461,6 +462,23 @@ router.post(
                     console.error('Error creating portal notifications:', err);
                 }
             }
+
+            logActivity({
+                user: req.user._id,
+                username: req.user.username,
+                action: 'POST_CREATE',
+                category: 'content',
+                req,
+                targetId: post._id,
+                targetType: 'Post',
+                details: {
+                    snippet: post.content ? post.content.substring(0, 80) : '',
+                    portalId: post.portal,
+                    channel: post.channel,
+                    mediaType: post.mediaType,
+                    hasMedia: !!post.media
+                }
+            });
 
             return res.status(201).json(populatedPost || post);
         } catch (error) {
@@ -1012,7 +1030,19 @@ router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this post' });
         }
 
+        const snippet = post.content ? post.content.substring(0, 80) : '';
         await post.deleteOne();
+
+        logActivity({
+            user: req.user._id,
+            username: req.user.username,
+            action: 'POST_DELETE',
+            category: 'content',
+            req,
+            targetId: post._id,
+            targetType: 'Post',
+            details: { snippet, portalId: post.portal }
+        });
 
         res.json({ message: 'Post deleted successfully' });
     } catch (error) {

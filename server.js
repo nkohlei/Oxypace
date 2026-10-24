@@ -51,7 +51,6 @@ import Post from './models/Post.js';
 import helmetConfig from './middleware/helmet-config.js';
 import { generalLimiter } from './middleware/rate-limit.js';
 import mongoSanitize from 'express-mongo-sanitize';
-import { checkMaintenance } from './middleware/maintenance.js';
 import { banCheckMiddleware } from './middleware/banCheck.js';
 
 // ES Module __dirname equivalent
@@ -210,7 +209,6 @@ app.use(express.json({ limit: '100mb' })); // Increased limit for large metadata
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(cookieParser()); // Add cookie-parser middleware
 app.use('/api', banCheckMiddleware); // Global IP and Account Ban check middleware
-app.use('/api', checkMaintenance); // Global maintenance mode check for all API routes
 
 if (!process.env.JWT_SECRET) {
     console.error('❌ CRITICAL ERROR: JWT_SECRET environment variable is missing.');

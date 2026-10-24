@@ -16,6 +16,41 @@ import MobileVersionHistory from '../components/MobileVersionHistory';
 import { uploadFile } from '../utils/uploadUtils';
 import './AdminDashboard.css';
 
+// Safe Admin Media rendering component to guarantee NO broken images or gifs
+const AdminMedia = ({ src, alt = '', className = '', style = {}, isAvatar = false, fallbackText = 'Görsel Yok' }) => {
+    const [failed, setFailed] = useState(false);
+    
+    useEffect(() => {
+        setFailed(false);
+    }, [src]);
+
+    const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666666'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
+
+    if (!src || failed) {
+        if (isAvatar) {
+            return <img src={defaultAvatarSvg} alt="" className={className} style={{ objectFit: 'cover', ...style }} />;
+        }
+        return (
+            <div className={className} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#161616', color: '#666666', border: '1px solid #282828', fontSize: '11px', fontWeight: 600, ...style }}>
+                {fallbackText}
+            </div>
+        );
+    }
+
+    const resolvedUrl = src.startsWith('data:') || src.startsWith('blob:') ? src : getImageUrl(src);
+
+    return (
+        <img
+            src={resolvedUrl}
+            alt={alt}
+            className={className}
+            style={style}
+            onError={() => setFailed(true)}
+            loading="lazy"
+        />
+    );
+};
+
 // Modern Modal Component for Reason Entry + Duration Picker
 const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
     const [reason, setReason] = useState('');
@@ -1121,6 +1156,50 @@ const AdminDashboard = () => {
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
 
+    // User Dossier (Şecere) State
+    const [userDossierOpen, setUserDossierOpen] = useState(false);
+    const [userDossierData, setUserDossierData] = useState(null);
+    const [loadingDossier, setLoadingDossier] = useState(false);
+
+    // User Posts Inspector State
+    const [userPostsOpen, setUserPostsOpen] = useState(false);
+    const [userPostsData, setUserPostsData] = useState([]);
+    const [userPostsUser, setUserPostsUser] = useState(null);
+    const [userPostsSearch, setUserPostsSearch] = useState('');
+    const [loadingUserPosts, setLoadingUserPosts] = useState(false);
+
+    // Portal Posts Inspector State
+    const [portalPostsOpen, setPortalPostsOpen] = useState(false);
+    const [portalPostsData, setPortalPostsData] = useState([]);
+    const [selectedPortalForPosts, setSelectedPortalForPosts] = useState(null);
+    const [portalPostsChannelFilter, setPortalPostsChannelFilter] = useState('all');
+    const [portalPostsSearch, setPortalPostsSearch] = useState('');
+    const [loadingPortalPosts, setLoadingPortalPosts] = useState(false);
+
+    // Platform Activity Logs (Platform Günlüğü) State
+    const [activityLogs, setActivityLogs] = useState([]);
+    const [activityLogsTotal, setActivityLogsTotal] = useState(0);
+    const [activityLogsPage, setActivityLogsPage] = useState(1);
+    const [activityLogsLoading, setActivityLogsLoading] = useState(false);
+    const [activityLogsSearch, setActivityLogsSearch] = useState('');
+    const [activityLogsCategory, setActivityLogsCategory] = useState('all');
+    const [activityViewMode, setActivityViewMode] = useState('logs'); // 'logs' or 'live'
+
+    // Tourist Admin Granular Permissions State
+    const [touristPermissions, setTouristPermissions] = useState({
+        canManageUsers: false,
+        canBanUsers: false,
+        canManagePortals: false,
+        canManageReports: true,
+        canManageBadges: false,
+        canManageBots: false,
+        canViewLogs: true,
+        canSendNotifications: false,
+        canManageBlog: true,
+    });
+    const [editPermissionsModalOpen, setEditPermissionsModalOpen] = useState(false);
+    const [editingTouristAdmin, setEditingTouristAdmin] = useState(null);
+
     // Custom badges state
     const [customBadges, setCustomBadges] = useState([]);
     const [customBadgeName, setCustomBadgeName] = useState('');
@@ -1537,6 +1616,7 @@ const AdminDashboard = () => {
             }
             body.expiresAt = new Date(customTouristDate).toISOString();
         }
+        body.permissions = touristPermissions;
 
         setAssigningTourist(true);
         try {
@@ -1609,8 +1689,8 @@ const AdminDashboard = () => {
             fetchFeedbacks();
         } else if (activeTab === 'ipbans') {
             fetchBannedIps();
-        } else if (activeTab === 'system' && isOxypace) {
-            fetchMaintenanceStatus();
+        } else if (activeTab === 'activity') {
+            fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
         } else if (activeTab === 'tourist-admin' && isOxypace) {
             fetchTouristAdmins();
         } else if (activeTab === 'bots') {
@@ -1998,6 +2078,88 @@ const AdminDashboard = () => {
     const openUserDetail = (user) => {
         setSelectedUserDetail(user);
         setUserDetailModalOpen(true);
+    };
+
+    const openUserDossier = async (user) => {
+        setUserDossierOpen(true);
+        setLoadingDossier(true);
+        setUserDossierData(null);
+        try {
+            const { data } = await axios.get(`/api/admin/users/${user._id}/dossier`);
+            setUserDossierData(data);
+        } catch (err) {
+            alert('Kullanıcı şeceresi yüklenemedi: ' + (err.response?.data?.message || err.message));
+            setUserDossierOpen(false);
+        } finally {
+            setLoadingDossier(false);
+        }
+    };
+
+    const openUserPosts = async (user, searchQuery = '') => {
+        setUserPostsUser(user);
+        setUserPostsOpen(true);
+        setLoadingUserPosts(true);
+        try {
+            const { data } = await axios.get(`/api/admin/users/${user._id}/posts?q=${encodeURIComponent(searchQuery)}`);
+            setUserPostsData(data.posts || []);
+        } catch (err) {
+            alert('Kullanıcı gönderileri yüklenemedi.');
+        } finally {
+            setLoadingUserPosts(false);
+        }
+    };
+
+    const openPortalPosts = async (portal, channelId = 'all', searchQuery = '') => {
+        setSelectedPortalForPosts(portal);
+        setPortalPostsOpen(true);
+        setLoadingPortalPosts(true);
+        try {
+            const { data } = await axios.get(`/api/admin/portals/${portal._id}/posts?channelId=${channelId}&q=${encodeURIComponent(searchQuery)}`);
+            setPortalPostsData(data.posts || []);
+        } catch (err) {
+            alert('Portal gönderileri yüklenemedi.');
+        } finally {
+            setLoadingPortalPosts(false);
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        if (!window.confirm('Bu gönderiyi kalıcı olarak silmek istediğinize emin misiniz?')) return;
+        try {
+            await axios.delete(`/api/admin/posts/${postId}`);
+            setUserPostsData(prev => prev.filter(p => p._id !== postId));
+            setPortalPostsData(prev => prev.filter(p => p._id !== postId));
+            alert('Gönderi sistemden kalıcı olarak silindi.');
+        } catch (err) {
+            alert('Gönderi silinemedi: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const fetchActivityLogs = async (page = 1, query = '', category = 'all') => {
+        setActivityLogsLoading(true);
+        try {
+            const { data } = await axios.get(`/api/admin/activity-logs?page=${page}&q=${encodeURIComponent(query)}&category=${category}`);
+            setActivityLogs(data.logs || []);
+            setActivityLogsTotal(data.total || 0);
+            setActivityLogsPage(data.page || 1);
+        } catch (err) {
+            console.error('Activity logs fetch error:', err);
+        } finally {
+            setActivityLogsLoading(false);
+        }
+    };
+
+    const handleUpdateTouristPermissions = async (userId, newPermissions) => {
+        try {
+            const { data } = await axios.put(`/api/admin/users/${userId}/tourist-admin/permissions`, {
+                permissions: newPermissions
+            });
+            alert(data.message || 'Turist admin hakları başarıyla güncellendi.');
+            setEditPermissionsModalOpen(false);
+            fetchTouristAdmins();
+        } catch (err) {
+            alert('Haklar güncellenemedi: ' + (err.response?.data?.message || err.message));
+        }
     };
 
     const handleUserShadowbanToggle = async (userId, currentShadowbanned) => {
@@ -3209,7 +3371,7 @@ const AdminDashboard = () => {
                             onClick={() => { setActiveTab('activity'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Globe size={18} /></span>
-                            <span className="snav-label">Aktif Oturumlar</span>
+                            <span className="snav-label">Platform Günlüğü & Oturumlar</span>
                         </button>
 
                         <button
@@ -3286,15 +3448,7 @@ const AdminDashboard = () => {
                             <span className="snav-label">Toplu Bildirim Gönder</span>
                         </button>
 
-                        {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
-                            <button
-                                className={`sidebar-nav-item ${activeTab === 'system' ? 'active' : ''}`}
-                                onClick={() => { setActiveTab('system'); setSidebarOpen(false); }}
-                            >
-                                <span className="snav-icon"><Settings size={18} /></span>
-                                <span className="snav-label">Sistem Ayarları</span>
-                            </button>
-                        )}
+
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-designs' ? 'active' : ''}`}
@@ -3446,13 +3600,42 @@ const AdminDashboard = () => {
                                             </div>
                                         )}
 
+                                        {/* Turist Admin Hakları / Granular Permissions */}
+                                        <div style={{ marginTop: '16px', marginBottom: '20px', background: '#0d0d0d', border: '1px solid #222222', padding: '16px' }}>
+                                            <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#888888', margin: '0 0 12px 0', borderBottom: '1px solid #1a1a1a', paddingBottom: '6px' }}>
+                                                🛡️ Turist Admin Hakları & Yetki Sınırları
+                                            </h4>
+                                            <div className="permissions-grid" style={{ padding: 0, background: 'transparent', border: 'none' }}>
+                                                {[
+                                                    { key: 'canManageUsers', label: 'Kullanıcıları Yönet' },
+                                                    { key: 'canBanUsers', label: 'Kullanıcı Engelle / Ceza Ver' },
+                                                    { key: 'canManagePortals', label: 'Portalları Yönet' },
+                                                    { key: 'canManageReports', label: 'Raporları İncele / Çöz' },
+                                                    { key: 'canManageBadges', label: 'Rozetleri Yönet' },
+                                                    { key: 'canManageBots', label: 'Botları Yönet' },
+                                                    { key: 'canViewLogs', label: 'Platform Günlüğü / İzleri Gör' },
+                                                    { key: 'canSendNotifications', label: 'Toplu Bildirim Gönder' },
+                                                    { key: 'canManageBlog', label: 'Blog İçeriklerini Yönet' },
+                                                ].map(item => (
+                                                    <label key={item.key} className="permission-checkbox-item">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!touristPermissions[item.key]}
+                                                            onChange={(e) => setTouristPermissions(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                                                        />
+                                                        <span>{item.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div className="form-actions-modern">
                                             <button
                                                 type="button"
-                                                className="btn-modern-primary btn-glow-cyan"
+                                                className="btn-modern-primary"
                                                 onClick={handleAssignTouristAdmin}
                                                 disabled={assigningTourist}
-                                                style={{ width: '100%', padding: '12px' }}
+                                                style={{ width: '100%', padding: '14px', borderRadius: 0, fontWeight: 700, letterSpacing: '1px' }}
                                             >
                                                 {assigningTourist ? 'ATANIYOR...' : '💼 TURİST ADMIN OLARAK ATA'}
                                             </button>
@@ -3474,6 +3657,7 @@ const AdminDashboard = () => {
                                                 <tr>
                                                     <th>Kullanıcı</th>
                                                     <th>Atayan</th>
+                                                    <th>Aktif Yetkiler</th>
                                                     <th>Bitiş Tarihi</th>
                                                     <th>Kalan Süre</th>
                                                     <th>İşlem</th>
@@ -3489,6 +3673,9 @@ const AdminDashboard = () => {
                                                         const diffMins = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
                                                         timeLeftStr = diffHours > 0 ? `${diffHours} sa ${diffMins} dk` : `${diffMins} dk`;
                                                     }
+                                                    const perms = admin.touristAdminPermissions || {};
+                                                    const enabledPermCount = Object.values(perms).filter(Boolean).length;
+
                                                     return (
                                                         <tr key={admin._id}>
                                                             <td>
@@ -3501,17 +3688,45 @@ const AdminDashboard = () => {
                                                                 </div>
                                                             </td>
                                                             <td>@{admin.assignedBy || 'oxypace'}</td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '280px' }}>
+                                                                    {perms.canManageUsers && <span className="mono-tag" style={{ fontSize: '9px' }}>Kullanıcı</span>}
+                                                                    {perms.canBanUsers && <span className="mono-tag" style={{ fontSize: '9px' }}>Ceza</span>}
+                                                                    {perms.canManagePortals && <span className="mono-tag" style={{ fontSize: '9px' }}>Portal</span>}
+                                                                    {perms.canManageReports && <span className="mono-tag" style={{ fontSize: '9px' }}>Rapor</span>}
+                                                                    {perms.canManageBadges && <span className="mono-tag" style={{ fontSize: '9px' }}>Rozet</span>}
+                                                                    {perms.canManageBots && <span className="mono-tag" style={{ fontSize: '9px' }}>Bot</span>}
+                                                                    {perms.canViewLogs && <span className="mono-tag" style={{ fontSize: '9px' }}>Günlük</span>}
+                                                                    {perms.canSendNotifications && <span className="mono-tag" style={{ fontSize: '9px' }}>Bildirim</span>}
+                                                                    {perms.canManageBlog && <span className="mono-tag" style={{ fontSize: '9px' }}>Blog</span>}
+                                                                    {enabledPermCount === 0 && <span style={{ color: '#666', fontSize: '11px' }}>Özel İzin Yok</span>}
+                                                                </div>
+                                                            </td>
                                                             <td>{expiresAt.toLocaleString('tr-TR')}</td>
                                                             <td>
                                                                 <span className="time-left-badge">{timeLeftStr}</span>
                                                             </td>
                                                             <td>
-                                                                <button 
-                                                                    onClick={() => handleRevokeTouristAdmin(admin._id)}
-                                                                    className="btn-revoke-tourist"
-                                                                >
-                                                                    Yetkiyi Kaldır
-                                                                </button>
+                                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setEditingTouristAdmin(admin);
+                                                                            setEditPermissionsModalOpen(true);
+                                                                        }}
+                                                                        className="btn-modern-secondary"
+                                                                        style={{ padding: '6px 10px', fontSize: '11px', borderRadius: 0, textTransform: 'uppercase' }}
+                                                                    >
+                                                                        İzinleri Düzenle
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleRevokeTouristAdmin(admin._id)}
+                                                                        className="btn-revoke-tourist"
+                                                                        style={{ borderRadius: 0 }}
+                                                                    >
+                                                                        Yetkiyi Kaldır
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     );
@@ -3860,31 +4075,46 @@ const AdminDashboard = () => {
                                                         <select
                                                             className="badge-select"
                                                             value={editingBot.config?.defaultPortal?._id || editingBot.config?.defaultPortal || ''}
-                                                            onChange={(e) => setEditingBot({
-                                                                ...editingBot,
-                                                                config: { ...editingBot.config, defaultPortal: e.target.value }
-                                                            })}
-                                                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }}
+                                                            onChange={(e) => {
+                                                                const portalVal = e.target.value;
+                                                                setEditingBot({
+                                                                    ...editingBot,
+                                                                    config: { ...editingBot.config, defaultPortal: portalVal, defaultChannel: 'general' }
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
                                                         >
-                                                            <option value="">Portal Seçin (Pasif)</option>
+                                                            <option value="">Portal Seçin (Pasif / Genel)</option>
                                                             {portals.map(p => (
-                                                                <option key={p._id} value={p._id}>{p.name}</option>
+                                                                <option key={p._id} value={p._id}>{p.name} ({p._id})</option>
                                                             ))}
                                                         </select>
                                                     </div>
                                                     <div style={{ flex: 1, minWidth: '200px' }}>
-                                                        <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Hedef Kanal (ID veya İsim)</label>
-                                                        <input
-                                                            type="text"
-                                                            value={editingBot.config?.defaultChannel || 'general'}
-                                                            onChange={(e) => setEditingBot({
-                                                                ...editingBot,
-                                                                config: { ...editingBot.config, defaultChannel: e.target.value }
-                                                            })}
-                                                            placeholder="general veya kanal ID'si"
-                                                            className="reason-input-modern"
-                                                            style={{ height: '40px', padding: '10px' }}
-                                                        />
+                                                        <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Hedef Kanal</label>
+                                                        {(() => {
+                                                            const pId = editingBot.config?.defaultPortal?._id || editingBot.config?.defaultPortal;
+                                                            const selectedP = portals.find(p => String(p._id) === String(pId));
+                                                            const channels = selectedP?.channels || [];
+                                                            return (
+                                                                <select
+                                                                    className="badge-select"
+                                                                    value={editingBot.config?.defaultChannel || 'general'}
+                                                                    onChange={(e) => setEditingBot({
+                                                                        ...editingBot,
+                                                                        config: { ...editingBot.config, defaultChannel: e.target.value }
+                                                                    })}
+                                                                    style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
+                                                                >
+                                                                    <option value="general"># Genel Akış / Ana Kanal (general)</option>
+                                                                    {channels.map(ch => (
+                                                                        <option key={ch._id} value={ch._id}>
+                                                                            #{ch.name} (Kanal ID: {ch._id})
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3974,8 +4204,8 @@ const AdminDashboard = () => {
                                                     <select
                                                         className="badge-select"
                                                         value={botPostData.portalId}
-                                                        onChange={(e) => setBotPostData({ ...botPostData, portalId: e.target.value })}
-                                                        style={{ width: '100%', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }}
+                                                        onChange={(e) => setBotPostData({ ...botPostData, portalId: e.target.value, channel: 'general' })}
+                                                        style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
                                                     >
                                                         <option value="">Global Akış (Portal Dışı)</option>
                                                         {portals.map(p => (
@@ -3985,14 +4215,25 @@ const AdminDashboard = () => {
                                                 </div>
                                                 <div style={{ flex: 1, minWidth: '180px' }}>
                                                     <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Hedef Kanal</label>
-                                                    <input
-                                                        type="text"
-                                                        value={botPostData.channel}
-                                                        onChange={(e) => setBotPostData({ ...botPostData, channel: e.target.value })}
-                                                        placeholder="general veya kanal ID'si"
-                                                        className="reason-input-modern"
-                                                        style={{ height: '40px', padding: '10px' }}
-                                                    />
+                                                    {(() => {
+                                                        const selectedP = portals.find(p => String(p._id) === String(botPostData.portalId));
+                                                        const channels = selectedP?.channels || [];
+                                                        return (
+                                                            <select
+                                                                className="badge-select"
+                                                                value={botPostData.channel || 'general'}
+                                                                onChange={(e) => setBotPostData({ ...botPostData, channel: e.target.value })}
+                                                                style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '0px' }}
+                                                            >
+                                                                <option value="general"># Genel Akış / Ana Kanal (general)</option>
+                                                                {channels.map(ch => (
+                                                                    <option key={ch._id} value={ch._id}>
+                                                                        #{ch.name} (Kanal ID: {ch._id})
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
 
@@ -4259,35 +4500,125 @@ const AdminDashboard = () => {
                         <div className="users-search">
                             <input
                                 type="text"
-                                placeholder="Kullanıcı ara..."
+                                placeholder="Kullanıcı ara (Kullanıcı adı, isim, e-posta veya IP)..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
 
-                        {loading && <div className="admin-loading">Yükleniyor...</div>}
+                        {loading && <div className="admin-loading">Kullanıcı verileri yükleniyor...</div>}
 
-                        <div className="admin-users-avatar-grid">
+                        <div className="admin-users-box-grid">
                             {users.map((user) => (
                                 <div
                                     key={user._id}
-                                    className={`admin-user-avatar-card ${user.isBanned ? 'banned' : ''} ${user.isShadowbanned ? 'shadowbanned' : ''}`}
-                                    onClick={() => openUserDetail(user)}
+                                    className={`admin-user-box-card ${user.isBanned ? 'banned' : ''} ${user.isShadowbanned ? 'shadowbanned' : ''}`}
                                 >
-                                    <div className="avatar-wrapper-modern">
-                                        <UserAvatar
+                                    <div className="user-box-header">
+                                        <AdminMedia
                                             src={user.profile?.lowResAvatar || user.profile?.avatar}
                                             alt={user.username}
-                                            className="admin-user-avatar-img"
+                                            className="user-box-avatar"
+                                            isAvatar={true}
                                         />
-                                        {user.isBanned && <span className="banned-indicator-dot">🚫</span>}
-                                        {user.isShadowbanned && <span className="shadowbanned-indicator-dot">👻</span>}
+                                        <div className="user-box-meta">
+                                            <div className="user-box-title">
+                                                {user.profile?.displayName || user.username}
+                                                <UserBadges user={user} size={16} />
+                                            </div>
+                                            <div className="user-box-username">@{user.username}</div>
+                                            <div className="user-box-email">{user.email || 'E-posta Gizli'}</div>
+                                        </div>
                                     </div>
-                                    <div className="admin-user-avatar-name">
-                                        {user.profile?.displayName || user.username}
+
+                                    {/* Badges / Roles / Status */}
+                                    <div className="user-box-tags">
+                                        {user.isAdmin && <span className="mono-tag inverted">YÖNETİCİ</span>}
+                                        {user.isTouristAdmin && <span className="mono-tag">TURİST ADMİN</span>}
+                                        {user.isBot && <span className="mono-tag">BOT HESAP</span>}
+                                        {user.isBanned && <span className="mono-tag" style={{ border: '1px solid #ffffff' }}>🚫 ENGELLİ</span>}
+                                        {user.isShadowbanned && <span className="mono-tag">👻 GÖLGE BAN</span>}
+                                        {user.isVerified && <span className="mono-tag muted">ONAYLI</span>}
                                     </div>
-                                    <div className="admin-user-avatar-username">
-                                        @{user.username}
+
+                                    {/* Comprehensive Metrics / Şecere Verileri */}
+                                    <div className="user-box-stats">
+                                        <div className="user-stat-item">
+                                            <span className="user-stat-label">Son Bilinen IP</span>
+                                            <span className="user-stat-value">{user.lastIP || 'Kayıt Yok'}</span>
+                                        </div>
+                                        <div className="user-stat-item">
+                                            <span className="user-stat-label">Kayıtlı Cihaz</span>
+                                            <span className="user-stat-value">{(user.registeredDevices?.length || 0)} Cihaz</span>
+                                        </div>
+                                        <div className="user-stat-item">
+                                            <span className="user-stat-label">Takipçi / Takip</span>
+                                            <span className="user-stat-value">{user.followerCount || 0} / {user.followingCount || 0}</span>
+                                        </div>
+                                        <div className="user-stat-item">
+                                            <span className="user-stat-label">Gönderi Sayısı</span>
+                                            <span className="user-stat-value">{user.postCount || 0}</span>
+                                        </div>
+                                        <div className="user-stat-item">
+                                            <span className="user-stat-label">Kayıt Tarihi</span>
+                                            <span className="user-stat-value">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : '-'}</span>
+                                        </div>
+                                        <div className="user-stat-item">
+                                            <span className="user-stat-label">Son Aktiflik</span>
+                                            <span className="user-stat-value">{user.lastActive ? new Date(user.lastActive).toLocaleDateString('tr-TR') : 'Bilinmiyor'}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="user-box-actions">
+                                        <button
+                                            className="user-box-btn"
+                                            title="Kullanıcının tam şeceresini, güvenlik detaylarını ve işlem geçmişini gör"
+                                            onClick={() => openUserDossier(user)}
+                                        >
+                                            📋 Şecere
+                                        </button>
+                                        <button
+                                            className="user-box-btn"
+                                            title="Kullanıcının paylaştığı tüm gönderileri incele ve yönet"
+                                            onClick={() => openUserPosts(user)}
+                                        >
+                                            📝 Postlar ({user.postCount || 0})
+                                        </button>
+                                        <button
+                                            className="user-box-btn"
+                                            title="Kullanıcı profilini ve rol yetkilerini düzenle"
+                                            onClick={() => openUserDetail(user)}
+                                        >
+                                            ⚙️ Roller
+                                        </button>
+                                        <button
+                                            className="user-box-btn"
+                                            title={user.isShadowbanned ? 'Gölge banı kaldır' : 'Gölge ban uygula'}
+                                            onClick={() => handleUserShadowbanToggle(user._id, user.isShadowbanned)}
+                                        >
+                                            {user.isShadowbanned ? '👻 Gölgeyi Aç' : '👻 Gölge Ban'}
+                                        </button>
+                                        <button
+                                            className="user-box-btn"
+                                            title={user.isBanned ? 'Kullanıcı banını kaldır' : 'Kullanıcıyı sistemden engelle'}
+                                            onClick={() => {
+                                                setBanModalTarget({ type: 'user', id: user._id });
+                                                setBanModalOpen(true);
+                                            }}
+                                        >
+                                            {user.isBanned ? '🔓 Banı Kaldır' : '🚫 Engelle'}
+                                        </button>
+                                        {isOxypace && (
+                                            <button
+                                                className="user-box-btn"
+                                                style={{ borderStyle: 'dashed' }}
+                                                title="Bu kullanıcının kimliğine bürün (Geliştirici modu)"
+                                                onClick={() => handleImpersonate(user._id)}
+                                            >
+                                                👤 Taklit Et
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -4300,74 +4631,124 @@ const AdminDashboard = () => {
                         <div className="users-search">
                             <input
                                 type="text"
-                                placeholder="Portal ara..."
+                                placeholder="Portal ara (İsim veya açıklama)..."
                                 value={searchTermPortal}
                                 onChange={(e) => setSearchTermPortal(e.target.value)}
                             />
                         </div>
 
-                        {loading && <div className="admin-loading">Yükleniyor...</div>}
+                        {loading && <div className="admin-loading">Portallar yükleniyor...</div>}
 
-                        <div className="admin-portals-grid">
-                            {portals.map((portal) => {
-                                const defaultBanner = 'linear-gradient(45deg, #4f46e5, #9333ea)';
-                                return (
-                                    <div
-                                        key={portal._id}
-                                        className="admin-portal-card"
-                                        onClick={() => openPortalDetail(portal)}
-                                    >
-                                        <div
-                                            className="card-banner"
-                                            style={{
-                                                background: portal.banner
-                                                    ? `url(${getImageUrl(portal.banner)}) center/cover`
-                                                    : defaultBanner,
-                                            }}
-                                        >
-                                            {portal.isNSFW && (
-                                                <span className="nsfw-badge-admin">+18</span>
-                                            )}
-                                        </div>
+                        <div className="admin-portals-box-grid">
+                            {portals.map((portal) => (
+                                <div
+                                    key={portal._id}
+                                    className="admin-portal-box-card"
+                                >
+                                    <div className="portal-box-banner">
+                                        {portal.banner && (
+                                            <AdminMedia
+                                                src={portal.banner}
+                                                alt={portal.name}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                fallbackText="Kapak Görseli Yok"
+                                            />
+                                        )}
+                                        {portal.isNSFW && (
+                                            <span className="mono-tag" style={{ position: 'absolute', top: 8, right: 8, background: '#000000', color: '#ffffff' }}>
+                                                +18 NSFW
+                                            </span>
+                                        )}
+                                    </div>
 
-                                        <div className="card-icon-wrapper">
-                                            {portal.avatar ? (
-                                                <img
-                                                    src={getImageUrl(portal.avatar)}
-                                                    alt={portal.name}
-                                                    className="user-list-avatar"
-                                                    style={{ borderRadius: '12px', width: '100%', height: '100%' }}
-                                                />
-                                            ) : (
-                                                <div className="card-icon-placeholder" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3b82f6', color: 'white', fontWeight: 'bold', borderRadius: '12px', width: '100%', height: '100%' }}>
-                                                    {portal.name.substring(0, 2).toUpperCase()}
+                                    <div className="portal-box-content">
+                                        <div className="portal-box-header">
+                                            <AdminMedia
+                                                src={portal.avatar}
+                                                alt={portal.name}
+                                                className="portal-box-avatar"
+                                                isAvatar={true}
+                                                fallbackText={portal.name?.substring(0, 2).toUpperCase()}
+                                            />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div className="portal-box-title">
+                                                    {portal.name}
+                                                    <PortalBadges portal={portal} size={16} />
+                                                    {portal.isReadOnly && <span className="mono-tag muted" style={{ fontSize: '9px' }}>SALT OKUNUR</span>}
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        <div className="card-body">
-                                            <h3 className="card-title">
-                                                {portal.name}
-                                                <PortalBadges portal={portal} size={18} />
-                                                {portal.isReadOnly && <span className="read-only-badge" style={{ marginLeft: 'auto' }}>SALT OKUNUR</span>}
-                                            </h3>
-                                            <p className="card-desc">
-                                                {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
-                                            </p>
-
-                                            <div className="card-footer">
-                                                <span className="member-count">
-                                                    <span className="status-dot"></span>
-                                                    {portal.members ? portal.members.length : 0} Üye
-                                                </span>
-                                                <span className={`badge-pill-status ${portal.status}`}>
-                                                    {portal.status === 'active' ? 'Aktif' : portal.status === 'suspended' ? 'Askıda' : 'Kapalı'}
-                                                </span>
+                                                <div className="portal-box-owner">
+                                                    Kurucu: @{portal.owner?.username || 'Bilinmiyor'} • ID: <span style={{ fontFamily: 'monospace' }}>{portal._id}</span>
+                                                </div>
                                             </div>
                                         </div>
+
+                                        <p style={{ fontSize: '12px', color: '#888888', margin: '4px 0', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                            {portal.description || 'Bu portal hakkında henüz bir açıklama eklenmemiş.'}
+                                        </p>
+
+                                        {/* Portal Metrics */}
+                                        <div className="user-box-stats">
+                                            <div className="user-stat-item">
+                                                <span className="user-stat-label">Üyeler</span>
+                                                <span className="user-stat-value">{portal.members?.length || 0} Üye</span>
+                                            </div>
+                                            <div className="user-stat-item">
+                                                <span className="user-stat-label">Kanallar</span>
+                                                <span className="user-stat-value">{portal.channels?.length || 0} Kanal</span>
+                                            </div>
+                                            <div className="user-stat-item">
+                                                <span className="user-stat-label">Durum</span>
+                                                <span className="user-stat-value" style={{ textTransform: 'uppercase' }}>
+                                                    {portal.status === 'active' ? 'AKTİF' : portal.status === 'suspended' ? 'ASKIDA' : 'KAPALI'}
+                                                </span>
+                                            </div>
+                                            <div className="user-stat-item">
+                                                <span className="user-stat-label">Kategori</span>
+                                                <span className="user-stat-value">{portal.category || 'Genel'}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="user-box-actions">
+                                            <button
+                                                className="user-box-btn"
+                                                title="Portal kanalları ve detaylarını yönet"
+                                                onClick={() => openPortalDetail(portal)}
+                                            >
+                                                📋 Detay & Kanallar
+                                            </button>
+                                            <button
+                                                className="user-box-btn"
+                                                title="Portal içindeki tüm postları incele, filtrele ve sil"
+                                                onClick={() => openPortalPosts(portal)}
+                                            >
+                                                📝 Portal Postları
+                                            </button>
+                                            <button
+                                                className="user-box-btn"
+                                                title="Portal yöneticilerine sistem uyarısı gönder"
+                                                onClick={() => openAlertModal(portal._id, portal.name)}
+                                            >
+                                                📢 Uyarı
+                                            </button>
+                                            <button
+                                                className="user-box-btn"
+                                                title={portal.status === 'suspended' ? 'Portalı aktif et' : 'Portalı askıya al'}
+                                                onClick={() => handleToggleSuspend(portal._id, portal.status)}
+                                            >
+                                                {portal.status === 'suspended' ? '🟢 Askıyı Kaldır' : '⛔ Askıya Al'}
+                                            </button>
+                                            <button
+                                                className="user-box-btn"
+                                                title="Portalı kalıcı olarak kapat"
+                                                onClick={() => handleClosePortal(portal._id)}
+                                            >
+                                                ❌ Kapat
+                                            </button>
+                                        </div>
                                     </div>
-                                );
-                            })}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -4937,109 +5318,235 @@ const AdminDashboard = () => {
                         )}
                     </div>
                 )}
+
                 {activeTab === 'activity' && (
                     <div className="activity-section fade-in">
-                        <div className="section-header-modern">
-                            <div className="header-left">
-                                <h2>⚡ Canlı Aktif Oturum İzleyici</h2>
-                                <p>Platformda o an aktif olan kullanıcıları ve bulundukları sayfaları izleyin.</p>
-                            </div>
-                            <div className="header-right">
-                                <div className="connection-status-pill" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px' }}>
-                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: connected ? '#2ecc71' : '#e74c3c' }}></span>
-                                    {connected ? 'Canlı Sunucu Bağlantısı Aktif' : 'Bağlantı Kesildi'}
-                                </div>
-                            </div>
+                        <div className="activity-subnav">
+                            <button
+                                type="button"
+                                className={`activity-subnav-btn ${activityViewMode === 'logs' ? 'active' : ''}`}
+                                onClick={() => {
+                                    setActivityViewMode('logs');
+                                    fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
+                                }}
+                            >
+                                📜 Platform Günlüğü & Ayak İzleri
+                            </button>
+                            <button
+                                type="button"
+                                className={`activity-subnav-btn ${activityViewMode === 'live' ? 'active' : ''}`}
+                                onClick={() => setActivityViewMode('live')}
+                            >
+                                ⚡ Canlı Oturumlar ({activeSessions.length})
+                            </button>
                         </div>
 
-                        {/* Summary Metrics Cards */}
-                        <div className="system-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '25px' }}>
-                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🟢 Toplam Aktif</span>
-                                <strong style={{ fontSize: '28px', color: '#fff' }}>{activeSessions.length}</strong>
-                            </div>
-                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🏠 Akış / Mesajlar</span>
-                                <strong style={{ fontSize: '28px', color: '#6366f1' }}>{activeSessions.filter(s => s.path === '/').length}</strong>
-                            </div>
-                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🌐 Portallarda</span>
-                                <strong style={{ fontSize: '28px', color: '#10b981' }}>{activeSessions.filter(s => s.path.startsWith('/portal')).length}</strong>
-                            </div>
-                            <div className="metric-card-modern" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'block', marginBottom: '8px' }}>🗺️ Haritada</span>
-                                <strong style={{ fontSize: '28px', color: '#f59e0b' }}>{activeSessions.filter(s => s.path === '/map').length}</strong>
-                            </div>
-                        </div>
-
-                        {loading && activeSessions.length === 0 && <div className="admin-loading">Aktif oturumlar çekiliyor...</div>}
-                        
-                        {!loading && activeSessions.length === 0 && (
-                            <p className="no-data">Şu an aktif çevrimiçi kullanıcı bulunmuyor.</p>
-                        )}
-
-                        <div className="users-list">
-                            {activeSessions.map((session) => (
-                                <div key={session.userId} className="user-list-item" style={{ padding: '15px 20px' }}>
-                                    <div className="user-item-left">
-                                        <img
-                                            src={session.avatar || 'https://via.placeholder.com/150'}
-                                            alt=""
-                                            className="user-list-avatar"
+                        {activityViewMode === 'logs' && (
+                            <div className="logs-container">
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '260px' }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Platform günlüğünde ara (Kullanıcı, eylem, IP, detay)..."
+                                            value={activityLogsSearch}
+                                            onChange={(e) => setActivityLogsSearch(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    fetchActivityLogs(1, activityLogsSearch, activityLogsCategory);
+                                                }
+                                            }}
+                                            style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '10px 14px', borderRadius: '0px' }}
                                         />
-                                        <div className="user-item-info">
-                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                {session.displayName || session.username}
-                                            </h4>
-                                            <span>@{session.username}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                        {/* Current Location Badge */}
-                                        <div className="location-badge" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Mevcut Konum</span>
-                                            <span 
-                                                onClick={() => navigate(session.path)}
-                                                style={{ 
-                                                    background: 'rgba(99, 102, 241, 0.15)', 
-                                                    color: '#818cf8', 
-                                                    padding: '4px 10px', 
-                                                    borderRadius: '6px', 
-                                                    fontSize: '12px', 
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer',
-                                                    border: '1px solid rgba(99, 102, 241, 0.3)'
-                                                }}
-                                            >
-                                                {session.path === '/' ? 'Genel Akış / Mesajlar' : session.path.startsWith('/portal') ? `Portal: ${session.path.split('/')[2] || ''}` : session.path}
-                                            </span>
-                                        </div>
-
                                         <button
-                                            className="ban-btn-admin"
-                                            onClick={() => {
-                                                setBanModalTarget({ type: 'user', id: session.userId });
-                                                setBanModalOpen(true);
-                                            }}
-                                            style={{
-                                                padding: '6px 12px',
-                                                backgroundColor: 'rgba(231, 76, 60, 0.15)',
-                                                color: '#e74c3c',
-                                                border: '1px solid #e74c3c',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold',
-                                                fontSize: '12px',
-                                                minWidth: '100px'
-                                            }}
+                                            type="button"
+                                            onClick={() => fetchActivityLogs(1, activityLogsSearch, activityLogsCategory)}
+                                            className="user-box-btn"
+                                            style={{ minWidth: '90px' }}
                                         >
-                                            Engelle (Kick)
+                                            Filtrele
+                                        </button>
+                                    </div>
+
+                                    {/* Category Pills */}
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {[
+                                            { id: 'all', label: 'TÜMÜ' },
+                                            { id: 'auth', label: 'KİMLİK & GİRİŞ' },
+                                            { id: 'post', label: 'GÖNDERİLER' },
+                                            { id: 'portal', label: 'PORTALLAR' },
+                                            { id: 'moderation', label: 'GÜVENLİK' },
+                                            { id: 'bot', label: 'BOTLAR' }
+                                        ].map(cat => (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setActivityLogsCategory(cat.id);
+                                                    fetchActivityLogs(1, activityLogsSearch, cat.id);
+                                                }}
+                                                className={`mono-tag ${activityLogsCategory === cat.id ? 'inverted' : 'muted'}`}
+                                                style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '11px' }}
+                                            >
+                                                {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {activityLogsLoading ? (
+                                    <div className="admin-loading">Platform kayıtları taranıyor...</div>
+                                ) : activityLogs.length === 0 ? (
+                                    <p className="no-data">Kriterlere uygun platform günlüğü kaydı bulunamadı.</p>
+                                ) : (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table className="logs-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '160px' }}>Tarih / Saat</th>
+                                                    <th style={{ width: '160px' }}>Kullanıcı</th>
+                                                    <th style={{ width: '150px' }}>Eylem Kodu</th>
+                                                    <th style={{ width: '100px' }}>Kategori</th>
+                                                    <th style={{ width: '180px' }}>IP & Cihaz</th>
+                                                    <th>İşlem Detayları & Ayak İzi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {activityLogs.map((log) => (
+                                                    <tr key={log._id}>
+                                                        <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#888' }}>
+                                                            {new Date(log.createdAt).toLocaleString('tr-TR')}
+                                                        </td>
+                                                        <td>
+                                                            {log.user ? (
+                                                                <span
+                                                                    style={{ cursor: 'pointer', textDecoration: 'underline', color: '#fff', fontWeight: 600 }}
+                                                                    onClick={() => openUserDossier(log.user)}
+                                                                >
+                                                                    @{log.user.username}
+                                                                </span>
+                                                            ) : (
+                                                                <span style={{ color: '#888' }}>{log.actorUsername || 'Sistem'}</span>
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <span className="mono-tag" style={{ fontSize: '10px' }}>
+                                                                {log.action}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span className="mono-tag muted" style={{ fontSize: '9px' }}>
+                                                                {log.category}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#aaa' }}>
+                                                            <div>{log.ip || '-'}</div>
+                                                            <div style={{ fontSize: '10px', color: '#666' }}>
+                                                                {log.deviceInfo?.browser || ''} {log.deviceInfo?.os || ''}
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ fontSize: '12px', color: '#ddd' }}>
+                                                            {log.details?.reason || log.details?.title || log.details?.snippet || (
+                                                                typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-')
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {/* Pagination */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid #222', paddingTop: '12px' }}>
+                                    <span style={{ fontSize: '12px', color: '#666' }}>
+                                        Toplam <strong>{activityLogsTotal}</strong> kayıt • Sayfa <strong>{activityLogsPage}</strong>
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            type="button"
+                                            className="user-box-btn"
+                                            disabled={activityLogsPage <= 1}
+                                            onClick={() => fetchActivityLogs(activityLogsPage - 1, activityLogsSearch, activityLogsCategory)}
+                                            style={{ opacity: activityLogsPage <= 1 ? 0.4 : 1 }}
+                                        >
+                                            ← Önceki
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="user-box-btn"
+                                            disabled={activityLogs.length < 50}
+                                            onClick={() => fetchActivityLogs(activityLogsPage + 1, activityLogsSearch, activityLogsCategory)}
+                                            style={{ opacity: activityLogs.length < 50 ? 0.4 : 1 }}
+                                        >
+                                            Sonraki →
                                         </button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        )}
+
+                        {activityViewMode === 'live' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                    <div>
+                                        <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0 }}>
+                                            ⚡ Anlık Çevrimiçi Kullanıcılar
+                                        </h3>
+                                        <span style={{ fontSize: '12px', color: '#666' }}>Socket tabanlı gerçek zamanlı konum ve oturum takibi</span>
+                                    </div>
+                                    <div className="mono-tag" style={{ border: '1px solid #444', color: connected ? '#fff' : '#888' }}>
+                                        {connected ? '● CANLI BAĞLANTI AKTİF' : '○ BAĞLANTI KESİLDİ'}
+                                    </div>
+                                </div>
+
+                                {activeSessions.length === 0 ? (
+                                    <p className="no-data">Şu an aktif çevrimiçi kullanıcı bulunmuyor.</p>
+                                ) : (
+                                    <div className="users-list">
+                                        {activeSessions.map((session) => (
+                                            <div key={session.userId} className="user-list-item" style={{ padding: '14px 18px', borderRadius: 0, border: '1px solid #222', background: '#111', marginBottom: '8px' }}>
+                                                <div className="user-item-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <AdminMedia
+                                                        src={session.avatar}
+                                                        alt=""
+                                                        className="user-box-avatar"
+                                                        isAvatar={true}
+                                                        style={{ width: '40px', height: '40px' }}
+                                                    />
+                                                    <div className="user-item-info">
+                                                        <h4 style={{ margin: 0, fontSize: '14px', color: '#fff' }}>
+                                                            {session.displayName || session.username}
+                                                        </h4>
+                                                        <span style={{ fontSize: '12px', color: '#888' }}>@{session.username}</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                    <span 
+                                                        onClick={() => navigate(session.path)}
+                                                        className="mono-tag"
+                                                        style={{ cursor: 'pointer', padding: '6px 10px', fontSize: '11px', background: '#181818' }}
+                                                    >
+                                                        {session.path === '/' ? 'Genel Akış' : session.path}
+                                                    </span>
+
+                                                    <button
+                                                        className="user-box-btn"
+                                                        onClick={() => {
+                                                            setBanModalTarget({ type: 'user', id: session.userId });
+                                                            setBanModalOpen(true);
+                                                        }}
+                                                        style={{ minWidth: '90px' }}
+                                                    >
+                                                        Kick / Ban
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
                 {activeTab === 'ipbans' && (
@@ -5111,36 +5618,6 @@ const AdminDashboard = () => {
                                     </button>
                                 </div>
                             ))}
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'system' && (isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
-                    <div className="system-settings-section">
-                        <div className="system-card">
-                            <div className="system-card-header">
-                                <h3>🔧 Sistem Genel Ayarları</h3>
-                                <p>Platform erişimi ve global bakım ayarları</p>
-                            </div>
-                            <div className="system-card-body">
-                                <div className="setting-row">
-                                    <div className="setting-info">
-                                        <h4>Vercel 404 Kısıtlaması (Bakım Modu)</h4>
-                                        <p>
-                                            Bu ayar aktifleştirildiğinde, geliştirici yetkisi (?access=oxypace çerezi) 
-                                            olmayan tüm kullanıcılar sahte Vercel 404 (DEPLOYMENT_NOT_FOUND) sayfasına yönlendirilir. 
-                                            Sitede o an açık olan kullanıcıların sayfası otomatik olarak yenilenerek engellenir.
-                                        </p>
-                                    </div>
-                                    <div className="setting-control">
-                                        <button 
-                                            className={`maintenance-toggle-btn ${maintenanceActive ? 'active' : ''}`}
-                                            onClick={handleToggleMaintenance}
-                                        >
-                                            {maintenanceActive ? '🔴 Bakım Modu Aktif (Kapat)' : '🟢 Bakım Modu Pasif (Aç)'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -6749,6 +7226,489 @@ const AdminDashboard = () => {
                         <div className="modal-footer-modern">
                             <button type="button" className="btn-modern-ghost" onClick={() => { setCalcToolsModalOpen(false); setEditingCalcTool(null); }}>
                                 Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* USER DOSSIER / ŞECERE MODAL */}
+            {userDossierOpen && (
+                <div className="modal-overlay-modern" onClick={() => setUserDossierOpen(false)}>
+                    <div className="modal-content-modern dossier-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0 }}>
+                                    📋 Kullanıcı Şecere & Adli Sicil Dosyası
+                                </h2>
+                                {userDossierData?.user && (
+                                    <span className="mono-tag inverted" style={{ fontSize: '10px' }}>
+                                        @{userDossierData.user.username}
+                                    </span>
+                                )}
+                            </div>
+                            <button className="close-btn-modern" onClick={() => setUserDossierOpen(false)}>&times;</button>
+                        </div>
+
+                        <div className="modal-body-modern" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                            {loadingDossier ? (
+                                <div className="admin-loading">Kullanıcı şeceresi ve adli kayıtlar getiriliyor...</div>
+                            ) : !userDossierData?.user ? (
+                                <p className="no-data">Kullanıcı verisi bulunamadı.</p>
+                            ) : (
+                                <div className="dossier-grid">
+                                    {/* Left Column: Kimlik ve Güvenlik */}
+                                    <div className="dossier-section-box">
+                                        <h4 className="dossier-section-title">KİMLİK & HESAP BİLGİLERİ</h4>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Kullanıcı ID</span>
+                                            <span className="val">{userDossierData.user._id}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Görünen İsim</span>
+                                            <span className="val">{userDossierData.user.profile?.displayName || '-'}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Kullanıcı Adı</span>
+                                            <span className="val">@{userDossierData.user.username}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">E-Posta</span>
+                                            <span className="val">{userDossierData.user.email || '-'}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Kayıt Tarihi</span>
+                                            <span className="val">{userDossierData.user.createdAt ? new Date(userDossierData.user.createdAt).toLocaleString('tr-TR') : '-'}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Son Giriş / Aktiflik</span>
+                                            <span className="val">{userDossierData.user.lastActive ? new Date(userDossierData.user.lastActive).toLocaleString('tr-TR') : 'Bilinmiyor'}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Hesap Durumu</span>
+                                            <span className="val">
+                                                {userDossierData.user.isBanned ? '🚫 BANLI' : userDossierData.user.isShadowbanned ? '👻 GÖLGE BANLI' : 'AKTİF'}
+                                            </span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Güvenlik Sorusu</span>
+                                            <span className="val">{userDossierData.user.securityQuestionSet ? 'AYARLANDI' : 'AYARLANMAMIŞ'}</span>
+                                        </div>
+                                        <div className="dossier-key-val">
+                                            <span className="label">2FA Durumu</span>
+                                            <span className="val">{userDossierData.user.twoFactorEnabled ? 'AKTİF' : 'PASİF'}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column: Ağ, IP ve Cihazlar */}
+                                    <div className="dossier-section-box">
+                                        <h4 className="dossier-section-title">AĞ & CİHAZ AYAK İZLERİ</h4>
+                                        <div className="dossier-key-val">
+                                            <span className="label">Son Bilinen IP</span>
+                                            <span className="val">{userDossierData.user.lastIP || 'Kayıt Yok'}</span>
+                                        </div>
+                                        
+                                        <div style={{ marginTop: '10px' }}>
+                                            <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Tüm Bilinen IP Adresleri ({(userDossierData.allKnownIPs || []).length}):
+                                            </span>
+                                            <div className="dossier-chip-list">
+                                                {(userDossierData.allKnownIPs || []).length > 0 ? (
+                                                    userDossierData.allKnownIPs.map((ip, i) => (
+                                                        <span key={i} className="dossier-chip">{ip}</span>
+                                                    ))
+                                                ) : (
+                                                    <span style={{ fontSize: '11px', color: '#666' }}>IP kaydı bulunamadı.</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: '14px' }}>
+                                            <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Kayıtlı Cihazlar ({(userDossierData.user.registeredDevices || []).length}):
+                                            </span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', maxHeight: '140px', overflowY: 'auto' }}>
+                                                {(userDossierData.user.registeredDevices || []).length > 0 ? (
+                                                    userDossierData.user.registeredDevices.map((dev, i) => (
+                                                        <div key={i} style={{ background: '#161616', border: '1px solid #282828', padding: '6px 10px', fontSize: '11px' }}>
+                                                            <div style={{ color: '#fff', fontWeight: 600 }}>{dev.deviceName || dev.userAgent || 'Bilinmeyen Cihaz'}</div>
+                                                            <div style={{ color: '#777', fontSize: '10px' }}>
+                                                                IP: {dev.ip || '-'} • Son Giriş: {dev.lastLogin ? new Date(dev.lastLogin).toLocaleString('tr-TR') : '-'}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <span style={{ fontSize: '11px', color: '#666' }}>Kayıtlı cihaz yok.</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Full: Platform İstatistikleri & Son İşlemler */}
+                                    <div className="dossier-section-box" style={{ gridColumn: '1 / -1' }}>
+                                        <h4 className="dossier-section-title">PLATFORM ETKİLEŞİMİ & SON AYAK İZLERİ</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                                            <div style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', padding: '10px' }}>
+                                                <div style={{ fontSize: '10px', color: '#777' }}>TOPLAM GÖNDERİ</div>
+                                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>{userDossierData.totalPosts || 0}</div>
+                                            </div>
+                                            <div style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', padding: '10px' }}>
+                                                <div style={{ fontSize: '10px', color: '#777' }}>SAHİP OLDUĞU PORTAL</div>
+                                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>{(userDossierData.portalsOwned || []).length}</div>
+                                            </div>
+                                            <div style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', padding: '10px' }}>
+                                                <div style={{ fontSize: '10px', color: '#777' }}>TAKİPÇİ / TAKİP</div>
+                                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>
+                                                    {userDossierData.user.followerCount || 0} / {userDossierData.user.followingCount || 0}
+                                                </div>
+                                            </div>
+                                            <div style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', padding: '10px' }}>
+                                                <div style={{ fontSize: '10px', color: '#777' }}>GÜVENLİK CEZALARI</div>
+                                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>
+                                                    {userDossierData.user.isBanned ? '1 BAN' : 'TEMİZ'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Son Sistem Ayak İzleri & Günlükler:
+                                        </span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                                            {(userDossierData.recentLogs || []).length > 0 ? (
+                                                userDossierData.recentLogs.map((log) => (
+                                                    <div key={log._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#161616', border: '1px solid #222', padding: '6px 10px', fontSize: '11px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span className="mono-tag" style={{ fontSize: '9px' }}>{log.action}</span>
+                                                            <span style={{ color: '#ccc' }}>{log.details?.reason || log.details?.title || log.details?.snippet || log.category}</span>
+                                                        </div>
+                                                        <span style={{ color: '#777', fontFamily: 'monospace' }}>
+                                                            {new Date(log.createdAt).toLocaleString('tr-TR')}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <span style={{ fontSize: '11px', color: '#666' }}>Kullanıcıya ait son işlem günlüğü bulunamadı.</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '12px 20px', display: 'flex', justifyContent: 'space-between' }}>
+                            {userDossierData?.user && (
+                                <button
+                                    type="button"
+                                    className="user-box-btn"
+                                    onClick={() => {
+                                        setUserDossierOpen(false);
+                                        openUserPosts(userDossierData.user);
+                                    }}
+                                    style={{ minWidth: '160px' }}
+                                >
+                                    📝 Kullanıcının Postlarını Aç
+                                </button>
+                            )}
+                            <button type="button" className="btn-modern-ghost" onClick={() => setUserDossierOpen(false)}>
+                                Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* USER POSTS INSPECTOR MODAL */}
+            {userPostsOpen && userPostsUser && (
+                <div className="modal-overlay-modern" onClick={() => setUserPostsOpen(false)}>
+                    <div className="modal-content-modern posts-inspector-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px' }}>
+                            <div>
+                                <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0 }}>
+                                    📝 @{userPostsUser.username} Tarafından Paylaşılan Postlar
+                                </h2>
+                                <span style={{ fontSize: '11px', color: '#888' }}>
+                                    Toplam {userPostsData.length} gönderi listeleniyor
+                                </span>
+                            </div>
+                            <button className="close-btn-modern" onClick={() => setUserPostsOpen(false)}>&times;</button>
+                        </div>
+
+                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #222', background: '#0e0e0e', display: 'flex', gap: '8px' }}>
+                            <input
+                                type="text"
+                                placeholder="Gönderiler içinde kelime ara..."
+                                value={userPostsSearch}
+                                onChange={(e) => setUserPostsSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        openUserPosts(userPostsUser, userPostsSearch);
+                                    }
+                                }}
+                                style={{ flex: 1, background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 12px', fontSize: '12px' }}
+                            />
+                            <button
+                                type="button"
+                                className="user-box-btn"
+                                onClick={() => openUserPosts(userPostsUser, userPostsSearch)}
+                                style={{ minWidth: '90px' }}
+                            >
+                                Ara
+                            </button>
+                        </div>
+
+                        <div className="posts-inspector-list">
+                            {loadingUserPosts ? (
+                                <div className="admin-loading">Gönderiler taranıyor...</div>
+                            ) : userPostsData.length === 0 ? (
+                                <p className="no-data">Kullanıcının paylaştığı herhangi bir gönderi bulunamadı.</p>
+                            ) : (
+                                userPostsData.map((post) => (
+                                    <div key={post._id} className="post-inspect-card">
+                                        <div className="post-inspect-header">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span className="post-inspect-channel">
+                                                    {post.portal?.name ? `🌐 ${post.portal.name}` : 'GLOBAL AKIŞ'}
+                                                </span>
+                                                <span style={{ fontFamily: 'monospace' }}>
+                                                    ID: {post._id}
+                                                </span>
+                                            </div>
+                                            <span>{post.createdAt ? new Date(post.createdAt).toLocaleString('tr-TR') : '-'}</span>
+                                        </div>
+
+                                        {post.content && (
+                                            <div className="post-inspect-text">{post.content}</div>
+                                        )}
+
+                                        {post.media && (
+                                            <div className="post-inspect-media-container">
+                                                {post.mediaType === 'video' ? (
+                                                    <video src={getImageUrl(post.media)} controls style={{ maxHeight: '240px' }} />
+                                                ) : (
+                                                    <AdminMedia src={post.media} alt="" className="post-inspect-media" />
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="post-inspect-footer">
+                                            <div className="post-inspect-stats">
+                                                <span>❤️ {post.likes?.length || 0} Beğeni</span>
+                                                <span>💬 {post.comments?.length || 0} Yorum</span>
+                                                <span>🔄 {post.retweets?.length || 0} Repost</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="post-delete-btn"
+                                                onClick={() => handleDeletePost(post._id)}
+                                            >
+                                                🗑️ Kalıcı Sil
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '12px 20px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button type="button" className="btn-modern-ghost" onClick={() => setUserPostsOpen(false)}>
+                                Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PORTAL POSTS INSPECTOR MODAL */}
+            {portalPostsOpen && selectedPortalForPosts && (
+                <div className="modal-overlay-modern" onClick={() => setPortalPostsOpen(false)}>
+                    <div className="modal-content-modern posts-inspector-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px' }}>
+                            <div>
+                                <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0 }}>
+                                    📝 Portal Post Arşivi: {selectedPortalForPosts.name}
+                                </h2>
+                                <span style={{ fontSize: '11px', color: '#888' }}>
+                                    Kayıtlı postlar: {portalPostsData.length} adet
+                                </span>
+                            </div>
+                            <button className="close-btn-modern" onClick={() => setPortalPostsOpen(false)}>&times;</button>
+                        </div>
+
+                        {/* Search & Channel Filter Bar */}
+                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #222', background: '#0e0e0e', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '220px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Portal gönderileri içinde kelime ara..."
+                                    value={portalPostsSearch}
+                                    onChange={(e) => setPortalPostsSearch(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            openPortalPosts(selectedPortalForPosts, portalPostsChannelFilter, portalPostsSearch);
+                                        }
+                                    }}
+                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 12px', fontSize: '12px' }}
+                                />
+                            </div>
+                            <div style={{ width: '220px' }}>
+                                <select
+                                    className="badge-select"
+                                    value={portalPostsChannelFilter}
+                                    onChange={(e) => {
+                                        const chId = e.target.value;
+                                        setPortalPostsChannelFilter(chId);
+                                        openPortalPosts(selectedPortalForPosts, chId, portalPostsSearch);
+                                    }}
+                                    style={{ width: '100%', background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '8px 10px', fontSize: '12px', borderRadius: 0 }}
+                                >
+                                    <option value="all">Tüm Kanallar</option>
+                                    <option value="general"># Genel Akış (general)</option>
+                                    {(selectedPortalForPosts.channels || []).map(ch => (
+                                        <option key={ch._id} value={ch._id}>#{ch.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                className="user-box-btn"
+                                onClick={() => openPortalPosts(selectedPortalForPosts, portalPostsChannelFilter, portalPostsSearch)}
+                                style={{ minWidth: '90px' }}
+                            >
+                                Filtrele
+                            </button>
+                        </div>
+
+                        <div className="posts-inspector-list">
+                            {loadingPortalPosts ? (
+                                <div className="admin-loading">Portal gönderileri taranıyor...</div>
+                            ) : portalPostsData.length === 0 ? (
+                                <p className="no-data">Bu portalda henüz gönderi bulunamadı veya arama sonucu boş.</p>
+                            ) : (
+                                portalPostsData.map((post) => (
+                                    <div key={post._id} className="post-inspect-card">
+                                        <div className="post-inspect-header">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{ fontWeight: 700, color: '#fff' }}>
+                                                    @{post.author?.username || 'Bilinmiyor'}
+                                                </span>
+                                                <span className="post-inspect-channel">
+                                                    #{post.channel?.name || post.channel || 'general'}
+                                                </span>
+                                            </div>
+                                            <span style={{ fontFamily: 'monospace' }}>
+                                                {post.createdAt ? new Date(post.createdAt).toLocaleString('tr-TR') : '-'}
+                                            </span>
+                                        </div>
+
+                                        {post.content && (
+                                            <div className="post-inspect-text">{post.content}</div>
+                                        )}
+
+                                        {post.media && (
+                                            <div className="post-inspect-media-container">
+                                                {post.mediaType === 'video' ? (
+                                                    <video src={getImageUrl(post.media)} controls style={{ maxHeight: '240px' }} />
+                                                ) : (
+                                                    <AdminMedia src={post.media} alt="" className="post-inspect-media" />
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="post-inspect-footer">
+                                            <div className="post-inspect-stats">
+                                                <span>❤️ {post.likes?.length || 0} Beğeni</span>
+                                                <span>💬 {post.comments?.length || 0} Yorum</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="post-delete-btn"
+                                                onClick={() => handleDeletePost(post._id)}
+                                            >
+                                                🗑️ Kalıcı Sil
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '12px 20px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button type="button" className="btn-modern-ghost" onClick={() => setPortalPostsOpen(false)}>
+                                Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT TOURIST ADMIN PERMISSIONS MODAL */}
+            {editPermissionsModalOpen && editingTouristAdmin && (
+                <div className="modal-overlay-modern" onClick={() => setEditPermissionsModalOpen(false)}>
+                    <div className="modal-content-modern edit-permissions-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px' }}>
+                            <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0 }}>
+                                🛡️ Turist Admin İzinlerini Düzenle: @{editingTouristAdmin.username}
+                            </h2>
+                            <button className="close-btn-modern" onClick={() => setEditPermissionsModalOpen(false)}>&times;</button>
+                        </div>
+
+                        <div className="modal-body-modern" style={{ padding: '20px' }}>
+                            <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>
+                                Bu kullanıcıya özel olarak tanımlanmış modül izinlerini açıp kapatabilirsiniz. Değişiklikler anında yürürlüğe girer.
+                            </p>
+
+                            <div className="permissions-grid">
+                                {[
+                                    { key: 'canManageUsers', label: 'Kullanıcıları Yönet' },
+                                    { key: 'canBanUsers', label: 'Kullanıcı Engelle / Ceza Ver' },
+                                    { key: 'canManagePortals', label: 'Portalları Yönet' },
+                                    { key: 'canManageReports', label: 'Raporları İncele / Çöz' },
+                                    { key: 'canManageBadges', label: 'Rozetleri Yönet' },
+                                    { key: 'canManageBots', label: 'Botları Yönet' },
+                                    { key: 'canViewLogs', label: 'Platform Günlüğü / İzleri Gör' },
+                                    { key: 'canSendNotifications', label: 'Toplu Bildirim Gönder' },
+                                    { key: 'canManageBlog', label: 'Blog İçeriklerini Yönet' },
+                                ].map(item => {
+                                    const currentPerms = editingTouristAdmin.touristAdminPermissions || {};
+                                    const isChecked = !!currentPerms[item.key];
+                                    return (
+                                        <label key={item.key} className="permission-checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => {
+                                                    const updated = {
+                                                        ...currentPerms,
+                                                        [item.key]: e.target.checked
+                                                    };
+                                                    setEditingTouristAdmin({
+                                                        ...editingTouristAdmin,
+                                                        touristAdminPermissions: updated
+                                                    });
+                                                }}
+                                            />
+                                            <span>{item.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '14px 20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button
+                                type="button"
+                                className="btn-modern-ghost"
+                                onClick={() => setEditPermissionsModalOpen(false)}
+                            >
+                                İptal
+                            </button>
+                            <button
+                                type="button"
+                                className="user-box-btn"
+                                onClick={() => handleUpdateTouristPermissions(editingTouristAdmin._id, editingTouristAdmin.touristAdminPermissions || {})}
+                                style={{ minWidth: '160px' }}
+                            >
+                                Değişiklikleri Kaydet
                             </button>
                         </div>
                     </div>

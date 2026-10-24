@@ -14,6 +14,10 @@ import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
 import { escapeRegex } from '../utils/security.js';
+import Post from '../models/Post.js';
+import Portal from '../models/Portal.js';
+import ActivityLog from '../models/ActivityLog.js';
+import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -136,7 +140,7 @@ router.post('/reject-verification/:id', protect, admin, async (req, res) => {
 });
 
 // @route   GET /api/admin/users
-// @desc    Get all users (with search)
+// @desc    Get all users (with search and enriched dossier data)
 // @access  Private/Admin
 router.get('/users', protect, admin, async (req, res) => {
     try {
@@ -149,20 +153,99 @@ router.get('/users', protect, admin, async (req, res) => {
                 $or: [
                     { username: { $regex: escaped, $options: 'i' } },
                     { email: { $regex: escaped, $options: 'i' } },
-                    { 'profile.displayName': { $regex: escaped, $options: 'i' } }
+                    { 'profile.displayName': { $regex: escaped, $options: 'i' } },
+                    { lastIP: { $regex: escaped, $options: 'i' } }
                 ]
             };
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge customBadge isVerified isBanned banReason banExpiresAt isShadowbanned lastIP createdAt isTouristAdmin touristAdminExpiresAt assignedBy')
+            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals')
+            .populate('joinedPortals', 'name avatar')
             .sort({ createdAt: -1 })
-            .limit(50); // Limit to avoid massive payloads
+            .limit(100);
 
         res.json(users);
     } catch (error) {
         console.error('Fetch users error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/admin/users/:id/dossier
+// @desc    Get full user dossier / genealogy (tüm şecere)
+// @access  Private/Admin
+router.get('/users/:id/dossier', protect, admin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id)
+            .populate('joinedPortals', 'name avatar members channels isVerified badges')
+            .lean();
+
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        // Count posts and fetch recent post summaries & audit logs
+        const [totalPosts, recentPosts, recentActivities, ownedPortals] = await Promise.all([
+            Post.countDocuments({ author: user._id }),
+            Post.find({ author: user._id }).sort({ createdAt: -1 }).limit(10).populate('portal', 'name avatar').lean(),
+            ActivityLog.find({ $or: [{ user: user._id }, { username: user.username }] }).sort({ createdAt: -1 }).limit(50).lean(),
+            Portal.find({ owner: user._id }).select('name avatar members createdAt isVerified').lean()
+        ]);
+
+        // Aggregate unique IP addresses known for this user
+        const ipSet = new Set();
+        if (user.lastIP) ipSet.add(user.lastIP);
+        if (Array.isArray(user.registeredDevices)) {
+            user.registeredDevices.forEach(d => {
+                if (d.lastIP) ipSet.add(d.lastIP);
+            });
+        }
+        recentActivities.forEach(a => {
+            if (a.ip) ipSet.add(a.ip);
+        });
+
+        res.json({
+            user,
+            totalPosts,
+            recentPosts,
+            recentActivities,
+            ownedPortals,
+            allKnownIPs: Array.from(ipSet)
+        });
+    } catch (error) {
+        console.error('Fetch user dossier error:', error);
+        res.status(500).json({ message: 'Kullanıcı şeceresi getirilemedi.' });
+    }
+});
+
+// @route   GET /api/admin/users/:id/posts
+// @desc    Get all posts created by a specific user with search
+// @access  Private/Admin
+router.get('/users/:id/posts', protect, admin, async (req, res) => {
+    try {
+        const { q, limit = 50, page = 1 } = req.query;
+        let query = { author: req.params.id };
+
+        if (q) {
+            query.content = { $regex: escapeRegex(q), $options: 'i' };
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [posts, total] = await Promise.all([
+            Post.find(query)
+                .populate('portal', 'name avatar channels')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            Post.countDocuments(query)
+        ]);
+
+        res.json({ posts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    } catch (error) {
+        console.error('Fetch user posts error:', error);
+        res.status(500).json({ message: 'Kullanıcı gönderileri getirilemedi.' });
     }
 });
 
@@ -273,16 +356,85 @@ router.get('/portals', protect, admin, async (req, res) => {
             query = { name: { $regex: escapeRegex(q), $options: 'i' } };
         }
 
-        const portals = await import('../models/Portal.js').then(m => m.default.find(query)
+        const portals = await Portal.find(query)
             .select('name description owner avatar banner themeColor isVerified badges customBadge status statusReason suspendedUntil warnings alerts isNSFW isReadOnly createdAt members channels')
             .populate('owner', 'username profile.displayName')
             .sort({ createdAt: -1 })
-            .limit(50));
+            .limit(100);
 
         res.json(portals);
     } catch (error) {
         console.error('Fetch portals error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/admin/portals/:id/dossier
+// @desc    Get portal full dossier (tüm bilgiler, üyeler, kanallar, istatistikler)
+// @access  Private/Admin
+router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id)
+            .populate('owner', 'username profile.displayName profile.avatar email')
+            .populate('members.user', 'username profile.displayName profile.avatar')
+            .lean();
+
+        if (!portal) {
+            return res.status(404).json({ message: 'Portal bulunamadı.' });
+        }
+
+        const [postCount, recentPosts] = await Promise.all([
+            Post.countDocuments({ portal: portal._id }),
+            Post.find({ portal: portal._id })
+                .populate('author', 'username profile.displayName profile.avatar')
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .lean()
+        ]);
+
+        res.json({
+            portal,
+            postCount,
+            recentPosts
+        });
+    } catch (error) {
+        console.error('Fetch portal dossier error:', error);
+        res.status(500).json({ message: 'Portal detayları getirilemedi.' });
+    }
+});
+
+// @route   GET /api/admin/portals/:id/posts
+// @desc    Get all posts in a specific portal with channel and search filters
+// @access  Private/Admin
+router.get('/portals/:id/posts', protect, admin, async (req, res) => {
+    try {
+        const { q, channelId, limit = 50, page = 1 } = req.query;
+        let query = { portal: req.params.id };
+
+        if (channelId && channelId !== 'all') {
+            query.channel = channelId;
+        }
+
+        if (q) {
+            query.content = { $regex: escapeRegex(q), $options: 'i' };
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [posts, total] = await Promise.all([
+            Post.find(query)
+                .populate('author', 'username profile.displayName profile.avatar')
+                .populate('portal', 'name avatar channels')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            Post.countDocuments(query)
+        ]);
+
+        res.json({ posts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    } catch (error) {
+        console.error('Fetch portal posts error:', error);
+        res.status(500).json({ message: 'Portal gönderileri getirilemedi.' });
     }
 });
 
@@ -626,54 +778,17 @@ router.delete('/portals/:id/alert/:alertId', protect, admin, async (req, res) =>
 });
 
 // @route   GET /api/admin/system-settings/maintenance
-// @desc    Get current maintenance mode status
+// @desc    Get current maintenance mode status (Decommissioned)
 // @access  Private/Admin
 router.get('/system-settings/maintenance', protect, admin, async (req, res) => {
-    try {
-        const setting = await SystemSettings.findOne({ key: 'maintenance_mode' });
-        const active = setting ? !!setting.value?.active : false;
-        res.json({ active });
-    } catch (error) {
-        console.error('Fetch maintenance setting error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
+    res.json({ active: false });
 });
 
 // @route   PUT /api/admin/system-settings/maintenance
-// @desc    Toggle maintenance mode (Only for head admin oxypace)
+// @desc    Toggle maintenance mode (Decommissioned)
 // @access  Private/Admin
 router.put('/system-settings/maintenance', protect, admin, async (req, res) => {
-    try {
-        if (req.user.username !== 'oxypace') {
-            return res.status(403).json({ message: 'Bu ayarı sadece baş yönetici değiştirebilir.' });
-        }
-
-        const { active } = req.body;
-        if (typeof active !== 'boolean') {
-            return res.status(400).json({ message: 'Geçersiz aktiflik değeri.' });
-        }
-
-        await SystemSettings.findOneAndUpdate(
-            { key: 'maintenance_mode' },
-            { value: { active } },
-            { upsert: true, new: true }
-        );
-
-        // Update local global cache
-        global.isMaintenanceActive = active;
-
-        // Broadcast to all active socket connections
-        const io = req.app.get('io');
-        if (io) {
-            io.emit('maintenance_toggle', { active });
-            console.log(`📡 Broadcasted maintenance_toggle event: active = ${active}`);
-        }
-
-        res.json({ message: `Bakım modu başarıyla ${active ? 'aktifleştirildi' : 'devre dışı bırakıldı'}.`, active });
-    } catch (error) {
-        console.error('Update maintenance setting error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
+    res.json({ active: false, message: 'Bakım modu sistemden tamamen kaldırılmıştır.' });
 });
 
 // @route   PUT /api/admin/users/:id/ban
@@ -730,6 +845,15 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
             console.log(`📡 Broadcasted user_banned to user room: ${user._id}`);
         }
 
+        logActivity({
+            action: 'BAN_USER',
+            category: 'security',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username, reason: user.banReason, expiresAt: user.banExpiresAt }
+        });
+
         res.json({ message: 'Kullanıcı başarıyla engellendi.', user });
     } catch (error) {
         console.error('Ban user error:', error);
@@ -755,6 +879,15 @@ router.put('/users/:id/shadowban', protect, admin, async (req, res) => {
 
         user.isShadowbanned = !!isShadowbanned;
         await user.save();
+
+        logActivity({
+            action: user.isShadowbanned ? 'SHADOWBAN_USER' : 'UNSHADOWBAN_USER',
+            category: 'security',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username, isShadowbanned: user.isShadowbanned }
+        });
 
         res.json({ message: `Kullanıcı hayalet moduna ${user.isShadowbanned ? 'alındı' : 'çıkarıldı'}.`, user });
     } catch (error) {
@@ -783,6 +916,16 @@ router.put('/users/:id/unban', protect, admin, async (req, res) => {
         user.banExpiresAt = null;
 
         await user.save();
+
+        logActivity({
+            action: 'UNBAN_USER',
+            category: 'security',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username }
+        });
+
         res.json({ message: 'Kullanıcının engeli başarıyla kaldırıldı.', user });
     } catch (error) {
         console.error('Unban user error:', error);
@@ -1210,13 +1353,22 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
             return res.status(400).json({ message: 'Baş yöneticiye turist admin rolü atanamaz.' });
         }
 
-        const { duration, expiresAt, revoke } = req.body;
+        const { duration, expiresAt, revoke, permissions } = req.body;
 
         if (revoke) {
             user.isTouristAdmin = false;
             user.touristAdminExpiresAt = null;
             user.assignedBy = '';
             await user.save();
+
+            logActivity({
+                action: 'TOURIST_ADMIN_REVOKE',
+                category: 'admin',
+                req,
+                targetId: user._id,
+                targetType: 'User',
+                details: { username: user.username }
+            });
 
             try {
                 const systemEnabled = user.settings?.notifications?.system !== false;
@@ -1262,7 +1414,31 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
         user.touristAdminExpiresAt = expiryDate;
         user.assignedBy = req.user.username;
 
+        // Apply granular Tourist Admin permissions
+        if (permissions && typeof permissions === 'object') {
+            user.touristAdminPermissions = {
+                canManageUsers: !!permissions.canManageUsers,
+                canBanUsers: !!permissions.canBanUsers,
+                canManagePortals: !!permissions.canManagePortals,
+                canManageReports: permissions.canManageReports !== false,
+                canManageBadges: !!permissions.canManageBadges,
+                canManageBots: !!permissions.canManageBots,
+                canViewLogs: permissions.canViewLogs !== false,
+                canSendNotifications: !!permissions.canSendNotifications,
+                canManageBlog: permissions.canManageBlog !== false,
+            };
+        }
+
         await user.save();
+
+        logActivity({
+            action: 'TOURIST_ADMIN_ASSIGN',
+            category: 'admin',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username, expiryDate, permissions: user.touristAdminPermissions }
+        });
 
         const messageText = 'Tebrikler! Sınırlı süreliğine Turist Admin olarak atandınız. Yetkileriniz başladı!';
         
@@ -1303,6 +1479,127 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Assign tourist admin error:', error);
         res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/tourist-admin/permissions
+// @desc    Update permissions of an active Tourist Admin
+// @access  Private/Admin (Oxypace Only)
+router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, res) => {
+    try {
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu işlemi sadece baş yönetici yapabilir.' });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user || !user.isTouristAdmin) {
+            return res.status(404).json({ message: 'Aktif turist admin bulunamadı.' });
+        }
+
+        const { permissions } = req.body;
+        if (permissions && typeof permissions === 'object') {
+            user.touristAdminPermissions = {
+                ...user.touristAdminPermissions,
+                ...permissions
+            };
+            await user.save();
+        }
+
+        logActivity({
+            action: 'TOURIST_ADMIN_PERMISSIONS_UPDATE',
+            category: 'admin',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username, permissions: user.touristAdminPermissions }
+        });
+
+        res.json({ message: 'Turist Admin yetkileri güncellendi.', user });
+    } catch (error) {
+        console.error('Update tourist admin permissions error:', error);
+        res.status(500).json({ message: 'Yetkiler güncellenemedi.' });
+    }
+});
+
+// @route   GET /api/admin/activity-logs
+// @desc    Get system activity logs / user footprints
+// @access  Private/Admin
+router.get('/activity-logs', protect, admin, async (req, res) => {
+    try {
+        const { q, category, action, userId, page = 1, limit = 50 } = req.query;
+        let query = {};
+
+        if (userId) {
+            query.user = userId;
+        }
+
+        if (category && category !== 'all') {
+            query.category = category;
+        }
+
+        if (action && action !== 'all') {
+            query.action = action.toUpperCase();
+        }
+
+        if (q) {
+            const escaped = escapeRegex(q);
+            query.$or = [
+                { username: { $regex: escaped, $options: 'i' } },
+                { ip: { $regex: escaped, $options: 'i' } },
+                { action: { $regex: escaped, $options: 'i' } },
+                { targetId: { $regex: escaped, $options: 'i' } }
+            ];
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [logs, total] = await Promise.all([
+            ActivityLog.find(query)
+                .populate('user', 'username profile.displayName profile.avatar')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            ActivityLog.countDocuments(query)
+        ]);
+
+        res.json({
+            logs,
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / parseInt(limit))
+        });
+    } catch (error) {
+        console.error('Fetch activity logs error:', error);
+        res.status(500).json({ message: 'Platform günlükleri getirilemedi.' });
+    }
+});
+
+// @route   DELETE /api/admin/posts/:id
+// @desc    Delete post by admin
+// @access  Private/Admin
+router.delete('/posts/:id', protect, admin, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Gönderi bulunamadı.' });
+        }
+
+        const snippet = post.content ? post.content.substring(0, 80) : '';
+        await Post.deleteOne({ _id: post._id });
+
+        logActivity({
+            action: 'ADMIN_POST_DELETE',
+            category: 'content',
+            req,
+            targetId: post._id,
+            targetType: 'Post',
+            details: { snippet, authorId: post.author, portalId: post.portal }
+        });
+
+        res.json({ message: 'Gönderi sistemden kalıcı olarak silindi.' });
+    } catch (error) {
+        console.error('Delete post error:', error);
+        res.status(500).json({ message: 'Gönderi silinemedi.' });
     }
 });
 

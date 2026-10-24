@@ -323,6 +323,17 @@ const userSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        touristAdminPermissions: {
+            canManageUsers: { type: Boolean, default: false },
+            canBanUsers: { type: Boolean, default: false },
+            canManagePortals: { type: Boolean, default: false },
+            canManageReports: { type: Boolean, default: true },
+            canManageBadges: { type: Boolean, default: false },
+            canManageBots: { type: Boolean, default: false },
+            canViewLogs: { type: Boolean, default: true },
+            canSendNotifications: { type: Boolean, default: false },
+            canManageBlog: { type: Boolean, default: true },
+        },
         assignedBy: {
             type: String,
             default: '',

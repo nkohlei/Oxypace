@@ -882,11 +882,7 @@ const AppContent = () => {
         return <PageLoader />;
     }
 
-    return (
-        <MaintenanceGate>
-            <AppLayout />
-        </MaintenanceGate>
-    );
+    return <AppLayout />;
 };
 
 import { App as CapacitorApp } from '@capacitor/app';

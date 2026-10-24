@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import Portal from '../models/Portal.js';
 import BotHistory from '../models/BotHistory.js';
 import BotConfig from '../models/BotConfig.js';
+import logActivity from '../utils/auditLogger.js';
 
 const parser = new Parser();
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
@@ -567,6 +568,21 @@ const processItem = async (item, bot) => {
 
         await newPost.save();
         console.log(`✅ [${bot.user.username}] Post Deployed: ${translatedTitle.substring(0, 30)}...`);
+
+        logActivity({
+            user: bot.user._id,
+            username: bot.user.username,
+            action: 'BOT_POST',
+            category: 'bot',
+            targetId: newPost._id,
+            targetType: 'Post',
+            details: {
+                title: translatedTitle,
+                portal: bot.portal.name,
+                channel: bot.channel.name,
+                link: item.link
+            }
+        });
 
         // --- PERSISTENT NOTIFICATIONS & REAL-TIME SYNC ---
         try {

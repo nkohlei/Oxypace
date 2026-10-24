@@ -96,25 +96,8 @@ const show404Page = () => {
 };
 
 const init = () => {
-    // 1. Render App immediately to unblock FCP / LCP
+    // Render App immediately to unblock FCP / LCP
     renderApp();
-
-    const token = localStorage.getItem('token');
-    if (token) {
-        return;
-    }
-
-    // 2. Check maintenance status asynchronously after initial paint
-    fetch('/api/auth/maintenance-status')
-        .then(res => res.json())
-        .then(data => {
-            if (data.active) {
-                show404Page();
-            }
-        })
-        .catch(() => {
-            // Fail-safe
-        });
 };
 
 init();

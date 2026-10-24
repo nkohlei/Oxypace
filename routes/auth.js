@@ -18,6 +18,7 @@ import {
 } from '../middleware/validation.js';
 import { verifyEmailDomain } from '../utils/emailVerifier.js';
 import { enrollInTanitimPortal } from '../utils/portalAutoEnroll.js';
+import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -157,6 +158,15 @@ router.post('/register', registerLimiter, registerValidation, async (req, res) =
             user.verificationToken = undefined;
             await user.save();
         }
+
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'REGISTER',
+            category: 'auth',
+            req,
+            details: { email: user.email }
+        });
 
         res.status(201).json({
             message: emailSent
@@ -323,6 +333,15 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 
         user.lastIP = incomingIP;
         await user.save();
+
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'LOGIN',
+            category: 'auth',
+            req,
+            details: { email: user.email, isNewDevice: !!isNewDevice }
+        });
 
         // Generate token
         const token = generateToken(user._id, user.isAdmin);
@@ -842,17 +861,10 @@ router.post('/maintenance-login', async (req, res) => {
 });
 
 // @route   GET /api/auth/maintenance-status
-// @desc    Get current maintenance status (Public/Edge Function check)
+// @desc    Get current maintenance status (Decommissioned - always false)
 // @access  Public
 router.get('/maintenance-status', async (req, res) => {
-    try {
-        let setting = await SystemSettings.findOne({ key: 'maintenance_mode' });
-        const active = setting ? !!setting.value?.active : false;
-        res.json({ active });
-    } catch (error) {
-        console.error('Fetch public maintenance status error:', error);
-        res.status(500).json({ active: false });
-    }
+    res.json({ active: false });
 });
 
 // @route   POST /api/auth/recover-init
