@@ -202,7 +202,7 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
 // @route   GET /api/admin/users/:id/dossier
 // @desc    Get full user dossier / genealogy (tüm şecere)
 // @access  Private/Admin
-router.get('/users/:id/dossier', protect, requirePermission('canManageUsers'), async (req, res) => {
+router.get('/users/:id/dossier', protect, requirePermission('users', 'details'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
             .populate('joinedPortals', 'name avatar members channels isVerified badges')
@@ -503,7 +503,7 @@ router.get('/portals', protect, requirePermission('canManagePortals'), async (re
 // @route   GET /api/admin/portals/:id/dossier
 // @desc    Get portal full dossier (tüm bilgiler, üyeler, kanallar, istatistikler)
 // @access  Private/Admin
-router.get('/portals/:id/dossier', protect, requirePermission('canManagePortals'), async (req, res) => {
+router.get('/portals/:id/dossier', protect, requirePermission('portals', 'details'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
             .populate('owner', 'username profile.displayName profile.avatar email createdAt lastActive')
@@ -1788,6 +1788,25 @@ router.post('/users/:id/custom-badge', protect, requirePermission('canManageBadg
     }
 });
 
+// @route   GET /api/admin/tourist-admins
+// @desc    Get all active tourist admins
+// @access  Private/Admin (Oxypace Only)
+router.get('/tourist-admins', protect, admin, async (req, res) => {
+    try {
+        if (req.user.username !== 'oxypace') {
+            return res.status(403).json({ message: 'Bu sayfayı sadece baş yönetici görüntüleyebilir.' });
+        }
+        const touristAdmins = await User.find({ isTouristAdmin: true })
+            .select('username email profile verificationBadge customBadge isVerified isAdmin isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive')
+            .sort({ createdAt: -1 })
+            .lean();
+        res.json(touristAdmins);
+    } catch (error) {
+        console.error('Fetch tourist admins error:', error);
+        res.status(500).json({ message: 'Turist adminler yüklenemedi.' });
+    }
+});
+
 // @route   POST /api/admin/users/:id/tourist-admin
 // @desc    Assign or revoke Tourist Admin role
 // @access  Private/Admin (Oxypace Only)
@@ -1956,15 +1975,41 @@ router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, r
             return res.status(404).json({ message: 'Aktif turist admin bulunamadı.' });
         }
 
-        const { permissions } = req.body;
+        const { permissions, expiresAt, duration } = req.body;
         if (permissions && typeof permissions === 'object') {
             user.touristAdminPermissions = {
-                ...user.touristAdminPermissions,
-                ...permissions
+                ...permissions,
+                canManageRequests: !!permissions.canManageRequests,
+                canManageRecovery: !!permissions.canManageRecovery,
+                canManageFeedback: !!permissions.canManageFeedback,
+                canManageUsers: !!permissions.canManageUsers,
+                canBanUsers: !!permissions.canBanUsers,
+                canManagePortals: !!permissions.canManagePortals,
+                canManageReports: !!permissions.canManageReports,
+                canManageBadges: !!permissions.canManageBadges,
+                canManageBots: !!permissions.canManageBots,
+                canViewLogs: !!permissions.canViewLogs,
+                canSendNotifications: !!permissions.canSendNotifications,
+                canManageBlog: !!permissions.canManageBlog,
+                canManageMobile: !!permissions.canManageMobile,
+                modules: permissions.modules || {}
             };
             user.markModified('touristAdminPermissions');
-            await user.save();
         }
+
+        if (expiresAt) {
+            user.touristAdminExpiresAt = new Date(expiresAt);
+        } else if (duration) {
+            const num = parseInt(duration);
+            const unit = duration.slice(-1);
+            if (unit === 'h') {
+                user.touristAdminExpiresAt = new Date(Date.now() + num * 60 * 60 * 1000);
+            } else if (unit === 'd') {
+                user.touristAdminExpiresAt = new Date(Date.now() + num * 24 * 60 * 60 * 1000);
+            }
+        }
+
+        await user.save();
 
         logActivity({
             action: 'TOURIST_ADMIN_PERMISSIONS_UPDATE',
@@ -1972,13 +2017,14 @@ router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, r
             req,
             targetId: user._id,
             targetType: 'User',
-            details: { username: user.username, permissions: user.touristAdminPermissions }
+            details: { username: user.username, permissions: user.touristAdminPermissions, expiresAt: user.touristAdminExpiresAt }
         });
 
         const io = req.app.get('io');
         if (io) {
             io.to(user._id.toString()).emit('tourist_admin_permissions_updated', {
-                permissions: user.touristAdminPermissions
+                permissions: user.touristAdminPermissions,
+                expiresAt: user.touristAdminExpiresAt
             });
         }
 
@@ -2063,7 +2109,7 @@ router.get('/activity-logs/stats', protect, requirePermission('canViewLogs'), as
 // @route   GET /api/admin/activity-logs/export
 // @desc    Export platform activity logs as JSON or CSV
 // @access  Private/Admin
-router.get('/activity-logs/export', protect, requirePermission('canViewLogs'), async (req, res) => {
+router.get('/activity-logs/export', protect, requirePermission('activity', 'canExport'), async (req, res) => {
     try {
         const { category, severity, q, format = 'json', limit = 1000 } = req.query;
         let query = {};

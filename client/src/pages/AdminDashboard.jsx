@@ -2472,12 +2472,13 @@ const TouristPermissionStudio = ({ modulesState, onChange }) => {
             next.portals = { access: 'full', canViewDetails: true };
             next.reports = { access: 'full', canViewDetails: true };
             next.blog = { access: 'full', canViewDetails: true };
+            next.ipbans = { access: 'full', canViewDetails: false };
             next.activity = { access: 'view', canViewDetails: true, canExport: false };
         } else if (presetName === 'support') {
             next.requests = { access: 'full', canViewDetails: true };
             next.recovery = { access: 'full', canViewDetails: true };
             next.feedback = { access: 'full', canViewDetails: true };
-            next.reports = { access: 'full', canViewDetails: true };
+            next.reports = { access: 'view', canViewDetails: true };
             next.users = { access: 'view', canViewDetails: true, canBan: false, canManageBadges: false };
         }
         onChange(next);
@@ -2485,12 +2486,17 @@ const TouristPermissionStudio = ({ modulesState, onChange }) => {
 
     const handleAccessChange = (modId, newAccess) => {
         const current = modulesState[modId] || { access: 'none', canViewDetails: false };
+        const isFull = newAccess === 'full';
+        const isView = newAccess === 'view';
         onChange({
             ...modulesState,
             [modId]: {
                 ...current,
                 access: newAccess,
-                canViewDetails: newAccess === 'none' ? false : (current.canViewDetails !== false)
+                canViewDetails: newAccess !== 'none',
+                canBan: isFull ? true : false,
+                canManageBadges: isFull ? true : false,
+                canExport: isFull ? true : false
             }
         });
     };
@@ -2653,17 +2659,51 @@ const AdminDashboard = () => {
         }
     }, [currentUser]);
 
-    // Check granular permission helper (legacy)
-    const hasPerm = (permKey) => {
+    // Check granular permission helper (bidirectional)
+    const hasPerm = (permKey, level = 'view') => {
         if (isFullAdmin) return true;
         if (!isTouristAdmin) return false;
+        
+        const LEGACY_TO_MODULE = {
+            'canManageRequests': 'requests',
+            'canManageRecovery': 'recovery',
+            'canManageFeedback': 'feedback',
+            'canManageUsers': 'users',
+            'canBanUsers': 'users',
+            'canManageBadges': 'badges',
+            'canManageBots': 'bots',
+            'canManagePortals': 'portals',
+            'canManageBlog': 'blog',
+            'canManageReports': 'reports',
+            'canViewLogs': 'activity',
+            'canSendNotifications': 'mass-notification',
+            'canManageNotifications': 'mass-notification',
+            'canManageMobile': 'mobile-designs',
+            'canManageSystem': 'mobile-designs'
+        };
+
+        const targetMod = LEGACY_TO_MODULE[permKey] || permKey;
+        const access = getModuleAccess(targetMod);
+        if (level === 'view') return access.canView;
+        if (level === 'full') return access.canEdit;
+        if (level === 'details') return access.canViewDetails;
+        if (level === 'canBan') return !!access.custom?.canBan || access.canEdit;
+        if (level === 'canManageBadges') return !!access.custom?.canManageBadges || access.canEdit;
+        if (level === 'canExport') return !!access.custom?.canExport || access.canEdit;
+
         return !!liveTouristPerms[permKey];
     };
 
     // Granular Module-Level Access Control Helper
     const getModuleAccess = (moduleId) => {
         if (isOxypace || (currentUser?.isAdmin && !isTouristAdmin)) {
-            return { access: 'full', canView: true, canEdit: true, canViewDetails: true, custom: { canBan: true, canManageBadges: true, canExport: true } };
+            return { 
+                access: 'full', 
+                canView: true, 
+                canEdit: true, 
+                canViewDetails: true, 
+                custom: { canBan: true, canManageBadges: true, canExport: true } 
+            };
         }
         if (!isTouristAdmin) {
             return { access: 'none', canView: false, canEdit: false, canViewDetails: false, custom: {} };
@@ -2678,7 +2718,11 @@ const AdminDashboard = () => {
                 canView: access === 'view' || access === 'full',
                 canEdit: access === 'full',
                 canViewDetails: access !== 'none' && mod.canViewDetails !== false,
-                custom: mod
+                custom: {
+                    canBan: mod.canBan !== undefined ? !!mod.canBan : (access === 'full'),
+                    canManageBadges: mod.canManageBadges !== undefined ? !!mod.canManageBadges : (access === 'full'),
+                    canExport: mod.canExport !== undefined ? !!mod.canExport : (access === 'full')
+                }
             };
         }
 
@@ -2732,8 +2776,8 @@ const AdminDashboard = () => {
             'blog', 'reports', 'mass-notification', 'mobile-designs', 'mobile-versions'
         ];
         for (const tab of candidateTabs) {
-            const requiredPerm = TAB_PERMISSION_MAP[tab];
-            if (requiredPerm && hasPerm(requiredPerm)) {
+            const access = getModuleAccess(tab);
+            if (access.canView) {
                 return tab;
             }
         }
@@ -2819,6 +2863,107 @@ const AdminDashboard = () => {
     const [editingModulesState, setEditingModulesState] = useState(() => getDefaultModulePermissions('none'));
     const [editPermissionsModalOpen, setEditPermissionsModalOpen] = useState(false);
     const [editingTouristAdmin, setEditingTouristAdmin] = useState(null);
+    const [editExpiryOption, setEditExpiryOption] = useState('keep'); // 'keep', 'extend', 'custom'
+    const [editExtendHours, setEditExtendHours] = useState(24);
+    const [editCustomDate, setEditCustomDate] = useState('');
+
+    // On-screen Unauthorized Action Warning Alert State
+    const [unauthorizedAlert, setUnauthorizedAlert] = useState({
+        show: false,
+        title: 'Yetkisiz Eylem',
+        message: '',
+        requiredLevel: '',
+        moduleName: ''
+    });
+
+    const triggerUnauthorizedWarning = (message, title = 'Yetkisiz Eylem', requiredLevel = '', moduleName = '') => {
+        setUnauthorizedAlert({
+            show: true,
+            title,
+            message: message || 'Bu işlem veya modül için yetkiniz bulunmamaktadır.',
+            requiredLevel,
+            moduleName
+        });
+    };
+
+    // Auto-dismiss unauthorized alert
+    useEffect(() => {
+        if (unauthorizedAlert.show) {
+            const timer = setTimeout(() => {
+                setUnauthorizedAlert(prev => ({ ...prev, show: false }));
+            }, 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [unauthorizedAlert.show]);
+
+    // Local Axios Response Interceptor for 403 Forbidden warnings
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response && error.response.status === 403) {
+                    const data = error.response.data;
+                    if (!data?.isBanned) {
+                        const msg = data?.message || 'Bu işlem veya modül için yetkiniz bulunmamaktadır.';
+                        triggerUnauthorizedWarning(msg, 'Yetkisiz Eylem', data?.requiredLevel || '', data?.requiredPermission || '');
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, []);
+
+    // Action permission guard helper
+    const checkActionPerm = (moduleId, requiredLevel = 'full', actionName = 'Bu işlem') => {
+        if (isFullAdmin) return true;
+        const access = getModuleAccess(moduleId);
+        if (!access.canView) {
+            triggerUnauthorizedWarning(`"${getModuleTitle(moduleId)}" modülüne erişim yetkiniz bulunmamaktadır.`, 'Yetkisiz Eylem', 'Erişim İzni', getModuleTitle(moduleId));
+            return false;
+        }
+        if (requiredLevel === 'full' && !access.canEdit) {
+            triggerUnauthorizedWarning(`${actionName} için tam yönetim yetkisi gereklidir. Yalnızca izleme (salt okunur) yetkiniz bulunmaktadır.`, 'Yetkisiz Eylem', 'Tam Yetki', getModuleTitle(moduleId));
+            return false;
+        }
+        if (requiredLevel === 'canBan' && !access.custom?.canBan && access.access !== 'full') {
+            triggerUnauthorizedWarning(`Kullanıcı engelleme veya ceza işlemi yetkiniz kısıtlanmıştır.`, 'Yetkisiz Eylem', 'Engelleme / Ban Yetkisi', 'Kullanıcılar');
+            return false;
+        }
+        if (requiredLevel === 'canManageBadges' && !access.custom?.canManageBadges && access.access !== 'full') {
+            triggerUnauthorizedWarning(`Rozet atama veya değiştirme yetkiniz bulunmamaktadır.`, 'Yetkisiz Eylem', 'Rozet Atama Yetkisi', 'Rozetler');
+            return false;
+        }
+        if (requiredLevel === 'canExport' && !access.custom?.canExport && access.access !== 'full') {
+            triggerUnauthorizedWarning(`Logları dışa aktarma (export) yetkiniz kısıtlanmıştır.`, 'Yetkisiz Eylem', 'Log Dışa Aktarma Yetkisi', 'Platform Günlüğü');
+            return false;
+        }
+        if (requiredLevel === 'details' && !access.canViewDetails) {
+            triggerUnauthorizedWarning(`Açılır pencere detaylarını inceleme yetkiniz kısıtlanmıştır.`, 'Yetkisiz Eylem', 'Detay İnceleme İzni', getModuleTitle(moduleId));
+            return false;
+        }
+        return true;
+    };
+
+    const handleNavTabClick = (tabId, label) => {
+        setSidebarOpen(false);
+        if (isTouristAdmin && !isFullAdmin) {
+            const access = getModuleAccess(tabId);
+            if (!access.canView) {
+                triggerUnauthorizedWarning(
+                    `"${label}" modülüne erişim yetkiniz bulunmamaktadır. Bu sekme kilitlidir.`,
+                    'Yetkisiz Eylem',
+                    'İzleme veya Tam Yetki',
+                    label
+                );
+                setActiveTab(tabId);
+                return;
+            }
+        }
+        setActiveTab(tabId);
+    };
 
     // Custom badges state
     const [customBadges, setCustomBadges] = useState([]);
@@ -2995,6 +3140,7 @@ const AdminDashboard = () => {
 
     const handleSendMassNotification = async (e) => {
         e.preventDefault();
+        if (!checkActionPerm('notifications', 'full', 'Toplu bildirim gönderme')) return;
         if (!massNotifTitle.trim() || !massNotifMessage.trim()) {
             setMassNotifStatus({ type: 'error', text: 'Lütfen başlık ve mesaj alanlarını doldurun.' });
             return;
@@ -3104,6 +3250,7 @@ const AdminDashboard = () => {
 
     const handleSaveCustomBadge = async (e) => {
         e.preventDefault();
+        if (!checkActionPerm('custom-badges', 'full', 'Özel rozet kaydetme/güncelleme')) return;
         if (!customBadgeName.trim()) {
             alert('Lütfen rozet ismi girin.');
             return;
@@ -3141,6 +3288,7 @@ const AdminDashboard = () => {
     };
 
     const handleEditCustomBadge = (badge) => {
+        if (!checkActionPerm('custom-badges', 'full', 'Özel rozet düzenleme')) return;
         setEditingCustomBadgeId(badge._id);
         setCustomBadgeName(badge.name || '');
         setCustomBadgeUploadedUrl(badge.url || '');
@@ -3161,6 +3309,7 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteCustomBadge = async (badgeId) => {
+        if (!checkActionPerm('custom-badges', 'full', 'Özel rozet silme')) return;
         if (!window.confirm('Bu özel rozeti silmek istediğinize emin misiniz?')) return;
         try {
             await axios.delete(`/api/admin/custom-badges/${badgeId}`);
@@ -3197,11 +3346,16 @@ const AdminDashboard = () => {
     const fetchTouristAdmins = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get('/api/admin/users');
-            setTouristAdmins(data.filter(u => u.isTouristAdmin));
+            const { data } = await axios.get('/api/admin/tourist-admins');
+            setTouristAdmins(data);
         } catch (err) {
-            console.error('Failed to load tourist admins:', err);
-            setError('Turist admin listesi yüklenemedi.');
+            console.error('Failed to load tourist admins from endpoint, falling back to /users:', err);
+            try {
+                const { data: usersData } = await axios.get('/api/admin/users');
+                setTouristAdmins(usersData.filter(u => u.isTouristAdmin));
+            } catch (fallbackErr) {
+                setError('Turist admin listesi yüklenemedi.');
+            }
         } finally {
             setLoading(false);
         }
@@ -3403,6 +3557,7 @@ const AdminDashboard = () => {
     const handleBanSubmit = async (reason, expiresAt) => {
         try {
             if (banModalTarget.type === 'user') {
+                if (!checkActionPerm('users', 'canBan', 'Kullanıcı engelleme')) return;
                 const userId = banModalTarget.id;
                 await axios.put(`/api/admin/users/${userId}/ban`, { reason, expiresAt });
                 alert('Kullanıcı başarıyla engellendi.');
@@ -3410,6 +3565,7 @@ const AdminDashboard = () => {
                 setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isBanned: true, banReason: reason, banExpiresAt: expiresAt } : prev);
                 if (activeTab === 'users') fetchUsers(searchTerm);
             } else if (banModalTarget.type === 'ip') {
+                if (!checkActionPerm('ipbans', 'full', 'IP engelleme')) return;
                 const ip = banModalTarget.id;
                 await axios.post('/api/admin/ip-bans', { ip, reason, expiresAt });
                 alert('IP adresi başarıyla engellendi.');
@@ -3422,6 +3578,7 @@ const AdminDashboard = () => {
     };
 
     const handleUnbanUser = async (userId) => {
+        if (!checkActionPerm('users', 'canBan', 'Kullanıcı engeli kaldırma')) return;
         if (!window.confirm('Bu kullanıcının engelini kaldırmak istediğinize emin misiniz?')) return;
         try {
             await axios.put(`/api/admin/users/${userId}/unban`);
@@ -3527,6 +3684,7 @@ const AdminDashboard = () => {
     };
 
     const handleResolveReport = async (reportId) => {
+        if (!checkActionPerm('reports', 'full', 'Şikayet sonuçlandırma')) return;
         try {
             await axios.put(`/api/reports/${reportId}/status`, { status: 'resolved' });
             setReports(prev => prev.map(r => r._id === reportId ? { ...r, status: 'resolved' } : r));
@@ -3538,6 +3696,7 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteReport = async (reportId) => {
+        if (!checkActionPerm('reports', 'full', 'Şikayet bildirisi silme')) return;
         if (!window.confirm('Bu bildiriyi silmek istediğinize emin misiniz?')) return;
         try {
             await axios.delete(`/api/reports/${reportId}`);
@@ -3550,6 +3709,7 @@ const AdminDashboard = () => {
     };
 
     const handleAdminDeletePost = async (postId, reportId) => {
+        if (!checkActionPerm('reports', 'full', 'Gönderi silme')) return;
         if (!window.confirm('Bu gönderiyi silmek istediğinize emin misiniz?')) return;
         try {
             await axios.delete(`/api/admin/posts/${postId}`);
@@ -3564,6 +3724,7 @@ const AdminDashboard = () => {
     };
 
     const handleFeedbackReply = async (feedbackId, response) => {
+        if (!checkActionPerm('feedback', 'full', 'Talebe yanıt verme')) return;
         try {
             await axios.post(`/api/feedback/admin/reply/${feedbackId}`, { response });
             setFeedbackModalOpen(false);
@@ -3626,6 +3787,7 @@ const AdminDashboard = () => {
 
     const handleCreateBot = async (e) => {
         e.preventDefault();
+        if (!checkActionPerm('bots', 'full', 'Bot hesabı oluşturma')) return;
         try {
             await axios.post('/api/admin/bots', newBotData);
             setNewBotData({ username: '', email: '', password: '' });
@@ -3638,6 +3800,7 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteBot = async (id) => {
+        if (!checkActionPerm('bots', 'full', 'Bot hesabı silme')) return;
         if (!window.confirm('Bu bot hesabını tamamen silmek istediğinize emin misiniz?')) return;
         try {
             await axios.delete(`/api/admin/bots/${id}`);
@@ -3650,6 +3813,7 @@ const AdminDashboard = () => {
 
     const handleUpdateBotProfile = async (e) => {
         e.preventDefault();
+        if (!checkActionPerm('bots', 'full', 'Bot profili ve ayarları güncelleme')) return;
         if (!editingBot) return;
         try {
             await axios.put(`/api/admin/bots/${editingBot._id}/profile`, {
@@ -3671,6 +3835,7 @@ const AdminDashboard = () => {
 
     const handleBotPost = async (e) => {
         e.preventDefault();
+        if (!checkActionPerm('bots', 'full', 'Bot üzerinden gönderi paylaşma')) return;
         if (!botPostTarget) return;
         try {
             await axios.post(`/api/admin/bots/${botPostTarget._id}/post`, botPostData);
@@ -3683,6 +3848,7 @@ const AdminDashboard = () => {
     };
 
     const handleApprove = async (id) => {
+        if (!checkActionPerm('requests', 'full', 'Başvuru onaylama')) return;
         if (!window.confirm('Bu kullanıcıyı onaylamak istiyor musunuz?')) return;
         try {
             await axios.post(`/api/admin/verify-user/${id}`);
@@ -3694,6 +3860,7 @@ const AdminDashboard = () => {
     };
 
     const handleReject = async (id) => {
+        if (!checkActionPerm('requests', 'full', 'Başvuru reddetme')) return;
         if (!window.confirm('Bu başvuruyu reddetmek istiyor musunuz?')) return;
         try {
             await axios.post(`/api/admin/reject-verification/${id}`);
@@ -3705,6 +3872,7 @@ const AdminDashboard = () => {
     };
 
     const handleBadgeChange = async (userId, newBadge) => {
+        if (!checkActionPerm('users', 'canManageBadges', 'Rozet değiştirme')) return;
         try {
             await axios.put(`/api/admin/users/${userId}/badge`, { badge: newBadge });
             setUsers(
@@ -3721,6 +3889,7 @@ const AdminDashboard = () => {
     };
 
     const handleApproveRecovery = async (userId) => {
+        if (!checkActionPerm('recovery', 'full', 'Kurtarma onaylama')) return;
         if (!window.confirm('Bu kullanıcının hesap kurtarma talebini onaylamak istiyor musunuz? Hesabı tekrar aktif edilecektir.')) return;
         try {
             const { data } = await axios.put(`/api/admin/users/${userId}/recover-approve`);
@@ -3735,6 +3904,7 @@ const AdminDashboard = () => {
     };
 
     const handleRejectRecovery = async (userId) => {
+        if (!checkActionPerm('recovery', 'full', 'Kurtarma reddetme')) return;
         if (!window.confirm('Bu kullanıcının hesap kurtarma talebini reddetmek istiyor musunuz?')) return;
         try {
             const { data } = await axios.put(`/api/admin/users/${userId}/recover-reject`);
@@ -3749,11 +3919,13 @@ const AdminDashboard = () => {
     };
 
     const openUserDetail = (user) => {
+        if (!checkActionPerm('users', 'details', 'Kullanıcı detaylarını inceleme')) return;
         setSelectedUserDetail(user);
         setUserDetailModalOpen(true);
     };
 
     const openUserDossier = async (user) => {
+        if (!checkActionPerm('users', 'details', 'Kullanıcı şeceresini inceleme')) return;
         setUserDossierOpen(true);
         setLoadingDossier(true);
         setUserDossierData(null);
@@ -3841,6 +4013,7 @@ const AdminDashboard = () => {
     };
 
     const handleExportLogs = (format = 'csv') => {
+        if (!checkActionPerm('activity', 'canExport', 'Platform günlüğü dışa aktarma')) return;
         let url = `/api/admin/activity-logs/export?format=${format}`;
         if (activityLogsCategory && activityLogsCategory !== 'all') url += `&category=${activityLogsCategory}`;
         if (activityLogsSeverity && activityLogsSeverity !== 'all') url += `&severity=${activityLogsSeverity}`;
@@ -4064,11 +4237,13 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleUpdateTouristPermissions = async (userId, newPermissions) => {
+    const handleUpdateTouristPermissions = async (userId, newPermissions, updatedExpiry = null) => {
         try {
-            const { data } = await axios.put(`/api/admin/users/${userId}/tourist-admin/permissions`, {
-                permissions: newPermissions
-            });
+            const body = { permissions: newPermissions };
+            if (updatedExpiry) {
+                body.expiresAt = updatedExpiry;
+            }
+            const { data } = await axios.put(`/api/admin/users/${userId}/tourist-admin/permissions`, body);
             alert(data.message || 'Turist admin hakları başarıyla güncellendi.');
             setEditPermissionsModalOpen(false);
             fetchTouristAdmins();
@@ -4078,6 +4253,7 @@ const AdminDashboard = () => {
     };
 
     const handleUserShadowbanToggle = async (userId, currentShadowbanned) => {
+        if (!checkActionPerm('users', 'canBan', 'Kullanıcı gizli engelleme (shadowban)')) return;
         try {
             const { data } = await axios.put(`/api/admin/users/${userId}/shadowban`, {
                 isShadowbanned: !currentShadowbanned
@@ -4174,6 +4350,7 @@ const AdminDashboard = () => {
     };
 
     const openPortalDetail = async (portal) => {
+        if (!checkActionPerm('portals', 'details', 'Portal detaylarını inceleme')) return;
         setDetailPortal(portal);
         setOwnershipTarget('');
         setDetailModalOpen(true);
@@ -4198,6 +4375,7 @@ const AdminDashboard = () => {
     };
 
     const handleAdminAddChannel = async (portalId, channelData) => {
+        if (!checkActionPerm('portals', 'full', 'Portal kanalı ekleme')) return false;
         try {
             const { data } = await axios.post(`/api/admin/portals/${portalId}/channels`, channelData);
             alert(data.message || 'Kanal başarıyla eklendi.');
@@ -4211,6 +4389,7 @@ const AdminDashboard = () => {
     };
 
     const handleAdminEditChannel = async (portalId, channelId, channelData) => {
+        if (!checkActionPerm('portals', 'full', 'Portal kanalı düzenleme')) return false;
         try {
             const { data } = await axios.put(`/api/admin/portals/${portalId}/channels/${channelId}`, channelData);
             alert('Kanal başarıyla güncellendi.');
@@ -4232,6 +4411,7 @@ const AdminDashboard = () => {
     };
 
     const handleAdminDeleteChannel = async (portalId, channelId) => {
+        if (!checkActionPerm('portals', 'full', 'Portal kanalı silme')) return;
         if (!window.confirm('Bu kanalı kalıcı olarak silmek istediğinize emin misiniz?')) return;
         try {
             const { data } = await axios.delete(`/api/admin/portals/${portalId}/channels/${channelId}`);
@@ -4244,6 +4424,7 @@ const AdminDashboard = () => {
     };
 
     const handleReadOnlyToggle = async (portalId, currentReadOnly) => {
+        if (!checkActionPerm('portals', 'full', 'Portal salt okunur ayarını değiştirme')) return;
         try {
             const { data } = await axios.put(`/api/admin/portals/${portalId}`, {
                 isReadOnly: !currentReadOnly
@@ -4257,6 +4438,7 @@ const AdminDashboard = () => {
     };
 
     const handleTransferOwnership = async (portalId) => {
+        if (!checkActionPerm('portals', 'full', 'Portal sahipliğini devretme')) return;
         if (!ownershipTarget.trim()) {
             alert('Lütfen hedef kullanıcının ID veya kullanıcı adını girin.');
             return;
@@ -4686,6 +4868,7 @@ const AdminDashboard = () => {
     };
 
     const openBadgeCreator = (badge = null) => {
+        if (!checkActionPerm('badges', 'full', badge ? 'Rozet Düzenleme' : 'Yeni Rozet Oluşturma')) return;
         if (badge) {
             setEditingBadge(badge);
             setBadgeForm({
@@ -4782,6 +4965,7 @@ const AdminDashboard = () => {
     };
 
     const handleBadgeDelete = async (badgeId) => {
+        if (!checkActionPerm('badges', 'full', 'Rozet Silme')) return;
         if (!window.confirm('Bu rozeti silmek istediğinize emin misiniz?')) return;
         try {
             await axios.delete(`/api/badges/${badgeId}`);
@@ -4812,6 +4996,7 @@ const AdminDashboard = () => {
 
     // Direct Badge Assignment Handlers
     const openAssignModal = async (badge, targetType = 'user') => {
+        if (!checkActionPerm('badges', 'full', 'Rozet Atama')) return;
         setAssignTargetBadge(badge);
         setAssignType(targetType);
         setAssignQuery('');
@@ -5050,6 +5235,7 @@ const AdminDashboard = () => {
     }, [activeTab]);
 
     const handleTogglePublish = async (id) => {
+        if (!checkActionPerm('blog', 'full', 'Makale yayın durumu değiştirme')) return;
         try {
             const { data } = await axios.patch(`/api/blog/admin/${id}/toggle-publish`);
             setBlogPosts(prev => prev.map(p => p._id === id ? { ...p, isPublished: data.isPublished } : p));
@@ -5059,6 +5245,7 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteBlogPost = async (id) => {
+        if (!checkActionPerm('blog', 'full', 'Makale silme')) return;
         if (!window.confirm('Bu makaleyi silmek istediğinize emin misiniz?')) return;
         try {
             await axios.delete(`/api/blog/admin/${id}`);
@@ -5070,6 +5257,7 @@ const AdminDashboard = () => {
 
     const openBlogModal = (post = null) => {
         if (post) {
+            if (!checkActionPerm('blog', 'details', 'Makale detayını inceleme')) return;
             setEditingBlogPost(post);
             setBlogForm({
                 title: post.title || '',
@@ -5083,6 +5271,7 @@ const AdminDashboard = () => {
                 authorProfile: post.authorProfile?._id || post.authorProfile || blogAuthor._id || '',
             });
         } else {
+            if (!checkActionPerm('blog', 'full', 'Yeni makale oluşturma')) return;
             setEditingBlogPost(null);
             setBlogForm({
                 title: '',
@@ -5101,6 +5290,7 @@ const AdminDashboard = () => {
     };
 
     const handleSaveBlogPost = async () => {
+        if (!checkActionPerm('blog', 'full', 'Makale kaydetme/güncelleme')) return;
         if (!blogForm.title.trim() || !blogForm.content.trim()) {
             alert('Lütfen başlık ve içerik alanlarını doldurun.');
             return;
@@ -5258,11 +5448,12 @@ const AdminDashboard = () => {
             </div>
             <h3>{moduleName} Modülü Kilitli</h3>
             <p>
-                Turist Admin profilinizde bu modülün erişim seviyesi <strong>Kilitli (none)</strong> olarak yapılandırılmıştır.
+                Turist Admin profilinizde bu modülün erişim seviyesi <strong>Kilitli</strong> olarak yapılandırılmıştır.
                 Bu sekmeyi görüntüleme veya veri işleme yetkiniz bulunmamaktadır.
             </p>
             <div className="access-denied-pill">
-                <span>🔒 Erişim Kısıtlandı</span>
+                <ShieldAlert size={16} />
+                <span>Erişim Kısıtlandı</span>
             </div>
         </div>
     );
@@ -5281,6 +5472,38 @@ const AdminDashboard = () => {
 
     return (
         <div className="admin-layout">
+            {/* Unauthorized Action Warning Toast Alert */}
+            {unauthorizedAlert.show && (
+                <div className="unauthorized-action-toast-overlay" onClick={() => setUnauthorizedAlert(prev => ({ ...prev, show: false }))}>
+                    <div className="unauthorized-action-toast-card fade-in" onClick={e => e.stopPropagation()}>
+                        <div className="unauthorized-toast-icon-wrap">
+                            <ShieldAlert size={28} />
+                        </div>
+                        <div className="unauthorized-toast-body">
+                            <div className="unauthorized-toast-header">
+                                <h4>{unauthorizedAlert.title}</h4>
+                                <span className="unauthorized-role-tag">Turist Admin</span>
+                            </div>
+                            <p className="unauthorized-toast-message">{unauthorizedAlert.message}</p>
+                            {unauthorizedAlert.requiredLevel && (
+                                <div className="unauthorized-req-info">
+                                    Gerekli Yetki: <strong>{unauthorizedAlert.requiredLevel}</strong>
+                                    {unauthorizedAlert.moduleName && ` • Modül: ${unauthorizedAlert.moduleName}`}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            className="unauthorized-toast-close"
+                            onClick={() => setUnauthorizedAlert(prev => ({ ...prev, show: false }))}
+                            aria-label="Kapat"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Backdrop overlay for mobile menu */}
             {sidebarOpen && (
                 <div 
@@ -5331,224 +5554,149 @@ const AdminDashboard = () => {
                 <div className="sidebar-nav">
                     {/* Category 1: Genel Bakış & Talepler */}
                     <div className="sidebar-category">
-                        <span className="sidebar-category-label">📊 Genel Bakış & Talepler</span>
+                        <span className="sidebar-category-label">Genel Bakış & Talepler</span>
                         
                         <button
                             className={`sidebar-nav-item ${activeTab === 'requests' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('requests'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('requests', 'Başvurular')}
                         >
                             <span className="snav-icon"><LayoutDashboard size={18} /></span>
                             <span className="snav-label">Başvurular</span>
                             {requests.length > 0 && <span className="snav-badge">{requests.length}</span>}
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('requests').access}`}>
-                                    {getModuleAccess('requests').access === 'none' ? '🔒 Kilitli' : getModuleAccess('requests').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'recovery' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('recovery'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('recovery', 'Kurtarma Talepleri')}
                         >
                             <span className="snav-icon"><KeyRound size={18} /></span>
                             <span className="snav-label">Kurtarma Talepleri</span>
                             {recoveryRequests.length > 0 && <span className="snav-badge">{recoveryRequests.length}</span>}
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('recovery').access}`}>
-                                    {getModuleAccess('recovery').access === 'none' ? '🔒 Kilitli' : getModuleAccess('recovery').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'feedback' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('feedback'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('feedback', 'Talepler')}
                         >
                             <span className="snav-icon"><ShieldAlert size={18} /></span>
                             <span className="snav-label">Talepler</span>
                             {unreadFeedbackCount > 0 && <span className="snav-badge">{unreadFeedbackCount}</span>}
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('feedback').access}`}>
-                                    {getModuleAccess('feedback').access === 'none' ? '🔒 Kilitli' : getModuleAccess('feedback').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
                     </div>
 
                     {/* Category 2: Kullanıcı Yönetimi */}
                     <div className="sidebar-category">
-                        <span className="sidebar-category-label">👥 Kullanıcı Yönetimi</span>
+                        <span className="sidebar-category-label">Kullanıcı Yönetimi</span>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'users' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('users', 'Kullanıcılar')}
                         >
                             <span className="snav-icon"><Users size={18} /></span>
                             <span className="snav-label">Kullanıcılar</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('users').access}`}>
-                                    {getModuleAccess('users').access === 'none' ? '🔒 Kilitli' : getModuleAccess('users').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'activity' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('activity'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('activity', 'Platform Günlüğü & Oturumlar')}
                         >
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Platform Günlüğü & Oturumlar</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('activity').access}`}>
-                                    {getModuleAccess('activity').access === 'none' ? '🔒 Kilitli' : getModuleAccess('activity').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'ipbans' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('ipbans'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('ipbans', 'IP Engelleri')}
                         >
                             <span className="snav-icon"><AlertTriangle size={18} /></span>
                             <span className="snav-label">IP Engelleri</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('ipbans').access}`}>
-                                    {getModuleAccess('ipbans').access === 'none' ? '🔒 Kilitli' : getModuleAccess('ipbans').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'badges' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('badges'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('badges', 'Rozetler')}
                         >
                             <span className="snav-icon"><Award size={18} /></span>
                             <span className="snav-label">Rozetler</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('badges').access}`}>
-                                    {getModuleAccess('badges').access === 'none' ? '🔒 Kilitli' : getModuleAccess('badges').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'custom-badges' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('custom-badges'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('custom-badges', 'Özel İkon Rozetler')}
                         >
                             <span className="snav-icon"><FileBadge size={18} /></span>
                             <span className="snav-label">Özel İkon Rozetler</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('badges').access}`}>
-                                    {getModuleAccess('badges').access === 'none' ? '🔒 Kilitli' : getModuleAccess('badges').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'bots' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('bots'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('bots', 'Bot Yönetimi')}
                         >
                             <span className="snav-icon"><Bot size={18} /></span>
                             <span className="snav-label">Bot Yönetimi</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('bots').access}`}>
-                                    {getModuleAccess('bots').access === 'none' ? '🔒 Kilitli' : getModuleAccess('bots').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
                     </div>
 
                     {/* Category 3: İçerik & Sistem */}
                     <div className="sidebar-category">
-                        <span className="sidebar-category-label">🌐 İçerik & Sistem</span>
+                        <span className="sidebar-category-label">İçerik & Sistem</span>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'portals' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('portals'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('portals', 'Portallar')}
                         >
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Portallar</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('portals').access}`}>
-                                    {getModuleAccess('portals').access === 'none' ? '🔒 Kilitli' : getModuleAccess('portals').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'blog' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('blog'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('blog', 'Blog Yönetimi')}
                         >
                             <span className="snav-icon"><FileText size={18} /></span>
                             <span className="snav-label">Blog Yönetimi</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('blog').access}`}>
-                                    {getModuleAccess('blog').access === 'none' ? '🔒 Kilitli' : getModuleAccess('blog').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('reports'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('reports', 'Bildirilenler')}
                         >
                             <span className="snav-icon"><ShieldAlert size={18} /></span>
                             <span className="snav-label">Bildirilenler</span>
                             {reports.filter(r => r.status === 'pending').length > 0 &&
                                 <span className="snav-badge">{reports.filter(r => r.status === 'pending').length}</span>
                             }
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('reports').access}`}>
-                                    {getModuleAccess('reports').access === 'none' ? '🔒 Kilitli' : getModuleAccess('reports').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mass-notification' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('mass-notification'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('mass-notification', 'Toplu Bildirim Gönder')}
                         >
                             <span className="snav-icon"><Send size={18} /></span>
                             <span className="snav-label">Toplu Bildirim Gönder</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('notifications').access}`}>
-                                    {getModuleAccess('notifications').access === 'none' ? '🔒 Kilitli' : getModuleAccess('notifications').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-designs' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('mobile-designs'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('mobile-designs', 'Mobil Tasarım Barındırma')}
                         >
                             <span className="snav-icon"><Smartphone size={18} /></span>
                             <span className="snav-label">Mobil Tasarım Barındırma</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('system').access}`}>
-                                    {getModuleAccess('system').access === 'none' ? '🔒 Kilitli' : getModuleAccess('system').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
 
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-versions' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('mobile-versions'); setSidebarOpen(false); }}
+                            onClick={() => handleNavTabClick('mobile-versions', 'Mobil Sürüm Günlüğü')}
                         >
                             <span className="snav-icon"><History size={18} /></span>
                             <span className="snav-label">Mobil Sürüm Günlüğü</span>
-                            {isTouristAdmin && !isFullAdmin && (
-                                <span className={`snav-perm-pill ${getModuleAccess('system').access}`}>
-                                    {getModuleAccess('system').access === 'none' ? '🔒 Kilitli' : getModuleAccess('system').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
-                                </span>
-                            )}
                         </button>
                     </div>
 
                     {/* Category 4: Özel Görünürlük Şartı (Süper Admin) */}
                     {isOxypace && (
                         <div className="sidebar-category">
-                            <span className="sidebar-category-label">🔑 Süper Admin</span>
+                            <span className="sidebar-category-label">Süper Admin</span>
                             <button
                                 className={`sidebar-nav-item ${activeTab === 'tourist-admin' ? 'active' : ''}`}
                                 onClick={() => { setActiveTab('tourist-admin'); setSidebarOpen(false); }}
@@ -5587,35 +5735,60 @@ const AdminDashboard = () => {
                     <div className="tourist-admin-container fade-in">
                         <div className="tourist-admin-card">
                             <div className="tourist-admin-header">
-                                <h2>💼 Turist Admin Atama Paneli</h2>
-                                <p>Sadece @oxypace tarafından yönetilen bu modülle kullanıcılara geçici admin yetkileri atayabilirsiniz.</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <ShieldCheck size={24} color="#60a5fa" />
+                                    </div>
+                                    <div>
+                                        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff' }}>Turist Admin Atama Paneli</h2>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>Sadece @oxypace tarafından yönetilen bu modülle kullanıcılara geçici admin yetkileri atayabilir, süre ve modül izinlerini denetleyebilirsiniz.</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="tourist-assign-section">
-                                <h3 className="section-subtitle">➕ Yeni Turist Admin Yetkilendir</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                                    <h3 className="section-subtitle" style={{ margin: 0 }}>➕ Yeni Turist Admin Yetkilendir</h3>
+                                    {selectedTouristUser && (
+                                        <span style={{ fontSize: '12px', color: '#60a5fa', fontWeight: 600 }}>1 Kullanıcı Seçildi</span>
+                                    )}
+                                </div>
+
                                 <form onSubmit={handleSearchTouristUser} className="tourist-search-form">
-                                    <div className="form-group-modern search-with-btn">
-                                        <input
-                                            type="text"
-                                            className="reason-input-modern"
-                                            placeholder="Kullanıcı adı veya email ile ara..."
-                                            value={touristSearchTerm}
-                                            onChange={(e) => setTouristSearchTerm(e.target.value)}
-                                        />
+                                    <div className="tourist-search-box">
+                                        <div className="tourist-search-input-wrap">
+                                            <Search size={18} className="tourist-search-icon" />
+                                            <input
+                                                type="text"
+                                                className="tourist-search-input"
+                                                placeholder="Kullanıcı adı veya e-posta ile ara..."
+                                                value={touristSearchTerm}
+                                                onChange={(e) => setTouristSearchTerm(e.target.value)}
+                                            />
+                                            {touristSearchTerm && (
+                                                <button
+                                                    type="button"
+                                                    className="tourist-search-clear-btn"
+                                                    onClick={() => { setTouristSearchTerm(''); setTouristSearchResult([]); }}
+                                                >
+                                                    <X size={15} />
+                                                </button>
+                                            )}
+                                        </div>
                                         <button type="submit" className="btn-modern-primary" disabled={loadingTourist}>
-                                            {loadingTourist ? 'Aranıyor...' : 'Ara'}
+                                            {loadingTourist ? 'Aranıyor...' : 'Kullanıcı Bul'}
                                         </button>
                                     </div>
                                 </form>
 
-                                {touristSearchResult.length > 0 && (
-                                    <div className="search-results-list">
-                                        <h4>Arama Sonuçları:</h4>
+                                {touristSearchResult.length > 0 && !selectedTouristUser && (
+                                    <div className="search-results-list fade-in" style={{ marginTop: '14px' }}>
+                                        <h4 style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>Arama Sonuçları:</h4>
                                         <div className="results-grid">
                                             {touristSearchResult.map(u => (
                                                 <div 
                                                     key={u._id} 
-                                                    className={`result-user-card ${selectedTouristUser?._id === u._id ? 'selected' : ''}`}
+                                                    className="result-user-card"
                                                     onClick={() => setSelectedTouristUser(u)}
                                                 >
                                                     <UserAvatar src={u.profile?.lowResAvatar || u.profile?.avatar} alt={u.username} className="avatar-mini" />
@@ -5630,13 +5803,32 @@ const AdminDashboard = () => {
                                 )}
 
                                 {selectedTouristUser && (
-                                    <div className="assignment-details-form fade-in">
-                                        <div className="selected-user-banner">
-                                            <span>Seçilen Kullanıcı:</span>
-                                            <strong>@{selectedTouristUser.username}</strong>
+                                    <div className="assignment-details-form fade-in" style={{ marginTop: '16px' }}>
+                                        <div className="selected-user-card-rich">
+                                            <div className="selected-user-left">
+                                                <UserAvatar src={selectedTouristUser.profile?.lowResAvatar || selectedTouristUser.profile?.avatar} alt={selectedTouristUser.username} className="avatar-table" />
+                                                <div className="selected-user-meta">
+                                                    <div className="selected-user-name">
+                                                        <strong>{selectedTouristUser.profile?.displayName || selectedTouristUser.username}</strong>
+                                                        <span className="selected-user-handle">@{selectedTouristUser.username}</span>
+                                                    </div>
+                                                    <div className="selected-user-sub">
+                                                        <span>ID: {selectedTouristUser._id}</span>
+                                                        {selectedTouristUser.email && <span> • {selectedTouristUser.email}</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="clear-selected-user-btn"
+                                                onClick={() => setSelectedTouristUser(null)}
+                                                title="Seçimi İptal Et"
+                                            >
+                                                <X size={15} /> Seçimi Kaldır
+                                            </button>
                                         </div>
 
-                                        <div className="form-group-modern">
+                                        <div className="form-group-modern" style={{ marginTop: '16px' }}>
                                             <label className="badge-label">Süre Tipi</label>
                                             <div className="duration-type-toggle">
                                                 <button
@@ -5644,7 +5836,7 @@ const AdminDashboard = () => {
                                                     className={`duration-type-btn ${touristDurationType === 'preset' ? 'active' : ''}`}
                                                     onClick={() => setTouristDurationType('preset')}
                                                 >
-                                                    Hazır Süre
+                                                    Hazır Süre Seçimi
                                                 </button>
                                                 <button
                                                     type="button"
@@ -5666,7 +5858,8 @@ const AdminDashboard = () => {
                                                         { label: '12 Saat', val: 12 },
                                                         { label: '1 Gün (24 Saat)', val: 24 },
                                                         { label: '3 Gün', val: 72 },
-                                                        { label: '7 Gün', val: 168 }
+                                                        { label: '7 Gün', val: 168 },
+                                                        { label: '30 Gün', val: 720 }
                                                     ].map(p => (
                                                         <button
                                                             key={p.val}
@@ -5677,6 +5870,9 @@ const AdminDashboard = () => {
                                                             {p.label}
                                                         </button>
                                                     ))}
+                                                </div>
+                                                <div className="duration-preview-pill" style={{ marginTop: '10px' }}>
+                                                    <span>🕒 Yetki Bitiş Tarihi: <strong>{new Date(Date.now() + selectedTouristPreset * 60 * 60 * 1000).toLocaleString('tr-TR')}</strong></span>
                                                 </div>
                                             </div>
                                         ) : (
@@ -5689,11 +5885,16 @@ const AdminDashboard = () => {
                                                     onChange={(e) => setCustomTouristDate(e.target.value)}
                                                     min={new Date().toISOString().slice(0, 16)}
                                                 />
+                                                {customTouristDate && (
+                                                    <div className="duration-preview-pill" style={{ marginTop: '10px' }}>
+                                                        <span>🕒 Yetki Bitiş Tarihi: <strong>{new Date(customTouristDate).toLocaleString('tr-TR')}</strong></span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
                                         {/* Turist Admin Hakları / Granular Permissions Studio */}
-                                        <div style={{ marginTop: '16px', marginBottom: '20px', background: '#0a0a0a', border: '1px solid #222222', borderRadius: '10px', padding: '16px' }}>
+                                        <div style={{ marginTop: '18px', marginBottom: '20px', background: '#0a0a0a', border: '1px solid #222222', borderRadius: '12px', padding: '16px' }}>
                                             <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#888888', margin: '0 0 12px 0', borderBottom: '1px solid #1a1a1a', paddingBottom: '8px' }}>
                                                 🛡️ Turist Admin Hakları & 3 Aşamalı Granüler RBAC
                                             </h4>
@@ -5718,8 +5919,13 @@ const AdminDashboard = () => {
                                 )}
                             </div>
 
-                            <div className="tourist-list-section">
-                                <h3 className="section-subtitle">👥 Aktif Turist Adminler</h3>
+                            <div className="tourist-list-section" style={{ marginTop: '30px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                                    <h3 className="section-subtitle" style={{ margin: 0 }}>👥 Aktif Turist Adminler</h3>
+                                    <span style={{ fontSize: '12px', background: '#1e293b', padding: '4px 10px', borderRadius: '20px', color: '#94a3b8', fontWeight: 600 }}>
+                                        {touristAdmins.length} Kayıt
+                                    </span>
+                                </div>
                                 {loading ? (
                                     <div className="admin-loading">Yükleniyor...</div>
                                 ) : touristAdmins.length === 0 ? (
@@ -5748,7 +5954,13 @@ const AdminDashboard = () => {
                                                         timeLeftStr = diffHours > 0 ? `${diffHours} sa ${diffMins} dk` : `${diffMins} dk`;
                                                     }
                                                     const perms = admin.touristAdminPermissions || {};
-                                                    const enabledPermCount = Object.values(perms).filter(Boolean).length;
+                                                    const mods = perms.modules || {};
+                                                    const fullModsCount = Object.values(mods).filter(m => m.access === 'full').length;
+                                                    const viewModsCount = Object.values(mods).filter(m => m.access === 'view').length;
+
+                                                    const isExpired = timeLeftMs <= 0;
+                                                    const isSoon = timeLeftMs > 0 && timeLeftMs < 12 * 60 * 60 * 1000;
+                                                    const badgeClass = isExpired ? 'expired' : isSoon ? 'active-soon' : 'active-good';
 
                                                     return (
                                                         <tr key={admin._id}>
@@ -5763,22 +5975,24 @@ const AdminDashboard = () => {
                                                             </td>
                                                             <td>@{admin.assignedBy || 'oxypace'}</td>
                                                             <td>
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '280px' }}>
-                                                                    {perms.canManageUsers && <span className="mono-tag" style={{ fontSize: '9px' }}>Kullanıcı</span>}
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '320px' }}>
+                                                                    {fullModsCount > 0 && (
+                                                                        <span className="tourist-perm-tag full">⚡ {fullModsCount} Tam</span>
+                                                                    )}
+                                                                    {viewModsCount > 0 && (
+                                                                        <span className="tourist-perm-tag view">👁️ {viewModsCount} İzleme</span>
+                                                                    )}
                                                                     {perms.canBanUsers && <span className="mono-tag" style={{ fontSize: '9px' }}>Ceza</span>}
-                                                                    {perms.canManagePortals && <span className="mono-tag" style={{ fontSize: '9px' }}>Portal</span>}
-                                                                    {perms.canManageReports && <span className="mono-tag" style={{ fontSize: '9px' }}>Rapor</span>}
                                                                     {perms.canManageBadges && <span className="mono-tag" style={{ fontSize: '9px' }}>Rozet</span>}
-                                                                    {perms.canManageBots && <span className="mono-tag" style={{ fontSize: '9px' }}>Bot</span>}
                                                                     {perms.canViewLogs && <span className="mono-tag" style={{ fontSize: '9px' }}>Günlük</span>}
-                                                                    {perms.canSendNotifications && <span className="mono-tag" style={{ fontSize: '9px' }}>Bildirim</span>}
-                                                                    {perms.canManageBlog && <span className="mono-tag" style={{ fontSize: '9px' }}>Blog</span>}
-                                                                    {enabledPermCount === 0 && <span style={{ color: '#666', fontSize: '11px' }}>Özel İzin Yok</span>}
+                                                                    {fullModsCount === 0 && viewModsCount === 0 && Object.values(perms).filter(Boolean).length === 0 && (
+                                                                        <span style={{ color: '#666', fontSize: '11px' }}>Özel İzin Yok</span>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td>{expiresAt.toLocaleString('tr-TR')}</td>
                                                             <td>
-                                                                <span className="time-left-badge">{timeLeftStr}</span>
+                                                                <span className={`time-left-badge ${badgeClass}`}>{timeLeftStr}</span>
                                                             </td>
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -5787,6 +6001,7 @@ const AdminDashboard = () => {
                                                                         onClick={() => {
                                                                             setEditingTouristAdmin(admin);
                                                                             setEditingModulesState(parseExistingPermissions(admin.touristAdminPermissions));
+                                                                            setEditExpiryOption('keep');
                                                                             setEditPermissionsModalOpen(true);
                                                                         }}
                                                                         className="btn-modern-secondary"
@@ -5816,138 +6031,147 @@ const AdminDashboard = () => {
                 )}
 
                 {activeTab === 'mass-notification' && (
-                    <div className="mass-notification-container fade-in">
-                        <div className="mass-notification-card">
-                            <div className="mass-notif-header">
-                                <h2>📢 Toplu Bildirim ve Android Push Paneli</h2>
-                                <p>Sistemdeki aktif kullanıcılara in-app bildirim veya Android push bildirimi gönderin.</p>
-                            </div>
-
-                            {massNotifStatus.text && (
-                                <div className={`status-banner ${massNotifStatus.type}`}>
-                                    {massNotifStatus.type === 'success' ? '✅' : '❌'} {massNotifStatus.text}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleSendMassNotification} className="mass-notif-form">
-                                <div className="form-group-modern">
-                                    <label className="badge-label">Bildirim Başlığı</label>
-                                    <input
-                                        type="text"
-                                        className="reason-input-modern"
-                                        placeholder="Örn: Önemli Sistem Güncellemesi"
-                                        value={massNotifTitle}
-                                        onChange={(e) => setMassNotifTitle(e.target.value)}
-                                        required
-                                        disabled={massNotifSending}
-                                    />
+                    !getModuleAccess('notifications').canView ? (
+                        renderAccessDenied('Toplu Bildirim Gönder')
+                    ) : (
+                        <div className="mass-notification-container fade-in">
+                            {getModuleAccess('notifications').access === 'view' && renderViewModeBanner('Toplu Bildirim Gönder')}
+                            <div className="mass-notification-card">
+                                <div className="mass-notif-header">
+                                    <h2>📢 Toplu Bildirim ve Android Push Paneli</h2>
+                                    <p>Sistemdeki aktif kullanıcılara in-app bildirim veya Android push bildirimi gönderin.</p>
                                 </div>
 
-                                <div className="form-group-modern">
-                                    <label className="badge-label">Mesaj Metni</label>
-                                    <textarea
-                                        className="reason-input-modern"
-                                        placeholder="Kullanıcılara iletilecek mesaj içeriğini yazın..."
-                                        rows="5"
-                                        value={massNotifMessage}
-                                        onChange={(e) => setMassNotifMessage(e.target.value)}
-                                        required
-                                        disabled={massNotifSending}
-                                    />
-                                </div>
+                                {massNotifStatus.text && (
+                                    <div className={`status-banner ${massNotifStatus.type}`}>
+                                        {massNotifStatus.type === 'success' ? '✅' : '❌'} {massNotifStatus.text}
+                                    </div>
+                                )}
 
-                                <div className="form-group-modern">
-                                    <label className="badge-label">Görsel (Opsiyonel)</label>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                                <form onSubmit={handleSendMassNotification} className="mass-notif-form">
+                                    <div className="form-group-modern">
+                                        <label className="badge-label">Bildirim Başlığı</label>
                                         <input
                                             type="text"
                                             className="reason-input-modern"
-                                            placeholder="Görsel URL girin veya dosya seçin..."
-                                            value={massNotifImage}
-                                            onChange={(e) => setMassNotifImage(e.target.value)}
+                                            placeholder="Örn: Önemli Sistem Güncellemesi"
+                                            value={massNotifTitle}
+                                            onChange={(e) => setMassNotifTitle(e.target.value)}
+                                            required
                                             disabled={massNotifSending}
-                                            style={{ flex: 1 }}
                                         />
-                                        <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '100px', whiteSpace: 'nowrap' }}>
-                                            {uploadingImage ? 'Yükleniyor...' : 'Dosya Seç'}
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                style={{ display: 'none' }}
-                                                onChange={handleMassNotifFileSelect}
-                                                disabled={massNotifSending || uploadingImage}
-                                            />
-                                        </label>
                                     </div>
-                                    {massNotifImage && (
-                                        <div style={{ position: 'relative', width: 'fit-content', marginTop: '10px' }}>
-                                            <img 
-                                                src={getImageUrl(massNotifImage)} 
-                                                alt="Önizleme" 
-                                                style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} 
+
+                                    <div className="form-group-modern">
+                                        <label className="badge-label">Mesaj Metni</label>
+                                        <textarea
+                                            className="reason-input-modern"
+                                            placeholder="Kullanıcılara iletilecek mesaj içeriğini yazın..."
+                                            rows="5"
+                                            value={massNotifMessage}
+                                            onChange={(e) => setMassNotifMessage(e.target.value)}
+                                            required
+                                            disabled={massNotifSending}
+                                        />
+                                    </div>
+
+                                    <div className="form-group-modern">
+                                        <label className="badge-label">Görsel (Opsiyonel)</label>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                                            <input
+                                                type="text"
+                                                className="reason-input-modern"
+                                                placeholder="Görsel URL girin veya dosya seçin..."
+                                                value={massNotifImage}
+                                                onChange={(e) => setMassNotifImage(e.target.value)}
+                                                disabled={massNotifSending}
+                                                style={{ flex: 1 }}
                                             />
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setMassNotifImage('')}
-                                                style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ff4b4b', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
-                                            >
-                                                &times;
-                                            </button>
+                                            <label className="btn-modern-ghost" style={{ cursor: 'pointer', margin: 0, padding: '10px 16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '100px', whiteSpace: 'nowrap' }}>
+                                                {uploadingImage ? 'Yükleniyor...' : 'Dosya Seç'}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: 'none' }}
+                                                    onChange={handleMassNotifFileSelect}
+                                                    disabled={massNotifSending || uploadingImage}
+                                                />
+                                            </label>
                                         </div>
-                                    )}
-                                </div>
-
-                                <div className="form-group-modern checkboxes-group">
-                                    <label className="badge-label">Gönderim Kanalları</label>
-                                    <div className="checkbox-options-grid">
-                                        <label className={`checkbox-card-label ${massNotifInApp ? 'checked' : ''}`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={massNotifInApp}
-                                                onChange={(e) => setMassNotifInApp(e.target.checked)}
-                                                disabled={massNotifSending}
-                                            />
-                                            <div className="checkbox-custom"></div>
-                                            <div className="checkbox-text-content">
-                                                <strong>Web Toplu Bildirim (In-App)</strong>
-                                                <span>Aktif kullanıcıların bildirim sayfasına eklenir, sayaç anlık güncellenir.</span>
+                                        {massNotifImage && (
+                                            <div style={{ position: 'relative', width: 'fit-content', marginTop: '10px' }}>
+                                                <img 
+                                                    src={getImageUrl(massNotifImage)} 
+                                                    alt="Önizleme" 
+                                                    style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} 
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setMassNotifImage('')}
+                                                    style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ff4b4b', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
+                                                >
+                                                    &times;
+                                                </button>
                                             </div>
-                                        </label>
-
-                                        <label className={`checkbox-card-label ${massNotifPush ? 'checked' : ''}`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={massNotifPush}
-                                                onChange={(e) => setMassNotifPush(e.target.checked)}
-                                                disabled={massNotifSending}
-                                            />
-                                            <div className="checkbox-custom"></div>
-                                            <div className="checkbox-text-content">
-                                                <strong>Android Mobil Bildirimi (Push)</strong>
-                                                <span>Android APK'ya sahip tüm cihazlara yerel push bildirimi gönderilir.</span>
-                                            </div>
-                                        </label>
+                                        )}
                                     </div>
-                                </div>
 
-                                <div className="form-actions-modern">
-                                    <button
-                                        type="submit"
-                                        className="btn-modern-primary btn-glow-cyan"
-                                        disabled={massNotifSending}
-                                        style={{ width: '100%', padding: '14px', fontSize: '15px' }}
-                                    >
-                                        {massNotifSending ? 'GÖNDERİLİYOR...' : '📢 BİLDİRİMİ GÖNDER'}
-                                    </button>
-                                </div>
-                            </form>
+                                    <div className="form-group-modern checkboxes-group">
+                                        <label className="badge-label">Gönderim Kanalları</label>
+                                        <div className="checkbox-options-grid">
+                                            <label className={`checkbox-card-label ${massNotifInApp ? 'checked' : ''}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={massNotifInApp}
+                                                    onChange={(e) => setMassNotifInApp(e.target.checked)}
+                                                    disabled={massNotifSending}
+                                                />
+                                                <div className="checkbox-custom"></div>
+                                                <div className="checkbox-text-content">
+                                                    <strong>Web Toplu Bildirim (In-App)</strong>
+                                                    <span>Aktif kullanıcıların bildirim sayfasına eklenir, sayaç anlık güncellenir.</span>
+                                                </div>
+                                            </label>
+
+                                            <label className={`checkbox-card-label ${massNotifPush ? 'checked' : ''}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={massNotifPush}
+                                                    onChange={(e) => setMassNotifPush(e.target.checked)}
+                                                    disabled={massNotifSending}
+                                                />
+                                                <div className="checkbox-custom"></div>
+                                                <div className="checkbox-text-content">
+                                                    <strong>Android Mobil Bildirimi (Push)</strong>
+                                                    <span>Android APK'ya sahip tüm cihazlara yerel push bildirimi gönderilir.</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-actions-modern">
+                                        <button
+                                            type="submit"
+                                            className="btn-modern-primary btn-glow-cyan"
+                                            disabled={massNotifSending}
+                                            style={{ width: '100%', padding: '14px', fontSize: '15px' }}
+                                        >
+                                            {massNotifSending ? 'GÖNDERİLİYOR...' : '📢 BİLDİRİMİ GÖNDER'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                    </div>
+                    )
                 )}
 
                 {activeTab === 'bots' && (
-                    <div className="bots-section fade-in">
-                        <div className="section-header-modern">
+                    !getModuleAccess('bots').canView ? (
+                        renderAccessDenied('Bot Yönetimi')
+                    ) : (
+                        <div className="bots-section fade-in">
+                            {getModuleAccess('bots').access === 'view' && renderViewModeBanner('Bot Yönetimi')}
+                            <div className="section-header-modern">
                             <h2>🤖 Bot Hesap Yönetim Merkezi</h2>
                             <p>Sistemdeki otomatik içerik üreten bot hesaplarını ekleyin, düzenleyin veya paylaşım hedeflerini yönetin.</p>
                         </div>
@@ -6467,120 +6691,135 @@ const AdminDashboard = () => {
                             </div>
                         )}
                     </div>
+                    )
                 )}
 
                 {activeTab === 'requests' && (
-                    // --- REQUESTS TAB ---
-                    <div className="requests-section">
-                        {loading && <div className="admin-loading">Yükleniyor...</div>}
-                        {!loading && requests.length === 0 && (
-                            <p className="no-data">Bekleyen başvuru bulunmamaktadır.</p>
-                        )}
-                        <div className="requests-grid">
-                            {requests.map((user) => (
-                                <div key={user._id} className="request-card">
-                                    <div className="request-header">
-                                        <img
-                                            src={
-                                                user.profile.avatar ||
-                                                'https://via.placeholder.com/150'
-                                            }
-                                            alt={user.username}
-                                            className="request-avatar"
-                                        />
-                                        <div className="request-user-info">
-                                            <h3>{user.profile.displayName}</h3>
-                                            <span>@{user.username}</span>
+                    !getModuleAccess('requests').canView ? (
+                        renderAccessDenied('Başvurular')
+                    ) : (
+                        // --- REQUESTS TAB ---
+                        <div className="requests-section">
+                            {getModuleAccess('requests').access === 'view' && renderViewModeBanner('Başvurular')}
+                            {loading && <div className="admin-loading">Yükleniyor...</div>}
+                            {!loading && requests.length === 0 && (
+                                <p className="no-data">Bekleyen başvuru bulunmamaktadır.</p>
+                            )}
+                            <div className="requests-grid">
+                                {requests.map((user) => (
+                                    <div key={user._id} className="request-card">
+                                        <div className="request-header">
+                                            <img
+                                                src={
+                                                    user.profile.avatar ||
+                                                    'https://via.placeholder.com/150'
+                                                }
+                                                alt={user.username}
+                                                className="request-avatar"
+                                            />
+                                            <div className="request-user-info">
+                                                <h3>{user.profile.displayName}</h3>
+                                                <span>@{user.username}</span>
+                                            </div>
+                                        </div>
+                                        <div className="request-details">
+                                            <div className="detail-item">
+                                                <span>Kategori:</span>
+                                                <strong>
+                                                    {user.verificationRequest.category?.toUpperCase()}
+                                                </strong>
+                                            </div>
+                                            <div className="detail-item">
+                                                <span>Talep:</span>
+                                                <span className="badge-pill">
+                                                    {user.verificationRequest.badgeType?.toUpperCase()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="request-actions">
+                                            <button
+                                                className="reject-btn"
+                                                onClick={() => handleReject(user._id)}
+                                            >
+                                                Reddet
+                                            </button>
+                                            <button
+                                                className="approve-btn"
+                                                onClick={() => handleApprove(user._id)}
+                                            >
+                                                Onayla
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="request-details">
-                                        <div className="detail-item">
-                                            <span>Kategori:</span>
-                                            <strong>
-                                                {user.verificationRequest.category?.toUpperCase()}
-                                            </strong>
-                                        </div>
-                                        <div className="detail-item">
-                                            <span>Talep:</span>
-                                            <span className="badge-pill">
-                                                {user.verificationRequest.badgeType?.toUpperCase()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="request-actions">
-                                        <button
-                                            className="reject-btn"
-                                            onClick={() => handleReject(user._id)}
-                                        >
-                                            Reddet
-                                        </button>
-                                        <button
-                                            className="approve-btn"
-                                            onClick={() => handleApprove(user._id)}
-                                        >
-                                            Onayla
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )
                 )}
 
                 {activeTab === 'recovery' && (
-                    // --- RECOVERY REQUESTS TAB ---
-                    <div className="requests-section">
-                        {loading && <div className="admin-loading">Yükleniyor...</div>}
-                        {!loading && recoveryRequests.length === 0 && (
-                            <p className="no-data">Bekleyen hesap kurtarma başvurusu bulunmamaktadır.</p>
-                        )}
-                        <div className="requests-grid">
-                            {recoveryRequests.map((user) => (
-                                <div key={user._id} className="request-card" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                                    <div className="request-header" style={{ cursor: 'pointer' }} onClick={() => openUserDetail(user)}>
-                                        <img
-                                            src={
-                                                user.profile?.avatar ||
-                                                'https://via.placeholder.com/150'
-                                            }
-                                            alt={user.username}
-                                            className="request-avatar"
-                                        />
-                                        <div className="request-user-info">
-                                            <h3>{user.profile?.displayName || user.username}</h3>
-                                            <span>@{user.username}</span>
+                    !getModuleAccess('recovery').canView ? (
+                        renderAccessDenied('Kurtarma Talepleri')
+                    ) : (
+                        // --- RECOVERY REQUESTS TAB ---
+                        <div className="requests-section">
+                            {getModuleAccess('recovery').access === 'view' && renderViewModeBanner('Kurtarma Talepleri')}
+                            {loading && <div className="admin-loading">Yükleniyor...</div>}
+                            {!loading && recoveryRequests.length === 0 && (
+                                <p className="no-data">Bekleyen hesap kurtarma başvurusu bulunmamaktadır.</p>
+                            )}
+                            <div className="requests-grid">
+                                {recoveryRequests.map((user) => (
+                                    <div key={user._id} className="request-card" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                        <div className="request-header" style={{ cursor: 'pointer' }} onClick={() => openUserDetail(user)}>
+                                            <img
+                                                src={
+                                                    user.profile?.avatar ||
+                                                    'https://via.placeholder.com/150'
+                                                }
+                                                alt={user.username}
+                                                className="request-avatar"
+                                            />
+                                            <div className="request-user-info">
+                                                <h3>{user.profile?.displayName || user.username}</h3>
+                                                <span>@{user.username}</span>
+                                            </div>
+                                        </div>
+                                        <div className="request-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px' }}>
+                                            <div style={{ fontSize: '13px', color: '#ccc' }}>
+                                                <span style={{ color: '#888' }}>Gerekçe: </span>
+                                                <strong>{user.recoveryReason || 'Gerekçe belirtilmemiş.'}</strong>
+                                            </div>
+                                        </div>
+                                        <div className="request-actions">
+                                            <button
+                                                className="reject-btn"
+                                                onClick={() => handleRejectRecovery(user._id)}
+                                            >
+                                                Reddet
+                                            </button>
+                                            <button
+                                                className="approve-btn"
+                                                onClick={() => handleApproveRecovery(user._id)}
+                                            >
+                                                Onayla
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="request-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px' }}>
-                                        <div style={{ fontSize: '13px', color: '#ccc' }}>
-                                            <span style={{ color: '#888' }}>Gerekçe: </span>
-                                            <strong>{user.recoveryReason || 'Gerekçe belirtilmemiş.'}</strong>
-                                        </div>
-                                    </div>
-                                    <div className="request-actions">
-                                        <button
-                                            className="reject-btn"
-                                            onClick={() => handleRejectRecovery(user._id)}
-                                        >
-                                            Reddet
-                                        </button>
-                                        <button
-                                            className="approve-btn"
-                                            onClick={() => handleApproveRecovery(user._id)}
-                                        >
-                                            Onayla
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )
                 )}
 
                 {activeTab === 'users' && (
-                    // --- USERS TAB ---
-                    <div className="users-section">
-                        <div className="users-search">
+                    !getModuleAccess('users').canView ? (
+                        renderAccessDenied('Kullanıcılar')
+                    ) : (
+                        // --- USERS TAB ---
+                        <div className="users-section">
+                            {getModuleAccess('users').access === 'view' && renderViewModeBanner('Kullanıcılar')}
+                            <div className="users-search">
                             <input
                                 type="text"
                                 placeholder="Kullanıcı ara (Kullanıcı adı, isim, e-posta veya IP)..."
@@ -6744,11 +6983,16 @@ const AdminDashboard = () => {
                             ))}
                         </div>
                     </div>
+                    )
                 )}
 
                 {activeTab === 'portals' && (
-                    <div className="portals-section">
-                        <div className="users-search">
+                    !getModuleAccess('portals').canView ? (
+                        renderAccessDenied('Portallar')
+                    ) : (
+                        <div className="portals-section">
+                            {getModuleAccess('portals').access === 'view' && renderViewModeBanner('Portallar')}
+                            <div className="users-search">
                             <input
                                 type="text"
                                 placeholder="Portal ara (İsim veya açıklama)..."
@@ -6854,14 +7098,14 @@ const AdminDashboard = () => {
                                             <button
                                                 className="user-box-btn"
                                                 title={portal.status === 'suspended' ? 'Portalı aktif et' : 'Portalı askıya al'}
-                                                onClick={() => handleToggleSuspend(portal._id, portal.status)}
+                                                onClick={() => initiatePortalStatusChange(portal._id, portal.status === 'suspended' ? 'activate' : 'suspend')}
                                             >
                                                 {portal.status === 'suspended' ? '🟢 Askıyı Kaldır' : '⛔ Askıya Al'}
                                             </button>
                                             <button
                                                 className="user-box-btn"
                                                 title="Portalı kalıcı olarak kapat"
-                                                onClick={() => handleClosePortal(portal._id)}
+                                                onClick={() => initiatePortalStatusChange(portal._id, 'close')}
                                             >
                                                 ❌ Kapat
                                             </button>
@@ -6871,11 +7115,16 @@ const AdminDashboard = () => {
                             ))}
                         </div>
                     </div>
+                    )
                 )}
 
                 {/* ===== BADGES TAB ===== */}
                 {/* ===== BADGES STUDIO & MANAGEMENT TAB ===== */}
                 {activeTab === 'badges' && (() => {
+                    if (!getModuleAccess('badges').canView) {
+                        return renderAccessDenied('Rozetler');
+                    }
+
                     const isXBadge = (b) => {
                         const s = String(b.slug || '').toLowerCase();
                         return s.startsWith('x-') || ['blue', 'gold', 'platinum', 'verified', 'official'].includes(s);
@@ -6904,6 +7153,7 @@ const AdminDashboard = () => {
 
                     return (
                         <div className="badges-section fade-in">
+                            {getModuleAccess('badges').access === 'view' && renderViewModeBanner('Rozetler')}
                             {/* Studio Header Banner */}
                             <div className="badge-studio-header">
                                 <div className="badge-studio-title-row">
@@ -7111,6 +7361,10 @@ const AdminDashboard = () => {
                 })()}
 
                 {activeTab === 'reports' && (isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (() => {
+                    if (!getModuleAccess('reports').canView) {
+                        return renderAccessDenied('Bildirilenler / Şikayetler');
+                    }
+
                     const getReportReasonLabel = (reason) => {
                         switch (reason) {
                             case 'spam': return { label: 'İstenmeyen İçerik (Spam)', bg: 'rgba(52, 152, 219, 0.15)', text: '#3498db' };
@@ -7136,6 +7390,7 @@ const AdminDashboard = () => {
 
                     return (
                         <div className="reports-section fade-in">
+                            {getModuleAccess('reports').access === 'view' && renderViewModeBanner('Bildirilenler / Şikayetler')}
                             <div className="report-filters" style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                                 {filters.map(filter => (
                                     <button
@@ -7354,8 +7609,12 @@ const AdminDashboard = () => {
                 })()}
 
                 {activeTab === 'feedback' && (
-                    <div className="feedback-section fade-in">
-                        <div className="section-header-modern">
+                    !getModuleAccess('feedback').canView ? (
+                        renderAccessDenied('Talepler / Geri Bildirim')
+                    ) : (
+                        <div className="feedback-section fade-in">
+                            {getModuleAccess('feedback').access === 'view' && renderViewModeBanner('Talepler / Geri Bildirim')}
+                            <div className="section-header-modern">
                             <div className="header-left">
                                 <h2>Community Feedback / Talepler</h2>
                                 <p>Kullanıcılardan gelen öneri, şikayet ve hata bildirimlerini yönetin.</p>
@@ -7437,11 +7696,16 @@ const AdminDashboard = () => {
                             </div>
                         )}
                     </div>
+                    )
                 )}
 
                 {activeTab === 'activity' && (
-                    <div className="activity-section fade-in">
-                        <div className="activity-subnav">
+                    !getModuleAccess('activity').canView ? (
+                        renderAccessDenied('Platform Günlüğü & Oturumlar')
+                    ) : (
+                        <div className="activity-section fade-in">
+                            {getModuleAccess('activity').access === 'view' && renderViewModeBanner('Platform Günlüğü & Oturumlar')}
+                            <div className="activity-subnav">
                             <button
                                 type="button"
                                 className={`activity-subnav-btn ${activityViewMode === 'logs' ? 'active' : ''}`}
@@ -7877,6 +8141,7 @@ const AdminDashboard = () => {
                                                     <button
                                                         className="user-box-btn"
                                                         onClick={() => {
+                                                            if (!checkActionPerm('users', 'canBan', 'Kullanıcı Kick / Ban')) return;
                                                             setBanModalTarget({ type: 'user', id: session.userId });
                                                             setBanModalOpen(true);
                                                         }}
@@ -7892,19 +8157,25 @@ const AdminDashboard = () => {
                             </div>
                         )}
                     </div>
+                    )
                 )}
                 {activeTab === 'ipbans' && (
-                    <div className="ipbans-section fade-in">
-                        <div className="section-header-modern">
-                            <div className="header-left">
-                                <h2>🚫 IP Adresi Engelleme Paneli</h2>
-                                <p>Sistem genelinde şüpheli IP adreslerini, ağ saldırısı veya spam kaynaklarını engelleyin.</p>
-                            </div>
-                            <div className="header-right">
-                                <button 
-                                    className="btn-modern-primary"
-                                    onClick={() => {
-                                        const ip = window.prompt('Engellenecek IP adresini yazın:');
+                    !getModuleAccess('ipbans').canView ? (
+                        renderAccessDenied('IP Engelleri')
+                    ) : (
+                        <div className="ipbans-section fade-in">
+                            {getModuleAccess('ipbans').access === 'view' && renderViewModeBanner('IP Engelleri')}
+                            <div className="section-header-modern">
+                                <div className="header-left">
+                                    <h2>🚫 IP Adresi Engelleme Paneli</h2>
+                                    <p>Sistem genelinde şüpheli IP adreslerini, ağ saldırısı veya spam kaynaklarını engelleyin.</p>
+                                </div>
+                                <div className="header-right">
+                                    <button 
+                                        className="btn-modern-primary"
+                                        onClick={() => {
+                                            if (!checkActionPerm('ipbans', 'full', 'IP Engelleme')) return;
+                                            const ip = window.prompt('Engellenecek IP adresini yazın:');
                                         if (ip && ip.trim()) {
                                             setBanModalTarget({ type: 'ip', id: ip.trim() });
                                             setBanModalOpen(true);
@@ -7964,16 +8235,21 @@ const AdminDashboard = () => {
                             ))}
                         </div>
                     </div>
+                    )
                 )}
 
                 {activeTab === 'custom-badges' && (
-                    <div className="custom-badges-section fade-in">
-                        <div className="section-header-modern">
-                            <div className="header-left">
-                                <h2>🛡️ Özel İkon Rozetler (Yönetici Rozetleri)</h2>
-                                <p>Sistem genelinde kullanıcılara atanabilecek özel ikon/resim rozetler yükleyin ve yönetin.</p>
+                    !getModuleAccess('custom-badges').canView ? (
+                        renderAccessDenied('Özel İkon Rozetler')
+                    ) : (
+                        <div className="custom-badges-section fade-in">
+                            {getModuleAccess('custom-badges').access === 'view' && renderViewModeBanner('Özel İkon Rozetler')}
+                            <div className="section-header-modern">
+                                <div className="header-left">
+                                    <h2>🛡️ Özel İkon Rozetler (Yönetici Rozetleri)</h2>
+                                    <p>Sistem genelinde kullanıcılara atanabilecek özel ikon/resim rozetler yükleyin ve yönetin.</p>
+                                </div>
                             </div>
-                        </div>
 
                         <div className="custom-badges-layout" style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '30px', marginTop: '20px' }}>
                             {/* Left Side: Create / Upload form */}
@@ -8160,28 +8436,33 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     </div>
+                    )
                 )}
 
                 {activeTab === 'blog' && (
-                    <div className="blog-admin-container fade-in">
-                        {/* Header & Action Bar */}
-                        <div className="blog-admin-header-card">
-                            <div className="blog-header-title-wrap">
-                                <h2>📝 Blog & Makale Yönetim Paneli</h2>
-                                <p>Oxypace derin bilim ve teknik analiz makalelerini yazın, düzenleyin ve tek tuşla yayınlayın.</p>
+                    !getModuleAccess('blog').canView ? (
+                        renderAccessDenied('Blog Yönetimi')
+                    ) : (
+                        <div className="blog-admin-container fade-in">
+                            {getModuleAccess('blog').access === 'view' && renderViewModeBanner('Blog Yönetimi')}
+                            {/* Header & Action Bar */}
+                            <div className="blog-admin-header-card">
+                                <div className="blog-header-title-wrap">
+                                    <h2>📝 Blog & Makale Yönetim Paneli</h2>
+                                    <p>Oxypace derin bilim ve teknik analiz makalelerini yazın, düzenleyin ve tek tuşla yayınlayın.</p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                    <button className="btn-modern-secondary" onClick={() => { if (!checkActionPerm('blog', 'full', 'Hesaplama Araçları')) return; fetchCalcTools(); setCalcToolsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                                        <Calculator size={18} /> Hesaplama Araçları Görselleri
+                                    </button>
+                                    <button className="btn-modern-secondary" onClick={() => { if (!checkActionPerm('blog', 'full', 'Yazar Profilini Düzenle')) return; setBlogAuthorModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                                        <UserCheck size={18} /> Yazar Profilini Düzenle
+                                    </button>
+                                    <button className="btn-modern-primary btn-glow-cyan" onClick={() => openBlogModal(null)}>
+                                        <Plus size={18} /> Yeni Makale Yaz
+                                    </button>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                <button className="btn-modern-secondary" onClick={() => { fetchCalcTools(); setCalcToolsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
-                                    <Calculator size={18} /> Hesaplama Araçları Görselleri
-                                </button>
-                                <button className="btn-modern-secondary" onClick={() => setBlogAuthorModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
-                                    <UserCheck size={18} /> Yazar Profilini Düzenle
-                                </button>
-                                <button className="btn-modern-primary btn-glow-cyan" onClick={() => openBlogModal(null)}>
-                                    <Plus size={18} /> Yeni Makale Yaz
-                                </button>
-                            </div>
-                        </div>
 
                         {/* Stats Summary */}
                         <div className="blog-stats-grid">
@@ -8307,6 +8588,7 @@ const AdminDashboard = () => {
                             </div>
                         )}
                     </div>
+                    )
                 )}
             </div>
 
@@ -10273,63 +10555,182 @@ const AdminDashboard = () => {
             )}
 
             {/* EDIT TOURIST ADMIN PERMISSIONS MODAL */}
-            {editPermissionsModalOpen && editingTouristAdmin && (
-                <div className="modal-overlay-modern" onClick={() => setEditPermissionsModalOpen(false)}>
-                    <div className="modal-content-modern edit-permissions-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', width: '95vw', maxHeight: '90vh' }}>
-                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <ShieldCheck size={20} color="#3b82f6" />
-                                <div>
-                                    <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0, fontWeight: 700 }}>
-                                        Turist Admin İzinlerini Düzenle: @{editingTouristAdmin.username}
-                                    </h2>
-                                    <span style={{ fontSize: '11px', color: '#888' }}>
-                                        3 Aşamalı Granüler RBAC Modül Yetkilendirme Sistemi
+            {editPermissionsModalOpen && editingTouristAdmin && (() => {
+                const expiresAt = new Date(editingTouristAdmin.touristAdminExpiresAt);
+                const timeLeftMs = expiresAt - new Date();
+                let timeLeftStr = 'Süresi doldu';
+                if (timeLeftMs > 0) {
+                    const diffHours = Math.floor(timeLeftMs / (1000 * 60 * 60));
+                    const diffMins = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+                    timeLeftStr = diffHours > 0 ? `${diffHours} sa ${diffMins} dk` : `${diffMins} dk`;
+                }
+                const isExpired = timeLeftMs <= 0;
+                const isSoon = timeLeftMs > 0 && timeLeftMs < 12 * 60 * 60 * 1000;
+                const badgeClass = isExpired ? 'expired' : isSoon ? 'active-soon' : 'active-good';
+
+                const calculateNewExpiry = () => {
+                    if (editExpiryOption === 'keep') return null;
+                    if (editExpiryOption === 'extend') {
+                        const baseTime = expiresAt.getTime();
+                        const nowTime = Date.now();
+                        const startTime = baseTime > nowTime ? baseTime : nowTime;
+                        return new Date(startTime + editExtendHours * 60 * 60 * 1000).toISOString();
+                    }
+                    if (editExpiryOption === 'custom' && editCustomDate) {
+                        return new Date(editCustomDate).toISOString();
+                    }
+                    return null;
+                };
+
+                const newExpiryIso = calculateNewExpiry();
+
+                return (
+                    <div className="modal-overlay-modern" onClick={() => setEditPermissionsModalOpen(false)}>
+                        <div className="modal-content-modern edit-permissions-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '920px', width: '95vw', maxHeight: '90vh' }}>
+                            <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <ShieldCheck size={22} color="#3b82f6" />
+                                    <div>
+                                        <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0, fontWeight: 700 }}>
+                                            Turist Admin İzinlerini Düzenle: @{editingTouristAdmin.username}
+                                        </h2>
+                                        <span style={{ fontSize: '11px', color: '#888' }}>
+                                            Granüler RBAC Modül Yetkilendirme & Süre Yönetim Penceresi
+                                        </span>
+                                    </div>
+                                </div>
+                                <button className="close-btn-modern" onClick={() => setEditPermissionsModalOpen(false)}>&times;</button>
+                            </div>
+
+                            <div className="modal-body-modern" style={{ padding: '20px', overflowY: 'auto', maxHeight: 'calc(90vh - 140px)' }}>
+                                {/* User summary card */}
+                                <div className="edit-permissions-modal-user-card">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <UserAvatar src={editingTouristAdmin.profile?.lowResAvatar || editingTouristAdmin.profile?.avatar} alt={editingTouristAdmin.username} className="avatar-table" />
+                                        <div>
+                                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>
+                                                {editingTouristAdmin.profile?.displayName || editingTouristAdmin.username}
+                                                <span style={{ fontSize: '12px', color: '#3b82f6', marginLeft: '6px' }}>@{editingTouristAdmin.username}</span>
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                                                Atayan: @{editingTouristAdmin.assignedBy || 'oxypace'} • Mevcut Bitiş: {expiresAt.toLocaleString('tr-TR')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className={`time-left-badge ${badgeClass}`}>
+                                        {timeLeftStr}
                                     </span>
                                 </div>
+
+                                {/* Expiry extension section */}
+                                <div className="edit-expiry-section">
+                                    <h4>⏱️ Yetki Süresi Ayarları</h4>
+                                    <div className="edit-expiry-quick-btns" style={{ marginBottom: '10px' }}>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'keep' ? 'active' : ''}`}
+                                            onClick={() => setEditExpiryOption('keep')}
+                                        >
+                                            Mevcut Süreyi Koru
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'extend' && editExtendHours === 6 ? 'active' : ''}`}
+                                            onClick={() => { setEditExpiryOption('extend'); setEditExtendHours(6); }}
+                                        >
+                                            +6 Saat Uzat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'extend' && editExtendHours === 24 ? 'active' : ''}`}
+                                            onClick={() => { setEditExpiryOption('extend'); setEditExtendHours(24); }}
+                                        >
+                                            +24 Saat (1 Gün)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'extend' && editExtendHours === 72 ? 'active' : ''}`}
+                                            onClick={() => { setEditExpiryOption('extend'); setEditExtendHours(72); }}
+                                        >
+                                            +3 Gün Uzat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'extend' && editExtendHours === 168 ? 'active' : ''}`}
+                                            onClick={() => { setEditExpiryOption('extend'); setEditExtendHours(168); }}
+                                        >
+                                            +7 Gün Uzat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'extend' && editExtendHours === 720 ? 'active' : ''}`}
+                                            onClick={() => { setEditExpiryOption('extend'); setEditExtendHours(720); }}
+                                        >
+                                            +30 Gün Uzat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`edit-expiry-btn ${editExpiryOption === 'custom' ? 'active' : ''}`}
+                                            onClick={() => setEditExpiryOption('custom')}
+                                        >
+                                            Özel Tarih Belirle
+                                        </button>
+                                    </div>
+
+                                    {editExpiryOption === 'custom' && (
+                                        <div style={{ marginTop: '10px' }}>
+                                            <input
+                                                type="datetime-local"
+                                                className="custom-date-input"
+                                                value={editCustomDate}
+                                                onChange={(e) => setEditCustomDate(e.target.value)}
+                                                min={new Date().toISOString().slice(0, 16)}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {newExpiryIso && (
+                                        <div className="duration-preview-pill" style={{ marginTop: '10px' }}>
+                                            <span>🕒 Yeni Bitiş Tarihi: <strong>{new Date(newExpiryIso).toLocaleString('tr-TR')}</strong></span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <TouristPermissionStudio
+                                    modulesState={editingModulesState}
+                                    onChange={setEditingModulesState}
+                                />
                             </div>
-                            <button className="close-btn-modern" onClick={() => setEditPermissionsModalOpen(false)}>&times;</button>
-                        </div>
 
-                        <div className="modal-body-modern" style={{ padding: '20px', overflowY: 'auto', maxHeight: 'calc(90vh - 140px)' }}>
-                            <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px', lineHeight: 1.5 }}>
-                                Bu kullanıcıya özel olarak tanımlanmış modül izinlerini açıp kapatabilir, izleme modu (salt okunur) veya tam yönetim yetkisi verebilirsiniz. Değişiklikler anında yürürlüğe girer.
-                            </p>
-
-                            <TouristPermissionStudio
-                                modulesState={editingModulesState}
-                                onChange={setEditingModulesState}
-                            />
-                        </div>
-
-                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                Seçili modüller ve alt yetkiler sunucu güvenlik katmanında zorunlu tutulur.
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button
-                                    type="button"
-                                    className="btn-modern-ghost"
-                                    onClick={() => setEditPermissionsModalOpen(false)}
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    type="button"
-                                    className="user-box-btn"
-                                    onClick={() => {
-                                        const compiled = compileTouristPermissions(editingModulesState);
-                                        handleUpdateTouristPermissions(editingTouristAdmin._id, compiled);
-                                    }}
-                                    style={{ minWidth: '160px' }}
-                                >
-                                    Değişiklikleri Kaydet
-                                </button>
+                            <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontSize: '11px', color: '#666' }}>
+                                    Değişiklikler sunucu güvenlik katmanında doğrulanır ve anında yürürlüğe girer.
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        type="button"
+                                        className="btn-modern-ghost"
+                                        onClick={() => setEditPermissionsModalOpen(false)}
+                                    >
+                                        İptal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="user-box-btn"
+                                        onClick={() => {
+                                            const compiled = compileTouristPermissions(editingModulesState);
+                                            handleUpdateTouristPermissions(editingTouristAdmin._id, compiled, newExpiryIso);
+                                        }}
+                                        style={{ minWidth: '160px' }}
+                                    >
+                                        Değişiklikleri Kaydet
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
             {/* FORENSIC LOG INSPECTOR MODAL */}
             {inspectingLog && (
                 <div className="modal-overlay-modern" onClick={() => setInspectingLog(null)}>

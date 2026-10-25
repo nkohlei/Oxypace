@@ -42,38 +42,25 @@ export const checkTouristModuleAccess = (user, moduleOrPerm, level = 'view') => 
 
     const perms = user.touristAdminPermissions || {};
 
-    // 1. Check nested modules
-    if (perms.modules && perms.modules[moduleOrPerm]) {
-        const mod = perms.modules[moduleOrPerm];
-        const access = mod.access || 'none';
+    const LEGACY_TO_MODULE = {
+        'canManageRequests': 'requests',
+        'canManageRecovery': 'recovery',
+        'canManageFeedback': 'feedback',
+        'canManageUsers': 'users',
+        'canBanUsers': 'users',
+        'canManageBadges': 'badges',
+        'canManageBots': 'bots',
+        'canManagePortals': 'portals',
+        'canManageBlog': 'blog',
+        'canManageReports': 'reports',
+        'canViewLogs': 'activity',
+        'canSendNotifications': 'mass-notification',
+        'canManageNotifications': 'mass-notification',
+        'canManageMobile': 'mobile-designs',
+        'canManageSystem': 'mobile-designs'
+    };
 
-        if (level === 'view') {
-            return access === 'view' || access === 'full';
-        }
-        if (level === 'full' || level === 'edit') {
-            return access === 'full';
-        }
-        if (level === 'details') {
-            return (access === 'view' || access === 'full') && mod.canViewDetails !== false;
-        }
-        if (level === 'canBan') {
-            return access === 'full' || !!mod.canBan;
-        }
-        if (level === 'canManageBadges') {
-            return access === 'full' || !!mod.canManageBadges;
-        }
-        if (level === 'canExport') {
-            return access === 'full' || !!mod.canExport;
-        }
-    }
-
-    // 2. Direct boolean check on perms
-    if (perms[moduleOrPerm] === true) {
-        return true;
-    }
-
-    // 3. Fallback map for legacy permission keys
-    const LEGACY_MAP = {
+    const MODULE_TO_LEGACY = {
         'requests': 'canManageRequests',
         'recovery': 'canManageRecovery',
         'feedback': 'canManageFeedback',
@@ -91,10 +78,54 @@ export const checkTouristModuleAccess = (user, moduleOrPerm, level = 'view') => 
         'mobile-versions': 'canManageMobile'
     };
 
-    const legacyKey = LEGACY_MAP[moduleOrPerm];
+    // Determine target module key
+    const targetModule = (perms.modules && perms.modules[moduleOrPerm]) 
+        ? moduleOrPerm 
+        : (LEGACY_TO_MODULE[moduleOrPerm] || moduleOrPerm);
+
+    // 1. Check nested module permissions
+    if (perms.modules && perms.modules[targetModule]) {
+        const mod = perms.modules[targetModule];
+        const access = mod.access || 'none';
+
+        if (level === 'view') {
+            return access === 'view' || access === 'full';
+        }
+        if (level === 'full' || level === 'edit') {
+            return access === 'full';
+        }
+        if (level === 'details') {
+            return (access === 'view' || access === 'full') && mod.canViewDetails !== false;
+        }
+        if (level === 'canBan') {
+            if (mod.canBan === false) return false;
+            return !!mod.canBan || (access === 'full' && mod.canBan !== false) || perms.modules?.ipbans?.access === 'full';
+        }
+        if (level === 'canManageBadges') {
+            if (mod.canManageBadges === false) return false;
+            return !!mod.canManageBadges || (access === 'full' && mod.canManageBadges !== false) || perms.modules?.badges?.access === 'full' || perms.modules?.['custom-badges']?.access === 'full';
+        }
+        if (level === 'canExport') {
+            if (mod.canExport === false) return false;
+            return !!mod.canExport || (access === 'full' && mod.canExport !== false);
+        }
+    }
+
+    // 2. Direct boolean check on perms
+    if (perms[moduleOrPerm] === true) {
+        return true;
+    }
+
+    // 3. Reverse legacy check
+    const legacyKey = MODULE_TO_LEGACY[targetModule];
     if (legacyKey && perms[legacyKey] === true) {
         return true;
     }
+
+    // 4. Special sub-permission fallback checks
+    if (level === 'canBan' && perms.canBanUsers === true) return true;
+    if (level === 'canManageBadges' && perms.canManageBadges === true) return true;
+    if (level === 'canExport' && perms.canViewLogs === true) return true;
 
     return false;
 };
