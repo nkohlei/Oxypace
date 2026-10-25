@@ -7670,4 +7670,196 @@ body.light .modal-overlay-modern,
     transition: background 0.15s ease;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESKTOP SITE VIEW MODE ON MOBILE (Masaüstü Sitesi Modu)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Title & Toggle Button wrapper in Top Bar */
+.admin-mobile-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto;
+}
+
+/* Desktop Site Mode Toggle Button (Top Bar & Sidebar Header) */
+.desktop-site-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #e0e0e0;
+    border-radius: 6px;
+    padding: 6px 9px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.desktop-site-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+.desktop-site-toggle-btn:active {
+    transform: scale(0.96);
+}
+
+.desktop-site-toggle-btn.active {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.6);
+    color: #10b981;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+
+.desktop-site-toggle-btn.in-sidebar {
+    padding: 4px 8px;
+    gap: 6px;
+    font-size: 11px;
+    border-radius: 4px;
+    margin-left: 10px;
+}
+
+.desktop-mode-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    font-family: monospace;
+}
+
+.desktop-mode-active-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10b981;
+    border: 1.5px solid #000;
+}
+
+/* Floating button to return to Mobile View when Desktop Mode is active */
+.desktop-mode-floating-bar {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999999;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(14, 14, 18, 0.92);
+    color: #10b981;
+    border: 1.5px solid rgba(16, 185, 129, 0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(16, 185, 129, 0.25);
+    border-radius: 30px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.desktop-mode-floating-bar:hover {
+    background: #000;
+    border-color: #10b981;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(16, 185, 129, 0.4);
+}
+
+.desktop-mode-floating-bar:active {
+    transform: scale(0.96);
+}
+
+/* ── Enforce Full Desktop Site Styles & Layout when Desktop Site Mode is Active ── */
+html.admin-forced-desktop-mode,
+body.admin-forced-desktop-mode {
+    width: 100% !important;
+    min-width: 1200px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+body.admin-forced-desktop-mode #root,
+body.admin-forced-desktop-mode .admin-layout {
+    min-width: 1200px !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+/* Keep desktop sidebar fixed or sticky side-by-side */
+body.admin-forced-desktop-mode .admin-sidebar {
+    position: sticky !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    height: 100vh !important;
+    width: 260px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: none !important;
+    z-index: 100 !important;
+}
+
+body.admin-forced-desktop-mode .sidebar-header {
+    display: flex !important;
+}
+
+body.admin-forced-desktop-mode .sidebar-close-btn {
+    display: none !important;
+}
+
+body.admin-forced-desktop-mode .admin-top-bar {
+    display: none !important;
+}
+
+body.admin-forced-desktop-mode .sidebar-backdrop {
+    display: none !important;
+}
+
+body.admin-forced-desktop-mode .admin-main-wrapper {
+    flex: 1 !important;
+    min-width: 940px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-x: auto !important;
+}
+
+body.admin-forced-desktop-mode .admin-content {
+    padding: 32px 40px !important;
+    min-width: 940px !important;
+    overflow-x: auto !important;
+    touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+body.admin-forced-desktop-mode .admin-users-box-grid,
+body.admin-forced-desktop-mode .admin-portals-box-grid {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+}
+
+body.admin-forced-desktop-mode .user-box-actions {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important;
+}
+
+/* Hide desktop site toggle on natural large desktop monitors to keep desktop UI clean */
+@media (min-width: 1025px) {
+    html:not(.admin-forced-desktop-mode) .desktop-site-toggle-btn {
+        display: none !important;
+    }
+}
+
 

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBadges } from '../context/BadgeContext';
 import { useSocket } from '../context/SocketContext';
 import { getImageUrl } from '../utils/imageUtils';
-import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield, Volume2, Video, Hash, Radio, Lock, Unlock, MessageSquare, Download, Pause, Play, Filter, Server, HardDrive, Terminal, Activity } from 'lucide-react';
+import { Home, Pencil, Trash2, LayoutDashboard, KeyRound, Users, ShieldAlert, Award, FileBadge, Globe, AlertTriangle, Send, Settings, ShieldCheck, CheckCircle2, Menu, X, Bot, FileText, BookOpen, Plus, Check, Eye, Edit3, UserCheck, Calculator, Image, Smartphone, Monitor, History, Sparkles, RefreshCw, User, Search, Copy, Sliders, Sun, Moon, Layers, Zap, ArrowRight, Shield, Volume2, Video, Hash, Radio, Lock, Unlock, MessageSquare, Download, Pause, Play, Filter, Server, HardDrive, Terminal, Activity } from 'lucide-react';
 import Badge from '../components/Badge';
 import PortalBadges from '../components/PortalBadges';
 import UserBadges from '../components/UserBadges';
@@ -3654,6 +3654,63 @@ const AdminDashboard = () => {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
+    // Desktop Site View Mode on Mobile State
+    const [desktopSiteMode, setDesktopSiteMode] = useState(() => {
+        try {
+            return localStorage.getItem('adminDesktopSiteMode') === 'true';
+        } catch {
+            return false;
+        }
+    });
+
+    const [isMobileScreen, setIsMobileScreen] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    });
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobileScreen(window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Manage viewport meta tag & forced classes for desktop view mode with pinch-to-zoom support
+    useEffect(() => {
+        const defaultViewport = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content';
+        const desktopViewport = 'width=1280, initial-scale=0.32, minimum-scale=0.15, maximum-scale=5.0, user-scalable=yes';
+
+        let meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.name = 'viewport';
+            document.head.appendChild(meta);
+        }
+
+        if (desktopSiteMode) {
+            meta.setAttribute('content', desktopViewport);
+            document.documentElement.classList.add('admin-forced-desktop-mode');
+            document.body.classList.add('admin-forced-desktop-mode');
+            try { localStorage.setItem('adminDesktopSiteMode', 'true'); } catch {}
+        } else {
+            meta.setAttribute('content', defaultViewport);
+            document.documentElement.classList.remove('admin-forced-desktop-mode');
+            document.body.classList.remove('admin-forced-desktop-mode');
+            try { localStorage.setItem('adminDesktopSiteMode', 'false'); } catch {}
+        }
+
+        return () => {
+            meta.setAttribute('content', defaultViewport);
+            document.documentElement.classList.remove('admin-forced-desktop-mode');
+            document.body.classList.remove('admin-forced-desktop-mode');
+        };
+    }, [desktopSiteMode]);
+
+    const toggleDesktopSiteMode = () => {
+        setDesktopSiteMode(prev => !prev);
+    };
+
     // Bot Management State
     const [bots, setBots] = useState([]);
     const [searchTermBot, setSearchTermBot] = useState('');
@@ -5852,7 +5909,7 @@ const AdminDashboard = () => {
     );
 
     return (
-        <div className="admin-layout">
+        <div className={`admin-layout ${desktopSiteMode ? 'desktop-mode-active' : ''}`}>
             {/* Unauthorized Action Warning Toast Alert */}
             {unauthorizedAlert.show && (
                 <div className="unauthorized-action-toast-overlay" onClick={() => setUnauthorizedAlert(prev => ({ ...prev, show: false }))}>
@@ -5901,7 +5958,21 @@ const AdminDashboard = () => {
                 >
                     <Menu size={24} />
                 </button>
-                <span className="admin-mobile-title">Yönetici Paneli</span>
+                <div className="admin-mobile-title-wrap">
+                    <span className="admin-mobile-title">Yönetici Paneli</span>
+                    {(isMobileScreen || desktopSiteMode) && (
+                        <button
+                            type="button"
+                            className={`desktop-site-toggle-btn ${desktopSiteMode ? 'active' : ''}`}
+                            onClick={toggleDesktopSiteMode}
+                            title={desktopSiteMode ? "Mobil Görünüme Dön" : "Masaüstü Sitesi Olarak Görüntüle (Yakınlaştırılabilir)"}
+                            aria-label="Masaüstü sitesi modu"
+                        >
+                            <Monitor size={16} />
+                            {desktopSiteMode && <span className="desktop-mode-active-dot" />}
+                        </button>
+                    )}
+                </div>
                 <button
                     className="admin-home-btn"
                     onClick={() => navigate('/messages')}
@@ -5923,6 +5994,20 @@ const AdminDashboard = () => {
                     </button>
                     <div className="sidebar-brand">
                         <span className="sidebar-brand-title">Yönetici Paneli</span>
+                        {(isMobileScreen || desktopSiteMode) && (
+                            <button
+                                type="button"
+                                className={`desktop-site-toggle-btn in-sidebar ${desktopSiteMode ? 'active' : ''}`}
+                                onClick={toggleDesktopSiteMode}
+                                title={desktopSiteMode ? "Mobil Görünüme Dön" : "Masaüstü Sitesi Görünümüne Geç"}
+                                aria-label="Masaüstü sitesi modu"
+                            >
+                                <Monitor size={14} />
+                                <span className="desktop-mode-badge">
+                                    {desktopSiteMode ? 'Masaüstü Açık' : 'Masaüstü Modu'}
+                                </span>
+                            </button>
+                        )}
                     </div>
                     <button 
                         className="sidebar-close-btn"
@@ -11721,6 +11806,19 @@ const AdminDashboard = () => {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Quick Toggle Floating Return Button for Mobile Desktop Mode */}
+            {desktopSiteMode && (
+                <button
+                    type="button"
+                    className="desktop-mode-floating-bar"
+                    onClick={() => setDesktopSiteMode(false)}
+                    title="Mobil Görünüme Dön"
+                >
+                    <Smartphone size={16} />
+                    <span>Mobil Görünüme Dön</span>
+                </button>
             )}
             </div>
         </div>
