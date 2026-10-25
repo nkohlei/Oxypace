@@ -754,6 +754,12 @@ router.get('/portals/:id/posts', protect, admin, async (req, res) => {
                 channelName = chIdStr;
             }
 
+            return {
+                ...p,
+                channelName
+            };
+        });
+
         // Also fetch deleted posts from ActivityLog archive for this portal
         let deletedLogsQuery = {
             action: 'POST_DELETE',
