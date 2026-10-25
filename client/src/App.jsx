@@ -889,7 +889,6 @@ function App() {
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
             requestNativePermissions();
-            CapacitorUpdater.notifyAppReady();
 
             // Handle Deep Linking for Google Auth and general routes
             CapacitorApp.addListener('appUrlOpen', (event) => {
