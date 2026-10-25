@@ -5692,33 +5692,15 @@ const AdminDashboard = () => {
                                             </div>
                                         )}
 
-                                        {/* Turist Admin Hakları / Granular Permissions */}
-                                        <div style={{ marginTop: '16px', marginBottom: '20px', background: '#0d0d0d', border: '1px solid #222222', padding: '16px' }}>
-                                            <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#888888', margin: '0 0 12px 0', borderBottom: '1px solid #1a1a1a', paddingBottom: '6px' }}>
-                                                🛡️ Turist Admin Hakları & Yetki Sınırları
+                                        {/* Turist Admin Hakları / Granular Permissions Studio */}
+                                        <div style={{ marginTop: '16px', marginBottom: '20px', background: '#0a0a0a', border: '1px solid #222222', borderRadius: '10px', padding: '16px' }}>
+                                            <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#888888', margin: '0 0 12px 0', borderBottom: '1px solid #1a1a1a', paddingBottom: '8px' }}>
+                                                🛡️ Turist Admin Hakları & 3 Aşamalı Granüler RBAC
                                             </h4>
-                                            <div className="permissions-grid" style={{ padding: 0, background: 'transparent', border: 'none' }}>
-                                                {[
-                                                    { key: 'canManageUsers', label: 'Kullanıcıları Yönet' },
-                                                    { key: 'canBanUsers', label: 'Kullanıcı Engelle / Ceza Ver' },
-                                                    { key: 'canManagePortals', label: 'Portalları Yönet' },
-                                                    { key: 'canManageReports', label: 'Raporları İncele / Çöz' },
-                                                    { key: 'canManageBadges', label: 'Rozetleri Yönet' },
-                                                    { key: 'canManageBots', label: 'Botları Yönet' },
-                                                    { key: 'canViewLogs', label: 'Platform Günlüğü / İzleri Gör' },
-                                                    { key: 'canSendNotifications', label: 'Toplu Bildirim Gönder' },
-                                                    { key: 'canManageBlog', label: 'Blog İçeriklerini Yönet' },
-                                                ].map(item => (
-                                                    <label key={item.key} className="permission-checkbox-item">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={!!touristPermissions[item.key]}
-                                                            onChange={(e) => setTouristPermissions(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                                                        />
-                                                        <span>{item.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
+                                            <TouristPermissionStudio
+                                                modulesState={touristModulesState}
+                                                onChange={setTouristModulesState}
+                                            />
                                         </div>
 
                                         <div className="form-actions-modern">
@@ -5804,6 +5786,7 @@ const AdminDashboard = () => {
                                                                         type="button"
                                                                         onClick={() => {
                                                                             setEditingTouristAdmin(admin);
+                                                                            setEditingModulesState(parseExistingPermissions(admin.touristAdminPermissions));
                                                                             setEditPermissionsModalOpen(true);
                                                                         }}
                                                                         className="btn-modern-secondary"
@@ -10292,72 +10275,57 @@ const AdminDashboard = () => {
             {/* EDIT TOURIST ADMIN PERMISSIONS MODAL */}
             {editPermissionsModalOpen && editingTouristAdmin && (
                 <div className="modal-overlay-modern" onClick={() => setEditPermissionsModalOpen(false)}>
-                    <div className="modal-content-modern edit-permissions-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px' }}>
-                            <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0 }}>
-                                🛡️ Turist Admin İzinlerini Düzenle: @{editingTouristAdmin.username}
-                            </h2>
+                    <div className="modal-content-modern edit-permissions-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', width: '95vw', maxHeight: '90vh' }}>
+                        <div className="modal-header-modern" style={{ borderBottom: '1px solid #222', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <ShieldCheck size={20} color="#3b82f6" />
+                                <div>
+                                    <h2 style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', margin: 0, fontWeight: 700 }}>
+                                        Turist Admin İzinlerini Düzenle: @{editingTouristAdmin.username}
+                                    </h2>
+                                    <span style={{ fontSize: '11px', color: '#888' }}>
+                                        3 Aşamalı Granüler RBAC Modül Yetkilendirme Sistemi
+                                    </span>
+                                </div>
+                            </div>
                             <button className="close-btn-modern" onClick={() => setEditPermissionsModalOpen(false)}>&times;</button>
                         </div>
 
-                        <div className="modal-body-modern" style={{ padding: '20px' }}>
-                            <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>
-                                Bu kullanıcıya özel olarak tanımlanmış modül izinlerini açıp kapatabilirsiniz. Değişiklikler anında yürürlüğe girer.
+                        <div className="modal-body-modern" style={{ padding: '20px', overflowY: 'auto', maxHeight: 'calc(90vh - 140px)' }}>
+                            <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px', lineHeight: 1.5 }}>
+                                Bu kullanıcıya özel olarak tanımlanmış modül izinlerini açıp kapatabilir, izleme modu (salt okunur) veya tam yönetim yetkisi verebilirsiniz. Değişiklikler anında yürürlüğe girer.
                             </p>
 
-                            <div className="permissions-grid">
-                                {[
-                                    { key: 'canManageUsers', label: 'Kullanıcıları Yönet' },
-                                    { key: 'canBanUsers', label: 'Kullanıcı Engelle / Ceza Ver' },
-                                    { key: 'canManagePortals', label: 'Portalları Yönet' },
-                                    { key: 'canManageReports', label: 'Raporları İncele / Çöz' },
-                                    { key: 'canManageBadges', label: 'Rozetleri Yönet' },
-                                    { key: 'canManageBots', label: 'Botları Yönet' },
-                                    { key: 'canViewLogs', label: 'Platform Günlüğü / İzleri Gör' },
-                                    { key: 'canSendNotifications', label: 'Toplu Bildirim Gönder' },
-                                    { key: 'canManageBlog', label: 'Blog İçeriklerini Yönet' },
-                                ].map(item => {
-                                    const currentPerms = editingTouristAdmin.touristAdminPermissions || {};
-                                    const isChecked = !!currentPerms[item.key];
-                                    return (
-                                        <label key={item.key} className="permission-checkbox-item">
-                                            <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                onChange={(e) => {
-                                                    const updated = {
-                                                        ...currentPerms,
-                                                        [item.key]: e.target.checked
-                                                    };
-                                                    setEditingTouristAdmin({
-                                                        ...editingTouristAdmin,
-                                                        touristAdminPermissions: updated
-                                                    });
-                                                }}
-                                            />
-                                            <span>{item.label}</span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
+                            <TouristPermissionStudio
+                                modulesState={editingModulesState}
+                                onChange={setEditingModulesState}
+                            />
                         </div>
 
-                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '14px 20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button
-                                type="button"
-                                className="btn-modern-ghost"
-                                onClick={() => setEditPermissionsModalOpen(false)}
-                            >
-                                İptal
-                            </button>
-                            <button
-                                type="button"
-                                className="user-box-btn"
-                                onClick={() => handleUpdateTouristPermissions(editingTouristAdmin._id, editingTouristAdmin.touristAdminPermissions || {})}
-                                style={{ minWidth: '160px' }}
-                            >
-                                Değişiklikleri Kaydet
-                            </button>
+                        <div className="modal-footer-modern" style={{ borderTop: '1px solid #222', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#666' }}>
+                                Seçili modüller ve alt yetkiler sunucu güvenlik katmanında zorunlu tutulur.
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    type="button"
+                                    className="btn-modern-ghost"
+                                    onClick={() => setEditPermissionsModalOpen(false)}
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    type="button"
+                                    className="user-box-btn"
+                                    onClick={() => {
+                                        const compiled = compileTouristPermissions(editingModulesState);
+                                        handleUpdateTouristPermissions(editingTouristAdmin._id, compiled);
+                                    }}
+                                    style={{ minWidth: '160px' }}
+                                >
+                                    Değişiklikleri Kaydet
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
