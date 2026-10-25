@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/admin.js';
 import { mongoIdValidation } from '../middleware/validation.js';
 import Report from '../models/Report.js';
 import Post from '../models/Post.js';
@@ -66,15 +67,9 @@ router.post('/', protect, async (req, res) => {
 
 // @route   GET /api/reports
 // @desc    Get all reports (Admin only)
-// @access  Private (Admin)
-router.get('/', protect, async (req, res) => {
+// @access  Private (Admin with canManageReports)
+router.get('/', protect, requirePermission('canManageReports'), async (req, res) => {
     try {
-        const isOxypace = req.user.username === 'oxypace';
-        const isAdmin = req.user.isAdmin || req.user.isTouristAdmin;
-        if (!isOxypace && !isAdmin) {
-            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
-        }
-
         const reports = await Report.find()
             .populate('reporter', 'username profile.displayName profile.avatar isDeleted')
             .populate({
@@ -96,15 +91,9 @@ router.get('/', protect, async (req, res) => {
 
 // @route   PUT /api/reports/:id/status
 // @desc    Update report status (Admin only)
-// @access  Private (Admin)
-router.put('/:id/status', protect, mongoIdValidation('id'), async (req, res) => {
+// @access  Private (Admin with canManageReports)
+router.put('/:id/status', protect, requirePermission('canManageReports'), mongoIdValidation('id'), async (req, res) => {
     try {
-        const isOxypace = req.user.username === 'oxypace';
-        const isAdmin = req.user.isAdmin || req.user.isTouristAdmin;
-        if (!isOxypace && !isAdmin) {
-            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
-        }
-
         const { status } = req.body;
         if (!['pending', 'resolved'].includes(status)) {
             return res.status(400).json({ message: 'Geçersiz durum.' });
@@ -129,15 +118,9 @@ router.put('/:id/status', protect, mongoIdValidation('id'), async (req, res) => 
 
 // @route   DELETE /api/reports/:id
 // @desc    Delete a report (Admin only)
-// @access  Private (Admin)
-router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
+// @access  Private (Admin with canManageReports)
+router.delete('/:id', protect, requirePermission('canManageReports'), mongoIdValidation('id'), async (req, res) => {
     try {
-        const isOxypace = req.user.username === 'oxypace';
-        const isAdmin = req.user.isAdmin || req.user.isTouristAdmin;
-        if (!isOxypace && !isAdmin) {
-            return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
-        }
-
         const report = await Report.findByIdAndDelete(req.params.id);
         if (!report) {
             return res.status(404).json({ message: 'Bildirim bulunamadı.' });

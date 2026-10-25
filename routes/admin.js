@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.js';
-import { admin } from '../middleware/admin.js';
+import { admin, requirePermission } from '../middleware/admin.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import BotConfig from '../models/BotConfig.js';
@@ -41,7 +41,7 @@ router.get('/pending-count', protect, admin, async (req, res) => {
 // @route   GET /api/admin/verification-requests
 // @desc    Get all pending verification requests
 // @access  Private/Admin
-router.get('/verification-requests', protect, admin, async (req, res) => {
+router.get('/verification-requests', protect, requirePermission('canManageRequests'), async (req, res) => {
     try {
         const users = await User.find({ 'verificationRequest.status': 'pending' }).select(
             'username email profile verificationRequest'
@@ -56,7 +56,7 @@ router.get('/verification-requests', protect, admin, async (req, res) => {
 // @route   GET /api/admin/recovery-requests
 // @desc    Get all pending recovery requests
 // @access  Private/Admin
-router.get('/recovery-requests', protect, admin, async (req, res) => {
+router.get('/recovery-requests', protect, requirePermission('canManageRecovery'), async (req, res) => {
     try {
         const users = await User.find({ recoveryStatus: 'pending' }).select(
             'username email profile recoveryReason securityAnswers recoveryStatus'
@@ -71,7 +71,7 @@ router.get('/recovery-requests', protect, admin, async (req, res) => {
 // @route   POST /api/admin/verify-user/:id
 // @desc    Approve verification request
 // @access  Private/Admin
-router.post('/verify-user/:id', protect, admin, async (req, res) => {
+router.post('/verify-user/:id', protect, requirePermission('canManageRequests'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
 
@@ -108,7 +108,7 @@ router.post('/verify-user/:id', protect, admin, async (req, res) => {
 // @route   POST /api/admin/reject-verification/:id
 // @desc    Reject verification request
 // @access  Private/Admin
-router.post('/reject-verification/:id', protect, admin, async (req, res) => {
+router.post('/reject-verification/:id', protect, requirePermission('canManageRequests'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
 
@@ -142,7 +142,7 @@ router.post('/reject-verification/:id', protect, admin, async (req, res) => {
 // @route   GET /api/admin/users
 // @desc    Get all users (with search and enriched dossier data)
 // @access  Private/Admin
-router.get('/users', protect, admin, async (req, res) => {
+router.get('/users', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
         const q = req.query.q || req.query.search;
         let query = {};
@@ -202,7 +202,7 @@ router.get('/users', protect, admin, async (req, res) => {
 // @route   GET /api/admin/users/:id/dossier
 // @desc    Get full user dossier / genealogy (tüm şecere)
 // @access  Private/Admin
-router.get('/users/:id/dossier', protect, admin, async (req, res) => {
+router.get('/users/:id/dossier', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
             .populate('joinedPortals', 'name avatar members channels isVerified badges')
@@ -304,7 +304,7 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
 // @route   GET /api/admin/users/:id/posts
 // @desc    Get all posts created by a specific user with search (including archived/deleted posts)
 // @access  Private/Admin
-router.get('/users/:id/posts', protect, admin, async (req, res) => {
+router.get('/users/:id/posts', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
         const { q, limit = 50, page = 1 } = req.query;
         let query = { author: req.params.id };
@@ -383,7 +383,7 @@ router.get('/users/:id/posts', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/badge
 // @desc    Update user verification badge
 // @access  Private/Admin
-router.put('/users/:id/badge', protect, admin, async (req, res) => {
+router.put('/users/:id/badge', protect, requirePermission('canManageBadges'), async (req, res) => {
     try {
         const { badge } = req.body;
 
@@ -432,7 +432,7 @@ router.put('/users/:id/badge', protect, admin, async (req, res) => {
 // @route   GET /api/admin/contact-messages
 // @desc    Get all contact messages (Only for oxypace)
 // @access  Private/Admin
-router.get('/contact-messages', protect, admin, async (req, res) => {
+router.get('/contact-messages', protect, requirePermission('canManageFeedback'), async (req, res) => {
     try {
         if (req.user.username !== 'oxypace') {
             return res.status(403).json({ message: 'Bu alana sadece baş yönetici erişebilir.' });
@@ -452,7 +452,7 @@ router.get('/contact-messages', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/contact-messages/:id/status
 // @desc    Update contact message status
 // @access  Private/Admin
-router.put('/contact-messages/:id/status', protect, admin, async (req, res) => {
+router.put('/contact-messages/:id/status', protect, requirePermission('canManageFeedback'), async (req, res) => {
     try {
         if (req.user.username !== 'oxypace') {
             return res.status(403).json({ message: 'Bu alana sadece baş yönetici erişebilir.' });
@@ -478,7 +478,7 @@ router.put('/contact-messages/:id/status', protect, admin, async (req, res) => {
 // @route   GET /api/admin/portals
 // @desc    Get all portals (with search)
 // @access  Private/Admin
-router.get('/portals', protect, admin, async (req, res) => {
+router.get('/portals', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const q = req.query.q || req.query.search;
         let query = {};
@@ -503,7 +503,7 @@ router.get('/portals', protect, admin, async (req, res) => {
 // @route   GET /api/admin/portals/:id/dossier
 // @desc    Get portal full dossier (tüm bilgiler, üyeler, kanallar, istatistikler)
 // @access  Private/Admin
-router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
+router.get('/portals/:id/dossier', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
             .populate('owner', 'username profile.displayName profile.avatar email createdAt lastActive')
@@ -621,7 +621,7 @@ router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
 // @route   POST /api/admin/portals/:id/channels
 // @desc    Admin add channel to portal
 // @access  Private/Admin
-router.post('/portals/:id/channels', protect, admin, async (req, res) => {
+router.post('/portals/:id/channels', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { name, type = 'text', roomMode = 'free', maxParticipants = 25, isPrivate = false } = req.body;
         if (!name || !name.trim()) {
@@ -662,7 +662,7 @@ router.post('/portals/:id/channels', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/portals/:id/channels/:channelId
 // @desc    Admin edit channel in portal
 // @access  Private/Admin
-router.put('/portals/:id/channels/:channelId', protect, admin, async (req, res) => {
+router.put('/portals/:id/channels/:channelId', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { name, type, roomMode, maxParticipants, isPrivate } = req.body;
         const portal = await Portal.findById(req.params.id);
@@ -710,7 +710,7 @@ router.put('/portals/:id/channels/:channelId', protect, admin, async (req, res) 
 // @route   DELETE /api/admin/portals/:id/channels/:channelId
 // @desc    Admin delete channel from portal
 // @access  Private/Admin
-router.delete('/portals/:id/channels/:channelId', protect, admin, async (req, res) => {
+router.delete('/portals/:id/channels/:channelId', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
@@ -745,7 +745,7 @@ router.delete('/portals/:id/channels/:channelId', protect, admin, async (req, re
 // @route   GET /api/admin/portals/:id/posts
 // @desc    Get all posts in a specific portal with channel and search filters
 // @access  Private/Admin
-router.get('/portals/:id/posts', protect, admin, async (req, res) => {
+router.get('/portals/:id/posts', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { q, channelId, limit = 50, page = 1 } = req.query;
         const portal = await Portal.findById(req.params.id).lean();
@@ -894,7 +894,7 @@ router.get('/portals/:id/posts', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/portals/:id AND /api/admin/portals/:id/status
 // @desc    Update portal status/badges/read-only/customBadge
 // @access  Private/Admin
-router.put(['/portals/:id', '/portals/:id/status'], protect, admin, async (req, res) => {
+router.put(['/portals/:id', '/portals/:id/status'], protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { status, badges, isVerified, customBadge } = req.body;
         const Portal = await import('../models/Portal.js').then(m => m.default);
@@ -979,7 +979,7 @@ router.put(['/portals/:id', '/portals/:id/status'], protect, admin, async (req, 
 // @route   POST /api/admin/portals/:id/custom-badge
 // @desc    Assign custom badge to a portal
 // @access  Private/Admin
-router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
+router.post('/portals/:id/custom-badge', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { url, name, shape, borderStyle } = req.body;
         const Portal = await import('../models/Portal.js').then(m => m.default);
@@ -1028,7 +1028,7 @@ router.post('/portals/:id/custom-badge', protect, admin, async (req, res) => {
 // @route   POST /api/admin/portals/:id/transfer-ownership
 // @desc    Transfer portal ownership to another user (ID or username)
 // @access  Private/Admin
-router.post('/portals/:id/transfer-ownership', protect, admin, async (req, res) => {
+router.post('/portals/:id/transfer-ownership', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { targetUserIdentifier } = req.body;
         if (!targetUserIdentifier) {
@@ -1108,7 +1108,7 @@ router.post('/portals/:id/transfer-ownership', protect, admin, async (req, res) 
 // @route   POST /api/admin/portals/:id/warning
 // @desc    Add warning to portal
 // @access  Private/Admin
-router.post('/portals/:id/warning', protect, admin, async (req, res) => {
+router.post('/portals/:id/warning', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { message } = req.body;
         const Portal = await import('../models/Portal.js').then(m => m.default);
@@ -1148,7 +1148,7 @@ router.post('/portals/:id/warning', protect, admin, async (req, res) => {
 // @route   POST /api/admin/portals/:id/alert
 // @desc    Create a portal alert (timed announcement)
 // @access  Private/Admin
-router.post('/portals/:id/alert', protect, admin, async (req, res) => {
+router.post('/portals/:id/alert', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const { message, expiresAt } = req.body;
 
@@ -1206,7 +1206,7 @@ router.post('/portals/:id/alert', protect, admin, async (req, res) => {
 // @route   DELETE /api/admin/portals/:id/alert/:alertId
 // @desc    Deactivate a portal alert before expiry
 // @access  Private/Admin
-router.delete('/portals/:id/alert/:alertId', protect, admin, async (req, res) => {
+router.delete('/portals/:id/alert/:alertId', protect, requirePermission('canManagePortals'), async (req, res) => {
     try {
         const Portal = await import('../models/Portal.js').then(m => m.default);
         const portal = await Portal.findById(req.params.id);
@@ -1247,7 +1247,7 @@ router.put('/system-settings/maintenance', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/ban
 // @desc    Ban a user profile and broadcast socket logout signal
 // @access  Private/Admin
-router.put('/users/:id/ban', protect, admin, async (req, res) => {
+router.put('/users/:id/ban', protect, requirePermission('canBanUsers'), async (req, res) => {
     try {
         const { reason, expiresAt } = req.body;
         const user = await User.findById(req.params.id);
@@ -1256,8 +1256,8 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
-            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına ceza verilemez veya müdahale edilemez.' });
         }
 
         user.isBanned = true;
@@ -1317,7 +1317,7 @@ router.put('/users/:id/ban', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/shadowban
 // @desc    Toggle shadowban status of a user
 // @access  Private/Admin
-router.put('/users/:id/shadowban', protect, admin, async (req, res) => {
+router.put('/users/:id/shadowban', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
         const { isShadowbanned } = req.body;
         const user = await User.findById(req.params.id);
@@ -1326,8 +1326,8 @@ router.put('/users/:id/shadowban', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
-            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
         }
 
         user.isShadowbanned = !!isShadowbanned;
@@ -1352,7 +1352,7 @@ router.put('/users/:id/shadowban', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/unban
 // @desc    Unban a user profile
 // @access  Private/Admin
-router.put('/users/:id/unban', protect, admin, async (req, res) => {
+router.put('/users/:id/unban', protect, requirePermission('canBanUsers'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
 
@@ -1360,8 +1360,8 @@ router.put('/users/:id/unban', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
-            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
         }
 
         user.isBanned = false;
@@ -1389,7 +1389,7 @@ router.put('/users/:id/unban', protect, admin, async (req, res) => {
 // @route   GET /api/admin/ip-bans
 // @desc    Get all active IP bans
 // @access  Private/Admin
-router.get('/ip-bans', protect, admin, async (req, res) => {
+router.get('/ip-bans', protect, requirePermission('canBanUsers'), async (req, res) => {
     try {
         const bans = await BannedIP.find().populate('bannedBy', 'username').sort({ createdAt: -1 });
         res.json(bans);
@@ -1402,7 +1402,7 @@ router.get('/ip-bans', protect, admin, async (req, res) => {
 // @route   POST /api/admin/ip-bans
 // @desc    Ban an IP address
 // @access  Private/Admin
-router.post('/ip-bans', protect, admin, async (req, res) => {
+router.post('/ip-bans', protect, requirePermission('canBanUsers'), async (req, res) => {
     try {
         const { ip, reason, expiresAt } = req.body;
 
@@ -1430,7 +1430,7 @@ router.post('/ip-bans', protect, admin, async (req, res) => {
 // @route   DELETE /api/admin/ip-bans/:ip
 // @desc    Unban an IP address
 // @access  Private/Admin
-router.delete('/ip-bans/:ip', protect, admin, async (req, res) => {
+router.delete('/ip-bans/:ip', protect, requirePermission('canBanUsers'), async (req, res) => {
     try {
         const result = await BannedIP.deleteOne({ ip: req.params.ip });
         if (result.deletedCount === 0) {
@@ -1513,15 +1513,15 @@ router.delete('/posts/:id', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/recover-approve
 // @desc    Approve user account recovery request
 // @access  Private/Admin
-router.put('/users/:id/recover-approve', protect, admin, async (req, res) => {
+router.put('/users/:id/recover-approve', protect, requirePermission('canManageRecovery'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
-            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
         }
 
         user.isDeleted = false;
@@ -1570,15 +1570,15 @@ router.put('/users/:id/recover-approve', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/users/:id/recover-reject
 // @desc    Reject user account recovery request
 // @access  Private/Admin
-router.put('/users/:id/recover-reject', protect, admin, async (req, res) => {
+router.put('/users/:id/recover-reject', protect, requirePermission('canManageRecovery'), async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if (user.username === 'oxypace' || req.user.isTouristAdmin) {
-            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
         }
 
         user.recoveryStatus = 'rejected';
@@ -1624,7 +1624,7 @@ router.put('/users/:id/recover-reject', protect, admin, async (req, res) => {
 // @route   GET /api/admin/custom-badges
 // @desc    Get all custom badges
 // @access  Private/Admin
-router.get('/custom-badges', protect, admin, async (req, res) => {
+router.get('/custom-badges', protect, requirePermission('canManageBadges'), async (req, res) => {
     try {
         const badges = await CustomBadge.find().sort({ createdAt: -1 });
         res.json(badges);
@@ -1637,7 +1637,7 @@ router.get('/custom-badges', protect, admin, async (req, res) => {
 // @route   POST /api/admin/custom-badges
 // @desc    Add a new custom badge
 // @access  Private/Admin
-router.post('/custom-badges', protect, admin, async (req, res) => {
+router.post('/custom-badges', protect, requirePermission('canManageBadges'), async (req, res) => {
     try {
         const { name, url, key, shape, borderStyle } = req.body;
         if (!name || !url || !key) {
@@ -1661,7 +1661,7 @@ router.post('/custom-badges', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/custom-badges/:id
 // @desc    Update custom badge details
 // @access  Private/Admin
-router.put('/custom-badges/:id', protect, admin, async (req, res) => {
+router.put('/custom-badges/:id', protect, requirePermission('canManageBadges'), async (req, res) => {
     try {
         const { name, url, key, shape, borderStyle } = req.body;
         const badge = await CustomBadge.findById(req.params.id);
@@ -1708,7 +1708,7 @@ router.put('/custom-badges/:id', protect, admin, async (req, res) => {
 // @route   DELETE /api/admin/custom-badges/:id
 // @desc    Delete custom badge
 // @access  Private/Admin
-router.delete('/custom-badges/:id', protect, admin, async (req, res) => {
+router.delete('/custom-badges/:id', protect, requirePermission('canManageBadges'), async (req, res) => {
     try {
         const badge = await CustomBadge.findById(req.params.id);
         if (!badge) {
@@ -1740,7 +1740,7 @@ router.delete('/custom-badges/:id', protect, admin, async (req, res) => {
 // @route   POST /api/admin/users/:id/custom-badge
 // @desc    Assign custom badge to a user
 // @access  Private/Admin
-router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
+router.post('/users/:id/custom-badge', protect, requirePermission('canManageBadges'), async (req, res) => {
     try {
         const { url, name, shape, borderStyle } = req.body;
         const user = await User.findById(req.params.id);
@@ -1748,8 +1748,8 @@ router.post('/users/:id/custom-badge', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
-        if ((user.username === 'oxypace' && req.user.username !== 'oxypace') || req.user.isTouristAdmin) {
-            return res.status(403).json({ message: 'As yetkiliye müdahale edilemez' });
+        if (user.username === 'oxypace' || (user.isAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
         }
 
         const customBadgeObj = {
@@ -1870,15 +1870,19 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
         // Apply granular Tourist Admin permissions
         if (permissions && typeof permissions === 'object') {
             user.touristAdminPermissions = {
+                canManageRequests: !!permissions.canManageRequests,
+                canManageRecovery: !!permissions.canManageRecovery,
+                canManageFeedback: !!permissions.canManageFeedback,
                 canManageUsers: !!permissions.canManageUsers,
                 canBanUsers: !!permissions.canBanUsers,
                 canManagePortals: !!permissions.canManagePortals,
-                canManageReports: permissions.canManageReports !== false,
+                canManageReports: !!permissions.canManageReports,
                 canManageBadges: !!permissions.canManageBadges,
                 canManageBots: !!permissions.canManageBots,
-                canViewLogs: permissions.canViewLogs !== false,
+                canViewLogs: !!permissions.canViewLogs,
                 canSendNotifications: !!permissions.canSendNotifications,
-                canManageBlog: permissions.canManageBlog !== false,
+                canManageBlog: !!permissions.canManageBlog,
+                canManageMobile: !!permissions.canManageMobile,
             };
         }
 
@@ -1967,6 +1971,13 @@ router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, r
             details: { username: user.username, permissions: user.touristAdminPermissions }
         });
 
+        const io = req.app.get('io');
+        if (io) {
+            io.to(user._id.toString()).emit('tourist_admin_permissions_updated', {
+                permissions: user.touristAdminPermissions
+            });
+        }
+
         res.json({ message: 'Turist Admin yetkileri güncellendi.', user });
     } catch (error) {
         console.error('Update tourist admin permissions error:', error);
@@ -1977,7 +1988,7 @@ router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, r
 // @route   GET /api/admin/activity-logs/stats
 // @desc    Get real-time telemetry metrics for platform activity logs
 // @access  Private/Admin
-router.get('/activity-logs/stats', protect, admin, async (req, res) => {
+router.get('/activity-logs/stats', protect, requirePermission('canViewLogs'), async (req, res) => {
     try {
         const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -2048,7 +2059,7 @@ router.get('/activity-logs/stats', protect, admin, async (req, res) => {
 // @route   GET /api/admin/activity-logs/export
 // @desc    Export platform activity logs as JSON or CSV
 // @access  Private/Admin
-router.get('/activity-logs/export', protect, admin, async (req, res) => {
+router.get('/activity-logs/export', protect, requirePermission('canViewLogs'), async (req, res) => {
     try {
         const { category, severity, q, format = 'json', limit = 1000 } = req.query;
         let query = {};
@@ -2101,7 +2112,7 @@ router.get('/activity-logs/export', protect, admin, async (req, res) => {
 // @route   GET /api/admin/activity-logs
 // @desc    Get enterprise system activity logs / platform footprints
 // @access  Private/Admin
-router.get('/activity-logs', protect, admin, async (req, res) => {
+router.get('/activity-logs', protect, requirePermission('canViewLogs'), async (req, res) => {
     try {
         const {
             q,
@@ -2260,7 +2271,7 @@ router.delete('/posts/:id', protect, admin, async (req, res) => {
 // @route   POST /api/admin/mass-notification
 // @desc    Send mass notification (in-app and/or push) to all active users
 // @access  Private/Admin
-router.post('/mass-notification', protect, admin, async (req, res) => {
+router.post('/mass-notification', protect, requirePermission('canSendNotifications'), async (req, res) => {
     try {
         const { title, message, inApp, push, imageUrl } = req.body;
 
@@ -2347,7 +2358,7 @@ router.post('/mass-notification', protect, admin, async (req, res) => {
 // @route   GET /api/admin/bots
 // @desc    Get all bot users and their configurations
 // @access  Private/Admin
-router.get('/bots', protect, admin, async (req, res) => {
+router.get('/bots', protect, requirePermission('canManageBots'), async (req, res) => {
     try {
         const bots = await User.find({ isBot: true }).select('username email profile verificationBadge isBanned createdAt');
         const configs = await BotConfig.find().populate('defaultPortal', 'name avatar channels');
@@ -2387,7 +2398,7 @@ router.get('/bots', protect, admin, async (req, res) => {
 // @route   POST /api/admin/bots
 // @desc    Create a new bot user
 // @access  Private/Admin
-router.post('/bots', protect, admin, async (req, res) => {
+router.post('/bots', protect, requirePermission('canManageBots'), async (req, res) => {
     try {
         const { username, email, password } = req.body;
         if (!username || !email || !password) {
@@ -2444,7 +2455,7 @@ router.post('/bots', protect, admin, async (req, res) => {
 // @route   DELETE /api/admin/bots/:id
 // @desc    Delete a bot user
 // @access  Private/Admin
-router.delete('/bots/:id', protect, admin, async (req, res) => {
+router.delete('/bots/:id', protect, requirePermission('canManageBots'), async (req, res) => {
     try {
         const botUser = await User.findOne({ _id: req.params.id, isBot: true });
         if (!botUser) {
@@ -2464,7 +2475,7 @@ router.delete('/bots/:id', protect, admin, async (req, res) => {
 // @route   PUT /api/admin/bots/:id/profile
 // @desc    Update bot user profile & config
 // @access  Private/Admin
-router.put('/bots/:id/profile', protect, admin, async (req, res) => {
+router.put('/bots/:id/profile', protect, requirePermission('canManageBots'), async (req, res) => {
     try {
         const botUser = await User.findOne({ _id: req.params.id, isBot: true });
         if (!botUser) {
@@ -2540,7 +2551,7 @@ router.put('/bots/:id/profile', protect, admin, async (req, res) => {
 // @route   POST /api/admin/bots/:id/post
 // @desc    Create a post from bot account
 // @access  Private/Admin
-router.post('/bots/:id/post', protect, admin, async (req, res) => {
+router.post('/bots/:id/post', protect, requirePermission('canManageBots'), async (req, res) => {
     try {
         const botUser = await User.findOne({ _id: req.params.id, isBot: true });
         if (!botUser) {
@@ -2639,7 +2650,7 @@ router.post('/bots/:id/post', protect, admin, async (req, res) => {
 // @route   POST /api/admin/broadcast-announcement
 // @desc    Broadcast release announcement / notification to all active users across web and mobile
 // @access  Private/Admin
-router.post('/broadcast-announcement', protect, admin, async (req, res) => {
+router.post('/broadcast-announcement', protect, requirePermission('canSendNotifications'), async (req, res) => {
     try {
         const { title, body, link, imageUrl } = req.body;
         if (!title || !body) {

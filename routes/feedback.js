@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.js';
-import { admin } from '../middleware/admin.js';
+import { admin, requirePermission } from '../middleware/admin.js';
 import Feedback from '../models/Feedback.js';
 import User from '../models/User.js';
 import Message from '../models/Message.js';
@@ -98,7 +98,7 @@ router.get('/me', protect, async (req, res) => {
 // @route   GET /api/feedback/admin/list
 // @desc    Get all feedback for admins
 // @access  Private/Admin
-router.get('/admin/list', protect, admin, async (req, res) => {
+router.get('/admin/list', protect, requirePermission('canManageFeedback'), async (req, res) => {
     try {
         const feedbacks = await Feedback.find()
             .populate('user', 'username profile.displayName profile.avatar')
@@ -115,13 +115,8 @@ router.get('/admin/list', protect, admin, async (req, res) => {
 // @route   POST /api/feedback/admin/reply/:id
 // @desc    Admin reply to feedback
 // @access  Private/Admin
-router.post('/admin/reply/:id', protect, admin, async (req, res) => {
+router.post('/admin/reply/:id', protect, requirePermission('canManageFeedback'), async (req, res) => {
     try {
-        // Only the main 'oxypace' admin can reply
-        if (req.user.username !== 'oxypace') {
-            return res.status(403).json({ message: 'Bu işlem için sadece ana yönetici hesabı yetkilidir.' });
-        }
-
         const { response } = req.body;
         if (!response) {
             return res.status(400).json({ message: 'Lütfen bir yanıt yazın.' });

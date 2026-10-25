@@ -4,7 +4,7 @@ import BlogAuthor from '../models/BlogAuthor.js';
 import CalculationTool from '../models/CalculationTool.js';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
-import { admin } from '../middleware/admin.js';
+import { admin, requirePermission } from '../middleware/admin.js';
 
 const router = express.Router();
 
@@ -438,7 +438,7 @@ router.get('/author', async (req, res) => {
 // @route   PUT /api/blog/author
 // @desc    Update blog author profile settings (for current admin / tourist admin or official profile)
 // @access  Private/Admin
-router.put('/author', protect, admin, async (req, res) => {
+router.put('/author', protect, requirePermission('canManageBlog'), async (req, res) => {
     try {
         const { name, title, bio, avatar, badge, github, twitter, website, linkedin, isOfficialTarget } = req.body;
 
@@ -482,7 +482,7 @@ router.put('/author', protect, admin, async (req, res) => {
 // @route   GET /api/blog/admin/all
 // @desc    Get all blog posts including drafts for admin
 // @access  Private/Admin
-router.get('/admin/all', protect, admin, async (req, res) => {
+router.get('/admin/all', protect, requirePermission('canManageBlog'), async (req, res) => {
     try {
         await seedDatabaseIfEmpty();
 
@@ -501,7 +501,7 @@ router.get('/admin/all', protect, admin, async (req, res) => {
 // @route   POST /api/blog/admin
 // @desc    Create new blog post
 // @access  Private/Admin
-router.post('/admin', protect, admin, async (req, res) => {
+router.post('/admin', protect, requirePermission('canManageBlog'), async (req, res) => {
     try {
         const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
 
@@ -574,7 +574,7 @@ router.post('/admin', protect, admin, async (req, res) => {
 // @route   PUT /api/blog/admin/:id
 // @desc    Update existing blog post
 // @access  Private/Admin
-router.put('/admin/:id', protect, admin, async (req, res) => {
+router.put('/admin/:id', protect, requirePermission('canManageBlog'), async (req, res) => {
     try {
         const { title, slug, excerpt, content, category, readTime, image, isPublished } = req.body;
 
@@ -623,7 +623,7 @@ router.put('/admin/:id', protect, admin, async (req, res) => {
 // @route   PATCH /api/blog/admin/:id/toggle-publish
 // @desc    Toggle single-click publish / unpublish status
 // @access  Private/Admin
-router.patch('/admin/:id/toggle-publish', protect, admin, async (req, res) => {
+router.patch('/admin/:id/toggle-publish', protect, requirePermission('canManageBlog'), async (req, res) => {
     try {
         const post = await BlogPost.findById(req.params.id);
         if (!post) {
@@ -647,7 +647,7 @@ router.patch('/admin/:id/toggle-publish', protect, admin, async (req, res) => {
 // @route   DELETE /api/blog/admin/:id
 // @desc    Delete blog post
 // @access  Private/Admin
-router.delete('/admin/:id', protect, admin, async (req, res) => {
+router.delete('/admin/:id', protect, requirePermission('canManageBlog'), async (req, res) => {
     try {
         const post = await BlogPost.findById(req.params.id);
         if (!post) {

@@ -1930,7 +1930,8 @@ const UserDetailModal = ({
     handleApproveRecovery,
     handleRejectRecovery,
     customBadges = [],
-    handleCustomBadgeAssign
+    handleCustomBadgeAssign,
+    hasPerm = () => true
 }) => {
     if (!isOpen || !user) return null;
 
@@ -1961,88 +1962,94 @@ const UserDetailModal = ({
                     </div>
 
                     {/* Shadowban (Hayalet Mod) */}
-                    <div className="read-only-toggle-container" style={{ margin: 0 }}>
-                        <div className="read-only-info">
-                            <strong>Hayalet Modu (Shadowban)</strong>
-                            <span>Aktif edildiğinde kullanıcının gönderi ve yorumları sadece kendisine gösterilir.</span>
+                    {hasPerm('canManageUsers') && (
+                        <div className="read-only-toggle-container" style={{ margin: 0 }}>
+                            <div className="read-only-info">
+                                <strong>Hayalet Modu (Shadowban)</strong>
+                                <span>Aktif edildiğinde kullanıcının gönderi ve yorumları sadece kendisine gösterilir.</span>
+                            </div>
+                            <div 
+                                className={`read-only-toggle-switch ${user.isShadowbanned ? 'active' : ''}`}
+                                onClick={() => handleUserShadowbanToggle(user._id, user.isShadowbanned)}
+                            />
                         </div>
-                        <div 
-                            className={`read-only-toggle-switch ${user.isShadowbanned ? 'active' : ''}`}
-                            onClick={() => handleUserShadowbanToggle(user._id, user.isShadowbanned)}
-                        />
-                    </div>
+                    )}
 
                     {/* Badge Selection */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Doğrulama Rozeti</h4>
-                        <select
-                            className={`badge-select ${user.verificationBadge}`}
-                            value={user.verificationBadge}
-                            onChange={(e) => handleBadgeChange(user._id, e.target.value)}
-                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
-                        >
-                            <option value="none">Rozet Yok</option>
-                            {(() => {
-                                const userBadges = contextBadges.filter(b => b.category === 'user' || b.category === 'both');
-                                const slugs = new Set(userBadges.map(b => b.slug));
-                                const LEGACY = [
-                                    { slug: 'blue', name: 'Mavi Onay' },
-                                    { slug: 'gold', name: 'Altın Onay' },
-                                    { slug: 'platinum', name: 'Platin Onay' },
-                                    { slug: 'special', name: 'Özel Rozet' },
-                                    { slug: 'staff', name: 'Platform Yöneticisi' },
-                                    { slug: 'partner', name: 'Partner' },
-                                    { slug: 'official', name: 'Resmi Hesap' },
-                                ];
-                                const merged = [...userBadges];
-                                LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
-                                if (user.verificationBadge && user.verificationBadge !== 'none' && !slugs.has(user.verificationBadge) && !LEGACY.find(l => l.slug === user.verificationBadge)) {
-                                    merged.push({ slug: user.verificationBadge, name: user.verificationBadge });
-                                }
-                                return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
-                            })()}
-                        </select>
-                    </div>
-
-                    {/* Custom Badge Assignment */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Özel İkon Rozeti (Yönetici Rozeti)</h4>
-                        <select
-                            className="badge-select"
-                            value={user.customBadge?.url || ''}
-                            onChange={(e) => {
-                                const selectedUrl = e.target.value;
-                                const selectedBadge = customBadges.find(b => b.url === selectedUrl);
-                                handleCustomBadgeAssign(
-                                    user._id,
-                                    selectedBadge ? selectedBadge.url : '',
-                                    selectedBadge ? selectedBadge.name : '',
-                                    selectedBadge ? (selectedBadge.shape || 'round') : 'round',
-                                    selectedBadge ? (selectedBadge.borderStyle || 'thin') : 'thin'
-                                );
-                            }}
-                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
-                        >
-                            <option value="">Rozet Yok</option>
-                            {customBadges.map((badge) => (
-                                <option key={badge._id} value={badge.url}>
-                                    {badge.name}
-                                </option>
-                            ))}
-                        </select>
-                        {user.customBadge?.url && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
-                                <span
-                                    className={`custom-badge-frame shape-${user.customBadge.shape || 'round'} border-${user.customBadge.borderStyle || 'thin'}`}
-                                    style={{ width: '22px', height: '22px' }}
+                    {hasPerm('canManageBadges') && (
+                        <>
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">Doğrulama Rozeti</h4>
+                                <select
+                                    className={`badge-select ${user.verificationBadge}`}
+                                    value={user.verificationBadge}
+                                    onChange={(e) => handleBadgeChange(user._id, e.target.value)}
+                                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
                                 >
-                                    <img src={user.customBadge.url} alt={user.customBadge.name} className="custom-badge-icon" />
-                                </span>
-                                <span style={{ fontSize: '13px', color: '#fff' }}>{user.customBadge.name}</span>
+                                    <option value="none">Rozet Yok</option>
+                                    {(() => {
+                                        const userBadges = contextBadges.filter(b => b.category === 'user' || b.category === 'both');
+                                        const slugs = new Set(userBadges.map(b => b.slug));
+                                        const LEGACY = [
+                                            { slug: 'blue', name: 'Mavi Onay' },
+                                            { slug: 'gold', name: 'Altın Onay' },
+                                            { slug: 'platinum', name: 'Platin Onay' },
+                                            { slug: 'special', name: 'Özel Rozet' },
+                                            { slug: 'staff', name: 'Platform Yöneticisi' },
+                                            { slug: 'partner', name: 'Partner' },
+                                            { slug: 'official', name: 'Resmi Hesap' },
+                                        ];
+                                        const merged = [...userBadges];
+                                        LEGACY.forEach(l => { if (!slugs.has(l.slug)) merged.push(l); });
+                                        if (user.verificationBadge && user.verificationBadge !== 'none' && !slugs.has(user.verificationBadge) && !LEGACY.find(l => l.slug === user.verificationBadge)) {
+                                            merged.push({ slug: user.verificationBadge, name: user.verificationBadge });
+                                        }
+                                        return merged.map(b => (<option key={b.slug} value={b.slug}>{b.name}</option>));
+                                    })()}
+                                </select>
                             </div>
-                        )}
-                    </div>
+
+                            {/* Custom Badge Assignment */}
+                            <div className="detail-section-card">
+                                <h4 className="detail-section-title">Özel İkon Rozeti (Yönetici Rozeti)</h4>
+                                <select
+                                    className="badge-select"
+                                    value={user.customBadge?.url || ''}
+                                    onChange={(e) => {
+                                        const selectedUrl = e.target.value;
+                                        const selectedBadge = customBadges.find(b => b.url === selectedUrl);
+                                        handleCustomBadgeAssign(
+                                            user._id,
+                                            selectedBadge ? selectedBadge.url : '',
+                                            selectedBadge ? selectedBadge.name : '',
+                                            selectedBadge ? (selectedBadge.shape || 'round') : 'round',
+                                            selectedBadge ? (selectedBadge.borderStyle || 'thin') : 'thin'
+                                        );
+                                    }}
+                                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                                >
+                                    <option value="">Rozet Yok</option>
+                                    {customBadges.map((badge) => (
+                                        <option key={badge._id} value={badge.url}>
+                                            {badge.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {user.customBadge?.url && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                                        <span style={{ fontSize: '13px', color: '#888' }}>Mevcut:</span>
+                                        <span
+                                            className={`custom-badge-frame shape-${user.customBadge.shape || 'round'} border-${user.customBadge.borderStyle || 'thin'}`}
+                                            style={{ width: '22px', height: '22px' }}
+                                        >
+                                            <img src={user.customBadge.url} alt={user.customBadge.name} className="custom-badge-icon" />
+                                        </span>
+                                        <span style={{ fontSize: '13px', color: '#fff' }}>{user.customBadge.name}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
 
                     {/* Security Info (IP & Device info) */}
                     <div className="detail-section-card">
@@ -2063,7 +2070,7 @@ const UserDetailModal = ({
                     </div>
 
                     {/* Hesap Kurtarma Talebi */}
-                    {user.recoveryStatus === 'pending' && (
+                    {user.recoveryStatus === 'pending' && hasPerm('canManageRecovery') && (
                         <div className="detail-section-card" style={{ border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.04)' }}>
                             <h4 className="detail-section-title" style={{ color: '#ef4444' }}>⏳ Hesap Kurtarma Talebi</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#ccc' }}>
@@ -2123,41 +2130,45 @@ const UserDetailModal = ({
                     )}
 
                     {/* Operations */}
-                    <div className="detail-section-card">
-                        <h4 className="detail-section-title">Yönetim Eylemleri</h4>
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            {user.isBanned ? (
-                                <button 
-                                    className="btn-modern-primary"
-                                    onClick={() => handleUnbanUser(user._id)}
-                                    style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid #4ade80', textTransform: 'none', padding: '10px 16px' }}
-                                >
-                                    Engeli Kaldır
-                                </button>
-                            ) : (
-                                <button 
-                                    className="btn-modern-primary"
-                                    onClick={() => {
-                                        setBanModalTarget({ type: 'user', id: user._id });
-                                        setBanModalOpen(true);
-                                    }}
-                                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid #f87171', textTransform: 'none', padding: '10px 16px' }}
-                                >
-                                    Kullanıcıyı Engelle
-                                </button>
-                            )}
+                    {(hasPerm('canBanUsers') || (isOxypace && user.username !== 'oxypace')) && (
+                        <div className="detail-section-card">
+                            <h4 className="detail-section-title">Yönetim Eylemleri</h4>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {hasPerm('canBanUsers') && (
+                                    user.isBanned ? (
+                                        <button 
+                                            className="btn-modern-primary"
+                                            onClick={() => handleUnbanUser(user._id)}
+                                            style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid #4ade80', textTransform: 'none', padding: '10px 16px' }}
+                                        >
+                                            Engeli Kaldır
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            className="btn-modern-primary"
+                                            onClick={() => {
+                                                setBanModalTarget({ type: 'user', id: user._id });
+                                                setBanModalOpen(true);
+                                            }}
+                                            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid #f87171', textTransform: 'none', padding: '10px 16px' }}
+                                        >
+                                            Kullanıcıyı Engelle
+                                        </button>
+                                    )
+                                )}
 
-                            {isOxypace && user.username !== 'oxypace' && (
-                                <button
-                                    className="btn-modern-primary"
-                                    onClick={() => handleImpersonate(user._id)}
-                                    style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid #6366f1', textTransform: 'none', padding: '10px 16px' }}
-                                >
-                                    👤 Taklit Et (Ghost Mode)
-                                </button>
-                            )}
+                                {isOxypace && user.username !== 'oxypace' && (
+                                    <button
+                                        className="btn-modern-primary"
+                                        onClick={() => handleImpersonate(user._id)}
+                                        style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid #6366f1', textTransform: 'none', padding: '10px 16px' }}
+                                    >
+                                        👤 Taklit Et (Ghost Mode)
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <div className="modal-footer-modern" style={{ padding: '10px 28px 24px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -2173,11 +2184,81 @@ const UserDetailModal = ({
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888888'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
 
+const ALL_TOURIST_PERMISSIONS = [
+    { key: 'canManageRequests', label: 'Doğrulama Başvuruları', desc: 'Mavi/özel rozet başvurularını onayla veya reddet', icon: '📋' },
+    { key: 'canManageRecovery', label: 'Hesap Kurtarma Talepleri', desc: 'Kilitli/silinmiş hesap kurtarma taleplerini incele ve onayla', icon: '🔑' },
+    { key: 'canManageFeedback', label: 'Kullanıcı Talepleri & Biletler', desc: 'Geri bildirim ve destek taleplerini incele, yanıtla', icon: '💬' },
+    { key: 'canManageUsers', label: 'Kullanıcı Yönetimi & Şecere', desc: 'Kullanıcı detaylarını gör, şecereleri incele ve gölge engel ver', icon: '👥' },
+    { key: 'canBanUsers', label: 'Kullanıcı & IP Engelleme (Ban)', desc: 'Kullanıcıları yasakla, engel kaldır ve IP yasaklarını yönet', icon: '🚫' },
+    { key: 'canManagePortals', label: 'Portal & Kanal Yönetimi', desc: 'Portalları denetle, kanal ekle/düzenle/sil, uyarı gönder', icon: '🌐' },
+    { key: 'canManageReports', label: 'Bildirilen İçerikler & Moderasyon', desc: 'Şikayetleri incele, çözüldü olarak işaretle veya kaldır', icon: '🛡️' },
+    { key: 'canManageBadges', label: 'Rozetler & Rozet Stüdyosu', desc: 'Özel ikon rozetler yükle, düzenle ve kullanıcılara tanımla', icon: '🎖️' },
+    { key: 'canManageBots', label: 'Bot Yönetimi', desc: 'Sistem botları ekle, RSS yapılandır ve bot adına paylaşım yap', icon: '🤖' },
+    { key: 'canViewLogs', label: 'Platform Günlüğü & Adli İnceleme', desc: 'Canlı telemetri akışını, IP/GeoIP kayıtlarını ve logları gör', icon: '📜' },
+    { key: 'canSendNotifications', label: 'Toplu Bildirim Gönderimi', desc: 'Tüm kullanıcılara toplu duyuru ve anlık bildirim ilet', icon: '📢' },
+    { key: 'canManageBlog', label: 'Blog İçerik Yönetimi', desc: 'Bilim ve teknoloji makaleleri yaz, yayınla ve düzenle', icon: '✍️' },
+    { key: 'canManageMobile', label: 'Mobil Tasarım & Sürüm Yönetimi', desc: 'Mobil tasarım vitrini ve sürüm günlüğünü görüntüle', icon: '📱' },
+];
+
+const TAB_PERMISSION_MAP = {
+    'requests': 'canManageRequests',
+    'recovery': 'canManageRecovery',
+    'feedback': 'canManageFeedback',
+    'users': 'canManageUsers',
+    'activity': 'canViewLogs',
+    'ipbans': 'canBanUsers',
+    'badges': 'canManageBadges',
+    'custom-badges': 'canManageBadges',
+    'bots': 'canManageBots',
+    'portals': 'canManagePortals',
+    'blog': 'canManageBlog',
+    'reports': 'canManageReports',
+    'mass-notification': 'canSendNotifications',
+    'mobile-designs': 'canManageMobile',
+    'mobile-versions': 'canManageMobile',
+    'tourist-admin': null // only isOxypace
+};
+
 const AdminDashboard = () => {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
     const isOxypace = currentUser && currentUser.username === 'oxypace';
+    const isFullAdmin = isOxypace || (currentUser?.isAdmin && !currentUser?.isTouristAdmin);
+    const isTouristAdmin = !!currentUser?.isTouristAdmin;
     const isAdmin = currentUser && (currentUser.isAdmin || currentUser.isTouristAdmin || currentUser.username === 'oxypace');
+
+    // Live Tourist Admin Permissions state (synced via WebSocket)
+    const [liveTouristPerms, setLiveTouristPerms] = useState(currentUser?.touristAdminPermissions || {});
+
+    useEffect(() => {
+        if (currentUser?.touristAdminPermissions) {
+            setLiveTouristPerms(currentUser.touristAdminPermissions);
+        }
+    }, [currentUser]);
+
+    // Check granular permission helper
+    const hasPerm = (permKey) => {
+        if (isFullAdmin) return true;
+        if (!isTouristAdmin) return false;
+        return !!liveTouristPerms[permKey];
+    };
+
+    // Calculate first permitted tab for the current admin/tourist admin
+    const getFirstPermittedTab = () => {
+        if (isFullAdmin) return 'requests';
+        const candidateTabs = [
+            'requests', 'recovery', 'feedback', 'users', 'activity', 
+            'ipbans', 'badges', 'custom-badges', 'bots', 'portals', 
+            'blog', 'reports', 'mass-notification', 'mobile-designs', 'mobile-versions'
+        ];
+        for (const tab of candidateTabs) {
+            const requiredPerm = TAB_PERMISSION_MAP[tab];
+            if (requiredPerm && hasPerm(requiredPerm)) {
+                return tab;
+            }
+        }
+        return 'no-permissions';
+    };
 
     // Forbidden UI for non-admins
     if (!isAdmin) {
@@ -2204,7 +2285,7 @@ const AdminDashboard = () => {
         );
     }
 
-    const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'users', 'portals', 'reports', 'badges'
+    const [activeTab, setActiveTab] = useState(getFirstPermittedTab());
     const [maintenanceActive, setMaintenanceActive] = useState(false);
     const [requests, setRequests] = useState([]);
     const [recoveryRequests, setRecoveryRequests] = useState([]);
@@ -2253,17 +2334,21 @@ const AdminDashboard = () => {
     const [showRawJson, setShowRawJson] = useState(false);
     const [mediaLightbox, setMediaLightbox] = useState(null); // { url, title, date }
 
-    // Tourist Admin Granular Permissions State
+    // Tourist Admin Granular Permissions State (all 13 granular domains)
     const [touristPermissions, setTouristPermissions] = useState({
+        canManageRequests: false,
+        canManageRecovery: false,
+        canManageFeedback: false,
         canManageUsers: false,
         canBanUsers: false,
         canManagePortals: false,
-        canManageReports: true,
+        canManageReports: false,
         canManageBadges: false,
         canManageBots: false,
-        canViewLogs: true,
+        canViewLogs: false,
         canSendNotifications: false,
-        canManageBlog: true,
+        canManageBlog: false,
+        canManageMobile: false,
     });
     const [editPermissionsModalOpen, setEditPermissionsModalOpen] = useState(false);
     const [editingTouristAdmin, setEditingTouristAdmin] = useState(null);
@@ -2739,35 +2824,77 @@ const AdminDashboard = () => {
         }
     };
 
+    // Automatic redirection if tourist admin attempts to view unauthorized tab
     useEffect(() => {
-        if (activeTab === 'requests') {
+        if (isTouristAdmin && !isFullAdmin) {
+            const reqPerm = TAB_PERMISSION_MAP[activeTab];
+            if (activeTab === 'tourist-admin' || (reqPerm && !hasPerm(reqPerm))) {
+                const fallback = getFirstPermittedTab();
+                setActiveTab(fallback);
+            }
+        }
+    }, [activeTab, liveTouristPerms, isTouristAdmin, isFullAdmin]);
+
+    // WebSocket listener for real-time permission sync, revoke, and expiry
+    useEffect(() => {
+        if (!socket || !isTouristAdmin) return;
+
+        const handlePermsUpdated = (data) => {
+            if (data?.permissions) {
+                setLiveTouristPerms(data.permissions);
+            }
+        };
+
+        const handleRevoked = () => {
+            alert('Turist admin yetkileriniz geri alındı.');
+            navigate('/messages');
+        };
+
+        const handleExpired = () => {
+            alert('Turist admin yetkilerinizin süresi doldu.');
+            navigate('/messages');
+        };
+
+        socket.on('tourist_admin_permissions_updated', handlePermsUpdated);
+        socket.on('tourist_admin_revoked', handleRevoked);
+        socket.on('tourist_admin_expired', handleExpired);
+
+        return () => {
+            socket.off('tourist_admin_permissions_updated', handlePermsUpdated);
+            socket.off('tourist_admin_revoked', handleRevoked);
+            socket.off('tourist_admin_expired', handleExpired);
+        };
+    }, [socket, isTouristAdmin]);
+
+    useEffect(() => {
+        if (activeTab === 'requests' && hasPerm('canManageRequests')) {
             fetchRequests();
-        } else if (activeTab === 'recovery') {
+        } else if (activeTab === 'recovery' && hasPerm('canManageRecovery')) {
             fetchRecoveryRequests();
-        } else if (activeTab === 'users') {
+        } else if (activeTab === 'users' && hasPerm('canManageUsers')) {
             fetchUsers();
-        } else if (activeTab === 'portals') {
+        } else if (activeTab === 'portals' && hasPerm('canManagePortals')) {
             fetchPortals();
-        } else if (activeTab === 'reports' && isOxypace) {
+        } else if (activeTab === 'reports' && hasPerm('canManageReports')) {
             fetchReports();
-        } else if (activeTab === 'badges') {
+        } else if (activeTab === 'badges' && hasPerm('canManageBadges')) {
             fetchAllBadges();
-        } else if (activeTab === 'custom-badges') {
+        } else if (activeTab === 'custom-badges' && hasPerm('canManageBadges')) {
             fetchCustomBadges();
-        } else if (activeTab === 'feedback') {
+        } else if (activeTab === 'feedback' && hasPerm('canManageFeedback')) {
             fetchFeedbacks();
-        } else if (activeTab === 'ipbans') {
+        } else if (activeTab === 'ipbans' && hasPerm('canBanUsers')) {
             fetchBannedIps();
-        } else if (activeTab === 'activity') {
+        } else if (activeTab === 'activity' && hasPerm('canViewLogs')) {
             fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, activityLogsSeverity);
             fetchActivityStats();
         } else if (activeTab === 'tourist-admin' && isOxypace) {
             fetchTouristAdmins();
-        } else if (activeTab === 'bots') {
+        } else if (activeTab === 'bots' && hasPerm('canManageBots')) {
             fetchBots();
             fetchPortals(); // Load portals for selection/defaults
         }
-    }, [activeTab, isOxypace]);
+    }, [activeTab, isOxypace, liveTouristPerms]);
 
     // Aktif oturum ve canlı log izleme WebSocket dinleyicisi
     useEffect(() => {
@@ -4711,9 +4838,11 @@ const AdminDashboard = () => {
 
                 <div className="sidebar-nav">
                     {/* Category 1: Genel Bakış & Talepler */}
+                    {(hasPerm('canManageRequests') || hasPerm('canManageRecovery') || hasPerm('canManageFeedback')) && (
                     <div className="sidebar-category">
                         <span className="sidebar-category-label">📊 Genel Bakış & Talepler</span>
                         
+                        {hasPerm('canManageRequests') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'requests' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('requests'); setSidebarOpen(false); }}
@@ -4722,7 +4851,9 @@ const AdminDashboard = () => {
                             <span className="snav-label">Başvurular</span>
                             {requests.length > 0 && <span className="snav-badge">{requests.length}</span>}
                         </button>
+                        )}
 
+                        {hasPerm('canManageRecovery') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'recovery' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('recovery'); setSidebarOpen(false); }}
@@ -4731,7 +4862,9 @@ const AdminDashboard = () => {
                             <span className="snav-label">Kurtarma Talepleri</span>
                             {recoveryRequests.length > 0 && <span className="snav-badge">{recoveryRequests.length}</span>}
                         </button>
+                        )}
 
+                        {hasPerm('canManageFeedback') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'feedback' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('feedback'); setSidebarOpen(false); }}
@@ -4740,12 +4873,16 @@ const AdminDashboard = () => {
                             <span className="snav-label">Talepler</span>
                             {unreadFeedbackCount > 0 && <span className="snav-badge">{unreadFeedbackCount}</span>}
                         </button>
+                        )}
                     </div>
+                    )}
 
                     {/* Category 2: Kullanıcı Yönetimi */}
+                    {(hasPerm('canManageUsers') || hasPerm('canViewLogs') || hasPerm('canBanUsers') || hasPerm('canManageBadges') || hasPerm('canManageBots')) && (
                     <div className="sidebar-category">
                         <span className="sidebar-category-label">👥 Kullanıcı Yönetimi</span>
 
+                        {hasPerm('canManageUsers') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'users' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
@@ -4753,7 +4890,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Users size={18} /></span>
                             <span className="snav-label">Kullanıcılar</span>
                         </button>
+                        )}
 
+                        {hasPerm('canViewLogs') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'activity' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('activity'); setSidebarOpen(false); }}
@@ -4761,7 +4900,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Platform Günlüğü & Oturumlar</span>
                         </button>
+                        )}
 
+                        {hasPerm('canBanUsers') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'ipbans' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('ipbans'); setSidebarOpen(false); }}
@@ -4769,7 +4910,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><AlertTriangle size={18} /></span>
                             <span className="snav-label">IP Engelleri</span>
                         </button>
+                        )}
 
+                        {hasPerm('canManageBadges') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'badges' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('badges'); setSidebarOpen(false); }}
@@ -4777,7 +4920,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Award size={18} /></span>
                             <span className="snav-label">Rozetler</span>
                         </button>
+                        )}
 
+                        {hasPerm('canManageBadges') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'custom-badges' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('custom-badges'); setSidebarOpen(false); }}
@@ -4785,7 +4930,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><FileBadge size={18} /></span>
                             <span className="snav-label">Özel İkon Rozetler</span>
                         </button>
+                        )}
 
+                        {hasPerm('canManageBots') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'bots' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('bots'); setSidebarOpen(false); }}
@@ -4793,12 +4940,16 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Bot size={18} /></span>
                             <span className="snav-label">Bot Yönetimi</span>
                         </button>
+                        )}
                     </div>
+                    )}
 
                     {/* Category 3: İçerik & Sistem */}
+                    {(hasPerm('canManagePortals') || hasPerm('canManageBlog') || hasPerm('canManageReports') || currentUser?.isTouristAdmin || hasPerm('canManageNotifications') || hasPerm('canManageSystem')) && (
                     <div className="sidebar-category">
                         <span className="sidebar-category-label">🌐 İçerik & Sistem</span>
 
+                        {hasPerm('canManagePortals') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'portals' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('portals'); setSidebarOpen(false); }}
@@ -4806,7 +4957,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Portallar</span>
                         </button>
+                        )}
 
+                        {hasPerm('canManageBlog') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'blog' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('blog'); setSidebarOpen(false); }}
@@ -4814,8 +4967,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><FileText size={18} /></span>
                             <span className="snav-label">Blog Yönetimi</span>
                         </button>
+                        )}
 
-                        {(isOxypace || currentUser?.isAdmin || currentUser?.isTouristAdmin) && (
+                        {(hasPerm('canManageReports') || currentUser?.isTouristAdmin) && (
                             <button
                                 className={`sidebar-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
                                 onClick={() => { setActiveTab('reports'); setSidebarOpen(false); }}
@@ -4828,6 +4982,7 @@ const AdminDashboard = () => {
                             </button>
                         )}
 
+                        {hasPerm('canManageNotifications') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mass-notification' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mass-notification'); setSidebarOpen(false); }}
@@ -4835,9 +4990,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Send size={18} /></span>
                             <span className="snav-label">Toplu Bildirim Gönder</span>
                         </button>
+                        )}
 
-
-
+                        {hasPerm('canManageSystem') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-designs' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mobile-designs'); setSidebarOpen(false); }}
@@ -4845,7 +5000,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><Smartphone size={18} /></span>
                             <span className="snav-label">Mobil Tasarım Barındırma</span>
                         </button>
+                        )}
 
+                        {hasPerm('canManageSystem') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-versions' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mobile-versions'); setSidebarOpen(false); }}
@@ -4853,7 +5010,9 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><History size={18} /></span>
                             <span className="snav-label">Mobil Sürüm Günlüğü</span>
                         </button>
+                        )}
                     </div>
+                    )}
 
                     {/* Category 4: Özel Görünürlük Şartı (Süper Admin) */}
                     {isOxypace && (
@@ -8090,6 +8249,7 @@ const AdminDashboard = () => {
                 handleRejectRecovery={handleRejectRecovery}
                 customBadges={customBadges}
                 handleCustomBadgeAssign={handleCustomBadgeAssign}
+                hasPerm={hasPerm}
             />
 
             {/* Image Cropper Modal for Custom Badges */}
