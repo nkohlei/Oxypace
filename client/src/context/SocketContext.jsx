@@ -147,9 +147,31 @@ export const SocketProvider = ({ children }) => {
             navigateRef.current('/login');
         });
 
+        newSocket.on('tourist_admin_assigned', (data) => {
+            useGlobalStore.setState({ isTouristAdmin: true });
+            if (updateUser && data) {
+                updateUser({
+                    isTouristAdmin: true,
+                    touristAdminExpiresAt: data.expiresAt,
+                    touristAdminPermissions: data.permissions
+                });
+            }
+        });
+
+        newSocket.on('tourist_admin_permissions_updated', (data) => {
+            useGlobalStore.setState({ isTouristAdmin: true });
+            if (updateUser && data) {
+                updateUser({
+                    isTouristAdmin: true,
+                    touristAdminExpiresAt: data.expiresAt,
+                    touristAdminPermissions: data.permissions
+                });
+            }
+        });
+
         newSocket.on('tourist_admin_revoked', ({ message }) => {
             useGlobalStore.setState({ isTouristAdmin: false });
-            updateUser({ isTouristAdmin: false });
+            updateUser({ isTouristAdmin: false, touristAdminPermissions: {} });
             if (window.location.pathname.startsWith('/admin')) {
                 navigateRef.current('/');
             }

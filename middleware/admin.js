@@ -42,24 +42,85 @@ export const checkTouristModuleAccess = (user, moduleOrPerm, level = 'view') => 
 
     const perms = user.touristAdminPermissions || {};
 
-    const LEGACY_TO_MODULE = {
+    const ALIAS_MAP = {
+        'notifications': 'mass-notification',
+        'notification': 'mass-notification',
+        'mass_notification': 'mass-notification',
+        'canSendNotifications': 'mass-notification',
+        'canManageNotifications': 'mass-notification',
+        'system': 'mobile-designs',
+        'mobile': 'mobile-designs',
+        'mobile-design': 'mobile-designs',
+        'mobile-version': 'mobile-versions',
+        'custom_badges': 'custom-badges',
+        'customBadge': 'custom-badges',
+        'customBadges': 'custom-badges',
+        'ip_bans': 'ipbans',
+        'ip-bans': 'ipbans',
+        'ipban': 'ipbans',
+        'canBanUsers': 'users',
+        'canManageUsers': 'users',
         'canManageRequests': 'requests',
         'canManageRecovery': 'recovery',
         'canManageFeedback': 'feedback',
-        'canManageUsers': 'users',
-        'canBanUsers': 'users',
         'canManageBadges': 'badges',
         'canManageBots': 'bots',
         'canManagePortals': 'portals',
         'canManageBlog': 'blog',
         'canManageReports': 'reports',
         'canViewLogs': 'activity',
-        'canSendNotifications': 'mass-notification',
-        'canManageNotifications': 'mass-notification',
         'canManageMobile': 'mobile-designs',
-        'canManageSystem': 'mobile-designs'
+        'canManageSystem': 'mobile-designs',
+        'logs': 'activity',
+        'log': 'activity',
+        'report': 'reports'
     };
 
+    const targetModule = ALIAS_MAP[moduleOrPerm] || moduleOrPerm;
+
+    // 1. Check nested module permissions if present
+    const mod = (perms.modules && (perms.modules[targetModule] || perms.modules[moduleOrPerm])) || null;
+    if (mod) {
+        const access = mod.access || 'none';
+        const isFull = access === 'full';
+        const isView = access === 'view' || isFull;
+
+        if (level === 'view') {
+            return isView;
+        }
+        if (level === 'full' || level === 'edit') {
+            return isFull;
+        }
+        if (level === 'details') {
+            return isView && mod.canViewDetails !== false;
+        }
+        if (level === 'canBan') {
+            if (mod.canBan === false) return false;
+            return !!mod.canBan || (isFull && mod.canBan !== false) || perms.modules?.ipbans?.access === 'full';
+        }
+        if (level === 'canManageBadges') {
+            if (mod.canManageBadges === false) return false;
+            return !!mod.canManageBadges || (isFull && mod.canManageBadges !== false) || perms.modules?.badges?.access === 'full' || perms.modules?.['custom-badges']?.access === 'full';
+        }
+        if (level === 'canExport') {
+            if (mod.canExport === false) return false;
+            return !!mod.canExport || (isFull && mod.canExport !== false);
+        }
+
+        // If level matches a sub-permission key in mod
+        if (mod[level] !== undefined) {
+            return !!mod[level];
+        }
+
+        return isFull;
+    }
+
+    // 2. Direct boolean check on perms root
+    if (perms[moduleOrPerm] === true) {
+        return true;
+    }
+
+    // 3. Reverse legacy check
     const MODULE_TO_LEGACY = {
         'requests': 'canManageRequests',
         'recovery': 'canManageRecovery',
@@ -78,54 +139,16 @@ export const checkTouristModuleAccess = (user, moduleOrPerm, level = 'view') => 
         'mobile-versions': 'canManageMobile'
     };
 
-    // Determine target module key
-    const targetModule = (perms.modules && perms.modules[moduleOrPerm]) 
-        ? moduleOrPerm 
-        : (LEGACY_TO_MODULE[moduleOrPerm] || moduleOrPerm);
-
-    // 1. Check nested module permissions
-    if (perms.modules && perms.modules[targetModule]) {
-        const mod = perms.modules[targetModule];
-        const access = mod.access || 'none';
-
-        if (level === 'view') {
-            return access === 'view' || access === 'full';
-        }
-        if (level === 'full' || level === 'edit') {
-            return access === 'full';
-        }
-        if (level === 'details') {
-            return (access === 'view' || access === 'full') && mod.canViewDetails !== false;
-        }
-        if (level === 'canBan') {
-            if (mod.canBan === false) return false;
-            return !!mod.canBan || (access === 'full' && mod.canBan !== false) || perms.modules?.ipbans?.access === 'full';
-        }
-        if (level === 'canManageBadges') {
-            if (mod.canManageBadges === false) return false;
-            return !!mod.canManageBadges || (access === 'full' && mod.canManageBadges !== false) || perms.modules?.badges?.access === 'full' || perms.modules?.['custom-badges']?.access === 'full';
-        }
-        if (level === 'canExport') {
-            if (mod.canExport === false) return false;
-            return !!mod.canExport || (access === 'full' && mod.canExport !== false);
-        }
-    }
-
-    // 2. Direct boolean check on perms
-    if (perms[moduleOrPerm] === true) {
-        return true;
-    }
-
-    // 3. Reverse legacy check
     const legacyKey = MODULE_TO_LEGACY[targetModule];
-    if (legacyKey && perms[legacyKey] === true) {
+    if (legacyKey && (perms[legacyKey] === true || (legacyKey === 'canSendNotifications' && perms.canManageNotifications === true))) {
         return true;
     }
 
     // 4. Special sub-permission fallback checks
-    if (level === 'canBan' && perms.canBanUsers === true) return true;
+    if (level === 'canBan' && (perms.canBanUsers === true || perms.canManageUsers === true)) return true;
     if (level === 'canManageBadges' && perms.canManageBadges === true) return true;
     if (level === 'canExport' && perms.canViewLogs === true) return true;
+    if (level === 'details' && (perms[legacyKey] === true || perms.canManageUsers === true)) return true;
 
     return false;
 };
@@ -135,10 +158,10 @@ export const checkTouristModuleAccess = (user, moduleOrPerm, level = 'view') => 
  * Root admin and Full Admins automatically bypass this check.
  * Tourist admins must explicitly have the specified permission or module access level.
  *
- * @param {string} moduleOrPerm - e.g. 'users', 'canManageUsers', 'activity', etc.
- * @param {string} [level='view'] - 'view', 'full', 'details', 'canBan', etc.
+ * @param {string} moduleOrPerm - e.g. 'users', 'canManageUsers', 'mass-notification', etc.
+ * @param {string} [level=null] - 'view', 'full', 'details', 'canBan', etc. Defaults to 'view' for GET/HEAD, 'full' for mutations.
  */
-export const requirePermission = (moduleOrPerm, level = 'view') => {
+export const requirePermission = (moduleOrPerm, level = null) => {
     return (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ message: 'Yetkilendirme gerekli.' });
@@ -157,14 +180,21 @@ export const requirePermission = (moduleOrPerm, level = 'view') => {
                 return res.status(403).json({ message: 'Turist Admin yetkilerinizin süresi doldu.' });
             }
 
-            if (checkTouristModuleAccess(req.user, moduleOrPerm, level)) {
+            // Determine effective level:
+            // If level was explicitly specified, use it.
+            // If level was omitted:
+            //   - GET/HEAD requests require 'view'
+            //   - POST/PUT/DELETE/PATCH mutations require 'full'
+            const effectiveLevel = level || (['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? 'view' : 'full');
+
+            if (checkTouristModuleAccess(req.user, moduleOrPerm, effectiveLevel)) {
                 return next();
             }
 
             return res.status(403).json({
                 message: 'Bu modül veya işlem için yetkiniz bulunmamaktadır.',
                 requiredPermission: moduleOrPerm,
-                requiredLevel: level
+                requiredLevel: effectiveLevel
             });
         }
 

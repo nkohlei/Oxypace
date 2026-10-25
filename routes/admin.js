@@ -1788,6 +1788,40 @@ router.post('/users/:id/custom-badge', protect, requirePermission('canManageBadg
     }
 });
 
+// @route   GET /api/admin/my-permissions
+// @desc    Get current user's live admin and tourist admin permissions
+// @access  Private
+router.get('/my-permissions', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id)
+            .select('username isAdmin isTouristAdmin touristAdminExpiresAt touristAdminPermissions')
+            .lean();
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const isOxypace = user.username === 'oxypace';
+        const isFullAdmin = isOxypace || (user.isAdmin && !user.isTouristAdmin);
+        let isTouristAdmin = !!user.isTouristAdmin;
+
+        if (isTouristAdmin && user.touristAdminExpiresAt && new Date(user.touristAdminExpiresAt) < new Date()) {
+            isTouristAdmin = false;
+        }
+
+        res.json({
+            isOxypace,
+            isAdmin: !!user.isAdmin,
+            isFullAdmin,
+            isTouristAdmin,
+            expiresAt: user.touristAdminExpiresAt,
+            permissions: user.touristAdminPermissions || {}
+        });
+    } catch (err) {
+        console.error('Fetch my-permissions error:', err);
+        res.status(500).json({ message: 'Yetkiler alınamadı.' });
+    }
+});
+
 // @route   GET /api/admin/tourist-admins
 // @desc    Get all active tourist admins
 // @access  Private/Admin (Oxypace Only)
@@ -1947,7 +1981,13 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
                     io.to(user._id.toString()).emit('newNotification', notif);
                 }
                 io.to(user._id.toString()).emit('tourist_admin_assigned', {
-                    message: messageText
+                    message: messageText,
+                    permissions: user.touristAdminPermissions,
+                    expiresAt: user.touristAdminExpiresAt
+                });
+                io.to(user._id.toString()).emit('tourist_admin_permissions_updated', {
+                    permissions: user.touristAdminPermissions,
+                    expiresAt: user.touristAdminExpiresAt
                 });
             }
         } catch (notifErr) {

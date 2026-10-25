@@ -2643,15 +2643,47 @@ const TAB_PERMISSION_MAP = {
 };
 
 const AdminDashboard = () => {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, updateUser } = useAuth();
     const navigate = useNavigate();
     const isOxypace = currentUser && currentUser.username === 'oxypace';
     const isFullAdmin = isOxypace || (currentUser?.isAdmin && !currentUser?.isTouristAdmin);
     const isTouristAdmin = !!currentUser?.isTouristAdmin;
     const isAdmin = currentUser && (currentUser.isAdmin || currentUser.isTouristAdmin || currentUser.username === 'oxypace');
 
-    // Live Tourist Admin Permissions state (synced via WebSocket)
+    // Live Tourist Admin Permissions state (synced via WebSocket and fresh fetch on mount)
     const [liveTouristPerms, setLiveTouristPerms] = useState(currentUser?.touristAdminPermissions || {});
+
+    // Always fetch fresh permissions on mount to avoid stale localStorage cache
+    useEffect(() => {
+        let isMounted = true;
+        const fetchFreshPermissions = async () => {
+            try {
+                const res = await axios.get('/api/admin/my-permissions');
+                if (!isMounted || !res.data) return;
+                const { isTouristAdmin: serverIsTourist, permissions: serverPerms, expiresAt } = res.data;
+                if (serverPerms) {
+                    setLiveTouristPerms(serverPerms);
+                }
+                if (updateUser) {
+                    updateUser({
+                        isTouristAdmin: serverIsTourist,
+                        touristAdminPermissions: serverPerms,
+                        touristAdminExpiresAt: expiresAt
+                    });
+                }
+            } catch (err) {
+                // If endpoint fails, keep using cached context
+            }
+        };
+
+        if (isAdmin) {
+            fetchFreshPermissions();
+        }
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     useEffect(() => {
         if (currentUser?.touristAdminPermissions) {
@@ -2659,30 +2691,49 @@ const AdminDashboard = () => {
         }
     }, [currentUser]);
 
+    // Comprehensive Alias Map between module IDs and legacy keys
+    const ALIAS_MAP = {
+        'notifications': 'mass-notification',
+        'notification': 'mass-notification',
+        'mass_notification': 'mass-notification',
+        'canSendNotifications': 'mass-notification',
+        'canManageNotifications': 'mass-notification',
+        'system': 'mobile-designs',
+        'mobile': 'mobile-designs',
+        'canManageMobile': 'mobile-designs',
+        'canManageSystem': 'mobile-designs',
+        'badges': 'badges',
+        'custom_badges': 'custom-badges',
+        'canManageBadges': 'custom-badges',
+        'users': 'users',
+        'canManageUsers': 'users',
+        'canBanUsers': 'users',
+        'requests': 'requests',
+        'canManageRequests': 'requests',
+        'recovery': 'recovery',
+        'canManageRecovery': 'recovery',
+        'feedback': 'feedback',
+        'canManageFeedback': 'feedback',
+        'activity': 'activity',
+        'canViewLogs': 'activity',
+        'ipbans': 'ipbans',
+        'ip_bans': 'ipbans',
+        'bots': 'bots',
+        'canManageBots': 'bots',
+        'portals': 'portals',
+        'canManagePortals': 'portals',
+        'blog': 'blog',
+        'canManageBlog': 'blog',
+        'reports': 'reports',
+        'canManageReports': 'reports'
+    };
+
     // Check granular permission helper (bidirectional)
     const hasPerm = (permKey, level = 'view') => {
         if (isFullAdmin) return true;
         if (!isTouristAdmin) return false;
-        
-        const LEGACY_TO_MODULE = {
-            'canManageRequests': 'requests',
-            'canManageRecovery': 'recovery',
-            'canManageFeedback': 'feedback',
-            'canManageUsers': 'users',
-            'canBanUsers': 'users',
-            'canManageBadges': 'badges',
-            'canManageBots': 'bots',
-            'canManagePortals': 'portals',
-            'canManageBlog': 'blog',
-            'canManageReports': 'reports',
-            'canViewLogs': 'activity',
-            'canSendNotifications': 'mass-notification',
-            'canManageNotifications': 'mass-notification',
-            'canManageMobile': 'mobile-designs',
-            'canManageSystem': 'mobile-designs'
-        };
 
-        const targetMod = LEGACY_TO_MODULE[permKey] || permKey;
+        const targetMod = ALIAS_MAP[permKey] || permKey;
         const access = getModuleAccess(targetMod);
         if (level === 'view') return access.canView;
         if (level === 'full') return access.canEdit;
@@ -2709,9 +2760,11 @@ const AdminDashboard = () => {
             return { access: 'none', canView: false, canEdit: false, canViewDetails: false, custom: {} };
         }
 
+        const canonicalId = ALIAS_MAP[moduleId] || moduleId;
         const perms = liveTouristPerms || {};
-        if (perms.modules && perms.modules[moduleId]) {
-            const mod = perms.modules[moduleId];
+        const mod = perms.modules?.[canonicalId] || perms.modules?.[moduleId];
+
+        if (mod) {
             const access = mod.access || 'none';
             return {
                 access,
@@ -2745,7 +2798,7 @@ const AdminDashboard = () => {
             'mobile-versions': 'canManageMobile'
         };
 
-        const legKey = legacyKeyMap[moduleId];
+        const legKey = legacyKeyMap[canonicalId] || legacyKeyMap[moduleId];
         const hasLegacy = legKey ? (!!perms[legKey] || (legKey === 'canSendNotifications' && !!perms.canManageNotifications)) : false;
 
         return {
@@ -2763,7 +2816,8 @@ const AdminDashboard = () => {
 
     // Module Title Helper
     const getModuleTitle = (modId) => {
-        const found = ADMIN_MODULES.find(m => m.id === modId);
+        const canonical = ALIAS_MAP[modId] || modId;
+        const found = ADMIN_MODULES.find(m => m.id === canonical || m.id === modId);
         return found ? found.label : modId;
     };
 
@@ -3140,7 +3194,7 @@ const AdminDashboard = () => {
 
     const handleSendMassNotification = async (e) => {
         e.preventDefault();
-        if (!checkActionPerm('notifications', 'full', 'Toplu bildirim gönderme')) return;
+        if (!checkActionPerm('mass-notification', 'full', 'Toplu bildirim gönderme')) return;
         if (!massNotifTitle.trim() || !massNotifMessage.trim()) {
             setMassNotifStatus({ type: 'error', text: 'Lütfen başlık ve mesaj alanlarını doldurun.' });
             return;
@@ -3455,34 +3509,57 @@ const AdminDashboard = () => {
 
     // WebSocket listener for real-time permission sync, revoke, and expiry
     useEffect(() => {
-        if (!socket || !isTouristAdmin) return;
+        if (!socket) return;
 
         const handlePermsUpdated = (data) => {
             if (data?.permissions) {
                 setLiveTouristPerms(data.permissions);
             }
+            if (updateUser) {
+                updateUser({
+                    isTouristAdmin: true,
+                    touristAdminPermissions: data?.permissions,
+                    touristAdminExpiresAt: data?.expiresAt
+                });
+            }
         };
 
         const handleRevoked = () => {
+            if (updateUser) {
+                updateUser({
+                    isTouristAdmin: false,
+                    touristAdminPermissions: {},
+                    touristAdminExpiresAt: null
+                });
+            }
             alert('Turist admin yetkileriniz geri alındı.');
             navigate('/messages');
         };
 
         const handleExpired = () => {
+            if (updateUser) {
+                updateUser({
+                    isTouristAdmin: false,
+                    touristAdminPermissions: {},
+                    touristAdminExpiresAt: null
+                });
+            }
             alert('Turist admin yetkilerinizin süresi doldu.');
             navigate('/messages');
         };
 
+        socket.on('tourist_admin_assigned', handlePermsUpdated);
         socket.on('tourist_admin_permissions_updated', handlePermsUpdated);
         socket.on('tourist_admin_revoked', handleRevoked);
         socket.on('tourist_admin_expired', handleExpired);
 
         return () => {
+            socket.off('tourist_admin_assigned', handlePermsUpdated);
             socket.off('tourist_admin_permissions_updated', handlePermsUpdated);
             socket.off('tourist_admin_revoked', handleRevoked);
             socket.off('tourist_admin_expired', handleExpired);
         };
-    }, [socket, isTouristAdmin]);
+    }, [socket, updateUser, navigate]);
 
     useEffect(() => {
         if (activeTab === 'requests' && getModuleAccess('requests').canView) {
@@ -3497,7 +3574,7 @@ const AdminDashboard = () => {
             fetchReports();
         } else if (activeTab === 'badges' && getModuleAccess('badges').canView) {
             fetchAllBadges();
-        } else if (activeTab === 'custom-badges' && getModuleAccess('badges').canView) {
+        } else if (activeTab === 'custom-badges' && getModuleAccess('custom-badges').canView) {
             fetchCustomBadges();
         } else if (activeTab === 'feedback' && getModuleAccess('feedback').canView) {
             fetchFeedbacks();
@@ -5712,21 +5789,21 @@ const AdminDashboard = () => {
             <div className="admin-main-wrapper">
                 <div className="admin-content">
                 {activeTab === 'mobile-designs' && (
-                    !getModuleAccess('system').canView ? (
+                    !getModuleAccess('mobile-designs').canView ? (
                         renderAccessDenied('Mobil Tasarım Barındırma')
                     ) : (
                         <>
-                            {getModuleAccess('system').access === 'view' && renderViewModeBanner('Mobil Tasarım Barındırma')}
+                            {getModuleAccess('mobile-designs').access === 'view' && renderViewModeBanner('Mobil Tasarım Barındırma')}
                             <MobileDesignShowcase />
                         </>
                     )
                 )}
                 {activeTab === 'mobile-versions' && (
-                    !getModuleAccess('system').canView ? (
+                    !getModuleAccess('mobile-versions').canView ? (
                         renderAccessDenied('Mobil Sürüm Günlüğü')
                     ) : (
                         <>
-                            {getModuleAccess('system').access === 'view' && renderViewModeBanner('Mobil Sürüm Günlüğü')}
+                            {getModuleAccess('mobile-versions').access === 'view' && renderViewModeBanner('Mobil Sürüm Günlüğü')}
                             <MobileVersionHistory />
                         </>
                     )
@@ -6031,11 +6108,11 @@ const AdminDashboard = () => {
                 )}
 
                 {activeTab === 'mass-notification' && (
-                    !getModuleAccess('notifications').canView ? (
+                    !getModuleAccess('mass-notification').canView ? (
                         renderAccessDenied('Toplu Bildirim Gönder')
                     ) : (
                         <div className="mass-notification-container fade-in">
-                            {getModuleAccess('notifications').access === 'view' && renderViewModeBanner('Toplu Bildirim Gönder')}
+                            {getModuleAccess('mass-notification').access === 'view' && renderViewModeBanner('Toplu Bildirim Gönder')}
                             <div className="mass-notification-card">
                                 <div className="mass-notif-header">
                                     <h2>📢 Toplu Bildirim ve Android Push Paneli</h2>
