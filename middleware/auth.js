@@ -37,6 +37,11 @@ export const protect = async (req, res, next) => {
                 }
             }
 
+            // Real-time deleted/passive account check
+            if (req.user.isDeleted) {
+                return res.status(403).json({ message: 'Bu hesap silinmiştir ve pasif durumdadır.' });
+            }
+
             // Ghost Mode / Taklit Modu kısıtlaması (Read-Only)
             if (decoded.isGhost) {
                 req.user.isGhost = true;

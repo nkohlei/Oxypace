@@ -3359,6 +3359,7 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [userAccountTypeFilter, setUserAccountTypeFilter] = useState('all');
     const [portals, setPortals] = useState([]);
     const [searchTermPortal, setSearchTermPortal] = useState('');
 
@@ -4326,10 +4327,11 @@ const AdminDashboard = () => {
         }
     };
 
-    const fetchUsers = async (query = '') => {
+    const fetchUsers = async (query = searchTerm, accountType = userAccountTypeFilter) => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`/api/admin/users?q=${query}`);
+            const url = `/api/admin/users?q=${encodeURIComponent(query || '')}&accountType=${encodeURIComponent(accountType || 'all')}`;
+            const { data } = await axios.get(url);
             setUsers(data);
         } catch (err) {
             setError('Kullanıcılar yüklenemedi.');
@@ -4616,15 +4618,44 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleDeactivateUser = async (userId) => {
+        if (!checkActionPerm('users', 'canBan', 'Kullanıcıyı pasife alma')) return;
+        const reason = window.prompt('Hesabı pasife alma / silme gerekçesi giriniz:', 'Yönetici tarafından pasife alındı');
+        if (reason === null) return;
+        try {
+            const { data } = await axios.put(`/api/admin/users/${userId}/deactivate`, { reason });
+            alert(data.message || 'Kullanıcı hesabı pasife alındı.');
+            setUsers(prev => prev.map(u => u._id === userId ? { ...u, isDeleted: true, status: 'passive', deletionReason: reason, deletedAt: new Date().toISOString() } : u));
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isDeleted: true, status: 'passive', deletionReason: reason, deletedAt: new Date().toISOString() } : prev);
+            if (activeTab === 'users') fetchUsers(searchTerm, userAccountTypeFilter);
+        } catch (err) {
+            alert(err.response?.data?.message || 'İşlem başarısız.');
+        }
+    };
+
+    const handleRestoreUser = async (userId) => {
+        if (!checkActionPerm('users', 'canBan', 'Kullanıcıyı aktif etme')) return;
+        if (!window.confirm('Bu kullanıcının hesabını yeniden AKTİF etmek istediğinize emin misiniz?')) return;
+        try {
+            const { data } = await axios.put(`/api/admin/users/${userId}/restore`);
+            alert(data.message || 'Kullanıcı hesabı başarıyla aktif edildi.');
+            setUsers(prev => prev.map(u => u._id === userId ? { ...u, isDeleted: false, status: 'active', deletionReason: '', deletedAt: null } : u));
+            setSelectedUserDetail(prev => prev && prev._id === userId ? { ...prev, isDeleted: false, status: 'active', deletionReason: '', deletedAt: null } : prev);
+            if (activeTab === 'users') fetchUsers(searchTerm, userAccountTypeFilter);
+        } catch (err) {
+            alert(err.response?.data?.message || 'İşlem başarısız.');
+        }
+    };
+
     // Search effect for users
     useEffect(() => {
         if (activeTab === 'users') {
             const delayDebounceFn = setTimeout(() => {
-                fetchUsers(searchTerm);
-            }, 500);
+                fetchUsers(searchTerm, userAccountTypeFilter);
+            }, 400);
             return () => clearTimeout(delayDebounceFn);
         }
-    }, [searchTerm]);
+    }, [searchTerm, userAccountTypeFilter]);
 
     // Search effect for portals
     useEffect(() => {
@@ -7169,14 +7200,82 @@ const AdminDashboard = () => {
                         // --- USERS TAB ---
                         <div className="users-section">
                             {getModuleAccess('users').access === 'view' && renderViewModeBanner('Kullanıcılar')}
-                            <div className="users-search">
-                            <input
-                                type="text"
-                                placeholder="Kullanıcı ara (Kullanıcı adı, isim, e-posta veya IP)..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                            <div className="users-search" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Kullanıcı ara (Kullanıcı adı, isim, e-posta veya IP)..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        style={{ flex: 1, minWidth: '240px' }}
+                                    />
+                                    <div className="user-type-selector-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '12px', color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            HESAP TÜRÜ:
+                                        </span>
+                                        <select
+                                            value={userAccountTypeFilter}
+                                            onChange={(e) => setUserAccountTypeFilter(e.target.value)}
+                                            className="admin-select-input"
+                                            style={{
+                                                background: '#0d0d0d',
+                                                color: '#fff',
+                                                border: '1px solid #333',
+                                                borderRadius: '6px',
+                                                padding: '9px 14px',
+                                                fontSize: '13px',
+                                                cursor: 'pointer',
+                                                outline: 'none',
+                                                fontFamily: 'monospace'
+                                            }}
+                                        >
+                                            <option value="all">⚡ Tümü (Tüm Kayıtlar)</option>
+                                            <option value="standard">👤 Standart Kullanıcılar</option>
+                                            <option value="admin">👑 Yöneticiler</option>
+                                            <option value="tourist">🛡️ Turist Adminler</option>
+                                            <option value="bot">🤖 Bot / Sistem Hesapları</option>
+                                            <option value="verified">✅ Onaylı Hesaplar</option>
+                                            <option value="deleted">🗑️ Silinmiş / Pasif Hesaplar</option>
+                                            <option value="banned">🚫 Engelli Hesaplar</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="user-type-pills" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {[
+                                        { id: 'all', label: 'Tümü', icon: '⚡' },
+                                        { id: 'standard', label: 'Standart', icon: '👤' },
+                                        { id: 'admin', label: 'Yöneticiler', icon: '👑' },
+                                        { id: 'tourist', label: 'Turist Admin', icon: '🛡️' },
+                                        { id: 'bot', label: 'Botlar', icon: '🤖' },
+                                        { id: 'verified', label: 'Onaylı', icon: '✅' },
+                                        { id: 'deleted', label: 'Silinmiş / Pasif', icon: '🗑️' },
+                                        { id: 'banned', label: 'Engelli', icon: '🚫' },
+                                    ].map(item => (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => setUserAccountTypeFilter(item.id)}
+                                            style={{
+                                                background: userAccountTypeFilter === item.id ? '#fff' : '#141414',
+                                                color: userAccountTypeFilter === item.id ? '#000' : '#aaa',
+                                                border: userAccountTypeFilter === item.id ? '1px solid #fff' : '1px solid #282828',
+                                                borderRadius: '4px',
+                                                padding: '4px 10px',
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                        >
+                                            <span>{item.icon}</span>
+                                            <span>{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                         {loading && <div className="admin-loading">Kullanıcı verileri yükleniyor...</div>}
 
@@ -7184,7 +7283,8 @@ const AdminDashboard = () => {
                             {users.map((user) => (
                                 <div
                                     key={user._id}
-                                    className={`admin-user-box-card ${user.isBanned ? 'banned' : ''} ${user.isShadowbanned ? 'shadowbanned' : ''}`}
+                                    className={`admin-user-box-card ${user.isDeleted ? 'deleted' : ''} ${user.isBanned ? 'banned' : ''} ${user.isShadowbanned ? 'shadowbanned' : ''}`}
+                                    style={user.isDeleted ? { border: '1px solid rgba(239, 68, 68, 0.45)', background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.06) 0%, rgba(20, 20, 20, 0.8) 100%)' } : {}}
                                 >
                                     <div className="user-box-header">
                                         <AdminMedia
@@ -7205,16 +7305,33 @@ const AdminDashboard = () => {
 
                                     {/* Badges / Roles / Status */}
                                     <div className="user-box-tags">
-                                        {user.isAdmin && <span className="mono-tag inverted">YÖNETİCİ</span>}
-                                        {user.isTouristAdmin && <span className="mono-tag">TURİST ADMİN</span>}
-                                        {user.isBot && <span className="mono-tag">BOT HESAP</span>}
+                                        {user.isDeleted ? (
+                                            <span className="mono-tag" style={{ border: '1px solid #ef4444', color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', fontWeight: 700 }}>
+                                                🗑️ SİLİNMİŞ (PASİF)
+                                            </span>
+                                        ) : (
+                                            <span className="mono-tag" style={{ border: '1px solid #10b981', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)' }}>
+                                                🟢 AKTİF
+                                            </span>
+                                        )}
+                                        {user.isAdmin && <span className="mono-tag inverted">👑 YÖNETİCİ</span>}
+                                        {user.isTouristAdmin && <span className="mono-tag">🛡️ TURİST ADMİN</span>}
+                                        {user.isBot && <span className="mono-tag">🤖 BOT HESAP</span>}
                                         {user.isBanned && <span className="mono-tag" style={{ border: '1px solid #ffffff' }}>🚫 ENGELLİ</span>}
                                         {user.isShadowbanned && <span className="mono-tag">👻 GÖLGE BAN</span>}
-                                        {user.isVerified && <span className="mono-tag muted">ONAYLI</span>}
+                                        {user.isVerified && <span className="mono-tag muted">✅ ONAYLI</span>}
                                     </div>
 
                                     {/* Comprehensive Metrics / Şecere Verileri */}
                                     <div className="user-box-stats">
+                                        {user.isDeleted && (
+                                            <div className="user-stat-item" style={{ gridColumn: 'span 2', background: 'rgba(239, 68, 68, 0.08)', padding: '6px 10px', borderRadius: '4px', border: '1px dashed rgba(239, 68, 68, 0.3)' }}>
+                                                <span className="user-stat-label" style={{ color: '#ef4444', fontWeight: 700 }}>🗑️ Silinme Tarihi & Durumu</span>
+                                                <span className="user-stat-value" style={{ color: '#ff8888', fontSize: '11px' }}>
+                                                    {user.deletedAt ? new Date(user.deletedAt).toLocaleString('tr-TR') : 'Arşivlenmiş'} ({user.deletionReason || 'Kullanıcı isteğiyle'}) — Durum: Pasif
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="user-stat-item">
                                             <span className="user-stat-label">Son Bilinen IP</span>
                                             <span className="user-stat-value">{user.lastIP || 'Kayıt Yok'}</span>
@@ -7318,6 +7435,25 @@ const AdminDashboard = () => {
                                         >
                                             {user.isBanned ? '🔓 Banı Kaldır' : '🚫 Engelle'}
                                         </button>
+                                        {user.isDeleted ? (
+                                            <button
+                                                className="user-box-btn"
+                                                style={{ color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.5)', background: 'rgba(16, 185, 129, 0.08)' }}
+                                                title="Pasif / silinmiş bu hesabı yeniden aktif et"
+                                                onClick={() => handleRestoreUser(user._id)}
+                                            >
+                                                ♻️ Aktif Et
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="user-box-btn"
+                                                style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                                                title="Kullanıcı hesabını pasife al (silindi olarak işaretle, tüm veriler saklanır)"
+                                                onClick={() => handleDeactivateUser(user._id)}
+                                            >
+                                                🗑️ Pasife Al
+                                            </button>
+                                        )}
                                         {isOxypace && (
                                             <button
                                                 className="user-box-btn"
@@ -10227,9 +10363,16 @@ const AdminDashboard = () => {
                                     📋 Kullanıcı Şecere & Adli Sicil Dosyası
                                 </h2>
                                 {userDossierData?.user && (
-                                    <span className="mono-tag inverted" style={{ fontSize: '10px' }}>
-                                        @{userDossierData.user.username}
-                                    </span>
+                                    <>
+                                        <span className="mono-tag inverted" style={{ fontSize: '10px' }}>
+                                            @{userDossierData.user.username}
+                                        </span>
+                                        {userDossierData.user.isDeleted && (
+                                            <span className="mono-tag" style={{ border: '1px solid #ef4444', color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', fontSize: '10px', fontWeight: 700 }}>
+                                                🗑️ SİLİNMİŞ (PASİF HESAP)
+                                            </span>
+                                        )}
+                                    </>
                                 )}
                             </div>
                             <button className="close-btn-modern" onClick={() => setUserDossierOpen(false)}>&times;</button>
@@ -10271,10 +10414,32 @@ const AdminDashboard = () => {
                                         </div>
                                         <div className="dossier-key-val">
                                             <span className="label">Hesap Durumu</span>
-                                            <span className="val">
-                                                {userDossierData.user.isBanned ? '🚫 BANLI' : userDossierData.user.isShadowbanned ? '👻 GÖLGE BANLI' : 'AKTİF'}
+                                            <span className="val" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                {userDossierData.user.isDeleted ? (
+                                                    <span style={{ color: '#ef4444', fontWeight: 700 }}>🗑️ SİLİNMİŞ (PASİF HESAP)</span>
+                                                ) : (
+                                                    <span style={{ color: '#10b981', fontWeight: 600 }}>🟢 AKTİF</span>
+                                                )}
+                                                {userDossierData.user.isBanned && <span style={{ color: '#ff4444' }}>| 🚫 ENGELLİ</span>}
+                                                {userDossierData.user.isShadowbanned && <span style={{ color: '#aaa' }}>| 👻 GÖLGE BANLI</span>}
                                             </span>
                                         </div>
+                                        {userDossierData.user.isDeleted && (
+                                            <>
+                                                <div className="dossier-key-val" style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '6px 8px', borderRadius: '4px', borderLeft: '3px solid #ef4444' }}>
+                                                    <span className="label" style={{ color: '#ef4444' }}>Silinme Tarihi</span>
+                                                    <span className="val" style={{ color: '#ff8888' }}>
+                                                        {userDossierData.user.deletedAt ? new Date(userDossierData.user.deletedAt).toLocaleString('tr-TR') : 'Arşivlenmiş'}
+                                                    </span>
+                                                </div>
+                                                <div className="dossier-key-val" style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '6px 8px', borderRadius: '4px', borderLeft: '3px solid #ef4444' }}>
+                                                    <span className="label" style={{ color: '#ef4444' }}>Silinme Gerekçesi</span>
+                                                    <span className="val" style={{ color: '#ff8888' }}>
+                                                        {userDossierData.user.deletionReason || 'Kullanıcı kendi isteğiyle sildi'}
+                                                    </span>
+                                                </div>
+                                            </>
+                                        )}
                                         <div className="dossier-key-val">
                                             <span className="label">Güvenlik Sorusu</span>
                                             <span className="val">{userDossierData.user.securityQuestionSet ? 'AYARLANDI' : 'AYARLANMAMIŞ'}</span>

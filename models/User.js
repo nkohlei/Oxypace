@@ -306,6 +306,15 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
+        status: {
+            type: String,
+            enum: ['active', 'passive', 'banned'],
+            default: 'active',
+        },
         deletionReason: {
             type: String,
             default: '',

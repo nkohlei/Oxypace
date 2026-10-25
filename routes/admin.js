@@ -145,6 +145,7 @@ router.post('/reject-verification/:id', protect, requirePermission('canManageReq
 router.get('/users', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
         const q = req.query.q || req.query.search;
+        const accountType = req.query.accountType;
         let query = {};
 
         if (q) {
@@ -159,8 +160,40 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
             };
         }
 
+        if (accountType && accountType !== 'all') {
+            const typeFilter = {};
+            if (accountType === 'deleted' || accountType === 'passive') {
+                typeFilter.isDeleted = true;
+            } else if (accountType === 'admin') {
+                typeFilter.$or = [{ isAdmin: true }, { username: 'oxypace' }];
+            } else if (accountType === 'tourist') {
+                typeFilter.isTouristAdmin = true;
+            } else if (accountType === 'bot') {
+                typeFilter.isBot = true;
+            } else if (accountType === 'verified') {
+                typeFilter.isVerified = true;
+                typeFilter.isDeleted = { $ne: true };
+            } else if (accountType === 'banned') {
+                typeFilter.isBanned = true;
+            } else if (accountType === 'standard') {
+                typeFilter.isAdmin = { $ne: true };
+                typeFilter.isTouristAdmin = { $ne: true };
+                typeFilter.isBot = { $ne: true };
+                typeFilter.isDeleted = { $ne: true };
+                typeFilter.username = { $ne: 'oxypace' };
+            }
+
+            if (Object.keys(typeFilter).length > 0) {
+                if (query.$or) {
+                    query = { $and: [{ $or: query.$or }, typeFilter] };
+                } else {
+                    Object.assign(query, typeFilter);
+                }
+            }
+        }
+
         const users = await User.find(query)
-            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals')
+            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals isDeleted deletedAt deletionReason status')
             .populate('joinedPortals', 'name avatar members channels')
             .sort({ createdAt: -1 })
             .limit(100)
@@ -1408,6 +1441,87 @@ router.put('/users/:id/unban', protect, requirePermission('canBanUsers'), async 
     }
 });
 
+// @route   PUT /api/admin/users/:id/deactivate
+// @desc    Deactivate/Soft-delete a user account (marks as passive, keeps all data permanently)
+// @access  Private/Admin
+router.put('/users/:id/deactivate', protect, requirePermission('canManageUsers'), async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
+        }
+
+        user.isDeleted = true;
+        user.status = 'passive';
+        user.deletedAt = new Date();
+        user.deletionReason = reason || 'Yönetici tarafından pasife alındı / silindi';
+        user.tokenValidFrom = new Date(); // Revoke active sessions
+
+        await user.save();
+
+        logActivity({
+            action: 'ADMIN_USER_DEACTIVATE',
+            category: 'admin',
+            severity: 'warning',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username, reason: user.deletionReason, deletedAt: user.deletedAt }
+        });
+
+        res.json({ message: 'Kullanıcı hesabı başarıyla pasife alındı (silindi olarak işaretlendi). Tüm veriler güvendedir.', user });
+    } catch (error) {
+        console.error('Deactivate user error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
+// @route   PUT /api/admin/users/:id/restore
+// @desc    Restore/Reactivate a soft-deleted user account
+// @access  Private/Admin
+router.put('/users/:id/restore', protect, requirePermission('canManageUsers'), async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        if (user.username === 'oxypace' || user.isAdmin || (user.isTouristAdmin && req.user.username !== 'oxypace')) {
+            return res.status(403).json({ message: 'Yönetici hesaplarına müdahale edilemez.' });
+        }
+
+        user.isDeleted = false;
+        user.status = 'active';
+        user.deletedAt = null;
+        user.deletionReason = '';
+        user.recoveryStatus = 'none';
+
+        await user.save();
+
+        logActivity({
+            action: 'ADMIN_USER_RESTORE',
+            category: 'admin',
+            severity: 'info',
+            req,
+            targetId: user._id,
+            targetType: 'User',
+            details: { username: user.username }
+        });
+
+        res.json({ message: 'Kullanıcı hesabı başarıyla yeniden aktif edildi.', user });
+    } catch (error) {
+        console.error('Restore user error:', error);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
+});
+
 // @route   GET /api/admin/ip-bans
 // @desc    Get all active IP bans
 // @access  Private/Admin
@@ -1547,6 +1661,9 @@ router.put('/users/:id/recover-approve', protect, requirePermission('canManageRe
         }
 
         user.isDeleted = false;
+        user.status = 'active';
+        user.deletedAt = null;
+        user.deletionReason = '';
         user.recoveryStatus = 'approved';
         await user.save();
 

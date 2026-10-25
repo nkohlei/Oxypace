@@ -1662,6 +1662,9 @@ router.delete('/me', protect, async (req, res) => {
         }
 
         user.isDeleted = true;
+        user.status = 'passive';
+        user.deletedAt = new Date();
+        user.tokenValidFrom = new Date();
         user.deletionReason = req.body.reason || 'Kullanıcı kendi isteğiyle sildi';
         user.recoveryStatus = 'none';
         await user.save();
@@ -1673,10 +1676,10 @@ router.delete('/me', protect, async (req, res) => {
             category: 'auth',
             severity: 'critical',
             req,
-            details: { reason: user.deletionReason }
+            details: { reason: user.deletionReason, deletedAt: user.deletedAt }
         });
 
-        res.json({ message: 'Hesabınız başarıyla silinmek üzere işaretlendi.' });
+        res.json({ message: 'Hesabınız silindi ve pasif duruma alındı. Bilgileriniz sistemde güvenle saklanmaktadır.' });
     } catch (error) {
         console.error('Delete account error:', error);
         res.status(500).json({ message: 'Server error' });
