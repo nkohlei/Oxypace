@@ -204,29 +204,45 @@ export const logActivity = async ({
                 USER_LOCATION_TRACKER.set(userIdStr, { country: finalCountry, timestamp: now });
             }
 
-            // Automatic Portal & Channel Resolution if IDs are provided without friendly names
+            // Automatic Portal & Channel Resolution if IDs or names are provided
             let resolvedPortalId = portal ? (portal._id || portal) : (details?.portalId || null);
             let resolvedChannel = channel || details?.channelName || details?.channel || details?.channelId || '';
 
+            // Handle string portal names passed directly in portal or details.portal
+            let resolvedPortalName = portalName || portal?.name || details?.portalName || '';
+            if (!resolvedPortalName) {
+                if (typeof details?.portal === 'string' && !/^[a-f0-9]{24}$/i.test(details.portal)) {
+                    resolvedPortalName = details.portal;
+                } else if (typeof portal === 'string' && !/^[a-f0-9]{24}$/i.test(portal)) {
+                    resolvedPortalName = portal;
+                }
+            }
+
             // Extract from roomName if formatted as portal_{portalId}_channel_{channelId}
             if (details?.roomName && typeof details.roomName === 'string') {
-                const roomMatch = details.roomName.match(/portal_([a-f0-9]{24})_channel_([a-f0-9]{24})/i);
+                const roomMatch = details.roomName.match(/portal_([a-f0-9]{24})_channel_([\w-]+)/i);
                 if (roomMatch) {
                     resolvedPortalId = resolvedPortalId || roomMatch[1];
                     resolvedChannel = resolvedChannel || roomMatch[2];
                 }
             }
 
-            let resolvedPortalName = portalName || portal?.name || details?.portalName || '';
+            // If we have a portalId, resolve friendly names from DB or cache
             if (resolvedPortalId && (!resolvedPortalName || !resolvedChannel || /^[a-f0-9]{24}$/i.test(resolvedChannel))) {
                 const res = await resolvePortalAndChannel(resolvedPortalId, resolvedChannel);
                 if (!resolvedPortalName && res.portalName) resolvedPortalName = res.portalName;
                 if (res.channelName) resolvedChannel = res.channelName;
             }
 
-            // Sync enriched details
-            if (resolvedPortalName && !details.portalName) details.portalName = resolvedPortalName;
-            if (resolvedChannel && !details.channelName) details.channelName = resolvedChannel;
+            // Sync enriched details so both portalName and channelName are always available
+            if (resolvedPortalName) {
+                details.portalName = resolvedPortalName;
+                if (!details.portal) details.portal = resolvedPortalName;
+            }
+            if (resolvedChannel) {
+                details.channelName = resolvedChannel;
+                if (!details.channel) details.channel = resolvedChannel;
+            }
             if (resolvedPortalId && !details.portalId) details.portalId = String(resolvedPortalId);
 
             // Derive targetType and targetName if empty

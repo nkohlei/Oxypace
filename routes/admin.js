@@ -212,11 +212,35 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
+        // Comprehensive user activity logs query (actor or target)
+        const uIdStr = String(user._id);
+        let uObjId = null;
+        try { uObjId = new mongoose.Types.ObjectId(user._id); } catch(e) {}
+        const userLogsQuery = {
+            $or: [
+                ...(uObjId ? [{ user: uObjId }] : []),
+                { user: uIdStr },
+                { username: user.username },
+                { targetId: uIdStr },
+                { targetName: user.username },
+                { 'details.userId': uIdStr },
+                { 'details.targetUserId': uIdStr },
+                { 'details.username': user.username },
+                { 'details.targetUsername': user.username },
+                { 'details.email': user.email }
+            ]
+        };
+
         // Count posts and fetch recent post summaries & audit logs & member portals
-        const [totalPosts, recentPosts, recentActivities, ownedPortals, memberPortals] = await Promise.all([
+        const [totalPosts, recentPosts, rawUserLogs, ownedPortals, memberPortals] = await Promise.all([
             Post.countDocuments({ author: user._id }),
-            Post.find({ author: user._id }).sort({ createdAt: -1 }).limit(10).populate('portal', 'name avatar').lean(),
-            ActivityLog.find({ $or: [{ user: user._id }, { username: user.username }] }).sort({ createdAt: -1 }).limit(50).lean(),
+            Post.find({ author: user._id }).sort({ createdAt: -1 }).limit(10).populate('portal', 'name avatar channels').lean(),
+            ActivityLog.find(userLogsQuery)
+                .populate('user', 'username profile.displayName profile.avatar')
+                .populate('portal', 'name avatar channels')
+                .sort({ createdAt: -1 })
+                .limit(100)
+                .lean(),
             Portal.find({ owner: user._id }).select('name avatar members channels createdAt isVerified isReadOnly isNSFW').lean(),
             Portal.find({
                 $or: [
@@ -228,6 +252,24 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
               .populate('owner', 'username profile.displayName')
               .lean()
         ]);
+
+        // Enrich user logs with friendly portalName and channelName
+        const recentActivities = rawUserLogs.map(log => {
+            const pName = log.portalName || log.portal?.name || log.details?.portalName || (typeof log.details?.portal === 'string' && !/^[a-f0-9]{24}$/i.test(log.details.portal) ? log.details.portal : '');
+            let chName = log.channel || log.details?.channelName || (typeof log.details?.channel === 'string' && !/^[a-f0-9]{24}$/i.test(log.details.channel) ? log.details.channel : '');
+            if (!chName && log.portal?.channels) {
+                const chId = log.channel || log.details?.channelId;
+                if (chId) {
+                    const matched = log.portal.channels.find(c => c._id?.toString() === String(chId) || c.name === String(chId));
+                    if (matched) chName = matched.name;
+                }
+            }
+            return {
+                ...log,
+                portalName: pName,
+                channel: chName || 'Genel'
+            };
+        });
 
         // Aggregate unique IP addresses known for this user
         const ipSet = new Set();
@@ -246,10 +288,11 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
             totalPosts,
             recentPosts,
             recentActivities,
+            recentLogs: recentActivities,
             ownedPortals,
             memberPortals,
-            avatarHistory: user.profile?.avatarHistory || [],
-            bannerHistory: user.profile?.bannerHistory || [],
+            avatarHistory: user.avatarHistory || user.profile?.avatarHistory || [],
+            bannerHistory: user.bannerHistory || user.profile?.bannerHistory || [],
             allKnownIPs: Array.from(ipSet)
         });
     } catch (error) {
@@ -477,21 +520,50 @@ router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
             return res.status(404).json({ message: 'Portal bulunamadı.' });
         }
 
-        const [postCount, recentPosts, recentActivities] = await Promise.all([
+        const pIdStr = String(portal._id);
+        let pObjId = null;
+        try { pObjId = new mongoose.Types.ObjectId(portal._id); } catch(e) {}
+        const portalLogsQuery = {
+            $or: [
+                ...(pObjId ? [{ portal: pObjId }] : []),
+                { portal: pIdStr },
+                { 'details.portalId': pIdStr },
+                { 'details.portalName': portal.name },
+                { 'details.portal': portal.name },
+                { portalName: portal.name }
+            ]
+        };
+
+        const [postCount, recentPosts, rawPortalLogs] = await Promise.all([
             Post.countDocuments({ portal: portal._id }),
             Post.find({ portal: portal._id })
                 .populate('author', 'username profile.displayName profile.avatar')
                 .sort({ createdAt: -1 })
                 .limit(10)
                 .lean(),
-            ActivityLog.find({
-                $or: [
-                    { portal: portal._id },
-                    { 'details.portalId': String(portal._id) },
-                    { 'details.portalName': portal.name }
-                ]
-            }).sort({ createdAt: -1 }).limit(30).lean()
+            ActivityLog.find(portalLogsQuery)
+                .populate('user', 'username profile.displayName profile.avatar')
+                .populate('portal', 'name avatar channels')
+                .sort({ createdAt: -1 })
+                .limit(100)
+                .lean()
         ]);
+
+        // Enrich channel names and format for detailed portal audit feed
+        const portalChannels = portal.channels || [];
+        const recentActivities = rawPortalLogs.map(log => {
+            let chId = log.channel || log.details?.channelName || log.details?.channel || log.details?.channelId;
+            let channelName = '';
+            if (chId && portalChannels.length > 0) {
+                const matched = portalChannels.find(c => c._id?.toString() === String(chId) || c.name.toLowerCase() === String(chId).toLowerCase());
+                channelName = matched ? matched.name : String(chId);
+            }
+            return {
+                ...log,
+                portalName: portal.name,
+                channel: channelName || log.channel || 'Genel'
+            };
+        });
 
         // Calculate channel stats with 100% precision for every channel in portal.channels
         const channelStats = {};
@@ -2087,7 +2159,7 @@ router.get('/activity-logs', protect, admin, async (req, res) => {
         const [logs, total] = await Promise.all([
             ActivityLog.find(query)
                 .populate('user', 'username profile.displayName profile.avatar')
-                .populate('portal', 'name avatar')
+                .populate('portal', 'name avatar channels')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit))
@@ -2100,32 +2172,46 @@ router.get('/activity-logs', protect, admin, async (req, res) => {
             let pId = log.portal?._id || log.portal || log.details?.portalId;
             let chId = log.channel || log.details?.channelName || log.details?.channel || log.details?.channelId;
 
+            // Check if portal name is already stored or passed as string in details.portal
+            let pName = log.portalName || log.portal?.name || log.details?.portalName || '';
+            if (!pName && typeof log.details?.portal === 'string' && !/^[a-f0-9]{24}$/i.test(log.details.portal)) {
+                pName = log.details.portal;
+            }
+
             if (log.details?.roomName && typeof log.details.roomName === 'string') {
-                const match = log.details.roomName.match(/portal_([a-f0-9]{24})_channel_([a-f0-9]{24})/i);
+                const match = log.details.roomName.match(/portal_([a-f0-9]{24})_channel_([\w-]+)/i);
                 if (match) {
                     pId = pId || match[1];
                     chId = chId || match[2];
                 }
             }
 
-            if (pId && (!log.portalName || !log.channel || /^[a-f0-9]{24}$/i.test(log.channel))) {
+            if (pId && (!pName || !chId || /^[a-f0-9]{24}$/i.test(chId))) {
                 try {
                     const pDoc = await Portal.findById(pId).select('name channels').lean();
                     if (pDoc) {
-                        if (!log.portalName) log.portalName = pDoc.name;
+                        if (!pName) pName = pDoc.name;
                         if (chId && pDoc.channels) {
                             const ch = pDoc.channels.find(c => c._id?.toString() === String(chId) || c.name === String(chId));
-                            if (ch) log.channel = ch.name;
+                            if (ch) chId = ch.name;
                         }
                     }
                 } catch (e) {}
             }
 
-            if (log.portalName && log.details) {
-                log.details.portalName = log.portalName;
+            if (pName) {
+                log.portalName = pName;
+                if (log.details) {
+                    log.details.portalName = pName;
+                    if (!log.details.portal) log.details.portal = pName;
+                }
             }
-            if (log.channel && log.details) {
-                log.details.channelName = log.channel;
+            if (chId) {
+                log.channel = String(chId);
+                if (log.details) {
+                    log.details.channelName = String(chId);
+                    if (!log.details.channel) log.details.channel = String(chId);
+                }
             }
             return log;
         }));

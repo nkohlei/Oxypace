@@ -6703,6 +6703,39 @@ body.light .modal-overlay-modern,
     color: #ddd;
 }
 
+.portal-audit-feed-card {
+    transition: all 0.2s ease;
+}
+
+.portal-audit-feed-card:hover {
+    border-color: #3b82f6 !important;
+    background: #191919 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.channel-badge-chip {
+    font-family: monospace;
+    font-size: 10px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #38bdf8;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.media-mini-pill {
+    font-size: 10px;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    color: #aaa;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 
 
 

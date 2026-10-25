@@ -625,7 +625,9 @@ const PortalDetailModal = ({
     onEditChannel,
     onDeleteChannel,
     openPortalPosts,
-    openUserDossier
+    openUserDossier,
+    onInspectLog,
+    onMediaClick
 }) => {
     if (!isOpen || !portal) return null;
 
@@ -1676,7 +1678,12 @@ const PortalDetailModal = ({
                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                             {(portal.avatarHistory || []).length > 0 ? (
                                                 portal.avatarHistory.map((item, idx) => (
-                                                    <div key={idx} style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => onMediaClick && onMediaClick({ url: item.url, title: `${portal.name} Logosu`, date: item.changedAt })}
+                                                        style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                                                        title="Büyütmek için tıkla"
+                                                    >
                                                         <AdminMedia
                                                             src={item.url}
                                                             alt=""
@@ -1689,7 +1696,11 @@ const PortalDetailModal = ({
                                                     </div>
                                                 ))
                                             ) : portal.avatar ? (
-                                                <div style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                <div
+                                                    onClick={() => onMediaClick && onMediaClick({ url: portal.avatar, title: `${portal.name} Aktif Logosu` })}
+                                                    style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                                                    title="Büyütmek için tıkla"
+                                                >
                                                     <AdminMedia
                                                         src={portal.avatar}
                                                         alt=""
@@ -1711,7 +1722,12 @@ const PortalDetailModal = ({
                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                             {(portal.bannerHistory || []).length > 0 ? (
                                                 portal.bannerHistory.map((item, idx) => (
-                                                    <div key={idx} style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => onMediaClick && onMediaClick({ url: item.url, title: `${portal.name} Bannerı`, date: item.changedAt })}
+                                                        style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                                                        title="Büyütmek için tıkla"
+                                                    >
                                                         <AdminMedia
                                                             src={item.url}
                                                             alt=""
@@ -1723,7 +1739,11 @@ const PortalDetailModal = ({
                                                     </div>
                                                 ))
                                             ) : portal.banner ? (
-                                                <div style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                <div
+                                                    onClick={() => onMediaClick && onMediaClick({ url: portal.banner, title: `${portal.name} Aktif Bannerı` })}
+                                                    style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                                                    title="Büyütmek için tıkla"
+                                                >
                                                     <AdminMedia
                                                         src={portal.banner}
                                                         alt=""
@@ -1742,21 +1762,137 @@ const PortalDetailModal = ({
                             {(portal.recentActivities || []).length === 0 ? (
                                 <p className="no-data">Bu portala ait son işlem günlüğü bulunamadı.</p>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    {portal.recentActivities.map((act, i) => (
-                                        <div key={act._id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#161616', border: '1px solid #222222', padding: '8px 12px', borderRadius: '8px', fontSize: '11px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span className="mono-tag" style={{ fontSize: '9px' }}>{act.action}</span>
-                                                <span style={{ color: '#cccccc' }}>
-                                                    {act.channel ? `#${act.channel} • ` : act.details?.channelName ? `#${act.details.channelName} • ` : ''}
-                                                    {act.details?.reason || act.details?.title || act.details?.content ? `"${(act.details.content || act.details.title || act.details.reason).substring(0, 60)}"` : act.action}
-                                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {portal.recentActivities.map((act, i) => {
+                                        const sev = act.severity || 'info';
+                                        const narrative = getActionNarrative ? getActionNarrative(act) : { title: act.action, desc: act.details?.content || act.details?.reason || '' };
+                                        const chName = act.channel || act.details?.channelName || (typeof act.details?.channel === 'string' && !/^[a-f0-9]{24}$/i.test(act.details.channel) ? act.details.channel : '');
+                                        const postContent = act.details?.content || act.details?.snippet || act.details?.postSnapshot?.content || '';
+                                        const postAuthor = act.details?.author || (act.user && typeof act.user === 'object' ? act.user : null);
+                                        const hasMedia = act.details?.hasMedia || act.details?.mediaUrl || act.details?.media;
+                                        const mediaUrl = act.details?.mediaUrl || act.details?.media;
+                                        const mediaType = act.details?.mediaType || 'image';
+
+                                        return (
+                                            <div 
+                                                key={act._id || i}
+                                                onClick={() => onInspectLog && onInspectLog(act)}
+                                                className="portal-audit-feed-card"
+                                                style={{
+                                                    background: '#141414',
+                                                    border: '1px solid #242424',
+                                                    borderRadius: '8px',
+                                                    padding: '10px 14px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '6px',
+                                                    cursor: onInspectLog ? 'pointer' : 'default',
+                                                    transition: 'border-color 0.2s',
+                                                }}
+                                            >
+                                                {/* Header Row: Actor + Badges + Time */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {postAuthor ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <AdminMedia
+                                                                    src={postAuthor.profile?.avatar || postAuthor.avatar}
+                                                                    alt=""
+                                                                    isAvatar
+                                                                    style={{ width: '22px', height: '22px', borderRadius: '4px' }}
+                                                                />
+                                                                <span style={{ color: '#fff', fontWeight: 600, fontSize: '12px' }}>
+                                                                    @{postAuthor.username}
+                                                                </span>
+                                                                {postAuthor.profile?.displayName && postAuthor.profile.displayName !== postAuthor.username && (
+                                                                    <span style={{ color: '#777', fontSize: '11px' }}>({postAuthor.profile.displayName})</span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span style={{ color: '#888', fontSize: '12px' }}>
+                                                                ⚙️ {act.username || act.actorRole || 'Sistem / Bot'}
+                                                            </span>
+                                                        )}
+                                                        <span className="mono-tag" style={{ fontSize: '9px' }}>{act.action}</span>
+                                                        <span className={`severity-badge ${sev}`} style={{ fontSize: '9px', padding: '1px 5px' }}>
+                                                            {sev.toUpperCase()}
+                                                        </span>
+                                                        {chName && (
+                                                            <span className="channel-badge-chip" style={{ fontSize: '9px' }}>
+                                                                #{chName}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        {act.ip && <span style={{ color: '#666', fontFamily: 'monospace', fontSize: '10px' }}>{act.ip}</span>}
+                                                        <span style={{ color: '#777', fontFamily: 'monospace', fontSize: '10px' }}>
+                                                            {act.createdAt ? new Date(act.createdAt).toLocaleString('tr-TR') : '-'}
+                                                        </span>
+                                                        {onInspectLog && (
+                                                            <span style={{ color: '#4ade80', fontSize: '11px', fontWeight: 600 }}>🔍 İncele</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Narrative Title & Description */}
+                                                <div style={{ fontSize: '12px', color: '#ccc', lineHeight: 1.4 }}>
+                                                    <strong style={{ color: '#fff', marginRight: '6px' }}>{narrative.title}:</strong>
+                                                    <span>{narrative.desc}</span>
+                                                </div>
+
+                                                {/* Post Content Body Preview (regardless of post type) */}
+                                                {postContent && (
+                                                    <div style={{
+                                                        background: '#0c0c0c',
+                                                        border: '1px solid #1f1f1f',
+                                                        borderRadius: '6px',
+                                                        padding: '8px 12px',
+                                                        color: '#e0e0e0',
+                                                        fontSize: '12px',
+                                                        lineHeight: 1.5,
+                                                        marginTop: '2px',
+                                                        whiteSpace: 'pre-wrap',
+                                                        wordBreak: 'break-word',
+                                                        maxHeight: '120px',
+                                                        overflowY: 'auto'
+                                                    }}>
+                                                        {postContent}
+                                                    </div>
+                                                )}
+
+                                                {/* Attached Media / File Showcase */}
+                                                {hasMedia && mediaUrl && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                                        {mediaType === 'video' ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <span className="media-mini-pill">🎥 Video Eklendi</span>
+                                                            </div>
+                                                        ) : mediaType === 'pdf' ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <span className="media-mini-pill">📄 PDF Belgesi {act.details?.pdfName ? `(${act.details.pdfName})` : ''}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div 
+                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (onMediaClick) onMediaClick({ url: mediaUrl, title: `${portal.name} Paylaşılan Medya` });
+                                                                }}
+                                                            >
+                                                                <AdminMedia
+                                                                    src={mediaUrl}
+                                                                    alt="Paylaşılan Görsel"
+                                                                    style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #333' }}
+                                                                />
+                                                                <span className="media-mini-pill">🖼️ Görsel (Büyütmek için tıkla)</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span style={{ color: '#777777', fontFamily: 'monospace' }}>
-                                                {act.createdAt ? new Date(act.createdAt).toLocaleString('tr-TR') : '-'}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -2115,6 +2251,7 @@ const AdminDashboard = () => {
     const [copiedJson, setCopiedJson] = useState(false);
     const [copiedId, setCopiedId] = useState(null);
     const [showRawJson, setShowRawJson] = useState(false);
+    const [mediaLightbox, setMediaLightbox] = useState(null); // { url, title, date }
 
     // Tourist Admin Granular Permissions State
     const [touristPermissions, setTouristPermissions] = useState({
@@ -3162,9 +3299,9 @@ const AdminDashboard = () => {
         if (!log) return { title: 'Bilinmeyen İşlem', desc: 'Platform kaydı işlendi.' };
         const action = log.action || '';
         const details = log.details || {};
-        const portal = log.portalName || log.portal?.name || details.portalName;
-        const channel = log.channel || details.channelName;
-        const where = portal ? `${portal}${channel ? ` › #${channel}` : ''}` : '';
+        const portal = log.portalName || log.portal?.name || details.portalName || (typeof details.portal === 'string' && !/^[a-f0-9]{24}$/i.test(details.portal) ? details.portal : '');
+        const channel = log.channel || details.channelName || (typeof details.channel === 'string' && !/^[a-f0-9]{24}$/i.test(details.channel) ? details.channel : '');
+        const where = portal ? `${portal}${channel ? ` › #${channel}` : ''}` : (channel ? `#${channel}` : '');
 
         switch (action) {
             case 'STREAM_TOGGLE': {
@@ -3180,13 +3317,23 @@ const AdminDashboard = () => {
                 }
                 return {
                     title: 'Canlı Medya Yayını Durumu Değiştirildi',
-                    desc: `${where ? `${where} odasında: ` : ''}${parts.join(' • ') || details.summary || 'Medya akışı güncellendi'}`
+                    desc: `${where ? `[${where}] ` : ''}${parts.join(' • ') || details.summary || 'Medya akışı güncellendi'}`
                 };
             }
+            case 'BOT_POST':
+                return {
+                    title: 'Bot Otomatik Gönderi Paylaştı',
+                    desc: `${where ? `[${where}] ` : ''}"${details.title || details.snippet || details.content || 'İçerik yayınlandı'}"`
+                };
             case 'POST_CREATE':
                 return {
                     title: 'Yeni Gönderi Paylaşıldı',
-                    desc: `${where ? `${where} kanalına: ` : ''}"${details.content || details.snippet || 'İçerik paylaşıldı'}"`
+                    desc: `${where ? `[${where}] ` : ''}"${details.content || details.snippet || details.title || 'İçerik paylaşıldı'}"`
+                };
+            case 'POST_DELETE':
+                return {
+                    title: 'Gönderi Silindi',
+                    desc: `${where ? `[${where}] ` : ''}Silinen İçerik: "${details.content || details.snippet || details.title || '...'}"`
                 };
             case 'POST_MEDIA_ATTACHED':
                 return {
@@ -7922,6 +8069,8 @@ const AdminDashboard = () => {
                 onDeleteChannel={handleAdminDeleteChannel}
                 openPortalPosts={openPortalPosts}
                 openUserDossier={openUserDossier}
+                onInspectLog={setInspectingLog}
+                onMediaClick={setMediaLightbox}
             />
 
             {/* User Detail / Management Modal */}
@@ -9849,6 +9998,69 @@ const AdminDashboard = () => {
                                 Kapat
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Media Lightbox Modal */}
+            {mediaLightbox && (
+                <div 
+                    className="modal-overlay-modern" 
+                    style={{ zIndex: 100000, background: 'rgba(0, 0, 0, 0.88)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => setMediaLightbox(null)}
+                >
+                    <div 
+                        style={{
+                            maxWidth: '90vw',
+                            maxHeight: '90vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            position: 'relative'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '10px' }}>
+                            <div style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>
+                                {mediaLightbox.title || 'Medya Önizleme'}
+                                {mediaLightbox.date && (
+                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '10px', fontFamily: 'monospace' }}>
+                                        {new Date(mediaLightbox.date).toLocaleString('tr-TR')}
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <a
+                                    href={mediaLightbox.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-modern-ghost"
+                                    style={{ padding: '4px 10px', fontSize: '11px', textDecoration: 'none' }}
+                                >
+                                    ↗️ Yeni Sekmede Aç
+                                </a>
+                                <button
+                                    type="button"
+                                    className="btn-modern-ghost"
+                                    style={{ padding: '4px 10px', fontSize: '11px' }}
+                                    onClick={() => setMediaLightbox(null)}
+                                >
+                                    ✕ Kapat
+                                </button>
+                            </div>
+                        </div>
+                        <img 
+                            src={mediaLightbox.url} 
+                            alt="" 
+                            style={{
+                                maxWidth: '85vw',
+                                maxHeight: '80vh',
+                                objectFit: 'contain',
+                                borderRadius: '8px',
+                                border: '1px solid #333',
+                                boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+                            }} 
+                        />
                     </div>
                 </div>
             )}
