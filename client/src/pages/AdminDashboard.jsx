@@ -2019,6 +2019,8 @@ const AdminDashboard = () => {
     const [activityStatsLoading, setActivityStatsLoading] = useState(false);
     const [inspectingLog, setInspectingLog] = useState(null);
     const [copiedJson, setCopiedJson] = useState(false);
+    const [copiedId, setCopiedId] = useState(null);
+    const [showRawJson, setShowRawJson] = useState(false);
 
     // Tourist Admin Granular Permissions State
     const [touristPermissions, setTouristPermissions] = useState({
@@ -3022,6 +3024,212 @@ const AdminDashboard = () => {
         if (activityLogsSeverity && activityLogsSeverity !== 'all') url += `&severity=${activityLogsSeverity}`;
         if (activityLogsSearch) url += `&q=${encodeURIComponent(activityLogsSearch)}`;
         window.open(url, '_blank');
+    };
+
+    // Format human-friendly byte size (e.g. 2.4 MB, 680 KB)
+    const formatFileSize = (bytes) => {
+        if (!bytes || isNaN(bytes)) return null;
+        const num = Number(bytes);
+        if (num <= 0) return null;
+        if (num < 1024) return `${num} B`;
+        if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+        return `${(num / (1024 * 1024)).toFixed(2)} MB`;
+    };
+
+    // Format duration in seconds (e.g. 14 dk 22 sn)
+    const formatDurationSec = (seconds) => {
+        if (seconds === undefined || seconds === null || isNaN(seconds)) return null;
+        const sec = Math.round(Number(seconds));
+        if (sec < 60) return `${sec} sn`;
+        const mins = Math.floor(sec / 60);
+        const remSec = sec % 60;
+        if (mins < 60) return `${mins} dk ${remSec > 0 ? remSec + ' sn' : ''}`;
+        const hours = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        return `${hours} sa ${remMins > 0 ? remMins + ' dk' : ''}`;
+    };
+
+    // Human-friendly Turkish reason translation
+    const translateReason = (reason) => {
+        if (!reason) return 'Bilinmiyor';
+        const map = {
+            'INVALID_PASSWORD': 'Hatalı şifre girişi',
+            'USER_NOT_FOUND': 'Kullanıcı hesabı bulunamadı',
+            'DELETED_ACCOUNT': 'Silinmiş hesap ile giriş denemesi',
+            'UNVERIFIED_EMAIL': 'Doğrulanmamış e-posta adresi',
+            'BANNED_USER': 'Yasaklı kullanıcı hesabı',
+            'RATE_LIMIT_EXCEEDED': 'İstek limiti aşıldı (Rate limit)'
+        };
+        return map[reason] || reason;
+    };
+
+    // Generates a descriptive, human-readable narrative and title for any activity log
+    const getActionNarrative = (log) => {
+        if (!log) return { title: 'Bilinmeyen İşlem', desc: 'Platform kaydı işlendi.' };
+        const action = log.action || '';
+        const details = log.details || {};
+        const portal = log.portalName || log.portal?.name || details.portalName;
+        const channel = log.channel || details.channelName;
+        const where = portal ? `${portal}${channel ? ` › #${channel}` : ''}` : '';
+
+        switch (action) {
+            case 'STREAM_TOGGLE': {
+                const parts = [];
+                if (details.isCameraOn !== undefined) {
+                    parts.push(details.isCameraOn ? '🎥 Kamera Açıldı' : '📷 Kamera Kapalı');
+                }
+                if (details.isScreenSharing !== undefined) {
+                    parts.push(details.isScreenSharing ? '🖥️ Ekran Paylaşımı Başlatıldı' : '🖥️ Ekran Kapalı');
+                }
+                if (details.isMuted !== undefined) {
+                    parts.push(details.isMuted ? '🔇 Mikrofon Susturuldu' : '🎙️ Mikrofon Açık');
+                }
+                return {
+                    title: 'Canlı Medya Yayını Durumu Değiştirildi',
+                    desc: `${where ? `${where} odasında: ` : ''}${parts.join(' • ') || details.summary || 'Medya akışı güncellendi'}`
+                };
+            }
+            case 'POST_CREATE':
+                return {
+                    title: 'Yeni Gönderi Paylaşıldı',
+                    desc: `${where ? `${where} kanalına: ` : ''}"${details.content || details.snippet || 'İçerik paylaşıldı'}"`
+                };
+            case 'POST_MEDIA_ATTACHED':
+                return {
+                    title: 'Gönderiye Medya/Dosya Eklendi',
+                    desc: `${details.fileName ? `📁 ${details.fileName}` : ''}${details.fileSize ? ` (${formatFileSize(details.fileSize)})` : ''}${details.content ? ` • "${details.content.substring(0, 50)}"` : ''}`
+                };
+            case 'FILE_UPLOAD':
+                return {
+                    title: 'Depolama Alanına Dosya Yüklendi',
+                    desc: `📁 ${details.fileName || 'Dosya'} (${formatFileSize(details.sizeBytes || details.fileSize)})${details.mimeType ? ` • Tür: ${details.mimeType}` : ''}`
+                };
+            case 'FILE_DELETE':
+                return {
+                    title: 'Depolama Alanından Dosya Silindi',
+                    desc: `🗑️ ${details.fileName || details.key || 'Dosya silindi'}`
+                };
+            case 'ROOM_JOIN':
+                return {
+                    title: 'Canlı Ses/Görüntü Odasına Katıldı',
+                    desc: `${where ? `${where} odasına giriş yapıldı.` : 'Canlı ses odasına katılım sağlandı.'}`
+                };
+            case 'ROOM_LEAVE':
+                return {
+                    title: 'Canlı Ses/Görüntü Odasından Ayrıldı',
+                    desc: `${where ? `${where} odasından ayrıldı.` : 'Odadan ayrıldı.'}${details.durationSec !== undefined ? ` • Odada Kalınan Süre: ${formatDurationSec(details.durationSec)}` : ''}`
+                };
+            case 'WP_START':
+                return {
+                    title: 'Watch Party Başlatıldı',
+                    desc: `${where ? `${where}: ` : ''}Ortak video izleme oturumu başlatıldı.`
+                };
+            case 'WP_PLAY':
+                return {
+                    title: 'Watch Party: Video Oynatılıyor',
+                    desc: `${where ? `${where}: ` : ''}Medya yürütülmeye devam ediyor.`
+                };
+            case 'WP_PAUSE':
+                return {
+                    title: 'Watch Party: Video Duraklatıldı',
+                    desc: `${where ? `${where}: ` : ''}Medya yürütmesi duraklatıldı.`
+                };
+            case 'WP_SEEK':
+                return {
+                    title: 'Watch Party: Video Sarıldı',
+                    desc: `${where ? `${where}: ` : ''}Medya oynatma konumu değiştirildi.`
+                };
+            case 'ICE_CONNECTION_FAILED':
+                return {
+                    title: 'WebRTC Bağlantı Hatası (ICE Restart)',
+                    desc: 'Kullanıcının canlı yayın/ses akışı kesildi, yeniden bağlanılıyor.'
+                };
+            case 'LOGIN_SUCCESS':
+                return {
+                    title: 'Başarılı Oturum Açma',
+                    desc: `${details.method === 'google' ? 'Google ile ' : ''}${details.email || log.username || 'Kullanıcı'} giriş yaptı.${details.isNewDevice ? ' (Yeni Tanınmayan Cihaz)' : ''}`
+                };
+            case 'LOGIN_FAILED':
+                return {
+                    title: 'Başarısız Giriş Denemesi',
+                    desc: `Sebep: ${translateReason(details.reason)}${details.securityAlert ? ` • 🚨 ${details.securityAlert}` : ''}`
+                };
+            case 'LOGOUT':
+                return {
+                    title: 'Oturum Kapatıldı',
+                    desc: `${log.username || 'Kullanıcı'} platformdan çıkış yaptı.`
+                };
+            case 'PORTAL_JOIN':
+                return {
+                    title: 'Portala Katılım Sağlandı',
+                    desc: `${portal || 'Portal'} topluluğuna katıldı.${details.inviteCode ? ` (Davet Kodu: ${details.inviteCode})` : ''}`
+                };
+            case 'PORTAL_LEAVE':
+                return {
+                    title: 'Portaldan Ayrılındı',
+                    desc: `${portal || 'Portal'} topluluğundan ayrıldı.`
+                };
+            case 'PORTAL_CREATE':
+                return {
+                    title: 'Yeni Portal Kuruldu',
+                    desc: `🏛️ "${portal || details.portalName || 'Yeni Portal'}" oluşturuldu.`
+                };
+            case 'PORTAL_DELETE':
+                return {
+                    title: 'Portal Kalıcı Olarak Silindi',
+                    desc: `🏛️ "${details.portalName || portal || 'Portal'}" silindi.`
+                };
+            case 'CHANNEL_CREATE':
+                return {
+                    title: 'Yeni Kanal Oluşturuldu',
+                    desc: `${portal ? `${portal} bünyesinde ` : ''}#${channel || details.channelName || 'kanal'} oluşturuldu.`
+                };
+            case 'CHANNEL_DELETE':
+                return {
+                    title: 'Kanal Silindi',
+                    desc: `${portal ? `${portal} bünyesindeki ` : ''}#${channel || 'kanal'} silindi.`
+                };
+            case 'MESSAGE_EDIT':
+                return {
+                    title: 'Mesaj Düzenlendi',
+                    desc: `Güncellenen içerik: "${details.newContent || details.content || '...'}"`
+                };
+            case 'MESSAGE_DELETE':
+                return {
+                    title: 'Mesaj Silindi',
+                    desc: `Silinen mesaj: "${details.content || '...'}"`
+                };
+            case 'REPORT_CREATED':
+                return {
+                    title: 'Yeni Güvenlik & İçerik Şikayeti',
+                    desc: `Bildirim Sebebi: ${details.reason || 'Kural İhlali'}`
+                };
+            case 'PASSWORD_RESET_SUCCESS':
+                return {
+                    title: 'Şifre Sıfırlandı',
+                    desc: 'Hesap şifresi güvenlik bağlantısıyla başarıyla değiştirildi.'
+                };
+            case 'PROFILE_UPDATE':
+                return {
+                    title: 'Profil Bilgileri Güncellendi',
+                    desc: 'Kullanıcı profil biyografisi, avatarı veya adı güncellendi.'
+                };
+            case 'HIGH_LATENCY':
+                return {
+                    title: 'Yüksek İstek Gecikmesi (>500ms)',
+                    desc: `${details.method || ''} ${details.path || ''} (${details.durationMs}ms)`
+                };
+            case 'UNHANDLED_ERROR':
+                return {
+                    title: 'Sunucu İç Hatası (500)',
+                    desc: `${details.message || 'Sistem düzeyinde istisna oluştu.'}`
+                };
+            default:
+                return {
+                    title: action.replace(/_/g, ' '),
+                    desc: details.reason || details.title || details.snippet || (typeof details === 'object' ? JSON.stringify(details) : String(details || ''))
+                };
+        }
     };
 
     const handleUpdateTouristPermissions = async (userId, newPermissions) => {
@@ -6602,22 +6810,46 @@ const AdminDashboard = () => {
                                                                 </div>
                                                             </td>
                                                             <td style={{ fontSize: '11px', color: '#aaa' }}>
-                                                                {log.portalName ? (
-                                                                    <span className="portal-badge-chip">
-                                                                        🏛️ {log.portalName}
-                                                                    </span>
-                                                                ) : log.portal ? (
-                                                                    <span className="portal-badge-chip">
-                                                                        🏛️ Portal
+                                                                {log.portalName || log.portal?.name || log.details?.portalName ? (
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                                                        <span className="portal-badge-chip">
+                                                                            🏛️ {log.portalName || log.portal?.name || log.details?.portalName}
+                                                                        </span>
+                                                                        {(log.channel || log.details?.channelName) && (
+                                                                            <span className="channel-badge-chip">
+                                                                                # {log.channel || log.details?.channelName}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                ) : log.targetType && log.targetType !== 'UserSession' ? (
+                                                                    <span className="target-badge-chip">
+                                                                        🎯 {log.targetType}: {log.targetName || log.targetId?.substring(0, 8)}
                                                                     </span>
                                                                 ) : (
-                                                                    <span style={{ color: '#555' }}>-</span>
+                                                                    <span style={{ color: '#555', fontSize: '11px' }}>🌐 Genel</span>
                                                                 )}
                                                             </td>
                                                             <td style={{ fontSize: '12px', color: '#ddd' }}>
-                                                                {log.details?.reason || log.details?.title || log.details?.snippet || log.details?.fileName || (
-                                                                    typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-')
-                                                                )}
+                                                                {(() => {
+                                                                    const narrative = getActionNarrative(log);
+                                                                    return (
+                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                            <div style={{ fontWeight: 600, color: '#fff', fontSize: '12px' }}>
+                                                                                {narrative.title}
+                                                                            </div>
+                                                                            <div style={{ color: '#aaa', fontSize: '11px', lineHeight: 1.4 }}>
+                                                                                {narrative.desc}
+                                                                            </div>
+                                                                            {(log.details?.hasMedia || log.details?.mediaUrl || log.details?.fileName) && (
+                                                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                                                                                    <span className="media-mini-pill">
+                                                                                        📎 {log.details.mediaType || 'Medya'} {formatFileSize(log.details.fileSize || log.details.sizeBytes) ? `• ${formatFileSize(log.details.fileSize || log.details.sizeBytes)}` : ''}
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             </td>
                                                             <td style={{ textAlign: 'center' }}>
                                                                 <button
@@ -9020,11 +9252,206 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="modal-body-modern inspector-body">
-                            {/* Metadata Grid */}
-                            <div className="inspector-section-grid">
+                            {/* 1. Hero Action & Narrative Summary Card */}
+                            {(() => {
+                                const narrative = getActionNarrative(inspectingLog);
+                                const portal = inspectingLog.portalName || inspectingLog.portal?.name || inspectingLog.details?.portalName;
+                                const channel = inspectingLog.channel || inspectingLog.details?.channelName;
+                                return (
+                                    <div className="inspector-hero-card">
+                                        <div className="hero-action-badge-row">
+                                            <span className={`severity-badge ${inspectingLog.severity || 'info'}`}>
+                                                {(inspectingLog.severity || 'info').toUpperCase()}
+                                            </span>
+                                            <span className="hero-action-code">{inspectingLog.action}</span>
+                                            {portal && (
+                                                <span className="hero-scope-pill">
+                                                    🏛️ {portal} {channel ? `› #${channel}` : ''}
+                                                </span>
+                                            )}
+                                            {inspectingLog.category && (
+                                                <span className="hero-category-pill">
+                                                    {inspectingLog.category.toUpperCase()}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="hero-action-title">
+                                            {narrative.title}
+                                        </div>
+                                        <div className="hero-action-desc">
+                                            {narrative.desc}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* 2. Media, File & Content Showcase */}
+                            {(inspectingLog.details?.mediaUrl || inspectingLog.details?.content || inspectingLog.details?.fileName || inspectingLog.details?.hasMedia) && (
+                                <div className="inspector-box" style={{ marginTop: '12px' }}>
+                                    <div className="inspector-box-title">📦 Dosya, Medya ve İçerik Ayrıntıları</div>
+                                    <div className="media-preview-container">
+                                        {inspectingLog.details?.mediaUrl && (
+                                            <div className="media-preview-thumb">
+                                                {inspectingLog.details?.mediaType === 'video' ? (
+                                                    <video
+                                                        src={getImageUrl(inspectingLog.details.mediaUrl)}
+                                                        controls
+                                                        style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', background: '#000' }}
+                                                    />
+                                                ) : (
+                                                    <AdminMedia
+                                                        src={inspectingLog.details.mediaUrl}
+                                                        alt="Medya Önizlemesi"
+                                                        style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', objectFit: 'contain' }}
+                                                    />
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="media-meta-list" style={{ flex: 1 }}>
+                                            {inspectingLog.details?.fileName && (
+                                                <div className="kv-item">
+                                                    <span className="kv-key">Dosya Adı:</span>
+                                                    <span className="kv-val mono">{inspectingLog.details.fileName}</span>
+                                                </div>
+                                            )}
+                                            {(inspectingLog.details?.fileSize || inspectingLog.details?.sizeBytes) && (
+                                                <div className="kv-item">
+                                                    <span className="kv-key">Dosya Boyutu:</span>
+                                                    <span className="kv-val" style={{ color: '#4ade80', fontWeight: 700 }}>
+                                                        {formatFileSize(inspectingLog.details.fileSize || inspectingLog.details.sizeBytes)} ({Number(inspectingLog.details.fileSize || inspectingLog.details.sizeBytes).toLocaleString()} byte)
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {(inspectingLog.details?.mimeType || inspectingLog.details?.mediaType) && (
+                                                <div className="kv-item">
+                                                    <span className="kv-key">Medya Türü:</span>
+                                                    <span className="kv-val mono">{inspectingLog.details.mimeType || inspectingLog.details.mediaType}</span>
+                                                </div>
+                                            )}
+                                            {inspectingLog.details?.content && (
+                                                <div style={{ marginTop: '10px', borderTop: '1px solid #222', paddingTop: '10px' }}>
+                                                    <span className="kv-key" style={{ display: 'block', marginBottom: '6px' }}>Gönderi / Mesaj İçeriği:</span>
+                                                    <div className="content-text-bubble">
+                                                        "{inspectingLog.details.content}"
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3. Explicit ID Directory (Anlaşılır Kimlikler ve Varlık Rehberi) */}
+                            <div className="inspector-box" style={{ marginTop: '12px' }}>
+                                <div className="inspector-box-title">🆔 İLİŞKİLİ KİMLİKLER & AÇIKLAMALARI (EXPLICIT ID DIRECTORY)</div>
+                                <div className="explicit-ids-grid">
+                                    {/* User ID */}
+                                    {inspectingLog.user && (
+                                        <div className="id-card-item">
+                                            <div className="id-card-header">
+                                                <span className="id-card-badge user">👤 KULLANICI ID (USER ID)</span>
+                                                <button
+                                                    type="button"
+                                                    className="id-copy-tiny"
+                                                    title="Kullanıcı ID Kopyala"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(String(inspectingLog.user._id || inspectingLog.user));
+                                                        setCopiedId('user');
+                                                        setTimeout(() => setCopiedId(null), 1500);
+                                                    }}
+                                                >
+                                                    {copiedId === 'user' ? '✓' : <Copy size={11} />}
+                                                </button>
+                                            </div>
+                                            <div className="id-value-code">{String(inspectingLog.user._id || inspectingLog.user)}</div>
+                                            <div className="id-explanation">
+                                                Ait Olduğu Hesap: <strong>@{inspectingLog.user.username || inspectingLog.username}</strong>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Portal ID */}
+                                    {(inspectingLog.portal || inspectingLog.details?.portalId) && (
+                                        <div className="id-card-item">
+                                            <div className="id-card-header">
+                                                <span className="id-card-badge portal">🏛️ PORTAL ID</span>
+                                                <button
+                                                    type="button"
+                                                    className="id-copy-tiny"
+                                                    title="Portal ID Kopyala"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(String(inspectingLog.portal?._id || inspectingLog.portal || inspectingLog.details?.portalId));
+                                                        setCopiedId('portal');
+                                                        setTimeout(() => setCopiedId(null), 1500);
+                                                    }}
+                                                >
+                                                    {copiedId === 'portal' ? '✓' : <Copy size={11} />}
+                                                </button>
+                                            </div>
+                                            <div className="id-value-code">{String(inspectingLog.portal?._id || inspectingLog.portal || inspectingLog.details?.portalId)}</div>
+                                            <div className="id-explanation">
+                                                Ait Olduğu Portal: <strong>{inspectingLog.portalName || inspectingLog.portal?.name || inspectingLog.details?.portalName || 'Portal'}</strong>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Channel ID */}
+                                    {(inspectingLog.channel || inspectingLog.details?.channelId) && (
+                                        <div className="id-card-item">
+                                            <div className="id-card-header">
+                                                <span className="id-card-badge channel">#️⃣ KANAL ID (CHANNEL ID)</span>
+                                                <button
+                                                    type="button"
+                                                    className="id-copy-tiny"
+                                                    title="Kanal ID Kopyala"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(String(inspectingLog.details?.channelId || inspectingLog.channel));
+                                                        setCopiedId('channel');
+                                                        setTimeout(() => setCopiedId(null), 1500);
+                                                    }}
+                                                >
+                                                    {copiedId === 'channel' ? '✓' : <Copy size={11} />}
+                                                </button>
+                                            </div>
+                                            <div className="id-value-code">{String(inspectingLog.details?.channelId || inspectingLog.channel)}</div>
+                                            <div className="id-explanation">
+                                                Ait Olduğu Kanal: <strong>#{inspectingLog.channel || inspectingLog.details?.channelName || 'Kanal'}</strong>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Target ID */}
+                                    {inspectingLog.targetId && (
+                                        <div className="id-card-item">
+                                            <div className="id-card-header">
+                                                <span className="id-card-badge target">🎯 HEDEF {inspectingLog.targetType?.toUpperCase() || 'VARLIK'} ID</span>
+                                                <button
+                                                    type="button"
+                                                    className="id-copy-tiny"
+                                                    title="Hedef ID Kopyala"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(String(inspectingLog.targetId));
+                                                        setCopiedId('target');
+                                                        setTimeout(() => setCopiedId(null), 1500);
+                                                    }}
+                                                >
+                                                    {copiedId === 'target' ? '✓' : <Copy size={11} />}
+                                                </button>
+                                            </div>
+                                            <div className="id-value-code">{String(inspectingLog.targetId)}</div>
+                                            <div className="id-explanation">
+                                                Hedef Varlık: <strong>{inspectingLog.targetName || inspectingLog.targetType || 'Nesne'}</strong>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 4. Actor & Network Grid */}
+                            <div className="inspector-section-grid" style={{ marginTop: '12px' }}>
                                 {/* Actor Box */}
                                 <div className="inspector-box">
-                                    <div className="inspector-box-title">👤 Aktör & Hesap</div>
+                                    <div className="inspector-box-title">👤 Aktör & Hesap Bilgileri</div>
                                     {inspectingLog.user ? (
                                         <div className="inspector-actor-detail">
                                             <AdminMedia
@@ -9032,14 +9459,17 @@ const AdminDashboard = () => {
                                                 alt=""
                                                 isAvatar
                                                 className="v2-avatar-tiny"
-                                                style={{ width: '36px', height: '36px', borderRadius: '6px' }}
+                                                style={{ width: '40px', height: '40px', borderRadius: '8px' }}
                                             />
                                             <div>
-                                                <div style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>
+                                                <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>
                                                     {inspectingLog.user.profile?.displayName || inspectingLog.user.username}
                                                 </div>
-                                                <div style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}>
-                                                    @{inspectingLog.user.username} • ID: {inspectingLog.user._id || inspectingLog.user}
+                                                <div style={{ color: '#aaa', fontSize: '11px', fontFamily: 'monospace', marginTop: '2px' }}>
+                                                    @{inspectingLog.user.username}
+                                                </div>
+                                                <div style={{ color: '#666', fontSize: '10px', marginTop: '3px' }}>
+                                                    Rol: <strong style={{ color: '#ddd' }}>{inspectingLog.actorRole || 'Kullanıcı'}</strong>
                                                 </div>
                                             </div>
                                         </div>
@@ -9067,7 +9497,7 @@ const AdminDashboard = () => {
                                         <div className="kv-item">
                                             <span className="kv-key">Cihaz / Tarayıcı:</span>
                                             <span className="kv-val">
-                                                {inspectingLog.deviceInfo ? `${inspectingLog.deviceInfo.browser || '-'} / ${inspectingLog.deviceInfo.os || '-'} (${inspectingLog.deviceInfo.device || 'Desktop'})` : '-'}
+                                                {inspectingLog.device ? `${inspectingLog.device.browser || '-'} • ${inspectingLog.device.os || '-'} (${inspectingLog.device.deviceType || 'Masaüstü'})` : inspectingLog.deviceInfo ? `${inspectingLog.deviceInfo.browser || '-'} • ${inspectingLog.deviceInfo.os || '-'}` : '-'}
                                             </span>
                                         </div>
                                         <div className="kv-item">
@@ -9080,40 +9510,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Target & Scope Box */}
-                            {(inspectingLog.targetId || inspectingLog.portal || inspectingLog.portalName || inspectingLog.channel) && (
-                                <div className="inspector-box" style={{ marginTop: '12px' }}>
-                                    <div className="inspector-box-title">🎯 Hedef & Kapsam Bilgileri</div>
-                                    <div className="inspector-key-value-list horizontal">
-                                        {inspectingLog.portalName && (
-                                            <div className="kv-item">
-                                                <span className="kv-key">Portal:</span>
-                                                <span className="kv-val">🏛️ {inspectingLog.portalName}</span>
-                                            </div>
-                                        )}
-                                        {inspectingLog.channel && (
-                                            <div className="kv-item">
-                                                <span className="kv-key">Kanal:</span>
-                                                <span className="kv-val"># {inspectingLog.channel}</span>
-                                            </div>
-                                        )}
-                                        {inspectingLog.targetType && (
-                                            <div className="kv-item">
-                                                <span className="kv-key">Hedef Türü:</span>
-                                                <span className="kv-val mono">{inspectingLog.targetType}</span>
-                                            </div>
-                                        )}
-                                        {inspectingLog.targetId && (
-                                            <div className="kv-item">
-                                                <span className="kv-key">Hedef ID:</span>
-                                                <span className="kv-val mono">{inspectingLog.targetId}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Visual Before / After Diff */}
+                            {/* 5. Visual Before / After Diff */}
                             {inspectingLog.diff && (inspectingLog.diff.before || inspectingLog.diff.after) && (
                                 <div className="inspector-box" style={{ marginTop: '12px' }}>
                                     <div className="inspector-box-title">🔄 Değişiklik Karşılaştırması (Before / After Diff)</div>
@@ -9134,25 +9531,36 @@ const AdminDashboard = () => {
                                 </div>
                             )}
 
-                            {/* Raw Details / JSON Inspector */}
+                            {/* 6. Collapsible Raw JSON Payload Block */}
                             <div className="inspector-box" style={{ marginTop: '12px' }}>
                                 <div className="inspector-box-title-row">
-                                    <span className="inspector-box-title">📋 Ham Veri & Metaveri (JSON Payload)</span>
-                                    <button
-                                        type="button"
-                                        className="copy-payload-btn"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(JSON.stringify(inspectingLog, null, 2));
-                                            setCopiedJson(true);
-                                            setTimeout(() => setCopiedJson(false), 2000);
-                                        }}
-                                    >
-                                        {copiedJson ? '✓ Kopyalandı' : 'Kopyala'}
-                                    </button>
+                                    <span className="inspector-box-title">📋 Ham Teknik Veri & Metaveri (JSON Payload)</span>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            type="button"
+                                            className="copy-payload-btn"
+                                            onClick={() => setShowRawJson(!showRawJson)}
+                                        >
+                                            {showRawJson ? '▲ Gizle' : '▼ Göster'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="copy-payload-btn"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(JSON.stringify(inspectingLog, null, 2));
+                                                setCopiedJson(true);
+                                                setTimeout(() => setCopiedJson(false), 2000);
+                                            }}
+                                        >
+                                            {copiedJson ? '✓ Kopyalandı' : 'JSON Kopyala'}
+                                        </button>
+                                    </div>
                                 </div>
-                                <pre className="raw-json-block">
-                                    {JSON.stringify(inspectingLog.details || inspectingLog, null, 2)}
-                                </pre>
+                                {showRawJson && (
+                                    <pre className="raw-json-block" style={{ marginTop: '10px' }}>
+                                        {JSON.stringify(inspectingLog.details || inspectingLog, null, 2)}
+                                    </pre>
+                                )}
                             </div>
                         </div>
 

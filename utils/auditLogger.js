@@ -1,8 +1,36 @@
 import ActivityLog from '../models/ActivityLog.js';
+import Portal from '../models/Portal.js';
 
 // In-memory sliding window to detect brute force attempts and rapid anomalies
 const FAILED_LOGIN_TRACKER = new Map(); // key: ip or username -> array of timestamps
 const USER_LOCATION_TRACKER = new Map(); // key: userId -> { country, timestamp }
+const PORTAL_RESOLVE_CACHE = new Map(); // key: portalId -> { name, channels, timestamp }
+
+export const resolvePortalAndChannel = async (portalId, channelId) => {
+    if (!portalId) return { portalName: '', channelName: '' };
+    try {
+        const pKey = String(portalId);
+        let cached = PORTAL_RESOLVE_CACHE.get(pKey);
+        const now = Date.now();
+        if (!cached || now - cached.timestamp > 60000) {
+            const p = await Portal.findById(portalId).select('name channels').lean();
+            if (p) {
+                cached = { name: p.name || '', channels: p.channels || [], timestamp: now };
+                PORTAL_RESOLVE_CACHE.set(pKey, cached);
+            }
+        }
+        if (!cached) return { portalName: '', channelName: '' };
+
+        let channelName = '';
+        if (channelId && cached.channels) {
+            const ch = cached.channels.find(c => c._id?.toString() === String(channelId) || c.name === String(channelId));
+            if (ch) channelName = ch.name;
+        }
+        return { portalName: cached.name, channelName };
+    } catch (err) {
+        return { portalName: '', channelName: '' };
+    }
+};
 
 // Periodic cleanup of in-memory tracker (every 10 minutes)
 setInterval(() => {
@@ -176,6 +204,53 @@ export const logActivity = async ({
                 USER_LOCATION_TRACKER.set(userIdStr, { country: finalCountry, timestamp: now });
             }
 
+            // Automatic Portal & Channel Resolution if IDs are provided without friendly names
+            let resolvedPortalId = portal ? (portal._id || portal) : (details?.portalId || null);
+            let resolvedChannel = channel || details?.channelName || details?.channel || details?.channelId || '';
+
+            // Extract from roomName if formatted as portal_{portalId}_channel_{channelId}
+            if (details?.roomName && typeof details.roomName === 'string') {
+                const roomMatch = details.roomName.match(/portal_([a-f0-9]{24})_channel_([a-f0-9]{24})/i);
+                if (roomMatch) {
+                    resolvedPortalId = resolvedPortalId || roomMatch[1];
+                    resolvedChannel = resolvedChannel || roomMatch[2];
+                }
+            }
+
+            let resolvedPortalName = portalName || portal?.name || details?.portalName || '';
+            if (resolvedPortalId && (!resolvedPortalName || !resolvedChannel || /^[a-f0-9]{24}$/i.test(resolvedChannel))) {
+                const res = await resolvePortalAndChannel(resolvedPortalId, resolvedChannel);
+                if (!resolvedPortalName && res.portalName) resolvedPortalName = res.portalName;
+                if (res.channelName) resolvedChannel = res.channelName;
+            }
+
+            // Sync enriched details
+            if (resolvedPortalName && !details.portalName) details.portalName = resolvedPortalName;
+            if (resolvedChannel && !details.channelName) details.channelName = resolvedChannel;
+            if (resolvedPortalId && !details.portalId) details.portalId = String(resolvedPortalId);
+
+            // Derive targetType and targetName if empty
+            let finalTargetType = targetType;
+            let finalTargetName = targetName;
+            if (!finalTargetType) {
+                if (upperAction.startsWith('STREAM_') || upperAction.startsWith('WP_') || upperAction.startsWith('ROOM_')) {
+                    finalTargetType = 'VoiceRoom';
+                    finalTargetName = `${resolvedPortalName || 'Portal'} > #${resolvedChannel || 'Genel'}`;
+                } else if (upperAction.startsWith('POST_')) {
+                    finalTargetType = 'Post';
+                    finalTargetName = details?.title || details?.snippet || (resolvedPortalName ? `${resolvedPortalName} Gönderisi` : 'Gönderi');
+                } else if (upperAction.startsWith('PORTAL_')) {
+                    finalTargetType = 'Portal';
+                    finalTargetName = resolvedPortalName || 'Portal';
+                } else if (upperAction.startsWith('CHANNEL_')) {
+                    finalTargetType = 'Channel';
+                    finalTargetName = `#${resolvedChannel || 'Kanal'}`;
+                } else if (upperAction.startsWith('LOGIN_') || upperAction === 'LOGOUT') {
+                    finalTargetType = 'UserSession';
+                    finalTargetName = `@${username || 'kullanici'}`;
+                }
+            }
+
             // Persistence
             const logEntry = await ActivityLog.create({
                 user: user ? (user._id || user) : null,
@@ -184,12 +259,12 @@ export const logActivity = async ({
                 action: upperAction,
                 category,
                 severity: finalSeverity,
-                portal: portal ? (portal._id || portal) : null,
-                portalName: portalName || (portal?.name || ''),
-                channel: String(channel || ''),
+                portal: resolvedPortalId,
+                portalName: resolvedPortalName,
+                channel: String(resolvedChannel || ''),
                 targetId: String(targetId || ''),
-                targetType: String(targetType || ''),
-                targetName: String(targetName || ''),
+                targetType: String(finalTargetType || ''),
+                targetName: String(finalTargetName || ''),
                 ip: finalIp,
                 country: finalCountry || 'TR',
                 city: finalCity || 'Bilinmiyor',

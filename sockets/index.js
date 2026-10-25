@@ -4,6 +4,7 @@ import Message from '../models/Message.js';
 import Notification from '../models/Notification.js';
 import { savePresence, removePresence, getActivePresences } from '../services/presenceService.js';
 import { pubClient } from './redisAdapter.js';
+import { logActivity } from '../utils/auditLogger.js';
 
 let presenceInterval = null;
 
@@ -425,6 +426,16 @@ export const initializeSocket = (io) => {
 
             io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
             await broadcastGlobalOnlineUsers();
+
+            logActivity({
+                user: strUserId,
+                username: socket.user?.username || '',
+                action: 'LOGOUT',
+                category: 'auth',
+                severity: 'info',
+                socket,
+                details: { method: 'user_action' }
+            });
         });
 
         // Handle disconnecting to capture rooms before they are cleared

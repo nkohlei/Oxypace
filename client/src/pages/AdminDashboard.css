@@ -6457,6 +6457,253 @@ body.light .modal-overlay-modern,
     line-height: 1.5;
 }
 
+/* Scope & Target Badges */
+.channel-badge-chip {
+    display: inline-flex;
+    align-items: center;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 10px;
+    color: #38bdf8;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.target-badge-chip {
+    display: inline-flex;
+    align-items: center;
+    background: #141414;
+    border: 1px solid #262626;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 10px;
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+.media-mini-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+/* Inspector Hero Card */
+.inspector-hero-card {
+    background: #111111;
+    border: 1px solid #282828;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hero-action-badge-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hero-action-code {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: #1c1c1c;
+    border: 1px solid #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.hero-scope-pill {
+    font-size: 11px;
+    font-weight: 600;
+    color: #cbd5e1;
+    background: #161616;
+    border: 1px solid #2c2c2c;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.hero-category-pill {
+    font-size: 10px;
+    font-weight: 700;
+    color: #888;
+    background: #0d0d0d;
+    border: 1px solid #222;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+.hero-action-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.3;
+}
+
+.hero-action-desc {
+    font-size: 13px;
+    color: #cccccc;
+    line-height: 1.5;
+}
+
+/* Media Showcase in Modal */
+.media-preview-container {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+    .media-preview-container {
+        flex-direction: column;
+    }
+}
+
+.media-preview-thumb {
+    flex-shrink: 0;
+    background: #050505;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 240px;
+}
+
+.media-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.content-text-bubble {
+    background: #0a0a0a;
+    border: 1px solid #222;
+    border-left: 3px solid #38bdf8;
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: #e2e8f0;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Explicit ID Directory Grid */
+.explicit-ids-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+}
+
+.id-card-item {
+    background: #0c0c0c;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: border-color 0.15s;
+}
+
+.id-card-item:hover {
+    border-color: #3a3a3a;
+}
+
+.id-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.id-card-badge {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.id-card-badge.user {
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+}
+
+.id-card-badge.portal {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+.id-card-badge.channel {
+    background: rgba(52, 211, 153, 0.15);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: #4ade80;
+}
+
+.id-card-badge.target {
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #fbbf24;
+}
+
+.id-copy-tiny {
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #aaa;
+    padding: 2px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.id-copy-tiny:hover {
+    background: #282828;
+    color: #fff;
+    border-color: #555;
+}
+
+.id-value-code {
+    font-family: monospace;
+    font-size: 11px;
+    color: #fff;
+    word-break: break-all;
+    background: #141414;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid #1f1f1f;
+}
+
+.id-explanation {
+    font-size: 11px;
+    color: #888;
+}
+
+.id-explanation strong {
+    color: #ddd;
+}
+
+
 
 
 

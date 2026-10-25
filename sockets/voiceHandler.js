@@ -924,6 +924,11 @@ export const initializeVoiceHandler = (io) => {
             io.to(`voice:${roomName}`).emit('voice:state-update', { userId: sUserId, isMuted, isCameraOn, isScreenSharing });
 
             if (isCameraOn || isScreenSharing) {
+                const parseRoomName = (rn) => {
+                    if (!rn || typeof rn !== 'string') return null;
+                    const match = rn.match(/portal_([a-f0-9]{24})_channel_([a-f0-9]{24})/i);
+                    return match ? { portalId: match[1], channelId: match[2] } : null;
+                };
                 const parsed = parseRoomName(roomName);
                 logActivity({
                     user: sUserId,
@@ -931,7 +936,17 @@ export const initializeVoiceHandler = (io) => {
                     action: 'STREAM_TOGGLE',
                     category: 'rtc',
                     portal: parsed?.portalId,
-                    details: { roomName, isCameraOn, isScreenSharing, isMuted }
+                    channel: parsed?.channelId,
+                    targetType: 'VoiceRoom',
+                    details: {
+                        roomName,
+                        portalId: parsed?.portalId,
+                        channelId: parsed?.channelId,
+                        isCameraOn: !!isCameraOn,
+                        isScreenSharing: !!isScreenSharing,
+                        isMuted: !!isMuted,
+                        summary: `${isCameraOn ? '🎥 Kamera açıldı' : ''}${isScreenSharing ? (isCameraOn ? ' & ' : '') + '🖥️ Ekran paylaşımı başlatıldı' : ''}`
+                    }
                 });
             }
         });

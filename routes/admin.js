@@ -1991,8 +1991,43 @@ router.get('/activity-logs', protect, admin, async (req, res) => {
             ActivityLog.countDocuments(query)
         ]);
 
+        // Enrich logs with portalName and friendly channelName if missing or unpopulated
+        const enrichedLogs = await Promise.all(logs.map(async (log) => {
+            let pId = log.portal?._id || log.portal || log.details?.portalId;
+            let chId = log.channel || log.details?.channelName || log.details?.channel || log.details?.channelId;
+
+            if (log.details?.roomName && typeof log.details.roomName === 'string') {
+                const match = log.details.roomName.match(/portal_([a-f0-9]{24})_channel_([a-f0-9]{24})/i);
+                if (match) {
+                    pId = pId || match[1];
+                    chId = chId || match[2];
+                }
+            }
+
+            if (pId && (!log.portalName || !log.channel || /^[a-f0-9]{24}$/i.test(log.channel))) {
+                try {
+                    const pDoc = await Portal.findById(pId).select('name channels').lean();
+                    if (pDoc) {
+                        if (!log.portalName) log.portalName = pDoc.name;
+                        if (chId && pDoc.channels) {
+                            const ch = pDoc.channels.find(c => c._id?.toString() === String(chId) || c.name === String(chId));
+                            if (ch) log.channel = ch.name;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (log.portalName && log.details) {
+                log.details.portalName = log.portalName;
+            }
+            if (log.channel && log.details) {
+                log.details.channelName = log.channel;
+            }
+            return log;
+        }));
+
         res.json({
-            logs,
+            logs: enrichedLogs,
             total,
             page: parseInt(page),
             pages: Math.ceil(total / parseInt(limit))

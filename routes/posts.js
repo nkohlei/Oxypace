@@ -340,22 +340,7 @@ router.post(
             const post = await Post.create(postData);
             console.log('✅ Post created successfully! ID:', post._id);
 
-            logActivity({
-                user: req.user._id,
-                username: req.user.username,
-                action: 'POST_CREATE',
-                category: 'content',
-                portal: post.portal,
-                targetId: post._id,
-                targetType: 'Post',
-                req,
-                details: {
-                    portalId: post.portal,
-                    channelId: post.channel,
-                    hasMedia: !!post.media,
-                    mediaType: post.mediaType
-                }
-            });
+
 
             if (post.mediaType === 'video') {
                 const videoKey = req.body.mediaKey || (req.file ? req.file.key : null);
@@ -480,22 +465,77 @@ router.post(
                 }
             }
 
+            let portalName = '';
+            let channelName = '';
+            if (postData.portal) {
+                try {
+                    const portalDoc = await Portal.findById(postData.portal).select('name channels').lean();
+                    if (portalDoc) {
+                        portalName = portalDoc.name || '';
+                        if (postData.channel && portalDoc.channels) {
+                            const ch = portalDoc.channels.find(c => c._id?.toString() === postData.channel.toString() || c.name === postData.channel);
+                            channelName = ch ? ch.name : String(postData.channel);
+                        }
+                    }
+                } catch (e) {}
+            }
+
             logActivity({
                 user: req.user._id,
                 username: req.user.username,
                 action: 'POST_CREATE',
                 category: 'content',
-                req,
+                portal: post.portal,
+                portalName: portalName,
+                channel: channelName,
                 targetId: post._id,
                 targetType: 'Post',
+                targetName: post.title || (post.content ? post.content.substring(0, 30) : 'Gönderi'),
+                req,
                 details: {
-                    snippet: post.content ? post.content.substring(0, 80) : '',
+                    title: post.title || '',
+                    content: post.content || '',
+                    snippet: post.content ? post.content.substring(0, 100) : '',
+                    portalName: portalName,
+                    channelName: channelName,
                     portalId: post.portal,
-                    channel: post.channel,
-                    mediaType: post.mediaType,
-                    hasMedia: !!post.media
+                    channelId: post.channel,
+                    mediaType: post.mediaType || 'none',
+                    hasMedia: !!post.media,
+                    mediaUrl: post.media || '',
+                    fileSize: post.fileSize || 0
                 }
             });
+
+            // If the post has media attached, also log under 'storage' so file details and content are searchable in Storage & Media
+            if (post.media) {
+                logActivity({
+                    user: req.user._id,
+                    username: req.user.username,
+                    action: 'POST_MEDIA_ATTACHED',
+                    category: 'storage',
+                    severity: 'info',
+                    portal: post.portal,
+                    portalName: portalName,
+                    channel: channelName,
+                    targetId: post._id,
+                    targetType: 'Post',
+                    targetName: post.title || (post.content ? post.content.substring(0, 30) : 'Medya Paylaşımı'),
+                    req,
+                    details: {
+                        mediaUrl: post.media,
+                        mediaType: post.mediaType || 'image',
+                        fileName: post.mediaOriginalName || (typeof post.media === 'string' ? post.media.split('/').pop() : 'medya-dosyasi'),
+                        fileSize: post.fileSize || 0,
+                        content: post.content || '',
+                        snippet: post.content ? post.content.substring(0, 100) : '',
+                        portalName: portalName,
+                        channelName: channelName,
+                        portalId: post.portal,
+                        channelId: post.channel
+                    }
+                });
+            }
 
             return res.status(201).json(populatedPost || post);
         } catch (error) {

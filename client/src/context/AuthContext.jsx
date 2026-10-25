@@ -269,6 +269,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('_oxypace_uid'); // presence cache temizle
             sessionStorage.clear();
             document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            axios.post('/api/auth/logout').catch(() => {});
         } catch (e) {}
         setToken(null);
         setUser(null);
