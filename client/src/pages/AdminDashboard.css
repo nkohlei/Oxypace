@@ -6699,51 +6699,364 @@ body.light .modal-overlay-modern,
     color: #888;
 }
 
-.id-explanation strong {
-    color: #ddd;
+/* ==========================================================================
+   GRANULAR TOURIST ADMIN RBAC & ACCESS CONTROL STYLES (Soft-Corner Brutalist)
+   ========================================================================== */
+
+/* 1. Access Denied / Yetkiniz Yok Screen */
+.admin-access-denied {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 32px 16px;
+    width: 100%;
 }
 
-.portal-audit-feed-card {
-    transition: all 0.2s ease;
+.access-denied-box {
+    max-width: 520px;
+    width: 100%;
+    background: #0f0f0f;
+    border: 1px solid #262626;
+    border-radius: 12px;
+    padding: 36px 28px;
+    text-align: center;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
-.portal-audit-feed-card:hover {
-    border-color: #3b82f6 !important;
-    background: #191919 !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+.access-denied-icon-wrap {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 20px auto;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ef4444;
 }
 
-.channel-badge-chip {
-    font-family: monospace;
-    font-size: 10px;
-    background: rgba(56, 189, 248, 0.12);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    color: #38bdf8;
-    padding: 1px 6px;
-    border-radius: 4px;
+.access-denied-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 10px 0;
+    letter-spacing: -0.3px;
+}
+
+.access-denied-desc {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #999999;
+    margin: 0 0 24px 0;
+}
+
+.access-denied-desc strong {
+    color: #fca5a5;
     font-weight: 600;
 }
 
-.media-mini-pill {
-    font-size: 10px;
-    background: #1e1e1e;
-    border: 1px solid #333;
-    color: #aaa;
-    padding: 2px 7px;
+.access-denied-info-card {
+    background: #141414;
+    border: 1px solid #222222;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+.access-denied-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.access-denied-info-row .info-label {
+    color: #777777;
+}
+
+.access-denied-info-row .info-value {
+    color: #eeeeee;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.access-denied-contact {
+    font-size: 12px;
+    color: #666666;
+    margin: 0;
+}
+
+.access-denied-contact strong {
+    color: #38bdf8;
+}
+
+/* 2. Read-Only Mode Banner */
+.readonly-mode-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    color: #93c5fd;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.readonly-mode-banner svg {
+    flex-shrink: 0;
+    color: #3b82f6;
+}
+
+.readonly-mode-banner u {
+    text-decoration: none;
+    background: rgba(59, 130, 246, 0.2);
+    padding: 2px 6px;
     border-radius: 4px;
+    color: #bfdbfe;
+    font-weight: 600;
+}
+
+/* 3. Tourist Permission Studio in Assignment / Edit */
+.tourist-permission-studio {
+    margin-top: 16px;
+    margin-bottom: 24px;
+    background: #0b0b0b;
+    border: 1px solid #222222;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.studio-header-area {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.studio-header-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.studio-presets-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.studio-preset-btn {
+    background: #161616;
+    border: 1px solid #2a2a2a;
+    color: #cccccc;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
+.studio-preset-btn:hover {
+    background: #222222;
+    border-color: #444444;
+    color: #ffffff;
+}
 
+.studio-preset-btn.btn-preset-full:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #34d399;
+}
 
+.studio-preset-btn.btn-preset-reset:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #f87171;
+}
 
+/* Studio Category Groups */
+.studio-categories-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
 
+.studio-category-group {
+    background: #111111;
+    border: 1px solid #1c1c1c;
+    border-radius: 10px;
+    padding: 16px;
+}
 
+.studio-category-group-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #aaaaaa;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 0 0 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
+.studio-modules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 
+/* Single Module Row/Card */
+.studio-module-card {
+    background: #141414;
+    border: 1px solid #222222;
+    border-radius: 8px;
+    padding: 12px 14px;
+    transition: border-color 0.15s ease;
+}
 
+.studio-module-card.state-full {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: #141815;
+}
 
+.studio-module-card.state-view {
+    border-color: rgba(59, 130, 246, 0.35);
+    background: #13161a;
+}
 
+.studio-module-card.state-none {
+    border-color: #1c1c1c;
+    opacity: 0.8;
+}
+
+.studio-module-card:hover {
+    border-color: #333333;
+}
+
+.module-row-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.module-meta-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 180px;
+}
+
+.module-meta-info strong {
+    font-size: 13px;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.module-meta-info span {
+    font-size: 11px;
+    color: #777777;
+}
+
+/* 3-State Segmented Control */
+.module-segmented-control {
+    display: flex;
+    background: #090909;
+    border: 1px solid #242424;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.segmented-btn {
+    background: transparent;
+    border: none;
+    color: #777777;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.segmented-btn:hover {
+    color: #ffffff;
+}
+
+.segmented-btn.active.opt-none {
+    background: #262626;
+    color: #f87171;
+}
+
+.segmented-btn.active.opt-view {
+    background: #1e3a5f;
+    color: #60a5fa;
+}
+
+.segmented-btn.active.opt-full {
+    background: #064e3b;
+    color: #34d399;
+}
+
+/* Expandable Sub-Permissions */
+.module-sub-perms-box {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #222222;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+}
+
+.sub-perm-toggle-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #cccccc;
+    cursor: pointer;
+    user-select: none;
+}
+
+.sub-perm-toggle-item input[type="checkbox"] {
+    accent-color: #3b82f6;
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+
+.sub-perm-toggle-item:hover {
+    color: #ffffff;
+}
 

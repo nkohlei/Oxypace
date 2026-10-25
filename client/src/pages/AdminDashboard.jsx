@@ -2184,21 +2184,438 @@ const UserDetailModal = ({
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888888'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
 
-const ALL_TOURIST_PERMISSIONS = [
-    { key: 'canManageRequests', label: 'Doğrulama Başvuruları', desc: 'Mavi/özel rozet başvurularını onayla veya reddet', icon: '📋' },
-    { key: 'canManageRecovery', label: 'Hesap Kurtarma Talepleri', desc: 'Kilitli/silinmiş hesap kurtarma taleplerini incele ve onayla', icon: '🔑' },
-    { key: 'canManageFeedback', label: 'Kullanıcı Talepleri & Biletler', desc: 'Geri bildirim ve destek taleplerini incele, yanıtla', icon: '💬' },
-    { key: 'canManageUsers', label: 'Kullanıcı Yönetimi & Şecere', desc: 'Kullanıcı detaylarını gör, şecereleri incele ve gölge engel ver', icon: '👥' },
-    { key: 'canBanUsers', label: 'Kullanıcı & IP Engelleme (Ban)', desc: 'Kullanıcıları yasakla, engel kaldır ve IP yasaklarını yönet', icon: '🚫' },
-    { key: 'canManagePortals', label: 'Portal & Kanal Yönetimi', desc: 'Portalları denetle, kanal ekle/düzenle/sil, uyarı gönder', icon: '🌐' },
-    { key: 'canManageReports', label: 'Bildirilen İçerikler & Moderasyon', desc: 'Şikayetleri incele, çözüldü olarak işaretle veya kaldır', icon: '🛡️' },
-    { key: 'canManageBadges', label: 'Rozetler & Rozet Stüdyosu', desc: 'Özel ikon rozetler yükle, düzenle ve kullanıcılara tanımla', icon: '🎖️' },
-    { key: 'canManageBots', label: 'Bot Yönetimi', desc: 'Sistem botları ekle, RSS yapılandır ve bot adına paylaşım yap', icon: '🤖' },
-    { key: 'canViewLogs', label: 'Platform Günlüğü & Adli İnceleme', desc: 'Canlı telemetri akışını, IP/GeoIP kayıtlarını ve logları gör', icon: '📜' },
-    { key: 'canSendNotifications', label: 'Toplu Bildirim Gönderimi', desc: 'Tüm kullanıcılara toplu duyuru ve anlık bildirim ilet', icon: '📢' },
-    { key: 'canManageBlog', label: 'Blog İçerik Yönetimi', desc: 'Bilim ve teknoloji makaleleri yaz, yayınla ve düzenle', icon: '✍️' },
-    { key: 'canManageMobile', label: 'Mobil Tasarım & Sürüm Yönetimi', desc: 'Mobil tasarım vitrini ve sürüm günlüğünü görüntüle', icon: '📱' },
+export const ADMIN_MODULES = [
+    // Kategori 1: Genel Bakış & Talepler
+    {
+        id: 'requests',
+        category: 'overview',
+        categoryLabel: '📊 Genel Bakış & Talepler',
+        label: 'Başvurular',
+        desc: 'Portal ve kullanıcı rozet başvuru incelemeleri',
+        icon: '📋',
+        hasDetails: true,
+        detailsLabel: 'Açılır Pencere Başvuru Detayları'
+    },
+    {
+        id: 'recovery',
+        category: 'overview',
+        categoryLabel: '📊 Genel Bakış & Talepler',
+        label: 'Kurtarma Talepleri',
+        desc: 'Kullanıcı hesap kurtarma ve güvenlik incelemeleri',
+        icon: '🔑',
+        hasDetails: true,
+        detailsLabel: 'Açılır Pencere Kurtarma Detayları'
+    },
+    {
+        id: 'feedback',
+        category: 'overview',
+        categoryLabel: '📊 Genel Bakış & Talepler',
+        label: 'Talepler / Geri Bildirim',
+        desc: 'Kullanıcı destek, geri bildirim ve talep mesajları',
+        icon: '💬',
+        hasDetails: true,
+        detailsLabel: 'Açılır Pencere Geri Bildirim Detayları'
+    },
+
+    // Kategori 2: Kullanıcı Yönetimi
+    {
+        id: 'users',
+        category: 'users',
+        categoryLabel: '👥 Kullanıcı Yönetimi',
+        label: 'Kullanıcılar',
+        desc: 'Kullanıcı listesi, profil, şecere ve hesap yönetimi',
+        icon: '👥',
+        hasDetails: true,
+        detailsLabel: 'Kullanıcı Detay Açılır Penceresi (IP, Oturum & Cihaz)',
+        customSubPerms: [
+            { key: 'canBan', label: 'Kullanıcıyı Engelleme / Ban Yetkisi' },
+            { key: 'canManageBadges', label: 'Rozet Atama / Değiştirme Yetkisi' }
+        ]
+    },
+    {
+        id: 'activity',
+        category: 'users',
+        categoryLabel: '👥 Kullanıcı Yönetimi',
+        label: 'Platform Günlüğü & Oturumlar',
+        desc: '7 kategorili canlı telemetri, IP ve sistem günlüğü',
+        icon: '📜',
+        hasDetails: true,
+        detailsLabel: 'Adli Log İnceleme Açılır Penceresi (Ham JSON & GeoIP)',
+        customSubPerms: [
+            { key: 'canExport', label: 'Log Dışa Aktarma (CSV / JSON)' }
+        ]
+    },
+    {
+        id: 'ipbans',
+        category: 'users',
+        categoryLabel: '👥 Kullanıcı Yönetimi',
+        label: 'IP Engelleri',
+        desc: 'Zararlı IP adreslerini engelleme ve engel kaldırma',
+        icon: '🚫',
+        hasDetails: false
+    },
+    {
+        id: 'badges',
+        category: 'users',
+        categoryLabel: '👥 Kullanıcı Yönetimi',
+        label: 'Rozetler',
+        desc: 'Platform doğrulama rozetleri listesi ve yönetimi',
+        icon: '🎖️',
+        hasDetails: false
+    },
+    {
+        id: 'custom-badges',
+        category: 'users',
+        categoryLabel: '👥 Kullanıcı Yönetimi',
+        label: 'Özel İkon Rozetler',
+        desc: 'Görsel yönetici rozet yükleme ve stüdyo',
+        icon: '🏷️',
+        hasDetails: false
+    },
+    {
+        id: 'bots',
+        category: 'users',
+        categoryLabel: '👥 Kullanıcı Yönetimi',
+        label: 'Bot Yönetimi',
+        desc: 'Sistem botları, RSS entegrasyonu ve otomatik akış',
+        icon: '🤖',
+        hasDetails: true,
+        detailsLabel: 'Bot Token & Gizli Anahtar Detay Penceresi'
+    },
+
+    // Kategori 3: İçerik & Sistem
+    {
+        id: 'portals',
+        category: 'system',
+        categoryLabel: '🌐 İçerik & Sistem',
+        label: 'Portallar',
+        desc: 'Portal denetimi, dondurma, silme ve kanal yönetimi',
+        icon: '🌐',
+        hasDetails: true,
+        detailsLabel: 'Portal Detay Açılır Penceresi (Kanal ve Üye Listesi)'
+    },
+    {
+        id: 'blog',
+        category: 'system',
+        categoryLabel: '🌐 İçerik & Sistem',
+        label: 'Blog Yönetimi',
+        desc: 'Bilim ve teknoloji makaleleri yazma, yayınlama ve düzenleme',
+        icon: '✍️',
+        hasDetails: true,
+        detailsLabel: 'Makale Önizleme ve Taslak Detayları'
+    },
+    {
+        id: 'reports',
+        category: 'system',
+        categoryLabel: '🌐 İçerik & Sistem',
+        label: 'Bildirilenler / Şikayetler',
+        desc: 'Kullanıcı ve gönderi şikayetleri moderasyonu',
+        icon: '🛡️',
+        hasDetails: true,
+        detailsLabel: 'Şikayet Edilen İçerik/Kullanıcı Detay Açılır Penceresi'
+    },
+    {
+        id: 'mass-notification',
+        category: 'system',
+        categoryLabel: '🌐 İçerik & Sistem',
+        label: 'Toplu Bildirim Gönder',
+        desc: 'Tüm kullanıcılara push bildirim ve sistem duyurusu iletme',
+        icon: '📢',
+        hasDetails: false
+    },
+    {
+        id: 'mobile-designs',
+        category: 'system',
+        categoryLabel: '🌐 İçerik & Sistem',
+        label: 'Mobil Tasarım Barındırma',
+        desc: 'Mobil arayüz tasarımlarını inceleme ve vitrin',
+        icon: '📱',
+        hasDetails: false
+    },
+    {
+        id: 'mobile-versions',
+        category: 'system',
+        categoryLabel: '🌐 İçerik & Sistem',
+        label: 'Mobil Sürüm Günlüğü',
+        desc: 'Android APK sürüm geçmişi ve güncelleme notları',
+        icon: '⏱️',
+        hasDetails: false
+    }
 ];
+
+export const getDefaultModulePermissions = (preset = 'none') => {
+    const state = {};
+    ADMIN_MODULES.forEach(mod => {
+        state[mod.id] = {
+            access: preset === 'full' ? 'full' : (preset === 'view' ? 'view' : 'none'),
+            canViewDetails: preset !== 'none',
+            canBan: preset === 'full',
+            canManageBadges: preset === 'full',
+            canExport: preset === 'full'
+        };
+    });
+    return state;
+};
+
+export const parseExistingPermissions = (perms = {}) => {
+    const state = {};
+    const hasModules = perms && perms.modules && typeof perms.modules === 'object';
+    ADMIN_MODULES.forEach(mod => {
+        if (hasModules && perms.modules[mod.id]) {
+            state[mod.id] = {
+                access: perms.modules[mod.id].access || 'none',
+                canViewDetails: perms.modules[mod.id].canViewDetails !== false,
+                canBan: !!perms.modules[mod.id].canBan,
+                canManageBadges: !!perms.modules[mod.id].canManageBadges,
+                canExport: !!perms.modules[mod.id].canExport
+            };
+        } else {
+            const legMap = {
+                'requests': perms?.canManageRequests,
+                'recovery': perms?.canManageRecovery,
+                'feedback': perms?.canManageFeedback,
+                'users': perms?.canManageUsers,
+                'activity': perms?.canViewLogs,
+                'ipbans': perms?.canBanUsers,
+                'badges': perms?.canManageBadges,
+                'custom-badges': perms?.canManageBadges,
+                'bots': perms?.canManageBots,
+                'portals': perms?.canManagePortals,
+                'blog': perms?.canManageBlog,
+                'reports': perms?.canManageReports,
+                'mass-notification': perms?.canSendNotifications || perms?.canManageNotifications,
+                'mobile-designs': perms?.canManageMobile || perms?.canManageSystem,
+                'mobile-versions': perms?.canManageMobile || perms?.canManageSystem
+            };
+            const hasLegacy = !!legMap[mod.id];
+            state[mod.id] = {
+                access: hasLegacy ? 'full' : 'none',
+                canViewDetails: hasLegacy,
+                canBan: !!perms?.canBanUsers,
+                canManageBadges: !!perms?.canManageBadges,
+                canExport: !!perms?.canViewLogs
+            };
+        }
+    });
+    return state;
+};
+
+export const compileTouristPermissions = (modulesMap) => {
+    const map = modulesMap || {};
+    return {
+        canManageRequests: map.requests?.access === 'full',
+        canManageRecovery: map.recovery?.access === 'full',
+        canManageFeedback: map.feedback?.access === 'full',
+        canManageUsers: map.users?.access === 'full',
+        canBanUsers: !!(map.users?.canBan || map.ipbans?.access === 'full'),
+        canManagePortals: map.portals?.access === 'full',
+        canManageReports: map.reports?.access === 'full',
+        canManageBadges: !!(map.badges?.access === 'full' || map['custom-badges']?.access === 'full' || map.users?.canManageBadges),
+        canManageBots: map.bots?.access === 'full',
+        canViewLogs: map.activity?.access !== 'none',
+        canSendNotifications: map['mass-notification']?.access === 'full',
+        canManageNotifications: map['mass-notification']?.access === 'full',
+        canManageBlog: map.blog?.access === 'full',
+        canManageMobile: map['mobile-designs']?.access === 'full' || map['mobile-versions']?.access === 'full',
+        canManageSystem: map['mobile-designs']?.access === 'full' || map['mobile-versions']?.access === 'full',
+        modules: map
+    };
+};
+
+const AccessDeniedView = ({ moduleTitle, currentUser }) => (
+    <div className="admin-access-denied fade-in">
+        <div className="access-denied-box">
+            <div className="access-denied-icon-wrap">
+                <ShieldAlert size={40} />
+            </div>
+            <h2 className="access-denied-title">Erişim Yetkiniz Bulunmamaktadır</h2>
+            <p className="access-denied-desc">
+                Bu modülü (<strong>{moduleTitle}</strong>) görüntülemek veya işlem yapmak için yetkilendirilmediniz.
+            </p>
+            <div className="access-denied-info-card">
+                <div className="access-denied-info-row">
+                    <span className="info-label">Yetki Seviyesi:</span>
+                    <span className="info-value">Turist Admin (Erişim Yok)</span>
+                </div>
+                {currentUser?.touristAdminExpiresAt && (
+                    <div className="access-denied-info-row">
+                        <span className="info-label">Yetki Bitiş Tarihi:</span>
+                        <span className="info-value">{new Date(currentUser.touristAdminExpiresAt).toLocaleString('tr-TR')}</span>
+                    </div>
+                )}
+            </div>
+            <p className="access-denied-contact">
+                Erişim izni veya yetki yükseltme talebinde bulunmak için lütfen Baş Yönetici <strong>@oxypace</strong> ile iletişime geçin.
+            </p>
+        </div>
+    </div>
+);
+
+const ReadOnlyBanner = ({ moduleTitle }) => (
+    <div className="readonly-mode-banner fade-in">
+        <Eye size={18} />
+        <span>
+            <strong>{moduleTitle}</strong> modülünde <u>Sadece Görüntüleme</u> yetkisine sahipsiniz. Veri ekleme, düzenleme, silme ve yönetim aksiyonları kısıtlanmıştır.
+        </span>
+    </div>
+);
+
+const TouristPermissionStudio = ({ modulesState, onChange }) => {
+    const handleSetAll = (preset) => {
+        onChange(getDefaultModulePermissions(preset));
+    };
+
+    const handleApplyPreset = (presetName) => {
+        const next = getDefaultModulePermissions('none');
+        if (presetName === 'mod') {
+            next.users = { access: 'full', canViewDetails: true, canBan: true, canManageBadges: false };
+            next.portals = { access: 'full', canViewDetails: true };
+            next.reports = { access: 'full', canViewDetails: true };
+            next.blog = { access: 'full', canViewDetails: true };
+            next.activity = { access: 'view', canViewDetails: true, canExport: false };
+        } else if (presetName === 'support') {
+            next.requests = { access: 'full', canViewDetails: true };
+            next.recovery = { access: 'full', canViewDetails: true };
+            next.feedback = { access: 'full', canViewDetails: true };
+            next.reports = { access: 'full', canViewDetails: true };
+            next.users = { access: 'view', canViewDetails: true, canBan: false, canManageBadges: false };
+        }
+        onChange(next);
+    };
+
+    const handleAccessChange = (modId, newAccess) => {
+        const current = modulesState[modId] || { access: 'none', canViewDetails: false };
+        onChange({
+            ...modulesState,
+            [modId]: {
+                ...current,
+                access: newAccess,
+                canViewDetails: newAccess === 'none' ? false : (current.canViewDetails !== false)
+            }
+        });
+    };
+
+    const handleSubPermToggle = (modId, key) => {
+        const current = modulesState[modId] || { access: 'none', canViewDetails: false };
+        onChange({
+            ...modulesState,
+            [modId]: {
+                ...current,
+                [key]: !current[key]
+            }
+        });
+    };
+
+    const categories = [
+        { id: 'overview', title: '📊 Genel Bakış & Talepler' },
+        { id: 'users', title: '👥 Kullanıcı Yönetimi' },
+        { id: 'system', title: '🌐 İçerik & Sistem' }
+    ];
+
+    return (
+        <div className="tourist-permission-studio">
+            <div className="studio-header-area">
+                <div className="studio-header-title">
+                    <span>🛡️ Modül Yetkilendirme & Detay İzinleri</span>
+                </div>
+                <div className="studio-presets-bar">
+                    <button type="button" className="studio-preset-btn btn-preset-full" onClick={() => handleSetAll('full')}>
+                        ⚡ Tümüne Tam Yetki
+                    </button>
+                    <button type="button" className="studio-preset-btn" onClick={() => handleSetAll('view')}>
+                        👁️ Tümünü Sadece Görüntüle
+                    </button>
+                    <button type="button" className="studio-preset-btn" onClick={() => handleApplyPreset('mod')}>
+                        🛡️ Şablon: Moderatör
+                    </button>
+                    <button type="button" className="studio-preset-btn" onClick={() => handleApplyPreset('support')}>
+                        💬 Şablon: Destek & Başvuru
+                    </button>
+                    <button type="button" className="studio-preset-btn btn-preset-reset" onClick={() => handleSetAll('none')}>
+                        🚫 Tümünü Sıfırla
+                    </button>
+                </div>
+            </div>
+
+            <div className="studio-categories-container">
+                {categories.map(cat => {
+                    const catMods = ADMIN_MODULES.filter(m => m.category === cat.id);
+                    return (
+                        <div key={cat.id} className="studio-category-group">
+                            <div className="studio-category-group-title">
+                                <span>{cat.title}</span>
+                            </div>
+                            <div className="studio-modules-list">
+                                {catMods.map(mod => {
+                                    const mState = modulesState[mod.id] || { access: 'none', canViewDetails: false };
+                                    const acc = mState.access || 'none';
+                                    return (
+                                        <div key={mod.id} className={`studio-module-card state-${acc}`}>
+                                            <div className="module-row-top">
+                                                <div className="module-meta-info">
+                                                    <strong>{mod.icon} {mod.label}</strong>
+                                                    <span>{mod.desc}</span>
+                                                </div>
+                                                <div className="module-segmented-control">
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-btn opt-none ${acc === 'none' ? 'active' : ''}`}
+                                                        onClick={() => handleAccessChange(mod.id, 'none')}
+                                                    >
+                                                        🚫 Erişim Yok
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-btn opt-view ${acc === 'view' ? 'active' : ''}`}
+                                                        onClick={() => handleAccessChange(mod.id, 'view')}
+                                                    >
+                                                        👁️ Sadece Görüntüle
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`segmented-btn opt-full ${acc === 'full' ? 'active' : ''}`}
+                                                        onClick={() => handleAccessChange(mod.id, 'full')}
+                                                    >
+                                                        ⚡ Tam Yetki
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {acc !== 'none' && (mod.hasDetails || mod.customSubPerms) && (
+                                                <div className="module-sub-perms-box fade-in">
+                                                    {mod.hasDetails && (
+                                                        <label className="sub-perm-toggle-item">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={mState.canViewDetails !== false}
+                                                                onChange={() => handleSubPermToggle(mod.id, 'canViewDetails')}
+                                                            />
+                                                            <span>🔍 {mod.detailsLabel || 'Açılır Pencere Detaylarına Erişim'}</span>
+                                                        </label>
+                                                    )}
+                                                    {mod.customSubPerms && mod.customSubPerms.map(sub => (
+                                                        <label key={sub.key} className="sub-perm-toggle-item">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!mState[sub.key]}
+                                                                onChange={() => handleSubPermToggle(mod.id, sub.key)}
+                                                            />
+                                                            <span>⚙️ {sub.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 const TAB_PERMISSION_MAP = {
     'requests': 'canManageRequests',
@@ -2236,11 +2653,74 @@ const AdminDashboard = () => {
         }
     }, [currentUser]);
 
-    // Check granular permission helper
+    // Check granular permission helper (legacy)
     const hasPerm = (permKey) => {
         if (isFullAdmin) return true;
         if (!isTouristAdmin) return false;
         return !!liveTouristPerms[permKey];
+    };
+
+    // Granular Module-Level Access Control Helper
+    const getModuleAccess = (moduleId) => {
+        if (isOxypace || (currentUser?.isAdmin && !isTouristAdmin)) {
+            return { access: 'full', canView: true, canEdit: true, canViewDetails: true, custom: { canBan: true, canManageBadges: true, canExport: true } };
+        }
+        if (!isTouristAdmin) {
+            return { access: 'none', canView: false, canEdit: false, canViewDetails: false, custom: {} };
+        }
+
+        const perms = liveTouristPerms || {};
+        if (perms.modules && perms.modules[moduleId]) {
+            const mod = perms.modules[moduleId];
+            const access = mod.access || 'none';
+            return {
+                access,
+                canView: access === 'view' || access === 'full',
+                canEdit: access === 'full',
+                canViewDetails: access !== 'none' && mod.canViewDetails !== false,
+                custom: mod
+            };
+        }
+
+        // Fallback for legacy boolean structure
+        const legacyKeyMap = {
+            'requests': 'canManageRequests',
+            'recovery': 'canManageRecovery',
+            'feedback': 'canManageFeedback',
+            'users': 'canManageUsers',
+            'activity': 'canViewLogs',
+            'ipbans': 'canBanUsers',
+            'badges': 'canManageBadges',
+            'custom-badges': 'canManageBadges',
+            'bots': 'canManageBots',
+            'portals': 'canManagePortals',
+            'blog': 'canManageBlog',
+            'reports': 'canManageReports',
+            'mass-notification': 'canSendNotifications',
+            'mobile-designs': 'canManageMobile',
+            'mobile-versions': 'canManageMobile'
+        };
+
+        const legKey = legacyKeyMap[moduleId];
+        const hasLegacy = legKey ? (!!perms[legKey] || (legKey === 'canSendNotifications' && !!perms.canManageNotifications)) : false;
+
+        return {
+            access: hasLegacy ? 'full' : 'none',
+            canView: hasLegacy,
+            canEdit: hasLegacy,
+            canViewDetails: hasLegacy,
+            custom: {
+                canBan: !!perms.canBanUsers,
+                canManageBadges: !!perms.canManageBadges,
+                canExport: !!perms.canViewLogs
+            }
+        };
+    };
+
+    // Module Title Helper
+    const getModuleTitle = (modId) => {
+        const found = ADMIN_MODULES.find(m => m.id === modId);
+        return found ? found.label : modId;
     };
 
     // Calculate first permitted tab for the current admin/tourist admin
@@ -2334,22 +2814,9 @@ const AdminDashboard = () => {
     const [showRawJson, setShowRawJson] = useState(false);
     const [mediaLightbox, setMediaLightbox] = useState(null); // { url, title, date }
 
-    // Tourist Admin Granular Permissions State (all 13 granular domains)
-    const [touristPermissions, setTouristPermissions] = useState({
-        canManageRequests: false,
-        canManageRecovery: false,
-        canManageFeedback: false,
-        canManageUsers: false,
-        canBanUsers: false,
-        canManagePortals: false,
-        canManageReports: false,
-        canManageBadges: false,
-        canManageBots: false,
-        canViewLogs: false,
-        canSendNotifications: false,
-        canManageBlog: false,
-        canManageMobile: false,
-    });
+    // Tourist Admin Granular Modules Permission State
+    const [touristModulesState, setTouristModulesState] = useState(() => getDefaultModulePermissions('none'));
+    const [editingModulesState, setEditingModulesState] = useState(() => getDefaultModulePermissions('none'));
     const [editPermissionsModalOpen, setEditPermissionsModalOpen] = useState(false);
     const [editingTouristAdmin, setEditingTouristAdmin] = useState(null);
 
@@ -2770,7 +3237,7 @@ const AdminDashboard = () => {
             }
             body.expiresAt = new Date(customTouristDate).toISOString();
         }
-        body.permissions = touristPermissions;
+        body.permissions = compileTouristPermissions(touristModulesState);
 
         setAssigningTourist(true);
         try {
@@ -2779,6 +3246,7 @@ const AdminDashboard = () => {
             setSelectedTouristUser(null);
             setTouristSearchTerm('');
             setTouristSearchResult([]);
+            setTouristModulesState(getDefaultModulePermissions('none'));
             fetchTouristAdmins();
         } catch (err) {
             alert(err.response?.data?.message || 'Turist admin atanamadı.');
@@ -2824,16 +3292,12 @@ const AdminDashboard = () => {
         }
     };
 
-    // Automatic redirection if tourist admin attempts to view unauthorized tab
+    // Keep tourist admins away ONLY from the oxypace-only tourist assignment panel
     useEffect(() => {
-        if (isTouristAdmin && !isFullAdmin) {
-            const reqPerm = TAB_PERMISSION_MAP[activeTab];
-            if (activeTab === 'tourist-admin' || (reqPerm && !hasPerm(reqPerm))) {
-                const fallback = getFirstPermittedTab();
-                setActiveTab(fallback);
-            }
+        if (activeTab === 'tourist-admin' && !isOxypace) {
+            setActiveTab('requests');
         }
-    }, [activeTab, liveTouristPerms, isTouristAdmin, isFullAdmin]);
+    }, [activeTab, isOxypace]);
 
     // WebSocket listener for real-time permission sync, revoke, and expiry
     useEffect(() => {
@@ -2867,30 +3331,30 @@ const AdminDashboard = () => {
     }, [socket, isTouristAdmin]);
 
     useEffect(() => {
-        if (activeTab === 'requests' && hasPerm('canManageRequests')) {
+        if (activeTab === 'requests' && getModuleAccess('requests').canView) {
             fetchRequests();
-        } else if (activeTab === 'recovery' && hasPerm('canManageRecovery')) {
+        } else if (activeTab === 'recovery' && getModuleAccess('recovery').canView) {
             fetchRecoveryRequests();
-        } else if (activeTab === 'users' && hasPerm('canManageUsers')) {
+        } else if (activeTab === 'users' && getModuleAccess('users').canView) {
             fetchUsers();
-        } else if (activeTab === 'portals' && hasPerm('canManagePortals')) {
+        } else if (activeTab === 'portals' && getModuleAccess('portals').canView) {
             fetchPortals();
-        } else if (activeTab === 'reports' && hasPerm('canManageReports')) {
+        } else if (activeTab === 'reports' && getModuleAccess('reports').canView) {
             fetchReports();
-        } else if (activeTab === 'badges' && hasPerm('canManageBadges')) {
+        } else if (activeTab === 'badges' && getModuleAccess('badges').canView) {
             fetchAllBadges();
-        } else if (activeTab === 'custom-badges' && hasPerm('canManageBadges')) {
+        } else if (activeTab === 'custom-badges' && getModuleAccess('badges').canView) {
             fetchCustomBadges();
-        } else if (activeTab === 'feedback' && hasPerm('canManageFeedback')) {
+        } else if (activeTab === 'feedback' && getModuleAccess('feedback').canView) {
             fetchFeedbacks();
-        } else if (activeTab === 'ipbans' && hasPerm('canBanUsers')) {
+        } else if (activeTab === 'ipbans' && getModuleAccess('ipbans').canView) {
             fetchBannedIps();
-        } else if (activeTab === 'activity' && hasPerm('canViewLogs')) {
+        } else if (activeTab === 'activity' && getModuleAccess('activity').canView) {
             fetchActivityLogs(1, activityLogsSearch, activityLogsCategory, activityLogsSeverity);
             fetchActivityStats();
         } else if (activeTab === 'tourist-admin' && isOxypace) {
             fetchTouristAdmins();
-        } else if (activeTab === 'bots' && hasPerm('canManageBots')) {
+        } else if (activeTab === 'bots' && getModuleAccess('bots').canView) {
             fetchBots();
             fetchPortals(); // Load portals for selection/defaults
         }
@@ -4787,6 +5251,34 @@ const AdminDashboard = () => {
         return matchesSearch && matchesCategory && matchesStatus;
     });
 
+    const renderAccessDenied = (moduleName) => (
+        <div className="tourist-access-denied-card fade-in">
+            <div className="access-denied-icon-box">
+                <Lock size={44} />
+            </div>
+            <h3>{moduleName} Modülü Kilitli</h3>
+            <p>
+                Turist Admin profilinizde bu modülün erişim seviyesi <strong>Kilitli (none)</strong> olarak yapılandırılmıştır.
+                Bu sekmeyi görüntüleme veya veri işleme yetkiniz bulunmamaktadır.
+            </p>
+            <div className="access-denied-pill">
+                <span>🔒 Erişim Kısıtlandı</span>
+            </div>
+        </div>
+    );
+
+    const renderViewModeBanner = (moduleName) => (
+        <div className="tourist-view-mode-banner fade-in">
+            <div className="view-mode-icon">
+                <Eye size={20} />
+            </div>
+            <div className="view-mode-content">
+                <div className="view-mode-title">{moduleName} • İzleme Modu (Salt Okunur)</div>
+                <div className="view-mode-desc">Bu modüldeki tüm verileri inceleyebilirsiniz. Silme, güncelleme veya yeni veri ekleme yetkiniz kısıtlanmıştır.</div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="admin-layout">
             {/* Backdrop overlay for mobile menu */}
@@ -4838,11 +5330,9 @@ const AdminDashboard = () => {
 
                 <div className="sidebar-nav">
                     {/* Category 1: Genel Bakış & Talepler */}
-                    {(hasPerm('canManageRequests') || hasPerm('canManageRecovery') || hasPerm('canManageFeedback')) && (
                     <div className="sidebar-category">
                         <span className="sidebar-category-label">📊 Genel Bakış & Talepler</span>
                         
-                        {hasPerm('canManageRequests') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'requests' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('requests'); setSidebarOpen(false); }}
@@ -4850,10 +5340,13 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><LayoutDashboard size={18} /></span>
                             <span className="snav-label">Başvurular</span>
                             {requests.length > 0 && <span className="snav-badge">{requests.length}</span>}
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('requests').access}`}>
+                                    {getModuleAccess('requests').access === 'none' ? '🔒 Kilitli' : getModuleAccess('requests').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageRecovery') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'recovery' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('recovery'); setSidebarOpen(false); }}
@@ -4861,10 +5354,13 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><KeyRound size={18} /></span>
                             <span className="snav-label">Kurtarma Talepleri</span>
                             {recoveryRequests.length > 0 && <span className="snav-badge">{recoveryRequests.length}</span>}
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('recovery').access}`}>
+                                    {getModuleAccess('recovery').access === 'none' ? '🔒 Kilitli' : getModuleAccess('recovery').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageFeedback') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'feedback' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('feedback'); setSidebarOpen(false); }}
@@ -4872,147 +5368,182 @@ const AdminDashboard = () => {
                             <span className="snav-icon"><ShieldAlert size={18} /></span>
                             <span className="snav-label">Talepler</span>
                             {unreadFeedbackCount > 0 && <span className="snav-badge">{unreadFeedbackCount}</span>}
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('feedback').access}`}>
+                                    {getModuleAccess('feedback').access === 'none' ? '🔒 Kilitli' : getModuleAccess('feedback').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
                     </div>
-                    )}
 
                     {/* Category 2: Kullanıcı Yönetimi */}
-                    {(hasPerm('canManageUsers') || hasPerm('canViewLogs') || hasPerm('canBanUsers') || hasPerm('canManageBadges') || hasPerm('canManageBots')) && (
                     <div className="sidebar-category">
                         <span className="sidebar-category-label">👥 Kullanıcı Yönetimi</span>
 
-                        {hasPerm('canManageUsers') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'users' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Users size={18} /></span>
                             <span className="snav-label">Kullanıcılar</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('users').access}`}>
+                                    {getModuleAccess('users').access === 'none' ? '🔒 Kilitli' : getModuleAccess('users').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canViewLogs') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'activity' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('activity'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Platform Günlüğü & Oturumlar</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('activity').access}`}>
+                                    {getModuleAccess('activity').access === 'none' ? '🔒 Kilitli' : getModuleAccess('activity').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canBanUsers') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'ipbans' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('ipbans'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><AlertTriangle size={18} /></span>
                             <span className="snav-label">IP Engelleri</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('ipbans').access}`}>
+                                    {getModuleAccess('ipbans').access === 'none' ? '🔒 Kilitli' : getModuleAccess('ipbans').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageBadges') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'badges' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('badges'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Award size={18} /></span>
                             <span className="snav-label">Rozetler</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('badges').access}`}>
+                                    {getModuleAccess('badges').access === 'none' ? '🔒 Kilitli' : getModuleAccess('badges').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageBadges') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'custom-badges' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('custom-badges'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><FileBadge size={18} /></span>
                             <span className="snav-label">Özel İkon Rozetler</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('badges').access}`}>
+                                    {getModuleAccess('badges').access === 'none' ? '🔒 Kilitli' : getModuleAccess('badges').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageBots') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'bots' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('bots'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Bot size={18} /></span>
                             <span className="snav-label">Bot Yönetimi</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('bots').access}`}>
+                                    {getModuleAccess('bots').access === 'none' ? '🔒 Kilitli' : getModuleAccess('bots').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
                     </div>
-                    )}
 
                     {/* Category 3: İçerik & Sistem */}
-                    {(hasPerm('canManagePortals') || hasPerm('canManageBlog') || hasPerm('canManageReports') || currentUser?.isTouristAdmin || hasPerm('canManageNotifications') || hasPerm('canManageSystem')) && (
                     <div className="sidebar-category">
                         <span className="sidebar-category-label">🌐 İçerik & Sistem</span>
 
-                        {hasPerm('canManagePortals') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'portals' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('portals'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Globe size={18} /></span>
                             <span className="snav-label">Portallar</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('portals').access}`}>
+                                    {getModuleAccess('portals').access === 'none' ? '🔒 Kilitli' : getModuleAccess('portals').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageBlog') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'blog' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('blog'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><FileText size={18} /></span>
                             <span className="snav-label">Blog Yönetimi</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('blog').access}`}>
+                                    {getModuleAccess('blog').access === 'none' ? '🔒 Kilitli' : getModuleAccess('blog').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {(hasPerm('canManageReports') || currentUser?.isTouristAdmin) && (
-                            <button
-                                className={`sidebar-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
-                                onClick={() => { setActiveTab('reports'); setSidebarOpen(false); }}
-                            >
-                                <span className="snav-icon"><ShieldAlert size={18} /></span>
-                                <span className="snav-label">Bildirilenler</span>
-                                {reports.filter(r => r.status === 'pending').length > 0 &&
-                                    <span className="snav-badge">{reports.filter(r => r.status === 'pending').length}</span>
-                                }
-                            </button>
-                        )}
+                        <button
+                            className={`sidebar-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('reports'); setSidebarOpen(false); }}
+                        >
+                            <span className="snav-icon"><ShieldAlert size={18} /></span>
+                            <span className="snav-label">Bildirilenler</span>
+                            {reports.filter(r => r.status === 'pending').length > 0 &&
+                                <span className="snav-badge">{reports.filter(r => r.status === 'pending').length}</span>
+                            }
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('reports').access}`}>
+                                    {getModuleAccess('reports').access === 'none' ? '🔒 Kilitli' : getModuleAccess('reports').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
+                        </button>
 
-                        {hasPerm('canManageNotifications') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mass-notification' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mass-notification'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Send size={18} /></span>
                             <span className="snav-label">Toplu Bildirim Gönder</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('notifications').access}`}>
+                                    {getModuleAccess('notifications').access === 'none' ? '🔒 Kilitli' : getModuleAccess('notifications').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageSystem') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-designs' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mobile-designs'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><Smartphone size={18} /></span>
                             <span className="snav-label">Mobil Tasarım Barındırma</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('system').access}`}>
+                                    {getModuleAccess('system').access === 'none' ? '🔒 Kilitli' : getModuleAccess('system').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
 
-                        {hasPerm('canManageSystem') && (
                         <button
                             className={`sidebar-nav-item ${activeTab === 'mobile-versions' ? 'active' : ''}`}
                             onClick={() => { setActiveTab('mobile-versions'); setSidebarOpen(false); }}
                         >
                             <span className="snav-icon"><History size={18} /></span>
                             <span className="snav-label">Mobil Sürüm Günlüğü</span>
+                            {isTouristAdmin && !isFullAdmin && (
+                                <span className={`snav-perm-pill ${getModuleAccess('system').access}`}>
+                                    {getModuleAccess('system').access === 'none' ? '🔒 Kilitli' : getModuleAccess('system').access === 'view' ? '👁️ İzleme' : '⚡ Tam'}
+                                </span>
+                            )}
                         </button>
-                        )}
                     </div>
-                    )}
 
                     {/* Category 4: Özel Görünürlük Şartı (Süper Admin) */}
                     {isOxypace && (
@@ -5033,10 +5564,24 @@ const AdminDashboard = () => {
             <div className="admin-main-wrapper">
                 <div className="admin-content">
                 {activeTab === 'mobile-designs' && (
-                    <MobileDesignShowcase />
+                    !getModuleAccess('system').canView ? (
+                        renderAccessDenied('Mobil Tasarım Barındırma')
+                    ) : (
+                        <>
+                            {getModuleAccess('system').access === 'view' && renderViewModeBanner('Mobil Tasarım Barındırma')}
+                            <MobileDesignShowcase />
+                        </>
+                    )
                 )}
                 {activeTab === 'mobile-versions' && (
-                    <MobileVersionHistory />
+                    !getModuleAccess('system').canView ? (
+                        renderAccessDenied('Mobil Sürüm Günlüğü')
+                    ) : (
+                        <>
+                            {getModuleAccess('system').access === 'view' && renderViewModeBanner('Mobil Sürüm Günlüğü')}
+                            <MobileVersionHistory />
+                        </>
+                    )
                 )}
                 {activeTab === 'tourist-admin' && isOxypace && (
                     <div className="tourist-admin-container fade-in">

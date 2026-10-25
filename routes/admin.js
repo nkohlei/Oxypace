@@ -1870,6 +1870,7 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
         // Apply granular Tourist Admin permissions
         if (permissions && typeof permissions === 'object') {
             user.touristAdminPermissions = {
+                ...permissions,
                 canManageRequests: !!permissions.canManageRequests,
                 canManageRecovery: !!permissions.canManageRecovery,
                 canManageFeedback: !!permissions.canManageFeedback,
@@ -1883,7 +1884,9 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
                 canSendNotifications: !!permissions.canSendNotifications,
                 canManageBlog: !!permissions.canManageBlog,
                 canManageMobile: !!permissions.canManageMobile,
+                modules: permissions.modules || {}
             };
+            user.markModified('touristAdminPermissions');
         }
 
         await user.save();
@@ -1959,6 +1962,7 @@ router.put('/users/:id/tourist-admin/permissions', protect, admin, async (req, r
                 ...user.touristAdminPermissions,
                 ...permissions
             };
+            user.markModified('touristAdminPermissions');
             await user.save();
         }
 

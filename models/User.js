@@ -338,19 +338,8 @@ const userSchema = new mongoose.Schema(
             default: null,
         },
         touristAdminPermissions: {
-            canManageRequests: { type: Boolean, default: false },
-            canManageRecovery: { type: Boolean, default: false },
-            canManageFeedback: { type: Boolean, default: false },
-            canManageUsers: { type: Boolean, default: false },
-            canBanUsers: { type: Boolean, default: false },
-            canManagePortals: { type: Boolean, default: false },
-            canManageReports: { type: Boolean, default: false },
-            canManageBadges: { type: Boolean, default: false },
-            canManageBots: { type: Boolean, default: false },
-            canViewLogs: { type: Boolean, default: false },
-            canSendNotifications: { type: Boolean, default: false },
-            canManageBlog: { type: Boolean, default: false },
-            canManageMobile: { type: Boolean, default: false },
+            type: mongoose.Schema.Types.Mixed,
+            default: {}
         },
         assignedBy: {
             type: String,
