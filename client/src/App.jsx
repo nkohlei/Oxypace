@@ -136,8 +136,6 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { dismissDeliveredMessageNotifications } from './utils/notificationUtils';
 import { useGlobalStore } from './store/useGlobalStore';
 
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
-
 const requestNativePermissions = async () => {
     if (!Capacitor.isNativePlatform()) return;
 

@@ -421,7 +421,7 @@ app.get('/api/app/version', (req, res) => {
         minSupportedVersionCode: 246,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.6: Mobil masaüstü sitesi görünüm modu ve pinch-zoom desteği, modernleştirilmiş turist ve alt-yönetici 3 kademeli RBAC izin mimarisi, silinen hesapların pasif statüde korunması ve detaylı denetim günlüğü (audit log) stabilizasyonu, istemci tarafı gerçek zamanlı senkronizasyon ve önbellek optimizasyonu.',
+        changelog: 'Oxypace 2.4.6: Google Play Protect ve cihaz güvenlik tarayıcısı tam uyumluluğu, dropper ve şüpheli izinlerin (REQUEST_INSTALL_PACKAGES, SYSTEM_ALERT_WINDOW, READ_PHONE_STATE) temizlenmesi, scoped depolama, dual v1+v2 imzalama, mobil masaüstü sitesi görünüm modu ve pinch-zoom desteği, 3 kademeli RBAC izin stüdyosu ve denetim günlüğü senkronizasyonu.',
     });
 });
 

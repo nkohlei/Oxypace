@@ -36,20 +36,24 @@ export const MOBILE_VERSIONS_DATA = [
         releaseDate: '26 Ekim 2026',
         commitHash: 'HEAD',
         status: 'active', // 'active' | 'stable' | 'legacy'
-        title: 'Mobil Masaüstü Sitesi Görünüm Modu & Pinch-to-Zoom, 3 Kademeli RBAC İzin Mimarisi, Silinen Hesapların Korunması ve Denetim Günlüğü Senkronizasyonu',
-        summary: 'Yönetim paneli ve geniş tablolar için mobil cihazlarda tek dokunuşla masaüstü görünümüne geçiş ve akıcı pinch-to-zoom desteği entegre edildi. Turist ve alt-yöneticiler için 3 kademeli esnek RBAC (Rol Tabanlı Erişim Denetimi) sistemi sunucu ve istemci tarafında modernize edildi. Silinen hesapların tüm profil verileri ve portal geçmişiyle pasif statüde korunması, silme türü filtreleri ve denetim kayıtları (audit logs) stabilizasyonu tamamlandı.',
-        category: 'feature',
-        apkSize: '80.1 MB',
+        title: 'Google Play Protect & OEM Güvenlik Standardizasyonu, Mobil Masaüstü Modu & Pinch-Zoom, 3 Kademeli RBAC İzin Mimarisi, İzin Sadeleştirmesi',
+        summary: 'Google Play Protect ve üretici güvenlik tarayıcılarının yanlış pozitif (false-positive) zararlı uygulama uyarılarını engellemek amacıyla Capacitor OTA eklentisi kaldırıldı, dropper ve yükleyici şüphesi doğuran izinler (REQUEST_INSTALL_PACKAGES, SYSTEM_ALERT_WINDOW, READ_PHONE_STATE vb.) temizlendi, depolama izinleri scoped hale getirildi ve dual v1+v2 imzalama devreye alındı. Yönetim paneli için mobil masaüstü sitesi görünüm modu ve akıcı pinch-to-zoom desteği entegre edildi.',
+        category: 'security',
+        apkSize: '79.9 MB',
         targetSdk: 'Android 14+ (API 34-35)',
         architecture: 'arm64-v8a / universal',
         highlights: [
+            'Google Play Protect Tam Uyumluluk: Dropper ve zararlı yazılım algoritmalarını tetikleyen dinamik kod yükleyici (CapacitorUpdater) paketten tamamen çıkarıldı',
+            'Kritik İzin Sadeleştirmesi: REQUEST_INSTALL_PACKAGES, SYSTEM_ALERT_WINDOW, READ_PHONE_STATE ve BATTERY_OPTIMIZATIONS kaldırılarak en temiz güvenlik profili sağlandı',
+            'Dual APK İmzası (v1 JAR + v2 APK Signature Scheme): Tüm eski ve modern Android cihazlarda tam doğrulama ve paket bütünlüğü güvencesi',
             'Mobil Masaüstü Sitesi Modu: Admin panelinde mobil cihazlarda masaüstü düzenine anında geçiş ve akıcı iki parmakla yakınlaştırma (pinch-to-zoom) desteği',
             '3 Kademeli Granüler RBAC Mimarisi: Turist ve alt-yöneticiler için modül bazlı yetkilendirme, gerçek zamanlı izin senkronizasyonu ve yetkisiz işlem engeli',
-            'Silinen Hesap Yönetimi & Arşivleme: Silinen hesaplar kalıcı veri kaybı olmadan pasif statüde saklanarak tüm portal aktiviteleri ve dosya geçmişi muhafaza edildi',
-            'Oturum Tabanlı Denetim Günlüğü (Audit Log): Portal etkinliklerinde yaşanan olası çökmeler giderildi, zenginleştirilmiş oturum geçmişi paneli devreye alındı',
-            'İstemci & Sunucu Önbellek Senkronizasyonu: İzin değişikliklerinin anında istemciye yansıması sağlandı, stale cache gecikmeleri sıfırlandı'
+            'Silinen Hesap Yönetimi & Arşivleme: Silinen hesaplar kalıcı veri kaybı olmadan pasif statüde saklanarak tüm portal aktiviteleri ve dosya geçmişi muhafaza edildi'
         ],
         changes: [
+            { type: 'sec', text: 'android/app/src/main/AndroidManifest.xml: REQUEST_INSTALL_PACKAGES, SYSTEM_ALERT_WINDOW, READ_PHONE_STATE kaldırıldı, depolama scoped hale getirildi.' },
+            { type: 'sec', text: 'android/app/build.gradle: v1SigningEnabled ve v2SigningEnabled dual imzalama zinciri aktifleştirildi.' },
+            { type: 'sec', text: 'package.json & capacitor.config.json: Güvenlik riski oluşturan @capgo/capacitor-updater kaldırıldı, cleartext devre dışı bırakıldı.' },
             { type: 'feat', text: 'client/src/pages/Admin.jsx: Mobil cihazlar için masaüstü görünüm modu ve interaktif viewport pinch-zoom anahtarı eklendi.' },
             { type: 'feat', text: 'server/routes/admin.js & client: Turist ve alt-yöneticiler için 3 kademeli granüler RBAC stüdyosu ve sunucu koruması tamamlandı.' },
             { type: 'feat', text: 'server/controllers/adminController.js: Silinen hesaplar pasif duruma çekilerek soft-delete yönetimi ve hesap türü filtreleri eklendi.' },
@@ -57,13 +61,15 @@ export const MOBILE_VERSIONS_DATA = [
             { type: 'build', text: 'Android Release APK v2.4.6 (versionCode 246) Java 21 ortamında derlendi ve dağıtım dizinlerine senkronize edildi.' }
         ],
         affectedFiles: [
+            'android/app/src/main/AndroidManifest.xml',
+            'android/app/build.gradle',
+            'android/app/src/main/java/com/oxypace/app/DownloaderPlugin.java',
+            'capacitor.config.json',
+            'client/src/components/UpdateModal.jsx',
             'client/src/pages/Admin.jsx',
             'client/src/components/AdminSidebar.jsx',
             'client/src/components/MobileVersionHistory.jsx',
-            'client/src/components/UpdateModal.jsx',
-            'client/src/components/Footer.jsx',
-            'server.js',
-            'android/app/build.gradle'
+            'server.js'
         ]
     },
     {
