@@ -209,6 +209,7 @@ export const initializeSocket = (io) => {
             socket.data.isGhost = !!isGhost;
             socket.data.isBackground = false;
             socket.isGhost = !!isGhost;
+            socket._sessionStartTime = Date.now();
 
             userSockets.set(socket.id, strUserId);
             socket.join(strUserId);
@@ -427,6 +428,7 @@ export const initializeSocket = (io) => {
             io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive });
             await broadcastGlobalOnlineUsers();
 
+            const sessionDurationSec = socket._sessionStartTime ? Math.round((Date.now() - socket._sessionStartTime) / 1000) : 0;
             logActivity({
                 user: strUserId,
                 username: socket.user?.username || '',
@@ -434,7 +436,7 @@ export const initializeSocket = (io) => {
                 category: 'auth',
                 severity: 'info',
                 socket,
-                details: { method: 'user_action' }
+                details: { method: 'user_action', durationSec: sessionDurationSec }
             });
         });
 
@@ -462,6 +464,46 @@ export const initializeSocket = (io) => {
                     return;
                 }
                 console.log(`👋 Socket disconnected: ${socket.id} for user ${strUserId}`);
+
+                // Record portal leave if socket was in a portal room
+                if (socket._currentPortalId && socket._portalJoinTime) {
+                    const staySec = Math.round((Date.now() - socket._portalJoinTime) / 1000);
+                    logActivity({
+                        user: strUserId,
+                        username: socket.user?.username || '',
+                        action: 'PORTAL_LEAVE',
+                        category: 'portal',
+                        portal: socket._currentPortalId,
+                        details: {
+                            portalId: socket._currentPortalId,
+                            durationSec: staySec,
+                            reason: 'SOCKET_DISCONNECT'
+                        }
+                    });
+                    socket._currentPortalId = null;
+                    socket._portalJoinTime = null;
+                }
+
+                // Record channel leave if socket was in a channel room
+                if (socket._currentChannelId && socket._channelJoinTime) {
+                    const staySec = Math.round((Date.now() - socket._channelJoinTime) / 1000);
+                    logActivity({
+                        user: strUserId,
+                        username: socket.user?.username || '',
+                        action: 'CHANNEL_LEAVE',
+                        category: 'portal',
+                        portal: socket._currentPortalId,
+                        channel: socket._currentChannelId,
+                        details: {
+                            portalId: socket._currentPortalId,
+                            channelId: socket._currentChannelId,
+                            durationSec: staySec,
+                            reason: 'SOCKET_DISCONNECT'
+                        }
+                    });
+                    socket._currentChannelId = null;
+                    socket._channelJoinTime = null;
+                }
 
                 const userSocketsSet = activeUsersMap.get(strUserId);
                 if (userSocketsSet) {
@@ -716,20 +758,58 @@ export const initializeSocket = (io) => {
             }
         });
 
-        // --- ROOM MANAGEMENT (For Feed Isolation) ---
+        // --- ROOM MANAGEMENT (For Feed Isolation & Audit Logs) ---
         
         // Portal Rooms
         socket.on('join_portal', (portalId) => {
-            socket.join(`portal:${portalId}`);
-            console.log(`📡 Socket ${socket.id} joined portal room: ${portalId}`);
+            if (!portalId) return;
+            const sPortalId = String(portalId);
+            socket.join(`portal:${sPortalId}`);
+            console.log(`📡 Socket ${socket.id} joined portal room: ${sPortalId}`);
+
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (userId) {
+                const now = Date.now();
+                // Check if socket was already in a different portal, calculate and log stay duration
+                if (socket._currentPortalId && socket._portalJoinTime && socket._currentPortalId !== sPortalId) {
+                    const staySec = Math.round((now - socket._portalJoinTime) / 1000);
+                    logActivity({
+                        user: userId,
+                        username: socket.user?.username || '',
+                        action: 'PORTAL_LEAVE',
+                        category: 'portal',
+                        portal: socket._currentPortalId,
+                        details: {
+                            portalId: socket._currentPortalId,
+                            durationSec: staySec,
+                            reason: 'SWITCHED_PORTAL'
+                        }
+                    });
+                }
+
+                socket._currentPortalId = sPortalId;
+                socket._portalJoinTime = now;
+
+                logActivity({
+                    user: userId,
+                    username: socket.user?.username || '',
+                    action: 'PORTAL_VIEW',
+                    category: 'portal',
+                    portal: sPortalId,
+                    details: {
+                        portalId: sPortalId,
+                        action: 'PORTAL_ENTER'
+                    }
+                });
+            }
 
             // Send existing typers in this portal to the newly joined socket
-            const portalTypers = activeTypingPortals.get(portalId);
+            const portalTypers = activeTypingPortals.get(sPortalId);
             if (portalTypers) {
-                for (const [userId, details] of portalTypers.entries()) {
+                for (const [tUserId, details] of portalTypers.entries()) {
                     socket.emit('portal_typing_update', {
-                        portalId,
-                        userId,
+                        portalId: sPortalId,
+                        userId: tUserId,
                         username: details.username,
                         displayName: details.displayName,
                         avatar: details.avatar,
@@ -738,18 +818,39 @@ export const initializeSocket = (io) => {
                 }
             }
             
-            const room = io.sockets.adapter.rooms.get(`portal:${portalId}`);
+            const room = io.sockets.adapter.rooms.get(`portal:${sPortalId}`);
             const onlineCount = room ? room.size : 0;
-            io.to(`portal:${portalId}`).emit('portal_presence_update', { portalId, onlineCount });
+            io.to(`portal:${sPortalId}`).emit('portal_presence_update', { portalId: sPortalId, onlineCount });
         });
 
         socket.on('leave_portal', (portalId) => {
-            socket.leave(`portal:${portalId}`);
-            console.log(`📡 Socket ${socket.id} left portal room: ${portalId}`);
+            if (!portalId) return;
+            const sPortalId = String(portalId);
+            socket.leave(`portal:${sPortalId}`);
+            console.log(`📡 Socket ${socket.id} left portal room: ${sPortalId}`);
+
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (userId && socket._currentPortalId === sPortalId && socket._portalJoinTime) {
+                const staySec = Math.round((Date.now() - socket._portalJoinTime) / 1000);
+                logActivity({
+                    user: userId,
+                    username: socket.user?.username || '',
+                    action: 'PORTAL_LEAVE',
+                    category: 'portal',
+                    portal: sPortalId,
+                    details: {
+                        portalId: sPortalId,
+                        durationSec: staySec,
+                        reason: 'USER_LEFT_PORTAL'
+                    }
+                });
+                socket._currentPortalId = null;
+                socket._portalJoinTime = null;
+            }
             
-            const room = io.sockets.adapter.rooms.get(`portal:${portalId}`);
+            const room = io.sockets.adapter.rooms.get(`portal:${sPortalId}`);
             const onlineCount = room ? room.size : 0;
-            io.to(`portal:${portalId}`).emit('portal_presence_update', { portalId, onlineCount });
+            io.to(`portal:${sPortalId}`).emit('portal_presence_update', { portalId: sPortalId, onlineCount });
         });
 
         socket.on('get_portal_presence', (portalId) => {
@@ -760,13 +861,77 @@ export const initializeSocket = (io) => {
 
         // Channel Rooms
         socket.on('join_channel', (channelId) => {
-            socket.join(`channel:${channelId}`);
-            console.log(`📡 Socket ${socket.id} joined channel room: ${channelId}`);
+            if (!channelId) return;
+            const sChannelId = String(channelId);
+            socket.join(`channel:${sChannelId}`);
+            console.log(`📡 Socket ${socket.id} joined channel room: ${sChannelId}`);
+
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (userId) {
+                const now = Date.now();
+                // If user was previously in another channel on this socket, record stay duration in that channel
+                if (socket._currentChannelId && socket._channelJoinTime && socket._currentChannelId !== sChannelId) {
+                    const staySec = Math.round((now - socket._channelJoinTime) / 1000);
+                    logActivity({
+                        user: userId,
+                        username: socket.user?.username || '',
+                        action: 'CHANNEL_LEAVE',
+                        category: 'portal',
+                        portal: socket._currentPortalId,
+                        channel: socket._currentChannelId,
+                        details: {
+                            portalId: socket._currentPortalId,
+                            channelId: socket._currentChannelId,
+                            durationSec: staySec,
+                            reason: 'SWITCHED_CHANNEL'
+                        }
+                    });
+                }
+
+                socket._currentChannelId = sChannelId;
+                socket._channelJoinTime = now;
+
+                logActivity({
+                    user: userId,
+                    username: socket.user?.username || '',
+                    action: 'CHANNEL_VIEW',
+                    category: 'portal',
+                    portal: socket._currentPortalId,
+                    channel: sChannelId,
+                    details: {
+                        portalId: socket._currentPortalId,
+                        channelId: sChannelId
+                    }
+                });
+            }
         });
 
         socket.on('leave_channel', (channelId) => {
-            socket.leave(`channel:${channelId}`);
-            console.log(`📡 Socket ${socket.id} left channel room: ${channelId}`);
+            if (!channelId) return;
+            const sChannelId = String(channelId);
+            socket.leave(`channel:${sChannelId}`);
+            console.log(`📡 Socket ${socket.id} left channel room: ${sChannelId}`);
+
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (userId && socket._currentChannelId === sChannelId && socket._channelJoinTime) {
+                const staySec = Math.round((Date.now() - socket._channelJoinTime) / 1000);
+                logActivity({
+                    user: userId,
+                    username: socket.user?.username || '',
+                    action: 'CHANNEL_LEAVE',
+                    category: 'portal',
+                    portal: socket._currentPortalId,
+                    channel: sChannelId,
+                    details: {
+                        portalId: socket._currentPortalId,
+                        channelId: sChannelId,
+                        durationSec: staySec,
+                        reason: 'USER_LEFT_CHANNEL'
+                    }
+                });
+                socket._currentChannelId = null;
+                socket._channelJoinTime = null;
+            }
         });
     });
 

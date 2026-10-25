@@ -76,6 +76,612 @@ const getYouTubeEmbedUrl = (urlOrText) => {
     return match ? `https://www.youtube.com/embed/${match[1]}` : null;
 };
 
+// Format human-friendly byte size (e.g. 2.4 MB, 680 KB)
+export const formatFileSize = (bytes) => {
+    if (!bytes || isNaN(bytes)) return null;
+    const num = Number(bytes);
+    if (num <= 0) return null;
+    if (num < 1024) return `${num} B`;
+    if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+    return `${(num / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+// Format duration in seconds (e.g. 14 dk 22 sn, 2 sa 10 dk)
+export const formatDurationSec = (seconds) => {
+    if (seconds === undefined || seconds === null || isNaN(seconds)) return null;
+    const sec = Math.round(Number(seconds));
+    if (sec <= 0) return '0 sn';
+    if (sec < 60) return `${sec} sn`;
+    const mins = Math.floor(sec / 60);
+    const remSec = sec % 60;
+    if (mins < 60) return `${mins} dk ${remSec > 0 ? remSec + ' sn' : ''}`;
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours} sa ${remMins > 0 ? remMins + ' dk' : ''}`;
+};
+
+// Human-friendly Turkish reason translation
+export const translateReason = (reason) => {
+    if (!reason) return 'Bilinmiyor';
+    const map = {
+        'INVALID_PASSWORD': 'Hatalı şifre girişi',
+        'USER_NOT_FOUND': 'Kullanıcı hesabı bulunamadı',
+        'DELETED_ACCOUNT': 'Silinmiş hesap ile giriş denemesi',
+        'UNVERIFIED_EMAIL': 'Doğrulanmamış e-posta adresi',
+        'BANNED_USER': 'Yasaklı kullanıcı hesabı',
+        'RATE_LIMIT_EXCEEDED': 'İstek limiti aşıldı (Rate limit)',
+        'SWITCHED_PORTAL': 'Farklı bir portala geçiş yapıldı',
+        'SWITCHED_CHANNEL': 'Farklı bir kanala geçiş yapıldı',
+        'USER_LEFT_PORTAL': 'Kullanıcı portaldan ayrıldı',
+        'USER_LEFT_CHANNEL': 'Kullanıcı kanaldan ayrıldı',
+        'SOCKET_DISCONNECT': 'Ağ bağlantısı / Sekme kapatıldı'
+    };
+    return map[reason] || reason;
+};
+
+// Generates a descriptive, human-readable narrative and title for any activity log
+export const getActionNarrative = (log) => {
+    if (!log) return { title: 'Bilinmeyen İşlem', desc: 'Platform kaydı işlendi.' };
+    const action = log.action || '';
+    const details = log.details || {};
+    const portal = log.portalName || log.portal?.name || details.portalName || (typeof details.portal === 'string' && !/^[a-f0-9]{24}$/i.test(details.portal) ? details.portal : '');
+    const channel = log.channel || details.channelName || (typeof details.channel === 'string' && !/^[a-f0-9]{24}$/i.test(details.channel) ? details.channel : '');
+    const where = portal ? `${portal}${channel ? ` › #${channel}` : ''}` : (channel ? `#${channel}` : '');
+
+    switch (action) {
+        case 'STREAM_TOGGLE': {
+            const parts = [];
+            if (details.isCameraOn !== undefined) {
+                parts.push(details.isCameraOn ? '🎥 Kamera Açıldı' : '📷 Kamera Kapalı');
+            }
+            if (details.isScreenSharing !== undefined) {
+                parts.push(details.isScreenSharing ? '🖥️ Ekran Paylaşımı Başlatıldı' : '🖥️ Ekran Kapalı');
+            }
+            if (details.isMuted !== undefined) {
+                parts.push(details.isMuted ? '🔇 Mikrofon Susturuldu' : '🎙️ Mikrofon Açık');
+            }
+            return {
+                title: 'Canlı Medya Yayını Durumu Değiştirildi',
+                desc: `${where ? `[${where}] ` : ''}${parts.join(' • ') || details.summary || 'Medya akışı güncellendi'}`
+            };
+        }
+        case 'STREAM_WATCH':
+            return {
+                title: 'Canlı Video / Film Yayını İzlendi',
+                desc: `${where ? `[${where}] ` : ''}${details.title ? `"${details.title}" yayını izleniyor.` : 'Canlı yayın izleniyor.'}${details.url ? ` (${details.url})` : ''}`
+            };
+        case 'BOT_POST':
+            return {
+                title: 'Bot Otomatik Gönderi Paylaştı',
+                desc: `${where ? `[${where}] ` : ''}"${details.title || details.snippet || details.content || 'İçerik yayınlandı'}"`
+            };
+        case 'POST_CREATE':
+            return {
+                title: 'Yeni Gönderi Paylaşıldı',
+                desc: `${where ? `[${where}] ` : ''}"${details.content || details.snippet || details.title || 'İçerik paylaşıldı'}"`
+            };
+        case 'POST_DELETE':
+            return {
+                title: 'Gönderi Silindi',
+                desc: `${where ? `[${where}] ` : ''}Silinen İçerik: "${details.content || details.snippet || details.title || '...'}"`
+            };
+        case 'POST_MEDIA_ATTACHED':
+            return {
+                title: 'Gönderiye Medya/Dosya Eklendi',
+                desc: `${details.fileName ? `📁 ${details.fileName}` : ''}${details.fileSize ? ` (${formatFileSize(details.fileSize)})` : ''}${details.content ? ` • "${details.content.substring(0, 50)}"` : ''}`
+            };
+        case 'FILE_UPLOAD':
+            return {
+                title: 'Depolama Alanına Dosya Yüklendi',
+                desc: `📁 ${details.fileName || 'Dosya'} (${formatFileSize(details.sizeBytes || details.fileSize)})${details.mimeType ? ` • Tür: ${details.mimeType}` : ''}`
+            };
+        case 'FILE_DELETE':
+            return {
+                title: 'Depolama Alanından Dosya Silindi',
+                desc: `🗑️ ${details.fileName || details.key || 'Dosya silindi'}`
+            };
+        case 'ROOM_JOIN':
+            return {
+                title: 'Canlı Ses/Görüntü Odasına Katıldı',
+                desc: `${where ? `${where} odasına giriş yapıldı.` : 'Canlı ses odasına katılım sağlandı.'}`
+            };
+        case 'ROOM_LEAVE':
+            return {
+                title: 'Canlı Ses/Görüntü Odasından Ayrıldı',
+                desc: `${where ? `${where} odasından ayrıldı.` : 'Odadan ayrıldı.'}${details.durationSec !== undefined ? ` • Odada Kalınan Süre: ${formatDurationSec(details.durationSec)}` : ''}`
+            };
+        case 'WP_START':
+            return {
+                title: 'Watch Party Başlatıldı',
+                desc: `${where ? `${where}: ` : ''}${details.title ? `"${details.title}" ` : ''}ortak video izleme oturumu başlatıldı.${details.url ? ` (${details.url})` : ''}`
+            };
+        case 'WP_PLAY':
+            return {
+                title: 'Watch Party: Video Oynatılıyor',
+                desc: `${where ? `${where}: ` : ''}Medya yürütülmeye devam ediyor.`
+            };
+        case 'WP_PAUSE':
+            return {
+                title: 'Watch Party: Video Duraklatıldı',
+                desc: `${where ? `${where}: ` : ''}Medya yürütmesi duraklatıldı.`
+            };
+        case 'WP_SEEK':
+            return {
+                title: 'Watch Party: Video Sarıldı',
+                desc: `${where ? `${where}: ` : ''}Medya oynatma konumu değiştirildi.`
+            };
+        case 'ICE_CONNECTION_FAILED':
+            return {
+                title: 'WebRTC Bağlantı Hatası (ICE Restart)',
+                desc: 'Kullanıcının canlı yayın/ses akışı kesildi, yeniden bağlanılıyor.'
+            };
+        case 'LOGIN_SUCCESS':
+            return {
+                title: 'Başarılı Oturum Açma',
+                desc: `${details.method === 'google' ? 'Google ile ' : ''}${details.email || log.username || 'Kullanıcı'} sisteme giriş yaptı.${details.isNewDevice ? ' (Yeni Tanınmayan Cihaz)' : ''}`
+            };
+        case 'LOGIN_FAILED':
+            return {
+                title: 'Başarısız Giriş Denemesi',
+                desc: `Sebep: ${translateReason(details.reason)}${details.securityAlert ? ` • 🚨 ${details.securityAlert}` : ''}`
+            };
+        case 'LOGOUT':
+            return {
+                title: 'Oturum Kapatıldı',
+                desc: `${log.username || 'Kullanıcı'} platformdan çıkış yaptı.${details.durationSec ? ` • Platformda Kalış Süresi: ${formatDurationSec(details.durationSec)}` : ''}`
+            };
+        case 'PORTAL_VIEW':
+            return {
+                title: 'Portal Ziyaret Edildi',
+                desc: `🏛️ ${portal || 'Portal'} topluluğuna giriş yapıldı ve içerikler görüntülendi.`
+            };
+        case 'PORTAL_LEAVE':
+            return {
+                title: 'Portaldan Ayrılındı',
+                desc: `🚪 ${portal || 'Portal'} topluluğundan ayrıldı.${details.durationSec ? ` • Portalda Kalış Süresi: ${formatDurationSec(details.durationSec)}` : ''}`
+            };
+        case 'PORTAL_JOIN':
+            return {
+                title: 'Portala Katılım Sağlandı',
+                desc: `${portal || 'Portal'} topluluğuna katıldı.${details.inviteCode ? ` (Davet Kodu: ${details.inviteCode})` : ''}`
+            };
+        case 'PORTAL_CREATE':
+            return {
+                title: 'Yeni Portal Kuruldu',
+                desc: `🏛️ "${portal || details.portalName || 'Yeni Portal'}" oluşturuldu.`
+            };
+        case 'PORTAL_DELETE':
+            return {
+                title: 'Portal Kalıcı Olarak Silindi',
+                desc: `🏛️ "${details.portalName || portal || 'Portal'}" silindi.`
+            };
+        case 'CHANNEL_VIEW':
+            return {
+                title: 'Kanal Ziyaret Edildi',
+                desc: `📻 ${where ? `${where} kanalına` : 'Kanala'} geçildi.`
+            };
+        case 'CHANNEL_LEAVE':
+            return {
+                title: 'Kanaldan Ayrıldı',
+                desc: `📻 ${where ? `${where} kanalından` : 'Kanaldan'} ayrıldı.${details.durationSec ? ` • Kanalda Kalış Süresi: ${formatDurationSec(details.durationSec)}` : ''}`
+            };
+        case 'CHANNEL_CREATE':
+            return {
+                title: 'Yeni Kanal Oluşturuldu',
+                desc: `${portal ? `${portal} bünyesinde ` : ''}#${channel || details.channelName || 'kanal'} oluşturuldu.`
+            };
+        case 'CHANNEL_DELETE':
+            return {
+                title: 'Kanal Silindi',
+                desc: `${portal ? `${portal} bünyesindeki ` : ''}#${channel || 'kanal'} silindi.`
+            };
+        case 'MESSAGE_EDIT':
+            return {
+                title: 'Mesaj Düzenlendi',
+                desc: `Güncellenen içerik: "${details.newContent || details.content || '...'}"`
+            };
+        case 'MESSAGE_DELETE':
+            return {
+                title: 'Mesaj Silindi',
+                desc: `Silinen mesaj: "${details.content || '...'}"`
+            };
+        case 'REPORT_CREATED':
+            return {
+                title: 'Yeni Güvenlik & İçerik Şikayeti',
+                desc: `Bildirim Sebebi: ${details.reason || 'Kural İhlali'}`
+            };
+        case 'PASSWORD_RESET_SUCCESS':
+            return {
+                title: 'Şifre Sıfırlandı',
+                desc: 'Hesap şifresi güvenlik bağlantısıyla başarıyla değiştirildi.'
+            };
+        case 'PROFILE_UPDATE':
+            return {
+                title: 'Profil Bilgileri Güncellendi',
+                desc: details.changedFields && details.changedFields.length > 0
+                    ? `Değişen Alanlar: ${details.changedFields.join(', ')}`
+                    : 'Kullanıcı profil biyografisi, avatarı veya adı güncellendi.'
+            };
+        case 'HIGH_LATENCY':
+            return {
+                title: 'Yüksek İstek Gecikmesi (>500ms)',
+                desc: `${details.method || ''} ${details.path || ''} (${details.durationMs}ms)`
+            };
+        case 'UNHANDLED_ERROR':
+            return {
+                title: 'Sunucu İç Hatası (500)',
+                desc: `${details.message || 'Sistem düzeyinde istisna oluştu.'}`
+            };
+        default:
+            return {
+                title: action.replace(/_/g, ' '),
+                desc: details.reason || details.title || details.snippet || (typeof details === 'object' ? JSON.stringify(details) : String(details || ''))
+            };
+    }
+};
+
+// Rich curated session themes for distinct coloring across sessions
+export const SESSION_PALETTES = [
+    { name: 'cyan', border: '#06b6d4', text: '#22d3ee', badgeBg: 'rgba(6, 182, 212, 0.16)', cardBg: 'rgba(6, 182, 212, 0.04)', glow: 'rgba(6, 182, 212, 0.3)' },
+    { name: 'emerald', border: '#10b981', text: '#34d399', badgeBg: 'rgba(16, 185, 129, 0.16)', cardBg: 'rgba(16, 185, 129, 0.04)', glow: 'rgba(16, 185, 129, 0.3)' },
+    { name: 'purple', border: '#a855f7', text: '#c084fc', badgeBg: 'rgba(168, 85, 247, 0.16)', cardBg: 'rgba(168, 85, 247, 0.04)', glow: 'rgba(168, 85, 247, 0.3)' },
+    { name: 'amber', border: '#f59e0b', text: '#fbbf24', badgeBg: 'rgba(245, 158, 11, 0.16)', cardBg: 'rgba(245, 158, 11, 0.04)', glow: 'rgba(245, 158, 11, 0.3)' },
+    { name: 'rose', border: '#f43f5e', text: '#fb7185', badgeBg: 'rgba(244, 63, 94, 0.16)', cardBg: 'rgba(244, 63, 94, 0.04)', glow: 'rgba(244, 63, 94, 0.3)' },
+    { name: 'blue', border: '#3b82f6', text: '#60a5fa', badgeBg: 'rgba(59, 130, 246, 0.16)', cardBg: 'rgba(59, 130, 246, 0.04)', glow: 'rgba(59, 130, 246, 0.3)' },
+    { name: 'teal', border: '#14b8a6', text: '#2dd4bf', badgeBg: 'rgba(20, 184, 166, 0.16)', cardBg: 'rgba(20, 184, 166, 0.04)', glow: 'rgba(20, 184, 166, 0.3)' },
+    { name: 'fuchsia', border: '#d946ef', text: '#e879f9', badgeBg: 'rgba(217, 70, 239, 0.16)', cardBg: 'rgba(217, 70, 239, 0.04)', glow: 'rgba(217, 70, 239, 0.3)' }
+];
+
+// Categorizes logs into distinct user sessions and attaches matching color palettes
+export const categorizeLogsBySession = (logs = []) => {
+    if (!logs || !Array.isArray(logs) || logs.length === 0) return [];
+
+    // Chronological order (oldest first) to accurately partition sessions
+    const sorted = [...logs].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+
+    // Map each user to their session tracker: { sessionIndex, lastTime, wasLogout }
+    const userSessionTrackers = new Map();
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes gap splits session
+
+    const enrichedChronological = sorted.map((log) => {
+        const uId = String(log.user?._id || log.user || log.username || 'system');
+        const logTime = new Date(log.createdAt || 0).getTime();
+        const action = log.action || '';
+
+        let tracker = userSessionTrackers.get(uId);
+        if (!tracker) {
+            tracker = { sessionIndex: 1, lastTime: logTime, wasLogout: false };
+            userSessionTrackers.set(uId, tracker);
+        } else {
+            const timeDiff = Math.abs(logTime - tracker.lastTime);
+            if (tracker.wasLogout || action === 'LOGIN_SUCCESS' || timeDiff > SESSION_TIMEOUT_MS) {
+                tracker.sessionIndex += 1;
+            }
+            tracker.lastTime = logTime;
+            tracker.wasLogout = (action === 'LOGOUT');
+        }
+
+        const sessionIndex = tracker.sessionIndex;
+        const palette = SESSION_PALETTES[(sessionIndex - 1) % SESSION_PALETTES.length];
+
+        return {
+            ...log,
+            _sessionMeta: {
+                sessionIndex,
+                sessionLabel: `Oturum #${sessionIndex}`,
+                palette,
+                time: logTime
+            }
+        };
+    });
+
+    // Return in reverse chronological order (newest first) for audit feeds
+    return enrichedChronological.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+};
+
+// ActivityLogCard: Professional, detailed card for Portal Logs and User Dossier
+export const ActivityLogCard = ({ act, onInspectLog, onMediaClick }) => {
+    if (!act) return null;
+    const sev = act.severity || 'info';
+    const narrative = getActionNarrative(act);
+    const sessionMeta = act._sessionMeta || { sessionLabel: 'Oturum #1', palette: SESSION_PALETTES[0] };
+    const palette = sessionMeta.palette || SESSION_PALETTES[0];
+
+    const actor = act.user && typeof act.user === 'object' ? act.user : act.details?.author;
+    const chName = act.channel || act.details?.channelName || (typeof act.details?.channel === 'string' && !/^[a-f0-9]{24}$/i.test(act.details.channel) ? act.details.channel : '');
+    const postContent = act.content || act.details?.content || act.details?.snippet || act.details?.postSnapshot?.content || '';
+    const hasMedia = act.hasMedia || act.details?.hasMedia || act.details?.mediaUrl || act.details?.media || act.details?.pdfUrl;
+    const mediaUrl = act.mediaUrl || act.details?.mediaUrl || act.details?.media || (Array.isArray(act.details?.media) ? act.details.media[0] : null) || act.details?.pdfUrl;
+    const mediaType = act.mediaType || act.details?.mediaType || (act.details?.pdfUrl ? 'pdf' : (act.details?.url ? 'video' : 'image'));
+    const durationSec = act.durationSec !== undefined && act.durationSec !== null ? act.durationSec : act.details?.durationSec;
+
+    // Check if live stream toggle
+    const isStreamToggle = act.action === 'STREAM_TOGGLE';
+    // Check if watch party or video watch
+    const isStreamWatch = act.action === 'STREAM_WATCH' || act.action === 'WP_START' || !!act.details?.url;
+
+    return (
+        <div 
+            onClick={() => onInspectLog && onInspectLog(act)}
+            className="portal-audit-feed-card"
+            style={{
+                background: '#141414',
+                border: '1px solid #242424',
+                borderLeft: `4px solid ${palette.border}`,
+                borderRadius: '8px',
+                padding: '12px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                cursor: onInspectLog ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+                boxShadow: `0 2px 10px ${palette.cardBg}`
+            }}
+        >
+            {/* Header Row: Session Badge + Actor + Action + Severity + Channel + Time */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span 
+                        style={{
+                            background: palette.badgeBg,
+                            color: palette.text,
+                            border: `1px solid ${palette.border}`,
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            letterSpacing: '0.4px',
+                            textTransform: 'uppercase'
+                        }}
+                    >
+                        {sessionMeta.sessionLabel}
+                    </span>
+
+                    {actor ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <AdminMedia
+                                src={actor.profile?.avatar || actor.avatar}
+                                alt=""
+                                isAvatar
+                                style={{ width: '22px', height: '22px', borderRadius: '4px' }}
+                            />
+                            <span style={{ color: '#fff', fontWeight: 600, fontSize: '12px' }}>
+                                @{actor.username}
+                            </span>
+                            {actor.profile?.displayName && actor.profile.displayName !== actor.username && (
+                                <span style={{ color: '#777', fontSize: '11px' }}>({actor.profile.displayName})</span>
+                            )}
+                        </div>
+                    ) : (
+                        <span style={{ color: '#888', fontSize: '12px', fontWeight: 500 }}>
+                            ⚙️ {act.username || act.actorRole || 'Sistem / Bot'}
+                        </span>
+                    )}
+
+                    <span className="mono-tag" style={{ fontSize: '9px' }}>{act.action}</span>
+                    <span className={`severity-badge ${sev}`} style={{ fontSize: '9px', padding: '1px 5px' }}>
+                        {sev.toUpperCase()}
+                    </span>
+
+                    {chName && (
+                        <span className="channel-badge-chip" style={{ fontSize: '9px' }}>
+                            #{chName}
+                        </span>
+                    )}
+
+                    {durationSec !== null && durationSec !== undefined && (
+                        <span 
+                            style={{
+                                background: 'rgba(234, 179, 8, 0.15)',
+                                color: '#facc15',
+                                border: '1px solid rgba(234, 179, 8, 0.35)',
+                                borderRadius: '4px',
+                                padding: '2px 8px',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                        >
+                            ⏱️ Kalış Süresi: {formatDurationSec(durationSec)}
+                        </span>
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {act.ip && <span style={{ color: '#666', fontFamily: 'monospace', fontSize: '10px' }}>{act.ip}</span>}
+                    <span style={{ color: '#777', fontFamily: 'monospace', fontSize: '10px' }}>
+                        {act.createdAt ? new Date(act.createdAt).toLocaleString('tr-TR') : '-'}
+                    </span>
+                    {onInspectLog && (
+                        <span style={{ color: palette.text, fontSize: '11px', fontWeight: 600 }}>🔍 İncele</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Narrative Title & Description */}
+            <div style={{ fontSize: '12px', color: '#ccc', lineHeight: 1.4 }}>
+                <strong style={{ color: '#fff', marginRight: '6px' }}>{narrative.title}:</strong>
+                <span>{narrative.desc}</span>
+            </div>
+
+            {/* Live Media Stream Toggle Toggles (Mic, Cam, Screen) */}
+            {isStreamToggle && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
+                    {act.details?.isMuted !== undefined && (
+                        <span style={{
+                            fontSize: '11px',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: act.details.isMuted ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                            color: act.details.isMuted ? '#f87171' : '#4ade80',
+                            border: `1px solid ${act.details.isMuted ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`
+                        }}>
+                            {act.details.isMuted ? '🔇 Mikrofon Susturuldu' : '🎙️ Mikrofon Açıldı'}
+                        </span>
+                    )}
+                    {act.details?.isCameraOn !== undefined && (
+                        <span style={{
+                            fontSize: '11px',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: act.details.isCameraOn ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                            color: act.details.isCameraOn ? '#60a5fa' : '#9ca3af',
+                            border: `1px solid ${act.details.isCameraOn ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
+                        }}>
+                            {act.details.isCameraOn ? '🎥 Kamera Açıldı' : '📷 Kamera Kapalı'}
+                        </span>
+                    )}
+                    {act.details?.isScreenSharing !== undefined && (
+                        <span style={{
+                            fontSize: '11px',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: act.details.isScreenSharing ? 'rgba(168, 85, 247, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                            color: act.details.isScreenSharing ? '#c084fc' : '#9ca3af',
+                            border: `1px solid ${act.details.isScreenSharing ? 'rgba(168, 85, 247, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
+                        }}>
+                            {act.details.isScreenSharing ? '🖥️ Ekran Paylaşımı Başlatıldı' : '⏹️ Ekran Paylaşımı Kapalı'}
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {/* Live Video / Film Source Information */}
+            {isStreamWatch && act.details?.url && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    gap: '10px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <span style={{ fontSize: '16px' }}>🎬</span>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {act.details?.title || 'Canlı Video/Film Yayını'}
+                            </div>
+                            <div style={{ color: '#888', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {act.details.url}
+                            </div>
+                        </div>
+                    </div>
+                    {onMediaClick && (
+                        <button
+                            type="button"
+                            className="btn-modern-ghost"
+                            style={{ padding: '4px 8px', fontSize: '11px', flexShrink: 0 }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onMediaClick({
+                                    url: act.details.url,
+                                    type: 'video',
+                                    title: act.details.title || 'Canlı Video/Film Yayını',
+                                    content: act.details.url
+                                });
+                            }}
+                        >
+                            ▶️ İzle / Büyüt
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Post Content Body Preview */}
+            {postContent && (
+                <div style={{
+                    background: '#0c0c0c',
+                    border: '1px solid #1f1f1f',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    color: '#e0e0e0',
+                    fontSize: '12px',
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    maxHeight: '120px',
+                    overflowY: 'auto'
+                }}>
+                    {postContent}
+                </div>
+            )}
+
+            {/* Attached Media / File Showcase with Click-to-Enlarge */}
+            {hasMedia && mediaUrl && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                    {mediaType === 'video' ? (
+                        <div 
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                background: '#0a0a0a',
+                                border: '1px solid #333',
+                                borderRadius: '6px',
+                                padding: '6px 10px',
+                                transition: 'border-color 0.2s'
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onMediaClick) onMediaClick({ url: mediaUrl, type: 'video', title: narrative.title, content: postContent });
+                            }}
+                        >
+                            <span style={{ fontSize: '16px' }}>🎬</span>
+                            <span className="media-mini-pill" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                🎥 Video (Büyütmek & Oynatmak için tıkla)
+                            </span>
+                        </div>
+                    ) : mediaType === 'pdf' ? (
+                        <div 
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                background: '#0a0a0a',
+                                border: '1px solid #333',
+                                borderRadius: '6px',
+                                padding: '6px 10px'
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onMediaClick) onMediaClick({ url: mediaUrl, type: 'pdf', title: act.details?.pdfName || 'PDF Belgesi' });
+                            }}
+                        >
+                            <span style={{ fontSize: '16px' }}>📄</span>
+                            <span className="media-mini-pill" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                                PDF Belgesi {act.details?.pdfName ? `(${act.details.pdfName})` : ''} (İncelemek için tıkla)
+                            </span>
+                        </div>
+                    ) : (
+                        <div 
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onMediaClick) onMediaClick({ url: mediaUrl, type: 'image', title: narrative.title, content: postContent });
+                            }}
+                        >
+                            <AdminMedia
+                                src={mediaUrl}
+                                alt="Paylaşılan Medya"
+                                style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #333' }}
+                            />
+                            <span className="media-mini-pill">🖼️ Görsel (Büyütmek için tıkla)</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // Modern Modal Component for Reason Entry + Duration Picker
 const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
     const [reason, setReason] = useState('');
@@ -1759,142 +2365,24 @@ const PortalDetailModal = ({
                                 </div>
                             </div>
 
-                            {(portal.recentActivities || []).length === 0 ? (
-                                <p className="no-data">Bu portala ait son işlem günlüğü bulunamadı.</p>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {portal.recentActivities.map((act, i) => {
-                                        const sev = act.severity || 'info';
-                                        const narrative = getActionNarrative ? getActionNarrative(act) : { title: act.action, desc: act.details?.content || act.details?.reason || '' };
-                                        const chName = act.channel || act.details?.channelName || (typeof act.details?.channel === 'string' && !/^[a-f0-9]{24}$/i.test(act.details.channel) ? act.details.channel : '');
-                                        const postContent = act.details?.content || act.details?.snippet || act.details?.postSnapshot?.content || '';
-                                        const postAuthor = act.details?.author || (act.user && typeof act.user === 'object' ? act.user : null);
-                                        const hasMedia = act.details?.hasMedia || act.details?.mediaUrl || act.details?.media;
-                                        const mediaUrl = act.details?.mediaUrl || act.details?.media;
-                                        const mediaType = act.details?.mediaType || 'image';
-
-                                        return (
-                                            <div 
+                            {(() => {
+                                const categorizedActivities = categorizeLogsBySession(portal.recentActivities || []);
+                                if (categorizedActivities.length === 0) {
+                                    return <p className="no-data">Bu portala ait son işlem günlüğü bulunamadı.</p>;
+                                }
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '520px', overflowY: 'auto', paddingRight: '4px' }}>
+                                        {categorizedActivities.map((act, i) => (
+                                            <ActivityLogCard
                                                 key={act._id || i}
-                                                onClick={() => onInspectLog && onInspectLog(act)}
-                                                className="portal-audit-feed-card"
-                                                style={{
-                                                    background: '#141414',
-                                                    border: '1px solid #242424',
-                                                    borderRadius: '8px',
-                                                    padding: '10px 14px',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    gap: '6px',
-                                                    cursor: onInspectLog ? 'pointer' : 'default',
-                                                    transition: 'border-color 0.2s',
-                                                }}
-                                            >
-                                                {/* Header Row: Actor + Badges + Time */}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                        {postAuthor ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <AdminMedia
-                                                                    src={postAuthor.profile?.avatar || postAuthor.avatar}
-                                                                    alt=""
-                                                                    isAvatar
-                                                                    style={{ width: '22px', height: '22px', borderRadius: '4px' }}
-                                                                />
-                                                                <span style={{ color: '#fff', fontWeight: 600, fontSize: '12px' }}>
-                                                                    @{postAuthor.username}
-                                                                </span>
-                                                                {postAuthor.profile?.displayName && postAuthor.profile.displayName !== postAuthor.username && (
-                                                                    <span style={{ color: '#777', fontSize: '11px' }}>({postAuthor.profile.displayName})</span>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <span style={{ color: '#888', fontSize: '12px' }}>
-                                                                ⚙️ {act.username || act.actorRole || 'Sistem / Bot'}
-                                                            </span>
-                                                        )}
-                                                        <span className="mono-tag" style={{ fontSize: '9px' }}>{act.action}</span>
-                                                        <span className={`severity-badge ${sev}`} style={{ fontSize: '9px', padding: '1px 5px' }}>
-                                                            {sev.toUpperCase()}
-                                                        </span>
-                                                        {chName && (
-                                                            <span className="channel-badge-chip" style={{ fontSize: '9px' }}>
-                                                                #{chName}
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        {act.ip && <span style={{ color: '#666', fontFamily: 'monospace', fontSize: '10px' }}>{act.ip}</span>}
-                                                        <span style={{ color: '#777', fontFamily: 'monospace', fontSize: '10px' }}>
-                                                            {act.createdAt ? new Date(act.createdAt).toLocaleString('tr-TR') : '-'}
-                                                        </span>
-                                                        {onInspectLog && (
-                                                            <span style={{ color: '#4ade80', fontSize: '11px', fontWeight: 600 }}>🔍 İncele</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Narrative Title & Description */}
-                                                <div style={{ fontSize: '12px', color: '#ccc', lineHeight: 1.4 }}>
-                                                    <strong style={{ color: '#fff', marginRight: '6px' }}>{narrative.title}:</strong>
-                                                    <span>{narrative.desc}</span>
-                                                </div>
-
-                                                {/* Post Content Body Preview (regardless of post type) */}
-                                                {postContent && (
-                                                    <div style={{
-                                                        background: '#0c0c0c',
-                                                        border: '1px solid #1f1f1f',
-                                                        borderRadius: '6px',
-                                                        padding: '8px 12px',
-                                                        color: '#e0e0e0',
-                                                        fontSize: '12px',
-                                                        lineHeight: 1.5,
-                                                        marginTop: '2px',
-                                                        whiteSpace: 'pre-wrap',
-                                                        wordBreak: 'break-word',
-                                                        maxHeight: '120px',
-                                                        overflowY: 'auto'
-                                                    }}>
-                                                        {postContent}
-                                                    </div>
-                                                )}
-
-                                                {/* Attached Media / File Showcase */}
-                                                {hasMedia && mediaUrl && (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                                        {mediaType === 'video' ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <span className="media-mini-pill">🎥 Video Eklendi</span>
-                                                            </div>
-                                                        ) : mediaType === 'pdf' ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <span className="media-mini-pill">📄 PDF Belgesi {act.details?.pdfName ? `(${act.details.pdfName})` : ''}</span>
-                                                            </div>
-                                                        ) : (
-                                                            <div 
-                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (onMediaClick) onMediaClick({ url: mediaUrl, title: `${portal.name} Paylaşılan Medya` });
-                                                                }}
-                                                            >
-                                                                <AdminMedia
-                                                                    src={mediaUrl}
-                                                                    alt="Paylaşılan Görsel"
-                                                                    style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #333' }}
-                                                                />
-                                                                <span className="media-mini-pill">🖼️ Görsel (Büyütmek için tıkla)</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                                act={act}
+                                                onInspectLog={onInspectLog}
+                                                onMediaClick={onMediaClick}
+                                            />
+                                        ))}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>
@@ -4098,221 +4586,6 @@ const AdminDashboard = () => {
         window.open(url, '_blank');
     };
 
-    // Format human-friendly byte size (e.g. 2.4 MB, 680 KB)
-    const formatFileSize = (bytes) => {
-        if (!bytes || isNaN(bytes)) return null;
-        const num = Number(bytes);
-        if (num <= 0) return null;
-        if (num < 1024) return `${num} B`;
-        if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
-        return `${(num / (1024 * 1024)).toFixed(2)} MB`;
-    };
-
-    // Format duration in seconds (e.g. 14 dk 22 sn)
-    const formatDurationSec = (seconds) => {
-        if (seconds === undefined || seconds === null || isNaN(seconds)) return null;
-        const sec = Math.round(Number(seconds));
-        if (sec < 60) return `${sec} sn`;
-        const mins = Math.floor(sec / 60);
-        const remSec = sec % 60;
-        if (mins < 60) return `${mins} dk ${remSec > 0 ? remSec + ' sn' : ''}`;
-        const hours = Math.floor(mins / 60);
-        const remMins = mins % 60;
-        return `${hours} sa ${remMins > 0 ? remMins + ' dk' : ''}`;
-    };
-
-    // Human-friendly Turkish reason translation
-    const translateReason = (reason) => {
-        if (!reason) return 'Bilinmiyor';
-        const map = {
-            'INVALID_PASSWORD': 'Hatalı şifre girişi',
-            'USER_NOT_FOUND': 'Kullanıcı hesabı bulunamadı',
-            'DELETED_ACCOUNT': 'Silinmiş hesap ile giriş denemesi',
-            'UNVERIFIED_EMAIL': 'Doğrulanmamış e-posta adresi',
-            'BANNED_USER': 'Yasaklı kullanıcı hesabı',
-            'RATE_LIMIT_EXCEEDED': 'İstek limiti aşıldı (Rate limit)'
-        };
-        return map[reason] || reason;
-    };
-
-    // Generates a descriptive, human-readable narrative and title for any activity log
-    const getActionNarrative = (log) => {
-        if (!log) return { title: 'Bilinmeyen İşlem', desc: 'Platform kaydı işlendi.' };
-        const action = log.action || '';
-        const details = log.details || {};
-        const portal = log.portalName || log.portal?.name || details.portalName || (typeof details.portal === 'string' && !/^[a-f0-9]{24}$/i.test(details.portal) ? details.portal : '');
-        const channel = log.channel || details.channelName || (typeof details.channel === 'string' && !/^[a-f0-9]{24}$/i.test(details.channel) ? details.channel : '');
-        const where = portal ? `${portal}${channel ? ` › #${channel}` : ''}` : (channel ? `#${channel}` : '');
-
-        switch (action) {
-            case 'STREAM_TOGGLE': {
-                const parts = [];
-                if (details.isCameraOn !== undefined) {
-                    parts.push(details.isCameraOn ? '🎥 Kamera Açıldı' : '📷 Kamera Kapalı');
-                }
-                if (details.isScreenSharing !== undefined) {
-                    parts.push(details.isScreenSharing ? '🖥️ Ekran Paylaşımı Başlatıldı' : '🖥️ Ekran Kapalı');
-                }
-                if (details.isMuted !== undefined) {
-                    parts.push(details.isMuted ? '🔇 Mikrofon Susturuldu' : '🎙️ Mikrofon Açık');
-                }
-                return {
-                    title: 'Canlı Medya Yayını Durumu Değiştirildi',
-                    desc: `${where ? `[${where}] ` : ''}${parts.join(' • ') || details.summary || 'Medya akışı güncellendi'}`
-                };
-            }
-            case 'BOT_POST':
-                return {
-                    title: 'Bot Otomatik Gönderi Paylaştı',
-                    desc: `${where ? `[${where}] ` : ''}"${details.title || details.snippet || details.content || 'İçerik yayınlandı'}"`
-                };
-            case 'POST_CREATE':
-                return {
-                    title: 'Yeni Gönderi Paylaşıldı',
-                    desc: `${where ? `[${where}] ` : ''}"${details.content || details.snippet || details.title || 'İçerik paylaşıldı'}"`
-                };
-            case 'POST_DELETE':
-                return {
-                    title: 'Gönderi Silindi',
-                    desc: `${where ? `[${where}] ` : ''}Silinen İçerik: "${details.content || details.snippet || details.title || '...'}"`
-                };
-            case 'POST_MEDIA_ATTACHED':
-                return {
-                    title: 'Gönderiye Medya/Dosya Eklendi',
-                    desc: `${details.fileName ? `📁 ${details.fileName}` : ''}${details.fileSize ? ` (${formatFileSize(details.fileSize)})` : ''}${details.content ? ` • "${details.content.substring(0, 50)}"` : ''}`
-                };
-            case 'FILE_UPLOAD':
-                return {
-                    title: 'Depolama Alanına Dosya Yüklendi',
-                    desc: `📁 ${details.fileName || 'Dosya'} (${formatFileSize(details.sizeBytes || details.fileSize)})${details.mimeType ? ` • Tür: ${details.mimeType}` : ''}`
-                };
-            case 'FILE_DELETE':
-                return {
-                    title: 'Depolama Alanından Dosya Silindi',
-                    desc: `🗑️ ${details.fileName || details.key || 'Dosya silindi'}`
-                };
-            case 'ROOM_JOIN':
-                return {
-                    title: 'Canlı Ses/Görüntü Odasına Katıldı',
-                    desc: `${where ? `${where} odasına giriş yapıldı.` : 'Canlı ses odasına katılım sağlandı.'}`
-                };
-            case 'ROOM_LEAVE':
-                return {
-                    title: 'Canlı Ses/Görüntü Odasından Ayrıldı',
-                    desc: `${where ? `${where} odasından ayrıldı.` : 'Odadan ayrıldı.'}${details.durationSec !== undefined ? ` • Odada Kalınan Süre: ${formatDurationSec(details.durationSec)}` : ''}`
-                };
-            case 'WP_START':
-                return {
-                    title: 'Watch Party Başlatıldı',
-                    desc: `${where ? `${where}: ` : ''}Ortak video izleme oturumu başlatıldı.`
-                };
-            case 'WP_PLAY':
-                return {
-                    title: 'Watch Party: Video Oynatılıyor',
-                    desc: `${where ? `${where}: ` : ''}Medya yürütülmeye devam ediyor.`
-                };
-            case 'WP_PAUSE':
-                return {
-                    title: 'Watch Party: Video Duraklatıldı',
-                    desc: `${where ? `${where}: ` : ''}Medya yürütmesi duraklatıldı.`
-                };
-            case 'WP_SEEK':
-                return {
-                    title: 'Watch Party: Video Sarıldı',
-                    desc: `${where ? `${where}: ` : ''}Medya oynatma konumu değiştirildi.`
-                };
-            case 'ICE_CONNECTION_FAILED':
-                return {
-                    title: 'WebRTC Bağlantı Hatası (ICE Restart)',
-                    desc: 'Kullanıcının canlı yayın/ses akışı kesildi, yeniden bağlanılıyor.'
-                };
-            case 'LOGIN_SUCCESS':
-                return {
-                    title: 'Başarılı Oturum Açma',
-                    desc: `${details.method === 'google' ? 'Google ile ' : ''}${details.email || log.username || 'Kullanıcı'} giriş yaptı.${details.isNewDevice ? ' (Yeni Tanınmayan Cihaz)' : ''}`
-                };
-            case 'LOGIN_FAILED':
-                return {
-                    title: 'Başarısız Giriş Denemesi',
-                    desc: `Sebep: ${translateReason(details.reason)}${details.securityAlert ? ` • 🚨 ${details.securityAlert}` : ''}`
-                };
-            case 'LOGOUT':
-                return {
-                    title: 'Oturum Kapatıldı',
-                    desc: `${log.username || 'Kullanıcı'} platformdan çıkış yaptı.`
-                };
-            case 'PORTAL_JOIN':
-                return {
-                    title: 'Portala Katılım Sağlandı',
-                    desc: `${portal || 'Portal'} topluluğuna katıldı.${details.inviteCode ? ` (Davet Kodu: ${details.inviteCode})` : ''}`
-                };
-            case 'PORTAL_LEAVE':
-                return {
-                    title: 'Portaldan Ayrılındı',
-                    desc: `${portal || 'Portal'} topluluğundan ayrıldı.`
-                };
-            case 'PORTAL_CREATE':
-                return {
-                    title: 'Yeni Portal Kuruldu',
-                    desc: `🏛️ "${portal || details.portalName || 'Yeni Portal'}" oluşturuldu.`
-                };
-            case 'PORTAL_DELETE':
-                return {
-                    title: 'Portal Kalıcı Olarak Silindi',
-                    desc: `🏛️ "${details.portalName || portal || 'Portal'}" silindi.`
-                };
-            case 'CHANNEL_CREATE':
-                return {
-                    title: 'Yeni Kanal Oluşturuldu',
-                    desc: `${portal ? `${portal} bünyesinde ` : ''}#${channel || details.channelName || 'kanal'} oluşturuldu.`
-                };
-            case 'CHANNEL_DELETE':
-                return {
-                    title: 'Kanal Silindi',
-                    desc: `${portal ? `${portal} bünyesindeki ` : ''}#${channel || 'kanal'} silindi.`
-                };
-            case 'MESSAGE_EDIT':
-                return {
-                    title: 'Mesaj Düzenlendi',
-                    desc: `Güncellenen içerik: "${details.newContent || details.content || '...'}"`
-                };
-            case 'MESSAGE_DELETE':
-                return {
-                    title: 'Mesaj Silindi',
-                    desc: `Silinen mesaj: "${details.content || '...'}"`
-                };
-            case 'REPORT_CREATED':
-                return {
-                    title: 'Yeni Güvenlik & İçerik Şikayeti',
-                    desc: `Bildirim Sebebi: ${details.reason || 'Kural İhlali'}`
-                };
-            case 'PASSWORD_RESET_SUCCESS':
-                return {
-                    title: 'Şifre Sıfırlandı',
-                    desc: 'Hesap şifresi güvenlik bağlantısıyla başarıyla değiştirildi.'
-                };
-            case 'PROFILE_UPDATE':
-                return {
-                    title: 'Profil Bilgileri Güncellendi',
-                    desc: 'Kullanıcı profil biyografisi, avatarı veya adı güncellendi.'
-                };
-            case 'HIGH_LATENCY':
-                return {
-                    title: 'Yüksek İstek Gecikmesi (>500ms)',
-                    desc: `${details.method || ''} ${details.path || ''} (${details.durationMs}ms)`
-                };
-            case 'UNHANDLED_ERROR':
-                return {
-                    title: 'Sunucu İç Hatası (500)',
-                    desc: `${details.message || 'Sistem düzeyinde istisna oluştu.'}`
-                };
-            default:
-                return {
-                    title: action.replace(/_/g, ' '),
-                    desc: details.reason || details.title || details.snippet || (typeof details === 'object' ? JSON.stringify(details) : String(details || ''))
-                };
-        }
-    };
 
     const handleUpdateTouristPermissions = async (userId, newPermissions, updatedExpiry = null) => {
         try {
@@ -10160,25 +10433,29 @@ const AdminDashboard = () => {
                                             </div>
                                         </div>
 
-                                        <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            Son Sistem Ayak İzleri & Günlükler:
-                                        </span>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', maxHeight: '160px', overflowY: 'auto' }}>
-                                            {(userDossierData.recentLogs || []).length > 0 ? (
-                                                userDossierData.recentLogs.map((log) => (
-                                                    <div key={log._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#161616', border: '1px solid #222', padding: '6px 10px', fontSize: '11px' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            <span className="mono-tag" style={{ fontSize: '9px' }}>{log.action}</span>
-                                                            <span style={{ color: '#ccc' }}>{log.details?.reason || log.details?.title || log.details?.snippet || log.category}</span>
-                                                        </div>
-                                                        <span style={{ color: '#777', fontFamily: 'monospace' }}>
-                                                            {new Date(log.createdAt).toLocaleString('tr-TR')}
-                                                        </span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <span style={{ fontSize: '11px', color: '#666' }}>Kullanıcıya ait son işlem günlüğü bulunamadı.</span>
-                                            )}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                            <span style={{ fontSize: '11px', color: '#aaa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                                                👣 Son Sistem Ayak İzleri & Hareket Günlükleri (Oturum Bazlı):
+                                            </span>
+                                            <span style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}>
+                                                Toplam {(userDossierData.recentLogs || userDossierData.recentActivities || []).length} İşlem Kaydı
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+                                            {(() => {
+                                                const userLogs = categorizeLogsBySession(userDossierData.recentLogs || userDossierData.recentActivities || []);
+                                                if (userLogs.length === 0) {
+                                                    return <span style={{ fontSize: '11px', color: '#666', padding: '12px' }}>Kullanıcıya ait son işlem günlüğü bulunamadı.</span>;
+                                                }
+                                                return userLogs.map((log, idx) => (
+                                                    <ActivityLogCard
+                                                        key={log._id || idx}
+                                                        act={log}
+                                                        onInspectLog={(act) => setInspectingLog(act)}
+                                                        onMediaClick={(m) => setMediaLightbox(m)}
+                                                    />
+                                                ));
+                                            })()}
                                         </div>
                                     </div>
 
@@ -11200,18 +11477,83 @@ const AdminDashboard = () => {
                                 </button>
                             </div>
                         </div>
-                        <img 
-                            src={mediaLightbox.url} 
-                            alt="" 
-                            style={{
+
+                        {(() => {
+                            const url = mediaLightbox.url || '';
+                            const isVideo = mediaLightbox.type === 'video' || /\.(mp4|webm|ogg|mov|m4v)($|\?)/i.test(url);
+                            const isPdf = mediaLightbox.type === 'pdf' || /\.pdf($|\?)/i.test(url);
+
+                            if (isVideo) {
+                                return (
+                                    <video
+                                        src={url}
+                                        controls
+                                        autoPlay
+                                        playsInline
+                                        style={{
+                                            maxWidth: '85vw',
+                                            maxHeight: '75vh',
+                                            borderRadius: '8px',
+                                            border: '1px solid #333',
+                                            boxShadow: '0 20px 50px rgba(0,0,0,0.85)',
+                                            background: '#000'
+                                        }}
+                                    />
+                                );
+                            }
+
+                            if (isPdf) {
+                                return (
+                                    <iframe
+                                        src={url}
+                                        title="PDF Görüntüleyici"
+                                        style={{
+                                            width: '85vw',
+                                            height: '75vh',
+                                            borderRadius: '8px',
+                                            border: '1px solid #333',
+                                            background: '#fff'
+                                        }}
+                                    />
+                                );
+                            }
+
+                            return (
+                                <img 
+                                    src={url} 
+                                    alt="" 
+                                    style={{
+                                        maxWidth: '85vw',
+                                        maxHeight: '75vh',
+                                        objectFit: 'contain',
+                                        borderRadius: '8px',
+                                        border: '1px solid #333',
+                                        boxShadow: '0 20px 50px rgba(0,0,0,0.85)'
+                                    }} 
+                                />
+                            );
+                        })()}
+
+                        {mediaLightbox.content && (
+                            <div style={{
+                                marginTop: '12px',
+                                padding: '10px 16px',
+                                background: '#111',
+                                border: '1px solid #242424',
+                                borderRadius: '6px',
                                 maxWidth: '85vw',
-                                maxHeight: '80vh',
-                                objectFit: 'contain',
-                                borderRadius: '8px',
-                                border: '1px solid #333',
-                                boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
-                            }} 
-                        />
+                                width: '100%',
+                                color: '#e0e0e0',
+                                fontSize: '13px',
+                                lineHeight: 1.5,
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                maxHeight: '120px',
+                                overflowY: 'auto'
+                            }}>
+                                {mediaLightbox.content}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

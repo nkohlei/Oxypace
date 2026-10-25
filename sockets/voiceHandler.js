@@ -821,6 +821,28 @@ export const initializeVoiceHandler = (io) => {
                         participantCount: participants?.length || 1
                     }
                 });
+
+                // Canlı oda/kanal içerisinde aktif Watch Party veya Video/Film yayını varsa STREAM_WATCH kaydet
+                try {
+                    const activeWp = await loadWatchParty(roomName);
+                    if (activeWp && activeWp.url) {
+                        logActivity({
+                            user: sUserId,
+                            username: safeName,
+                            action: 'STREAM_WATCH',
+                            category: 'rtc',
+                            portal: parsedRoom.portalId,
+                            details: {
+                                roomName,
+                                portalId: parsedRoom.portalId,
+                                channelId: parsedRoom.channelId,
+                                url: activeWp.url,
+                                title: activeWp.title || 'Canlı Video/Film Yayını',
+                                isLive: !!activeWp.isLive
+                            }
+                        });
+                    }
+                } catch (wpErr) {}
             }
 
             console.log(`🎙️ User ${safeName} joined voice room ${roomName} (${participants.length} participants)`);
@@ -898,7 +920,12 @@ export const initializeVoiceHandler = (io) => {
             const isCameraOn = !!payload.isCameraOn;
             const isScreenSharing = !!payload.isScreenSharing;
 
-            const participant = voiceRooms.get(roomName)?.participants?.get(sUserId);
+            const currentRoom = voiceRooms.get(roomName);
+            const participant = currentRoom?.participants?.get(sUserId);
+            const prevMuted = participant ? (participant.isMuted !== false) : null;
+            const prevCamera = participant ? (!!participant.isCameraOn) : null;
+            const prevScreen = participant ? (!!participant.isScreenSharing) : null;
+
             if (participant) {
                 participant.isMuted = isMuted;
                 participant.isCameraOn = isCameraOn;
@@ -923,13 +950,24 @@ export const initializeVoiceHandler = (io) => {
 
             io.to(`voice:${roomName}`).emit('voice:state-update', { userId: sUserId, isMuted, isCameraOn, isScreenSharing });
 
-            if (isCameraOn || isScreenSharing) {
-                const parseRoomName = (rn) => {
-                    if (!rn || typeof rn !== 'string') return null;
-                    const match = rn.match(/portal_([a-f0-9]{24})_channel_([a-f0-9]{24})/i);
-                    return match ? { portalId: match[1], channelId: match[2] } : null;
-                };
+            // Detect any state change: mic toggle, camera toggle, or screen share toggle
+            const hasChanged = (prevMuted !== null && prevMuted !== isMuted) ||
+                               (prevCamera !== null && prevCamera !== isCameraOn) ||
+                               (prevScreen !== null && prevScreen !== isScreenSharing);
+
+            if (hasChanged || isCameraOn || isScreenSharing) {
                 const parsed = parseRoomName(roomName);
+                const summaries = [];
+                if (prevMuted !== null && prevMuted !== isMuted) {
+                    summaries.push(!isMuted ? '🎙️ Mikrofon açıldı' : '🔇 Mikrofon kapatıldı');
+                }
+                if (prevCamera !== null && prevCamera !== isCameraOn) {
+                    summaries.push(isCameraOn ? '🎥 Kamera açıldı' : '📷 Kamera kapatıldı');
+                }
+                if (prevScreen !== null && prevScreen !== isScreenSharing) {
+                    summaries.push(isScreenSharing ? '🖥️ Ekran paylaşımı başlatıldı' : '⏹️ Ekran paylaşımı durduruldu');
+                }
+
                 logActivity({
                     user: sUserId,
                     username: socket.data?.voiceProfile?.username || socket.username || sUserId,
@@ -945,7 +983,7 @@ export const initializeVoiceHandler = (io) => {
                         isCameraOn: !!isCameraOn,
                         isScreenSharing: !!isScreenSharing,
                         isMuted: !!isMuted,
-                        summary: `${isCameraOn ? '🎥 Kamera açıldı' : ''}${isScreenSharing ? (isCameraOn ? ' & ' : '') + '🖥️ Ekran paylaşımı başlatıldı' : ''}`
+                        summary: summaries.join(' | ') || (isCameraOn ? '🎥 Kamera aktif' : (isScreenSharing ? '🖥️ Ekran paylaşımı aktif' : 'Canlı yayın durumu güncellendi'))
                     }
                 });
             }

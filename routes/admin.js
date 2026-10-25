@@ -239,7 +239,7 @@ router.get('/users/:id/dossier', protect, requirePermission('users', 'details'),
                 .populate('user', 'username profile.displayName profile.avatar')
                 .populate('portal', 'name avatar channels')
                 .sort({ createdAt: -1 })
-                .limit(100)
+                .limit(200)
                 .lean(),
             Portal.find({ owner: user._id }).select('name avatar members channels createdAt isVerified isReadOnly isNSFW').lean(),
             Portal.find({
@@ -253,7 +253,7 @@ router.get('/users/:id/dossier', protect, requirePermission('users', 'details'),
               .lean()
         ]);
 
-        // Enrich user logs with friendly portalName and channelName
+        // Enrich user logs with friendly portalName, channelName, mediaUrl, durationSec
         const recentActivities = rawUserLogs.map(log => {
             const pName = log.portalName || log.portal?.name || log.details?.portalName || (typeof log.details?.portal === 'string' && !/^[a-f0-9]{24}$/i.test(log.details.portal) ? log.details.portal : '');
             let chName = log.channel || log.details?.channelName || (typeof log.details?.channel === 'string' && !/^[a-f0-9]{24}$/i.test(log.details.channel) ? log.details.channel : '');
@@ -264,10 +264,21 @@ router.get('/users/:id/dossier', protect, requirePermission('users', 'details'),
                     if (matched) chName = matched.name;
                 }
             }
+            const mediaUrl = log.details?.mediaUrl || log.details?.media || (Array.isArray(log.details?.media) ? log.details?.media[0] : null) || log.details?.pdfUrl || null;
+            const hasMedia = !!(log.details?.hasMedia || mediaUrl || log.details?.pdfUrl);
+            const mediaType = log.details?.mediaType || (log.details?.pdfUrl ? 'pdf' : (log.details?.url ? 'video' : 'none'));
+            const content = log.details?.content || log.details?.snippet || log.details?.postSnapshot?.content || '';
+            const durationSec = log.details?.durationSec || null;
+
             return {
                 ...log,
                 portalName: pName,
-                channel: chName || 'Genel'
+                channel: chName || 'Genel',
+                mediaUrl,
+                hasMedia,
+                mediaType,
+                content,
+                durationSec
             };
         });
 
@@ -545,7 +556,7 @@ router.get('/portals/:id/dossier', protect, requirePermission('portals', 'detail
                 .populate('user', 'username profile.displayName profile.avatar')
                 .populate('portal', 'name avatar channels')
                 .sort({ createdAt: -1 })
-                .limit(100)
+                .limit(200)
                 .lean()
         ]);
 
@@ -558,10 +569,21 @@ router.get('/portals/:id/dossier', protect, requirePermission('portals', 'detail
                 const matched = portalChannels.find(c => c._id?.toString() === String(chId) || c.name.toLowerCase() === String(chId).toLowerCase());
                 channelName = matched ? matched.name : String(chId);
             }
+            const mediaUrl = log.details?.mediaUrl || log.details?.media || (Array.isArray(log.details?.media) ? log.details?.media[0] : null) || log.details?.pdfUrl || null;
+            const hasMedia = !!(log.details?.hasMedia || mediaUrl || log.details?.pdfUrl);
+            const mediaType = log.details?.mediaType || (log.details?.pdfUrl ? 'pdf' : (log.details?.url ? 'video' : 'none'));
+            const content = log.details?.content || log.details?.snippet || log.details?.postSnapshot?.content || '';
+            const durationSec = log.details?.durationSec || null;
+
             return {
                 ...log,
                 portalName: portal.name,
-                channel: channelName || log.channel || 'Genel'
+                channel: channelName || log.channel || 'Genel',
+                mediaUrl,
+                hasMedia,
+                mediaType,
+                content,
+                durationSec
             };
         });
 
