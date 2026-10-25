@@ -1,0 +1,68 @@
+1:"$Sreact.fragment"
+a:I[7123,[],"default",1]
+:HL["/_next/static/css/95b0eeb0d6357d1a.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap","style"]
+2:T7ee,
+              (function() {
+                try {
+                  var t = localStorage.getItem('token');
+                  var isAuth = t && t !== 'null' && t !== 'undefined' && t !== 'false' && typeof t === 'string' && t.trim().length > 10;
+                  var p = window.location.pathname;
+                  var isHome = p === '/' || p === '' || p === '/index.html';
+
+                  if (isAuth) {
+                    try {
+                      document.cookie = "token=" + encodeURIComponent(t) + "; path=/; max-age=31536000; SameSite=Lax";
+                    } catch (_) {}
+
+                    if (isHome) {
+                      // Home sayfası 1 milisaniye bile ekranda görünmesin diye HTML'i anında gizle
+                      if (document.documentElement) {
+                        document.documentElement.style.display = 'none';
+                      }
+                      var target = '/messages';
+                      var topPortal = localStorage.getItem('oxypace_top_portal');
+                      if (topPortal) {
+                        try {
+                          var parsed = JSON.parse(topPortal);
+                          if (parsed && parsed.id) target = '/portal/' + parsed.id;
+                        } catch (_) {}
+                      }
+                      window.location.replace(target);
+                      return;
+                    }
+                  }
+
+                  var th = localStorage.getItem('theme') || localStorage.getItem('theme_mode');
+                  if (th === 'dark' || (!th && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                } catch (_) {}
+              })();
+            0:{"P":null,"c":["","blog",""],"q":"","i":false,"f":[[["",{"children":["blog",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",16],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/95b0eeb0d6357d1a.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"tr","className":"h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}],["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap","rel":"stylesheet"}],["$","link",null,{"rel":"icon","type":"image/png","sizes":"32x32","href":"/logo.png"}],["$","link",null,{"rel":"icon","type":"image/png","sizes":"16x16","href":"/logo.png"}],["$","link",null,{"rel":"apple-touch-icon","sizes":"180x180","href":"/logo192.png"}],["$","meta",null,{"name":"google-site-verification","content":"rwtbjVtSL--DZHB5gQfbwyj-x2CV8m6sBTakYbn78uc"}],["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebSite\",\"@id\":\"https://oxypace.com.tr/#website\",\"url\":\"https://oxypace.com.tr/\",\"name\":\"Oxypace\",\"alternateName\":[\"Oxypace Platformu\",\"Oxypace Portal\"],\"description\":\"Topluluk Kur ve Birlikte Film İzle\",\"publisher\":{\"@id\":\"https://oxypace.com.tr/#organization\"},\"inLanguage\":\"tr-TR\"},{\"@type\":\"Organization\",\"@id\":\"https://oxypace.com.tr/#organization\",\"name\":\"Oxypace\",\"url\":\"https://oxypace.com.tr/\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https://oxypace.com.tr/logo.png\",\"caption\":\"Oxypace Logo\"},\"image\":\"https://oxypace.com.tr/logo.png\"},{\"@type\":\"SiteNavigationElement\",\"@id\":\"https://oxypace.com.tr/#navigation\",\"name\":\"Portallara Giriş / Kayıt\",\"description\":\"Oxypace topluluk portallarına giriş yapın veya yeni bir hesap oluşturun.\",\"url\":\"https://oxypace.com.tr/login\"}]}"}}],"$L3","$L4","$L5"]}],"$L6"]}]]}],{"children":["$L7",{"children":["$L8",{},null,false,null]},null,false,null]},null,false,null],"$L9",false]],"m":"$undefined","G":["$a",[]],"S":true,"h":null,"s":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"ICG6zA39FzbYcSiJxQyhO"}
+b:I[7121,[],""]
+c:I[4581,[],""]
+d:I[7989,["584","static/chunks/app/blog/layout-4a7b272124d7ff93.js"],"default"]
+e:I[1304,[],"ClientPageRoot"]
+f:I[2157,["500","static/chunks/500-c99b8dfd3de17c86.js","686","static/chunks/686-84975f35519b3215.js","831","static/chunks/app/blog/page-d0077f59fc5be90a.js"],"default"]
+12:I[484,[],"OutletBoundary"]
+13:"$Sreact.suspense"
+15:I[484,[],"ViewportBoundary"]
+17:I[484,[],"MetadataBoundary"]
+3:["$","script",null,{"async":true,"src":"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4028999820111107","crossorigin":"anonymous"}]
+4:["$","script",null,{"async":true,"type":"application/javascript","src":"https://news.google.com/swg/js/v1/swg-basic.js"}]
+5:["$","script",null,{"dangerouslySetInnerHTML":{"__html":"\n              try {\n                var lastShown = localStorage.getItem('swg_last_shown_time');\n                var now = Date.now();\n                var ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 saat\n\n                if (!lastShown || (now - parseInt(lastShown, 10)) > ONE_DAY_MS) {\n                  (self.SWG_BASIC = self.SWG_BASIC || []).push( function(basicSubscriptions) {\n                    basicSubscriptions.init({\n                      type: \"NewsArticle\",\n                      isPartOfType: [\"Product\"],\n                      isPartOfProductId: \"CAowz_nMDA:openaccess\",\n                      clientOptions: { theme: \"light\", lang: \"tr\" },\n                    });\n                    localStorage.setItem('swg_last_shown_time', now.toString());\n                  });\n                }\n              } catch (_) {}\n            "}}]
+6:["$","body",null,{"className":"min-h-full flex flex-col transition-colors duration-300 font-[family-name:var(--font-outfit)]","children":["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]
+7:["$","$1","c",{"children":[null,[["$","$Ld",null,{}],["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]]}]
+8:["$","$1","c",{"children":[["$","$Le",null,{"Component":"$f","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@10","$@11"]}}],null,["$","$L12",null,{"children":["$","$13",null,{"name":"Next.MetadataOutlet","children":"$@14"}]}]]}]
+9:["$","$1","h",{"children":[null,["$","$L15",null,{"children":"$L16"}],["$","div",null,{"hidden":true,"children":["$","$L17",null,{"children":["$","$13",null,{"name":"Next.Metadata","children":"$L18"}]}]}],null]}]
+10:{}
+11:"$8:props:children:0:props:serverProvidedParams:params"
+16:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+19:I[6869,[],"IconMark"]
+14:null
+18:[["$","title","0",{"children":"EVENT HORIZON - Popüler Bilim Arşivi | Oxypace"}],["$","meta","1",{"name":"description","content":"Evrenin fizik sınırları ve ekstrem doğa koşulları üzerine bağımsız bilimsel arşiv."}],["$","meta","2",{"name":"application-name","content":"Oxypace"}],["$","meta","3",{"name":"robots","content":"index, follow"}],["$","meta","4",{"name":"googlebot","content":"index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1"}],["$","link","5",{"rel":"canonical","href":"https://oxypace.com.tr/"}],["$","meta","6",{"property":"og:title","content":"EVENT HORIZON - Popüler Bilim Arşivi | Oxypace"}],["$","meta","7",{"property":"og:description","content":"Evrenin fizik sınırları ve ekstrem doğa koşulları üzerine bağımsız bilimsel arşiv."}],["$","meta","8",{"property":"og:url","content":"https://oxypace.com.tr/blog/"}],["$","meta","9",{"property":"og:site_name","content":"Oxypace - EVENT HORIZON"}],["$","meta","10",{"property":"og:locale","content":"tr_TR"}],["$","meta","11",{"property":"og:image","content":"https://oxypace.com.tr/logo.png"}],["$","meta","12",{"property":"og:image:width","content":"512"}],["$","meta","13",{"property":"og:image:height","content":"512"}],["$","meta","14",{"property":"og:image:alt","content":"EVENT HORIZON"}],["$","meta","15",{"property":"og:type","content":"website"}],["$","meta","16",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","17",{"name":"twitter:title","content":"Oxypace - Topluluk Kur ve Birlikte Film İzle"}],["$","meta","18",{"name":"twitter:description","content":"Oxypace - Yeni nesil portal ve topluluk platformu. Kendi portalını oluştur, sesli odalarda arkadaşlarınla birlikte film izle, sohbet et ve dünyayla bağlantı kur."}],["$","meta","19",{"name":"twitter:image","content":"https://oxypace.com.tr/logo.png"}],["$","link","20",{"rel":"icon","href":"/favicon.ico?603d046c9a6fdfbb","type":"image/x-icon","sizes":"16x16"}],["$","link","21",{"rel":"icon","href":"/logo.png","sizes":"32x32","type":"image/png"}],["$","link","22",{"rel":"icon","href":"/logo.png","sizes":"16x16","type":"image/png"}],["$","link","23",{"rel":"apple-touch-icon","href":"/logo192.png","sizes":"180x180","type":"image/png"}],["$","$L19","24",{}]]

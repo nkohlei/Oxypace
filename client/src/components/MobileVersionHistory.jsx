@@ -27,15 +27,51 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.5)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.6)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.4.6',
+        versionCode: 246,
+        releaseDate: '26 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Mobil Masaüstü Sitesi Görünüm Modu & Pinch-to-Zoom, 3 Kademeli RBAC İzin Mimarisi, Silinen Hesapların Korunması ve Denetim Günlüğü Senkronizasyonu',
+        summary: 'Yönetim paneli ve geniş tablolar için mobil cihazlarda tek dokunuşla masaüstü görünümüne geçiş ve akıcı pinch-to-zoom desteği entegre edildi. Turist ve alt-yöneticiler için 3 kademeli esnek RBAC (Rol Tabanlı Erişim Denetimi) sistemi sunucu ve istemci tarafında modernize edildi. Silinen hesapların tüm profil verileri ve portal geçmişiyle pasif statüde korunması, silme türü filtreleri ve denetim kayıtları (audit logs) stabilizasyonu tamamlandı.',
+        category: 'feature',
+        apkSize: '80.1 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Mobil Masaüstü Sitesi Modu: Admin panelinde mobil cihazlarda masaüstü düzenine anında geçiş ve akıcı iki parmakla yakınlaştırma (pinch-to-zoom) desteği',
+            '3 Kademeli Granüler RBAC Mimarisi: Turist ve alt-yöneticiler için modül bazlı yetkilendirme, gerçek zamanlı izin senkronizasyonu ve yetkisiz işlem engeli',
+            'Silinen Hesap Yönetimi & Arşivleme: Silinen hesaplar kalıcı veri kaybı olmadan pasif statüde saklanarak tüm portal aktiviteleri ve dosya geçmişi muhafaza edildi',
+            'Oturum Tabanlı Denetim Günlüğü (Audit Log): Portal etkinliklerinde yaşanan olası çökmeler giderildi, zenginleştirilmiş oturum geçmişi paneli devreye alındı',
+            'İstemci & Sunucu Önbellek Senkronizasyonu: İzin değişikliklerinin anında istemciye yansıması sağlandı, stale cache gecikmeleri sıfırlandı'
+        ],
+        changes: [
+            { type: 'feat', text: 'client/src/pages/Admin.jsx: Mobil cihazlar için masaüstü görünüm modu ve interaktif viewport pinch-zoom anahtarı eklendi.' },
+            { type: 'feat', text: 'server/routes/admin.js & client: Turist ve alt-yöneticiler için 3 kademeli granüler RBAC stüdyosu ve sunucu koruması tamamlandı.' },
+            { type: 'feat', text: 'server/controllers/adminController.js: Silinen hesaplar pasif duruma çekilerek soft-delete yönetimi ve hesap türü filtreleri eklendi.' },
+            { type: 'fix', text: 'server/routes/audit.js: Portal aktivitelerindeki çökme giderildi, oturum tabanlı denetim günlükleri zenginleştirildi.' },
+            { type: 'build', text: 'Android Release APK v2.4.6 (versionCode 246) Java 21 ortamında derlendi ve dağıtım dizinlerine senkronize edildi.' }
+        ],
+        affectedFiles: [
+            'client/src/pages/Admin.jsx',
+            'client/src/components/AdminSidebar.jsx',
+            'client/src/components/MobileVersionHistory.jsx',
+            'client/src/components/UpdateModal.jsx',
+            'client/src/components/Footer.jsx',
+            'server.js',
+            'android/app/build.gradle'
+        ]
+    },
     {
         version: 'v2.4.5',
         versionCode: 245,
         releaseDate: '24 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: 'f3935e9',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Eski Portal Avatar/Banner URL Çözümleme, Yüksek Kalite Video Post Donma & Kasma Engeli, Profil/Keşfet/Mesajlar/Portal Erken Prefetching Önbelleği',
         summary: 'Eski portallarda URL-encoded proxy linklerinden kaynaklanan banner ve avatar yüklenememe sorunu çözüldü. Yüksek kaliteli video gönderilerinde donma, sistem kasması ve çökme hissi yaratan donanımsal video dekoder taşması ve scroll layout thrashing kökten giderildi. Profil, Keşfet, Portal, Portal Üyeleri ve Mesajlar sayfalarında sıfır gecikmeli SWR önbellek ve erken görsel prefetching motoru devreye alınarak avatarlar, bannerlar, rozetler ve gönderiler 0ms anında açılır hale getirildi.',
         category: 'performance',
@@ -785,7 +821,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.5': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.6': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
@@ -896,7 +932,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             </div>
                             <h1 className="mvh-title">Mobil Sürüm Günlüğü & Changelog</h1>
                             <p className="mvh-subtitle">
-                                Oxypace Android istemcisinin v2.0.0'dan v2.4.1'e kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
+                                Oxypace Android istemcisinin v2.0.0'dan v2.4.6'ya kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
                             </p>
                         </div>
                     </div>
@@ -949,7 +985,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <div className="mvh-metric-val-row">
                                 <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="mvh-metric-desc">v2.0.0 → v2.4.1 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.4.6 Gelişim Süreci</span>
                         </div>
                     </div>
 

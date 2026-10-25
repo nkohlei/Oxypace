@@ -416,12 +416,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.5',
-        versionCode: 245,
-        minSupportedVersionCode: 245,
+        latestVersion: '2.4.6',
+        versionCode: 246,
+        minSupportedVersionCode: 246,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.5: Eski portal avatar ve banner bağlantı çözümleme motoru, yüksek kaliteli video post donma ve kasma sorunlarının giderilmesi, mobil donanımsal video dekoder optimizasyonu, Keşfet, Profil, Portal ve Mesajlar sayfalarında anlık SWR önbellekleme ve erken görsel prefetching motoru.',
+        changelog: 'Oxypace 2.4.6: Mobil masaüstü sitesi görünüm modu ve pinch-zoom desteği, modernleştirilmiş turist ve alt-yönetici 3 kademeli RBAC izin mimarisi, silinen hesapların pasif statüde korunması ve detaylı denetim günlüğü (audit log) stabilizasyonu, istemci tarafı gerçek zamanlı senkronizasyon ve önbellek optimizasyonu.',
     });
 });
 
