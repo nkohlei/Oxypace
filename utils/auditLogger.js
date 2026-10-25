@@ -267,13 +267,16 @@ export const logActivity = async ({
                 }
             }
 
+            const VALID_CATEGORIES = new Set(['auth', 'portal', 'rtc', 'storage', 'bot', 'content', 'system', 'admin', 'general']);
+            const finalCategory = VALID_CATEGORIES.has(category) ? category : 'general';
+
             // Persistence
             const logEntry = await ActivityLog.create({
                 user: user ? (user._id || user) : null,
                 username: username || (user?.username || ''),
                 actorRole,
                 action: upperAction,
-                category,
+                category: finalCategory,
                 severity: finalSeverity,
                 portal: resolvedPortalId,
                 portalName: resolvedPortalName,

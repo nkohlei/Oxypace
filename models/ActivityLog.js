@@ -34,7 +34,7 @@ const ActivityLogSchema = new mongoose.Schema({
     // 7. 'system'  : Sistem, Altyapı ve Güvenlik Duvarı Kayıtları (System & Telemetry Logs)
     category: {
         type: String,
-        enum: ['auth', 'portal', 'rtc', 'storage', 'bot', 'content', 'system', 'general'],
+        enum: ['auth', 'portal', 'rtc', 'storage', 'bot', 'content', 'system', 'admin', 'general'],
         default: 'general',
         index: true,
     },
