@@ -61,6 +61,20 @@ const portalSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        avatarHistory: [
+            {
+                url: { type: String, required: true },
+                changedAt: { type: Date, default: Date.now },
+                changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+            }
+        ],
+        bannerHistory: [
+            {
+                url: { type: String, required: true },
+                changedAt: { type: Date, default: Date.now },
+                changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+            }
+        ],
         themeColor: {
             type: String,
             default: '#3b82f6', // Default blue

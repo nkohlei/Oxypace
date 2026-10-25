@@ -122,6 +122,20 @@ const userSchema = new mongoose.Schema(
                 type: String,
                 default: '',
             },
+            avatarHistory: [
+                {
+                    url: { type: String, required: true },
+                    changedAt: { type: Date, default: Date.now },
+                    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+                }
+            ],
+            bannerHistory: [
+                {
+                    url: { type: String, required: true },
+                    changedAt: { type: Date, default: Date.now },
+                    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+                }
+            ],
         },
         followers: [
             {

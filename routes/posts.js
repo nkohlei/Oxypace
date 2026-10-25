@@ -503,7 +503,37 @@ router.post(
                     mediaType: post.mediaType || 'none',
                     hasMedia: !!post.media,
                     mediaUrl: post.media || '',
-                    fileSize: post.fileSize || 0
+                    pdfUrl: post.pdfUrl || '',
+                    pdfName: post.pdfName || '',
+                    fileSize: post.fileSize || 0,
+                    author: {
+                        _id: req.user._id,
+                        username: req.user.username,
+                        displayName: req.user.profile?.displayName,
+                        avatar: req.user.profile?.avatar
+                    },
+                    postSnapshot: {
+                        postId: post._id.toString(),
+                        title: post.title || '',
+                        content: post.content || '',
+                        mediaType: post.mediaType || 'none',
+                        media: post.media || '',
+                        pdfUrl: post.pdfUrl || '',
+                        pdfName: post.pdfName || '',
+                        pdfSize: post.fileSize || 0,
+                        portalId: post.portal,
+                        portalName: portalName,
+                        channelId: post.channel,
+                        channelName: channelName,
+                        author: {
+                            _id: req.user._id,
+                            username: req.user.username,
+                            displayName: req.user.profile?.displayName,
+                            avatar: req.user.profile?.avatar
+                        },
+                        createdAt: post.createdAt,
+                        isDeleted: false
+                    }
                 }
             });
 
@@ -1087,7 +1117,58 @@ router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this post' });
         }
 
-        const snippet = post.content ? post.content.substring(0, 80) : '';
+        // Resolve portal and channel names for permanent archive
+        let portalName = '';
+        let channelName = String(post.channel || 'general');
+        if (post.portal) {
+            try {
+                const portalDoc = await Portal.findById(post.portal).select('name channels').lean();
+                if (portalDoc) {
+                    portalName = portalDoc.name || '';
+                    if (post.channel && portalDoc.channels) {
+                        const ch = portalDoc.channels.find(c => c._id?.toString() === post.channel.toString() || c.name === post.channel);
+                        channelName = ch ? ch.name : String(post.channel);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // Get author snapshot
+        let authorSnapshot = null;
+        try {
+            const authorDoc = await User.findById(post.author).select('username profile.displayName profile.avatar').lean();
+            if (authorDoc) {
+                authorSnapshot = {
+                    _id: authorDoc._id,
+                    username: authorDoc.username,
+                    displayName: authorDoc.profile?.displayName,
+                    avatar: authorDoc.profile?.avatar
+                };
+            }
+        } catch (e) {}
+
+        const postSnapshot = {
+            postId: post._id.toString(),
+            title: post.title || '',
+            content: post.content || '',
+            mediaType: post.mediaType || 'none',
+            media: post.media || '',
+            pdfUrl: post.pdfUrl || '',
+            pdfName: post.pdfName || '',
+            pdfSize: post.pdfSize || 0,
+            portalId: post.portal ? post.portal.toString() : null,
+            portalName: portalName,
+            channelId: post.channel ? post.channel.toString() : 'general',
+            channelName: channelName,
+            author: authorSnapshot,
+            createdAt: post.createdAt,
+            deletedAt: new Date(),
+            deletedBy: req.user.username,
+            likesCount: post.likeCount || (Array.isArray(post.likes) ? post.likes.length : 0),
+            commentsCount: post.commentCount || 0,
+            isDeleted: true
+        };
+
         await post.deleteOne();
 
         logActivity({
@@ -1095,10 +1176,18 @@ router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
             username: req.user.username,
             action: 'POST_DELETE',
             category: 'content',
-            req,
-            targetId: post._id,
+            severity: 'warning',
+            portal: post.portal,
+            portalName: portalName,
+            channel: channelName,
+            targetId: post._id.toString(),
             targetType: 'Post',
-            details: { snippet, portalId: post.portal }
+            targetName: post.content ? post.content.substring(0, 30) : 'Silinen Gönderi',
+            req,
+            details: {
+                ...postSnapshot,
+                postSnapshot
+            }
         });
 
         res.json({ message: 'Post deleted successfully' });

@@ -248,6 +248,8 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
             recentActivities,
             ownedPortals,
             memberPortals,
+            avatarHistory: user.profile?.avatarHistory || [],
+            bannerHistory: user.profile?.bannerHistory || [],
             allKnownIPs: Array.from(ipSet)
         });
     } catch (error) {
@@ -257,7 +259,7 @@ router.get('/users/:id/dossier', protect, admin, async (req, res) => {
 });
 
 // @route   GET /api/admin/users/:id/posts
-// @desc    Get all posts created by a specific user with search
+// @desc    Get all posts created by a specific user with search (including archived/deleted posts)
 // @access  Private/Admin
 router.get('/users/:id/posts', protect, admin, async (req, res) => {
     try {
@@ -269,7 +271,7 @@ router.get('/users/:id/posts', protect, admin, async (req, res) => {
         }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
-        const [posts, total] = await Promise.all([
+        const [posts, totalActive] = await Promise.all([
             Post.find(query)
                 .populate('portal', 'name avatar channels')
                 .sort({ createdAt: -1 })
@@ -279,7 +281,56 @@ router.get('/users/:id/posts', protect, admin, async (req, res) => {
             Post.countDocuments(query)
         ]);
 
-        res.json({ posts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+        // Also fetch deleted posts from ActivityLog archive so deleted posts remain accessible forever
+        let deletedLogsQuery = {
+            action: 'POST_DELETE',
+            $or: [
+                { user: req.params.id },
+                { 'details.author._id': req.params.id },
+                { 'details.author': req.params.id }
+            ]
+        };
+        if (q) {
+            deletedLogsQuery['details.content'] = { $regex: escapeRegex(q), $options: 'i' };
+        }
+        const deletedLogs = await ActivityLog.find(deletedLogsQuery).sort({ createdAt: -1 }).limit(100).lean();
+        const deletedPostsFormatted = deletedLogs.map(dl => {
+            const snap = dl.details?.postSnapshot || dl.details || {};
+            return {
+                _id: snap.postId || dl.targetId || dl._id,
+                content: snap.content || dl.details?.content || '',
+                media: snap.media || dl.details?.media || '',
+                mediaType: snap.mediaType || dl.details?.mediaType || 'none',
+                pdfUrl: snap.pdfUrl || dl.details?.pdfUrl || '',
+                pdfName: snap.pdfName || dl.details?.pdfName || '',
+                portal: {
+                    _id: snap.portalId || dl.portal,
+                    name: snap.portalName || dl.portalName || 'Portal'
+                },
+                channel: snap.channelName || dl.channel || 'genel',
+                createdAt: snap.createdAt || dl.createdAt,
+                deletedAt: snap.deletedAt || dl.createdAt,
+                deletedBy: snap.deletedBy || dl.username,
+                isDeleted: true
+            };
+        });
+
+        // Merge active posts with deleted archived posts
+        const activeFormatted = posts.map(p => ({
+            ...p,
+            isDeleted: false
+        }));
+
+        const combinedPosts = [...activeFormatted, ...deletedPostsFormatted].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.json({
+            posts: combinedPosts,
+            total: totalActive + deletedPostsFormatted.length,
+            activeCount: totalActive,
+            deletedCount: deletedPostsFormatted.length,
+            page: parseInt(page),
+            pages: Math.ceil((totalActive + deletedPostsFormatted.length) / parseInt(limit))
+        });
     } catch (error) {
         console.error('Fetch user posts error:', error);
         res.status(500).json({ message: 'Kullanıcı gönderileri getirilemedi.' });
@@ -485,7 +536,9 @@ router.get('/portals/:id/dossier', protect, admin, async (req, res) => {
             postCount,
             recentPosts,
             channelStats,
-            recentActivities
+            recentActivities,
+            avatarHistory: portal.avatarHistory || [],
+            bannerHistory: portal.bannerHistory || []
         });
     } catch (error) {
         console.error('Fetch portal dossier error:', error);
@@ -701,14 +754,59 @@ router.get('/portals/:id/posts', protect, admin, async (req, res) => {
                 channelName = chIdStr;
             }
 
+        // Also fetch deleted posts from ActivityLog archive for this portal
+        let deletedLogsQuery = {
+            action: 'POST_DELETE',
+            $or: [
+                { portal: portal._id },
+                { 'details.portalId': String(portal._id) }
+            ]
+        };
+        if (q) {
+            deletedLogsQuery['details.content'] = { $regex: escapeRegex(q), $options: 'i' };
+        }
+        const deletedLogs = await ActivityLog.find(deletedLogsQuery).sort({ createdAt: -1 }).limit(100).lean();
+        const deletedPostsFormatted = deletedLogs.map(dl => {
+            const snap = dl.details?.postSnapshot || dl.details || {};
             return {
-                ...p,
-                channelName,
-                channel: matchedCh ? { _id: matchedCh._id, name: matchedCh.name } : { _id: chIdStr, name: channelName }
+                _id: snap.postId || dl.targetId || dl._id,
+                content: snap.content || dl.details?.content || '',
+                media: snap.media || dl.details?.media || '',
+                mediaType: snap.mediaType || dl.details?.mediaType || 'none',
+                pdfUrl: snap.pdfUrl || dl.details?.pdfUrl || '',
+                pdfName: snap.pdfName || dl.details?.pdfName || '',
+                portal: {
+                    _id: portal._id,
+                    name: portal.name
+                },
+                channelName: snap.channelName || dl.channel || 'Genel',
+                channel: { _id: snap.channelId || 'general', name: snap.channelName || dl.channel || 'Genel' },
+                author: snap.author || {
+                    username: dl.username || 'Kullanıcı',
+                    profile: { displayName: dl.username || 'Kullanıcı' }
+                },
+                createdAt: snap.createdAt || dl.createdAt,
+                deletedAt: snap.deletedAt || dl.createdAt,
+                deletedBy: snap.deletedBy || dl.username,
+                isDeleted: true
             };
         });
 
-        res.json({ posts: formattedPosts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+        const activeFormatted = formattedPosts.map(p => ({
+            ...p,
+            isDeleted: false
+        }));
+
+        const combinedPortalPosts = [...activeFormatted, ...deletedPostsFormatted].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.json({
+            posts: combinedPortalPosts,
+            total: total + deletedPostsFormatted.length,
+            activeCount: total,
+            deletedCount: deletedPostsFormatted.length,
+            page: parseInt(page),
+            pages: Math.ceil((total + deletedPostsFormatted.length) / parseInt(limit))
+        });
     } catch (error) {
         console.error('Fetch portal posts error:', error);
         res.status(500).json({ message: 'Portal gönderileri getirilemedi.' });

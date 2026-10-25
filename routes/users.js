@@ -1141,12 +1141,29 @@ router.post(
                 return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
             }
 
+            const prevAvatar = user.profile?.avatar;
             const result = await processAndUploadMultiResAvatars(targetAvatarKey);
             const isGif = Boolean(result.original && /\.gif($|\?)/i.test(result.original));
             user.profile.avatar = result.original;
             user.profile.lowResAvatar = isGif ? '' : result.lowRes;
 
-             await user.save();
+            if (!Array.isArray(user.profile.avatarHistory)) user.profile.avatarHistory = [];
+            if (prevAvatar && !user.profile.avatarHistory.some(h => h.url === prevAvatar)) {
+                user.profile.avatarHistory.push({ url: prevAvatar, changedAt: new Date(), changedBy: req.user._id });
+            }
+            user.profile.avatarHistory.push({ url: result.original, changedAt: new Date(), changedBy: req.user._id });
+
+            await user.save();
+
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'AVATAR_UPDATE',
+                category: 'auth',
+                req,
+                diff: { before: { avatar: prevAvatar }, after: { avatar: result.original } },
+                details: { avatar: result.original }
+            });
 
             res.json({
                 message: 'Avatar uploaded successfully',
@@ -1161,9 +1178,6 @@ router.post(
     }
 );
 
-// @route   POST /api/users/me/cover
-// @desc    Upload cover image
-// @access  Private
 // @route   POST /api/users/me/cover
 // @desc    Upload cover image
 // @access  Private
@@ -1184,15 +1198,34 @@ router.post(
         try {
             const user = await User.findById(req.user._id);
 
+            const prevCover = user.profile?.coverImage;
+            let newCoverUrl = '';
             if (req.body.mediaKey) {
-                user.profile.coverImage = constructProxiedUrl(req.body.mediaKey);
+                newCoverUrl = constructProxiedUrl(req.body.mediaKey);
             } else if (req.file) {
-                user.profile.coverImage = constructProxiedUrl(req.file.key);
+                newCoverUrl = constructProxiedUrl(req.file.key);
             } else {
                 return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
             }
 
+            user.profile.coverImage = newCoverUrl;
+            if (!Array.isArray(user.profile.bannerHistory)) user.profile.bannerHistory = [];
+            if (prevCover && !user.profile.bannerHistory.some(h => h.url === prevCover)) {
+                user.profile.bannerHistory.push({ url: prevCover, changedAt: new Date(), changedBy: req.user._id });
+            }
+            user.profile.bannerHistory.push({ url: newCoverUrl, changedAt: new Date(), changedBy: req.user._id });
+
             await user.save();
+
+            logActivity({
+                user: user._id,
+                username: user.username,
+                action: 'BANNER_UPDATE',
+                category: 'auth',
+                req,
+                diff: { before: { coverImage: prevCover }, after: { coverImage: newCoverUrl } },
+                details: { coverImage: newCoverUrl }
+            });
 
             res.json({
                 message: 'Cover image uploaded successfully',

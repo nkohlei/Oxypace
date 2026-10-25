@@ -981,13 +981,33 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
             return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
         }
 
+        const prevAvatar = portal.avatar;
         const result = await processAndUploadMultiResAvatars(targetAvatarKey);
         const isGif = Boolean(result.original && /\.gif($|\?)/i.test(result.original));
         portal.avatar = result.original;
         portal.lowResAvatar = isGif ? '' : result.lowRes;
 
+        if (!Array.isArray(portal.avatarHistory)) portal.avatarHistory = [];
+        if (prevAvatar && !portal.avatarHistory.some(h => h.url === prevAvatar)) {
+            portal.avatarHistory.push({ url: prevAvatar, changedAt: new Date(), changedBy: req.user._id });
+        }
+        portal.avatarHistory.push({ url: result.original, changedAt: new Date(), changedBy: req.user._id });
+
         await portal.save();
         await portal.populate('owner', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');
+
+        logActivity({
+            user: req.user._id,
+            username: req.user.username,
+            action: 'PORTAL_AVATAR_UPDATE',
+            category: 'portal',
+            portal: portal._id,
+            portalName: portal.name,
+            req,
+            diff: { before: { avatar: prevAvatar }, after: { avatar: result.original } },
+            details: { portalName: portal.name, avatar: result.original }
+        });
+
         res.json(portal);
 
     } catch (error) {
@@ -1010,16 +1030,38 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
             return res.status(403).json({ message: 'Not authorized' });
         }
 
+        const prevBanner = portal.banner;
+        let newBannerUrl = '';
         if (req.body.mediaKey) {
-            portal.banner = constructProxiedUrl(req.body.mediaKey);
+            newBannerUrl = constructProxiedUrl(req.body.mediaKey);
         } else if (req.file) {
-            portal.banner = constructProxiedUrl(req.file.key);
+            newBannerUrl = constructProxiedUrl(req.file.key);
         } else {
             return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
         }
 
+        portal.banner = newBannerUrl;
+        if (!Array.isArray(portal.bannerHistory)) portal.bannerHistory = [];
+        if (prevBanner && !portal.bannerHistory.some(h => h.url === prevBanner)) {
+            portal.bannerHistory.push({ url: prevBanner, changedAt: new Date(), changedBy: req.user._id });
+        }
+        portal.bannerHistory.push({ url: newBannerUrl, changedAt: new Date(), changedBy: req.user._id });
+
         await portal.save();
         await portal.populate('owner', 'username profile.displayName profile.avatar isDeleted');
+
+        logActivity({
+            user: req.user._id,
+            username: req.user.username,
+            action: 'PORTAL_BANNER_UPDATE',
+            category: 'portal',
+            portal: portal._id,
+            portalName: portal.name,
+            req,
+            diff: { before: { banner: prevBanner }, after: { banner: newBannerUrl } },
+            details: { portalName: portal.name, banner: newBannerUrl }
+        });
+
         res.json(portal);
 
     } catch (error) {
@@ -1743,30 +1785,96 @@ router.delete('/:id', protect, async (req, res) => {
             return res.status(403).json({ message: 'Sadece kurucu bu işlemi yapabilir' });
         }
 
-        // 1. Remove portal reference from all users' joinedPortals array
+        // 1. Snapshot all posts of this portal to ActivityLog so their content and media are permanently archived
+        try {
+            const portalPosts = await Post.find({ portal: portal._id }).lean();
+            if (portalPosts.length > 0) {
+                for (const p of portalPosts) {
+                    logActivity({
+                        user: p.author,
+                        action: 'POST_DELETE',
+                        category: 'content',
+                        severity: 'warning',
+                        portal: portal._id,
+                        portalName: portal.name,
+                        channel: String(p.channel || 'general'),
+                        targetId: p._id.toString(),
+                        targetType: 'Post',
+                        targetName: p.content ? p.content.substring(0, 30) : 'Portal Silinmesiyle Arşivlenen Gönderi',
+                        req,
+                        details: {
+                            postId: p._id.toString(),
+                            title: p.title || '',
+                            content: p.content || '',
+                            mediaType: p.mediaType || 'none',
+                            media: p.media || '',
+                            pdfUrl: p.pdfUrl || '',
+                            pdfName: p.pdfName || '',
+                            portalId: portal._id.toString(),
+                            portalName: portal.name,
+                            channelId: p.channel ? p.channel.toString() : 'general',
+                            channelName: String(p.channel || 'general'),
+                            createdAt: p.createdAt,
+                            deletedAt: new Date(),
+                            deletedBy: req.user.username,
+                            reason: 'Portal silindiği için gönderi arşivlendi',
+                            isDeleted: true
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Archive portal posts error:', e);
+        }
+
+        // 2. Remove portal reference from all users' joinedPortals array
         await User.updateMany(
             { joinedPortals: portal._id },
             { $pull: { joinedPortals: portal._id } }
         );
 
-        // 2. Delete all posts associated with this portal
+        // 3. Delete all posts associated with this portal
         await Post.deleteMany({ portal: portal._id });
 
-        // 3. Delete the portal document
+        // 4. Create complete portal forensic snapshot
+        const portalSnapshot = {
+            portalId: portal._id.toString(),
+            name: portal.name,
+            description: portal.description,
+            owner: portal.owner,
+            admins: portal.admins,
+            membersCount: portal.members ? portal.members.length : 0,
+            avatar: portal.avatar,
+            banner: portal.banner,
+            avatarHistory: portal.avatarHistory || [],
+            bannerHistory: portal.bannerHistory || [],
+            channels: portal.channels || [],
+            privacy: portal.privacy,
+            createdAt: portal.createdAt,
+            deletedAt: new Date(),
+            deletedBy: req.user.username,
+            isDeleted: true
+        };
+
+        // 5. Delete the portal document
         await portal.deleteOne();
 
         logActivity({
             user: req.user,
+            username: req.user.username,
             action: 'PORTAL_DELETE',
             category: 'portal',
             severity: 'critical',
             portal: portal._id,
             portalName: portal.name,
             req,
-            details: { name: portal.name }
+            details: {
+                name: portal.name,
+                portalSnapshot
+            }
         });
 
-        res.json({ message: 'Portal kalıcı olarak silindi' });
+        res.json({ message: 'Portal kalıcı olarak silindi ve tüm içerikleri arşive kaydedildi' });
     } catch (error) {
         console.error('Portal delete error:', error);
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -1790,13 +1898,18 @@ router.get('/:id/audit-logs', protect, mongoIdValidation('id'), async (req, res)
         }
 
         const { category, page = 1, limit = 50 } = req.query;
-        let query = { portal: portal._id };
+        let query = {
+            $or: [
+                { portal: portal._id },
+                { 'details.portalId': String(portal._id) }
+            ]
+        };
         if (category && category !== 'all') {
             query.category = category;
         }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
-        const [logs, total] = await Promise.all([
+        const [rawLogs, total] = await Promise.all([
             ActivityLog.find(query)
                 .populate('user', 'username profile.displayName profile.avatar')
                 .sort({ createdAt: -1 })
@@ -1806,7 +1919,27 @@ router.get('/:id/audit-logs', protect, mongoIdValidation('id'), async (req, res)
             ActivityLog.countDocuments(query)
         ]);
 
-        res.json({ logs, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+        const enrichedLogs = rawLogs.map(log => {
+            let chName = log.channel || log.details?.channelName || '';
+            if (chName && portal.channels) {
+                const foundCh = portal.channels.find(c => c._id?.toString() === chName || c.name === chName);
+                if (foundCh) chName = foundCh.name;
+            }
+            return {
+                ...log,
+                portalName: portal.name,
+                channel: chName || 'genel'
+            };
+        });
+
+        res.json({
+            logs: enrichedLogs,
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / parseInt(limit)),
+            avatarHistory: portal.avatarHistory || [],
+            bannerHistory: portal.bannerHistory || []
+        });
     } catch (err) {
         console.error('Fetch portal audit logs error:', err);
         res.status(500).json({ message: 'Portal denetim kayıtları getirilemedi' });

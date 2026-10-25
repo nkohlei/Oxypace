@@ -70,6 +70,12 @@ const AdminMedia = ({ src, alt = '', className = '', style = {}, isAvatar = fals
     );
 };
 
+const getYouTubeEmbedUrl = (urlOrText) => {
+    if (!urlOrText || typeof urlOrText !== 'string') return null;
+    const match = urlOrText.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+};
+
 // Modern Modal Component for Reason Entry + Duration Picker
 const ReasonModal = ({ isOpen, onClose, onSubmit, actionType }) => {
     const [reason, setReason] = useState('');
@@ -1642,10 +1648,97 @@ const PortalDetailModal = ({
                         </div>
                     )}
 
-                    {/* SUBTAB 5: PORTAL GÜNLÜĞÜ (AUDIT LOGS) */}
+                    {/* SUBTAB 5: PORTAL GÜNLÜĞÜ (AUDIT LOGS & ŞECERE) */}
                     {activeSubTab === 'activity' && (
                         <div className="portal-subtab-pane">
-                            <h4 className="detail-section-title">PORTAL İŞLEM VE DENETİM GÜNLÜĞÜ</h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                                <h4 className="detail-section-title" style={{ margin: 0 }}>PORTAL İŞLEM VE DENETİM GÜNLÜĞÜ</h4>
+                                <button
+                                    type="button"
+                                    className="user-box-btn"
+                                    onClick={() => openPortalPosts(portal)}
+                                    style={{ fontSize: '11px', padding: '6px 12px' }}
+                                >
+                                    📝 Portal Post Arşivini Aç (Aktif + Silinmiş)
+                                </button>
+                            </div>
+
+                            {/* Portal Görsel Şeceresi (Logo ve Banner Tarihçesi) */}
+                            <div style={{ marginBottom: '16px', background: '#0e0e0e', border: '1px solid #222', borderRadius: '8px', padding: '14px' }}>
+                                <h5 style={{ fontSize: '11px', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                                    🖼️ PORTAL GÖRSEL ŞECERESİ (LOGO & BANNER GEÇMİŞİ)
+                                </h5>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div>
+                                        <span style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '6px' }}>
+                                            Kullanılan Portal Logoları ({(portal.avatarHistory || []).length || (portal.avatar ? 1 : 0)}):
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            {(portal.avatarHistory || []).length > 0 ? (
+                                                portal.avatarHistory.map((item, idx) => (
+                                                    <div key={idx} style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                        <AdminMedia
+                                                            src={item.url}
+                                                            alt=""
+                                                            isAvatar
+                                                            style={{ width: '40px', height: '40px', borderRadius: '6px', margin: '0 auto' }}
+                                                        />
+                                                        <div style={{ fontSize: '9px', color: '#777', marginTop: '4px' }}>
+                                                            {item.changedAt ? new Date(item.changedAt).toLocaleDateString('tr-TR') : 'Kayıt'}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : portal.avatar ? (
+                                                <div style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                    <AdminMedia
+                                                        src={portal.avatar}
+                                                        alt=""
+                                                        isAvatar
+                                                        style={{ width: '40px', height: '40px', borderRadius: '6px', margin: '0 auto' }}
+                                                    />
+                                                    <div style={{ fontSize: '9px', color: '#777', marginTop: '4px' }}>Aktif Logo</div>
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontSize: '11px', color: '#666' }}>Logo kaydı yok.</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <span style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '6px' }}>
+                                            Kullanılan Portal Bannerları ({(portal.bannerHistory || []).length || (portal.banner ? 1 : 0)}):
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            {(portal.bannerHistory || []).length > 0 ? (
+                                                portal.bannerHistory.map((item, idx) => (
+                                                    <div key={idx} style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                        <AdminMedia
+                                                            src={item.url}
+                                                            alt=""
+                                                            style={{ width: '80px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                                                        />
+                                                        <div style={{ fontSize: '9px', color: '#777', marginTop: '4px' }}>
+                                                            {item.changedAt ? new Date(item.changedAt).toLocaleDateString('tr-TR') : 'Kayıt'}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : portal.banner ? (
+                                                <div style={{ background: '#161616', border: '1px solid #282828', padding: '6px', borderRadius: '6px', textAlign: 'center' }}>
+                                                    <AdminMedia
+                                                        src={portal.banner}
+                                                        alt=""
+                                                        style={{ width: '80px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                                                    />
+                                                    <div style={{ fontSize: '9px', color: '#777', marginTop: '4px' }}>Aktif Banner</div>
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontSize: '11px', color: '#666' }}>Banner kaydı yok.</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {(portal.recentActivities || []).length === 0 ? (
                                 <p className="no-data">Bu portala ait son işlem günlüğü bulunamadı.</p>
                             ) : (
@@ -1655,7 +1748,8 @@ const PortalDetailModal = ({
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <span className="mono-tag" style={{ fontSize: '9px' }}>{act.action}</span>
                                                 <span style={{ color: '#cccccc' }}>
-                                                    {act.details?.channelName ? `Kanal: #${act.details.channelName}` : act.details?.reason || act.details?.title || act.action}
+                                                    {act.channel ? `#${act.channel} • ` : act.details?.channelName ? `#${act.details.channelName} • ` : ''}
+                                                    {act.details?.reason || act.details?.title || act.details?.content ? `"${(act.details.content || act.details.title || act.details.reason).substring(0, 60)}"` : act.action}
                                                 </span>
                                             </div>
                                             <span style={{ color: '#777777', fontFamily: 'monospace' }}>
@@ -8766,6 +8860,84 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
 
+                                    {/* Görsel Şecere: Avatar ve Banner Tarihçesi */}
+                                    <div className="dossier-section-box" style={{ gridColumn: '1 / -1' }}>
+                                        <h4 className="dossier-section-title">
+                                            🖼️ GÖRSEL ŞECERE: AVATAR & BANNER GEÇMİŞİ ({(userDossierData.avatarHistory || []).length || (userDossierData.user.profile?.avatar ? 1 : 0)} Avatar • {(userDossierData.bannerHistory || []).length || (userDossierData.user.profile?.coverImage ? 1 : 0)} Banner)
+                                        </h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                            <div>
+                                                <span style={{ fontSize: '11px', color: '#888', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+                                                    👤 KULLANILAN AVATARLAR:
+                                                </span>
+                                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                    {(userDossierData.avatarHistory || []).length > 0 ? (
+                                                        userDossierData.avatarHistory.map((item, idx) => (
+                                                            <div key={idx} style={{ background: '#111', border: '1px solid #282828', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                                                                <AdminMedia
+                                                                    src={item.url}
+                                                                    alt="Avatar Geçmişi"
+                                                                    className="v2-avatar-tiny"
+                                                                    isAvatar
+                                                                    style={{ width: '48px', height: '48px', borderRadius: '8px', margin: '0 auto' }}
+                                                                />
+                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>
+                                                                    {item.changedAt ? new Date(item.changedAt).toLocaleDateString('tr-TR') : 'Kayıt'}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    ) : userDossierData.user.profile?.avatar ? (
+                                                        <div style={{ background: '#111', border: '1px solid #282828', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                                                            <AdminMedia
+                                                                src={userDossierData.user.profile.avatar}
+                                                                alt="Aktif Avatar"
+                                                                className="v2-avatar-tiny"
+                                                                isAvatar
+                                                                style={{ width: '48px', height: '48px', borderRadius: '8px', margin: '0 auto' }}
+                                                            />
+                                                            <div style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>Aktif Avatar</div>
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ fontSize: '11px', color: '#666' }}>Geçmiş avatar kaydı bulunamadı.</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <span style={{ fontSize: '11px', color: '#888', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+                                                    🏙️ KULLANILAN BANNERLAR (KAPAK GÖRSELLERİ):
+                                                </span>
+                                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                    {(userDossierData.bannerHistory || []).length > 0 ? (
+                                                        userDossierData.bannerHistory.map((item, idx) => (
+                                                            <div key={idx} style={{ background: '#111', border: '1px solid #282828', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                                                                <AdminMedia
+                                                                    src={item.url}
+                                                                    alt="Banner Geçmişi"
+                                                                    style={{ width: '100px', height: '48px', objectFit: 'cover', borderRadius: '6px' }}
+                                                                />
+                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>
+                                                                    {item.changedAt ? new Date(item.changedAt).toLocaleDateString('tr-TR') : 'Kayıt'}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    ) : userDossierData.user.profile?.coverImage ? (
+                                                        <div style={{ background: '#111', border: '1px solid #282828', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                                                            <AdminMedia
+                                                                src={userDossierData.user.profile.coverImage}
+                                                                alt="Aktif Banner"
+                                                                style={{ width: '100px', height: '48px', objectFit: 'cover', borderRadius: '6px' }}
+                                                            />
+                                                            <div style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>Aktif Banner</div>
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ fontSize: '11px', color: '#666' }}>Geçmiş banner kaydı bulunamadı.</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Bottom Full: Platform İstatistikleri & Son İşlemler */}
                                     <div className="dossier-section-box" style={{ gridColumn: '1 / -1' }}>
                                         <h4 className="dossier-section-title">PLATFORM ETKİLEŞİMİ & SON AYAK İZLERİ</h4>
@@ -8881,9 +9053,9 @@ const AdminDashboard = () => {
                                         setUserDossierOpen(false);
                                         openUserPosts(userDossierData.user);
                                     }}
-                                    style={{ minWidth: '160px' }}
+                                    style={{ minWidth: '220px', fontWeight: 700 }}
                                 >
-                                    📝 Kullanıcının Postlarını Aç
+                                    📝 Tüm Gönderi Arşivini Aç (Aktif + Silinmiş)
                                 </button>
                             )}
                             <button type="button" className="btn-modern-ghost" onClick={() => setUserDossierOpen(false)}>
@@ -8940,23 +9112,54 @@ const AdminDashboard = () => {
                                 <p className="no-data">Kullanıcının paylaştığı herhangi bir gönderi bulunamadı.</p>
                             ) : (
                                 userPostsData.map((post) => (
-                                    <div key={post._id} className="post-inspect-card">
+                                    <div key={post._id} className="post-inspect-card" style={post.isDeleted ? { borderColor: '#7f1d1d', background: '#130808' } : {}}>
                                         <div className="post-inspect-header">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                                 <span className="post-inspect-channel">
                                                     {post.portal?.name ? `🌐 ${post.portal.name}` : 'GLOBAL AKIŞ'}
                                                 </span>
-                                                <span style={{ fontFamily: 'monospace' }}>
+                                                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#777' }}>
                                                     ID: {post._id}
                                                 </span>
+                                                {post.isDeleted ? (
+                                                    <span className="mono-tag" style={{ background: '#7f1d1d', color: '#fca5a5', border: '1px solid #dc2626', fontSize: '9px' }}>
+                                                        🗑️ SİLİNMİŞ (ARŞİVDE KORUNUYOR)
+                                                    </span>
+                                                ) : (
+                                                    <span className="mono-tag" style={{ background: '#064e3b', color: '#6ee7b7', border: '1px solid #059669', fontSize: '9px' }}>
+                                                        🟢 AKTİF
+                                                    </span>
+                                                )}
                                             </div>
-                                            <span>{post.createdAt ? new Date(post.createdAt).toLocaleString('tr-TR') : '-'}</span>
+                                            <span style={{ fontSize: '11px', color: '#888' }}>
+                                                {post.createdAt ? new Date(post.createdAt).toLocaleString('tr-TR') : '-'}
+                                            </span>
                                         </div>
 
                                         {post.content && (
                                             <div className="post-inspect-text">{post.content}</div>
                                         )}
 
+                                        {/* YouTube Video Player Embed */}
+                                        {(() => {
+                                            const ytUrl = getYouTubeEmbedUrl(post.content || (typeof post.media === 'string' ? post.media : ''));
+                                            if (ytUrl) {
+                                                return (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <iframe
+                                                            src={ytUrl}
+                                                            title="YouTube Video"
+                                                            style={{ width: '100%', maxWidth: '480px', height: '240px', borderRadius: '6px', border: '1px solid #333' }}
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                            allowFullScreen
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+
+                                        {/* Media (Images, Videos, GIFs) */}
                                         {post.media && (
                                             <div className="post-inspect-media-container">
                                                 {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
@@ -8988,19 +9191,41 @@ const AdminDashboard = () => {
                                             </div>
                                         )}
 
+                                        {/* PDF Attachment */}
+                                        {post.pdfUrl && (
+                                            <div style={{ marginTop: '8px', background: '#111', border: '1px solid #333', padding: '8px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '360px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '18px' }}>📄</span>
+                                                    <div>
+                                                        <div style={{ fontSize: '12px', color: '#fff', fontWeight: 600 }}>{post.pdfName || 'Belge.pdf'}</div>
+                                                        <div style={{ fontSize: '10px', color: '#888' }}>PDF Belgesi</div>
+                                                    </div>
+                                                </div>
+                                                <a href={getImageUrl(post.pdfUrl)} target="_blank" rel="noopener noreferrer" className="user-box-btn" style={{ padding: '4px 8px', fontSize: '11px' }}>
+                                                    Aç / İndir
+                                                </a>
+                                            </div>
+                                        )}
+
                                         <div className="post-inspect-footer">
                                             <div className="post-inspect-stats">
-                                                <span>❤️ {post.likes?.length || 0} Beğeni</span>
-                                                <span>💬 {post.comments?.length || 0} Yorum</span>
+                                                <span>❤️ {post.likes?.length || post.likeCount || 0} Beğeni</span>
+                                                <span>💬 {post.comments?.length || post.commentCount || 0} Yorum</span>
                                                 <span>🔄 {post.retweets?.length || 0} Repost</span>
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="post-delete-btn"
-                                                onClick={() => handleDeletePost(post._id)}
-                                            >
-                                                🗑️ Kalıcı Sil
-                                            </button>
+                                            {post.isDeleted ? (
+                                                <span style={{ color: '#f87171', fontSize: '11px', fontFamily: 'monospace' }}>
+                                                    Silen: @{post.deletedBy || 'Yetkili'} • Silinme: {post.deletedAt ? new Date(post.deletedAt).toLocaleString('tr-TR') : '-'}
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="post-delete-btn"
+                                                    onClick={() => handleDeletePost(post._id)}
+                                                >
+                                                    🗑️ Kalıcı Sil
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -9082,17 +9307,26 @@ const AdminDashboard = () => {
                                 <p className="no-data">Bu portalda henüz gönderi bulunamadı veya arama sonucu boş.</p>
                             ) : (
                                 portalPostsData.map((post) => (
-                                    <div key={post._id} className="post-inspect-card">
+                                    <div key={post._id} className="post-inspect-card" style={post.isDeleted ? { borderColor: '#7f1d1d', background: '#130808' } : {}}>
                                         <div className="post-inspect-header">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                                 <span style={{ fontWeight: 700, color: '#fff' }}>
                                                     @{post.author?.username || 'Bilinmiyor'}
                                                 </span>
                                                 <span className="post-inspect-channel">
                                                     #{post.channelName || post.channel?.name || (typeof post.channel === 'string' && post.channel !== 'general' ? post.channel : (selectedPortalForPosts.channels?.[0]?.name || 'genel'))}
                                                 </span>
+                                                {post.isDeleted ? (
+                                                    <span className="mono-tag" style={{ background: '#7f1d1d', color: '#fca5a5', border: '1px solid #dc2626', fontSize: '9px' }}>
+                                                        🗑️ SİLİNMİŞ (ARŞİVDE KORUNUYOR)
+                                                    </span>
+                                                ) : (
+                                                    <span className="mono-tag" style={{ background: '#064e3b', color: '#6ee7b7', border: '1px solid #059669', fontSize: '9px' }}>
+                                                        🟢 AKTİF
+                                                    </span>
+                                                )}
                                             </div>
-                                            <span style={{ fontFamily: 'monospace' }}>
+                                            <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#888' }}>
                                                 {post.createdAt ? new Date(post.createdAt).toLocaleString('tr-TR') : '-'}
                                             </span>
                                         </div>
@@ -9101,6 +9335,26 @@ const AdminDashboard = () => {
                                             <div className="post-inspect-text">{post.content}</div>
                                         )}
 
+                                        {/* YouTube Video Player Embed */}
+                                        {(() => {
+                                            const ytUrl = getYouTubeEmbedUrl(post.content || (typeof post.media === 'string' ? post.media : ''));
+                                            if (ytUrl) {
+                                                return (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <iframe
+                                                            src={ytUrl}
+                                                            title="YouTube Video"
+                                                            style={{ width: '100%', maxWidth: '480px', height: '240px', borderRadius: '6px', border: '1px solid #333' }}
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                            allowFullScreen
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+
+                                        {/* Media (Images, Videos, GIFs) */}
                                         {post.media && (
                                             <div className="post-inspect-media-container">
                                                 {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
@@ -9132,18 +9386,40 @@ const AdminDashboard = () => {
                                             </div>
                                         )}
 
+                                        {/* PDF Attachment */}
+                                        {post.pdfUrl && (
+                                            <div style={{ marginTop: '8px', background: '#111', border: '1px solid #333', padding: '8px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '360px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '18px' }}>📄</span>
+                                                    <div>
+                                                        <div style={{ fontSize: '12px', color: '#fff', fontWeight: 600 }}>{post.pdfName || 'Belge.pdf'}</div>
+                                                        <div style={{ fontSize: '10px', color: '#888' }}>PDF Belgesi</div>
+                                                    </div>
+                                                </div>
+                                                <a href={getImageUrl(post.pdfUrl)} target="_blank" rel="noopener noreferrer" className="user-box-btn" style={{ padding: '4px 8px', fontSize: '11px' }}>
+                                                    Aç / İndir
+                                                </a>
+                                            </div>
+                                        )}
+
                                         <div className="post-inspect-footer">
                                             <div className="post-inspect-stats">
-                                                <span>❤️ {post.likes?.length || 0} Beğeni</span>
-                                                <span>💬 {post.comments?.length || 0} Yorum</span>
+                                                <span>❤️ {post.likes?.length || post.likeCount || 0} Beğeni</span>
+                                                <span>💬 {post.comments?.length || post.commentCount || 0} Yorum</span>
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="post-delete-btn"
-                                                onClick={() => handleDeletePost(post._id)}
-                                            >
-                                                🗑️ Kalıcı Sil
-                                            </button>
+                                            {post.isDeleted ? (
+                                                <span style={{ color: '#f87171', fontSize: '11px', fontFamily: 'monospace' }}>
+                                                    Silen: @{post.deletedBy || 'Yetkili'} • Silinme: {post.deletedAt ? new Date(post.deletedAt).toLocaleString('tr-TR') : '-'}
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="post-delete-btn"
+                                                    onClick={() => handleDeletePost(post._id)}
+                                                >
+                                                    🗑️ Kalıcı Sil
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
