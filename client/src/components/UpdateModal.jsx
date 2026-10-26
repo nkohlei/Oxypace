@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import './UpdateModal.css';
@@ -24,6 +24,10 @@ const isNewerVersion = (remote, local) => {
 const UpdateModal = () => {
     const [show, setShow] = useState(false);
     const [info, setInfo] = useState(null);
+    const [downloading, setDownloading] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [downloadCompleted, setDownloadCompleted] = useState(false);
+    const progressListenerRef = useRef(null);
 
     useEffect(() => {
         // Only run on native Android app
@@ -52,10 +56,70 @@ const UpdateModal = () => {
         };
 
         const timer = setTimeout(checkVersion, 1500);
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+            if (progressListenerRef.current) {
+                progressListenerRef.current.remove?.();
+            }
+        };
     }, []);
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
+        const downloadUrl = info?.downloadUrl || 'https://oxypace.com.tr/downloads/oxypace.apk';
+
+        setDownloading(true);
+        setProgress(0);
+        setDownloadCompleted(false);
+
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const { registerPlugin } = await import('@capacitor/core');
+                const Downloader = registerPlugin('Downloader');
+
+                if (progressListenerRef.current) {
+                    progressListenerRef.current.remove?.();
+                }
+
+                // Add listener to track live progress from native Downloader
+                progressListenerRef.current = await Downloader.addListener('downloadProgress', (data) => {
+                    if (data && typeof data.percentage === 'number') {
+                        setProgress(data.percentage);
+                        if (data.percentage >= 100) {
+                            setDownloadCompleted(true);
+                            setDownloading(false);
+                        }
+                    }
+                });
+
+                await Downloader.downloadFile({
+                    url: downloadUrl,
+                    filename: 'oxypace.apk'
+                });
+
+            } catch (err) {
+                console.error('Native download error, opening system browser:', err);
+                window.open(downloadUrl, '_system');
+                setDownloading(false);
+            }
+        } else {
+            window.open(downloadUrl, '_system');
+            setDownloading(false);
+        }
+    };
+
+    const handleManualInstall = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const { registerPlugin } = await import('@capacitor/core');
+                const Downloader = registerPlugin('Downloader');
+                await Downloader.installExistingApk({ filename: 'oxypace.apk' });
+            } catch (e) {
+                console.error('Manual install trigger failed:', e);
+            }
+        }
+    };
+
+    const handleOpenInChrome = () => {
         const downloadUrl = info?.downloadUrl || 'https://oxypace.com.tr/downloads/oxypace.apk';
         window.open(downloadUrl, '_system');
     };
@@ -69,26 +133,63 @@ const UpdateModal = () => {
             <div className="update-modal">
                 <div className="update-modal-header">
                     <h2 className="update-modal-title">
-                        Yeni Güncelleme Mevcut
+                        {downloadCompleted ? 'Güncelleme Hazır' : 'Yeni Güncelleme Mevcut'}
                     </h2>
                     <p className="update-modal-version">
-                        Sürüm {CURRENT_VERSION} → <span className="version-new">{info?.latestVersion || '2.4.6'}</span>
+                        Sürüm {CURRENT_VERSION} → <span className="version-new">{info?.latestVersion || '2.4.7'}</span>
                     </p>
                 </div>
 
-                {info?.changelog && (
+                {!downloading && !downloadCompleted && info?.changelog && (
                     <div className="update-modal-changelog">
                         {info.changelog}
                     </div>
                 )}
 
+                {downloading && (
+                    <div className="update-progress-box">
+                        <div className="update-progress-info">
+                            <span>İndiriliyor...</span>
+                            <span className="update-progress-percent">%{progress}</span>
+                        </div>
+                        <div className="update-progress-track">
+                            <div 
+                                className="update-progress-fill" 
+                                style={{ width: `${Math.max(4, progress)}%` }}
+                            />
+                        </div>
+                        <p className="update-status-hint">
+                            İndirme işlemi bildirim çubuğunuzda da ilerlemektedir. Tamamlandığında yükleme penceresi otomatik açılacaktır.
+                        </p>
+                    </div>
+                )}
+
+                {downloadCompleted && (
+                    <div className="update-progress-box">
+                        <p className="update-status-hint" style={{ color: '#e0e0e0' }}>
+                            Yükleme penceresi açılmadıysa aşağıdaki butona dokunarak güncellemeyi başlatabilirsiniz.
+                        </p>
+                    </div>
+                )}
+
                 <div className="update-modal-actions">
-                    <button 
-                        className="update-btn-download" 
-                        onClick={handleDownload}
-                    >
-                        Şimdi Güncelle
-                    </button>
+                    {!downloading && !downloadCompleted && (
+                        <button 
+                            className="update-btn-download" 
+                            onClick={handleDownload}
+                        >
+                            Şimdi Güncelle
+                        </button>
+                    )}
+
+                    {downloadCompleted && (
+                        <button 
+                            className="update-btn-install" 
+                            onClick={handleManualInstall}
+                        >
+                            Yüklemeyi Başlat
+                        </button>
+                    )}
                 </div>
 
                 {/* Alternative Direct Chrome Download URL Link */}
@@ -98,7 +199,7 @@ const UpdateModal = () => {
                         href={downloadUrl}
                         onClick={(e) => {
                             e.preventDefault();
-                            handleDownload();
+                            handleOpenInChrome();
                         }}
                         className="update-alt-link"
                     >

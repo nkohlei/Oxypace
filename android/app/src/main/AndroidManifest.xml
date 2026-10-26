@@ -116,4 +116,7 @@
     
     <!-- Telecom framework permissions for VoIP connection service -->
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+
+    <!-- In-App APK Upgrade & Package Installer Permission -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>
