@@ -1131,7 +1131,7 @@ const Portal = () => {
 
             let hasCachedPosts = false;
             try {
-                const cached = sessionStorage.getItem(cacheKey);
+                const cached = localStorage.getItem(cacheKey) || sessionStorage.getItem(cacheKey);
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1195,8 +1195,10 @@ const Portal = () => {
             } else {
                 setPosts(newPosts);
                 try {
-                    sessionStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 15)));
-                } catch (_) {}
+                    localStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 20)));
+                } catch (_) {
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 15))); } catch (__) {}
+                }
             }
 
             setError('');

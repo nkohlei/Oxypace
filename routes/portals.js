@@ -686,29 +686,36 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             ? { createdAt: -1 }
             : { isPinned: -1, pinnedAt: -1, createdAt: -1 };
 
-        const posts = await Post.find(query)
-            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
-            .populate({
-                path: 'promotedPortal',
-                select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status'
-            })
-            .populate({
-                path: 'quotedPost',
-                populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
-                    { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers badges customBadge isVerified' },
-                    {
-                        path: 'quotedPost',
-                        populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
-                            { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers badges customBadge isVerified' }
-                        ]
-                    }
-                ]
-            })
-            .sort(sortOptions)
-            .limit(limit)
-            .lean();
+        const [posts, totalChannelPosts] = await Promise.all([
+            Post.find(query)
+                .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
+                .populate({
+                    path: 'promotedPortal',
+                    select: 'name description avatar lowResAvatar banner privacy members joinRequests themeColor badges customBadge isVerified isNSFW status'
+                })
+                .populate({
+                    path: 'quotedPost',
+                    populate: [
+                        { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
+                        { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers badges customBadge isVerified' },
+                        {
+                            path: 'quotedPost',
+                            populate: [
+                                { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge settings.privacy isDeleted' },
+                                { path: 'portal', select: 'name avatar lowResAvatar privacy members blockedUsers allowedUsers badges customBadge isVerified' }
+                            ]
+                        }
+                    ]
+                })
+                .sort(sortOptions)
+                .limit(limit)
+                .lean(),
+            !before ? Post.countDocuments({
+                portal: portalId,
+                isArchived: { $ne: true },
+                channel: query.channel
+            }) : Promise.resolve(null)
+        ]);
 
         // Format and filter promoted portals (+18 NSFW filter enforced)
         const userIdStr = userId?.toString();
@@ -754,13 +761,10 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
         }
 
         const activePosts = posts;
-        const totalChannelPosts = await Post.countDocuments({
-            portal: portalId,
-            isArchived: { $ne: true },
-            channel: query.channel
-        });
-        res.set('X-Total-Count', totalChannelPosts.toString());
-        res.set('Access-Control-Expose-Headers', 'X-Total-Count');
+        if (totalChannelPosts !== null && totalChannelPosts !== undefined) {
+            res.set('X-Total-Count', totalChannelPosts.toString());
+            res.set('Access-Control-Expose-Headers', 'X-Total-Count');
+        }
         res.json(activePosts);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });

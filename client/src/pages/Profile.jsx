@@ -296,7 +296,7 @@ const Profile = () => {
         try {
             const cacheKey = username ? `oxypace_profile_posts_${username}` : (currentUser?._id ? `oxypace_profile_posts_${currentUser._id}` : null);
             if (cacheKey) {
-                const cached = sessionStorage.getItem(cacheKey);
+                const cached = localStorage.getItem(cacheKey) || sessionStorage.getItem(cacheKey);
                 if (cached) return JSON.parse(cached);
             }
         } catch (_) {}
@@ -402,8 +402,13 @@ const Profile = () => {
             setUserPosts(postsData);
             try {
                 const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
-                sessionStorage.setItem(cacheKey, JSON.stringify(postsData));
-            } catch (_) {}
+                localStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 20)));
+            } catch (_) {
+                try {
+                    const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
+                    sessionStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 15)));
+                } catch (__) {}
+            }
         } catch (err) {
             console.error('Failed to fetch user posts:', err);
             if (err.response?.status === 404) {

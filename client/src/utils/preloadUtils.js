@@ -74,11 +74,11 @@ export const preloadPortals = (portals = []) => {
         if (!p) return;
         const avatar = p.lowResAvatar || p.avatar;
         if (avatar) {
-            preloadImage(avatar, /\.gif($|\?)/i.test(avatar) ? 'original' : 'thumbnail');
+            preloadImage(avatar, 'thumbnail');
         }
         const banner = p.coverImage || p.banner;
         if (banner) {
-            preloadImage(banner, 'original');
+            preloadImage(banner, 'medium');
         }
     });
 };
@@ -108,25 +108,30 @@ export const preloadPosts = (posts = []) => {
     if (!Array.isArray(posts) || typeof window === 'undefined') return;
     posts.slice(0, 15).forEach((post, idx) => {
         if (!post) return;
-        const priority = idx < 3 ? 'high' : 'low';
+        const priority = idx < 4 ? 'high' : 'low';
         const author = post.author;
         if (author) {
             const avatar = author.profile?.lowResAvatar || author.profile?.avatar || author.avatar;
             if (avatar) {
-                preloadImage(avatar, /\.gif($|\?)/i.test(avatar) ? 'original' : 'thumbnail', priority);
+                preloadImage(avatar, 'thumbnail', priority);
             }
             if (author.customBadge?.url) {
                 preloadImage(author.customBadge.url, 'original', priority);
             }
         }
-        // First image in post
+        // Images in post (using feed size ?w=720 for instant load)
         const media = post.media || (Array.isArray(post.mediaUrls) ? post.mediaUrls[0] : null);
         if (media && typeof media === 'string') {
             const clean = media.split('?')[0].split('#')[0].toLowerCase();
             const isImage = /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(clean);
             if (isImage) {
-                preloadImage(media, 'original', priority);
+                preloadImage(media, 'feed', priority);
             }
+        }
+        if (Array.isArray(post.mediaUrls) && post.mediaUrls.length > 1) {
+            post.mediaUrls.slice(1, 3).forEach(m => {
+                if (typeof m === 'string') preloadImage(m, 'feed', 'low');
+            });
         }
     });
 };

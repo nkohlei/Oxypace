@@ -423,12 +423,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.8',
-        versionCode: 248,
-        minSupportedVersionCode: 248,
+        latestVersion: '2.4.9',
+        versionCode: 249,
+        minSupportedVersionCode: 249,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.8: Kalıcı Edge CDN Önbellekleme, Paralel Varyant Arama, Zero-Copy Görsel Akışı ve Akıllı Öncelikli Preload Kuyruğu. Platform genelindeki 5-10 saniyelik görsel gecikmeleri tamamen ortadan kaldırıldı; avatarlar, gönderiler ve rozetler sıfır bekleme ile anında ekrana gelir.',
+        changelog: 'Oxypace 2.4.9: Instagram Hızında 0ms Stale-While-Revalidate Yerel Akış Önbelleği, Tahmine Dayalı WebP Preload Kuyruğu ve Paralel MongoDB Veritabanı Sorgu Hızlandırması. Akışlar, kanallar ve kullanıcı profilleri bekleme yapmaksızın anında ekrana gelir.',
     });
 });
 

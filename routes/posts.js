@@ -598,7 +598,7 @@ router.get('/', optionalProtect, async (req, res) => {
             query.$or.push({ author: req.user._id });
         }
 
-        const posts = await Post.find(query)
+        const postsPromise = Post.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit + 10)
@@ -622,6 +622,11 @@ router.get('/', optionalProtect, async (req, res) => {
                 ]
             })
             .lean();
+
+        const [posts, total] = await Promise.all([
+            postsPromise,
+            page === 1 ? Post.estimatedDocumentCount() : Promise.resolve(0)
+        ]);
 
         if (req.user && !req.user.following) {
             req.user.following = [];
@@ -648,18 +653,18 @@ router.get('/', optionalProtect, async (req, res) => {
             if (post.author._id.toString() === req.user._id.toString()) {
                 return true;
             }
+
             // Following
             return req.user.following.some((id) => id.toString() === post.author._id.toString());
         });
 
         const paginatedPosts = visiblePosts.slice(0, limit);
-        const total = await Post.countDocuments(); // Approximate
 
         res.json({
             posts: paginatedPosts,
             currentPage: page,
-            totalPages: Math.ceil(total / limit),
-            totalPosts: total,
+            totalPages: total ? Math.ceil(total / limit) : page + 1,
+            totalPosts: total || 0,
         });
     } catch (error) {
         console.error('Get posts error:', error);
