@@ -661,9 +661,11 @@ const PostDetail = () => {
                                                 video360={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video360)} 
                                                 video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)} 
                                                 video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)} 
+                                                video1440={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1440)} 
                                                 video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)} 
-                                                isProcessing={Boolean(post.mediaType === 'video' && post.isProcessing && !post.video720 && !post.video1080)} 
+                                                isProcessing={Boolean(post.mediaType === 'video' && post.isProcessing)} 
                                                 processingProgress={post.processingProgress} 
+                                                processingStage={post.processingStage}
                                                 estimatedTime={post.estimatedTime} 
                                             />
                                             <div className="post-video-id-wrapper">

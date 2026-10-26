@@ -189,12 +189,15 @@ router.post(
                         const clientHeight = Number(req.body.videoHeight) || 0;
 
                         let initialP2160 = '';
+                        let initialP1440 = '';
                         let initialP1080 = '';
                         let initialP720 = '';
                         let initialP360 = '';
 
                         if (clientHeight >= 2160 || clientWidth >= 3840) {
                             initialP2160 = actualVideoUrl;
+                        } else if (clientHeight >= 1350 || clientWidth >= 2400) {
+                            initialP1440 = actualVideoUrl;
                         } else if (clientHeight >= 1080 || clientWidth >= 1920) {
                             initialP1080 = actualVideoUrl;
                         } else if (clientHeight >= 720 || clientWidth >= 1280) {
@@ -210,16 +213,19 @@ router.post(
                             p360:  initialP360,
                             p720:  initialP720,
                             p1080: initialP1080,
+                            p1440: initialP1440,
                             p2160: initialP2160
                         };
                         postData.video144    = '';
                         postData.video360    = initialP360;
                         postData.video720    = initialP720;
                         postData.video1080   = initialP1080;
+                        postData.video1440   = initialP1440;
                         postData.video2160   = initialP2160;
                         postData.videoUrl    = actualVideoUrl;
                         postData.lowVideoUrl = actualVideoUrl;
                         postData.media       = actualVideoUrl;
+                        postData.processingStage = 'Kaliteler ayrıştırılıyor...';
                     } else {
                         postData.mediaType = req.body.mediaType || 'image';
                         if (isSingle) {
@@ -283,12 +289,15 @@ router.post(
                     const clientHeight = Number(req.body.videoHeight) || 0;
 
                     let initialP2160 = '';
+                    let initialP1440 = '';
                     let initialP1080 = '';
                     let initialP720 = '';
                     let initialP360 = '';
 
                     if (clientHeight >= 2160 || clientWidth >= 3840) {
                         initialP2160 = actualVideoUrl;
+                    } else if (clientHeight >= 1350 || clientWidth >= 2400) {
+                        initialP1440 = actualVideoUrl;
                     } else if (clientHeight >= 1080 || clientWidth >= 1920) {
                         initialP1080 = actualVideoUrl;
                     } else if (clientHeight >= 720 || clientWidth >= 1280) {
@@ -304,16 +313,19 @@ router.post(
                         p360:  initialP360,
                         p720:  initialP720,
                         p1080: initialP1080,
+                        p1440: initialP1440,
                         p2160: initialP2160
                     };
                     postData.video144    = '';
                     postData.video360    = initialP360;
                     postData.video720    = initialP720;
                     postData.video1080   = initialP1080;
+                    postData.video1440   = initialP1440;
                     postData.video2160   = initialP2160;
                     postData.videoUrl    = actualVideoUrl;
                     postData.lowVideoUrl = actualVideoUrl;
                     postData.media       = actualVideoUrl;
+                    postData.processingStage = 'Kaliteler ayrıştırılıyor...';
                 } else {
                     postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
                 }
@@ -343,7 +355,7 @@ router.post(
 
 
             if (post.mediaType === 'video') {
-                const videoKey = req.body.mediaKey || (req.file ? req.file.key : null);
+                const videoKey = req.body.mediaKey || (req.file ? req.file.key : null) || (Array.isArray(req.body.mediaKeys) ? req.body.mediaKeys[0] : null);
                 if (videoKey) {
                     console.log(`[POST Route] Triggering background transcoding for post ${post._id}`);
                     transcodeVideoInBackground(post._id.toString(), videoKey).catch(err => {
@@ -597,6 +609,15 @@ router.get('/', optionalProtect, async (req, res) => {
         if (req.user) {
             query.$or.push({ author: req.user._id });
         }
+
+        query.$and = [
+            {
+                $or: [
+                    { isProcessing: { $ne: true } },
+                    ...(req.user ? [{ author: req.user._id }] : [])
+                ]
+            }
+        ];
 
         const postsPromise = Post.find(query)
             .sort({ createdAt: -1 })

@@ -205,10 +205,12 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                     video360={getImageUrl(activePost.video360)}
                                     video720={getImageUrl(activePost.video720)}
                                     video1080={getImageUrl(activePost.video1080)}
+                                    video1440={getImageUrl(activePost.video1440)}
                                     video2160={getImageUrl(activePost.video2160)}
                                     className="quoted-player"
                                     isProcessing={activePost.isProcessing}
                                     processingProgress={activePost.processingProgress}
+                                    processingStage={activePost.processingStage}
                                     estimatedTime={activePost.estimatedTime}
                                 />
                             </div>

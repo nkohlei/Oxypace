@@ -307,7 +307,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, serverNow: serverNowProp, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video1440, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, processingStage = 'Kaliteler ayrıştırılıyor...', estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, serverNow: serverNowProp, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -413,9 +413,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [showProcessingInfo, setShowProcessingInfo] = useState(false);
   const processingInfoTimeoutRef = useRef(null);
 
-  // Only display processing indicator if it is genuinely in progress (< 100%) and has not finished
-  const hasFinishedTranscode = !!(video720 || video1080 || video360);
-  const showProcessingBadge = isProcessing && !hasFinishedTranscode && processingProgress < 100 && !watchParty;
+  // Full overlay displayed over video while backend transcoding pipeline is running
+  const isProcessingOverlayVisible = isProcessing && processingProgress < 100 && !watchParty;
 
   // Center play button: ONLY at the beginning, ONLY if autoplay is OFF, NEVER during pauses mid-video
   const showCenterPlayBtn = isAutoplayOff && !hasStartedPlayback && !watchParty && !isAdPlaying;
@@ -565,6 +564,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const rawBase = resolveVideoUrl(videoOriginal || parsedQualities?.videoOriginal || parsedQualities?.high || videoUrl || src);
 
   const raw2160 = resolveVideoUrl(video2160 || parsedQualities?.video2160 || parsedQualities?.p2160 || parsedQualities?.['2160p']);
+  const raw1440 = resolveVideoUrl(video1440 || parsedQualities?.video1440 || parsedQualities?.p1440 || parsedQualities?.['1440p']);
   const raw1080 = resolveVideoUrl(video1080 || parsedQualities?.video1080 || parsedQualities?.p1080 || parsedQualities?.['1080p']);
   const raw720  = resolveVideoUrl(video720  || parsedQualities?.video720  || parsedQualities?.p720  || parsedQualities?.['720p']);
   const raw360  = resolveVideoUrl(video360  || parsedQualities?.video360  || parsedQualities?.p360  || parsedQualities?.['360p']);
@@ -573,24 +573,29 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const natH = naturalDimensions?.height || 0;
   const natW = naturalDimensions?.width || 0;
   const isNatural4K = natH >= 2160 || natW >= 3840;
-  const isNatural1080 = (natH >= 1080 || natW >= 1920) && !isNatural4K;
-  const isNatural720  = (natH >= 720  || natW >= 1280) && !isNatural4K && !isNatural1080;
-  const isNatural360  = (natH >= 360  || natW >= 640 ) && !isNatural4K && !isNatural1080 && !isNatural720;
+  const isNatural1440 = (natH >= 1350 || natW >= 2400) && !isNatural4K;
+  const isNatural1080 = (natH >= 1080 || natW >= 1920) && !isNatural4K && !isNatural1440;
+  const isNatural720  = (natH >= 720  || natW >= 1280) && !isNatural4K && !isNatural1440 && !isNatural1080;
+  const isNatural360  = (natH >= 360  || natW >= 640 ) && !isNatural4K && !isNatural1440 && !isNatural1080 && !isNatural720;
 
   // 2160p (4K): explicitly present OR detected from video element metadata
   const has2160 = !!raw2160 || (isNatural4K && !!rawBase);
   const src2160 = raw2160 || (has2160 ? rawBase : '');
 
+  // 1440p (2K): explicitly present OR detected from video element metadata
+  const has1440 = !!raw1440 || (isNatural1440 && !!rawBase);
+  const src1440 = raw1440 || (has1440 ? rawBase : '');
+
   // 1080p:
-  const has1080 = !!raw1080 || (isNatural1080 && !!rawBase) || (!has2160 && !raw720 && !raw360 && !raw144 && !!rawBase);
+  const has1080 = !!raw1080 || (isNatural1080 && !!rawBase) || (!has2160 && !has1440 && !raw720 && !raw360 && !raw144 && !!rawBase);
   const src1080 = raw1080 || (has1080 ? rawBase : '');
 
   // 720p:
-  const has720 = !!raw720 || (isNatural720 && !has1080 && !has2160 && !!rawBase);
+  const has720 = !!raw720 || (isNatural720 && !has1080 && !has1440 && !has2160 && !!rawBase);
   const src720 = raw720 || (has720 ? rawBase : '');
 
   // 360p:
-  const has360 = !!raw360 || (isNatural360 && !has720 && !has1080 && !has2160 && !!rawBase);
+  const has360 = !!raw360 || (isNatural360 && !has720 && !has1080 && !has1440 && !has2160 && !!rawBase);
   const src360 = raw360 || (has360 ? rawBase : '');
 
   // 144p:
@@ -599,6 +604,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   let maxResolution = '1080p';
   if (has2160) maxResolution = '2160p';
+  else if (has1440) maxResolution = '1440p';
   else if (has1080) maxResolution = '1080p';
   else if (has720) maxResolution = '720p';
   else if (has360) maxResolution = '360p';
@@ -621,24 +627,27 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (isMobile) {
       if (src720) return src720;
       if (src1080) return src1080;
+      if (src1440) return src1440;
       if (src360) return src360;
       if (src144) return src144;
       return rawBase || src2160;
     }
 
-    // Desktop feed optimization: 1080p preferred over 4K for smooth playback
+    // Desktop feed optimization: 1440p / 1080p preferred for smooth playback
+    if (src1440) return src1440;
     if (src1080) return src1080;
     if (src720) return src720;
     if (src2160) return src2160;
     if (src360) return src360;
     if (src144) return src144;
     return rawBase;
-  }, [src144, src360, src720, src1080, src2160, rawBase]);
+  }, [src144, src360, src720, src1080, src1440, src2160, rawBase]);
 
   const getPreferredSrc = useCallback(() => {
     const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
     if (pref === 'performance') {
       if (src2160) return src2160;
+      if (src1440) return src1440;
       if (src1080) return src1080;
       if (src720) return src720;
       if (src360) return src360;
@@ -649,19 +658,22 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       if (src360) return src360;
       if (src144) return src144;
       if (src1080) return src1080;
+      if (src1440) return src1440;
       return src2160 || rawBase;
     } else if (pref === 'lowest') {
       if (src144) return src144;
       if (src360) return src360;
       if (src720) return src720;
       if (src1080) return src1080;
+      if (src1440) return src1440;
       return src2160 || rawBase;
     }
     return getBestSrc();
-  }, [user, src2160, src1080, src720, src360, src144, rawBase, getBestSrc]);
+  }, [user, src2160, src1440, src1080, src720, src360, src144, rawBase, getBestSrc]);
 
   const availableQualities = [{ value: 'auto', label: 'Oto' }];
   if (has2160 && src2160) availableQualities.push({ value: '2160', label: '2160p' });
+  if (has1440 && src1440) availableQualities.push({ value: '1440', label: '1440p' });
   if (has1080 && src1080) availableQualities.push({ value: '1080', label: '1080p' });
   if (has720  && src720)  availableQualities.push({ value: '720',  label: '720p'  });
   if (has360  && src360)  availableQualities.push({ value: '360',  label: '360p'  });
@@ -1198,6 +1210,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     let targetSrc = '';
     if      (mode === '2160') targetSrc = src2160;
+    else if (mode === '1440') targetSrc = src1440;
     else if (mode === '1080') targetSrc = src1080;
     else if (mode === '720')  targetSrc = src720;
     else if (mode === '360')  targetSrc = src360;
@@ -1205,7 +1218,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else                      targetSrc = getBestSrc();
 
     if (targetSrc) initiateQualitySwap(targetSrc);
-  }, [src144, src360, src720, src1080, src2160, getBestSrc, initiateQualitySwap]);
+  }, [src144, src360, src720, src1080, src1440, src2160, getBestSrc, initiateQualitySwap]);
 
   // ─── Network change listeners ─────────────────────────────────────────
   useEffect(() => {
@@ -1690,21 +1703,27 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
     >
-      {showProcessingBadge && (
-        <div
-          className="processing-badge-minimal"
-          onClick={toggleProcessingInfo}
-          onMouseEnter={handleInfoMouseEnter}
-          onMouseLeave={handleInfoMouseLeave}
-        >
-          <span className="processing-info-icon" title="Bilgi">i</span>
-          <span className="processing-info-values">%{processingProgress} • {estimatedTime}</span>
-
-          {showProcessingInfo && (
-            <div className="processing-info-tooltip">
-              Arka planda kalite ayrıştırma işlemi
+      {isProcessingOverlayVisible && (
+        <div className="native-video-transcoding-overlay" onClick={(e) => e.stopPropagation()}>
+          <div className="native-transcoding-card">
+            <div className="native-transcoding-header">
+              <div className="native-transcoding-spinner" />
+              <span className="native-transcoding-title">Kaliteler Ayrıştırılıyor</span>
             </div>
-          )}
+            <div className="native-transcoding-stage">
+              {processingStage || 'Alt çözünürlükler işleniyor...'}
+            </div>
+            <div className="native-transcoding-bar-track">
+              <div 
+                className="native-transcoding-bar-fill" 
+                style={{ width: `${Math.max(5, Math.min(100, processingProgress))}%` }} 
+              />
+            </div>
+            <div className="native-transcoding-footer">
+              <span>%{processingProgress} Tamamlandı</span>
+              <span>Kalan: {estimatedTime || 'Hesaplanıyor...'}</span>
+            </div>
+          </div>
         </div>
       )}
 

@@ -86,6 +86,7 @@ const postSchema = new mongoose.Schema(
             p360: { type: String, default: '' },
             p720: { type: String, default: '' },
             p1080: { type: String, default: '' },
+            p1440: { type: String, default: '' },
             p2160: { type: String, default: '' }
         },
         videoThumbnail: {
@@ -105,6 +106,10 @@ const postSchema = new mongoose.Schema(
             default: '',
         },
         video1080: {
+            type: String,
+            default: '',
+        },
+        video1440: {
             type: String,
             default: '',
         },
@@ -131,6 +136,10 @@ const postSchema = new mongoose.Schema(
         processingProgress: {
             type: Number,
             default: 0,
+        },
+        processingStage: {
+            type: String,
+            default: 'Kaliteler ayrıştırılıyor...',
         },
         estimatedTime: {
             type: String,

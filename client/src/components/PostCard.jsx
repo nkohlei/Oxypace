@@ -361,18 +361,21 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         const url360  = post.video360  || qualities.video360  || qualities.p360  || qualities['360p'];
         const url144  = post.video144  || qualities.video144  || qualities.p144  || qualities['144p'];
         const url1080 = post.video1080 || qualities.video1080 || qualities.p1080 || qualities['1080p'];
+        const url1440 = post.video1440 || qualities.video1440 || qualities.p1440 || qualities['1440p'];
         const url2160 = post.video2160 || qualities.video2160 || qualities.p2160 || qualities['2160p'];
         const rawMedia = Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
 
         if (prefFormat === 'mp4') {
             // Evrensel MP4: Galeri uyumlu H.264 transcode akışlarını önceliklendir
             if (prefQuality === '2160' && url2160) return url2160;
+            if (prefQuality === '1440' && url1440) return url1440;
             if (prefQuality === '1080' && url1080) return url1080;
             if (prefQuality === '720' && url720) return url720;
             if (prefQuality === '360' && url360) return url360;
             if (prefQuality === '144' && url144) return url144;
 
             if (url2160 && prefQuality === '2160') return url2160;
+            if (url1440) return url1440;
             if (url1080) return url1080;
             if (url720) return url720;
             if (url360) return url360;
@@ -959,10 +962,12 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                         video360={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video360)}
                                         video720={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video720)}
                                         video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)}
+                                        video1440={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1440)}
                                         video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)}
                                         className="post-video-player"
-                                        isProcessing={Boolean(post.mediaType === 'video' && post.isProcessing && !post.video720 && !post.video1080)}
+                                        isProcessing={Boolean(post.mediaType === 'video' && post.isProcessing)}
                                         processingProgress={post.processingProgress}
+                                        processingStage={post.processingStage}
                                         estimatedTime={post.estimatedTime}
                                     />
                                     <div className="post-video-id-wrapper">

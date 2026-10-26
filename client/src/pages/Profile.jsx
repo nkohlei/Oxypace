@@ -1758,10 +1758,12 @@ const Profile = () => {
                                                                                         video360={getImageUrl(post.video360)}
                                                                                         video720={getImageUrl(post.video720)}
                                                                                         video1080={getImageUrl(post.video1080)}
+                                                                                        video1440={getImageUrl(post.video1440)}
                                                                                         video2160={getImageUrl(post.video2160)}
                                                                                         className="post-video-player"
                                                                                         isProcessing={post.isProcessing}
                                                                                         processingProgress={post.processingProgress}
+                                                                                        processingStage={post.processingStage}
                                                                                         estimatedTime={post.estimatedTime}
                                                                                     />
                                                                                 ) : post.mediaType === 'youtube' ? (

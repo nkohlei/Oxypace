@@ -178,6 +178,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         let maxRootField = 'video144';
 
         if      (srcHeight >= 2160 || srcWidth >= 3840) { maxLabel = '2160p'; maxField = 'p2160'; maxRootField = 'video2160'; }
+        else if (srcHeight >= 1350 || srcWidth >= 2400) { maxLabel = '1440p'; maxField = 'p1440'; maxRootField = 'video1440'; }
         else if (srcHeight >= 1080 || srcWidth >= 1920) { maxLabel = '1080p'; maxField = 'p1080'; maxRootField = 'video1080'; }
         else if (srcHeight >= 720  || srcWidth >= 1280) { maxLabel = '720p';  maxField = 'p720';  maxRootField = 'video720';  }
         else if (srcHeight >= 360  || srcWidth >= 640 ) { maxLabel = '360p';  maxField = 'p360';  maxRootField = 'video360';  }
@@ -189,7 +190,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const urlOriginal = constructProxiedUrl(keyOriginal);
 
         // Write original to DB right away — video is playable via videoUrl even if transcode crashes
-        // Orijinal dosya URL'si, kaynak kalite alanına (p2160, p1080 vb.) yazılıyor
+        // Orijinal dosya URL'si, kaynak kalite alanına (p2160, p1440, p1080 vb.) yazılıyor
         // böylece player doğru kalite etiketini hemen gösterebiliyor.
         // ÖNEMLİ: Bu URL, VideoDownloadModal'da "Evrensel MP4" sekmesinde GÖRÜNTÜLENMEZ
         // (transcode edilmemiş = galeri uyumsuz olabilir). Sadece "Orijinal Ham" sekmesinde görünür.
@@ -200,6 +201,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             p360:  '',
             p720:  '',
             p1080: '',
+            p1440: '',
             p2160: ''
         };
         // Kaynak kalite alanına orijinal URL'yi yaz (player için şart)
@@ -212,9 +214,10 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             videoQualities:     initialQualities,
             isProcessing:       true,
             processingProgress: 0,
+            processingStage:    `${maxLabel} kaynak video yüklendi, alt kaliteler ayrıştırılıyor...`,
             estimatedTime:      formatEstimatedTime(totalEstimatedTimeSeconds)
         };
-        // Root field'e de yaz (video2160, video1080 vb.) — player src resolver için
+        // Root field'e de yaz (video2160, video1440, video1080 vb.) — player src resolver için
         initialUpdates[maxRootField] = urlOriginal;
 
         const postAfterOriginal = await Post.findByIdAndUpdate(postId, initialUpdates, { new: true })
@@ -234,6 +237,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
 
         // ── Step 5: Sequential low-memory transcoding queue ───────────────────
         const qualityLadder = [
+            { targetH: 1440, label: '1440p', field: 'p1440', rootField: 'video1440', bitrate: '5500k', maxrate: '6500k', bufsize: '11000k' },
             { targetH: 1080, label: '1080p', field: 'p1080', rootField: 'video1080', bitrate: '2400k', maxrate: '2800k', bufsize: '4800k' },
             { targetH: 720,  label: '720p',  field: 'p720',  rootField: 'video720',  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k' },
             { targetH: 360,  label: '360p',  field: 'p360',  rootField: 'video360',  bitrate: '400k',  maxrate: '450k',  bufsize: '800k'  },
@@ -313,6 +317,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                         const updatedPost = await Post.findByIdAndUpdate(postId, {
                             isProcessing: true,
                             processingProgress: overallPercent,
+                            processingStage: `${job.label} kalitesi ayrıştırılıyor...`,
                             estimatedTime: formattedRemaining
                         }, { new: true })
                         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
@@ -345,6 +350,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
                         [job.rootField]: url,
                         isProcessing: true,
                         processingProgress: overallPercent,
+                        processingStage: `${job.label} tamamlandı`,
                         estimatedTime: formattedRemaining
                     }, { new: true })
                     .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
@@ -364,10 +370,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
 
         // ── Step 6: Final DB pass — update low/high pointers and isProcessing ─
         let lowestUrl = urlOriginal;
-        if (finalQualities.p144)  lowestUrl = finalQualities.p144;
+        if (finalQualities.p144)       lowestUrl = finalQualities.p144;
         else if (finalQualities.p360)  lowestUrl = finalQualities.p360;
         else if (finalQualities.p720)  lowestUrl = finalQualities.p720;
         else if (finalQualities.p1080) lowestUrl = finalQualities.p1080;
+        else if (finalQualities.p1440) lowestUrl = finalQualities.p1440;
         else if (finalQualities.p2160) lowestUrl = finalQualities.p2160;
 
         finalQualities.low  = lowestUrl;
@@ -379,6 +386,7 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             videoQualities: finalQualities,
             isProcessing:   false,
             processingProgress: 100,
+            processingStage: 'Tüm kaliteler hazır',
             estimatedTime:  '0 sn'
         }, { new: true })
         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')

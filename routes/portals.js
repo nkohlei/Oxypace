@@ -662,7 +662,14 @@ router.get('/:id/posts', optionalProtect, mongoIdValidation('id'), async (req, r
             }
         }
 
-        const query = { portal: portalId, isArchived: { $ne: true } };
+        const query = { 
+            portal: portalId, 
+            isArchived: { $ne: true },
+            $or: [
+                { isProcessing: { $ne: true } },
+                ...(userId ? [{ author: userId }] : [])
+            ]
+        };
 
         // Channel Filtering Logic: Use unified getPortalChannelFilter
         const channelFilterInfo = getPortalChannelFilter(portal, channel);

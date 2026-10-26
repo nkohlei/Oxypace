@@ -39,6 +39,7 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
   const url360  = validUrl(post.video360)  ? post.video360  : (validUrl(qualities.video360)  ? qualities.video360  : (validUrl(qualities.p360)  ? qualities.p360  : null));
   const url144  = validUrl(post.video144)  ? post.video144  : (validUrl(qualities.video144)  ? qualities.video144  : (validUrl(qualities.p144)  ? qualities.p144  : null));
   const url1080 = validUrl(post.video1080) ? post.video1080 : (validUrl(qualities.video1080) ? qualities.video1080 : (validUrl(qualities.p1080) ? qualities.p1080 : null));
+  const url1440 = validUrl(post.video1440) ? post.video1440 : (validUrl(qualities.video1440) ? qualities.video1440 : (validUrl(qualities.p1440) ? qualities.p1440 : null));
   const url2160 = validUrl(post.video2160) ? post.video2160 : (validUrl(qualities.video2160) ? qualities.video2160 : (validUrl(qualities.p2160) ? qualities.p2160 : null));
   const rawMedia = Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
 
@@ -56,6 +57,17 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
         value: '2160',
         url: url2160,
         badge: 'Ultra HD'
+      });
+    }
+
+    if (url1440 && url1440 !== url2160) {
+      options.push({
+        label: '2K Quad HD (1440p)',
+        sublabel: 'Evrensel MP4 • 2K Kalite',
+        resolution: RESOLUTION_MAP['1440'] || '2560x1440',
+        value: '1440',
+        url: url1440,
+        badge: !url2160 ? '2K HD' : null
       });
     }
 
