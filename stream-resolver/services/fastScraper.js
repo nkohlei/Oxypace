@@ -22,9 +22,29 @@ const FAST_STREAM_PATTERNS = [
  * Safely executes dynamic array-based obfuscator functions (e.g. HDFilmCehennemi, Rapidrame, Playmix, etc.)
  * Matches: var <streamVar> = <funcName>(["chunk1", "chunk2", ...]);
  */
-function decodeDynamicObfuscation(html) {
+function decodeDynamicObfuscation(html, targetUrl = '') {
   try {
     const scriptTags = html.match(/<script[\s\S]*?<\/script>/gi) || [];
+    let embedHost = 'hdfilmcehennemi.mobi';
+    try {
+      if (targetUrl) embedHost = new URL(targetUrl).hostname;
+    } catch {}
+
+    const buildSandbox = () => ({
+      atob: (str) => Buffer.from(str, 'base64').toString('binary'),
+      btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
+      Math,
+      String,
+      Array,
+      parseInt,
+      parseFloat,
+      encodeURIComponent,
+      decodeURIComponent,
+      self: { location: { protocol: 'https:', hostname: embedHost } },
+      window: { location: { protocol: 'https:', hostname: embedHost } },
+      document: { location: { protocol: 'https:', hostname: embedHost } },
+      location: { protocol: 'https:', hostname: embedHost },
+    });
 
     // 1. High-priority: Detect JWPlayer actual source variable e.g. sources: [{file: yi9m, type: "hls"}]
     const jwFileMatch =
@@ -33,23 +53,32 @@ function decodeDynamicObfuscation(html) {
     const preferredVarName = jwFileMatch ? jwFileMatch[1] : null;
 
     if (preferredVarName) {
+      // First try executing all scripts together in one sandbox so inter-script dependencies work
+      try {
+        const combinedScript = scriptTags.map(st => st.replace(/<\/?script[^>]*>/gi, '')).join('\n;\n');
+        const sandbox = buildSandbox();
+        vm.createContext(sandbox);
+        const execCode = `${combinedScript}\n__stream_res__ = (typeof ${preferredVarName} !== 'undefined') ? ${preferredVarName} : null;`;
+        vm.runInContext(execCode, sandbox, { timeout: 2000 });
+        const decoded = sandbox.__stream_res__;
+        if (
+          decoded &&
+          typeof decoded === 'string' &&
+          (decoded.startsWith('http://') || decoded.startsWith('https://')) &&
+          !decoded.includes('filmakinesimp4') &&
+          !decoded.includes('blank.mp4')
+        ) {
+          logger.info(`[FastScraper] 🎯 JWPlayer ana oynatıcı değişkeni başarıyla çözüldü (${preferredVarName}): ${decoded}`);
+          return decoded;
+        }
+      } catch (e) {
+        // Fallback to per-script execution
+      }
+
       for (const scriptTag of scriptTags) {
         if (scriptTag.includes(preferredVarName)) {
           const cleanScript = scriptTag.replace(/<\/?script[^>]*>/gi, '');
-          const sandbox = {
-            atob: (str) => Buffer.from(str, 'base64').toString('binary'),
-            btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
-            Math,
-            String,
-            Array,
-            parseInt,
-            parseFloat,
-            encodeURIComponent,
-            decodeURIComponent,
-            window: {},
-            document: { location: { protocol: 'https:' } },
-            location: { protocol: 'https:', hostname: '' },
-          };
+          const sandbox = buildSandbox();
           try {
             vm.createContext(sandbox);
             const execCode = `${cleanScript}\n__stream_res__ = (typeof ${preferredVarName} !== 'undefined') ? ${preferredVarName} : null;`;
@@ -88,20 +117,7 @@ function decodeDynamicObfuscation(html) {
       for (const scriptTag of scriptTags) {
         if (scriptTag.includes(`function ${funcName}`) || scriptTag.includes(`${funcName}=function`) || scriptTag.includes(`${funcName} = function`)) {
           const cleanScript = scriptTag.replace(/<\/?script[^>]*>/gi, '');
-          const sandbox = {
-            atob: (str) => Buffer.from(str, 'base64').toString('binary'),
-            btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
-            Math,
-            String,
-            Array,
-            parseInt,
-            parseFloat,
-            encodeURIComponent,
-            decodeURIComponent,
-            window: {},
-            document: { location: { protocol: 'https:' } },
-            location: { protocol: 'https:', hostname: '' },
-          };
+          const sandbox = buildSandbox();
 
           try {
             vm.createContext(sandbox);
@@ -359,9 +375,12 @@ function fetchWithTlsImpersonation(targetUrl, referer = '') {
  */
 async function fetchHtmlWithBypass(targetUrl, referer = '') {
   const apiKey = process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
+  const isHdf = targetUrl.includes('hdfilmcehennemi');
+  const effectiveReferer = referer || (isHdf ? 'https://www.hdfilmcehennemi.nl/' : '');
+
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept': isHdf ? 'application/json, text/plain, */*' : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
@@ -369,14 +388,29 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     'Sec-Fetch-User': '?1',
     'Upgrade-Insecure-Requests': '1',
   };
-  if (referer) headers['Referer'] = referer;
+  if (effectiveReferer) headers['Referer'] = effectiveReferer;
+  if (isHdf) headers['x-requested-with'] = 'fetch';
+
+  const parseJsonIfAny = (text) => {
+    if (!text || typeof text !== 'string') return '';
+    const trimmed = text.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.html) return parsed.html;
+        if (parsed.content) return parsed.content;
+      } catch {}
+    }
+    return text;
+  };
 
   // 1. Python TLS Chrome Impersonation + Residential/Tor Routing (En Yüksek Başarı Oranı)
   try {
-    const tlsHtml = await fetchWithTlsImpersonation(targetUrl, referer);
+    const tlsHtml = await fetchWithTlsImpersonation(targetUrl, effectiveReferer);
     if (tlsHtml && tlsHtml.length > 0 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
-      logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${tlsHtml.length} byte): ${targetUrl}`);
-      return tlsHtml;
+      const parsedBody = parseJsonIfAny(tlsHtml);
+      logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
+      return parsedBody;
     }
   } catch (e) {
     logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
@@ -386,17 +420,21 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
   try {
     const curlBin = process.platform === 'win32' ? 'curl.exe' : 'curl';
     const curlArgs = [
-      '-s', '-L', '--max-time', '6',
+      '-s', '-L', '--max-time', '8',
       '-A', headers['User-Agent'],
       '-H', `Accept: ${headers['Accept']}`,
       '-H', `Accept-Language: ${headers['Accept-Language']}`,
     ];
-    if (referer) curlArgs.push('-H', `Referer: ${referer}`);
+    if (effectiveReferer) curlArgs.push('-H', `Referer: ${effectiveReferer}`);
+    if (isHdf) {
+      curlArgs.push('-H', 'x-requested-with: fetch');
+    }
     curlArgs.push(targetUrl);
     const { stdout } = await execFileAsync(curlBin, curlArgs);
-    if (stdout && stdout.length > 500 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
-      logger.info(`[FastScraper] ⚡ Curl ile sayfa başarıyla çekildi (${stdout.length} byte): ${targetUrl}`);
-      return stdout;
+    if (stdout && stdout.length > 100 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+      const parsedBody = parseJsonIfAny(stdout);
+      logger.info(`[FastScraper] ⚡ Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
+      return parsedBody;
     }
   } catch (curlErr) {
     // continue
@@ -635,7 +673,7 @@ async function fastResolve(targetUrl, options = {}) {
     const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
 
     // 1. Check dynamic obfuscated or dc_ decoded stream in main page
-    const decodedFromMain = decodeDynamicObfuscation(html) || decodeDcFunction(html);
+    const decodedFromMain = decodeDynamicObfuscation(html, targetUrl) || decodeDcFunction(html);
     if (decodedFromMain) {
       return buildResult(decodedFromMain, '', targetUrl, 'm3u8', pageTitle, html);
     }
@@ -771,7 +809,7 @@ async function fastResolve(targetUrl, options = {}) {
       }
 
       // Check dynamic obfuscation or dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix, HDFilmCehennemi)
-      const decodedStream = decodeDynamicObfuscation(embedHtml) || decodeDcFunction(embedHtml);
+      const decodedStream = decodeDynamicObfuscation(embedHtml, embedUrl) || decodeDcFunction(embedHtml);
       if (decodedStream) {
         return buildResult(decodedStream, embedUrl, targetUrl, decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
       }

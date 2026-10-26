@@ -458,6 +458,13 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     }
 
     if (!response.ok) {
+      if (isPosterOrImage) {
+        const TRANSPARENT_1PX_WEBP = Buffer.from('UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AA/v3V84AAA', 'base64');
+        res.setHeader('Content-Type', 'image/webp');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.status(200).end(TRANSPARENT_1PX_WEBP);
+      }
       return res.status(response.status).json({
         error: `Hedef sunucu hata döndürdü: ${response.status} ${response.statusText}`,
       });
@@ -777,6 +784,8 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
           streamHeaders = { ...streamHeaders, referer: 'https://playmix.uno/', origin: 'https://playmix.uno' };
         } else if (fastResult.streamUrl.includes('imagecdn') && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
           streamHeaders = { ...streamHeaders, referer: 'https://rapidvid.org/', origin: 'https://rapidvid.org' };
+        } else if ((fastResult.streamUrl.includes('cdnimages') || fastResult.streamUrl.includes('shop') || fastResult.streamUrl.includes('cyou')) && (!streamHeaders.referer || !streamHeaders.referer.includes('hdfilmcehennemi'))) {
+          streamHeaders = { ...streamHeaders, referer: 'https://hdfilmcehennemi.mobi/', origin: 'https://hdfilmcehennemi.mobi' };
         }
         const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(fastResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 

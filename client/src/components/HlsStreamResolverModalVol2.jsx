@@ -245,9 +245,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
   const getSafePosterUrl = (posterUrl, providerKey) => {
     if (!posterUrl) return null;
-    if (providerKey === 'hdfilmcehennemi' && !posterUrl.includes('/api/proxy') && !posterUrl.startsWith('data:')) {
-      return formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(posterUrl)}&referer=${encodeURIComponent('https://www.hdfilmcehennemi.nl/')}`);
-    }
     return posterUrl;
   };
 
@@ -491,11 +488,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                               loading="lazy"
                               referrerPolicy="no-referrer"
                               onError={(e) => {
-                                const currentSrc = e.currentTarget.src || '';
-                                if (!currentSrc.includes('/api/proxy') && movie.poster) {
-                                  e.currentTarget.src = `/api/proxy?url=${encodeURIComponent(movie.poster)}`;
-                                  return;
-                                }
                                 e.currentTarget.style.display = 'none';
                                 if (e.currentTarget.nextElementSibling) {
                                   e.currentTarget.nextElementSibling.style.display = 'flex';
