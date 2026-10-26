@@ -820,6 +820,9 @@ router.get('/*', async (req, res) => {
             }
         }
 
+        // Strip any residual leading slashes, r2-media, or api/media prefixes
+        filePath = filePath.replace(/^\/+/, '').replace(/^r2-media\//, '').replace(/^api\/media\//, '');
+
         const range = req.headers.range;
 
         // A. Video/Audio or Range Requests (Must be proxied for HTTP 206)

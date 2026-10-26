@@ -416,12 +416,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.6',
-        versionCode: 246,
-        minSupportedVersionCode: 246,
+        latestVersion: '2.4.7',
+        versionCode: 247,
+        minSupportedVersionCode: 247,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.6: Google Play Protect ve cihaz güvenlik tarayıcısı tam uyumluluğu, dropper ve şüpheli izinlerin (REQUEST_INSTALL_PACKAGES, SYSTEM_ALERT_WINDOW, READ_PHONE_STATE) temizlenmesi, scoped depolama, dual v1+v2 imzalama, mobil masaüstü sitesi görünüm modu ve pinch-zoom desteği, 3 kademeli RBAC izin stüdyosu ve denetim günlüğü senkronizasyonu.',
+        changelog: 'Oxypace 2.4.7: Ultra Hızlı Medya Dağıtım Mimarisi ve Sıfır Gecikmeli Görsel Yükleme Sistemi. Platform genelinde tüm görseller (avatarlar, rozetler, post resimleri, bannerlar) yüksek hızlı In-Memory RAM LRU önbellek ve doğrudan HTTP/2 API proxy üzerinden jet hızında ve sayfa ile tam eşzamanlı render edilir. Tarayıcı seviyesi agresif bellek önbellekleme ve varyant fallback güvencesi.',
     });
 });
 

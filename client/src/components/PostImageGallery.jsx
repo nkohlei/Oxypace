@@ -246,8 +246,9 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
                 ref={imgRef}
                 src={resolvedUrl}
                 alt="Gönderi görseli"
-                loading="lazy"
+                loading="eager"
                 decoding="async"
+                fetchpriority="high"
                 onLoad={handleLoad}
                 className={`gallery-image single-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
             />
@@ -283,7 +284,7 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
             {/* Ambient progressive blur backdrop: eliminates pure black box */}
             <div
                 className="gallery-blur-backdrop"
-                style={{ backgroundImage: `url(${resolvedUrl})` }}
+                style={{ backgroundImage: isLoaded ? `url(${resolvedUrl})` : 'none' }}
                 aria-hidden="true"
             />
 
@@ -291,8 +292,9 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
                 ref={imgRef}
                 src={resolvedUrl}
                 alt={`Görsel ${index + 1}`}
-                loading="lazy"
+                loading={index === 0 ? "eager" : "lazy"}
                 decoding="async"
+                fetchpriority={index === 0 ? "high" : "low"}
                 onLoad={() => setIsLoaded(true)}
                 className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
             />

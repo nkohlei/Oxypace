@@ -27,15 +27,56 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.6)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.7)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.4.7',
+        versionCode: 247,
+        releaseDate: '26 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Ultra Hızlı Medya Dağıtım Mimarisi, Sıfır Gecikmeli Görsel Yükleme & Agresif Bellek Önbellekleme',
+        summary: 'Platform genelinde tüm görsellerin (post fotoğrafları, avatarlar, özel rozetler, kanal ve portal bannerları) sayfa açılışı ile aynı anda jet hızında yüklenmesini sağlayan mimari dönüşüm. Netlify edge proxy darboğazı kaldırılarak tüm medya istekleri in-memory RAM LRU önbelleğe ve HTTP/2 keep-alive API proxy hattına taşındı. Eager decoding, tarayıcı seviyesi preloader ve otomatik variant fallback ile gecikmeler sıfırlandı.',
+        category: 'performance',
+        apkSize: '79.8 MB',
+        targetSdk: 'Android 14+ (API 34-35)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Sıfır Gecikmeli Görsel Yükleme (Zero Pop-in): Sayfa açıldığı an tüm görseller DOM ile tam eşzamanlı ve anında ekranda belirir',
+            'In-Memory RAM LRU Medya Önbelleği: 256MB sunucu RAM önbelleği ve HTTP/2 Persistent Agent ile <1ms medya yanıt süreleri',
+            'Netlify Tünel Darboğazının Kaldırılması: Görseller doğrudan stabil API omurgasına yönlendirilerek Netlify edge queueing ve 404 riskleri bertaraf edildi',
+            'Akıllı Variant Fallback: Talep edilen küçük resim (thumbnail/medium) bulunamadığında sunucu anında orijinal görsele dönerek 404 ve yeniden deneme gecikmelerini sıfırlar',
+            'Proaktif Feed & Mesaj Preloader (preloadPosts & preloadMessages): Gönderiler veya sohbet verisi geldiği mikrosaniyede tarayıcı bellek önbelleğine enjeksiyon',
+            'Statik Resimler İçin Immutable Cache: PNG, JPG, SVG, GIF ve WebP dosyaları için 1 yıllık immutable önbellekleme kuralları'
+        ],
+        changes: [
+            { type: 'perf', text: 'client/src/utils/imageUtils.js: Tüm platform içi R2 görselleri doğrudan yüksek hızlı api.oxypace.com.tr/api/media hattına taşındı ve bellek içi memoization eklendi.' },
+            { type: 'perf', text: 'client/src/utils/preloadUtils.js: preloadPosts ve preloadMessages eklenerek feed ve sohbet görselleri React renderından önce belleğe enjekte edildi.' },
+            { type: 'perf', text: 'client/src/store/useGlobalStore.js: setPosts ve addPostEvent tetiklendiğinde otomatik preload entegrasyonu devreye alındı.' },
+            { type: 'perf', text: 'client/src/components/PostImageGallery.jsx: loading="lazy" yerine loading="eager" ve fetchpriority="high" getirilerek gönderi resimleri anında görünür kılındı.' },
+            { type: 'perf', text: 'client/src/components/UserAvatar.jsx & UserBadges.jsx: fetchpriority="high" ve decoding="async" ile profil avatarları ve rozetler önceliklendirildi.' },
+            { type: 'infra', text: 'routes/media.js: filePath sanitizasyonu güçlendirildi, in-memory LRU cache ve variant fallback uyumu optimize edildi.' },
+            { type: 'infra', text: 'netlify.toml & client/public/_headers: /r2-media/* yönlendirmesi API proxyye bağlandı; PNG, JPG, SVG için immutable cache eklendi.' }
+        ],
+        affectedFiles: [
+            'client/src/utils/imageUtils.js',
+            'client/src/utils/preloadUtils.js',
+            'client/src/store/useGlobalStore.js',
+            'client/src/components/PostImageGallery.jsx',
+            'client/src/components/UserAvatar.jsx',
+            'client/src/components/UserBadges.jsx',
+            'client/public/_headers',
+            'netlify.toml',
+            'routes/media.js'
+        ]
+    },
     {
         version: 'v2.4.6',
         versionCode: 246,
         releaseDate: '26 Ekim 2026',
         commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Google Play Protect & OEM Güvenlik Standardizasyonu, Mobil Masaüstü Modu & Pinch-Zoom, 3 Kademeli RBAC İzin Mimarisi, İzin Sadeleştirmesi',
         summary: 'Google Play Protect ve üretici güvenlik tarayıcılarının yanlış pozitif (false-positive) zararlı uygulama uyarılarını engellemek amacıyla Capacitor OTA eklentisi kaldırıldı, dropper ve yükleyici şüphesi doğuran izinler (REQUEST_INSTALL_PACKAGES, SYSTEM_ALERT_WINDOW, READ_PHONE_STATE vb.) temizlendi, depolama izinleri scoped hale getirildi ve dual v1+v2 imzalama devreye alındı. Yönetim paneli için mobil masaüstü sitesi görünüm modu ve akıcı pinch-to-zoom desteği entegre edildi.',
         category: 'security',
@@ -827,7 +868,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.6': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.7': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
@@ -938,7 +979,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             </div>
                             <h1 className="mvh-title">Mobil Sürüm Günlüğü & Changelog</h1>
                             <p className="mvh-subtitle">
-                                Oxypace Android istemcisinin v2.0.0'dan v2.4.6'ya kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
+                                Oxypace Android istemcisinin v2.0.0'dan v2.4.7'ye kadar derlenen tüm sürümleri, APK optimizasyonları ve adım adım değişiklik kayıtları.
                             </p>
                         </div>
                     </div>
@@ -991,7 +1032,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
                             <div className="mvh-metric-val-row">
                                 <span className="mvh-metric-value">{MOBILE_VERSIONS_DATA.length} Derleme</span>
                             </div>
-                            <span className="mvh-metric-desc">v2.0.0 → v2.4.6 Gelişim Süreci</span>
+                            <span className="mvh-metric-desc">v2.0.0 → v2.4.7 Gelişim Süreci</span>
                         </div>
                     </div>
 

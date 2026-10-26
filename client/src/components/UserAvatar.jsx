@@ -71,6 +71,7 @@ const UserAvatar = ({ src, alt, className = '', style = {}, size, onClick, onErr
                 onClick={onClick}
                 loading={loading}
                 decoding="async"
+                fetchpriority="high"
                 width={typeof size === 'number' ? size : 40}
                 height={typeof size === 'number' ? size : 40}
             />

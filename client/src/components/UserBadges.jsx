@@ -37,6 +37,7 @@ const UserBadges = ({ user, size = 18 }) => {
                         className="custom-badge-icon"
                         loading="eager"
                         decoding="async"
+                        fetchpriority="high"
                     />
                 </span>
             )}

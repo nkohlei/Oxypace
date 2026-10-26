@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
+import { preloadPosts } from '../utils/preloadUtils';
 
 export const useGlobalStore = create(
     persist(
@@ -202,12 +203,23 @@ export const useGlobalStore = create(
             isTouristAdmin: false,
             setIsTouristAdmin: (val) => set({ isTouristAdmin: val }),
 
-            setPosts: (updater) => set((state) => ({
-                posts: typeof updater === 'function' ? updater(state.posts) : updater
-            })),
+            setPosts: (updater) => set((state) => {
+                const nextPosts = typeof updater === 'function' ? updater(state.posts) : updater;
+                if (Array.isArray(nextPosts) && nextPosts.length > 0) {
+                    try {
+                        preloadPosts(nextPosts);
+                    } catch (_) {}
+                }
+                return { posts: nextPosts };
+            }),
 
             addPostEvent: (newPost) => set((state) => {
                 if (state.posts.some(p => p._id === newPost._id)) return state;
+                if (newPost) {
+                    try {
+                        preloadPosts([newPost]);
+                    } catch (_) {}
+                }
                 return { posts: [newPost, ...state.posts] };
             }),
 
