@@ -1,12 +1,43 @@
 import { getImageUrl } from './imageUtils';
 
 const preloadedSet = new Set();
-const MAX_PRELOAD_ITEMS = 800;
+const MAX_PRELOAD_ITEMS = 1200;
+
+// Queue management to avoid overwhelming the browser socket pool
+const PRELOAD_QUEUE = [];
+let activePreloads = 0;
+const MAX_CONCURRENT_PRELOADS = 4;
+
+function processQueue() {
+    while (activePreloads < MAX_CONCURRENT_PRELOADS && PRELOAD_QUEUE.length > 0) {
+        const item = PRELOAD_QUEUE.shift();
+        if (!item) continue;
+        const { resolved, priority } = item;
+
+        activePreloads++;
+        const img = new window.Image();
+        img.decoding = 'async';
+        if ('fetchPriority' in img) {
+            img.fetchPriority = priority;
+        }
+
+        const done = () => {
+            activePreloads--;
+            img.onload = null;
+            img.onerror = null;
+            processQueue();
+        };
+
+        img.onload = done;
+        img.onerror = done;
+        img.src = resolved;
+    }
+}
 
 /**
- * Preload an image URL into browser cache asynchronously with high priority.
+ * Preload an image URL into browser cache with optional priority ('high' | 'low').
  */
-export const preloadImage = (url, sizeType = 'original') => {
+export const preloadImage = (url, sizeType = 'original', priority = 'low') => {
     if (!url || typeof window === 'undefined') return;
     const resolved = getImageUrl(url, sizeType);
     if (!resolved || preloadedSet.has(resolved)) return;
@@ -17,20 +48,21 @@ export const preloadImage = (url, sizeType = 'original') => {
     }
     preloadedSet.add(resolved);
 
-    const img = new window.Image();
-    img.decoding = 'async';
-    if ('fetchPriority' in img) {
-        img.fetchPriority = 'high';
+    // If high priority (e.g. above-the-fold first 3 items), insert at head of queue
+    if (priority === 'high') {
+        PRELOAD_QUEUE.unshift({ resolved, priority: 'high' });
+    } else {
+        PRELOAD_QUEUE.push({ resolved, priority: 'low' });
     }
-    img.src = resolved;
+    processQueue();
 };
 
 /**
  * Preload multiple image URLs into browser cache.
  */
-export const preloadImages = (urls = [], sizeType = 'original') => {
+export const preloadImages = (urls = [], sizeType = 'original', priority = 'low') => {
     if (!Array.isArray(urls) || typeof window === 'undefined') return;
-    urls.forEach((u) => preloadImage(u, sizeType));
+    urls.forEach((u) => preloadImage(u, sizeType, priority));
 };
 
 /**
@@ -74,16 +106,17 @@ export const preloadUsers = (users = []) => {
  */
 export const preloadPosts = (posts = []) => {
     if (!Array.isArray(posts) || typeof window === 'undefined') return;
-    posts.slice(0, 20).forEach((post) => {
+    posts.slice(0, 15).forEach((post, idx) => {
         if (!post) return;
+        const priority = idx < 3 ? 'high' : 'low';
         const author = post.author;
         if (author) {
             const avatar = author.profile?.lowResAvatar || author.profile?.avatar || author.avatar;
             if (avatar) {
-                preloadImage(avatar, /\.gif($|\?)/i.test(avatar) ? 'original' : 'thumbnail');
+                preloadImage(avatar, /\.gif($|\?)/i.test(avatar) ? 'original' : 'thumbnail', priority);
             }
             if (author.customBadge?.url) {
-                preloadImage(author.customBadge.url, 'original');
+                preloadImage(author.customBadge.url, 'original', priority);
             }
         }
         // First image in post
@@ -92,7 +125,7 @@ export const preloadPosts = (posts = []) => {
             const clean = media.split('?')[0].split('#')[0].toLowerCase();
             const isImage = /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(clean);
             if (isImage) {
-                preloadImage(media, 'original');
+                preloadImage(media, 'original', priority);
             }
         }
     });

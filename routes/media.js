@@ -104,6 +104,42 @@ function setVideoMetadata(key, totalSize, contentType) {
     });
 }
 
+// ── In-Memory Fast Variant & Negative Caches (Eliminates repeated 404 roundtrips) ──
+const VARIANT_RESOLVE_CACHE = new Map();
+const MAX_VARIANT_CACHE = 10000;
+const NEGATIVE_404_CACHE = new Map();
+const NEGATIVE_CACHE_TTL = 180 * 1000; // 3 minutes negative cache
+
+function getCachedVariant(key) {
+    return VARIANT_RESOLVE_CACHE.get(key) || null;
+}
+
+function setCachedVariant(key, resolvedKey) {
+    if (VARIANT_RESOLVE_CACHE.size >= MAX_VARIANT_CACHE) {
+        const oldest = VARIANT_RESOLVE_CACHE.keys().next().value;
+        if (oldest) VARIANT_RESOLVE_CACHE.delete(oldest);
+    }
+    VARIANT_RESOLVE_CACHE.set(key, resolvedKey);
+}
+
+function isNegativeCached(key) {
+    const exp = NEGATIVE_404_CACHE.get(key);
+    if (!exp) return false;
+    if (Date.now() > exp) {
+        NEGATIVE_404_CACHE.delete(key);
+        return false;
+    }
+    return true;
+}
+
+function setNegativeCache(key) {
+    if (NEGATIVE_404_CACHE.size >= 5000) {
+        const oldest = NEGATIVE_404_CACHE.keys().next().value;
+        if (oldest) NEGATIVE_404_CACHE.delete(oldest);
+    }
+    NEGATIVE_404_CACHE.set(key, Date.now() + NEGATIVE_CACHE_TTL);
+}
+
 async function streamToBuffer(readableStream) {
     const chunks = [];
     for await (const chunk of readableStream) {
@@ -894,10 +930,15 @@ router.get('/*', async (req, res) => {
             }
         }
 
-        // B. Standard R2 Images/Assets (High Performance Proxy with LRU In-Memory Cache & ETag 304)
+        // B. Standard R2 Images/Assets (High Performance Edge Proxy with LRU In-Memory Cache & ETag 304)
         let targetKey = filePath;
         if (targetKey.startsWith('post-') && !targetKey.startsWith('posts/')) {
             targetKey = `posts/general/${targetKey}`;
+        }
+
+        // Fast negative cache rejection (prevents repeated 404 storming)
+        if (isNegativeCached(targetKey)) {
+            return res.status(404).json({ message: 'File not found' });
         }
 
         const clientEtag = req.headers['if-none-match'];
@@ -908,10 +949,14 @@ router.get('/*', async (req, res) => {
             if (clientEtag && (clientEtag === cached.etag || clientEtag === `W/${cached.etag}`)) {
                 return res.status(304).end();
             }
+            res.removeHeader('set-cookie');
+            res.removeHeader('Set-Cookie');
             res.set('Content-Type', cached.contentType);
             res.set('Content-Length', cached.contentLength);
             res.set('ETag', cached.etag);
             res.set('Cache-Control', 'public, max-age=31536000, immutable');
+            res.set('Netlify-CDN-Cache-Control', 'public, max-age=31536000, durable');
+            res.set('CDN-Cache-Control', 'public, max-age=31536000, durable');
             res.set('Accept-Ranges', 'bytes');
             res.set('Access-Control-Allow-Origin', '*');
             res.set('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -919,44 +964,53 @@ router.get('/*', async (req, res) => {
             return res.send(cached.buffer);
         }
 
-        // 2. Fetch from R2 with Graceful Variant Fallback
+        // 2. Fetch from R2 with Fast Cached Variant Fallback
         let response = null;
-        let finalKey = targetKey;
+        let finalKey = getCachedVariant(targetKey) || targetKey;
 
         try {
-            const command = new GetObjectCommand({ Bucket: bucketName, Key: targetKey });
+            const command = new GetObjectCommand({ Bucket: bucketName, Key: finalKey });
             response = await r2.send(command);
         } catch (r2Err) {
-            // If a thumbnail/medium/lowres variant was requested but doesn't exist (legacy uploads / GIFs),
-            // seamlessly fallback to the base image to avoid 404 client errors and reload latency!
             if ((r2Err.name === 'NoSuchKey' || r2Err.name === 'NotFound') && 
                 (targetKey.includes('-thumbnail.webp') || targetKey.includes('-medium.webp') || targetKey.includes('-lowres.webp'))) {
                 
                 const baseWithoutSuffix = targetKey.replace(/-(thumbnail|medium|lowres)\.webp$/, '');
                 const fallbackCandidates = [
                     baseWithoutSuffix,
+                    `${baseWithoutSuffix}.webp`,
+                    `${baseWithoutSuffix}.png`,
                     `${baseWithoutSuffix}.jpg`,
                     `${baseWithoutSuffix}.jpeg`,
-                    `${baseWithoutSuffix}.png`,
-                    `${baseWithoutSuffix}.webp`,
                     `${baseWithoutSuffix}.gif`
                 ];
 
-                for (const candidateKey of fallbackCandidates) {
-                    try {
-                        const fallbackCmd = new GetObjectCommand({ Bucket: bucketName, Key: candidateKey });
-                        response = await r2.send(fallbackCmd);
-                        finalKey = candidateKey;
-                        break;
-                    } catch (candErr) {
-                        // Keep trying
-                    }
+                // Parallel candidate lookup with Promise.any to eliminate 5x serial roundtrips
+                try {
+                    const candidatePromises = fallbackCandidates.map(candidateKey => 
+                        r2.send(new GetObjectCommand({ Bucket: bucketName, Key: candidateKey }))
+                            .then(res => ({ response: res, key: candidateKey }))
+                    );
+                    const winner = await Promise.any(candidatePromises);
+                    response = winner.response;
+                    finalKey = winner.key;
+                    setCachedVariant(targetKey, finalKey);
+                } catch (_) {
+                    // All candidates failed
+                    setNegativeCache(targetKey);
+                    return res.status(404).json({ message: 'File not found' });
                 }
-            }
-
-            if (!response) {
+            } else if (r2Err.name === 'NoSuchKey' || r2Err.name === 'NotFound') {
+                setNegativeCache(targetKey);
+                return res.status(404).json({ message: 'File not found' });
+            } else {
                 throw r2Err;
             }
+        }
+
+        if (!response) {
+            setNegativeCache(targetKey);
+            return res.status(404).json({ message: 'File not found' });
         }
 
         // 3. ETag 304 Validation from R2 response
@@ -968,8 +1022,20 @@ router.get('/*', async (req, res) => {
         const contentType = response.ContentType || 'image/jpeg';
         const contentLength = response.ContentLength;
 
-        // 4. Cache images (<= 8MB) in memory for instant subsequent loads
-        if (contentLength && contentLength <= 8 * 1024 * 1024) {
+        // Clean headers for Edge CDN caching (Netlify / Cloudflare Edge)
+        res.removeHeader('set-cookie');
+        res.removeHeader('Set-Cookie');
+        res.set('Content-Type', contentType);
+        res.set('ETag', etag);
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        res.set('Netlify-CDN-Cache-Control', 'public, max-age=31536000, durable');
+        res.set('CDN-Cache-Control', 'public, max-age=31536000, durable');
+        res.set('Accept-Ranges', 'bytes');
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+
+        // 4. Cache small images (<= 1.5MB - Avatars, Badges, Icons) in memory for instant subsequent loads
+        if (contentLength && contentLength <= 1.5 * 1024 * 1024) {
             try {
                 const buffer = await streamToBuffer(response.Body);
                 setCachedMedia(targetKey, {
@@ -979,13 +1045,7 @@ router.get('/*', async (req, res) => {
                     etag
                 });
 
-                res.set('Content-Type', contentType);
                 res.set('Content-Length', buffer.length);
-                res.set('ETag', etag);
-                res.set('Cache-Control', 'public, max-age=31536000, immutable');
-                res.set('Accept-Ranges', 'bytes');
-                res.set('Access-Control-Allow-Origin', '*');
-                res.set('Cross-Origin-Resource-Policy', 'cross-origin');
                 res.set('X-Cache', 'MISS');
                 return res.send(buffer);
             } catch (buffErr) {
@@ -993,20 +1053,15 @@ router.get('/*', async (req, res) => {
             }
         }
 
-        // 5. Direct Streaming for larger assets
-        res.set('Content-Type', contentType);
+        // 5. Direct Zero-Copy Streaming for larger assets (Instant TTFB, zero RAM accumulation)
         if (contentLength) res.set('Content-Length', contentLength);
-        res.set('ETag', etag);
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-        res.set('Accept-Ranges', 'bytes');
-        res.set('Access-Control-Allow-Origin', '*');
-        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
         res.set('X-Cache', 'STREAM');
-
         return response.Body.pipe(res);
 
     } catch (error) {
-        if (error.name === 'NoSuchKey' || error.name === 'NotFound') return res.status(404).json({ message: 'File not found' });
+        if (error.name === 'NoSuchKey' || error.name === 'NotFound') {
+            return res.status(404).json({ message: 'File not found' });
+        }
         console.error('Media Resolver Error:', error.message);
         res.status(500).json({ message: 'Failed to resolve media' });
     }

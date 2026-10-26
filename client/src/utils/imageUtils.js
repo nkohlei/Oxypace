@@ -122,8 +122,6 @@ export const getImageUrl = (path, sizeType = 'original') => {
             }
         } else {
             // --- 2. INTERNAL R2 IMAGES, VIDEOS, AUDIO & ASSETS ---
-            // Route through high-performance persistent backend (/api/media/)
-            // Backed by 256MB RAM LRU cache, keep-alive HTTP/2 socket, and instant variant fallback
             if (sizeType && sizeType !== 'original' && relativePath.includes('avatars/')) {
                 const pathParts = relativePath.split('?');
                 const mainPath = pathParts[0];
@@ -142,7 +140,21 @@ export const getImageUrl = (path, sizeType = 'original') => {
                 }
             }
 
-            finalUrl = `${apiBaseUrl}/api/media/${relativePath}`;
+            // Video/audio requires HTTP 206 partial range streaming handled by backend
+            if (isVideoOrAudio) {
+                finalUrl = `${apiBaseUrl}/api/media/${relativePath}`;
+            } else {
+                const isNative = typeof Capacitor !== 'undefined' ? Capacitor.isNativePlatform() : (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform());
+                const isElectron = typeof window !== 'undefined' && (
+                    !!window.desktopAPI?.isElectron ||
+                    (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1)
+                );
+                const edgeMediaBase = (isNative || isElectron || import.meta.env.DEV)
+                    ? 'https://oxypace.com.tr/r2-media'
+                    : '/r2-media';
+
+                finalUrl = `${edgeMediaBase}/${relativePath}`;
+            }
         }
 
         if (URL_MEMO_CACHE.size < MAX_MEMO_ITEMS) {

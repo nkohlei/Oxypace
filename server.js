@@ -313,7 +313,7 @@ app.use('/api', (req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
-        if (duration > 800 && !req.path.includes('/proxy') && !req.path.includes('/stream') && !req.path.includes('/upload')) {
+        if (duration > 800 && !req.path.includes('/proxy') && !req.path.includes('/stream') && !req.path.includes('/upload') && !req.path.includes('/media')) {
             logActivity({
                 action: 'HIGH_LATENCY',
                 category: 'system',
