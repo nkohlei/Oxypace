@@ -420,15 +420,36 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
     res.send('loaderio-246e78c59963b4c65ec8883b750b2d5c');
 });
 
+// Direct APK Download Endpoint - serves latest compiled release APK with no-cache headers
+app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
+    const candidates = [
+        path.join(__dirname, 'public', 'downloads', 'oxypace.apk'),
+        path.join(__dirname, 'client', 'public', 'downloads', 'oxypace.apk'),
+        path.join(__dirname, 'client', 'dist-mobile', 'downloads', 'oxypace.apk')
+    ];
+    for (const file of candidates) {
+        if (fs.existsSync(file)) {
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            res.setHeader('Content-Disposition', 'attachment; filename="oxypace.apk"');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            return res.sendFile(file);
+        }
+    }
+    return res.status(404).json({ error: 'APK file not found' });
+});
+
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
         latestVersion: '2.4.9',
         versionCode: 249,
         minSupportedVersionCode: 249,
-        downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
+        downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
+        fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.9: Instagram Hızında 0ms Stale-While-Revalidate Yerel Akış Önbelleği, Tahmine Dayalı WebP Preload Kuyruğu ve Paralel MongoDB Veritabanı Sorgu Hızlandırması. Akışlar, kanallar ve kullanıcı profilleri bekleme yapmaksızın anında ekrana gelir.',
+        changelog: 'Oxypace 2.4.9: 1440p (2K) Video Ayrıştırma ve Canlı Yükleme/İşleme Paneli, Instagram Hızında 0ms Stale-While-Revalidate Akış Önbelleği.',
     });
 });
 

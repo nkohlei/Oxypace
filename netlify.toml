@@ -52,6 +52,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/downloads/*"
+  to = "https://api.oxypace.com.tr/downloads/:splat"
+  status = 302
+  force = true
+
 # ── OG Bot Proxy (Bot preview için) ──────────────
 [[redirects]]
   from = "/portal/post/*"
