@@ -8,12 +8,6 @@
     @com.getcapacitor.annotation.CapacitorPlugin public *;
 }
 
-# LiveKit & WebRTC
--keep class io.livekit.android.** { *; }
--keep class org.webrtc.** { *; }
--dontwarn io.livekit.android.**
--dontwarn org.webrtc.**
-
 # Gson & Jackson
 -keepattributes Signature
 -keepattributes *Annotation*
@@ -24,12 +18,6 @@
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
-
-# Kotlin Reflection & Coroutines
--keep class kotlin.** { *; }
--keep class kotlinx.coroutines.** { *; }
--dontwarn kotlin.**
--dontwarn kotlinx.coroutines.**
 
 # OkHttp (WebSocket / Socket.IO transport)
 -keep class okhttp3.** { *; }

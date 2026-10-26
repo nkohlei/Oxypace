@@ -14,14 +14,6 @@ import android.os.Looper;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-// Native LiveKit library imports
-import io.livekit.android.LiveKit;
-import io.livekit.android.room.Room;
-import io.livekit.android.ConnectOptions;
-
-// Coroutines support for Java-Kotlin integration
-import kotlinx.coroutines.BuildersKt;
-import kotlinx.coroutines.Dispatchers;
 
 /**
  * ActiveCallService keeps the audio line and media projection alive in the background.
@@ -41,9 +33,6 @@ public class ActiveCallService extends Service {
     private String route       = "";
     private boolean isMuted    = false;
     private boolean isScreenSharing = false;
-
-    // LiveKit Room instance kept in pure Java Memory
-    private Room livekitRoom = null;
 
     // Wake and Wifi locks to prevent background suspension on aggressive Android devices
     private android.os.PowerManager.WakeLock wakeLock = null;
@@ -132,11 +121,6 @@ public class ActiveCallService extends Service {
 
             startUpdatingDuration();
 
-            // Connect to LiveKit Room natively if parameters are valid
-            if (token != null && !token.isEmpty() && serverUrl != null && !serverUrl.isEmpty()) {
-                connectLiveKitNatively(serverUrl, token, userId);
-            }
-
         } else if ("ENABLE_MEDIA_PROJECTION".equals(action)) {
             elevateToMediaProjection();
 
@@ -145,13 +129,6 @@ public class ActiveCallService extends Service {
 
         } else if ("TOGGLE_MIC".equals(action)) {
             isMuted = !isMuted;
-            if (livekitRoom != null) {
-                try {
-                    livekitRoom.getLocalParticipant().setMicrophoneEnabled(!isMuted, null);
-                } catch (Exception e) {
-                    android.util.Log.e("ActiveCallService", "Failed to toggle native mic: " + e.getMessage());
-                }
-            }
             // Refresh notification immediately
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) {
@@ -215,7 +192,6 @@ public class ActiveCallService extends Service {
 
     private void stopCall() {
         stopUpdatingDuration();
-        disconnectLiveKitNatively();
 
         try {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -233,67 +209,6 @@ public class ActiveCallService extends Service {
         }
     }
 
-    private void connectLiveKitNatively(final String serverUrl, final String token, final String userId) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    android.util.Log.d("LiveKitNative", "Initializing native LiveKit room...");
-                    Context ctx = getApplicationContext();
-                    
-                    livekitRoom = LiveKit.INSTANCE.create(
-                        ctx,
-                        new io.livekit.android.RoomOptions(),
-                        new io.livekit.android.LiveKitOverrides()
-                    );
-
-                    ConnectOptions connectOptions = new ConnectOptions();
-                    android.util.Log.d("LiveKitNative", "Connecting natively to: " + serverUrl);
-                    
-                    BuildersKt.runBlocking(
-                        Dispatchers.getIO(),
-                        (coroutineScope, continuation) -> {
-                            try {
-                                return livekitRoom.connect(
-                                    serverUrl,
-                                    token,
-                                    connectOptions,
-                                    continuation
-                                );
-                            } catch (Exception e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    );
-
-                    android.util.Log.d("LiveKitNative", "Native LiveKit connected successfully!");
-                    livekitRoom.getLocalParticipant().setMicrophoneEnabled(!isMuted, null);
-
-                } catch (Exception e) {
-                    android.util.Log.e("LiveKitNative", "Native LiveKit connection failed: " + e.getMessage(), e);
-                }
-            }
-        }).start();
-    }
-
-    private void disconnectLiveKitNatively() {
-        if (livekitRoom != null) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        android.util.Log.d("LiveKitNative", "Disconnecting native LiveKit room...");
-                        livekitRoom.disconnect();
-                        livekitRoom = null;
-                        android.util.Log.d("LiveKitNative", "Disconnected native room.");
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
-        }
-    }
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -306,7 +221,6 @@ public class ActiveCallService extends Service {
             sInstance = null;
         }
         stopUpdatingDuration();
-        disconnectLiveKitNatively();
         
         try {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);

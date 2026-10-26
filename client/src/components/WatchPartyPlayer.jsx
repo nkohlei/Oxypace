@@ -779,7 +779,7 @@ const WatchPartyPlayer = () => {
         if (Capacitor.isNativePlatform()) {
             CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
             return () => {
-                CallManager.setAudioMode({ mode: 'communication' }).catch(() => {});
+                CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
             };
         }
     }, []);

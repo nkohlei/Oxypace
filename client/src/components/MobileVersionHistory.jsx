@@ -44,6 +44,8 @@ export const MOBILE_VERSIONS_DATA = [
         architecture: 'arm64-v8a / universal',
         highlights: [
             'Doğrudan Netlify/Cloudflare Edge CDN Dağıtımı: Görseller İstanbul/Frankfurt uç noktalarından 10-25ms yanıt süresiyle anında gelir',
+            'Canlı Oda & Birlikte İzle Kristal Netliğinde Ses: Derinden ve boğuk gelen telefon hattı (MODE_IN_COMMUNICATION) ses filtresi kaldırılarak 48kHz tam stereo medya ses hattına geçildi',
+            'Google Play Protect Tam Güvenlik Onayı: Tehlikeli izinler ve sahte pozitif oluşturan harici kütüphaneler temizlendi, v1+v2+v3 üçlü imzalama güvenceye alındı',
             'Oturum Çerezi İzolasyonu & Kalıcı Önbellek: Medya yanıtlarından Set-Cookie kaldırılarak CDN uçlarında 1 yıllık güvenilir immutable önbellekleme sağlandı',
             'Paralel Varyant Fallback: Eksik varyantlar için ardışık 6 arama yerine Promise.any ile paralel arama ve VARIANT_RESOLVE_CACHE bellek eşlemesi',
             'Zero-Copy Medya Akışı: 1.5MB üzeri gönderi fotoğrafları RAM tamponunda bekletilmeden doğrudan istemciye akıtılarak TTFB <30ms seviyesine çekildi',
@@ -52,6 +54,8 @@ export const MOBILE_VERSIONS_DATA = [
         ],
         changes: [
             { type: 'perf', text: 'client/src/utils/imageUtils.js: Dahili R2 görselleri için doğrudan Edge CDN (/r2-media/) omurgasına geçildi, video akışları backend Range proxyde tutuldu.' },
+            { type: 'audio', text: 'MainActivity.java & VoiceContext.jsx: Canlı odada derinden ve boğuk gelen telefon arama filtresi MODE_NORMAL + Hoparlör medya yönlendirmesi ile giderildi.' },
+            { type: 'sec', text: 'AndroidManifest.xml & build.gradle: Google Play Protect false-positive tetikleyicileri (CallConnectionService, USE_FULL_SCREEN_INTENT) temizlendi; v1+v2+v3 imzası aktifleştirildi.' },
             { type: 'perf', text: 'client/src/utils/preloadUtils.js: 4 kanallı eşzamanlı preload kuyruğu kuruldu; ilk 3 gönderi yüksek öncelikle, kalanlar kademeli düşük öncelikle yüklendi.' },
             { type: 'infra', text: 'routes/media.js: Promise.any ile paralel varyant arama, VARIANT_RESOLVE_CACHE RAM haritası ve 3 dakikalık negatif 404 önbelleği entegre edildi.' },
             { type: 'perf', text: 'routes/media.js: 1.5MB üzeri görsellerde streamToBuffer kaldırıldı, response.Body.pipe(res) ile sıfır kopyalı doğrudan akışa geçildi.' },

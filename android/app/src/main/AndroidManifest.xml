@@ -83,16 +83,6 @@
             android:exported="false"
             android:foregroundServiceType="microphone|camera|mediaProjection" />
 
-        <!-- Telecom ConnectionService: binds our app to system call UI and management -->
-        <service
-            android:name=".CallConnectionService"
-            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.telecom.ConnectionService" />
-            </intent-filter>
-        </service>
-
     </application>
 
     <!-- Permissions -->
@@ -104,7 +94,6 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -113,9 +102,6 @@
     <!-- Required for ringtone vibration and waking screen on incoming calls -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    
-    <!-- Telecom framework permissions for VoIP connection service -->
-    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
 
     <!-- In-App APK Upgrade & Package Installer Permission -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

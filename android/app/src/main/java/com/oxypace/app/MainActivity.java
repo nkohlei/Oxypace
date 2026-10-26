@@ -78,11 +78,11 @@ public class MainActivity extends BridgeActivity {
                         ctx.startService(serviceIntent);
                     }
 
-                    // Ensure speakerphone is enabled on Android for hands-free live room calls
+                    // Ensure speakerphone and high-fidelity media audio mode are enabled
                     try {
                         android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
-                            am.setSpeakerphoneOn(true);
+                            applyAudioRouting(am, "media");
                         }
                     } catch (Exception ignored) {}
 
@@ -113,6 +113,9 @@ public class MainActivity extends BridgeActivity {
                         android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
                             am.setMode(android.media.AudioManager.MODE_NORMAL);
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                am.clearCommunicationDevice();
+                            }
                         }
                     } catch (Exception ignored) {}
 
@@ -132,20 +135,42 @@ public class MainActivity extends BridgeActivity {
             call.resolve();
         }
 
+        public static void applyAudioRouting(android.media.AudioManager am, String mode) {
+            if (am == null) return;
+            try {
+                // Ensure MODE_NORMAL is enforced so video audio and voice room audio play through
+                // high-fidelity STREAM_MUSIC, completely eliminating narrowband telephone-like muffled DSP.
+                am.setMode(android.media.AudioManager.MODE_NORMAL);
+                routeToSpeaker(am);
+            } catch (Exception e) {
+                android.util.Log.w("CallManager", "Failed to apply audio routing: " + e.getMessage());
+            }
+        }
+
+        public static void routeToSpeaker(android.media.AudioManager am) {
+            if (am == null) return;
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
+                    for (android.media.AudioDeviceInfo device : devices) {
+                        if (device.getType() == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                            am.setCommunicationDevice(device);
+                            break;
+                        }
+                    }
+                }
+                am.setSpeakerphoneOn(true);
+            } catch (Exception ignored) {}
+        }
+
         @PluginMethod
         public void setAudioMode(PluginCall call) {
-            String mode = call.getString("mode", "normal");
+            String mode = call.getString("mode", "media");
             try {
                 android.content.Context ctx = getContext();
                 android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
                 if (am != null) {
-                    if ("normal".equalsIgnoreCase(mode) || "media".equalsIgnoreCase(mode)) {
-                        am.setMode(android.media.AudioManager.MODE_NORMAL);
-                        am.setSpeakerphoneOn(true);
-                    } else if ("communication".equalsIgnoreCase(mode)) {
-                        am.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION);
-                        am.setSpeakerphoneOn(true);
-                    }
+                    applyAudioRouting(am, mode);
                 }
                 call.resolve();
             } catch (Exception e) {

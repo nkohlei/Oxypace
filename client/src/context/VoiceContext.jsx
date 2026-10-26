@@ -212,14 +212,12 @@ export const VoiceProvider = ({ children }) => {
     const [watchStopVoteStatus, setWatchStopVoteStatus] = useState(null);
 
     // Switch native Android audio routing:
-    // When a Watch Party video is playing, switch to media mode (MODE_NORMAL + speakerphone) for full-fidelity rich sound.
-    // When watch party ends, return to communication mode if still in call.
+    // Always enforce media mode (MODE_NORMAL + full stereo stream) for crystal clear voices and full-fidelity video/music sound.
+    // Completely eliminates the muffled, deep telephone-call (hat araması) narrowband voice filtering.
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
-            if (watchParty && watchParty.url) {
+            if (activeRoom || (watchParty && watchParty.url)) {
                 CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
-            } else if (activeRoom) {
-                CallManager.setAudioMode({ mode: 'communication' }).catch(() => {});
             }
         }
     }, [watchParty?.url, activeRoom]);

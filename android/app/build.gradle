@@ -28,6 +28,7 @@ android {
             keyPassword "oxypace123"
             v1SigningEnabled true
             v2SigningEnabled true
+            enableV3Signing = true
         }
     }
     buildTypes {
@@ -75,13 +76,6 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation 'com.google.firebase:firebase-messaging:24.1.0'
-
-    // LiveKit Android SDK and WebRTC dependencies
-    implementation "io.livekit:livekit-android:2.4.0"
-    
-    // Kotlin Coroutines for async room management in Java/Kotlin bridge
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3"
 
     // Java 8 desugaring dependency
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
