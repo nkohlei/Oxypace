@@ -202,7 +202,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [aspectRatio, setAspectRatio] = useState('16 / 9');
     const imgRef = useRef(null);
-    const resolvedUrl = getImageUrl(imgUrl);
+    const resolvedUrl = getImageUrl(imgUrl, 'feed');
 
     useEffect(() => {
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
@@ -267,7 +267,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
 const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const imgRef = useRef(null);
-    const resolvedUrl = getImageUrl(imgUrl);
+    const resolvedUrl = getImageUrl(imgUrl, 'feed');
 
     useEffect(() => {
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {

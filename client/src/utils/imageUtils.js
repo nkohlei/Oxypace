@@ -122,22 +122,25 @@ export const getImageUrl = (path, sizeType = 'original') => {
             }
         } else {
             // --- 2. INTERNAL R2 IMAGES, VIDEOS, AUDIO & ASSETS ---
-            if (sizeType && sizeType !== 'original' && relativePath.includes('avatars/')) {
+            if (sizeType && sizeType !== 'original' && (relativePath.includes('avatars/') || relativePath.includes('portals/') || relativePath.includes('banners/'))) {
                 const pathParts = relativePath.split('?');
                 const mainPath = pathParts[0];
                 const query = pathParts[1] ? `?${pathParts[1]}` : '';
                 const dotIdx = mainPath.lastIndexOf('.');
 
                 if (dotIdx !== -1) {
-                    const fileExt = mainPath.substring(dotIdx).toLowerCase();
                     const pathWithoutExt = mainPath.substring(0, dotIdx);
                     const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
 
-                    // ONLY convert if it's already a modern .webp avatar and not a GIF or legacy placeholder
-                    if (fileExt === '.webp' && !isLegacyAvatar && !mainPath.includes('-thumbnail') && !mainPath.includes('-medium') && !mainPath.includes('-lowres')) {
+                    // If not a legacy synthetic avatar and not already sized, request the WebP variant
+                    if (!isLegacyAvatar && !mainPath.includes('-thumbnail') && !mainPath.includes('-medium') && !mainPath.includes('-lowres')) {
                         relativePath = `${pathWithoutExt}-${sizeType}.webp${query}`;
                     }
                 }
+            } else if (sizeType === 'feed' && relativePath.includes('posts/')) {
+                // Post image feed optimization: request 720p rendition
+                const separator = relativePath.includes('?') ? '&' : '?';
+                relativePath = `${relativePath}${separator}w=720`;
             }
 
             // Video/audio requires HTTP 206 partial range streaming handled by backend
@@ -149,8 +152,11 @@ export const getImageUrl = (path, sizeType = 'original') => {
                     !!window.desktopAPI?.isElectron ||
                     (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1)
                 );
+                // On native mobile (Capacitor) and Electron: connect directly to apiBaseUrl/api/media!
+                // Bypasses Netlify Edge proxy (which strips Cache-Control, never HITs, and adds 100-300ms round-trip).
+                // Directly talking to api.oxypace.com.tr provides HTTP/2, ETag 304, immutable caching in WebView disk!
                 const edgeMediaBase = (isNative || isElectron || import.meta.env.DEV)
-                    ? 'https://oxypace.com.tr/r2-media'
+                    ? `${apiBaseUrl}/api/media`
                     : '/r2-media';
 
                 finalUrl = `${edgeMediaBase}/${relativePath}`;

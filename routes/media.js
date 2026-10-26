@@ -148,6 +148,68 @@ async function streamToBuffer(readableStream) {
     return Buffer.concat(chunks);
 }
 
+const RENDITION_WIDTHS = new Set([80, 100, 160, 300, 320, 480, 640, 720, 800, 1080]);
+const RENDITION_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
+const RENDITION_SKIP_RE = /-(thumbnail|medium|lowres|-w\d+)\.webp$/i;
+
+function isEtagMatch(clientEtag, serverEtag) {
+    if (!clientEtag || !serverEtag) return false;
+    const cleanClient = clientEtag.replace(/^W\//, '').replace(/"/g, '').trim();
+    const cleanServer = serverEtag.replace(/^W\//, '').replace(/"/g, '').trim();
+    return cleanClient === cleanServer || clientEtag.includes(cleanServer);
+}
+
+async function ensureRendition(originalKey, width, bucketName) {
+    const extMatch = originalKey.match(RENDITION_EXT_RE);
+    if (!extMatch) return null;
+    const baseWithoutExt = originalKey.substring(0, originalKey.lastIndexOf('.'));
+    const renditionKey = `${baseWithoutExt}-w${width}.webp`;
+
+    if (getCachedMedia(renditionKey)) return renditionKey;
+
+    try {
+        await r2.send(new HeadObjectCommand({ Bucket: bucketName, Key: renditionKey }));
+        return renditionKey;
+    } catch (_) {
+        // Not present in R2, generate it
+    }
+
+    try {
+        const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: originalKey });
+        const r2Resp = await r2.send(getCmd);
+        const originalBuf = await streamToBuffer(r2Resp.Body);
+
+        const sharpInst = sharp(originalBuf, { failOnError: false, animated: false });
+        const meta = await sharpInst.metadata();
+        const targetW = meta.width && meta.width < width ? meta.width : width;
+
+        const webpBuf = await sharp(originalBuf, { failOnError: false, animated: false })
+            .resize({ width: targetW, withoutEnlargement: true, fit: 'inside' })
+            .webp({ quality: 80, effort: 3 })
+            .toBuffer();
+
+        r2.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: renditionKey,
+            Body: webpBuf,
+            ContentType: 'image/webp',
+            CacheControl: 'public, max-age=31536000, immutable'
+        })).catch(e => console.warn('Async rendition upload error:', e.message));
+
+        setCachedMedia(renditionKey, {
+            buffer: webpBuf,
+            contentType: 'image/webp',
+            contentLength: webpBuf.length,
+            etag: `"${renditionKey}-${webpBuf.length}"`
+        });
+
+        return renditionKey;
+    } catch (err) {
+        console.warn('ensureRendition error:', err.message);
+        return null;
+    }
+}
+
 /**
  * @route   GET /api/media/*
  * @desc    Smart Media Resolver. 
@@ -941,12 +1003,26 @@ router.get('/*', async (req, res) => {
             return res.status(404).json({ message: 'File not found' });
         }
 
+        // 0. Optimized WebP rendition (?w=160|320|640|...) – built lazily once, persisted in R2, served small & immutable.
+        let renditionFallback = false;
+        const reqW = parseInt(req.query?.w, 10);
+        if (RENDITION_WIDTHS.has(reqW) && RENDITION_EXT_RE.test(targetKey) && !RENDITION_SKIP_RE.test(targetKey)) {
+            const vKey = await ensureRendition(targetKey, reqW, bucketName, 7000).catch(() => null);
+            if (vKey) {
+                targetKey = vKey;
+            } else {
+                renditionFallback = true;
+            }
+        }
+        const ccValue = renditionFallback ? 'public, max-age=20' : 'public, max-age=31536000, immutable';
+        const cdnValue = renditionFallback ? 'no-store' : 'public, max-age=31536000, durable';
+
         const clientEtag = req.headers['if-none-match'];
 
         // 1. Check In-Memory LRU Cache first (<1ms response, 0 R2 roundtrips)
         const cached = getCachedMedia(targetKey);
         if (cached) {
-            if (clientEtag && (clientEtag === cached.etag || clientEtag === `W/${cached.etag}`)) {
+            if (clientEtag && isEtagMatch(clientEtag, cached.etag)) {
                 return res.status(304).end();
             }
             res.removeHeader('set-cookie');
@@ -954,9 +1030,9 @@ router.get('/*', async (req, res) => {
             res.set('Content-Type', cached.contentType);
             res.set('Content-Length', cached.contentLength);
             res.set('ETag', cached.etag);
-            res.set('Cache-Control', 'public, max-age=31536000, immutable');
-            res.set('Netlify-CDN-Cache-Control', 'public, max-age=31536000, durable');
-            res.set('CDN-Cache-Control', 'public, max-age=31536000, durable');
+            res.set('Cache-Control', ccValue);
+            res.set('Netlify-CDN-Cache-Control', cdnValue);
+            res.set('CDN-Cache-Control', cdnValue);
             res.set('Accept-Ranges', 'bytes');
             res.set('Access-Control-Allow-Origin', '*');
             res.set('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -992,8 +1068,64 @@ router.get('/*', async (req, res) => {
                             .then(res => ({ response: res, key: candidateKey }))
                     );
                     const winner = await Promise.any(candidatePromises);
-                    response = winner.response;
-                    finalKey = winner.key;
+
+                    // If winner is an unresized original, generate WebP variant on-the-fly with sharp
+                    if (winner.key !== targetKey) {
+                        try {
+                            const originalBuf = await streamToBuffer(winner.response.Body);
+                            const isThumb = targetKey.includes('-thumbnail.webp');
+                            const isLowRes = targetKey.includes('-lowres.webp');
+                            const targetWidth = isThumb ? 100 : (isLowRes ? 160 : 320);
+                            const targetQuality = isThumb ? 70 : (isLowRes ? 75 : 80);
+
+                            const webpBuf = await sharp(originalBuf, { failOnError: false, animated: false })
+                                .resize(targetWidth, targetWidth, { fit: 'cover', withoutEnlargement: false })
+                                .webp({ quality: targetQuality, effort: 3 })
+                                .toBuffer();
+
+                            // Asynchronously upload to R2 under targetKey for future instant loads
+                            r2.send(new PutObjectCommand({
+                                Bucket: bucketName,
+                                Key: targetKey,
+                                Body: webpBuf,
+                                ContentType: 'image/webp',
+                                CacheControl: 'public, max-age=31536000, immutable'
+                            })).catch(e => console.warn('Async variant upload error:', e.message));
+
+                            const variantEtag = `"${targetKey}-${webpBuf.length}"`;
+                            setCachedMedia(targetKey, {
+                                buffer: webpBuf,
+                                contentType: 'image/webp',
+                                contentLength: webpBuf.length,
+                                etag: variantEtag
+                            });
+
+                            if (clientEtag && isEtagMatch(clientEtag, variantEtag)) {
+                                return res.status(304).end();
+                            }
+
+                            res.removeHeader('set-cookie');
+                            res.removeHeader('Set-Cookie');
+                            res.set('Content-Type', 'image/webp');
+                            res.set('Content-Length', webpBuf.length);
+                            res.set('ETag', variantEtag);
+                            res.set('Cache-Control', 'public, max-age=31536000, immutable');
+                            res.set('Accept-Ranges', 'bytes');
+                            res.set('Access-Control-Allow-Origin', '*');
+                            res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+                            res.set('X-Cache', 'GENERATED');
+                            return res.send(webpBuf);
+                        } catch (genErr) {
+                            console.warn('On-the-fly variant generation fallback:', genErr.message);
+                            // Re-fetch original because stream was read
+                            const retry = await r2.send(new GetObjectCommand({ Bucket: bucketName, Key: winner.key }));
+                            response = retry;
+                            finalKey = winner.key;
+                        }
+                    } else {
+                        response = winner.response;
+                        finalKey = winner.key;
+                    }
                     setCachedVariant(targetKey, finalKey);
                 } catch (_) {
                     // All candidates failed
@@ -1015,7 +1147,7 @@ router.get('/*', async (req, res) => {
 
         // 3. ETag 304 Validation from R2 response
         const etag = response.ETag || `"${targetKey}"`;
-        if (clientEtag && (clientEtag === etag || clientEtag === `W/${etag}`)) {
+        if (clientEtag && isEtagMatch(clientEtag, etag)) {
             return res.status(304).end();
         }
 
@@ -1027,9 +1159,9 @@ router.get('/*', async (req, res) => {
         res.removeHeader('Set-Cookie');
         res.set('Content-Type', contentType);
         res.set('ETag', etag);
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-        res.set('Netlify-CDN-Cache-Control', 'public, max-age=31536000, durable');
-        res.set('CDN-Cache-Control', 'public, max-age=31536000, durable');
+        res.set('Cache-Control', ccValue);
+        res.set('Netlify-CDN-Cache-Control', cdnValue);
+        res.set('CDN-Cache-Control', cdnValue);
         res.set('Accept-Ranges', 'bytes');
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
