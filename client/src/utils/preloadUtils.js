@@ -1,12 +1,17 @@
 import { getImageUrl } from './imageUtils';
+import { registerPlugin, Capacitor } from '@capacitor/core';
+
+const NativeMediaPreloader = (typeof window !== 'undefined' && Capacitor?.isNativePlatform && Capacitor.isNativePlatform())
+    ? registerPlugin('NativeMediaPreloader')
+    : null;
 
 const preloadedSet = new Set();
-const MAX_PRELOAD_ITEMS = 1200;
+const MAX_PRELOAD_ITEMS = 1500;
 
-// Queue management to avoid overwhelming the browser socket pool
+// High-speed queue management with HTTP/2 concurrent pipeline
 const PRELOAD_QUEUE = [];
 let activePreloads = 0;
-const MAX_CONCURRENT_PRELOADS = 4;
+const MAX_CONCURRENT_PRELOADS = 8;
 
 function processQueue() {
     while (activePreloads < MAX_CONCURRENT_PRELOADS && PRELOAD_QUEUE.length > 0) {
@@ -35,7 +40,7 @@ function processQueue() {
 }
 
 /**
- * Preload an image URL into browser cache with optional priority ('high' | 'low').
+ * Preload an image URL into browser & native disk cache with optional priority ('high' | 'low').
  */
 export const preloadImage = (url, sizeType = 'original', priority = 'low') => {
     if (!url || typeof window === 'undefined') return;
@@ -48,7 +53,12 @@ export const preloadImage = (url, sizeType = 'original', priority = 'low') => {
     }
     preloadedSet.add(resolved);
 
-    // If high priority (e.g. above-the-fold first 3 items), insert at head of queue
+    // If on native platform, proactively send to native background worker pool
+    if (NativeMediaPreloader && priority === 'high') {
+        NativeMediaPreloader.preloadUrls({ urls: [resolved] }).catch(() => {});
+    }
+
+    // If high priority (e.g. above-the-fold first items), insert at head of queue
     if (priority === 'high') {
         PRELOAD_QUEUE.unshift({ resolved, priority: 'high' });
     } else {
@@ -106,6 +116,38 @@ export const preloadUsers = (users = []) => {
  */
 export const preloadPosts = (posts = []) => {
     if (!Array.isArray(posts) || typeof window === 'undefined') return;
+
+    // Fast-path batch dispatch to Native Android background thread pool
+    if (NativeMediaPreloader) {
+        const batchUrls = [];
+        posts.slice(0, 12).forEach((post) => {
+            if (!post) return;
+            const author = post.author;
+            if (author) {
+                const avatar = author.profile?.lowResAvatar || author.profile?.avatar || author.avatar;
+                if (avatar) {
+                    const r = getImageUrl(avatar, 'thumbnail');
+                    if (r) batchUrls.push(r);
+                }
+                if (author.customBadge?.url) {
+                    const r = getImageUrl(author.customBadge.url, 'original');
+                    if (r) batchUrls.push(r);
+                }
+            }
+            const media = post.media || (Array.isArray(post.mediaUrls) ? post.mediaUrls[0] : null);
+            if (media && typeof media === 'string') {
+                const clean = media.split('?')[0].split('#')[0].toLowerCase();
+                if (/\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(clean)) {
+                    const r = getImageUrl(media, 'feed');
+                    if (r) batchUrls.push(r);
+                }
+            }
+        });
+        if (batchUrls.length > 0) {
+            NativeMediaPreloader.preloadUrls({ urls: batchUrls }).catch(() => {});
+        }
+    }
+
     posts.slice(0, 15).forEach((post, idx) => {
         if (!post) return;
         const priority = idx < 4 ? 'high' : 'low';

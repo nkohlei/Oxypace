@@ -184,6 +184,16 @@ import cookieParser from 'cookie-parser';
 // ... (existing imports)
 
 // Middleware
+app.use(compression({
+    level: 6,
+    threshold: 1024, // Compress all JSON and responses larger than 1KB
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
 app.use(helmetConfig); // Security headers
 app.use(cors(corsOptions));
 app.use(mongoSanitize()); // Prevent NoSQL injection
@@ -241,8 +251,16 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded files with high-performance immutable browser & proxy cache headers
+app.use(
+    '/uploads',
+    express.static(path.join(__dirname, 'uploads'), {
+        maxAge: '30d',
+        immutable: true,
+        etag: true,
+        lastModified: true,
+    })
+);
 
 // ── OG (Open Graph) Bot Middleware ───────────────────────────────────────────
 // WhatsApp, Telegram, Facebook ve diğer mesajlaşma uygulamaları bir URL
@@ -429,12 +447,15 @@ app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
     ];
     for (const file of candidates) {
         if (fs.existsSync(file)) {
+            const stat = fs.statSync(file);
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            res.setHeader('Content-Length', stat.size);
             res.setHeader('Content-Disposition', 'attachment; filename="oxypace.apk"');
+            res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
-            return res.sendFile(file);
+            return res.sendFile(file, { maxAge: 0, acceptRanges: true });
         }
     }
     return res.status(404).json({ error: 'APK file not found' });
@@ -443,13 +464,13 @@ app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.9',
-        versionCode: 249,
-        minSupportedVersionCode: 249,
+        latestVersion: '2.5.0',
+        versionCode: 250,
+        minSupportedVersionCode: 250,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.9: 1440p (2K) Video Ayrıştırma ve Canlı Yükleme/İşleme Paneli, Instagram Hızında 0ms Stale-While-Revalidate Akış Önbelleği.',
+        changelog: 'Oxypace 2.5.0: Canlı oda bildirim onarımı ve arayüz yenilemesi, tam ekran video rotasyonu ve ortalama düzeltmesi, ultra hızlı kesintisiz APK güncelleme motoru, sıfır gecikmeli HLS birlikte izle akışı, dinamik kulaklık/mikrofon ses yönlendirmesi ve Play Protect tam uyumluluğu.',
     });
 });
 

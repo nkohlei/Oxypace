@@ -28,6 +28,77 @@
     cursor: pointer;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Fullscreen Mode: True Screen Centering & Isolation (Fixes Top-Pinning Bug)
+   ───────────────────────────────────────────────────────────────────────── */
+.native-player-container:fullscreen,
+.native-player-container:-webkit-full-screen,
+.native-player-container.is-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    aspect-ratio: unset !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: #000000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+}
+
+.native-player-container:fullscreen .native-video-element,
+.native-player-container:-webkit-full-screen .native-video-element,
+.native-player-container.is-fullscreen .native-video-element,
+.native-player-container:fullscreen video,
+.native-player-container:-webkit-full-screen video,
+.native-player-container.is-fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 0 !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+}
+
+.native-player-container:fullscreen .native-controls-overlay,
+.native-player-container:-webkit-full-screen .native-controls-overlay,
+.native-player-container.is-fullscreen .native-controls-overlay {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    z-index: 25 !important;
+}
+
+.native-player-container:fullscreen .native-cover-poster,
+.native-player-container:-webkit-full-screen .native-cover-poster,
+.native-player-container.is-fullscreen .native-cover-poster,
+.native-player-container:fullscreen .native-fallback-cover,
+.native-player-container:-webkit-full-screen .native-fallback-cover,
+.native-player-container.is-fullscreen .native-fallback-cover {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+}
+
 /* Colorless Glassmorphism Minimal Processing Badge (Borderless & Soft-Rectangular) */
 .processing-badge-minimal {
   position: absolute;
@@ -451,6 +522,29 @@
 .native-speed-text-btn:hover, .native-speed-text-btn.active {
     opacity: 1;
     transform: scale(1.1);
+}
+
+/* Rotate Screen Button (Fullscreen Only) */
+.native-rotate-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 4px;
+}
+
+.native-rotate-btn:hover {
+    opacity: 1;
+    transform: scale(1.15) rotate(15deg);
+}
+
+.native-rotate-btn:active {
+    transform: scale(0.92) rotate(90deg);
 }
 
 /* Fullscreen Button */

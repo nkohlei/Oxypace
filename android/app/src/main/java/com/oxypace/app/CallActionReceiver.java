@@ -25,10 +25,17 @@ public class CallActionReceiver extends BroadcastReceiver {
         if (action == null) return;
 
         if (ACTION_HANGUP.equals(action)) {
+            MainActivity.CallManager.isInCall = false;
+            try {
+                if (ActiveCallService.sInstance != null) {
+                    ActiveCallService.sInstance.stopCall();
+                }
+            } catch (Exception ignored) {}
+
             try {
                 Intent stopService = new Intent(context, ActiveCallService.class);
                 stopService.setAction("STOP_CALL");
-                context.startService(stopService);
+                context.stopService(stopService);
             } catch (Exception e) {
                 android.util.Log.e("CallActionReceiver", "Failed to stop call service: " + e.getMessage());
             }

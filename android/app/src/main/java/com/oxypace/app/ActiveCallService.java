@@ -190,23 +190,37 @@ public class ActiveCallService extends Service {
         }
     }
 
-    private void stopCall() {
+    public void stopCall() {
+        roomStartedAtEpoch = 0;
         stopUpdatingDuration();
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
+        } catch (Exception ignored) {}
 
         try {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.cancel(NOTIFICATION_ID);
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE);
-            } else {
-                stopForeground(true);
+        } catch (Exception ignored) {}
+
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
             }
+            if (wifiLock != null && wifiLock.isHeld()) {
+                wifiLock.release();
+            }
+        } catch (Exception ignored) {}
+
+        try {
             stopSelf();
-        } catch (Exception e) {
-            android.util.Log.e("ActiveCallService", "Error stopping service: " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
     @Nullable
@@ -220,24 +234,7 @@ public class ActiveCallService extends Service {
         if (sInstance == this) {
             sInstance = null;
         }
-        stopUpdatingDuration();
-        
-        try {
-            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (nm != null) {
-                nm.cancel(NOTIFICATION_ID);
-            }
-        } catch (Exception ignored) {}
-        
-        try {
-            if (wakeLock != null && wakeLock.isHeld()) {
-                wakeLock.release();
-            }
-            if (wifiLock != null && wifiLock.isHeld()) {
-                wifiLock.release();
-            }
-        } catch (Exception ignored) {}
-        
+        stopCall();
         super.onDestroy();
     }
 
@@ -250,21 +247,29 @@ public class ActiveCallService extends Service {
         updateRunnable = new Runnable() {
             @Override
             public void run() {
+                if (roomStartedAtEpoch <= 0 || !MainActivity.CallManager.isInCall) {
+                    stopCall();
+                    return;
+                }
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                 if (nm != null) {
                     nm.notify(NOTIFICATION_ID, buildNotification(formatDuration()));
                 }
-                handler.postDelayed(this, 1_000L);
+                if (handler != null) {
+                    handler.postDelayed(this, 1_000L);
+                }
             }
         };
-        handler.post(updateRunnable);
+        if (handler != null) {
+            handler.post(updateRunnable);
+        }
     }
 
     private void stopUpdatingDuration() {
-        if (updateRunnable != null) {
-            handler.removeCallbacks(updateRunnable);
-            updateRunnable = null;
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
         }
+        updateRunnable = null;
     }
 
     @Override
@@ -305,7 +310,7 @@ public class ActiveCallService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Action 1: Toggle Mic (Sessize Al / Mikrofon Aç)
+        // Action 1: Toggle Mic (Sessize Al / Mikrofonu Aç)
         Intent toggleMicIntent = new Intent(this, CallActionReceiver.class);
         toggleMicIntent.setAction(CallActionReceiver.ACTION_TOGGLE_MIC);
         PendingIntent piToggleMic = PendingIntent.getBroadcast(
@@ -321,7 +326,7 @@ public class ActiveCallService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Action 3: Hangup / Leave Room (Aramayı / Odayı Sonlandır)
+        // Action 3: Hangup / Leave Room (Ayrıl)
         Intent hangupIntent = new Intent(this, CallActionReceiver.class);
         hangupIntent.setAction(CallActionReceiver.ACTION_HANGUP);
         PendingIntent piHangup = PendingIntent.getBroadcast(
@@ -329,14 +334,16 @@ public class ActiveCallService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        String micLabel = isMuted ? "🎙️ Aç" : "🎤 Sessiz";
-        String screenLabel = isScreenSharing ? "⏹️ Durdur" : "📺 Ekran";
+        String micLabel = isMuted ? "Mikrofonu Aç" : "Sessize Al";
+        String screenLabel = isScreenSharing ? "Paylaşımı Durdur" : "Ekran Paylaş";
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("📞 " + channelName)
-            .setContentText("⏱️ Süre: " + duration + "  •  Aktif Görüşme")
+            .setContentTitle(channelName != null && !channelName.isEmpty() ? channelName : "Canlı Görüşme")
+            .setContentText("Süre: " + duration + "  •  Aktif Oda")
             .setSubText("Oxypace")
+            .setColor(0xFF161B22)
+            .setColorized(false)
             .setOngoing(true)
             .setShowWhen(false)
             .setOnlyAlertOnce(true)
@@ -346,7 +353,7 @@ public class ActiveCallService extends Service {
             .setContentIntent(piMain)
             .addAction(isMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic, micLabel, piToggleMic)
             .addAction(isScreenSharing ? R.drawable.ic_pip_screen_off : R.drawable.ic_pip_screen, screenLabel, piToggleScreen)
-            .addAction(R.drawable.ic_pip_end_call, "🔴 Ayrıl", piHangup)
+            .addAction(R.drawable.ic_pip_end_call, "Ayrıl", piHangup)
             .build();
     }
 

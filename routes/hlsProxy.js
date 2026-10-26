@@ -491,6 +491,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
           'Content-Type': upstreamType || 'application/octet-stream',
           'Content-Length': String(declaredLength),
           'Accept-Ranges': response.headers.get('Accept-Ranges') || 'bytes',
+          'Cache-Control': 'public, max-age=86400, immutable',
         };
         if (response.headers.get('Content-Range')) streamHeaders['Content-Range'] = response.headers.get('Content-Range');
         const streamCors = resolveProxyCorsOrigin(req.headers.origin);
@@ -603,6 +604,10 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     };
     if (isPosterOrImage) {
       resHeaders['Cache-Control'] = 'public, max-age=86400, immutable';
+    } else if (contentType === 'video/mp2t' || lowerUrl.includes('.ts') || lowerUrl.includes('.m4s') || (!isPlaylist && !isSubtitleFile)) {
+      resHeaders['Cache-Control'] = 'public, max-age=86400, immutable';
+    } else if (isPlaylist) {
+      resHeaders['Cache-Control'] = 'public, max-age=3';
     }
     if (allowedCorsOrigin) {
       resHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;

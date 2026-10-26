@@ -168,6 +168,8 @@ postSchema.pre('deleteOne', { document: true, query: false }, async function(nex
 // Indexes for performance
 postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ portal: 1, createdAt: -1 });
+postSchema.index({ portal: 1, isArchived: 1, createdAt: -1 }); // Global & portal feed index
+postSchema.index({ isArchived: 1, createdAt: -1 }); // Global feed without portal
 postSchema.index({ portal: 1, author: 1, createdAt: -1 });
 postSchema.index({ portal: 1, channel: 1, createdAt: -1 }); // Optimized feed query
 postSchema.index({ likes: 1 });

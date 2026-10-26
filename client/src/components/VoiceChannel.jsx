@@ -5,12 +5,13 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings, Eye, EyeOff } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings, Eye, EyeOff, Headphones } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import { useUI } from '../context/UIContext';
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Clipboard as CapClipboard } from '@capacitor/clipboard';
 import './VoiceChannel.css';
 
 const CallManager = registerPlugin('CallManager');
@@ -177,6 +178,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         selectedAudioInput,
         selectedAudioOutput,
         selectedVideoInput,
+        nativeAudioRoute,
         watchParty,
         startWatchParty,
         stopWatchParty,
@@ -289,6 +291,27 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
         return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
+
+    const handlePasteToInput = async (setter) => {
+        try {
+            if (Capacitor.isNativePlatform()) {
+                const res = await CapClipboard.read();
+                if (res && res.value && typeof res.value === 'string') {
+                    setter(res.value.trim());
+                    return;
+                }
+            }
+            if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                const text = await navigator.clipboard.readText();
+                if (text && typeof text === 'string') {
+                    setter(text.trim());
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn("[VoiceChannel] Clipboard paste error:", err);
+        }
     };
     useEffect(() => {
         if (window.desktopAPI && window.desktopAPI.onVideoSniffed) {
@@ -948,14 +971,17 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <button className={`vc-device-arrow ${isMicMenuOpen ? 'active' : ''}`} onClick={() => setIsMicMenuOpen(!isMicMenuOpen)}><ChevronUp size={16} /></button>
                             )}
                             {isMicMenuOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '8px', padding: '6px', width: 'min(200px, 75vw)', boxSizing: 'border-box' }}>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px', padding: '0 4px' }}>MİKROFON</div>
-                                    {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
-                                        <div key={d.deviceId} className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}>
-                                            <span>{d.label || 'Mikrofon'}</span>
-                                            {selectedAudioInput === d.deviceId && <Check size={12} />}
-                                        </div>
-                                    ))}
+                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '8px', padding: '6px', width: 'min(220px, 75vw)', boxSizing: 'border-box' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px', padding: '0 4px', textTransform: 'uppercase' }}>MİKROFON</div>
+                                    {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map((d, idx) => {
+                                        const isSelected = selectedAudioInput === d.deviceId || (!selectedAudioInput && (d.deviceId === 'default' || idx === 0));
+                                        return (
+                                            <div key={d.deviceId} className={`vc-device-option ${isSelected ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}>
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Mikrofon'}</span>
+                                                {isSelected && <Check size={12} />}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -1002,81 +1028,207 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <Link size={22} color={watchParty?.url && !watchParty?.isLive ? '#ffffff' : '#ef4444'} />
                             </button>
                             {isWatchInputOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '8px', padding: '8px', width: 'min(280px, 85vw)', display: 'flex', gap: '6px', boxSizing: 'border-box' }}>
-                                    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '100%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    marginBottom: '10px',
+                                    padding: '12px',
+                                    width: 'min(330px, 92vw)',
+                                    background: '#121418',
+                                    border: '1px solid rgba(255, 255, 255, 0.14)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.75)',
+                                    zIndex: 1005,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Link size={14} color="#58a6ff" />
+                                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#e6edf3', letterSpacing: '0.2px' }}>
+                                                Video Bağlantısı
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsWatchInputOpen(false)}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#8b949e',
+                                                cursor: 'pointer',
+                                                padding: '2px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            title="Kapat"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: '#0d1117',
+                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        borderRadius: '6px',
+                                        padding: '0 8px',
+                                        height: '36px',
+                                        gap: '6px'
+                                    }}>
                                         <input 
                                             type="text" 
-                                            placeholder="YouTube, MP4 linki veya Video ID..." 
+                                            placeholder="YouTube, MP4 veya video URL..." 
                                             value={watchUrl} 
                                             onChange={(e) => setWatchUrl(e.target.value)}
-                                            style={{ width: '100%', padding: '5px 24px 5px 6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '11px' }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && watchUrl.trim()) {
+                                                    startWatchParty(watchUrl.trim(), false);
+                                                    setIsWatchInputOpen(false);
+                                                }
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                background: 'transparent',
+                                                border: 'none',
+                                                outline: 'none',
+                                                color: '#ffffff',
+                                                fontSize: '12px',
+                                                minWidth: 0
+                                            }}
                                         />
-                                        <div style={{ position: 'absolute', right: '3px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '2px' }}>
-                                            <button 
-                                                type="button"
-                                                onClick={async () => {
-                                                    try {
-                                                        const text = await navigator.clipboard.readText();
-                                                        setWatchUrl(text);
-                                                    } catch (err) {
-                                                        console.warn("Could not paste from clipboard", err);
-                                                    }
-                                                }}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                title="Yapıştır"
-                                            >
-                                                <Clipboard size={12} />
-                                            </button>
+                                        {watchUrl && (
                                             <button 
                                                 type="button"
                                                 onClick={() => setWatchUrl('')}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: '#8b949e',
+                                                    cursor: 'pointer',
+                                                    padding: '2px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
                                                 title="Temizle"
                                             >
-                                                <X size={12} />
+                                                <X size={13} />
                                             </button>
-                                        </div>
+                                        )}
+                                        <button 
+                                            type="button"
+                                            onClick={() => handlePasteToInput(setWatchUrl)}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.08)',
+                                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                borderRadius: '4px',
+                                                color: '#c9d1d9',
+                                                fontSize: '11px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                padding: '4px 8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                flexShrink: 0
+                                            }}
+                                            title="Panodan Yapıştır"
+                                        >
+                                            <Clipboard size={12} />
+                                            <span>Yapıştır</span>
+                                        </button>
                                     </div>
-                                    <button 
-                                        onClick={() => {
-                                            if (watchUrl.trim()) {
-                                                startWatchParty(watchUrl.trim(), false);
-                                                setIsWatchInputOpen(false);
-                                            }
-                                        }}
-                                        className="chat-send-btn glass-btn active"
-                                        style={{ padding: '5px 10px', fontSize: '11px', flexShrink: 0 }}
-                                    >
-                                        Başlat
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => {
-                                            setIsHlsVol2ModalOpen(true);
-                                            setIsWatchInputOpen(false);
-                                        }}
-                                        className="chat-send-btn glass-btn"
-                                        style={{ padding: '5px 10px', fontSize: '11px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(88, 166, 255, 0.2)', border: '1px solid rgba(88, 166, 255, 0.4)', color: '#58a6ff' }}
-                                        title="Entegre Film Arama ve Çözümleyici (Vol 2)"
-                                    >
-                                        <Film size={13} color="#58a6ff" /> Film Ara
-                                    </button>
-                                    {!!window.desktopAPI && (
+
+                                    <div style={{ display: 'flex', gap: '6px' }}>
                                         <button 
                                             type="button"
                                             onClick={() => {
-                                                const urlVal = watchUrl.trim();
-                                                const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
-                                                window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
+                                                if (watchUrl.trim()) {
+                                                    startWatchParty(watchUrl.trim(), false);
+                                                    setIsWatchInputOpen(false);
+                                                }
+                                            }}
+                                            disabled={!watchUrl.trim()}
+                                            style={{
+                                                flex: 1,
+                                                height: '32px',
+                                                background: '#238636',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '6px',
+                                                color: '#ffffff',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                cursor: watchUrl.trim() ? 'pointer' : 'not-allowed',
+                                                opacity: watchUrl.trim() ? 1 : 0.5,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            Başlat
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                setIsHlsVol2ModalOpen(true);
                                                 setIsWatchInputOpen(false);
                                             }}
-                                            className="chat-send-btn glass-btn"
-                                            style={{ padding: '5px 10px', fontSize: '11px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}
-                                            title="Film sitesini açıp oynatılan videoyu yakalayın"
+                                            style={{
+                                                height: '32px',
+                                                padding: '0 10px',
+                                                background: '#21262d',
+                                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                borderRadius: '6px',
+                                                color: '#58a6ff',
+                                                fontSize: '12px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                            title="Film Arama ve Çözümleyici"
                                         >
-                                            <Globe size={13} /> Film Aç
+                                            <Film size={13} color="#58a6ff" />
+                                            <span>Film Ara</span>
                                         </button>
-                                    )}
+                                        {!!window.desktopAPI && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => {
+                                                    const urlVal = watchUrl.trim();
+                                                    const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
+                                                    window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
+                                                    setIsWatchInputOpen(false);
+                                                }}
+                                                style={{
+                                                    height: '32px',
+                                                    padding: '0 10px',
+                                                    background: '#21262d',
+                                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                    borderRadius: '6px',
+                                                    color: '#f85149',
+                                                    fontSize: '12px',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px'
+                                                }}
+                                                title="Film Sitesini Aç"
+                                            >
+                                                <Globe size={13} color="#f85149" />
+                                                <span>Film Aç</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1087,71 +1239,198 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <Radio size={22} color={watchParty?.url && watchParty?.isLive ? '#ffffff' : '#10b981'} />
                             </button>
                             {isLiveWatchInputOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '8px', padding: '8px', width: 'min(280px, 85vw)', display: 'flex', flexWrap: 'wrap', gap: '6px', boxSizing: 'border-box' }}>
-                                    <div style={{ position: 'relative', flex: 1, minWidth: '130px', display: 'flex', alignItems: 'center' }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '100%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    marginBottom: '10px',
+                                    padding: '12px',
+                                    width: 'min(330px, 92vw)',
+                                    background: '#121418',
+                                    border: '1px solid rgba(255, 255, 255, 0.14)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.75)',
+                                    zIndex: 1005,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Radio size={14} color="#3fb950" />
+                                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#e6edf3', letterSpacing: '0.2px' }}>
+                                                Canlı Yayın Bağlantısı
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsLiveWatchInputOpen(false)}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#8b949e',
+                                                cursor: 'pointer',
+                                                padding: '2px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            title="Kapat"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: '#0d1117',
+                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        borderRadius: '6px',
+                                        padding: '0 8px',
+                                        height: '36px',
+                                        gap: '6px'
+                                    }}>
                                         <input 
                                             type="text" 
-                                            placeholder="Canlı Yayın Linki (.m3u8/.mpd)..." 
+                                            placeholder="Canlı akış linki (.m3u8, .mpd)..." 
                                             value={liveWatchUrl} 
                                             onChange={(e) => setLiveWatchUrl(e.target.value)}
-                                            style={{ width: '100%', padding: '5px 24px 5px 6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '11px' }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && liveWatchUrl.trim()) {
+                                                    startWatchParty(liveWatchUrl.trim(), true);
+                                                    setIsLiveWatchInputOpen(false);
+                                                }
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                background: 'transparent',
+                                                border: 'none',
+                                                outline: 'none',
+                                                color: '#ffffff',
+                                                fontSize: '12px',
+                                                minWidth: 0
+                                            }}
                                         />
-                                        <div style={{ position: 'absolute', right: '3px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '2px' }}>
-                                            <button 
-                                                type="button"
-                                                onClick={async () => {
-                                                    try {
-                                                        const text = await navigator.clipboard.readText();
-                                                        setLiveWatchUrl(text);
-                                                    } catch (err) {
-                                                        console.warn("Could not paste from clipboard", err);
-                                                    }
-                                                }}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                title="Yapıştır"
-                                            >
-                                                <Clipboard size={12} />
-                                            </button>
+                                        {liveWatchUrl && (
                                             <button 
                                                 type="button"
                                                 onClick={() => setLiveWatchUrl('')}
-                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: '#8b949e',
+                                                    cursor: 'pointer',
+                                                    padding: '2px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
                                                 title="Temizle"
                                             >
-                                                <X size={12} />
+                                                <X size={13} />
                                             </button>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                        )}
                                         <button 
+                                            type="button"
+                                            onClick={() => handlePasteToInput(setLiveWatchUrl)}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.08)',
+                                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                borderRadius: '4px',
+                                                color: '#c9d1d9',
+                                                fontSize: '11px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                padding: '4px 8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                flexShrink: 0
+                                            }}
+                                            title="Panodan Yapıştır"
+                                        >
+                                            <Clipboard size={12} />
+                                            <span>Yapıştır</span>
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button 
+                                            type="button"
                                             onClick={() => {
                                                 if (liveWatchUrl.trim()) {
                                                     startWatchParty(liveWatchUrl.trim(), true);
                                                     setIsLiveWatchInputOpen(false);
                                                 }
                                             }}
-                                            className="chat-send-btn glass-btn active"
-                                            style={{ padding: '5px 8px', fontSize: '11px' }}
+                                            disabled={!liveWatchUrl.trim()}
+                                            style={{
+                                                flex: 1,
+                                                height: '32px',
+                                                background: '#238636',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '6px',
+                                                color: '#ffffff',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                cursor: liveWatchUrl.trim() ? 'pointer' : 'not-allowed',
+                                                opacity: liveWatchUrl.trim() ? 1 : 0.5,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
                                         >
                                             Başlat
                                         </button>
                                         <button 
+                                            type="button"
                                             onClick={() => setIsHlsModalOpen(true)}
-                                            className="chat-send-btn glass-btn active"
-                                            style={{ padding: '5px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                            style={{
+                                                height: '32px',
+                                                padding: '0 10px',
+                                                background: '#21262d',
+                                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                borderRadius: '6px',
+                                                color: '#c9d1d9',
+                                                fontSize: '12px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                            title="HLS Akış Çözücü"
                                         >
-                                            <Radio size={12} /> HLS
+                                            <Radio size={13} color="#c9d1d9" />
+                                            <span>HLS</span>
                                         </button>
                                         <button 
+                                            type="button"
                                             onClick={() => {
                                                 setIsHlsVol2ModalOpen(true);
                                                 setIsLiveWatchInputOpen(false);
                                             }}
-                                            className="chat-send-btn glass-btn active"
-                                            style={{ padding: '5px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px', backgroundColor: 'rgba(88, 166, 255, 0.25)', border: '1px solid rgba(88, 166, 255, 0.5)', color: '#58a6ff' }}
-                                            title="Entegre Film Arama ve Oynatıcı (Vol 2)"
+                                            style={{
+                                                height: '32px',
+                                                padding: '0 10px',
+                                                background: '#21262d',
+                                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                borderRadius: '6px',
+                                                color: '#58a6ff',
+                                                fontSize: '12px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                            title="Entegre Film Arama ve Oynatıcı"
                                         >
-                                            <Film size={12} /> Film Ara
+                                            <Film size={13} color="#58a6ff" />
+                                            <span>Film Ara</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1191,17 +1470,47 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     <button className={`vc-more-option ${hideSelfView ? 'active' : ''}`} onClick={() => { toggleHideSelfView(); setIsMoreMenuOpen(false); }}>
                                         {hideSelfView ? <Eye size={15} /> : <EyeOff size={15} />} <span>{hideSelfView ? 'Kendi Görüntümü Göster' : 'Kamera görüntü penceremi benden gizle'}</span>
                                     </button>
-                                    {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
+                                    {Capacitor.isNativePlatform() ? (
                                         <>
                                             <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-                                            <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HOPARLÖR ÇIKIŞI</div>
-                                            {availableDevices.audioOutputs.map(d => (
-                                                <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Hoparlör'}</span>
-                                                    {selectedAudioOutput === d.deviceId && <Check size={13} />}
+                                            <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SES ÇIKIŞI</div>
+                                            <button 
+                                                className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'speaker' ? 'active' : ''}`} 
+                                                onClick={() => { setAudioOutput('speaker'); setIsMoreMenuOpen(false); }}
+                                            >
+                                                <Volume2 size={15} /> 
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Hoparlör</span>
+                                                {nativeAudioRoute?.currentRoute === 'speaker' && <Check size={13} />}
+                                            </button>
+                                            {nativeAudioRoute?.hasHeadset && (
+                                                <button 
+                                                    className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'headset' ? 'active' : ''}`} 
+                                                    onClick={() => { setAudioOutput('headset'); setIsMoreMenuOpen(false); }}
+                                                >
+                                                    <Headphones size={15} /> 
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nativeAudioRoute.headsetName || 'Kulaklık'}</span>
+                                                    {nativeAudioRoute?.currentRoute === 'headset' && <Check size={13} />}
                                                 </button>
-                                            ))}
+                                            )}
                                         </>
+                                    ) : (
+                                        Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
+                                            <>
+                                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                                                <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SES ÇIKIŞI</div>
+                                                {availableDevices.audioOutputs.map(d => {
+                                                    const isHeadset = d.label?.toLowerCase().includes('headphone') || d.label?.toLowerCase().includes('kulaklık') || d.label?.toLowerCase().includes('headset') || d.label?.toLowerCase().includes('airpods');
+                                                    const isSelected = selectedAudioOutput === d.deviceId || (!selectedAudioOutput && d.deviceId === 'default');
+                                                    return (
+                                                        <button key={d.deviceId} className={`vc-more-option ${isSelected ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
+                                                            {isHeadset ? <Headphones size={15} /> : <Volume2 size={15} />}
+                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Hoparlör'}</span>
+                                                            {isSelected && <Check size={13} />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </>
+                                        )
                                     )}
                                 </div>
                             )}

@@ -7,8 +7,8 @@ android {
         applicationId "com.oxypace.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 249
-        versionName "2.4.9"
+        versionCode 250
+        versionName "2.5.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Directed sub-properties to control bundling of art files
@@ -29,6 +29,7 @@ android {
             v1SigningEnabled true
             v2SigningEnabled true
             enableV3Signing = true
+            enableV4Signing = true
         }
     }
     buildTypes {

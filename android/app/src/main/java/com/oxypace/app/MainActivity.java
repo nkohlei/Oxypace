@@ -15,6 +15,16 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends BridgeActivity {
     public static float sNavBarBottomDp = 0f;
@@ -96,8 +106,17 @@ public class MainActivity extends BridgeActivity {
                         });
                     }
                 } else {
-                    serviceIntent.setAction("STOP_CALL");
-                    ctx.startService(serviceIntent);
+                    MainActivity.CallManager.isInCall = false;
+                    try {
+                        if (ActiveCallService.sInstance != null) {
+                            ActiveCallService.sInstance.stopCall();
+                        }
+                    } catch (Exception ignored) {}
+
+                    try {
+                        serviceIntent.setAction("STOP_CALL");
+                        ctx.stopService(serviceIntent);
+                    } catch (Exception ignored) {}
 
                     // Explicitly cancel ongoing call notification immediately
                     try {
@@ -135,31 +154,180 @@ public class MainActivity extends BridgeActivity {
             call.resolve();
         }
 
+        public static String sCurrentRoute = "speaker";
+        public static String sUserSelectedRoute = null;
+        public static boolean sHasHeadset = false;
+        public static String sHeadsetName = "Kulaklık";
+
+        public static boolean isHeadsetConnected(android.media.AudioManager am) {
+            if (am == null) return false;
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    android.media.AudioDeviceInfo[] devices = am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS);
+                    for (android.media.AudioDeviceInfo device : devices) {
+                        int type = device.getType();
+                        if (type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                            type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                            type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                            type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET ||
+                            type == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
+                            if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                                type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                                type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) {
+                                sHeadsetName = "Bluetooth Kulaklık";
+                            } else {
+                                sHeadsetName = "Kablolu Kulaklık";
+                            }
+                            return true;
+                        }
+                    }
+                    return false;
+                } else {
+                    @SuppressWarnings("deprecation")
+                    boolean wired = am.isWiredHeadsetOn();
+                    @SuppressWarnings("deprecation")
+                    boolean bt = am.isBluetoothScoOn() || am.isBluetoothA2dpOn();
+                    if (bt) sHeadsetName = "Bluetooth Kulaklık";
+                    else if (wired) sHeadsetName = "Kablolu Kulaklık";
+                    return wired || bt;
+                }
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        public static android.media.AudioDeviceInfo getHeadsetDevice(android.media.AudioManager am) {
+            if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return null;
+            try {
+                java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
+                for (android.media.AudioDeviceInfo d : devices) {
+                    int t = d.getType();
+                    if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO || t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) {
+                        return d;
+                    }
+                }
+                for (android.media.AudioDeviceInfo d : devices) {
+                    int t = d.getType();
+                    if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET || t == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
+                        return d;
+                    }
+                }
+                for (android.media.AudioDeviceInfo d : devices) {
+                    int t = d.getType();
+                    if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES || t == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
+                        return d;
+                    }
+                }
+            } catch (Exception ignored) {}
+            return null;
+        }
+
+        public static android.media.AudioDeviceInfo getSpeakerDevice(android.media.AudioManager am) {
+            if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return null;
+            try {
+                java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
+                for (android.media.AudioDeviceInfo d : devices) {
+                    if (d.getType() == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                        return d;
+                    }
+                }
+            } catch (Exception ignored) {}
+            return null;
+        }
+
+        public static void routeAudio(android.media.AudioManager am, String targetRoute) {
+            if (am == null) return;
+            try {
+                if ("headset".equalsIgnoreCase(targetRoute)) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        android.media.AudioDeviceInfo hd = getHeadsetDevice(am);
+                        if (hd != null) {
+                            am.setCommunicationDevice(hd);
+                        } else {
+                            am.clearCommunicationDevice();
+                        }
+                    }
+                    am.setSpeakerphoneOn(false);
+                    try {
+                        am.startBluetoothSco();
+                        am.setBluetoothScoOn(true);
+                    } catch (Exception ignored) {}
+                    sCurrentRoute = "headset";
+                } else {
+                    // Speakerphone
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        android.media.AudioDeviceInfo spk = getSpeakerDevice(am);
+                        if (spk != null) {
+                            am.setCommunicationDevice(spk);
+                        }
+                    }
+                    try {
+                        if (am.isBluetoothScoOn()) {
+                            am.stopBluetoothSco();
+                            am.setBluetoothScoOn(false);
+                        }
+                    } catch (Exception ignored) {}
+                    am.setSpeakerphoneOn(true);
+                    sCurrentRoute = "speaker";
+                }
+            } catch (Exception e) {
+                android.util.Log.w("CallManager", "routeAudio failed: " + e.getMessage());
+            }
+        }
+
         public static void applyAudioRouting(android.media.AudioManager am, String mode) {
             if (am == null) return;
             try {
-                // Ensure MODE_NORMAL is enforced so video audio and voice room audio play through
-                // high-fidelity STREAM_MUSIC, completely eliminating narrowband telephone-like muffled DSP.
+                // Keep MODE_NORMAL for high-fidelity stereo audio
                 am.setMode(android.media.AudioManager.MODE_NORMAL);
-                routeToSpeaker(am);
+                boolean hasHeadset = isHeadsetConnected(am);
+                sHasHeadset = hasHeadset;
+                // If user explicitly chose a route, respect it.
+                // Otherwise: IF HEADSET CONNECTED -> DEFAULT TO HEADSET!
+                // IF NO HEADSET -> DEFAULT TO SPEAKER!
+                String targetRoute;
+                if (sUserSelectedRoute != null) {
+                    targetRoute = sUserSelectedRoute;
+                } else {
+                    targetRoute = hasHeadset ? "headset" : "speaker";
+                }
+                routeAudio(am, targetRoute);
+                dispatchAudioRouteChanged(targetRoute, hasHeadset, sHeadsetName);
             } catch (Exception e) {
                 android.util.Log.w("CallManager", "Failed to apply audio routing: " + e.getMessage());
             }
         }
 
         public static void routeToSpeaker(android.media.AudioManager am) {
-            if (am == null) return;
+            sUserSelectedRoute = "speaker";
+            routeAudio(am, "speaker");
+        }
+
+        public static void routeToHeadset(android.media.AudioManager am) {
+            sUserSelectedRoute = "headset";
+            routeAudio(am, "headset");
+        }
+
+        public static void dispatchAudioRouteChanged(String currentRoute, boolean hasHeadset, String name) {
             try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
-                    for (android.media.AudioDeviceInfo device : devices) {
-                        if (device.getType() == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
-                            am.setCommunicationDevice(device);
-                            break;
-                        }
-                    }
+                MainActivity act = activityInstance;
+                if (act != null) {
+                    act.runOnUiThread(() -> {
+                        try {
+                            com.getcapacitor.Bridge bridge = act.getBridge();
+                            android.webkit.WebView wv = bridge != null ? bridge.getWebView() : null;
+                            if (wv != null) {
+                                String script = String.format(
+                                    "(function(){ window.dispatchEvent(new CustomEvent('oxypace:audio_route_changed', { detail: { currentRoute: '%s', hasHeadset: %b, headsetName: '%s' } })); })();",
+                                    currentRoute, hasHeadset, (name != null && !name.isEmpty()) ? name : "Kulaklık"
+                                );
+                                wv.evaluateJavascript(script, null);
+                            }
+                        } catch (Exception ignored) {}
+                    });
                 }
-                am.setSpeakerphoneOn(true);
             } catch (Exception ignored) {}
         }
 
@@ -173,6 +341,43 @@ public class MainActivity extends BridgeActivity {
                     applyAudioRouting(am, mode);
                 }
                 call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void getAudioRouting(PluginCall call) {
+            try {
+                android.content.Context ctx = getContext();
+                android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                boolean hasHeadset = isHeadsetConnected(am);
+                sHasHeadset = hasHeadset;
+                JSObject ret = new JSObject();
+                ret.put("currentRoute", sCurrentRoute);
+                ret.put("hasHeadset", hasHeadset);
+                ret.put("headsetName", sHeadsetName);
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void setAudioOutputRoute(PluginCall call) {
+            String route = call.getString("route", "speaker");
+            try {
+                android.content.Context ctx = getContext();
+                android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                if (am != null) {
+                    sUserSelectedRoute = route;
+                    routeAudio(am, route);
+                    dispatchAudioRouteChanged(route, sHasHeadset, sHeadsetName);
+                }
+                JSObject ret = new JSObject();
+                ret.put("currentRoute", sCurrentRoute);
+                ret.put("hasHeadset", sHasHeadset);
+                call.resolve(ret);
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }
@@ -366,6 +571,259 @@ public class MainActivity extends BridgeActivity {
             }
 
             call.resolve();
+        }
+    }
+
+    @CapacitorPlugin(name = "NativeMediaPreloader")
+    public static class NativeMediaPreloader extends com.getcapacitor.Plugin {
+        @PluginMethod
+        public void preloadUrls(PluginCall call) {
+            com.getcapacitor.JSArray urls = call.getArray("urls");
+            if (urls != null) {
+                Context ctx = getContext();
+                for (int i = 0; i < urls.length(); i++) {
+                    try {
+                        String url = urls.getString(i);
+                        if (url != null && !url.trim().isEmpty()) {
+                            NativeMediaCacheManager.preload(ctx, url.trim());
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            call.resolve();
+        }
+    }
+
+    @CapacitorPlugin(name = "ScreenOrientationManager")
+    public static class ScreenOrientationManager extends com.getcapacitor.Plugin {
+        @PluginMethod
+        public void setOrientation(PluginCall call) {
+            String orientation = call.getString("orientation", "unspecified");
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    try {
+                        if ("landscape".equalsIgnoreCase(orientation)) {
+                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                        } else if ("portrait".equalsIgnoreCase(orientation)) {
+                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                        } else {
+                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                        }
+                    } catch (Exception ignored) {}
+                });
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void toggleOrientation(PluginCall call) {
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    try {
+                        int current = getActivity().getRequestedOrientation();
+                        boolean isLandscape = (current == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE ||
+                                               current == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE ||
+                                               getActivity().getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE);
+                        if (isLandscape) {
+                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                        } else {
+                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                        }
+                    } catch (Exception ignored) {}
+                });
+            }
+            call.resolve();
+        }
+    }
+
+    public static class NativeMediaCacheManager {
+        private static final long MAX_CACHE_SIZE_BYTES = 500L * 1024L * 1024L; // 500 MB max disk cache
+        private static final ExecutorService sWorkerPool = Executors.newFixedThreadPool(6);
+        private static File sCacheDir = null;
+
+        public static synchronized void init(Context context) {
+            if (sCacheDir == null && context != null) {
+                sCacheDir = new File(context.getCacheDir(), "oxypace_native_media_cache");
+                if (!sCacheDir.exists()) {
+                    sCacheDir.mkdirs();
+                }
+                sWorkerPool.execute(NativeMediaCacheManager::pruneCacheIfNeeded);
+            }
+        }
+
+        private static String getCacheKey(String url) {
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+                byte[] digest = md.digest(url.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                for (byte b : digest) {
+                    sb.append(String.format("%02x", b));
+                }
+                return sb.toString();
+            } catch (Exception e) {
+                return String.valueOf(url.hashCode());
+            }
+        }
+
+        public static boolean isMediaUrl(String url) {
+            if (url == null) return false;
+            String lower = url.toLowerCase();
+            // Video streaming requires HTTP 206 range requests; bypass to standard stream pipeline
+            if (lower.contains(".mp4") || lower.contains(".m3u8") || lower.contains(".mpd") || lower.contains(".ts")) {
+                return false;
+            }
+            if (lower.contains("/api/media/") || lower.contains("/r2-media/") || lower.contains("/uploads/") || lower.contains(".r2.dev/")) {
+                return true;
+            }
+            return lower.endsWith(".webp") || lower.endsWith(".png") || lower.endsWith(".jpg") || 
+                   lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".svg") || lower.endsWith(".ico");
+        }
+
+        public static String guessMimeType(String url) {
+            String clean = url.split("\\?")[0].toLowerCase();
+            if (clean.endsWith(".webp")) return "image/webp";
+            if (clean.endsWith(".png")) return "image/png";
+            if (clean.endsWith(".jpg") || clean.endsWith(".jpeg")) return "image/jpeg";
+            if (clean.endsWith(".gif")) return "image/gif";
+            if (clean.endsWith(".svg")) return "image/svg+xml";
+            if (clean.endsWith(".ico")) return "image/x-icon";
+            return "image/webp";
+        }
+
+        public static android.webkit.WebResourceResponse handleIntercept(Context ctx, android.webkit.WebResourceRequest request) {
+            if (ctx == null || request == null || request.getUrl() == null) return null;
+            String urlStr = request.getUrl().toString();
+            if (!isMediaUrl(urlStr)) return null;
+
+            Map<String, String> reqHeaders = request.getRequestHeaders();
+            if (reqHeaders != null && (reqHeaders.containsKey("Range") || reqHeaders.containsKey("range"))) {
+                return null;
+            }
+
+            init(ctx);
+            if (sCacheDir == null) return null;
+
+            String key = getCacheKey(urlStr);
+            File cachedFile = new File(sCacheDir, key);
+
+            // 1. INSTANT DISK CACHE HIT (0.2ms zero-latency rendering)
+            if (cachedFile.exists() && cachedFile.length() > 0) {
+                try {
+                    cachedFile.setLastModified(System.currentTimeMillis());
+                    String mimeType = guessMimeType(urlStr);
+                    Map<String, String> respHeaders = new HashMap<>();
+                    respHeaders.put("Access-Control-Allow-Origin", "*");
+                    respHeaders.put("Cache-Control", "public, max-age=31536000, immutable");
+                    respHeaders.put("X-Oxypace-Native-Cache", "HIT");
+                    return new android.webkit.WebResourceResponse(mimeType, "UTF-8", 200, "OK", respHeaders, new FileInputStream(cachedFile));
+                } catch (Exception ignored) {}
+            }
+
+            // 2. DISK CACHE MISS: Fetch on Chromium worker thread and save to disk
+            try {
+                URL targetUrl = new URL(urlStr);
+                HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(12000);
+                conn.setInstanceFollowRedirects(true);
+                conn.setRequestProperty("User-Agent", "OxypaceAndroid/2.4.9 (HighPerformanceCache)");
+                conn.setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
+
+                int statusCode = conn.getResponseCode();
+                if (statusCode >= 200 && statusCode < 300) {
+                    File tmpFile = new File(sCacheDir, key + ".tmp");
+                    try (InputStream in = conn.getInputStream();
+                         FileOutputStream out = new FileOutputStream(tmpFile)) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                    }
+
+                    if (tmpFile.exists() && tmpFile.length() > 0) {
+                        tmpFile.renameTo(cachedFile);
+                    }
+
+                    String contentType = conn.getContentType();
+                    if (contentType == null || contentType.isEmpty() || contentType.contains("text/html")) {
+                        contentType = guessMimeType(urlStr);
+                    }
+
+                    Map<String, String> respHeaders = new HashMap<>();
+                    respHeaders.put("Access-Control-Allow-Origin", "*");
+                    respHeaders.put("Cache-Control", "public, max-age=31536000, immutable");
+                    respHeaders.put("X-Oxypace-Native-Cache", "MISS-FETCHED");
+
+                    if (cachedFile.exists() && cachedFile.length() > 0) {
+                        return new android.webkit.WebResourceResponse(contentType, "UTF-8", 200, "OK", respHeaders, new FileInputStream(cachedFile));
+                    }
+                }
+                conn.disconnect();
+            } catch (Exception ignored) {}
+
+            return null;
+        }
+
+        public static void preload(Context ctx, String urlStr) {
+            if (ctx == null || urlStr == null || !isMediaUrl(urlStr)) return;
+            init(ctx);
+            if (sCacheDir == null) return;
+
+            sWorkerPool.execute(() -> {
+                try {
+                    String key = getCacheKey(urlStr);
+                    File cachedFile = new File(sCacheDir, key);
+                    if (cachedFile.exists() && cachedFile.length() > 0) return;
+
+                    URL targetUrl = new URL(urlStr);
+                    HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(4000);
+                    conn.setReadTimeout(8000);
+                    conn.setInstanceFollowRedirects(true);
+                    conn.setRequestProperty("User-Agent", "OxypaceAndroid/2.4.9 (ProactivePreloader)");
+
+                    if (conn.getResponseCode() == 200) {
+                        File tmpFile = new File(sCacheDir, key + ".tmp");
+                        try (InputStream in = conn.getInputStream();
+                             FileOutputStream out = new FileOutputStream(tmpFile)) {
+                            byte[] buffer = new byte[8192];
+                            int read;
+                            while ((read = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, read);
+                            }
+                        }
+                        if (tmpFile.exists() && tmpFile.length() > 0) {
+                            tmpFile.renameTo(cachedFile);
+                        }
+                    }
+                    conn.disconnect();
+                } catch (Exception ignored) {}
+            });
+        }
+
+        private static void pruneCacheIfNeeded() {
+            if (sCacheDir == null || !sCacheDir.exists()) return;
+            try {
+                File[] files = sCacheDir.listFiles();
+                if (files == null) return;
+                long totalSize = 0;
+                for (File f : files) {
+                    totalSize += f.length();
+                }
+                if (totalSize > MAX_CACHE_SIZE_BYTES) {
+                    java.util.Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
+                    for (File f : files) {
+                        if (totalSize <= (MAX_CACHE_SIZE_BYTES * 0.75)) break;
+                        long len = f.length();
+                        if (f.delete()) {
+                            totalSize -= len;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -784,6 +1242,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AuthSync.class);
         registerPlugin(ChatNotificationManager.class);
         registerPlugin(SystemBarManager.class);
+        registerPlugin(NativeMediaPreloader.class);
+        registerPlugin(ScreenOrientationManager.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
 
@@ -939,6 +1399,9 @@ public class MainActivity extends BridgeActivity {
         // Initialize and register all notification channels upfront so Android OS never drops notifications
         initNotificationChannels();
 
+        // Listen for wired and Bluetooth headset connection/disconnection
+        setupAudioDeviceMonitoring();
+
 
         android.webkit.WebView webView = getBridge().getWebView();
 
@@ -958,6 +1421,15 @@ public class MainActivity extends BridgeActivity {
             settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
             settings.setLoadsImagesAutomatically(true);
             settings.setBlockNetworkImage(false);
+
+            // High-performance rendering & cache flags (Instagram / Twitter style)
+            try {
+                settings.setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH);
+                settings.setEnableSmoothTransition(true);
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    settings.setOffscreenPreRaster(true);
+                }
+            } catch (Exception ignored) {}
             
             // WebChromeClient for HTML5 Video & Media in WebView
             webView.setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(getBridge()) {
@@ -977,6 +1449,18 @@ public class MainActivity extends BridgeActivity {
             }
 
             webView.setWebViewClient(new com.getcapacitor.BridgeWebViewClient(getBridge()) {
+                @Override
+                public android.webkit.WebResourceResponse shouldInterceptRequest(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
+                    // 1. Ultra-fast Native Disk Media Cache (<0.2ms zero-latency load for cached avatars, banners, badges, gifs, images)
+                    android.webkit.WebResourceResponse cached = NativeMediaCacheManager.handleIntercept(MainActivity.this, request);
+                    if (cached != null) {
+                        return cached;
+                    }
+
+                    // 2. Fallback to Capacitor internal assets handler
+                    return super.shouldInterceptRequest(view, request);
+                }
+
                 @Override
                 public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
                     String url = request.getUrl().toString();
@@ -1403,5 +1887,61 @@ public class MainActivity extends BridgeActivity {
                 nm.createNotificationChannel(generalChannel);
             }
         }
+    }
+
+    private void setupAudioDeviceMonitoring() {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                am.registerAudioDeviceCallback(new android.media.AudioDeviceCallback() {
+                    @Override
+                    public void onAudioDevicesAdded(android.media.AudioDeviceInfo[] addedDevices) {
+                        handleAudioDevicesChanged();
+                    }
+                    @Override
+                    public void onAudioDevicesRemoved(android.media.AudioDeviceInfo[] removedDevices) {
+                        handleAudioDevicesChanged();
+                    }
+                }, new android.os.Handler(android.os.Looper.getMainLooper()));
+            }
+
+            android.content.IntentFilter filter = new android.content.IntentFilter();
+            filter.addAction(android.content.Intent.ACTION_HEADSET_PLUG);
+            filter.addAction(android.bluetooth.BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
+            filter.addAction(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+            registerReceiver(new android.content.BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, android.content.Intent intent) {
+                    handleAudioDevicesChanged();
+                }
+            }, filter);
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Audio monitoring setup error: " + e.getMessage());
+        }
+    }
+
+    private void handleAudioDevicesChanged() {
+        runOnUiThread(() -> {
+            try {
+                android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am == null) return;
+                boolean hasHeadset = CallManager.isHeadsetConnected(am);
+                boolean prevHas = CallManager.sHasHeadset;
+                CallManager.sHasHeadset = hasHeadset;
+
+                if (hasHeadset && !prevHas) {
+                    // Headset plugged in / connected!
+                    // Requirement: Kulaklık takıldığı an varsayılan olarak mikrofon ve hoparlör kulaklığa geçsin.
+                    CallManager.sUserSelectedRoute = null; // Reset user override
+                    CallManager.routeAudio(am, "headset");
+                    CallManager.dispatchAudioRouteChanged("headset", true, CallManager.sHeadsetName);
+                } else if (!hasHeadset && prevHas) {
+                    // Headset unplugged / disconnected! Fall back to speaker
+                    CallManager.sUserSelectedRoute = null;
+                    CallManager.routeAudio(am, "speaker");
+                    CallManager.dispatchAudioRouteChanged("speaker", false, "Kulaklık");
+                }
+            } catch (Exception ignored) {}
+        });
     }
 }

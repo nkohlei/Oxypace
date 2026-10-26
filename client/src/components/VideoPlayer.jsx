@@ -343,6 +343,24 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
 
+  const containerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Synchronize fullscreen state across native, webkit, and modern browsers
+  useEffect(() => {
+    const handleFsChange = () => {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      const isFs = !!(fsEl && (fsEl === containerRef.current || containerRef.current?.contains(fsEl)));
+      setIsFullscreen(isFs);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
+
   // Sync autoplay preference reactively from settings and user profile
   useEffect(() => {
     const handleAutoplayChange = (e) => {
@@ -1586,14 +1604,96 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const toggleFullscreen = useCallback((e) => {
     e.stopPropagation();
-    const el = getActiveEl(); if (!el) return;
-    const container = el.closest('.native-player-container'); if (!container) return;
-    if (!document.fullscreenElement) {
-      (container.requestFullscreen || container.webkitRequestFullscreen || (() => {})).call(container);
+    const container = containerRef.current;
+    if (!container) return;
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+    if (!fsEl) {
+      const req = container.requestFullscreen || container.webkitRequestFullscreen || container.mozRequestFullScreen || container.msRequestFullscreen;
+      if (req) {
+        req.call(container).catch(() => {});
+      }
     } else {
-      document.exitFullscreen?.();
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) {
+        exit.call(document).catch(() => {});
+      }
     }
-  }, [activeVideo]);
+  }, []);
+
+  const [isLandscapeLocked, setIsLandscapeLocked] = useState(false);
+
+  // Automatically restore screen orientation when exiting fullscreen
+  useEffect(() => {
+    if (!isFullscreen) {
+      setIsLandscapeLocked(false);
+      if (Capacitor.isNativePlatform() && Capacitor.Plugins?.ScreenOrientationManager) {
+        try {
+          Capacitor.Plugins.ScreenOrientationManager.setOrientation({ orientation: 'unspecified' });
+        } catch (_) {}
+      }
+      if (typeof window !== 'undefined' && window.screen?.orientation?.unlock) {
+        try {
+          window.screen.orientation.unlock();
+        } catch (_) {}
+      }
+    }
+  }, [isFullscreen]);
+
+  // Clean up orientation lock on unmount
+  useEffect(() => {
+    return () => {
+      if (Capacitor.isNativePlatform() && Capacitor.Plugins?.ScreenOrientationManager) {
+        try {
+          Capacitor.Plugins.ScreenOrientationManager.setOrientation({ orientation: 'unspecified' });
+        } catch (_) {}
+      }
+      if (typeof window !== 'undefined' && window.screen?.orientation?.unlock) {
+        try {
+          window.screen.orientation.unlock();
+        } catch (_) {}
+      }
+    };
+  }, []);
+
+  const handleRotateScreen = useCallback(async (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+
+    // 1. Native Android (Capacitor ScreenOrientationManager plugin)
+    if (Capacitor.isNativePlatform() && Capacitor.Plugins?.ScreenOrientationManager) {
+      try {
+        await Capacitor.Plugins.ScreenOrientationManager.toggleOrientation();
+        setIsLandscapeLocked(prev => !prev);
+        return;
+      } catch (err) {
+        console.warn('Native orientation toggle error:', err);
+      }
+    }
+
+    // 2. Standard Web Screen Orientation API (Mobile browsers)
+    if (typeof window !== 'undefined' && window.screen?.orientation) {
+      try {
+        const isCurrentlyLandscape = window.screen.orientation.type?.includes('landscape') || isLandscapeLocked;
+        if (isCurrentlyLandscape) {
+          if (window.screen.orientation.lock) {
+            await window.screen.orientation.lock('portrait').catch(() => {});
+          } else if (window.screen.orientation.unlock) {
+            window.screen.orientation.unlock();
+          }
+          setIsLandscapeLocked(false);
+        } else {
+          if (window.screen.orientation.lock) {
+            await window.screen.orientation.lock('landscape').catch(() => {});
+          }
+          setIsLandscapeLocked(true);
+        }
+        return;
+      } catch (err) {
+        console.warn('Web screen.orientation error:', err);
+      }
+    }
+
+    setIsLandscapeLocked(prev => !prev);
+  }, [isLandscapeLocked]);
 
   const handleMouseMove = useCallback((e) => {
     if (isSettingsOpen || isQualityMenuOpen) {
@@ -1632,7 +1732,25 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const richVideoBg = 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.5) 0%, rgba(10, 15, 26, 0.95) 100%), #0a0e17';
 
   let containerStyle = {};
-  if (watchParty) {
+  if (isFullscreen) {
+    containerStyle = {
+      width: '100vw',
+      height: '100vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      aspectRatio: 'unset',
+      background: '#000000',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      margin: 0,
+      padding: 0,
+      borderRadius: 0,
+      position: 'fixed',
+      inset: 0,
+      zIndex: 999999,
+    };
+  } else if (watchParty) {
     containerStyle = {
       width: '100%',
       height: '100%',
@@ -1677,6 +1795,26 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const videoStyle = (id) => {
     const isActive = activeVideo === id;
+    if (isFullscreen) {
+      return {
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        maxWidth: '100%',
+        maxHeight: '100%',
+        objectFit: 'contain',
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%) translateZ(0)',
+        opacity: isActive ? 1 : 0,
+        pointerEvents: isActive ? 'auto' : 'none',
+        zIndex: isActive ? 1 : 0,
+        transition: 'opacity 0.08s linear',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+      };
+    }
     const forceAbsolute = hasDimensions || isTweet || watchParty;
     return {
       display: 'block',
@@ -1697,7 +1835,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   return (
     <div
-      className={`native-player-container left-aligned v16-scale ${className || ''} ${isQualityMenuOpen || isSettingsOpen ? 'has-open-menu' : ''}`}
+      ref={containerRef}
+      className={`native-player-container left-aligned v16-scale ${className || ''} ${isFullscreen ? 'is-fullscreen' : ''} ${isQualityMenuOpen || isSettingsOpen ? 'has-open-menu' : ''}`}
       style={containerStyle}
       onClick={handleVideoAreaClick}
       onMouseMove={handleMouseMove}
@@ -1925,6 +2064,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
                   {playbackRate === 1 ? '1x' : `${playbackRate}x`}
                 </button>
               </>
+            )}
+
+            {isFullscreen && (
+              <button 
+                type="button"
+                className="native-rotate-btn" 
+                onClick={handleRotateScreen} 
+                title="Ekranı Döndür" 
+                aria-label="Ekranı Döndür"
+              >
+                <RotateCw size={18} />
+              </button>
             )}
 
             <button className="native-fullscreen-btn" onClick={toggleFullscreen} title="Tam Ekran" aria-label="Tam Ekran Yap / Çık">

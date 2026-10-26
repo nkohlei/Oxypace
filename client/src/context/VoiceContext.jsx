@@ -155,6 +155,11 @@ export const VoiceProvider = ({ children }) => {
     const [selectedAudioInput, setSelectedAudioInput] = useState(null);
     const [selectedAudioOutput, setSelectedAudioOutput] = useState(null);
     const [selectedVideoInput, setSelectedVideoInput] = useState(null);
+    const [nativeAudioRoute, setNativeAudioRoute] = useState({
+        currentRoute: 'speaker',
+        hasHeadset: false,
+        headsetName: 'Kulaklık'
+    });
 
     // Derived UI states
     const [participants, setParticipants] = useState([]);
@@ -219,6 +224,15 @@ export const VoiceProvider = ({ children }) => {
             if (activeRoom || (watchParty && watchParty.url)) {
                 CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
             }
+            CallManager.getAudioRouting().then(res => {
+                if (res) {
+                    setNativeAudioRoute({
+                        currentRoute: res.currentRoute || 'speaker',
+                        hasHeadset: !!res.hasHeadset,
+                        headsetName: res.headsetName || 'Kulaklık'
+                    });
+                }
+            }).catch(() => {});
         }
     }, [watchParty?.url, activeRoom]);
 
@@ -639,9 +653,18 @@ export const VoiceProvider = ({ children }) => {
     const enumerateDevices = useCallback(async () => {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const audioInputs = devices.filter(d => d.kind === 'audioinput');
-            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
-            const videoInputs = devices.filter(d => d.kind === 'videoinput');
+            const audioInputs = devices.filter(d => d.kind === 'audioinput').map((d, idx) => ({
+                deviceId: d.deviceId,
+                label: d.label || (idx === 0 ? 'Varsayılan Mikrofon' : `Mikrofon ${idx + 1}`)
+            }));
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput').map((d, idx) => ({
+                deviceId: d.deviceId,
+                label: d.label || (idx === 0 ? 'Varsayılan Hoparlör' : `Hoparlör ${idx + 1}`)
+            }));
+            const videoInputs = devices.filter(d => d.kind === 'videoinput').map((d, idx) => ({
+                deviceId: d.deviceId,
+                label: d.label || (idx === 0 ? 'Ön Kamera' : `Kamera ${idx + 1}`)
+            }));
             setAvailableDevices({ audioInputs, audioOutputs, videoInputs });
         } catch (err) {
             console.error("Failed to enumerate devices", err);
@@ -654,6 +677,28 @@ export const VoiceProvider = ({ children }) => {
         navigator.mediaDevices?.addEventListener('devicechange', enumerateDevices);
         return () => {
             navigator.mediaDevices?.removeEventListener('devicechange', enumerateDevices);
+        };
+    }, [enumerateDevices]);
+
+    // Handle Native Android Headset & Speaker Route Change Events
+    useEffect(() => {
+        const handleNativeAudioRouteChanged = (e) => {
+            const detail = e.detail;
+            if (detail) {
+                console.log("[Native Audio Route Changed]", detail);
+                setNativeAudioRoute({
+                    currentRoute: detail.currentRoute || 'speaker',
+                    hasHeadset: !!detail.hasHeadset,
+                    headsetName: detail.headsetName || 'Kulaklık'
+                });
+                if (detail.hasHeadset) {
+                    enumerateDevices();
+                }
+            }
+        };
+        window.addEventListener('oxypace:audio_route_changed', handleNativeAudioRouteChanged);
+        return () => {
+            window.removeEventListener('oxypace:audio_route_changed', handleNativeAudioRouteChanged);
         };
     }, [enumerateDevices]);
 
@@ -941,6 +986,12 @@ export const VoiceProvider = ({ children }) => {
                 
                 // Keep tracks disabled by default
                 localStream.getAudioTracks().forEach(t => t.enabled = false);
+                const initialTrack = localStream.getAudioTracks()[0];
+                if (initialTrack) {
+                    const devId = initialTrack.getSettings()?.deviceId;
+                    if (devId) setSelectedAudioInput(devId);
+                }
+                enumerateDevices();
             } catch (permErr) {
                 console.error('[WebRTC Log] getUserMedia Error:', permErr);
                 console.warn("Could not get local media permissions:", permErr);
@@ -1072,6 +1123,13 @@ export const VoiceProvider = ({ children }) => {
             window.dispatchEvent(new CustomEvent('oxypace:call_ended'));
         } catch (ignored) {}
     }, [activeRoom, user, safeEmit]);
+
+    // Guarantee native call notification is immediately dismissed whenever room ends or disconnects
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && !activeRoom) {
+            CallManager.setInCall({ isInCall: false }).catch(() => {});
+        }
+    }, [activeRoom]);
 
     // Handle WebSocket Signaling Events
     useEffect(() => {
@@ -1596,6 +1654,15 @@ export const VoiceProvider = ({ children }) => {
                             try { pc.addTrack(newAudioTrack, localStreamRef.current); } catch (e) {}
                         }
                     });
+
+                    if (user?._id) {
+                        attachVAD(user._id.toString(), newAudioTrack);
+                    }
+                    const newDevId = newAudioTrack.getSettings()?.deviceId;
+                    if (newDevId) {
+                        setSelectedAudioInput(newDevId);
+                    }
+                    enumerateDevices();
                 }
             } catch (permErr) {
                 console.warn("[WebRTC] Failed to acquire audio stream dynamically:", permErr);
@@ -2056,8 +2123,20 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [facingMode, localState.isCameraOn, availableDevices, updateParticipantList]);
 
-    const setAudioOutput = useCallback(async (deviceId) => {
-        setSelectedAudioOutput(deviceId);
+    const setAudioOutput = useCallback(async (deviceIdOrRoute) => {
+        if (Capacitor.isNativePlatform()) {
+            const targetRoute = (deviceIdOrRoute === 'headset' || deviceIdOrRoute === 'speaker')
+                ? deviceIdOrRoute
+                : (String(deviceIdOrRoute).toLowerCase().includes('headset') || String(deviceIdOrRoute).toLowerCase().includes('kulaklık') ? 'headset' : 'speaker');
+            try {
+                await CallManager.setAudioOutputRoute({ route: targetRoute });
+                setNativeAudioRoute(prev => ({ ...prev, currentRoute: targetRoute }));
+            } catch (err) {
+                console.warn("[CallManager] setAudioOutputRoute failed:", err);
+            }
+        } else {
+            setSelectedAudioOutput(deviceIdOrRoute);
+        }
     }, []);
 
     const setAudioInput = useCallback(async (deviceId) => {
@@ -2065,24 +2144,41 @@ export const VoiceProvider = ({ children }) => {
         if (!activeRoom || !localStreamRef.current) return;
         try {
             console.log(`[WebRTC] Switching microphone input device to: ${deviceId}`);
-            const newStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    deviceId: deviceId ? { exact: deviceId } : undefined,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                }
-            });
+            let newStream;
+            try {
+                newStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        deviceId: deviceId && deviceId !== 'default' ? { ideal: deviceId } : undefined,
+                        echoCancellation: { ideal: true },
+                        noiseSuppression: { ideal: true },
+                        autoGainControl: { ideal: false },
+                        channelCount: { ideal: 2 },
+                        sampleRate: { ideal: 48000 }
+                    }
+                });
+            } catch (strictErr) {
+                console.warn("[WebRTC] Strict microphone constraints failed, retrying with fallback:", strictErr);
+                newStream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+            }
+
             const newAudioTrack = newStream.getAudioTracks()[0];
             if (!newAudioTrack) return;
 
             const oldAudioTrack = localStreamRef.current.getAudioTracks()[0];
             if (oldAudioTrack) {
-                oldAudioTrack.stop();
-                localStreamRef.current.removeTrack(oldAudioTrack);
+                try { oldAudioTrack.stop(); } catch (e) {}
+                try { localStreamRef.current.removeTrack(oldAudioTrack); } catch (e) {}
             }
             newAudioTrack.enabled = !localState.isMuted;
             localStreamRef.current.addTrack(newAudioTrack);
+
+            // Re-attach VAD so voice activity and speaking indicators continue working on new microphone!
+            const localUserId = user?._id?.toString();
+            if (localUserId) {
+                attachVAD(localUserId, newAudioTrack);
+            }
 
             // Replace track on all active peer connections
             peerConnectionsRef.current.forEach(pc => {
@@ -2100,7 +2196,7 @@ export const VoiceProvider = ({ children }) => {
         } catch (err) {
             console.error("Failed to switch audio input device:", err);
         }
-    }, [activeRoom, localState.isMuted, updateParticipantList]);
+    }, [activeRoom, localState.isMuted, updateParticipantList, user, attachVAD]);
 
     const setVideoInput = useCallback(async (deviceId) => {
         setSelectedVideoInput(deviceId);
@@ -2512,6 +2608,7 @@ export const VoiceProvider = ({ children }) => {
         selectedAudioInput,
         selectedAudioOutput,
         selectedVideoInput,
+        nativeAudioRoute,
         watchParty,
         startWatchParty,
         stopWatchParty,

@@ -575,18 +575,122 @@ public class DownloaderPlugin extends Plugin {
     }
 
     private void downloadApkFile(PluginCall call, String url, String filename, String title, String description) {
-        try {
-            Context context = getContext();
-            if (context == null) {
-                call.reject("Context is null");
-                return;
-            }
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
 
-            DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-            if (manager == null) {
-                call.reject("DownloadManager service not available");
-                return;
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        ret.put("downloadId", System.currentTimeMillis());
+        call.resolve(ret);
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                File targetFile = null;
+                HttpURLConnection conn = null;
+                InputStream in = null;
+                FileOutputStream fos = null;
+                try {
+                    // Store APK securely in app-isolated external files dir (protected from tampering & Play Protect dropper false positives)
+                    File updatesDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (updatesDir == null) {
+                        updatesDir = new File(context.getCacheDir(), "updates");
+                    }
+                    if (!updatesDir.exists()) updatesDir.mkdirs();
+                    targetFile = new File(updatesDir, filename);
+                    if (targetFile.exists()) {
+                        targetFile.delete();
+                    }
+
+                    String currentUrl = url.trim().replace(" ", "%20");
+                    for (int redirect = 0; redirect < 5; redirect++) {
+                        URL u = new URL(currentUrl);
+                        conn = (HttpURLConnection) u.openConnection();
+                        conn.setInstanceFollowRedirects(true);
+                        conn.setConnectTimeout(15000);
+                        conn.setReadTimeout(30000);
+                        conn.setRequestProperty("User-Agent", "Oxypace/2.5.0 (Android)");
+                        conn.setRequestProperty("Accept", "application/vnd.android.package-archive, */*");
+                        conn.connect();
+
+                        int status = conn.getResponseCode();
+                        if (status == HttpURLConnection.HTTP_MOVED_PERM || status == HttpURLConnection.HTTP_MOVED_TEMP || status == 307 || status == 308) {
+                            String newUrl = conn.getHeaderField("Location");
+                            conn.disconnect();
+                            if (newUrl != null && !newUrl.isEmpty()) {
+                                currentUrl = newUrl;
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+
+                    long totalBytes = conn.getContentLengthLong();
+                    in = conn.getInputStream();
+                    fos = new FileOutputStream(targetFile);
+
+                    byte[] buffer = new byte[65536]; // 64KB high-speed buffer
+                    int read;
+                    long downloaded = 0;
+                    long lastEmitTime = 0;
+                    int lastPercentage = -1;
+
+                    while ((read = in.read(buffer)) != -1) {
+                        fos.write(buffer, 0, read);
+                        downloaded += read;
+                        int percentage = totalBytes > 0 ? (int) ((downloaded * 100) / totalBytes) : 0;
+                        long now = System.currentTimeMillis();
+
+                        if (percentage != lastPercentage && (now - lastEmitTime >= 100 || percentage >= 100)) {
+                            lastPercentage = percentage;
+                            lastEmitTime = now;
+
+                            JSObject progressData = new JSObject();
+                            progressData.put("bytesDownloaded", downloaded);
+                            progressData.put("bytesTotal", totalBytes);
+                            progressData.put("status", 2); // STATUS_RUNNING
+                            progressData.put("percentage", Math.min(percentage, 99));
+                            notifyListeners("downloadProgress", progressData);
+                        }
+                    }
+
+                    fos.flush();
+                    fos.close();
+                    fos = null;
+
+                    // Emit 100% completion
+                    JSObject doneData = new JSObject();
+                    doneData.put("bytesDownloaded", downloaded);
+                    doneData.put("bytesTotal", downloaded);
+                    doneData.put("status", 8); // STATUS_SUCCESSFUL
+                    doneData.put("percentage", 100);
+                    notifyListeners("downloadProgress", doneData);
+
+                    android.util.Log.d("DownloaderPlugin", "APK direct download complete (" + downloaded + " bytes). Launching installer...");
+                    installApk(context, targetFile);
+
+                } catch (Exception e) {
+                    android.util.Log.e("DownloaderPlugin", "Direct APK download failed: " + e.getMessage() + ", falling back to DownloadManager", e);
+                    if (targetFile != null && targetFile.exists()) {
+                        try { targetFile.delete(); } catch (Exception ignored) {}
+                    }
+                    fallbackDownloadManagerApk(context, url, filename, title, description);
+                } finally {
+                    try { if (fos != null) fos.close(); } catch (Exception ignored) {}
+                    try { if (in != null) in.close(); } catch (Exception ignored) {}
+                    try { if (conn != null) conn.disconnect(); } catch (Exception ignored) {}
+                }
             }
+        });
+    }
+
+    private void fallbackDownloadManagerApk(Context context, String url, String filename, String title, String description) {
+        try {
+            DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (manager == null) return;
 
             File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File targetFile = new File(downloadsDir, filename);
@@ -604,16 +708,10 @@ public class DownloaderPlugin extends Plugin {
             request.setMimeType("application/vnd.android.package-archive");
 
             enqueuedDownloadId = manager.enqueue(request);
-
             registerApkDownloadReceiver(context, enqueuedDownloadId, targetFile);
             startProgressTracker(manager, enqueuedDownloadId);
-
-            JSObject ret = new JSObject();
-            ret.put("success", true);
-            ret.put("downloadId", enqueuedDownloadId);
-            call.resolve(ret);
         } catch (Exception e) {
-            call.reject("APK Download failed: " + e.getMessage());
+            android.util.Log.e("DownloaderPlugin", "Fallback DownloadManager also failed: " + e.getMessage());
         }
     }
 
@@ -722,9 +820,25 @@ public class DownloaderPlugin extends Plugin {
     @PluginMethod
     public void installExistingApk(PluginCall call) {
         String filename = call.getString("filename", "oxypace.apk");
-        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File targetFile = new File(downloadsDir, filename);
-        installApk(getContext(), targetFile);
+        Context context = getContext();
+        File targetFile = null;
+        if (context != null) {
+            File appDownloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (appDownloadsDir != null) {
+                File candidate = new File(appDownloadsDir, filename);
+                if (candidate.exists()) targetFile = candidate;
+            }
+            if (targetFile == null) {
+                File cacheDir = new File(context.getCacheDir(), "updates");
+                File candidate = new File(cacheDir, filename);
+                if (candidate.exists()) targetFile = candidate;
+            }
+        }
+        if (targetFile == null || !targetFile.exists()) {
+            File publicDownloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            targetFile = new File(publicDownloadsDir, filename);
+        }
+        installApk(context, targetFile);
         call.resolve();
     }
 

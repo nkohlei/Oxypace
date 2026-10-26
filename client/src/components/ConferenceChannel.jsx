@@ -6,7 +6,8 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture, Film } from 'lucide-react';
+import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture, Film, Headphones } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -87,6 +88,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
         selectedAudioInput,
         selectedAudioOutput,
         selectedVideoInput,
+        nativeAudioRoute,
         watchParty,
         startWatchParty,
         stopWatchParty
@@ -482,13 +484,46 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
                                 </>
                             )}
-                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px' }}>HOPARLÖR</div>
-                            {Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.map(d => (
-                                <button key={d.deviceId} className={`vc-more-option ${selectedAudioOutput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
-                                    {selectedAudioOutput === d.deviceId && <Check size={14} />}
-                                </button>
-                            ))}
+                            {Capacitor.isNativePlatform() ? (
+                                <>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px', textTransform: 'uppercase' }}>SES ÇIKIŞI</div>
+                                    <button 
+                                        className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'speaker' ? 'active' : ''}`} 
+                                        onClick={() => { setAudioOutput('speaker'); setIsMoreMenuOpen(false); }}
+                                    >
+                                        <Volume2 size={15} />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Hoparlör</span>
+                                        {nativeAudioRoute?.currentRoute === 'speaker' && <Check size={14} />}
+                                    </button>
+                                    {nativeAudioRoute?.hasHeadset && (
+                                        <button 
+                                            className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'headset' ? 'active' : ''}`} 
+                                            onClick={() => { setAudioOutput('headset'); setIsMoreMenuOpen(false); }}
+                                        >
+                                            <Headphones size={15} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nativeAudioRoute.headsetName || 'Kulaklık'}</span>
+                                            {nativeAudioRoute?.currentRoute === 'headset' && <Check size={14} />}
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
+                                    <>
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 12px', textTransform: 'uppercase' }}>SES ÇIKIŞI</div>
+                                        {availableDevices.audioOutputs.map(d => {
+                                            const isHeadset = d.label?.toLowerCase().includes('headphone') || d.label?.toLowerCase().includes('kulaklık') || d.label?.toLowerCase().includes('headset') || d.label?.toLowerCase().includes('airpods');
+                                            const isSelected = selectedAudioOutput === d.deviceId || (!selectedAudioOutput && d.deviceId === 'default');
+                                            return (
+                                                <button key={d.deviceId} className={`vc-more-option ${isSelected ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
+                                                    {isHeadset ? <Headphones size={15} /> : <Volume2 size={15} />}
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label || 'Hoparlör'}</span>
+                                                    {isSelected && <Check size={14} />}
+                                                </button>
+                                            );
+                                        })}
+                                    </>
+                                )
+                            )}
                         </div>
                     )}
                 </div>
@@ -632,9 +667,16 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 )}
                                 {isMicMenuOpen && (
                                     <div className="vc-settings-dropdown glass-panel" style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '12px', padding: '8px', minWidth: '200px' }}>
-                                        {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map(d => (
-                                            <div key={d.deviceId} className={`vc-device-option ${selectedAudioInput === d.deviceId ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}><span>{d.label || 'Mikrofon'}</span>{selectedAudioInput === d.deviceId && <Check size={12} />}</div>
-                                        ))}
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px', padding: '0 4px', textTransform: 'uppercase' }}>MİKROFON</div>
+                                        {Array.isArray(availableDevices?.audioInputs) && availableDevices.audioInputs.map((d, idx) => {
+                                            const isSelected = selectedAudioInput === d.deviceId || (!selectedAudioInput && (d.deviceId === 'default' || idx === 0));
+                                            return (
+                                                <div key={d.deviceId} className={`vc-device-option ${isSelected ? 'active' : ''}`} onClick={() => { setAudioInput(d.deviceId); setIsMicMenuOpen(false); }}>
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Mikrofon'}</span>
+                                                    {isSelected && <Check size={12} />}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

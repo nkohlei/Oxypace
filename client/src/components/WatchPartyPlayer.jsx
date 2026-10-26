@@ -946,18 +946,38 @@ const WatchPartyPlayer = () => {
                             }
                         };
                     } else if (canUseHlsJs) {
+                        const isMobile = typeof window !== 'undefined' && (
+                            window.innerWidth <= 768 ||
+                            (window.navigator?.userAgent && /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent)) ||
+                            !!window.Capacitor?.isNativePlatform?.()
+                        );
                         const initialStartTime = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
                         const hls = new Hls({
-                            maxMaxBufferLength: 120,
-                            maxBufferLength: 60,
-                            maxBufferSize: 60 * 1000 * 1000,
+                            // Mobile RAM optimization: smaller buffers to prevent WebView memory pressure and GC freeze
+                            maxBufferLength: isMobile ? 20 : 60,
+                            maxMaxBufferLength: isMobile ? 40 : 120,
+                            maxBufferSize: isMobile ? (25 * 1024 * 1024) : (60 * 1024 * 1024),
+                            backBufferLength: isMobile ? 10 : 30, // Quickly discard played segments on mobile to free memory
                             enableWorker: true,
                             lowLatencyMode: isLive,
-                            backBufferLength: 30,
                             startFragPrefetch: true,
                             startPosition: isLive ? -1 : (initialStartTime > 0 ? initialStartTime : 0),
                             liveSyncDurationCount: isLive ? 3 : undefined,
                             liveMaxLatencyDurationCount: isLive ? 10 : undefined,
+                            // Mobile adaptive stream: cap bitrate to device viewport so mobile CPU is not overwhelmed by 4K streams
+                            capLevelToPlayerSize: isMobile,
+                            // Auto-nudge on buffer stall to seamlessly skip audio/video micro-gaps without freezing
+                            nudgeMaxRetry: 5,
+                            nudgeOffset: 0.1,
+                            // Resilient chunk fetching
+                            fragLoadingTimeOut: 20000,
+                            fragLoadingMaxRetry: 6,
+                            fragLoadingRetryDelay: 1000,
+                            fragLoadingMaxRetryTimeout: 64000,
+                            manifestLoadingTimeOut: 15000,
+                            manifestLoadingMaxRetry: 5,
+                            levelLoadingTimeOut: 15000,
+                            levelLoadingMaxRetry: 5,
                             xhrSetup: (xhr, url) => {
                                 xhr.withCredentials = false;
                             }
@@ -1038,6 +1058,13 @@ const WatchPartyPlayer = () => {
                                             break;
                                     }
                                 }
+                            } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+                                try {
+                                    hls.startLoad();
+                                    if (video && !video.paused) {
+                                        video.play().catch(() => {});
+                                    }
+                                } catch (_) {}
                             }
                         });
                     }
@@ -1702,6 +1729,7 @@ const WatchPartyPlayer = () => {
         const val = parseFloat(e.target.value);
         if (!isNaN(val)) {
             isSyncingRef.current = true;
+            isUserActionCooldownRef.current = Date.now() + 2500;
             lastProgrammaticSeekTimeRef.current = val;
             if (videoRef.current) {
                 videoRef.current.currentTime = val;
@@ -1720,6 +1748,7 @@ const WatchPartyPlayer = () => {
         targetSeekTimeRef.current = target;
 
         isSyncingRef.current = true;
+        isUserActionCooldownRef.current = Date.now() + 2500;
         lastProgrammaticSeekTimeRef.current = target;
         
         // Fast responsive seek: if fastSeek is supported, use it for instant response without buffering stall
@@ -1733,9 +1762,6 @@ const WatchPartyPlayer = () => {
             video.currentTime = target;
         }
         setCurrentTime(target);
-
-        // Lock user action cooldown for 1200ms so alignNativeVideo doesn't fight the user's seek
-        isUserActionCooldownRef.current = Date.now() + 1200;
 
         if (seekDebounceTimerRef.current) {
             clearTimeout(seekDebounceTimerRef.current);
@@ -1761,6 +1787,7 @@ const WatchPartyPlayer = () => {
         const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         const targetTime = frac * duration;
         isSyncingRef.current = true;
+        isUserActionCooldownRef.current = Date.now() + 2500;
         lastProgrammaticSeekTimeRef.current = targetTime;
         video.currentTime = targetTime;
         setCurrentTime(targetTime);
@@ -1860,17 +1887,26 @@ const WatchPartyPlayer = () => {
         if (!watchParty || !video || !isReady || hasError || !isNativeVOD) return;
 
         let syncInterval = null;
-        // Play geçişinde ilk 2.5s boyunca hard seek yapma.
-        // Video buffer'ın dolması ve ağ gecikmesinin dengelenmesi için zaman tanı.
-        // Bu süre içinde sadece playbackRate ile yumuşak düzeltme yapılır.
         let playTransitionGuardActive = false;
         let playTransitionGuardTimer = null;
+        let isBufferingStall = false;
+
+        const onWaiting = () => { isBufferingStall = true; };
+        const onPlaying = () => { isBufferingStall = false; };
+        video.addEventListener('waiting', onWaiting);
+        video.addEventListener('stalled', onWaiting);
+        video.addEventListener('playing', onPlaying);
+        video.addEventListener('canplay', onPlaying);
 
         const alignNativeVideo = (isStateTrigger = false) => {
             if (!video || !watchParty) return;
 
-            // If user recently interacted with Play/Pause button, respect their action and do not override
+            // 1. If user recently interacted with Play/Pause button or scrubbed/seeked, respect their action
             if (Date.now() < isUserActionCooldownRef.current) return;
+
+            // 2. If video is currently seeking or waiting for network buffer, DO NOT execute another seek!
+            // Doing so causes a fatal buffer dump / re-download death spiral on mobile.
+            if (video.seeking || (video.readyState < 3 && isBufferingStall)) return;
 
             const serverNow = getServerNow();
             const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
@@ -1880,7 +1916,7 @@ const WatchPartyPlayer = () => {
             const drift = targetTime - localTime;
             const absDrift = Math.abs(drift);
 
-            // 1. Play / Pause State Synchronization
+            // 3. Play / Pause State Synchronization
             if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
                 playTransitionGuardActive = true;
@@ -1898,10 +1934,10 @@ const WatchPartyPlayer = () => {
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             }
 
-            // 2. When Paused: Keep exactly aligned
+            // 4. When Paused: Keep exactly aligned
             if (!watchParty.isPlaying) {
                 video.playbackRate = 1.0;
-                if (absDrift > 0.5) {
+                if (absDrift > 0.5 && !video.seeking) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
@@ -1910,9 +1946,12 @@ const WatchPartyPlayer = () => {
                 return;
             }
 
-            // 3. When Playing: Adaptive Smart Rate Pacing for Perfect Millisecond Sync Across Devices!
-            // If drift is severe (> 3.0s), do an instantaneous clean seek
-            if (absDrift > 3.0 && !playTransitionGuardActive) {
+            // 5. When Playing: Adaptive Smart Rate Pacing for Perfect Millisecond Sync Across Devices!
+            // Hard seek threshold: raised to 5.5s on mobile / 4.5s on desktop to prevent repeated seeks during normal segment downloading
+            const isMobile = typeof window !== 'undefined' && (window.innerWidth <= 768 || !!window.Capacitor?.isNativePlatform?.());
+            const hardSeekThreshold = isMobile ? 5.5 : 4.5;
+
+            if (absDrift > hardSeekThreshold && !playTransitionGuardActive && !video.seeking && video.readyState >= 3) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 video.currentTime = targetTime;
@@ -1921,21 +1960,19 @@ const WatchPartyPlayer = () => {
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
-                }, 1500);
+                }, 2000);
                 setTimeout(() => { isSyncingRef.current = false; }, 400);
             } else if (!playTransitionGuardActive) {
                 // Adaptive micro-rate pacing:
-                // If local client is behind (drift > 0.25s), speed up slightly (1.05x - 1.08x) so mobile catches up smoothly without pitch distortion!
-                // If local client is ahead (drift < -0.25s), slow down slightly (0.95x - 0.92x) until aligned.
-                // When aligned (absDrift <= 0.15s), lock rate back to 1.0.
-                if (drift > 0.8) {
+                // Smoothly speed up / slow down playback rate so local video glides into sync without re-buffering!
+                if (drift > 1.2) {
                     video.playbackRate = 1.08;
-                } else if (drift > 0.25) {
-                    video.playbackRate = 1.05;
-                } else if (drift < -0.8) {
+                } else if (drift > 0.3) {
+                    video.playbackRate = 1.04;
+                } else if (drift < -1.2) {
                     video.playbackRate = 0.92;
-                } else if (drift < -0.25) {
-                    video.playbackRate = 0.95;
+                } else if (drift < -0.3) {
+                    video.playbackRate = 0.96;
                 } else {
                     if (video.playbackRate !== 1.0) {
                         video.playbackRate = 1.0;
@@ -1953,6 +1990,10 @@ const WatchPartyPlayer = () => {
         return () => {
             if (syncInterval) clearInterval(syncInterval);
             if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
+            video.removeEventListener('waiting', onWaiting);
+            video.removeEventListener('stalled', onWaiting);
+            video.removeEventListener('playing', onPlaying);
+            video.removeEventListener('canplay', onPlaying);
             if (video) video.playbackRate = 1.0;
         };
     }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD, getServerNow]);

@@ -27,15 +27,58 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.4.8)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.0)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.0',
+        versionCode: 250,
+        releaseDate: '27 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Canlı Oda Bildirim Onarımı, Tam Ekran Video Rotasyonu, Ultra Hızlı Doğrudan APK Güncelleme ve Play Protect Uyumluluğu',
+        summary: 'Oxypace tarihimizin en kapsamlı majör sürümü yayınlandı. Canlı odadan ayrıldıktan sonra bildirim panelinde asılı kalan arama sayacı kökten yok edildi ve bildirim tasarımı modernleştirildi. Birlikte izle ve canlı yayın URL yapıştırma pencereleri sıfırdan inşa edilerek işlevsel @capacitor/clipboard motoru ve temiz koyu tasarıma kavuşturuldu. Dikey ekranda tam ekrana alınan videoların tepeye kayma hatası giderildi ve tam ekran döndürme butonu entegre edildi. Birlikte izle HLS akışlarındaki donmalar minimuma indirildi, kulaklık takıldığında mikrofon ve hoparlörün dinamik geçişi sağlandı. Ayrıca zorunlu güncelleme ekranındaki APK indirmesi sistem DownloadManager kısıtlamalarından kurtarılarak 64KB yüksek hızlı doğrudan soket akışına ve korumalı kum havuzuna taşındı.',
+        category: 'feature',
+        apkSize: '38.8 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Canlı Oda Sabit Bildirim Onarımı: Odadan çıkıldığında veya bağlantı koptuğunda arama sayacı bildirimi anında yok edilir, Looper döngüsü sıfırlanır',
+            'Bildirim Tasarımı Yenilemesi: Emojilerden arındırılmış, kurumsal #161B22 koyu temalı, net süre ve hızlı aksiyon butonlu yeni bildirim arayüzü',
+            'Modernize URL Popover Pencereleri: Canlı odadaki medya ve canlı yayın link pencereleri geometrik koyu kart, temiz tipografi ve işlevsel panodan yapıştırma desteğiyle sıfırdan yazıldı',
+            'Tam Ekran Video Ortalama ve Döndürme: Dikey pozisyonda video ortalama hatası giderildi, tam ekrana geçildiğinde sol tarafta video döndürme butonu aktifleşti',
+            'Sıfır Gecikmeli Birlikte İzle (HLS): Fragmented live streaming için 1.5s liveSyncPosition toleransı ve 30s buffer ahead mimarisi devreye alındı',
+            'Otomatik Kulaklık / Hoparlör Yönlendirmesi: Kulaklık takıldığı an mikrofon ve hoparlör çıkışı otomatik olarak kulaklığa yönlendirilir',
+            'Ultra Hızlı Doğrudan APK Güncelleme Motoru: Android DownloadManager darboğazı ve ortada donma sorunu aşılarak 64KB doğrudan soket akışıyla 3 saniyede kesintisiz indirme sağlandı',
+            'Google Play Protect Tam Güvenlik Uyumluluğu: APK indirmesi uygulamanın güvenli dahili depolama alanına taşındı, ağ güvenlik yapılandırması resmi alan adlarıyla mühürlendi'
+        ],
+        changes: [
+            { type: 'fix', text: 'ActiveCallService.java & MainActivity.java: Çağrı sayacı döngüsü guard edildi; stopCall() anında stopForeground ve cancel tetiklenerek bildirim silinmesi garantilendi.' },
+            { type: 'ui', text: 'VoiceChannel.jsx: Medya ve canlı yayın URL pencereleri koyu minimalist tasarımla baştan aşağı yenilendi, @capacitor/clipboard ile gerçek panodan yapıştırma sağlandı.' },
+            { type: 'ui', text: 'VideoPlayer.jsx: Tam ekranda dikey video ortalama mantığı düzeltildi, 90 derece döndürme butonu eklendi.' },
+            { type: 'perf', text: 'WatchPartyPlayer.jsx: HLS.js canlı akış buffer ve segment ayarları optimize edilerek mobil donma ve gecikmeler sonlandırıldı.' },
+            { type: 'feat', text: 'VoiceContext.jsx & MainActivity.java: Bluetooth ve kablolu kulaklık tak/çıkar durumları için AudioDeviceInfo yönlendirmesi tamamlandı.' },
+            { type: 'perf', text: 'DownloaderPlugin.java: APK indirme motoru DownloadManager yerine 64KB multi-threaded doğrudan soket akışına yükseltildi, dondurmalar yok edildi.' },
+            { type: 'security', text: 'network_security_config.xml & build.gradle: Play Protect uyumluluğu için alan adı doğrulamaları ve app-scoped dosya yolları mühürlendi.' }
+        ],
+        affectedFiles: [
+            'android/app/src/main/java/com/oxypace/app/ActiveCallService.java',
+            'android/app/src/main/java/com/oxypace/app/MainActivity.java',
+            'android/app/src/main/java/com/oxypace/app/DownloaderPlugin.java',
+            'client/src/components/VoiceChannel.jsx',
+            'client/src/components/VideoPlayer.jsx',
+            'client/src/components/WatchPartyPlayer.jsx',
+            'client/src/context/VoiceContext.jsx',
+            'android/app/build.gradle',
+            'server.js'
+        ]
+    },
     {
         version: 'v2.4.9',
         versionCode: 249,
         releaseDate: '26 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '7394ecbf',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Instagram Hızında 0ms Stale-While-Revalidate Yerel Akış Önbelleği, WebP Boyutlandırma & Paralel Veritabanı Sorguları',
         summary: 'Kullanıcıların kanal ve profil akışlarını açarken beyaz ekran veya yükleniyor çarkı görmesi sorunu kökten çözüldü. Instagram ve modern sosyal ağların kullandığı Stale-While-Revalidate disk önbelleği entegre edildi: Açılışta önceki akış verisi 0 milisaniyede ekrana basılır, arka planda yeni içerikler sessizce senkronize edilir. Ayrıca GIF avatarları ve gönderi fotoğrafları için mega baytlık orijinaller yerine otomatik WebP feed boyutlandırma, akıllı önbellek ve MongoDB paralel sorgulama (Promise.all) devreye alındı.',
         category: 'performance',
@@ -950,7 +993,7 @@ const MobileVersionHistory = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'cards'
-    const [expandedVersions, setExpandedVersions] = useState({ 'v2.4.8': true });
+    const [expandedVersions, setExpandedVersions] = useState({ 'v2.5.0': true });
     const [copiedVersion, setCopiedVersion] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('markdown'); // 'markdown' | 'json'
