@@ -416,12 +416,12 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.4.7',
-        versionCode: 247,
-        minSupportedVersionCode: 247,
+        latestVersion: '2.4.8',
+        versionCode: 248,
+        minSupportedVersionCode: 248,
         downloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.4.7: Ultra Hızlı Medya Dağıtım Mimarisi ve Sıfır Gecikmeli Görsel Yükleme Sistemi. Platform genelinde tüm görseller (avatarlar, rozetler, post resimleri, bannerlar) yüksek hızlı In-Memory RAM LRU önbellek ve doğrudan HTTP/2 API proxy üzerinden jet hızında ve sayfa ile tam eşzamanlı render edilir. Tarayıcı seviyesi agresif bellek önbellekleme ve varyant fallback güvencesi.',
+        changelog: 'Oxypace 2.4.8: Kalıcı Edge CDN Önbellekleme, Paralel Varyant Arama, Zero-Copy Görsel Akışı ve Akıllı Öncelikli Preload Kuyruğu. Platform genelindeki 5-10 saniyelik görsel gecikmeleri tamamen ortadan kaldırıldı; avatarlar, gönderiler ve rozetler sıfır bekleme ile anında ekrana gelir.',
     });
 });
 

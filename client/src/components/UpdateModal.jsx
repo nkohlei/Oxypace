@@ -6,8 +6,8 @@ import './UpdateModal.css';
 import { App as CapacitorApp } from '@capacitor/app';
 
 // Fallback APK version (used only if CapacitorApp.getInfo() fails)
-const CURRENT_VERSION = '2.4.7';
-const CURRENT_VERSION_CODE = 247;
+const CURRENT_VERSION = '2.4.8';
+const CURRENT_VERSION_CODE = 248;
 
 /**
  * Compares two semver strings. Returns true if remote > local.
@@ -136,7 +136,7 @@ const UpdateModal = () => {
                         {downloadCompleted ? 'Güncelleme Hazır' : 'Yeni Güncelleme Mevcut'}
                     </h2>
                     <p className="update-modal-version">
-                        Sürüm {CURRENT_VERSION} → <span className="version-new">{info?.latestVersion || '2.4.7'}</span>
+                        Sürüm {CURRENT_VERSION} → <span className="version-new">{info?.latestVersion || '2.4.8'}</span>
                     </p>
                 </div>
 
