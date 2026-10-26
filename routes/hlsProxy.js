@@ -740,32 +740,70 @@ function detectSubLanguage(fileUrl) {
 
 async function directResolveHDFilmCehennemi(targetUrl) {
   if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.includes('hdfilmcehennemi')) return null;
-  try {
-    let text = '';
-    try {
-      const res = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'Referer': 'https://www.hdfilmcehennemi.nl/',
-          'x-requested-with': 'fetch',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-      if (res.ok) {
-        text = await res.text();
-      }
-    } catch {}
+  const start = Date.now();
 
-    if (!text || text.includes('Just a moment...') || text.length < 500) {
-      text = await fetchWithCurl(targetUrl, [
-        'Referer: https://www.hdfilmcehennemi.nl/',
-        'x-requested-with: fetch',
-        'Accept: application/json, text/plain, */*'
-      ], 8);
+  const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
+    // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
+    if (process.platform === 'linux') {
+      try {
+        const argsTor = [
+          '-s', '-L',
+          '--socks5-hostname', '127.0.0.1:9050',
+          '--max-time', String(timeoutSec),
+          '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          ...headers.flatMap(h => ['-H', h]),
+          url
+        ];
+        const { stdout } = await execFileAsync('curl', argsTor);
+        if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+          return stdout;
+        }
+      } catch (e) {}
     }
-    if (!text) return null;
 
+    // 2. Direct fetch (for local or non-blocked environments)
+    try {
+      const fHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      };
+      for (const h of headers) {
+        const idx = h.indexOf(':');
+        if (idx !== -1) fHeaders[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
+      }
+      const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
+      if (res.ok) {
+        const t = await res.text();
+        if (t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required')) return t;
+      }
+    } catch (e) {}
+
+    // 3. Direct curl fallback
+    try {
+      const args = [
+        '-s', '-L',
+        '--max-time', String(timeoutSec),
+        '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        ...headers.flatMap(h => ['-H', h]),
+        url
+      ];
+      const { stdout } = await execFileAsync(CURL_BIN, args);
+      if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+        return stdout;
+      }
+    } catch (e) {}
+
+    return '';
+  };
+
+  try {
+    let text = await fetchWithTorOrDirect(targetUrl, [
+      'Referer: https://www.hdfilmcehennemi.nl/',
+      'x-requested-with: fetch',
+      'Accept: application/json, text/plain, */*'
+    ], 6);
+
+    if (!text) return null;
     let html = text;
     if (text.trim().startsWith('{')) {
       try {
@@ -775,7 +813,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
     }
     html = html.replace(/\\"/g, '"').replace(/\\\//g, '/');
 
-    // Extract embed / iframe URLs
+    // Extract embed URLs with playmix mirror expansion
     const embedMatches = [
       ...html.matchAll(/<iframe\b[^>]*\b(?:src|data-src)=["']([^"']+)["']/gi),
       ...html.matchAll(/data-(?:src|video|url)=["']([^"']*(?:embed|rapidrame|rplayer|playmix|video)[^"']*)["']/gi),
@@ -784,7 +822,18 @@ async function directResolveHDFilmCehennemi(targetUrl) {
     for (const [, u] of embedMatches) {
       let clean = u.trim();
       if (clean.startsWith('//')) clean = 'https:' + clean;
-      if (clean.startsWith('http') && !embedUrls.includes(clean)) embedUrls.push(clean);
+      if (clean.startsWith('http') && !embedUrls.includes(clean)) {
+        embedUrls.push(clean);
+
+        // Mirror expansion: playmix.uno is the open mirror of hdfilmcehennemi.mobi (bypasses Turnstile)
+        const idMatch = clean.match(/\/video\/embed\/([^/?#]+)/) || clean.match(/\/embed\/([^/?#]+)/);
+        if (idMatch && idMatch[1]) {
+          const mirror = `https://playmix.uno/video/embed/${idMatch[1]}/`;
+          if (!embedUrls.includes(mirror)) embedUrls.push(mirror);
+          const mirrorAlt = `https://playmix.uno/embed/${idMatch[1]}`;
+          if (!embedUrls.includes(mirrorAlt)) embedUrls.push(mirrorAlt);
+        }
+      }
     }
 
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
@@ -793,23 +842,11 @@ async function directResolveHDFilmCehennemi(targetUrl) {
     for (const embedUrl of embedUrls) {
       let embedHost = 'hdfilmcehennemi.mobi';
       try { embedHost = new URL(embedUrl).hostname; } catch {}
-      let embedHtml = '';
-      try {
-        const eRes = await fetch(embedUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': 'https://www.hdfilmcehennemi.nl/',
-          },
-          signal: AbortSignal.timeout(6000),
-        });
-        if (eRes.ok) {
-          embedHtml = await eRes.text();
-        }
-      } catch {}
+      const embedHtml = await fetchWithTorOrDirect(embedUrl, [
+        'Referer: https://www.hdfilmcehennemi.nl/',
+        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      ], 5);
 
-      if (!embedHtml || embedHtml.includes('Just a moment...') || embedHtml.length < 200) {
-        embedHtml = await fetchWithCurl(embedUrl, ['Referer: https://www.hdfilmcehennemi.nl/'], 8);
-      }
       if (!embedHtml) continue;
 
       // Collect subtitles
@@ -823,7 +860,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         }
       }
 
-      // Check direct stream match
+      // 1. Direct stream match
       const directMatch = embedHtml.match(/file\s*:\s*["'](https?:\/\/[^"']+\/(?:master\.txt|index\.m3u8|\w+\.m3u8)[^"']*)["']/i);
       if (directMatch && directMatch[1]) {
         const streamUrl = directMatch[1];
@@ -831,16 +868,15 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         let origin = 'https://hdfilmcehennemi.mobi';
         if (streamUrl.includes('playmix')) { referer = 'https://playmix.uno/'; origin = 'https://playmix.uno'; }
         else if (streamUrl.includes('rapidvid')) { referer = 'https://rapidvid.org/'; origin = 'https://rapidvid.org'; }
-        return { streamUrl, pageTitle, headers: { referer, origin }, subtitles };
+        return { streamUrl, pageTitle, headers: { referer, origin }, subtitles, elapsed: Date.now() - start };
       }
 
-      // Obfuscated varName resolution via VM sandbox
+      // 2. Obfuscated varName resolution via VM sandbox
       const jwMatch = embedHtml.match(/sources\s*:\s*\[\s*\{\s*file\s*:\s*([a-zA-Z0-9_$]+)/i) ||
                       embedHtml.match(/file\s*:\s*([a-zA-Z0-9_$]+)\s*,\s*type\s*:\s*["']hls["']/i);
       const varName = jwMatch ? jwMatch[1] : null;
       if (varName) {
         const scriptTags = [...embedHtml.matchAll(/<script\b(?![^>]*type=["'](?:application\/ld\+json|application\/json)["'])[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
-        
         for (const s of scriptTags) {
           if (s.includes(varName) && (s.includes('function') || s.includes('='))) {
             const sandbox = {
@@ -861,14 +897,14 @@ async function directResolveHDFilmCehennemi(targetUrl) {
                 let origin = 'https://hdfilmcehennemi.mobi';
                 if (streamUrl.includes('playmix')) { referer = 'https://playmix.uno/'; origin = 'https://playmix.uno'; }
                 else if (streamUrl.includes('rapidvid')) { referer = 'https://rapidvid.org/'; origin = 'https://rapidvid.org'; }
-                return { streamUrl, pageTitle, headers: { referer, origin }, subtitles };
+                return { streamUrl, pageTitle, headers: { referer, origin }, subtitles, elapsed: Date.now() - start };
               }
             } catch (e) {}
           }
         }
       }
 
-      // Regex fallback across entire embed HTML
+      // 3. Fallback regex
       const fallbackMatch = embedHtml.match(/(https?:\/\/[^"'\s<>]+\/(?:master\.txt|\w+\.m3u8)[^"'\s<>]*)/i);
       if (fallbackMatch && fallbackMatch[1]) {
         const streamUrl = fallbackMatch[1];
@@ -876,7 +912,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         let origin = 'https://hdfilmcehennemi.mobi';
         if (streamUrl.includes('playmix')) { referer = 'https://playmix.uno/'; origin = 'https://playmix.uno'; }
         else if (streamUrl.includes('rapidvid')) { referer = 'https://rapidvid.org/'; origin = 'https://rapidvid.org'; }
-        return { streamUrl, pageTitle, headers: { referer, origin }, subtitles };
+        return { streamUrl, pageTitle, headers: { referer, origin }, subtitles, elapsed: Date.now() - start };
       }
     }
   } catch (err) {
