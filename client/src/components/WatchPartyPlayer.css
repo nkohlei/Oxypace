@@ -1868,5 +1868,28 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
 }
 
+/* Rotate Screen Button (Fullscreen Mode) */
+.native-rotate-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 4px;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
 
+.native-rotate-btn:hover {
+    opacity: 1;
+    transform: scale(1.15) rotate(15deg);
+}
 
+.native-rotate-btn:active {
+    transform: scale(0.92) rotate(90deg);
+}

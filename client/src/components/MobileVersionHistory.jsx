@@ -27,15 +27,52 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.0)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.1)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.1',
+        versionCode: 251,
+        releaseDate: '28 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Canlı Oda Hi-Fi 48kHz Stereo Ses, Donanımsız Kamera Çevirme, Anında Kapanan Bildirim Sayacı ve OTA Canlı Güncelleme',
+        summary: 'Oxypace 2.5.1 sürümüyle telefon görüşmesi kalitesindeki boğuk ses sorunu kökten çözüldü; Bluetooth SCO devreden çıkarılarak WebRTC ses akışı 48kHz Hi-Fi stereo kalitesine yükseltildi. Canlı odada arka kameraya geçişteki donanım kilitlenme hatası giderildi. Odadan çıkıldığında bildirim sayacının asılı kalması engellendi. Birlikte İzle tam ekran moduna 90 derece döndürme butonu eklendi ve gelecekteki arayüz güncellemelerini APK indirmeden saniyeler içinde sessizce kuran OTA (Over-The-Air) Canlı Güncelleme Motoru entegre edildi.',
+        category: 'feature',
+        apkSize: '39.0 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Kristal Netliğinde Hi-Fi 48kHz Stereo Ses: Bluetooth SCO (8kHz telefon kanalı) kaldırılarak hem sesli görüşme hem de Birlikte İzle videoları stüdyo kalitesinde stereo sese kavuşturuldu',
+            'Kusursuz Arka / Ön Kamera Çevirme: Android Camera2 donanım kilidi çözülerek canlı odada arka kameraya anında geçiş sağlandı',
+            'Anında Kapanan Sabit Bildirim Sayacı: Canlı odadan çıkıldığı an ActiveCallService durdurularak bildirim paneli anında temizlenir',
+            'Birlikte İzle Tam Ekran Döndürme: Tam ekranda cihazı çevirmeye gerek kalmadan tek tıkla videoyu 90 derece döndüren buton eklendi',
+            'OTA (Over-The-Air) Canlı Güncelleme Motoru: Yeni arayüz ve özellik güncellemeleri APK indirme zorunluluğu olmadan saniyeler içinde sessizce kurulur ve bildirim ile kullanıcıya haber verilir'
+        ],
+        changes: [
+            { type: 'fix', text: 'MainActivity.java: am.startBluetoothSco() kaldırılarak A2DP 48kHz Hi-Fi stereo ses mimarisine geçildi.' },
+            { type: 'fix', text: 'VoiceContext.jsx: echoCancellation WebView boğuk filtre kilidi kaldırılarak yüksek kaliteli 2-kanallı 48000Hz ses akışı aktifleştirildi.' },
+            { type: 'fix', text: 'VoiceContext.jsx: toggleFacingMode çağrısında eski kamera akışı durdurularak Camera2 HAL donanım kilidi serbest bırakıldı ve arka kameraya geçiş sağlandı.' },
+            { type: 'fix', text: 'ActiveCallService.java & MainActivity.java: STOP_CALL aksiyonu önceliklendirilerek canlı oda bildirimi odadan ayrılma anında kökten yok edildi.' },
+            { type: 'ui', text: 'WatchPartyPlayer.jsx: Tam ekranda çalışan 90 derece video döndürme butonu ve orientasyon kilidi entegre edildi.' },
+            { type: 'feat', text: 'liveUpdateService.js & @capgo/capacitor-updater: Otomatik Over-The-Air web bundle güncelleme motoru ve yerel başarı bildirimi kuruldu.' }
+        ],
+        affectedFiles: [
+            'android/app/src/main/java/com/oxypace/app/MainActivity.java',
+            'android/app/src/main/java/com/oxypace/app/ActiveCallService.java',
+            'client/src/context/VoiceContext.jsx',
+            'client/src/components/WatchPartyPlayer.jsx',
+            'client/src/services/liveUpdateService.js',
+            'client/src/components/UpdateModal.jsx',
+            'server.js'
+        ]
+    },
     {
         version: 'v2.5.0',
         versionCode: 250,
         releaseDate: '27 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '250-release',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Canlı Oda Bildirim Onarımı, Tam Ekran Video Rotasyonu, Ultra Hızlı Doğrudan APK Güncelleme ve Play Protect Uyumluluğu',
         summary: 'Oxypace tarihimizin en kapsamlı majör sürümü yayınlandı. Canlı odadan ayrıldıktan sonra bildirim panelinde asılı kalan arama sayacı kökten yok edildi ve bildirim tasarımı modernleştirildi. Birlikte izle ve canlı yayın URL yapıştırma pencereleri sıfırdan inşa edilerek işlevsel @capacitor/clipboard motoru ve temiz koyu tasarıma kavuşturuldu. Dikey ekranda tam ekrana alınan videoların tepeye kayma hatası giderildi ve tam ekran döndürme butonu entegre edildi. Birlikte izle HLS akışlarındaki donmalar minimuma indirildi, kulaklık takıldığında mikrofon ve hoparlörün dinamik geçişi sağlandı. Ayrıca zorunlu güncelleme ekranındaki APK indirmesi sistem DownloadManager kısıtlamalarından kurtarılarak 64KB yüksek hızlı doğrudan soket akışına ve korumalı kum havuzuna taşındı.',
         category: 'feature',

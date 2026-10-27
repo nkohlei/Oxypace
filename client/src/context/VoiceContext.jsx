@@ -973,11 +973,11 @@ export const VoiceProvider = ({ children }) => {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: { ideal: true },
-                        noiseSuppression: { ideal: true },
-                        autoGainControl: { ideal: false },
-                        channelCount: { ideal: 2 },
-                        sampleRate: { ideal: 48000 }
+                        echoCancellation: false,
+                        noiseSuppression: true,
+                        autoGainControl: false,
+                        channelCount: 2,
+                        sampleRate: 48000
                     }
                 });
                 localStreamRef.current = localStream;
@@ -2050,32 +2050,34 @@ export const VoiceProvider = ({ children }) => {
 
         if (localState.isCameraOn && localStreamRef.current) {
             try {
-                // 1. Request new video stream with the new facingMode FIRST before stopping old tracks
+                // 1. Release existing camera sensor lock FIRST (critical for Android Camera2 HAL)
+                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder);
+                oldTracks.forEach(t => {
+                    try { t.stop(); } catch (e) {}
+                    try { localStreamRef.current.removeTrack(t); } catch (e) {}
+                });
+
+                // 2. Request new video stream with the new facingMode
                 let newStream = null;
                 try {
                     newStream = await navigator.mediaDevices.getUserMedia({
                         video: {
-                            facingMode: { exact: newMode },
-                            width: { ideal: 640 },
-                            height: { ideal: 480 },
-                            frameRate: { ideal: 24 }
+                            facingMode: { ideal: newMode },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            frameRate: { ideal: 30 }
                         }
                     });
-                } catch (exactErr) {
+                } catch (idealErr) {
                     try {
                         newStream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                facingMode: { ideal: newMode },
-                                width: { ideal: 640 },
-                                height: { ideal: 480 },
-                                frameRate: { ideal: 24 }
-                            }
+                            video: { facingMode: newMode }
                         });
-                    } catch (idealErr) {
+                    } catch (secErr) {
                         const altDevice = availableDevices?.videoInputs?.find(d => 
                             newMode === 'environment' 
-                                ? (d.label?.toLowerCase().includes('back') || d.label?.toLowerCase().includes('arka') || d.label?.toLowerCase().includes('environment'))
-                                : (d.label?.toLowerCase().includes('front') || d.label?.toLowerCase().includes('ön') || d.label?.toLowerCase().includes('user'))
+                                ? (d.label?.toLowerCase().includes('back') || d.label?.toLowerCase().includes('arka') || d.label?.toLowerCase().includes('environment') || d.label?.toLowerCase().includes('0'))
+                                : (d.label?.toLowerCase().includes('front') || d.label?.toLowerCase().includes('ön') || d.label?.toLowerCase().includes('user') || d.label?.toLowerCase().includes('1'))
                         );
                         if (altDevice && altDevice.deviceId) {
                             newStream = await navigator.mediaDevices.getUserMedia({
@@ -2093,7 +2095,7 @@ export const VoiceProvider = ({ children }) => {
                 newVideoTrack.enabled = true;
                 localStreamRef.current.addTrack(newVideoTrack);
 
-                // 2. Replace track on all active peer connections FIRST
+                // 3. Replace track on all active peer connections
                 for (const pc of peerConnectionsRef.current.values()) {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video' && !s.track.label?.includes('screen')) ||
@@ -2107,13 +2109,6 @@ export const VoiceProvider = ({ children }) => {
                         }
                     }
                 }
-
-                // 3. ONLY AFTER replaceTrack completes, safely stop old camera tracks
-                const oldTracks = localStreamRef.current.getVideoTracks().filter(t => !t.isPlaceholder && t.id !== newVideoTrack.id);
-                oldTracks.forEach(t => {
-                    try { t.stop(); } catch (e) {}
-                    try { localStreamRef.current.removeTrack(t); } catch (e) {}
-                });
 
                 // 4. Update React participant list so local camera card immediately shows the switched camera
                 updateParticipantList();

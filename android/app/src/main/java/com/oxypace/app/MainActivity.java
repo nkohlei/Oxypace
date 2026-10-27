@@ -114,9 +114,18 @@ public class MainActivity extends BridgeActivity {
                     } catch (Exception ignored) {}
 
                     try {
-                        serviceIntent.setAction("STOP_CALL");
-                        ctx.stopService(serviceIntent);
-                    } catch (Exception ignored) {}
+                        android.content.Intent stopIntent = new android.content.Intent(ctx, ActiveCallService.class);
+                        stopIntent.setAction("STOP_CALL");
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            ctx.startForegroundService(stopIntent);
+                        } else {
+                            ctx.startService(stopIntent);
+                        }
+                    } catch (Exception ignored) {
+                        try {
+                            ctx.stopService(serviceIntent);
+                        } catch (Exception ignored2) {}
+                    }
 
                     // Explicitly cancel ongoing call notification immediately
                     try {
@@ -126,12 +135,12 @@ public class MainActivity extends BridgeActivity {
                         }
                     } catch (Exception ignored) {}
 
-
                     // Revert audio mode to normal when call stops
                     try {
                         android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
                             am.setMode(android.media.AudioManager.MODE_NORMAL);
+                            am.setSpeakerphoneOn(false);
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                                 am.clearCommunicationDevice();
                             }
@@ -202,12 +211,14 @@ public class MainActivity extends BridgeActivity {
             if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return null;
             try {
                 java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
+                // 1. Prefer BLE Headset or Bluetooth A2DP/Hearing Aid devices
                 for (android.media.AudioDeviceInfo d : devices) {
                     int t = d.getType();
-                    if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO || t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) {
+                    if (t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET || t == android.media.AudioDeviceInfo.TYPE_HEARING_AID) {
                         return d;
                     }
                 }
+                // 2. Wired headsets and USB
                 for (android.media.AudioDeviceInfo d : devices) {
                     int t = d.getType();
                     if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET || t == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
@@ -217,6 +228,13 @@ public class MainActivity extends BridgeActivity {
                 for (android.media.AudioDeviceInfo d : devices) {
                     int t = d.getType();
                     if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES || t == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
+                        return d;
+                    }
+                }
+                // 3. Fallback to bluetooth communication device if nothing else
+                for (android.media.AudioDeviceInfo d : devices) {
+                    int t = d.getType();
+                    if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
                         return d;
                     }
                 }
@@ -240,6 +258,9 @@ public class MainActivity extends BridgeActivity {
         public static void routeAudio(android.media.AudioManager am, String targetRoute) {
             if (am == null) return;
             try {
+                // Ensure audio mode remains MODE_NORMAL so all calls, voices and media play in Hi-Fi stereo (48kHz)
+                am.setMode(android.media.AudioManager.MODE_NORMAL);
+
                 if ("headset".equalsIgnoreCase(targetRoute)) {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                         android.media.AudioDeviceInfo hd = getHeadsetDevice(am);
@@ -250,10 +271,7 @@ public class MainActivity extends BridgeActivity {
                         }
                     }
                     am.setSpeakerphoneOn(false);
-                    try {
-                        am.startBluetoothSco();
-                        am.setBluetoothScoOn(true);
-                    } catch (Exception ignored) {}
+                    // Do NOT start Bluetooth SCO, as SCO forces telephony 8kHz narrowband mono audio.
                     sCurrentRoute = "headset";
                 } else {
                     // Speakerphone
@@ -263,12 +281,6 @@ public class MainActivity extends BridgeActivity {
                             am.setCommunicationDevice(spk);
                         }
                     }
-                    try {
-                        if (am.isBluetoothScoOn()) {
-                            am.stopBluetoothSco();
-                            am.setBluetoothScoOn(false);
-                        }
-                    } catch (Exception ignored) {}
                     am.setSpeakerphoneOn(true);
                     sCurrentRoute = "speaker";
                 }

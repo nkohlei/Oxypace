@@ -68,6 +68,11 @@ public class ActiveCallService extends Service {
 
         String action = intent.getAction();
 
+        if ("STOP_CALL".equals(action)) {
+            stopCall();
+            return START_NOT_STICKY;
+        }
+
         // If action is not START_CALL and there is no active call, immediately stop and dismiss notification
         if (!"START_CALL".equals(action)) {
             if (roomStartedAtEpoch <= 0 || !MainActivity.CallManager.isInCall) {

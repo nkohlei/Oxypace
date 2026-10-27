@@ -1,6 +1,6 @@
 {
     "name": "oxypace-backend",
-    "version": "2.5.0",
+    "version": "2.5.1",
     "description": "Oxypace - Modern Social & Portal Platform backend",
     "main": "server.js",
     "type": "module",
@@ -17,6 +17,7 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write \"**/*.{js,jsx,json,md}\" --ignore-path .gitignore",
+        "bundle:push": "npm run mobile:build && node scripts/create-bundle.js",
         "mobile:build": "node -e \"const fs = require('fs'); try { fs.rmSync('client/dist-mobile', { recursive: true, force: true }); } catch(e) {}\" && npm --prefix client run build:mobile && node scripts/merge-mobile.js && node -e \"const fs = require('fs'); try { fs.rmSync('client/dist-mobile/downloads', { recursive: true, force: true }); } catch(e) {}\"",
         "mobile:sync": "npm run mobile:build && node -e \"const fs = require('fs'); try { fs.rmSync('android/app/src/main/assets/public', { recursive: true, force: true }); } catch(e) {}\" && npx cap sync",
         "mobile:assets": "npx capacitor-assets generate --android",

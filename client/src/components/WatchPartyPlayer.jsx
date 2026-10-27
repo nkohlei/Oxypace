@@ -1234,6 +1234,48 @@ const WatchPartyPlayer = () => {
         }
     };
 
+    const [isLandscapeLocked, setIsLandscapeLocked] = useState(false);
+
+    const handleRotateScreen = useCallback(async (e) => {
+        if (e?.stopPropagation) e.stopPropagation();
+
+        // 1. Native Android (Capacitor ScreenOrientationManager plugin)
+        if (Capacitor.isNativePlatform() && Capacitor.Plugins?.ScreenOrientationManager) {
+            try {
+                await Capacitor.Plugins.ScreenOrientationManager.toggleOrientation();
+                setIsLandscapeLocked(prev => !prev);
+                return;
+            } catch (err) {
+                console.warn('Native orientation toggle error:', err);
+            }
+        }
+
+        // 2. Standard Web Screen Orientation API (Mobile browsers)
+        if (typeof window !== 'undefined' && window.screen?.orientation) {
+            try {
+                const isCurrentlyLandscape = window.screen.orientation.type?.includes('landscape') || isLandscapeLocked;
+                if (isCurrentlyLandscape) {
+                    if (window.screen.orientation.lock) {
+                        await window.screen.orientation.lock('portrait').catch(() => {});
+                    } else if (window.screen.orientation.unlock) {
+                        window.screen.orientation.unlock();
+                    }
+                    setIsLandscapeLocked(false);
+                } else {
+                    if (window.screen.orientation.lock) {
+                        await window.screen.orientation.lock('landscape').catch(() => {});
+                    }
+                    setIsLandscapeLocked(true);
+                }
+                return;
+            } catch (err) {
+                console.warn('Web screen.orientation error:', err);
+            }
+        }
+
+        setIsLandscapeLocked(prev => !prev);
+    }, [isLandscapeLocked]);
+
     const formatTime = (secs) => {
         if (isNaN(secs) || secs === Infinity) return '00:00';
         const h = Math.floor(secs / 3600);
@@ -2487,6 +2529,17 @@ const WatchPartyPlayer = () => {
                                     </div>
 
                                     <div className="native-right-controls">
+                                        {isFullscreen && (
+                                            <button 
+                                                type="button"
+                                                className="native-rotate-btn" 
+                                                onClick={handleRotateScreen} 
+                                                title="Ekranı Döndür" 
+                                                aria-label="Ekranı Döndür"
+                                            >
+                                                <RotateCw size={18} />
+                                            </button>
+                                        )}
                                         <button 
                                             className="native-fullscreen-btn" 
                                             onClick={toggleFullscreen}
@@ -2550,6 +2603,17 @@ const WatchPartyPlayer = () => {
                                         transition: 'opacity 0.25s ease'
                                     }}
                                 >
+                                    {isFullscreen && (
+                                        <button 
+                                            type="button"
+                                            className="watch-party-fullscreen-btn-modern" 
+                                            onClick={handleRotateScreen} 
+                                            title="Ekranı Döndür" 
+                                            aria-label="Ekranı Döndür"
+                                        >
+                                            <RotateCw size={18} />
+                                        </button>
+                                    )}
                                     <button 
                                         className="watch-party-fullscreen-btn-modern"
                                         onClick={() => {
