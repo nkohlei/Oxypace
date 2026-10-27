@@ -788,6 +788,16 @@ export const VoiceProvider = ({ children }) => {
             });
         }
 
+        // Ensure bidirectional audio transceiver is always present so incoming remote audio
+        // and future unmuted local audio are seamlessly negotiated without eager hardware mic lock at join time
+        if (!pc.getTransceivers().some(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')) {
+            try {
+                pc.addTransceiver('audio', { direction: 'sendrecv' });
+            } catch (e) {
+                console.warn("[WebRTC] addTransceiver audio warning:", e);
+            }
+        }
+
         // Add local screen share track if currently screen sharing or active stream exists
         const hasLiveScreen = screenStreamRef.current && 
             screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
@@ -975,38 +985,12 @@ export const VoiceProvider = ({ children }) => {
 
 
         try {
-            // Get local audio media (camera/video stream will be requested dynamically when activated)
-            let localStream;
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        channelCount: 2,
-                        sampleRate: 48000
-                    }
-                });
-                localStreamRef.current = localStream;
-                console.log('[WebRTC Log] getUserMedia Success (Audio Only)');
-                console.log('[WebRTC] Yerel ses akışı (Local Audio Stream) başarıyla alındı', localStream);
-                
-                // Keep tracks disabled by default
-                localStream.getAudioTracks().forEach(t => t.enabled = false);
-                const initialTrack = localStream.getAudioTracks()[0];
-                if (initialTrack) {
-                    const devId = initialTrack.getSettings()?.deviceId;
-                    if (devId) setSelectedAudioInput(devId);
-                }
-                enumerateDevices();
-            } catch (permErr) {
-                console.error('[WebRTC Log] getUserMedia Error:', permErr);
-                console.warn("Could not get local media permissions:", permErr);
-                
-                // If audio permission fails, create an empty MediaStream
-                localStream = new MediaStream();
-                localStreamRef.current = localStream;
-            }
+            // Do NOT eagerly capture the microphone hardware while the user is muted!
+            // Eagerly capturing microphone causes Android to enter recording state, stealing audio focus and muting background music (Spotify).
+            // We initialize a clean MediaStream and dynamically capture microphone only when the user taps 'Mikrofonu Aç'.
+            const localStream = new MediaStream();
+            localStreamRef.current = localStream;
+            enumerateDevices();
 
             // Always add a placeholder video track to ensure the video transceiver/channel is pre-negotiated at join.
             const placeholderTrack = createPlaceholderVideoTrack();
@@ -1659,8 +1643,13 @@ export const VoiceProvider = ({ children }) => {
                     // Attach new audio track to all active peer connections
                     peerConnectionsRef.current.forEach(pc => {
                         const senders = pc.getSenders();
-                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
-                                            pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'audio')?.sender;
+                        let audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                        if (!audioSender) {
+                            const audioTransceiver = pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio');
+                            if (audioTransceiver) {
+                                audioSender = audioTransceiver.sender;
+                            }
+                        }
                         if (audioSender) {
                             audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
                         } else {
@@ -2670,68 +2659,87 @@ const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutput
 };
 
 const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
+    const audioCtxRef = useRef(null);
+    const sourceNodeRef = useRef(null);
+    const gainNodeRef = useRef(null);
     const audioEl = useRef(null);
 
     useEffect(() => {
-        if (audioEl.current && track) {
-            audioEl.current.srcObject = new MediaStream([track]);
-            audioEl.current.muted = muted;
-            audioEl.current.volume = volume;
+        if (!track) return;
 
-            if (audioOutputId && typeof audioEl.current.setSinkId === 'function') {
-                audioEl.current.setSinkId(audioOutputId).catch(err => {
-                    console.warn("[WebRTC] setSinkId error on audio track:", err);
-                });
-            }
+        let ctx = null;
+        let source = null;
+        let gain = null;
 
-            const attemptPlay = () => {
-                if (!audioEl.current) return;
-                const playPromise = audioEl.current.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(err => {
-                        console.warn('[WebRTC] AudioTrackPlayer: autoplay blocked, waiting for user gesture:', err);
-                        const unlock = () => {
-                            if (audioEl.current) {
-                                audioEl.current.play().catch(() => {});
-                            }
-                            window.removeEventListener('click', unlock);
-                            window.removeEventListener('touchstart', unlock);
-                        };
-                        window.addEventListener('click', unlock, { once: true });
-                        window.addEventListener('touchstart', unlock, { once: true });
-                    });
+        // Use Web Audio API to output directly through Android STREAM_MUSIC (Media channel) at 48kHz Ultra HD Stereo.
+        // This completely bypasses Android's telephony STREAM_VOICE_CALL, preventing the telephone speech DSP filter
+        // and ensuring background media (Spotify) is never ducked or silenced.
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                ctx = new AudioContextClass({ sampleRate: 48000 });
+                audioCtxRef.current = ctx;
+
+                if (audioOutputId && typeof ctx.setSinkId === 'function') {
+                    ctx.setSinkId(audioOutputId).catch(() => {});
                 }
-            };
 
-            attemptPlay();
-        }
-        return () => {
-            if (audioEl.current) audioEl.current.srcObject = null;
-        };
-    }, [track]);
+                const stream = new MediaStream([track]);
+                source = ctx.createMediaStreamSource(stream);
+                sourceNodeRef.current = source;
 
-    useEffect(() => {
-        if (audioEl.current) {
-            audioEl.current.muted = muted;
-            if (!muted && audioEl.current.paused) {
+                gain = ctx.createGain();
+                gain.gain.value = muted ? 0 : (volume ?? 1.0);
+                gainNodeRef.current = gain;
+
+                source.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (ctx.state === 'suspended') {
+                    const resume = () => {
+                        ctx.resume().catch(() => {});
+                        window.removeEventListener('click', resume);
+                        window.removeEventListener('touchstart', resume);
+                    };
+                    window.addEventListener('click', resume, { once: true });
+                    window.addEventListener('touchstart', resume, { once: true });
+                }
+            }
+        } catch (e) {
+            console.warn('[Web Audio] Fallback to HTML5 audio element for track:', e);
+            if (audioEl.current) {
+                audioEl.current.srcObject = new MediaStream([track]);
+                audioEl.current.muted = muted;
+                audioEl.current.volume = volume ?? 1.0;
                 audioEl.current.play().catch(() => {});
             }
         }
-    }, [muted]);
+
+        return () => {
+            if (source) {
+                try { source.disconnect(); } catch (e) {}
+            }
+            if (gain) {
+                try { gain.disconnect(); } catch (e) {}
+            }
+            if (ctx && ctx.state !== 'closed') {
+                try { ctx.close(); } catch (e) {}
+            }
+            if (audioEl.current) {
+                audioEl.current.srcObject = null;
+            }
+        };
+    }, [track, audioOutputId]);
 
     useEffect(() => {
+        if (gainNodeRef.current) {
+            gainNodeRef.current.gain.value = muted ? 0 : (volume ?? 1.0);
+        }
         if (audioEl.current) {
-            audioEl.current.volume = volume;
+            audioEl.current.muted = muted;
+            audioEl.current.volume = volume ?? 1.0;
         }
-    }, [volume]);
+    }, [muted, volume]);
 
-    useEffect(() => {
-        if (audioEl.current && audioOutputId && typeof audioEl.current.setSinkId === 'function') {
-            audioEl.current.setSinkId(audioOutputId).catch(err => {
-                console.warn("[WebRTC] setSinkId update failed:", err);
-            });
-        }
-    }, [audioOutputId]);
-
-    return <audio ref={audioEl} autoPlay playsInline />;
+    return <audio ref={audioEl} autoPlay playsInline muted style={{ display: 'none' }} />;
 };

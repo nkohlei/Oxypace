@@ -275,13 +275,12 @@ public class MainActivity extends BridgeActivity {
                     am.clearCommunicationDevice();
                 }
 
-                if ("headset".equalsIgnoreCase(targetRoute)) {
-                    am.setSpeakerphoneOn(false);
-                    sCurrentRoute = "headset";
-                } else {
-                    am.setSpeakerphoneOn(true);
-                    sCurrentRoute = "speaker";
-                }
+                // Never enable speakerphone telephony mode (setSpeakerphoneOn=false).
+                // In Android, setSpeakerphoneOn(true) forces the system into phone-call speakerphone routing,
+                // which mutes background music (Spotify) and applies a telephone speech bandpass filter.
+                // In MODE_NORMAL, Android routes media audio to the loud stereo speakers automatically when no headset is plugged in!
+                am.setSpeakerphoneOn(false);
+                sCurrentRoute = "headset".equalsIgnoreCase(targetRoute) ? "headset" : "speaker";
             } catch (Exception e) {
                 android.util.Log.w("CallManager", "routeAudio failed: " + e.getMessage());
             }
