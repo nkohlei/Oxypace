@@ -115,17 +115,8 @@ public class MainActivity extends BridgeActivity {
 
                     try {
                         android.content.Intent stopIntent = new android.content.Intent(ctx, ActiveCallService.class);
-                        stopIntent.setAction("STOP_CALL");
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            ctx.startForegroundService(stopIntent);
-                        } else {
-                            ctx.startService(stopIntent);
-                        }
-                    } catch (Exception ignored) {
-                        try {
-                            ctx.stopService(serviceIntent);
-                        } catch (Exception ignored2) {}
-                    }
+                        ctx.stopService(stopIntent);
+                    } catch (Exception ignored) {}
 
                     // Explicitly cancel ongoing call notification immediately
                     try {

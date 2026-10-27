@@ -1125,9 +1125,15 @@ export const VoiceProvider = ({ children }) => {
     }, [activeRoom, user, safeEmit]);
 
     // Guarantee native call notification is immediately dismissed whenever room ends or disconnects
+    const wasInCallRef = useRef(false);
     useEffect(() => {
-        if (Capacitor.isNativePlatform() && !activeRoom) {
-            CallManager.setInCall({ isInCall: false }).catch(() => {});
+        if (activeRoom) {
+            wasInCallRef.current = true;
+        } else if (wasInCallRef.current) {
+            wasInCallRef.current = false;
+            if (Capacitor.isNativePlatform()) {
+                CallManager.setInCall({ isInCall: false }).catch(() => {});
+            }
         }
     }, [activeRoom]);
 

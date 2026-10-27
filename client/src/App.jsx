@@ -119,7 +119,6 @@ import './AppLayout.css';
 import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
 import UpdateModal from './components/UpdateModal';
-import { initLiveUpdate } from './services/liveUpdateService';
 import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
 import TourGuide from './components/TourGuide';
 import RegisterDeviceModal from './components/RegisterDeviceModal';
@@ -385,11 +384,6 @@ const AppLayout = () => {
             delete window.__oxypaceNavigate;
         };
     }, [navigate]);
-
-    // Check for Over-The-Air web bundle live updates on mobile
-    useEffect(() => {
-        initLiveUpdate();
-    }, []);
 
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen, setMobileChannelOpen } = useUI();
     const { user, token, updateUser, isAuthenticated } = useAuth();

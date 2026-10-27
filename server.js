@@ -470,17 +470,7 @@ app.get('/api/app/version', (req, res) => {
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.5.1: Canlı oda kristal netliğinde 48kHz Hi-Fi stereo ses mimarisi, donanım kilitsiz arka/ön kamera çevirme motoru, anında kapanan canlı oda bildirim sayacı, Birlikte İzle tam ekran 90° video döndürme ve OTA canlı sessiz güncelleme desteği.',
-    });
-});
-
-// App Over-The-Air (OTA) live bundle update endpoint
-app.get('/api/app/live-update', (req, res) => {
-    res.json({
-        bundleVersion: '2.5.1',
-        bundleUrl: 'https://api.oxypace.com.tr/downloads/bundle.zip',
-        fallbackBundleUrl: 'https://oxypace.com.tr/downloads/bundle.zip',
-        mandatoryApk: false
+        changelog: 'Oxypace 2.5.1: Canlı oda kristal netliğinde 48kHz Hi-Fi stereo ses mimarisi, donanım kilitsiz arka/ön kamera çevirme motoru, anında kapanan canlı oda bildirim sayacı ve Birlikte İzle tam ekran 90° video döndürme desteği.',
     });
 });
 
