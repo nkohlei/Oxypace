@@ -464,13 +464,13 @@ app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.5.1',
-        versionCode: 251,
-        minSupportedVersionCode: 251,
+        latestVersion: '2.5.2',
+        versionCode: 252,
+        minSupportedVersionCode: 252,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.5.1: Canlı oda kristal netliğinde 48kHz Hi-Fi stereo ses mimarisi, donanım kilitsiz arka/ön kamera çevirme motoru, anında kapanan canlı oda bildirim sayacı ve Birlikte İzle tam ekran 90° video döndürme desteği.',
+        changelog: 'Oxypace 2.5.2: Canlı oda stüdyo kalitesinde 48kHz Hi-Fi stereo ses mimarisi, arka plan müzik/medya kısılma engelleyici, uygulama kapatıldığında anında temizlenen bildirim sayacı ve tam kararlılık güncellemesi.',
     });
 });
 

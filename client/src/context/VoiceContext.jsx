@@ -71,19 +71,26 @@ const prioritizeVideoCodec = (sdp) => {
     let result = sdp;
     // Optimize audio bitrate and stereo fidelity for Opus so shared media/mic sounds crisp and not like a telephone call
     if (result.includes('opus/48000')) {
-        result = result.replace(
-            /(a=fmtp:\d+ [^\r\n]*)/g,
-            (match) => {
-                if (match.includes('useinbandfec')) {
+        const opusMatch = result.match(/a=rtpmap:(\d+)\s+opus\/48000/i);
+        const opusPt = opusMatch ? opusMatch[1] : null;
+        if (opusPt) {
+            const fmtpRegex = new RegExp(`(a=fmtp:${opusPt}\\s+[^\\r\\n]*)`, 'i');
+            if (fmtpRegex.test(result)) {
+                result = result.replace(fmtpRegex, (match) => {
                     let fmtp = match;
                     if (!fmtp.includes('stereo=')) fmtp += ';stereo=1';
                     if (!fmtp.includes('sprop-stereo=')) fmtp += ';sprop-stereo=1';
                     if (!fmtp.includes('maxaveragebitrate=')) fmtp += ';maxaveragebitrate=128000';
+                    if (!fmtp.includes('cbr=')) fmtp += ';cbr=1';
                     return fmtp;
-                }
-                return match;
+                });
+            } else {
+                result = result.replace(
+                    new RegExp(`(a=rtpmap:${opusPt}\\s+opus\\/48000[^\\r\\n]*)`, 'i'),
+                    `$1\r\na=fmtp:${opusPt} minptime=10;stereo=1;sprop-stereo=1;maxaveragebitrate=128000;cbr=1;useinbandfec=1`
+                );
             }
-        );
+        }
     }
 
     try {
@@ -974,7 +981,7 @@ export const VoiceProvider = ({ children }) => {
                 localStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         echoCancellation: false,
-                        noiseSuppression: true,
+                        noiseSuppression: false,
                         autoGainControl: false,
                         channelCount: 2,
                         sampleRate: 48000
@@ -1634,11 +1641,11 @@ export const VoiceProvider = ({ children }) => {
                 console.log("[WebRTC] Requesting local audio track dynamically...");
                 const audioStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: { ideal: true },
-                        noiseSuppression: { ideal: true },
-                        autoGainControl: { ideal: false },
-                        channelCount: { ideal: 2 },
-                        sampleRate: { ideal: 48000 }
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        channelCount: 2,
+                        sampleRate: 48000
                     }
                 });
                 const newAudioTrack = audioStream.getAudioTracks()[0];
@@ -2150,11 +2157,11 @@ export const VoiceProvider = ({ children }) => {
                 newStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         deviceId: deviceId && deviceId !== 'default' ? { ideal: deviceId } : undefined,
-                        echoCancellation: { ideal: true },
-                        noiseSuppression: { ideal: true },
-                        autoGainControl: { ideal: false },
-                        channelCount: { ideal: 2 },
-                        sampleRate: { ideal: 48000 }
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        channelCount: 2,
+                        sampleRate: 48000
                     }
                 });
             } catch (strictErr) {

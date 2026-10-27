@@ -279,10 +279,10 @@ public class ActiveCallService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        android.util.Log.d("ActiveCallService", "Task removed by user swipe. Stopping active call service and dismissing notification immediately.");
+        MainActivity.CallManager.isInCall = false;
+        stopCall();
         super.onTaskRemoved(rootIntent);
-        if (!MainActivity.CallManager.isInCall) {
-            stopCall();
-        }
     }
 
     private String formatDuration() {

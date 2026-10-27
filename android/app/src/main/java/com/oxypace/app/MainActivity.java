@@ -93,6 +93,19 @@ public class MainActivity extends BridgeActivity {
                         android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
                             applyAudioRouting(am, "media");
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && sModeChangedListener == null) {
+                                android.media.AudioManager.OnModeChangedListener listener = mode -> {
+                                    if (isInCall && (mode == android.media.AudioManager.MODE_IN_COMMUNICATION || mode == android.media.AudioManager.MODE_IN_CALL)) {
+                                        try {
+                                            android.util.Log.d("CallManager", "Intercepted telephony audio mode (" + mode + "). Reverting to MODE_NORMAL and clearing communication device for 48kHz Hi-Fi stereo.");
+                                            am.setMode(android.media.AudioManager.MODE_NORMAL);
+                                            am.clearCommunicationDevice();
+                                        } catch (Exception ignored) {}
+                                    }
+                                };
+                                sModeChangedListener = listener;
+                                am.addOnModeChangedListener(java.util.concurrent.Executors.newSingleThreadExecutor(), listener);
+                            }
                         }
                     } catch (Exception ignored) {}
 
@@ -134,6 +147,10 @@ public class MainActivity extends BridgeActivity {
                             am.setSpeakerphoneOn(false);
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                                 am.clearCommunicationDevice();
+                                if (sModeChangedListener != null) {
+                                    am.removeOnModeChangedListener((android.media.AudioManager.OnModeChangedListener) sModeChangedListener);
+                                    sModeChangedListener = null;
+                                }
                             }
                         }
                     } catch (Exception ignored) {}
@@ -158,6 +175,7 @@ public class MainActivity extends BridgeActivity {
         public static String sUserSelectedRoute = null;
         public static boolean sHasHeadset = false;
         public static String sHeadsetName = "Kulaklık";
+        public static Object sModeChangedListener = null;
 
         public static boolean isHeadsetConnected(android.media.AudioManager am) {
             if (am == null) return false;
@@ -249,29 +267,18 @@ public class MainActivity extends BridgeActivity {
         public static void routeAudio(android.media.AudioManager am, String targetRoute) {
             if (am == null) return;
             try {
-                // Ensure audio mode remains MODE_NORMAL so all calls, voices and media play in Hi-Fi stereo (48kHz)
+                // Ensure audio mode strictly remains MODE_NORMAL so all calls, voices and media play in Hi-Fi stereo (48kHz)
                 am.setMode(android.media.AudioManager.MODE_NORMAL);
 
+                // Always clear communication device so Android AudioPolicy never drops to telephony voice DSP or ducks background music
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    am.clearCommunicationDevice();
+                }
+
                 if ("headset".equalsIgnoreCase(targetRoute)) {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        android.media.AudioDeviceInfo hd = getHeadsetDevice(am);
-                        if (hd != null) {
-                            am.setCommunicationDevice(hd);
-                        } else {
-                            am.clearCommunicationDevice();
-                        }
-                    }
                     am.setSpeakerphoneOn(false);
-                    // Do NOT start Bluetooth SCO, as SCO forces telephony 8kHz narrowband mono audio.
                     sCurrentRoute = "headset";
                 } else {
-                    // Speakerphone
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        android.media.AudioDeviceInfo spk = getSpeakerDevice(am);
-                        if (spk != null) {
-                            am.setCommunicationDevice(spk);
-                        }
-                    }
                     am.setSpeakerphoneOn(true);
                     sCurrentRoute = "speaker";
                 }

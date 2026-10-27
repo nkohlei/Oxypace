@@ -27,15 +27,49 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.1)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.2)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.2',
+        versionCode: 252,
+        releaseDate: '28 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Stüdyo Kalitesinde 48kHz Hi-Fi Stereo Ses Mimarisi, Arka Plan Müzik Koruması ve Kusursuz Bildirim Temizliği',
+        summary: 'Canlı odalarda seslerin hat aramasındaymış gibi boğuk gelmesi ve arka planda çalan müziğin (Spotify vb.) tamamen kısılması sorunu profesyonel ses mimarisiyle kökten çözüldü: Android Telecom iletişim cihazı zorlaması ve donanımsal konuşma filtreleri iptal edilerek ses ve video akışı 48kHz saf stereo medya hattına taşındı. Ayrıca uygulama son uygulamalardan kapatıldığında bildirim panelinde saymaya devam eden canlı oda sayacı onTaskRemoved ve stopWithTask mimarisiyle anında sonlandırılacak şekilde optimize edildi.',
+        category: 'feature',
+        apkSize: '39.0 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Kristal Netliğinde Stüdyo 48kHz Stereo: setCommunicationDevice ve telefon görüşmesi DSP filtreleri kaldırılarak WebRTC ve video sesleri stüdyo stereo kalitesine kavuşturuldu',
+            'Eşzamanlı Arka Plan Medya Dinleme: Canlı odadayken arkada çalan müziklerin (Spotify vb.) sesinin kesilmesi veya kısılması engellendi, sesler pürüzsüzce mikslendi',
+            'Anında Temizlenen Bildirim Sayacı: Uygulama arka plandan silindiğinde veya kapatıldığında bildirim paneli sayacı anında temizlenir ve servis durdurulur',
+            'Opus 128kbps Hi-Fi Entegrasyonu: WebRTC SDP sinyalleşmesinde sabit 128kbps stereo Opus ve 48000Hz örnekleme hızı kalıcı olarak mühürlendi'
+        ],
+        changes: [
+            { type: 'fix', text: 'MainActivity.java: am.setCommunicationDevice() ve Bluetooth SCO çağrıları tamamen kaldırılarak saf MODE_NORMAL stereo medya hattı ve dinamik mod bekçisi (OnModeChangedListener) devreye alındı.' },
+            { type: 'fix', text: 'ActiveCallService.java: onTaskRemoved döngüsü düzeltilerek uygulama son uygulamalardan kapatıldığı anda stopCall() ve bildirim iptali koşulsuz olarak sağlandı.' },
+            { type: 'fix', text: 'AndroidManifest.xml: ActiveCallService servisine android:stopWithTask="true" tanımlanarak işletim sistemi seviyesinde kilitlenme engellendi.' },
+            { type: 'fix', text: 'VoiceContext.jsx: getUserMedia, toggleMicrophone ve switchAudioInput içindeki echoCancellation/noiseSuppression telefon filtreleri devreden çıkarıldı; SDP Opus stereo ve 128kbps mühürlendi.' },
+            { type: 'feat', text: 'create-bundle.js: Canlı OTA güncelleme motoru ile yeni arayüz ve özelliklerin APK indirmeden güncellenmesi sağlandı.' }
+        ],
+        affectedFiles: [
+            'android/app/src/main/java/com/oxypace/app/MainActivity.java',
+            'android/app/src/main/java/com/oxypace/app/ActiveCallService.java',
+            'android/app/src/main/AndroidManifest.xml',
+            'client/src/context/VoiceContext.jsx',
+            'client/src/components/MobileVersionHistory.jsx',
+            'server.js'
+        ]
+    },
     {
         version: 'v2.5.1',
         versionCode: 251,
         releaseDate: '28 Ekim 2026',
         commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Canlı Oda Hi-Fi 48kHz Stereo Ses, Donanımsız Kamera Çevirme, Anında Kapanan Bildirim Sayacı ve OTA Canlı Güncelleme',
         summary: 'Oxypace 2.5.1 sürümüyle telefon görüşmesi kalitesindeki boğuk ses sorunu kökten çözüldü; Bluetooth SCO devreden çıkarılarak WebRTC ses akışı 48kHz Hi-Fi stereo kalitesine yükseltildi. Canlı odada arka kameraya geçişteki donanım kilitlenme hatası giderildi. Odadan çıkıldığında bildirim sayacının asılı kalması engellendi. Birlikte İzle tam ekran moduna 90 derece döndürme butonu eklendi ve gelecekteki arayüz güncellemelerini APK indirmeden saniyeler içinde sessizce kuran OTA (Over-The-Air) Canlı Güncelleme Motoru entegre edildi.',
         category: 'feature',

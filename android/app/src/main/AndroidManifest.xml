@@ -81,6 +81,7 @@
             android:name=".ActiveCallService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="true"
             android:foregroundServiceType="microphone|camera|mediaProjection" />
 
     </application>
