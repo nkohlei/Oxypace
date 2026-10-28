@@ -312,12 +312,24 @@ const WatchPartyPlayer = () => {
     const safePlay = async (targetVideo = videoRef.current) => {
         if (!targetVideo) return;
         try {
+            if (hlsInstanceRef.current && typeof hlsInstanceRef.current.startLoad === 'function') {
+                try { hlsInstanceRef.current.startLoad(); } catch (_) {}
+            }
             await targetVideo.play();
             setNeedsInteractionPrompt(false);
             if (!targetVideo.muted && !localMuted) {
                 setNeedsUnmutePrompt(false);
             }
         } catch (err) {
+            if (err?.name === 'AbortError') {
+                // play() was interrupted by a concurrent seek or load; retry cleanly without muting
+                setTimeout(() => {
+                    if (targetVideo && targetVideo.paused && watchParty?.isPlaying !== false) {
+                        targetVideo.play().catch(() => {});
+                    }
+                }, 60);
+                return;
+            }
             console.warn('[WatchPartyPlayer] Direct play blocked (likely mobile autoplay policy):', err);
             // Mobilde sesli otomatik oynatma engellendiyse hemen muted olarak oynatmayı dene (mobil tarayıcılar muted'a izin verir)
             try {
@@ -329,6 +341,7 @@ const WatchPartyPlayer = () => {
                 setNeedsInteractionPrompt(false);
                 console.log('[WatchPartyPlayer] Successfully recovered with muted autoplay on mobile.');
             } catch (mutedErr) {
+                if (mutedErr?.name === 'AbortError') return;
                 console.warn('[WatchPartyPlayer] Muted play also blocked by device, requiring tap:', mutedErr);
                 setNeedsInteractionPrompt(true);
             }
@@ -1792,14 +1805,12 @@ const WatchPartyPlayer = () => {
             video.pause();
             video.playbackRate = 1.0;
             lastProgrammaticSeekTimeRef.current = exactTime;
-            video.currentTime = exactTime;
             setCurrentTime(exactTime);
             setIsNativePlaying(false);
             sendWatchPause(exactTime);
         } else {
             video.playbackRate = 1.0;
             lastProgrammaticSeekTimeRef.current = exactTime;
-            video.currentTime = exactTime;
             setCurrentTime(exactTime);
             setIsNativePlaying(true);
             safePlay(video);
@@ -1977,8 +1988,8 @@ const WatchPartyPlayer = () => {
             const isFromSelf = detail.senderId && localUid && String(detail.senderId) === localUid;
             if (isFromSelf) return;
 
-            // Remote action always overrides any local cooldown immediately
-            isUserActionCooldownRef.current = 0;
+            // Give the hardware decoder 900ms of protection from background alignNativeVideo interval re-seeks
+            isUserActionCooldownRef.current = Date.now() + 900;
 
             const video = videoRef.current;
             const stdPlayer = playerRef.current;
@@ -1994,16 +2005,13 @@ const WatchPartyPlayer = () => {
                     video.playbackRate = 1.0;
                     setIsNativePlaying(false);
                     lastProgrammaticSeekTimeRef.current = baseTime;
-                    video.currentTime = baseTime;
+                    if (Math.abs((video.currentTime || 0) - baseTime) > 0.03) {
+                        video.currentTime = baseTime;
+                    }
                     setCurrentTime(baseTime);
-                    // Double-lock after hardware decoder settles so frame & millisecond match 100%
                     setTimeout(() => {
-                        if (video && video.paused && Math.abs((video.currentTime || 0) - baseTime) > 0.001) {
-                            video.currentTime = baseTime;
-                            setCurrentTime(baseTime);
-                        }
                         isSyncingRef.current = false;
-                    }, 55);
+                    }, 150);
                 } else if (stdPlayer && !isStream) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = baseTime;
@@ -2016,27 +2024,33 @@ const WatchPartyPlayer = () => {
                 if (video && isNativeVOD) {
                     isSyncingRef.current = true;
                     video.playbackRate = 1.0;
-                    if (Math.abs((video.currentTime || 0) - liveTarget) > 0.015) {
+                    setIsNativePlaying(true);
+                    if (hlsInstanceRef.current && typeof hlsInstanceRef.current.startLoad === 'function') {
+                        try { hlsInstanceRef.current.startLoad(); } catch (_) {}
+                    }
+                    const currentDiff = Math.abs((video.currentTime || 0) - liveTarget);
+                    // Only seek before play() if drift > 0.35s; otherwise start playback directly from existing MSE buffer
+                    // (identical to local play button) so Android MediaCodec never flushes or freezes on resume!
+                    if (currentDiff > 0.35) {
                         lastProgrammaticSeekTimeRef.current = liveTarget;
                         video.currentTime = liveTarget;
                         setCurrentTime(liveTarget);
+                        let playTriggered = false;
+                        const triggerPlayAfterSeek = () => {
+                            if (playTriggered) return;
+                            playTriggered = true;
+                            video.removeEventListener('seeked', triggerPlayAfterSeek);
+                            safePlay(video);
+                            isSyncingRef.current = false;
+                        };
+                        video.addEventListener('seeked', triggerPlayAfterSeek, { once: true });
+                        setTimeout(triggerPlayAfterSeek, 160);
+                    } else {
+                        safePlay(video);
+                        setTimeout(() => {
+                            isSyncingRef.current = false;
+                        }, 150);
                     }
-                    setIsNativePlaying(true);
-                    safePlay(video);
-                    // Compensate for any hardware decoder startup latency the instant frames start flowing
-                    const verifyStartLock = () => {
-                        if (!video || video.paused) return;
-                        const postStartTarget = baseTime + Math.max(0, Math.min(3.0, (getServerNow() - refTs) / 1000));
-                        const startDrift = postStartTarget - (video.currentTime || 0);
-                        if (Math.abs(startDrift) > 0.04 && !video.seeking) {
-                            lastProgrammaticSeekTimeRef.current = postStartTarget;
-                            video.currentTime = postStartTarget;
-                            setCurrentTime(postStartTarget);
-                        }
-                        isSyncingRef.current = false;
-                    };
-                    video.addEventListener('playing', verifyStartLock, { once: true });
-                    setTimeout(verifyStartLock, 90);
                 } else if (stdPlayer && !isStream) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = liveTarget;
@@ -2080,6 +2094,7 @@ const WatchPartyPlayer = () => {
         let playTransitionGuardTimer = null;
         let isBufferingStall = false;
         let lastHardSeekAt = 0;
+        let lastPausedLockedTarget = null;
 
         const computeTargetTime = () => {
             const serverNow = getServerNow();
@@ -2137,19 +2152,23 @@ const WatchPartyPlayer = () => {
                 video.pause();
                 video.playbackRate = 1.0;
                 setIsNativePlaying(false);
+                lastPausedLockedTarget = targetTime;
                 lastProgrammaticSeekTimeRef.current = targetTime;
-                video.currentTime = targetTime;
+                if (absDrift > 0.03) {
+                    video.currentTime = targetTime;
+                }
                 setCurrentTime(targetTime);
                 setTimeout(() => { isSyncingRef.current = false; }, 200);
                 return;
             } else if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
+                lastPausedLockedTarget = null;
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
                 }, 400);
-                if (absDrift > 0.02 && !video.seeking) {
+                if (absDrift > 0.35 && !video.seeking) {
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
                     setCurrentTime(targetTime);
@@ -2160,11 +2179,12 @@ const WatchPartyPlayer = () => {
                 return;
             }
 
-            // 3. When Paused: Exact Millisecond Lock ("salisesine kadar eşit")
+            // 3. When Paused: Single-shot Lock (prevents 4Hz frame-PTS quantization seek loops on Android MediaCodec)
             if (!watchParty.isPlaying) {
                 if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
-                if (absDrift > 0.004 && !video.seeking) {
+                if (absDrift > 0.08 && !video.seeking && Math.abs((lastPausedLockedTarget ?? -999) - targetTime) > 0.01) {
                     isSyncingRef.current = true;
+                    lastPausedLockedTarget = targetTime;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
                     setCurrentTime(targetTime);
@@ -3158,6 +3178,7 @@ export const GlobalWatchPartyWrapper = () => {
     if (!watchParty || !watchParty.url) return null;
 
     const isVisible = coords?.visible;
+    const isCarouselDocked = isVisible && coords.height <= 220;
 
     const style = isVisible ? {
         position: 'fixed',
@@ -3169,6 +3190,8 @@ export const GlobalWatchPartyWrapper = () => {
         visibility: 'visible',
         opacity: 1,
         zIndex: 1,
+        overflow: 'hidden',
+        borderRadius: isCarouselDocked ? '12px' : '16px',
         pointerEvents: 'auto',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     } : {
@@ -3185,7 +3208,7 @@ export const GlobalWatchPartyWrapper = () => {
     };
 
     return (
-        <div style={style}>
+        <div className={isCarouselDocked ? 'is-carousel-docked' : ''} style={style}>
             <WatchPartyPlayer />
         </div>
     );

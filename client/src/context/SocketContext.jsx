@@ -241,7 +241,11 @@ export const SocketProvider = ({ children }) => {
         window.addEventListener('resume', handleWindowResume);
 
         // Before window/tab close or reload
-        const handleBeforeUnload = () => {
+        const handleBeforeUnload = (e) => {
+            if (Capacitor.isNativePlatform() && isVoiceCallActive()) {
+                console.log('🎙️ [Socket] Ignoring pagehide/beforeunload on native platform during active voice call');
+                return;
+            }
             if (newSocket.connected && userRef.current?._id) {
                 try {
                     newSocket.emit('logout');

@@ -20,10 +20,18 @@ const CallManager = registerPlugin('CallManager');
 // to guarantee zero DOM re-creations / unmounts and simultaneous multi-camera rendering
 const VideoRenderer = React.memo(({ participant, isShowingScreen, className, identity, avatarUrl }) => {
     const videoRef = useRef(null);
+    const [isPortraitStream, setIsPortraitStream] = useState(false);
     const rawTrackObj = isShowingScreen ? participant?.screenShareTrack : (participant?.videoTrack || participant?.screenShareTrack);
     const rawTrack = rawTrackObj?.mediaStreamTrack || rawTrackObj?.track || (rawTrackObj instanceof MediaStreamTrack ? rawTrackObj : (rawTrackObj instanceof MediaStream ? rawTrackObj.getVideoTracks()[0] : null));
 
     const isVideoActive = isShowingScreen ? !!participant?.isScreenSharing : !!participant?.isCameraOn;
+
+    const checkVideoDimensions = () => {
+        const el = videoRef.current;
+        if (el && el.videoWidth > 0 && el.videoHeight > 0) {
+            setIsPortraitStream(el.videoHeight > el.videoWidth * 1.05);
+        }
+    };
 
     useEffect(() => {
         const el = videoRef.current;
@@ -105,13 +113,19 @@ const VideoRenderer = React.memo(({ participant, isShowingScreen, className, ide
     }, [rawTrack?.id, identity]);
 
     if (isVideoActive && rawTrack) {
+        const shouldContain = isShowingScreen || participant?.isScreenSharing || isPortraitStream;
+        const effectiveClassName = shouldContain && !String(className || '').includes('vc-screenshare-video-contained')
+            ? `${className || ''} vc-screenshare-video-contained`.trim()
+            : className;
         return (
             <video 
                 ref={videoRef} 
-                className={className} 
+                className={effectiveClassName} 
                 autoPlay 
                 playsInline 
-                muted={true} 
+                muted={true}
+                onLoadedMetadata={checkVideoDimensions}
+                onResize={checkVideoDimensions}
             />
         );
     }
@@ -617,7 +631,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             if (onClickOverride) onClickOverride();
             else handleFocus(p.identity);
         };
-        const isShowingScreen = p.isScreenSharing;
+        const isShowingScreen = !!(p.isScreenSharing || p.screenShareTrack || String(p.identity).endsWith('-screen'));
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
 
         return (
@@ -877,21 +891,15 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             </div>
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '0px', position: 'relative' }}>
-                {watchParty && watchParty.url && (
+                {watchParty && watchParty.url && !focusedParticipant && (
                     <div 
                         id="watch-party-portal-placeholder" 
-                        className={focusedParticipant ? 'watch-party-target-carousel' : 'watch-party-target-hero'}
-                        onClick={focusedParticipant ? () => setFocusedIdentity(null) : undefined}
-                        title={focusedParticipant ? "Videoyu Ana Ekrana Al" : undefined}
+                        className="watch-party-target-hero"
                         style={{
-                            cursor: focusedParticipant ? 'pointer' : 'default',
-                            pointerEvents: focusedParticipant ? 'auto' : 'none'
+                            cursor: 'default',
+                            pointerEvents: 'none'
                         }}
-                    >
-                        {focusedParticipant && (
-                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
-                        )}
-                    </div>
+                    />
                 )}
 
                 {watchParty && watchParty.url ? (
@@ -910,9 +918,19 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         >
                             {focusedParticipant && (
                                 <div 
-                                    className="watch-party-placeholder-card" 
-                                    style={{ height: '160px', marginBottom: '8px', opacity: 0, pointerEvents: 'none', width: '100%', flexShrink: 0 }} 
-                                />
+                                    id="watch-party-portal-placeholder"
+                                    className="vc-card role-carousel watch-party-target-carousel"
+                                    onClick={() => setFocusedIdentity(null)}
+                                    title="Videoyu Ana Ekrana Al"
+                                    style={{
+                                        cursor: 'pointer',
+                                        pointerEvents: 'auto',
+                                        position: 'relative',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
+                                </div>
                             )}
                             {displayParticipants.filter(p => !focusedParticipant || p.identity !== focusedParticipant.identity).map(p => 
                                 renderParticipantCard(p, 'carousel', () => handleFocus(p.identity))

@@ -141,7 +141,7 @@ public class ActiveCallService extends Service {
             }
 
         } else if ("TOGGLE_SCREEN".equals(action)) {
-            isScreenSharing = !isScreenSharing;
+            MainActivity.keepWebViewAliveStatic();
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.notify(NOTIFICATION_ID, buildNotification(formatDuration()));
@@ -256,6 +256,7 @@ public class ActiveCallService extends Service {
                     stopCall();
                     return;
                 }
+                MainActivity.keepWebViewAliveStatic();
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                 if (nm != null) {
                     nm.notify(NOTIFICATION_ID, buildNotification(formatDuration()));
@@ -324,12 +325,25 @@ public class ActiveCallService extends Service {
         );
 
         // Action 2: Toggle Screen Share (Ekran Paylaş / Paylaşımı Durdur)
-        Intent toggleScreenIntent = new Intent(this, CallActionReceiver.class);
-        toggleScreenIntent.setAction(CallActionReceiver.ACTION_TOGGLE_SCREEN);
-        PendingIntent piToggleScreen = PendingIntent.getBroadcast(
-            this, 25, toggleScreenIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+        // When starting screen share from notification, launch MainActivity directly via getActivity
+        // so Android 10-14+ allows MediaProjection consent dialog even when app is in background.
+        PendingIntent piToggleScreen;
+        if (!isScreenSharing) {
+            Intent startScreenIntent = new Intent(this, MainActivity.class);
+            startScreenIntent.setAction("ACTION_NOTIFICATION_START_SCREEN");
+            startScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            piToggleScreen = PendingIntent.getActivity(
+                this, 25, startScreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+        } else {
+            Intent stopScreenIntent = new Intent(this, CallActionReceiver.class);
+            stopScreenIntent.setAction(CallActionReceiver.ACTION_TOGGLE_SCREEN);
+            piToggleScreen = PendingIntent.getBroadcast(
+                this, 26, stopScreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+        }
 
         // Action 3: Hangup / Leave Room (Ayrıl)
         Intent hangupIntent = new Intent(this, CallActionReceiver.class);

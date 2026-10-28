@@ -14,8 +14,16 @@ const CallManager = registerPlugin('CallManager');
 // Standalone VideoRenderer outside main component scope to guarantee zero DOM re-creations / unmounts
 const VideoRenderer = React.memo(({ participant, className }) => {
     const videoRef = useRef(null);
+    const [isPortraitStream, setIsPortraitStream] = useState(false);
     const rawTrackObj = participant?.screenShareTrack || participant?.videoTrack;
     const rawTrack = rawTrackObj?.mediaStreamTrack || rawTrackObj?.track || (rawTrackObj instanceof MediaStreamTrack ? rawTrackObj : (rawTrackObj instanceof MediaStream ? rawTrackObj.getVideoTracks()[0] : null));
+
+    const checkDimensions = () => {
+        const el = videoRef.current;
+        if (el && el.videoWidth > 0 && el.videoHeight > 0) {
+            setIsPortraitStream(el.videoHeight > el.videoWidth * 1.05);
+        }
+    };
 
     useEffect(() => {
         const el = videoRef.current;
@@ -52,13 +60,17 @@ const VideoRenderer = React.memo(({ participant, className }) => {
     }, [rawTrack?.id, participant?.isCameraOn, participant?.isScreenSharing]);
 
     if ((participant?.isCameraOn || participant?.isScreenSharing) && rawTrack) {
+        const shouldContain = participant?.isScreenSharing || !!participant?.screenShareTrack || isPortraitStream;
         return (
             <video 
                 ref={videoRef} 
-                className={className} 
+                className={className}
+                style={shouldContain ? { objectFit: 'contain', background: '#0a0a0c' } : undefined}
                 autoPlay 
                 playsInline 
-                muted={true} 
+                muted={true}
+                onLoadedMetadata={checkDimensions}
+                onResize={checkDimensions}
             />
         );
     }

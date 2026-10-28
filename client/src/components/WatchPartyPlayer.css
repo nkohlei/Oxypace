@@ -3,14 +3,35 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    min-height: 350px;
+    min-height: 0;
+    max-height: 100%;
+    box-sizing: border-box;
     border-radius: 16px;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(14, 16, 22, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+}
+
+.is-carousel-docked .watch-party-player-wrapper {
+    border-radius: 12px !important;
+}
+
+.is-carousel-docked .watch-party-header {
+    padding: 4px 8px !important;
+}
+
+.is-carousel-docked .watch-party-title {
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.is-carousel-docked .native-controls-overlay {
+    display: none !important;
 }
 
 .watch-party-header {
@@ -57,6 +78,7 @@
 
 /* Also hide top bar in mobile landscape orientation (horizontal rotation) */
 @media (orientation: landscape) and (max-height: 550px) {
+
     .watch-party-player-wrapper .watch-party-header,
     .watch-party-player-wrapper.is-fullscreen .watch-party-header,
     .watch-party-player-wrapper:fullscreen .watch-party-header {
@@ -146,8 +168,13 @@
 }
 
 @keyframes popoverFadeInBackdrop {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .native-unified-dropdown-popover {
@@ -172,6 +199,7 @@
         opacity: 0;
         transform: translateY(-6px) scale(0.97);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -409,7 +437,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     align-items: center;
     gap: 4px;
     pointer-events: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .watch-party-live-badge-inline::before {
@@ -436,9 +464,20 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 }
 
 @keyframes pulse-live {
-    0% { transform: scale(0.9); opacity: 0.6; }
-    50% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(0.9); opacity: 0.6; }
+    0% {
+        transform: scale(0.9);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.9);
+        opacity: 0.6;
+    }
 }
 
 /* Modern Collapsible Volume Control */
@@ -485,7 +524,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
         left: 12px !important;
         top: auto !important;
     }
-    
+
     .watch-party-fullscreen-container-modern {
         position: absolute;
         bottom: 12px !important;
@@ -500,7 +539,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
         bottom: 16px;
         left: 16px;
     }
-    
+
     .watch-party-fullscreen-container-modern {
         position: absolute;
         bottom: 16px;
@@ -566,8 +605,9 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     border-radius: 50%;
     background: #ef4444;
     cursor: pointer;
-    margin-top: -4px; /* Align thumb with track: (4px - 12px) / 2 */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    margin-top: -4px;
+    /* Align thumb with track: (4px - 12px) / 2 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     transition: transform 0.1s;
 }
 
@@ -597,8 +637,15 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 }
 
 @keyframes fadeInSlide {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Resize Handles */
@@ -612,6 +659,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 .resize-handle:hover {
     background: rgba(0, 210, 255, 0.15);
 }
+
 /* Watch Party Player inside Carousel Card Override */
 .watch-party-target-carousel .watch-party-player-wrapper {
     min-height: 0 !important;
@@ -726,7 +774,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     border-radius: 50%;
     background: #00d2ff;
     cursor: pointer;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
     margin-top: -3px;
 }
 
@@ -944,6 +992,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
         opacity: 0;
         transform: translateY(6px) scale(0.96);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -1056,8 +1105,13 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 }
 
 @keyframes fadeInModal {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes popModal {
@@ -1065,6 +1119,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
         opacity: 0;
         transform: scale(0.92);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -1244,10 +1299,12 @@ video.watch-party-native-video::-webkit-media-text-track-display {
         opacity: 0;
         transform: scale(0.65);
     }
+
     40% {
         opacity: 1;
         transform: scale(1.08);
     }
+
     100% {
         opacity: 1;
         transform: scale(1);
@@ -1258,9 +1315,11 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     0% {
         opacity: 1;
     }
+
     70% {
         opacity: 0.9;
     }
+
     100% {
         opacity: 0;
     }
@@ -1268,6 +1327,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
+
     /* Unified Audio & Subtitle Popover Mobile Bottom Sheet Style */
     .native-unified-dropdown-popover,
     .native-unified-dropdown-popover.is-mobile-sheet {
@@ -1290,6 +1350,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
             opacity: 0;
             transform: translate(-50%, 16px) scale(0.96);
         }
+
         to {
             opacity: 1;
             transform: translate(-50%, 0) scale(1);
@@ -1452,7 +1513,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     font-size: clamp(12.5px, 2.3cqw, 20px) !important;
     font-weight: 600 !important;
     line-height: 1.35 !important;
-    text-shadow: 
+    text-shadow:
         0 0 3px #000000,
         1px 1px 2px #000000,
         -1px -1px 2px #000000,
@@ -1538,7 +1599,7 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     font-weight: 600;
     line-height: 1.35;
     letter-spacing: 0.25px;
-    text-shadow: 
+    text-shadow:
         0 0 3px #000000,
         1px 1px 2px #000000,
         -1px -1px 2px #000000,
@@ -1780,19 +1841,36 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 }
 
 @keyframes unmuteBadgePulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 12px rgba(255, 255, 255, 0.2);
     }
+
     50% {
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 20px rgba(255, 255, 255, 0.4);
     }
 }
 
 @keyframes unmuteIconShake {
-    0%, 100% { transform: scale(1); }
-    10%, 20% { transform: scale(1.15) rotate(-5deg); }
-    15% { transform: scale(1.15) rotate(5deg); }
-    25% { transform: scale(1); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    10%,
+    20% {
+        transform: scale(1.15) rotate(-5deg);
+    }
+
+    15% {
+        transform: scale(1.15) rotate(5deg);
+    }
+
+    25% {
+        transform: scale(1);
+    }
 }
 
 .watch-party-play-trigger-overlay {

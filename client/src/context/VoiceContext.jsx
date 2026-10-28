@@ -1054,6 +1054,9 @@ export const VoiceProvider = ({ children }) => {
             // Track lifecycle listeners to immediately reflect frame delivery or track changes
             event.track.onended = () => {
                 console.log(`[WebRTC] Remote track ended: ${event.track.id} (${event.track.kind}) for ${targetUserId}`);
+                if (tracks.screen === event.track) {
+                    tracks.screen = null;
+                }
                 updateParticipantList();
             };
             event.track.onunmute = () => {
@@ -1063,6 +1066,7 @@ export const VoiceProvider = ({ children }) => {
 
             if (event.track.kind === 'audio') {
                 const isScreenAudio = stream.id.includes('screen') || 
+                                     (rState?.screenStreamId && stream.id === rState.screenStreamId) ||
                                      (tracks.camStreamId && stream.id !== tracks.camStreamId);
                 
                 if (isScreenAudio) {
@@ -1077,24 +1081,45 @@ export const VoiceProvider = ({ children }) => {
                 }
             } else if (event.track.kind === 'video') {
                 const rState = remoteStatesRef.current.get(targetUserId);
+                const videoTransceivers = (pc.getTransceivers?.() || []).filter(t => t.receiver?.track?.kind === 'video');
+                const isSecondVideoTransceiver = videoTransceivers.length > 1 && event.transceiver && event.transceiver !== videoTransceivers[0];
+                const isDifferentStreamFromCam = Boolean(
+                    tracks.initialCamStreamId &&
+                    stream.id &&
+                    stream.id !== tracks.initialCamStreamId &&
+                    event.track.id !== tracks.initialCamTrackId
+                );
+
                 // Track is explicitly a screenshare if:
                 // 1. Content hint is text/detail (set by screenshare)
-                // 2. Stream ID or track label explicitly contains 'screen'
-                // 3. Remote user is marked as screen sharing AND camera is not on AND we don't have a screen track yet
+                // 2. Stream ID or track label explicitly contains 'screen' or matches signaled screenStreamId
+                // 3. It arrives on a 2nd video transceiver or a different MediaStream than the initial camera/placeholder stream
+                // 4. Remote user is marked as screen sharing AND camera is not on AND we don't have a screen track yet
                 const isExplicitScreen = event.track.contentHint === 'text' || 
                                          event.track.contentHint === 'detail' ||
+                                         (rState?.screenStreamId && stream.id === rState.screenStreamId) ||
                                          (stream.id && stream.id.toLowerCase().includes('screen')) || 
                                          (event.track.label && event.track.label.toLowerCase().includes('screen'));
                 
-                const isScreen = isExplicitScreen || (rState?.isScreenSharing && !rState?.isCameraOn && !tracks.screen);
+                const isScreen = isExplicitScreen ||
+                                 isSecondVideoTransceiver ||
+                                 isDifferentStreamFromCam ||
+                                 (rState?.isScreenSharing && !rState?.isCameraOn && !tracks.screen);
 
                 if (isScreen) {
                     tracks.screen = event.track;
-                    console.log(`[WebRTC] remote screenShareTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
+                    tracks.screenStreamId = stream.id;
+                    console.log(`[WebRTC] remote screenShareTrack set for user ${targetUserId} (track ID: ${event.track.id}, stream ID: ${stream.id})`);
                 } else {
+                    if (!tracks.initialCamStreamId && stream.id) {
+                        tracks.initialCamStreamId = stream.id;
+                    }
+                    if (!tracks.initialCamTrackId) {
+                        tracks.initialCamTrackId = event.track.id;
+                    }
                     tracks.camStreamId = stream.id;
                     tracks.video = event.track;
-                    console.log(`[WebRTC] remote videoTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
+                    console.log(`[WebRTC] remote videoTrack set for user ${targetUserId} (track ID: ${event.track.id}, stream ID: ${stream.id})`);
                 }
             }
 
@@ -1435,16 +1460,36 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
-        const handleStateUpdate = ({ userId, isMuted, isCameraOn, isScreenSharing }) => {
-            console.log(`[Socket] voice:state-update received for user ${userId}: Mute=${isMuted}, Camera=${isCameraOn}, Screen=${isScreenSharing}`);
-            remoteStatesRef.current.set(userId, { isMuted, isCameraOn, isScreenSharing });
+        const handleStateUpdate = ({ userId, isMuted, isCameraOn, isScreenSharing, screenStreamId }) => {
+            console.log(`[Socket] voice:state-update received for user ${userId}: Mute=${isMuted}, Camera=${isCameraOn}, Screen=${isScreenSharing}, screenStreamId=${screenStreamId || ''}`);
+            const prevState = remoteStatesRef.current.get(userId) || {};
+            remoteStatesRef.current.set(userId, {
+                isMuted,
+                isCameraOn,
+                isScreenSharing,
+                screenStreamId: screenStreamId || prevState.screenStreamId || null
+            });
 
             const rTracks = remoteTracksRef.current.get(userId);
+            const pc = peerConnectionsRef.current.get(userId);
             if (rTracks) {
-                if (isScreenSharing && !rTracks.screen && rTracks.video && !isCameraOn) {
-                    // Track was initially classified as video track because camera was off
-                    rTracks.screen = rTracks.video;
-                    rTracks.video = null;
+                if (isScreenSharing && !rTracks.screen) {
+                    // Check if peer connection has multiple video transceivers (1st = camera/placeholder, 2nd = screen)
+                    const videoTransceivers = (pc?.getTransceivers?.() || []).filter(
+                        t => t.receiver?.track?.kind === 'video' && t.receiver.track.readyState !== 'ended'
+                    );
+                    if (videoTransceivers.length > 1) {
+                        const camTrack = videoTransceivers[0].receiver.track;
+                        const scrTrack = videoTransceivers[videoTransceivers.length - 1].receiver.track;
+                        if (scrTrack && scrTrack !== camTrack) {
+                            rTracks.video = camTrack;
+                            rTracks.screen = scrTrack;
+                        }
+                    } else if (rTracks.video && !isCameraOn) {
+                        // Track was initially classified as video track because camera was off
+                        rTracks.screen = rTracks.video;
+                        rTracks.video = null;
+                    }
                 } else if (!isScreenSharing && rTracks.screen) {
                     // If remote user is NOT screen sharing, but camera is ON, recover the track if video slot is empty
                     if (isCameraOn && (!rTracks.video || rTracks.video.readyState === 'ended')) {
@@ -1454,20 +1499,17 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
 
-            if (isCameraOn) {
-                const pc = peerConnectionsRef.current.get(userId);
-                if (pc) {
-                    const videoTransceiver = pc.getTransceivers?.().find(t => 
-                        t.receiver?.track?.kind === 'video' && 
-                        t.receiver.track.readyState !== 'ended' &&
-                        t.receiver.track !== rTracks?.screen
-                    );
-                    if (videoTransceiver?.receiver?.track) {
-                        if (!remoteTracksRef.current.has(userId)) {
-                            remoteTracksRef.current.set(userId, {});
-                        }
-                        remoteTracksRef.current.get(userId).video = videoTransceiver.receiver.track;
+            if (isCameraOn && pc) {
+                const videoTransceiver = pc.getTransceivers?.().find(t => 
+                    t.receiver?.track?.kind === 'video' && 
+                    t.receiver.track.readyState !== 'ended' &&
+                    t.receiver.track !== rTracks?.screen
+                );
+                if (videoTransceiver?.receiver?.track) {
+                    if (!remoteTracksRef.current.has(userId)) {
+                        remoteTracksRef.current.set(userId, {});
                     }
+                    remoteTracksRef.current.get(userId).video = videoTransceiver.receiver.track;
                 }
             }
 
@@ -2070,13 +2112,15 @@ export const VoiceProvider = ({ children }) => {
                             return;
                         }
 
+                        const initW = (captureResult.width && captureResult.width > 0) ? captureResult.width : 540;
+                        const initH = (captureResult.height && captureResult.height > 0) ? captureResult.height : 1200;
                         const canvas = screenCanvasRef.current || document.createElement('canvas');
                         screenCanvasRef.current = canvas;
-                        canvas.width = 540;
-                        canvas.height = 960;
+                        canvas.width = initW;
+                        canvas.height = initH;
                         const ctx = canvas.getContext('2d');
                         ctx.fillStyle = '#0a0d14';
-                        ctx.fillRect(0, 0, 540, 960);
+                        ctx.fillRect(0, 0, initW, initH);
 
                         let isDecoding = false;
                         let pendingBase64 = null;
@@ -2086,13 +2130,26 @@ export const VoiceProvider = ({ children }) => {
 
                         screenImg.onload = () => {
                             try {
-                                if (screenImg.naturalWidth > 0 && screenImg.naturalHeight > 0) {
-                                    if (canvas.width !== screenImg.naturalWidth || canvas.height !== screenImg.naturalHeight) {
-                                        canvas.width = screenImg.naturalWidth;
-                                        canvas.height = screenImg.naturalHeight;
+                                const iw = screenImg.naturalWidth || canvas.width;
+                                const ih = screenImg.naturalHeight || canvas.height;
+                                if (iw > 0 && ih > 0) {
+                                    const isImgPortrait = ih >= iw;
+                                    const isCanvasPortrait = canvas.height >= canvas.width;
+                                    if (isImgPortrait !== isCanvasPortrait) {
+                                        canvas.width = iw;
+                                        canvas.height = ih;
                                     }
+                                    const cw = canvas.width;
+                                    const ch = canvas.height;
+                                    ctx.fillStyle = '#0a0d14';
+                                    ctx.fillRect(0, 0, cw, ch);
+                                    const scale = Math.min(cw / iw, ch / ih);
+                                    const dw = Math.round(iw * scale);
+                                    const dh = Math.round(ih * scale);
+                                    const dx = Math.round((cw - dw) / 2);
+                                    const dy = Math.round((ch - dh) / 2);
+                                    ctx.drawImage(screenImg, dx, dy, dw, dh);
                                 }
-                                ctx.drawImage(screenImg, 0, 0, canvas.width, canvas.height);
                             } catch (drawErr) {}
                             isDecoding = false;
                             if (pendingBase64) {
@@ -2172,6 +2229,23 @@ export const VoiceProvider = ({ children }) => {
                 const videoTrack = screenStream.getVideoTracks()[0];
                 const audioTrack = screenStream.getAudioTracks()[0];
 
+                // Announce screen share state & stream ID BEFORE adding track and renegotiating
+                // so remote peers immediately classify the incoming track as tracks.screen
+                setLocalState(prev => {
+                    const next = { ...prev, isScreenSharing: true };
+                    if (activeRoom) {
+                        safeEmit('voice:state-update', {
+                            roomName: activeRoom.roomName,
+                            userId: user?._id?.toString(),
+                            isMuted: next.isMuted,
+                            isCameraOn: next.isCameraOn,
+                            isScreenSharing: true,
+                            screenStreamId: screenStream.id
+                        });
+                    }
+                    return next;
+                });
+
                 if (videoTrack) {
                     videoTrack.contentHint = 'text';
 
@@ -2211,20 +2285,6 @@ export const VoiceProvider = ({ children }) => {
                         stopScreenShareAndRevert();
                     };
                 }
-
-                setLocalState(prev => {
-                    const next = { ...prev, isScreenSharing: true };
-                    if (activeRoom) {
-                        safeEmit('voice:state-update', {
-                            roomName: activeRoom.roomName,
-                            userId: user?._id?.toString(),
-                            isMuted: next.isMuted,
-                            isCameraOn: next.isCameraOn,
-                            isScreenSharing: true
-                        });
-                    }
-                    return next;
-                });
             } catch (err) {
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
                     console.log("[ScreenShare] Screen share permission was denied or dismissed.");

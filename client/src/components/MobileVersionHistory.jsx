@@ -27,15 +27,54 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.3)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.4)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.4',
+        versionCode: 254,
+        releaseDate: '29 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Arka Plan PiP Kamera/Ses Sürekliliği, Bildirimden Ekran Paylaşımı, Dikey Ekran Paylaşımı Tam Sığdırma, Katman Çakışması ve Birlikte İzle Uzak Oynatma Donma Giderimi',
+        summary: 'Canlı görüşme sırasında yüzen pencere (PiP) çarpı (X) butonuyla gizlendiğinde kamera ve ses akışının arka planda kesintisiz devam etmesi sağlandı. Cihaz bildirim çubuğundaki ekran paylaşımı butonu uygulama arka plandayken de tam işlevsel hale getirildi. Dikey mobil ekran paylaşımlarının kırpılmadan tam sığdırılması (fit/contain), Birlikte İzle penceresi kenara alındığında kamera kartlarıyla yaşanan katman çakışması ve karşı taraf videoyu durdurup başlattığında mobilde oluşan donma sorunu kökten giderildi.',
+        category: 'bugfix',
+        apkSize: '39.0 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Yüzen Pencere (PiP) Arka Plan Sürekliliği: PiP penceresi X ile kapatıldığında/gizlendiğinde arama, kamera ve ses yayını kopmadan arka planda devam eder',
+            'Bildirim Üzerinden Ekran Paylaşımı: Uygulama arka plandayken bildirimdeki Ekran Paylaş / Paylaşımı Durdur butonu doğrudan çalışır',
+            'Dikey Ekran Paylaşımı Tam Sığdırma (Contain): Mobil dikey ekran paylaşımları kırpılmadan %100 görünür şekilde ölçeklenir ve bağımsız ekran kartı olarak ayrıştırılır',
+            'Katman Çakışması Giderimi: Birlikte İzle videosu sol menüye (carousel) alındığında kamera kutularını kapatmadan dinamik olarak aşağı kaydırır',
+            'Uzak Kullanıcı Tetiklemeli Video Akışı: Karşı taraf videoyu durdurup oynattığında mobilde yaşanan MediaCodec/MSE kilitlenme ve donma sorunu çözüldü'
+        ],
+        changes: [
+            {
+                type: 'Android Native PiP & Arka Plan Kamera Koruması',
+                detail: 'MainActivity.finish() ve onStop()/onPictureInPictureModeChanged() içinde WebView görünürlük ve zamanlayıcı (keepWebViewAliveInBackground) koruması eklendi.'
+            },
+            {
+                type: 'Bildirimden Ekran Paylaşımı Başlatma/Durdurma',
+                detail: 'ActiveCallService bildirim aksiyonu Android 10-14+ arka plan kısıtlamalarına takılmadan MediaProjection izin penceresini açıp paylaşımı başlatacak şekilde yapılandırıldı.'
+            },
+            {
+                type: 'Ekran Paylaşımı Boyutlandırma & Katman Düzeni',
+                detail: 'VoiceContext.jsx, VoiceChannel.jsx ve WatchPartyPlayer.css üzerinde dikey ekran paylaşımı contain ölçekleme ve carousel flex yerleşimi düzeltildi.'
+            },
+            {
+                type: 'Birlikte İzle Uzak Play/Pause Senkronizasyonu',
+                detail: 'WatchPartyPlayer.jsx içinde karşı taraftan gelen play/pause olaylarında ardışık seek kaynaklı MediaCodec/MSE donması giderildi.'
+            }
+        ],
+        filesModified: 12
+    },
     {
         version: 'v2.5.3',
         versionCode: 253,
         releaseDate: '28 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '80aaac3',
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Birlikte İzle 0ms Anlık P2P Senkronizasyon, Salisesine Kadar Kare Eşitleme, Jet Hızında HLS Önbellek ve Düşük Gecikmeli WebRTC',
         summary: 'Canlı görüntülü odalardaki Birlikte İzle (Watch Party) sistemi baştan sona sıfır gecikmeli (0ms) mimariyle yenilendi: WebRTC P2P DataChannel ve doğrudan imperative DOM komutu sayesinde bir kullanıcı videoyu durdurduğu veya başlattığı an diğer tüm kullanıcılarda 0ms gecikmeyle anında durur ve başlar. Durdurma anında tüm kullanıcıların süresi salisesine kadar (0.0001s hassasiyetle) aynı kareye kilitlenir. Sunucu tarafı RAM segment önbelleği (LRU Cache + Request Coalescing) ve mobil hızlı başlangıç (startFragPrefetch) ile filmler mobil cihazlarda jet hızında açılır; odaya sonradan katılan mobil kullanıcıların yükleme ekranında takılma sorunu kökten çözüldü. Ayrıca WebRTC ses ve kamera iletişimi 20ms ultra düşük gecikmeli jitter buffer ve yüksek ağ önceliği ile kusursuzlaştırıldı.',
         category: 'feature',

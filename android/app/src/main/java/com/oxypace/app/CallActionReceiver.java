@@ -127,12 +127,15 @@ public class CallActionReceiver extends BroadcastReceiver {
             } catch (Exception ignored) {}
 
         } else if (ACTION_TOGGLE_SCREEN.equals(action)) {
-            try {
-                Intent toggleScreenIntent = new Intent(context, ActiveCallService.class);
-                toggleScreenIntent.setAction("TOGGLE_SCREEN");
-                context.startService(toggleScreenIntent);
-            } catch (Exception e) {
-                android.util.Log.e("CallActionReceiver", "Failed to toggle screen: " + e.getMessage());
+            MainActivity.keepWebViewAliveStatic();
+            // If currently screen sharing, stop native projection immediately as well
+            if (MainActivity.CallManager.sIsScreenSharing) {
+                try {
+                    MainActivity act = MainActivity.getActivityInstance();
+                    if (act != null) {
+                        act.runOnUiThread(act::stopScreenProjection);
+                    }
+                } catch (Exception ignored) {}
             }
 
             // Sync screen share toggle state with React WebRTC context
@@ -140,6 +143,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                 com.getcapacitor.Bridge bridge = MainActivity.getBridgeInstance();
                 if (bridge != null && bridge.getWebView() != null) {
                     bridge.getWebView().post(() -> {
+                        bridge.getWebView().resumeTimers();
                         bridge.getWebView().evaluateJavascript(
                             "window.dispatchEvent(new CustomEvent('oxypace:toggle_screenshare'));", null
                         );

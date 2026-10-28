@@ -955,6 +955,9 @@ public class MainActivity extends BridgeActivity {
     private android.os.HandlerThread captureThread = null;
     private android.os.Handler captureHandler = null;
     private long lastFrameTimeMs = 0;
+    private int lastScreenCaptureWidth = 540;
+    private int lastScreenCaptureHeight = 1200;
+    public static volatile boolean sMoveToBackAfterScreenCapture = false;
 
     public boolean startScreenProjection(int resultCode, android.content.Intent data) {
         stopScreenProjection();
@@ -990,10 +993,27 @@ public class MainActivity extends BridgeActivity {
                 }
             }, null);
 
-            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-            int width = 540;
-            int height = (int) (540f * ((float) dm.heightPixels / (float) dm.widthPixels));
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            try {
+                getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+            } catch (Exception e) {
+                dm = getResources().getDisplayMetrics();
+            }
+            int realW = dm.widthPixels > 0 ? dm.widthPixels : 1080;
+            int realH = dm.heightPixels > 0 ? dm.heightPixels : 2400;
+            int width;
+            int height;
+            if (realW <= realH) {
+                width = 540;
+                height = Math.round(540f * ((float) realH / (float) realW));
+            } else {
+                height = 540;
+                width = Math.round(540f * ((float) realW / (float) realH));
+            }
+            if (width % 2 != 0) width++;
             if (height % 2 != 0) height++;
+            lastScreenCaptureWidth = width;
+            lastScreenCaptureHeight = height;
 
             captureThread = new android.os.HandlerThread("ScreenCaptureThread");
             captureThread.start();
@@ -1055,10 +1075,15 @@ public class MainActivity extends BridgeActivity {
                     com.getcapacitor.Bridge bridge = getBridgeInstance();
                     if (bridge != null && bridge.getWebView() != null) {
                         bridge.getWebView().post(() -> {
-                            bridge.getWebView().evaluateJavascript(
-                                "if (window.onNativeScreenFrame) { window.onNativeScreenFrame('" + base64 + "'); }",
-                                null
-                            );
+                            try {
+                                if (!isAppForeground) {
+                                    bridge.getWebView().resumeTimers();
+                                }
+                                bridge.getWebView().evaluateJavascript(
+                                    "if (window.onNativeScreenFrame) { window.onNativeScreenFrame('" + base64 + "'); }",
+                                    null
+                                );
+                            } catch (Exception ignored) {}
                         });
                     }
 
@@ -1140,16 +1165,28 @@ public class MainActivity extends BridgeActivity {
                     if (started) {
                         JSObject ret = new JSObject();
                         ret.put("success", true);
+                        ret.put("width", lastScreenCaptureWidth);
+                        ret.put("height", lastScreenCaptureHeight);
                         CallManager.sScreenCaptureCall.resolve(ret);
                     } else {
                         CallManager.sScreenCaptureCall.reject("Ekran paylaşımı başlatılamadı");
                     }
                     CallManager.sScreenCaptureCall = null;
                 }
+                if (sMoveToBackAfterScreenCapture) {
+                    sMoveToBackAfterScreenCapture = false;
+                    moveTaskToBack(true);
+                    keepWebViewAliveInBackground();
+                }
             } else {
                 if (CallManager.sScreenCaptureCall != null) {
                     CallManager.sScreenCaptureCall.reject("Kullanıcı ekran paylaşım iznini reddetti");
                     CallManager.sScreenCaptureCall = null;
+                }
+                if (sMoveToBackAfterScreenCapture) {
+                    sMoveToBackAfterScreenCapture = false;
+                    moveTaskToBack(true);
+                    keepWebViewAliveInBackground();
                 }
             }
         }
@@ -1659,10 +1696,54 @@ public class MainActivity extends BridgeActivity {
         super.onDestroy();
     }
 
+    public static void keepWebViewAliveStatic() {
+        MainActivity act = activityInstance;
+        if (act != null) {
+            act.keepWebViewAliveInBackground();
+        }
+    }
+
+    public void keepWebViewAliveInBackground() {
+        if (!CallManager.isInCall) return;
+        runOnUiThread(() -> {
+            try {
+                android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+                if (webView != null) {
+                    webView.onResume();
+                    webView.resumeTimers();
+                    webView.dispatchWindowVisibilityChanged(android.view.View.VISIBLE);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void scheduleWebViewKeepAlivePulses() {
+        if (!CallManager.isInCall) return;
+        keepWebViewAliveInBackground();
+        android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+        h.postDelayed(this::keepWebViewAliveInBackground, 120);
+        h.postDelayed(this::keepWebViewAliveInBackground, 400);
+        h.postDelayed(this::keepWebViewAliveInBackground, 900);
+    }
+
+    @Override
+    public void finish() {
+        if (CallManager.isInCall) {
+            android.util.Log.d("MainActivity", "Intercepted finish() during active call (e.g. PiP X button); moving task to back to keep call & camera alive.");
+            moveTaskToBack(true);
+            scheduleWebViewKeepAlivePulses();
+            return;
+        }
+        super.finish();
+    }
+
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, android.content.res.Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         try {
+            if (CallManager.isInCall) {
+                scheduleWebViewKeepAlivePulses();
+            }
             android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
             if (webView != null) {
                 webView.resumeTimers();
@@ -1696,15 +1777,8 @@ public class MainActivity extends BridgeActivity {
         super.onPause();
         isAppForeground = false;
         if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
-            // Keep WebView active in background when in a call or PiP (WhatsApp style background persistence)
-            try {
-                android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
-                if (webView != null) {
-                    webView.resumeTimers();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            // Keep WebView and Camera/WebRTC active in background when in a call or PiP
+            scheduleWebViewKeepAlivePulses();
         }
     }
 
@@ -1712,15 +1786,8 @@ public class MainActivity extends BridgeActivity {
     public void onStop() {
         super.onStop();
         if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
-            // Keep WebView active in background when in a call or PiP
-            try {
-                android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
-                if (webView != null) {
-                    webView.resumeTimers();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            // Keep WebView and Camera/WebRTC active in background when in a call or when PiP X button hides the window
+            scheduleWebViewKeepAlivePulses();
         }
     }
 
@@ -1739,6 +1806,26 @@ public class MainActivity extends BridgeActivity {
     private void handleIncomingCallIntent(android.content.Intent intent) {
         if (intent == null) return;
         String action = intent.getAction();
+
+        if ("ACTION_NOTIFICATION_START_SCREEN".equals(action)) {
+            sMoveToBackAfterScreenCapture = !isAppForeground;
+            scheduleWebViewKeepAlivePulses();
+            android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+            h.postDelayed(() -> {
+                try {
+                    keepWebViewAliveInBackground();
+                    android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('oxypace:toggle_screenshare'));",
+                            null
+                        );
+                    }
+                } catch (Exception ignored) {}
+            }, 150);
+            intent.setAction("");
+            return;
+        }
 
         // Check if intent contains deep link Uri (e.g. oxypace://auth/process?token=...)
         android.net.Uri data = intent.getData();
