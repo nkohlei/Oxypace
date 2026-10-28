@@ -304,6 +304,7 @@ export const VoiceProvider = ({ children }) => {
 
     // NTP Server Clock Offset Ref (ms)
     const serverOffsetRef = useRef(0);
+    const bestRttRef = useRef(Infinity);
 
     const syncServerTime = useCallback(() => {
         if (!socket || !socket.connected) return;
@@ -313,17 +314,30 @@ export const VoiceProvider = ({ children }) => {
                 const t1 = Date.now();
                 const rtt = Math.max(0, t1 - res.clientSendTime);
                 const offset = (res.serverTime + rtt / 2) - t1;
-                serverOffsetRef.current = offset;
+                if (rtt <= bestRttRef.current || Math.abs(offset - serverOffsetRef.current) > 2000) {
+                    bestRttRef.current = Math.min(bestRttRef.current, rtt + 15);
+                    serverOffsetRef.current = offset;
+                } else {
+                    // Exponential moving average favoring low-jitter samples
+                    serverOffsetRef.current = serverOffsetRef.current * 0.7 + offset * 0.3;
+                }
             }
         });
     }, [socket]);
 
     useEffect(() => {
-        // Only sync NTP when inside an active room — no need when idle
+        // Rapid multi-sample NTP calibration on room entry, then periodic refresh
         if (!socket || !activeRoom) return;
+        bestRttRef.current = Infinity;
         syncServerTime();
-        const interval = setInterval(syncServerTime, 10000);
-        return () => clearInterval(interval);
+        const t1 = setTimeout(syncServerTime, 350);
+        const t2 = setTimeout(syncServerTime, 1100);
+        const interval = setInterval(syncServerTime, 8000);
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            clearInterval(interval);
+        };
     }, [socket, activeRoom, syncServerTime]);
 
     const getServerNow = useCallback(() => {
@@ -1138,6 +1152,9 @@ export const VoiceProvider = ({ children }) => {
                 if (data.serverNow) {
                     const localNow = Date.now();
                     const offset = data.serverNow - localNow;
+                    if (bestRttRef.current === Infinity) {
+                        serverOffsetRef.current = offset;
+                    }
                     _setRoomStartTime(data.startedAt - offset);
                 } else {
                     _setRoomStartTime(data.startedAt);
@@ -1175,13 +1192,20 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
             
-            if (data.watchParty) {
-                // Store the server state as-is; do NOT pre-add elapsed here.
-                // The sync engine in WatchPartyPlayer/VideoPlayer will compute
-                // elapsed from serverTimestamp on each render tick.
-                // Pre-adding elapsed AND then resetting serverTimestamp to "now"
-                // caused a double-count jump every time a participant event arrived.
-                setWatchParty({ ...data.watchParty });
+            if (data.watchParty && data.watchParty.url) {
+                const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+                const normalizeUrl = (u) => {
+                    if (!u || typeof u !== 'string') return u;
+                    const t = u.trim();
+                    if (t.startsWith('/api/')) return `${apiBase}${t}`;
+                    if (t.startsWith('api/')) return `${apiBase}/${t}`;
+                    return t;
+                };
+                setWatchParty({
+                    ...data.watchParty,
+                    url: normalizeUrl(data.watchParty.url),
+                    serverTimestamp: data.watchParty.serverTimestamp || data.serverNow || getServerNow()
+                });
             } else {
                 setWatchParty(null);
             }
@@ -1331,57 +1355,77 @@ export const VoiceProvider = ({ children }) => {
             updateParticipantList();
         };
 
+        const normalizeWpUrl = (u) => {
+            if (!u || typeof u !== 'string') return u;
+            const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+            const t = u.trim();
+            if (t.startsWith('/api/')) return `${apiBase}${t}`;
+            if (t.startsWith('api/')) return `${apiBase}/${t}`;
+            return t;
+        };
+
         const handleWatchState = (wp) => {
             if (wp && wp.url) {
-                // Store server state raw. Elapsed is computed live in the sync engine.
-                setWatchParty({ ...wp });
+                setWatchParty({
+                    ...wp,
+                    url: normalizeWpUrl(wp.url),
+                    serverTimestamp: wp.serverTimestamp || getServerNow()
+                });
             } else {
                 setWatchParty(null);
             }
         };
 
         const handleWatchPlay = ({ time, serverTimestamp, senderId }) => {
-            // serverTimestamp'i getServerNow() olarak ayarla — elapsed = 0 garantisi.
-            // Sunucunun timestamp'ini kullanmak RTT + React render gecikmesi kadar
-            // (150-1500ms) elapsed oluşturuyor ve video T+elapsed'a seek yapıyor.
-            // Video pause esnasında durmuştu, elapsed = 0 olmalı ve T'den başlamalı.
-            // Periyodik sync interval (1.5s) drift'i sessizce playbackRate ile düzeltir.
-            const now = getServerNow();
+            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: true, 
                 currentTime: time, 
-                lastUpdated: now,
-                serverTimestamp: now,  // <- Kendi saatimiz, elapsed = 0 garantisi
+                lastUpdated: canonicalTs,
+                serverTimestamp: canonicalTs,
                 lastActionBy: senderId
             } : null);
         };
 
         const handleWatchPause = ({ time, serverTimestamp, senderId }) => {
-            // Pause'da elapsed = 0 zaten (isPlaying=false). Ama serverTimestamp'i now
-            // olarak ayarlıyoruz ki sonraki play event'i ile consistency sağlansın.
-            const now = getServerNow();
+            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: false, 
                 currentTime: time, 
-                lastUpdated: now,
-                serverTimestamp: now,  // <- Tutarlılık için
+                lastUpdated: canonicalTs,
+                serverTimestamp: canonicalTs,
                 lastActionBy: senderId
             } : null);
         };
 
         const handleWatchSeek = ({ time, serverTimestamp, senderId }) => {
-            // Seek sonrası video tam time'dan oynamalı, elapsed = 0 garantisi.
-            const now = getServerNow();
+            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
             setWatchParty(prev => {
                 if (!prev) return null;
                 return { 
                     ...prev, 
                     currentTime: time, 
-                    lastUpdated: now,
-                    serverTimestamp: now,  // <- Seek anından itibaren yeni referans
+                    lastUpdated: canonicalTs,
+                    serverTimestamp: canonicalTs,
                     lastActionBy: senderId
+                };
+            });
+        };
+
+        const handleWatchSync = ({ currentTime, isPlaying, isLive, serverTimestamp, url }) => {
+            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
+            setWatchParty(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    url: url ? normalizeWpUrl(url) : prev.url,
+                    currentTime: typeof currentTime === 'number' ? currentTime : prev.currentTime,
+                    isPlaying: typeof isPlaying === 'boolean' ? isPlaying : prev.isPlaying,
+                    isLive: typeof isLive === 'boolean' ? isLive : prev.isLive,
+                    lastUpdated: canonicalTs,
+                    serverTimestamp: canonicalTs
                 };
             });
         };
@@ -1437,6 +1481,7 @@ export const VoiceProvider = ({ children }) => {
         socket.on('voice:watch-play', handleWatchPlay);
         socket.on('voice:watch-pause', handleWatchPause);
         socket.on('voice:watch-seek', handleWatchSeek);
+        socket.on('voice:watch-sync', handleWatchSync);
         socket.on('voice:watch-subtitle', handleWatchSubtitle);
         socket.on('voice:watch-stop', handleWatchStop);
         socket.on('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
@@ -1452,6 +1497,7 @@ export const VoiceProvider = ({ children }) => {
             socket.off('voice:watch-play', handleWatchPlay);
             socket.off('voice:watch-pause', handleWatchPause);
             socket.off('voice:watch-seek', handleWatchSeek);
+            socket.off('voice:watch-sync', handleWatchSync);
             socket.off('voice:watch-subtitle', handleWatchSubtitle);
             socket.off('voice:watch-stop', handleWatchStop);
             socket.off('voice:watch-stop-vote-status', handleWatchStopVoteStatus);
@@ -2402,10 +2448,18 @@ export const VoiceProvider = ({ children }) => {
 
     const sendWatchSeek = useCallback((time) => {
         if (activeRoom) {
+            const now = getServerNow();
             safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: Date.now(), serverTimestamp: Date.now() } : null);
+            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, safeEmit, getServerNow]);
+
+    const requestWatchSync = useCallback(() => {
+        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
+        if (roomName) {
+            safeEmit('voice:watch-request-sync', { roomName });
+        }
+    }, [activeRoom, watchParty, safeEmit]);
 
     const sendWatchSubtitle = useCallback((subtitle) => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
@@ -2615,6 +2669,7 @@ export const VoiceProvider = ({ children }) => {
         sendWatchPlay,
         sendWatchPause,
         sendWatchSeek,
+        requestWatchSync,
         sendWatchSubtitle,
         getServerNow,
         serverOffsetRef,

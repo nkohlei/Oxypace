@@ -13,8 +13,7 @@ const formatPlayableUrl = (relativeOrAbsoluteUrl) => {
   if (relativeOrAbsoluteUrl.startsWith('http://') || relativeOrAbsoluteUrl.startsWith('https://')) {
     return relativeOrAbsoluteUrl;
   }
-  const isNative = Capacitor.isNativePlatform();
-  const baseUrl = (isNative || import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr') : '').replace(/\/$/, '');
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
   const cleanPath = relativeOrAbsoluteUrl.startsWith('/') ? relativeOrAbsoluteUrl : `/${relativeOrAbsoluteUrl}`;
   return `${baseUrl}${cleanPath}`;
 };

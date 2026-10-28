@@ -205,7 +205,6 @@ const isPlatformUrl = (url) => {
 const getProxiedUrl = (url) => {
   if (!url) return '';
   
-  const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
   const isElectron = typeof window !== 'undefined' && (
     !!window.desktopAPI?.isElectron || 
     (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1) ||
@@ -214,22 +213,25 @@ const getProxiedUrl = (url) => {
   );
   
   // If running inside Electron, bypass backend proxy entirely for HLS since local main process spoofing handles it
-  if (isElectron && (url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest'))) {
+  if (isElectron && !url.includes('/api/proxy') && (url.includes('.m3u8') || url.includes('/hls/') || url.includes('.txt') || url.includes('manifest'))) {
     return url;
   }
   
-  const useAbsoluteUrl = isNative || isElectron;
-  const baseUrl = ((!useAbsoluteUrl && !import.meta.env.DEV) ? '' : (import.meta.env.VITE_API_BASE_URL || (!import.meta.env.DEV ? 'https://api.oxypace.com.tr' : ''))).replace(/\/$/, '');
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
   
   if (url.includes('/api/proxy') || url.includes('/api/media/proxy-hls')) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
+      if (url.startsWith('https://oxypace.com.tr/api/') || url.startsWith('https://www.oxypace.com.tr/api/') || url.startsWith('https://localhost/api/') || url.startsWith('http://localhost/api/')) {
+        const apiIdx = url.indexOf('/api/');
+        return `${baseUrl}${url.slice(apiIdx)}`;
+      }
       return url;
     }
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${baseUrl}${cleanPath}`;
   }
 
-  if (url.startsWith('/api/proxy') || url.startsWith('api/proxy')) {
+  if (url.startsWith('/api/') || url.startsWith('api/')) {
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${baseUrl}${cleanPath}`;
   }
@@ -252,6 +254,7 @@ const WatchPartyPlayer = () => {
         sendWatchPlay, 
         sendWatchPause, 
         sendWatchSeek,
+        requestWatchSync,
         sendWatchSubtitle,
         getServerNow,
         participants,
@@ -723,7 +726,8 @@ const WatchPartyPlayer = () => {
         if (watchParty.subtitles && watchParty.subtitles.length > 0) return;
 
         let isCancelled = false;
-        fetch('/api/detect-subtitles', {
+        const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+        fetch(`${apiBase}/api/detect-subtitles`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ streamUrl: watchParty.url, title: watchParty.title })
@@ -903,9 +907,22 @@ const WatchPartyPlayer = () => {
         if (!watchParty?.url || (!isLive && !isStream) || !videoRef.current) return;
 
         const video = videoRef.current;
-        const streamUrl = useProxy ? getProxiedUrl(watchParty.url) : watchParty.url;
-        const urlIsHls = isHls(watchParty.url) || watchParty.isLive;
-        const urlIsDash = isDash(watchParty.url);
+        const rawUrl = watchParty.url.trim();
+        const needsNormalizedProxy = useProxy || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/');
+        const streamUrl = needsNormalizedProxy ? getProxiedUrl(rawUrl) : rawUrl;
+        const urlIsHls = isHls(rawUrl) || watchParty.isLive;
+        const urlIsDash = isDash(rawUrl);
+
+        const getLiveExpectedTime = () => {
+            const base = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
+            if (watchParty?.isPlaying && !watchParty?.isLive) {
+                const ref = watchParty.serverTimestamp || watchParty.lastUpdated;
+                if (ref) {
+                    return base + Math.max(0, (getServerNow() - ref) / 1000);
+                }
+            }
+            return base;
+        };
 
         console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy}, isLive: ${isLive})`);
 
@@ -918,13 +935,31 @@ const WatchPartyPlayer = () => {
             dashPlayerRef.current = null;
         }
 
+        const markReadyAndAlign = () => {
+            setIsReady(true);
+            if (isNativeVOD) {
+                const liveTarget = getLiveExpectedTime();
+                if (liveTarget > 0.3 && Math.abs((video.currentTime || 0) - liveTarget) > 0.4) {
+                    try {
+                        lastProgrammaticSeekTimeRef.current = liveTarget;
+                        video.currentTime = liveTarget;
+                    } catch (_) {}
+                }
+            }
+            if (watchParty?.isPlaying) {
+                safePlay(video);
+            }
+            if (requestWatchSync) {
+                requestWatchSync();
+            }
+        };
+
+        video.addEventListener('loadedmetadata', markReadyAndAlign, { once: true });
+        video.addEventListener('canplay', markReadyAndAlign, { once: true });
+
         const initPlayer = async () => {
             try {
                 if (urlIsHls || !urlIsDash) {
-                    const isNativeAndroid = typeof window !== 'undefined' && (
-                        (window.navigator?.userAgent && /Android/i.test(window.navigator.userAgent)) ||
-                        !!window.Capacitor?.isNativePlatform?.()
-                    );
                     const Hls = await loadHls();
                     const canUseHlsJs = Hls && Hls.isSupported();
 
@@ -933,9 +968,8 @@ const WatchPartyPlayer = () => {
                     if (!canUseHlsJs && video.canPlayType('application/vnd.apple.mpegurl')) {
                         video.src = streamUrl;
                         video.addEventListener('loadedmetadata', () => {
-                            setIsReady(true);
-                            if (watchParty?.isPlaying) safePlay(video);
-                        });
+                            markReadyAndAlign();
+                        }, { once: true });
                         video.onerror = (e) => {
                             console.error("Native HLS playback error:", e);
                             if (!useProxy) {
@@ -951,34 +985,35 @@ const WatchPartyPlayer = () => {
                             (window.navigator?.userAgent && /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent)) ||
                             !!window.Capacitor?.isNativePlatform?.()
                         );
-                        const initialStartTime = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
+                        const initialStartTime = getLiveExpectedTime();
                         const hls = new Hls({
-                            // Mobile RAM optimization: smaller buffers to prevent WebView memory pressure and GC freeze
-                            maxBufferLength: isMobile ? 20 : 60,
-                            maxMaxBufferLength: isMobile ? 40 : 120,
-                            maxBufferSize: isMobile ? (25 * 1024 * 1024) : (60 * 1024 * 1024),
-                            backBufferLength: isMobile ? 10 : 30, // Quickly discard played segments on mobile to free memory
+                            // Mobile jet-speed startup & RAM optimization
+                            startLevel: isMobile ? 0 : -1,
+                            maxBufferLength: isMobile ? 25 : 60,
+                            maxMaxBufferLength: isMobile ? 45 : 120,
+                            maxBufferSize: isMobile ? (30 * 1024 * 1024) : (60 * 1024 * 1024),
+                            backBufferLength: isMobile ? 10 : 30,
+                            maxBufferHole: 0.3,
+                            highBufferWatchdogPeriod: 1,
                             enableWorker: true,
                             lowLatencyMode: isLive,
                             startFragPrefetch: true,
                             startPosition: isLive ? -1 : (initialStartTime > 0 ? initialStartTime : 0),
                             liveSyncDurationCount: isLive ? 3 : undefined,
                             liveMaxLatencyDurationCount: isLive ? 10 : undefined,
-                            // Mobile adaptive stream: cap bitrate to device viewport so mobile CPU is not overwhelmed by 4K streams
                             capLevelToPlayerSize: isMobile,
-                            // Auto-nudge on buffer stall to seamlessly skip audio/video micro-gaps without freezing
-                            nudgeMaxRetry: 5,
-                            nudgeOffset: 0.1,
-                            // Resilient chunk fetching
-                            fragLoadingTimeOut: 20000,
+                            nudgeMaxRetry: 8,
+                            nudgeOffset: 0.15,
+                            fragLoadingTimeOut: 15000,
                             fragLoadingMaxRetry: 6,
-                            fragLoadingRetryDelay: 1000,
-                            fragLoadingMaxRetryTimeout: 64000,
-                            manifestLoadingTimeOut: 15000,
+                            fragLoadingRetryDelay: 500,
+                            fragLoadingMaxRetryTimeout: 32000,
+                            manifestLoadingTimeOut: 12000,
                             manifestLoadingMaxRetry: 5,
-                            levelLoadingTimeOut: 15000,
+                            manifestLoadingRetryDelay: 500,
+                            levelLoadingTimeOut: 12000,
                             levelLoadingMaxRetry: 5,
-                            xhrSetup: (xhr, url) => {
+                            xhrSetup: (xhr) => {
                                 xhr.withCredentials = false;
                             }
                         });
@@ -1028,21 +1063,19 @@ const WatchPartyPlayer = () => {
                         });
 
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                            setIsReady(true);
                             updateAudio();
                             updateSubs();
-                            if (isNativeVOD && initialStartTime > 0) {
-                                video.currentTime = initialStartTime;
-                            }
-                            if (watchParty?.isPlaying) {
-                                safePlay(video);
-                            }
+                            markReadyAndAlign();
+                        });
+
+                        hls.on(Hls.Events.FRAG_BUFFERED, () => {
+                            setIsReady(true);
                         });
 
                         hls.on(Hls.Events.ERROR, (event, data) => {
                             if (data.fatal) {
                                 console.warn("Fatal Hls.js error encountered:", data);
-                                if (!useProxy && !watchParty.url.includes('/api/proxy')) {
+                                if (!useProxy && streamUrl !== getProxiedUrl(rawUrl)) {
                                     console.log("[WatchPartyPlayer] Direct Hls.js failed. Falling back to CORS proxy...");
                                     setUseProxy(true);
                                 } else {
@@ -1075,7 +1108,7 @@ const WatchPartyPlayer = () => {
                     player.initialize(video, streamUrl, true);
                     
                     player.on(dashjs.MediaPlayer.events.PLAYBACK_METADATA_LOADED, () => {
-                        setIsReady(true);
+                        markReadyAndAlign();
                     });
 
                     player.on(dashjs.MediaPlayer.events.ERROR, (e) => {
@@ -1101,6 +1134,8 @@ const WatchPartyPlayer = () => {
         initPlayer();
 
         return () => {
+            video.removeEventListener('loadedmetadata', markReadyAndAlign);
+            video.removeEventListener('canplay', markReadyAndAlign);
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.destroy();
                 hlsInstanceRef.current = null;
@@ -1146,38 +1181,33 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
 
-        const isPlayTransition = watchParty.isPlaying && !prevIsPlayingRef.current;
-        prevIsPlayingRef.current = watchParty.isPlaying;
+        const syncStandardPlayer = () => {
+            if (!playerRef.current || !watchParty) return;
+            const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated;
+            let expectedTime = watchParty.currentTime || 0;
+            if (watchParty.isPlaying && referenceTime) {
+                const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
+                expectedTime += elapsed;
+            }
 
-        // Play geçişinde hiç seek yapma.
-        // Video pause esnasında T'de duruyordu. Play'e basıldığında T'den devam etmeli.
-        // handleWatchPlay artık serverTimestamp=now kullandığından elapsed=0 zaten.
-        // Bu erken return’la o garantiyi kod seviyesinde de pekiştiriyoruz.
-        if (isPlayTransition) {
-            return;
-        }
+            const localTime = playerRef.current.getCurrentTime?.() || 0;
+            const timeDiff = Math.abs(localTime - expectedTime);
+            const threshold = watchParty.isPlaying ? 1.3 : 0.35;
 
-        const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated;
-        let expectedTime = watchParty.currentTime || 0;
-        if (watchParty.isPlaying && referenceTime) {
-            const elapsed = Math.max(0, (getServerNow() - referenceTime) / 1000);
-            expectedTime += elapsed;
-        }
+            if (timeDiff > threshold) {
+                isSyncingRef.current = true;
+                lastProgrammaticSeekTimeRef.current = expectedTime;
+                lastPolledTimeRef.current = expectedTime;
+                playerRef.current.seekTo?.(expectedTime, 'seconds');
+                setTimeout(() => {
+                    isSyncingRef.current = false;
+                }, 600);
+            }
+        };
 
-        const localTime = playerRef.current.getCurrentTime();
-        const timeDiff = Math.abs(localTime - expectedTime);
-        // Threshold: oynuyor iken 2.0s, durakken 0.5s
-        const threshold = watchParty.isPlaying ? 2.0 : 0.5;
-
-        if (timeDiff > threshold) {
-            isSyncingRef.current = true;
-            lastProgrammaticSeekTimeRef.current = expectedTime;
-            lastPolledTimeRef.current = expectedTime;
-            playerRef.current.seekTo(expectedTime, 'seconds');
-            setTimeout(() => {
-                isSyncingRef.current = false;
-            }, 1000);
-        }
+        syncStandardPlayer();
+        const interval = setInterval(syncStandardPlayer, 1000);
+        return () => clearInterval(interval);
     }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isStream, getServerNow]);
 
     const handlePlay = (time) => {
@@ -1483,9 +1513,10 @@ const WatchPartyPlayer = () => {
             } else if (option.type === 'ext') {
                 const sub = allProviderSubtitles[option.index];
                 if (sub) {
-                    const targetUrl = sub.playableUrl
-                        ? sub.playableUrl
-                        : (sub.file && sub.file.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(sub.file)}` : sub.file);
+                    const rawSubUrl = sub.playableUrl || sub.file || '';
+                    const targetUrl = (rawSubUrl.startsWith('http') || rawSubUrl.startsWith('/') || rawSubUrl.startsWith('api/'))
+                        ? getProxiedUrl(rawSubUrl)
+                        : rawSubUrl;
                     const res = await fetch(targetUrl);
                     vttContent = await res.text();
                 }
@@ -1923,38 +1954,65 @@ const WatchPartyPlayer = () => {
 
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-    // Native Video Synchronization Engine (Master Clock Smart Pacer)
+    // Native Video Synchronization Engine (Master Clock Smart Pacer + Lost Loading Time Compensator)
     useEffect(() => {
         const video = videoRef.current;
         if (!watchParty || !video || !isReady || hasError || !isNativeVOD) return;
 
         let syncInterval = null;
+        let masterSyncRequestInterval = null;
         let playTransitionGuardActive = false;
         let playTransitionGuardTimer = null;
         let isBufferingStall = false;
+        let lastHardSeekAt = 0;
 
-        const onWaiting = () => { isBufferingStall = true; };
-        const onPlaying = () => { isBufferingStall = false; };
+        const computeTargetTime = () => {
+            const serverNow = getServerNow();
+            const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
+            const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
+            return (typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0) + elapsed;
+        };
+
+        const onWaiting = () => {
+            isBufferingStall = true;
+        };
+
+        // Immediately compensate for lost loading/buffering time the instant playback resumes!
+        const onBufferingRecovered = () => {
+            const wasStalled = isBufferingStall;
+            isBufferingStall = false;
+            if (!video || !watchParty || !watchParty.isPlaying) return;
+            if (Date.now() < isUserActionCooldownRef.current) return;
+
+            const targetTime = computeTargetTime();
+            const drift = targetTime - (video.currentTime || 0);
+            if (Math.abs(drift) > 0.35 && !video.seeking && (wasStalled || playTransitionGuardActive)) {
+                playTransitionGuardActive = false;
+                isSyncingRef.current = true;
+                lastProgrammaticSeekTimeRef.current = targetTime;
+                lastHardSeekAt = Date.now();
+                video.currentTime = targetTime;
+                video.playbackRate = 1.0;
+                setTimeout(() => { isSyncingRef.current = false; }, 350);
+            }
+        };
+
         video.addEventListener('waiting', onWaiting);
         video.addEventListener('stalled', onWaiting);
-        video.addEventListener('playing', onPlaying);
-        video.addEventListener('canplay', onPlaying);
+        video.addEventListener('playing', onBufferingRecovered);
+        video.addEventListener('canplay', onBufferingRecovered);
 
-        const alignNativeVideo = (isStateTrigger = false) => {
+        const alignNativeVideo = () => {
             if (!video || !watchParty) return;
 
             // 1. If user recently interacted with Play/Pause button or scrubbed/seeked, respect their action
             if (Date.now() < isUserActionCooldownRef.current) return;
 
             // 2. If video is currently seeking or waiting for network buffer, DO NOT execute another seek!
-            // Doing so causes a fatal buffer dump / re-download death spiral on mobile.
-            if (video.seeking || (video.readyState < 3 && isBufferingStall)) return;
+            if (video.seeking || (video.readyState < 2 && isBufferingStall)) return;
 
-            const serverNow = getServerNow();
-            const reference = watchParty.serverTimestamp || watchParty.lastUpdated || serverNow;
-            const elapsed = watchParty.isPlaying ? Math.max(0, (serverNow - reference) / 1000) : 0;
-            const targetTime = (typeof watchParty.currentTime === 'number' ? watchParty.currentTime : 0) + elapsed;
-            const localTime = video.currentTime;
+            const targetTime = computeTargetTime();
+            const localTime = video.currentTime || 0;
             const drift = targetTime - localTime;
             const absDrift = Math.abs(drift);
 
@@ -1965,80 +2023,86 @@ const WatchPartyPlayer = () => {
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
-                }, 2500);
+                }, 700);
+                if (absDrift > 0.35 && !video.seeking) {
+                    lastProgrammaticSeekTimeRef.current = targetTime;
+                    video.currentTime = targetTime;
+                }
                 safePlay(video);
-                setTimeout(() => { isSyncingRef.current = false; }, 400);
+                setTimeout(() => { isSyncingRef.current = false; }, 350);
             } else if (!watchParty.isPlaying && !video.paused) {
                 isSyncingRef.current = true;
                 playTransitionGuardActive = false;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 video.pause();
-                setTimeout(() => { isSyncingRef.current = false; }, 400);
+                setTimeout(() => { isSyncingRef.current = false; }, 350);
             }
 
-            // 4. When Paused: Keep exactly aligned
+            // 4. When Paused: Keep tightly aligned
             if (!watchParty.isPlaying) {
-                video.playbackRate = 1.0;
-                if (absDrift > 0.5 && !video.seeking) {
+                if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
+                if (absDrift > 0.25 && !video.seeking) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
-                    setTimeout(() => { isSyncingRef.current = false; }, 400);
+                    setTimeout(() => { isSyncingRef.current = false; }, 350);
                 }
                 return;
             }
 
-            // 5. When Playing: Adaptive Smart Rate Pacing for Perfect Millisecond Sync Across Devices!
-            // Hard seek threshold: raised to 5.5s on mobile / 4.5s on desktop to prevent repeated seeks during normal segment downloading
-            const isMobile = typeof window !== 'undefined' && (window.innerWidth <= 768 || !!window.Capacitor?.isNativePlatform?.());
-            const hardSeekThreshold = isMobile ? 5.5 : 4.5;
+            // 5. When Playing: Tight Lockstep Sync (Hard seek > 1.6s, proportional micro-rate pacing for 0.08s..1.6s)
+            const hardSeekThreshold = 1.6;
+            const canHardSeek = (Date.now() - lastHardSeekAt > 1400) && !playTransitionGuardActive && !video.seeking && video.readyState >= 2;
 
-            if (absDrift > hardSeekThreshold && !playTransitionGuardActive && !video.seeking && video.readyState >= 3) {
+            if (absDrift > hardSeekThreshold && canHardSeek) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
+                lastHardSeekAt = Date.now();
                 video.currentTime = targetTime;
                 video.playbackRate = 1.0;
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
-                }, 2000);
-                setTimeout(() => { isSyncingRef.current = false; }, 400);
+                }, 900);
+                setTimeout(() => { isSyncingRef.current = false; }, 350);
             } else if (!playTransitionGuardActive) {
-                // Adaptive micro-rate pacing:
-                // Smoothly speed up / slow down playback rate so local video glides into sync without re-buffering!
-                if (drift > 1.2) {
-                    video.playbackRate = 1.08;
-                } else if (drift > 0.3) {
-                    video.playbackRate = 1.04;
-                } else if (drift < -1.2) {
-                    video.playbackRate = 0.92;
-                } else if (drift < -0.3) {
-                    video.playbackRate = 0.96;
-                } else {
-                    if (video.playbackRate !== 1.0) {
-                        video.playbackRate = 1.0;
+                if (absDrift > 0.08) {
+                    // Proportional micro-rate pacing (0.92x .. 1.08x) converges drift smoothly to < 50ms
+                    const rateDelta = Math.max(-0.08, Math.min(0.08, drift * 0.065));
+                    const nextRate = Number((1.0 + rateDelta).toFixed(3));
+                    if (Math.abs((video.playbackRate || 1.0) - nextRate) >= 0.005) {
+                        video.playbackRate = nextRate;
                     }
+                } else if (video.playbackRate !== 1.0) {
+                    video.playbackRate = 1.0;
                 }
             }
         };
 
-        alignNativeVideo(true);
+        alignNativeVideo();
 
-        syncInterval = setInterval(() => {
-            alignNativeVideo(false);
-        }, 1000);
+        syncInterval = setInterval(alignNativeVideo, 400);
+
+        if (watchParty.isPlaying && requestWatchSync) {
+            masterSyncRequestInterval = setInterval(() => {
+                if (!video.seeking && Date.now() >= isUserActionCooldownRef.current) {
+                    requestWatchSync();
+                }
+            }, 6000);
+        }
 
         return () => {
             if (syncInterval) clearInterval(syncInterval);
+            if (masterSyncRequestInterval) clearInterval(masterSyncRequestInterval);
             if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
             video.removeEventListener('waiting', onWaiting);
             video.removeEventListener('stalled', onWaiting);
-            video.removeEventListener('playing', onPlaying);
-            video.removeEventListener('canplay', onPlaying);
+            video.removeEventListener('playing', onBufferingRecovered);
+            video.removeEventListener('canplay', onBufferingRecovered);
             if (video) video.playbackRate = 1.0;
         };
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD, getServerNow]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isNativeVOD, getServerNow, requestWatchSync]);
 
     // Keep live stream playing constantly (never pause)
     useEffect(() => {

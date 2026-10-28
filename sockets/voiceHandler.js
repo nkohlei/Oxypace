@@ -203,27 +203,83 @@ const getRoomStartedAt = async (roomName, create = false) => {
 };
 
 // ─── Watch party state (Redis is authoritative) ─────────────────────────────
-const loadWatchParty = async (roomName) => {
+const PUBLIC_API_ORIGIN = (process.env.PUBLIC_API_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+
+const toAbsoluteProxyUrl = (rawUrl) => {
+    if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed.startsWith('/api/')) return `${PUBLIC_API_ORIGIN}${trimmed}`;
+    if (trimmed.startsWith('api/')) return `${PUBLIC_API_ORIGIN}/${trimmed}`;
+    if (
+        trimmed.startsWith('https://oxypace.com.tr/api/') ||
+        trimmed.startsWith('https://www.oxypace.com.tr/api/') ||
+        trimmed.startsWith('http://localhost/api/') ||
+        trimmed.startsWith('https://localhost/api/')
+    ) {
+        const apiIdx = trimmed.indexOf('/api/');
+        return `${PUBLIC_API_ORIGIN}${trimmed.slice(apiIdx)}`;
+    }
+    return trimmed;
+};
+
+const normalizeSubtitleObj = (sub) => {
+    if (!sub || typeof sub !== 'object') return sub;
+    const copy = { ...sub };
+    if (typeof copy.file === 'string') copy.file = toAbsoluteProxyUrl(copy.file);
+    if (typeof copy.playableUrl === 'string') copy.playableUrl = toAbsoluteProxyUrl(copy.playableUrl);
+    if (typeof copy.url === 'string') copy.url = toAbsoluteProxyUrl(copy.url);
+    return copy;
+};
+
+const normalizeWatchPartyState = (wp, computeLive = true) => {
+    if (!wp || typeof wp !== 'object') return null;
+    const next = { ...wp };
+    if (typeof next.url === 'string') {
+        next.url = toAbsoluteProxyUrl(next.url);
+    }
+    if (Array.isArray(next.subtitles)) {
+        next.subtitles = next.subtitles.map(normalizeSubtitleObj);
+    }
+    if (Array.isArray(next.sharedSubtitles)) {
+        next.sharedSubtitles = next.sharedSubtitles.map(normalizeSubtitleObj);
+    }
+    if (next.activeSubtitle && typeof next.activeSubtitle === 'object') {
+        next.activeSubtitle = normalizeSubtitleObj(next.activeSubtitle);
+    }
+    if (computeLive && next.isPlaying && !next.isLive && typeof next.serverTimestamp === 'number') {
+        const now = Date.now();
+        const elapsedSec = Math.max(0, (now - next.serverTimestamp) / 1000);
+        next.currentTime = (Number(next.currentTime) || 0) + elapsedSec;
+        next.serverTimestamp = now;
+    }
+    return next;
+};
+
+const loadWatchParty = async (roomName, computeLive = true) => {
     if (pubClient) {
         try {
             const s = await pubClient.get(wpKey(roomName));
-            const wp = s ? JSON.parse(s) : null;
+            const rawWp = s ? JSON.parse(s) : null;
+            const normalizedStored = normalizeWatchPartyState(rawWp, false);
             const rd = voiceRooms.get(roomName);
-            if (rd) rd.watchParty = wp;
-            return wp;
+            if (rd) rd.watchParty = normalizedStored;
+            return normalizeWatchPartyState(normalizedStored, computeLive);
         } catch (err) {
             console.error('[Watch Party] Redis load error:', err.message);
         }
     }
-    return voiceRooms.get(roomName)?.watchParty || null;
+    const localWp = voiceRooms.get(roomName)?.watchParty || null;
+    return normalizeWatchPartyState(localWp, computeLive);
 };
 
 const saveWatchParty = async (roomName, wp) => {
+    const normalized = normalizeWatchPartyState(wp, false);
     const rd = voiceRooms.get(roomName);
-    if (rd) rd.watchParty = wp;
+    if (rd) rd.watchParty = normalized;
     if (pubClient) {
         try {
-            await pubClient.set(wpKey(roomName), JSON.stringify(wp), 'EX', WATCHPARTY_TTL_SEC);
+            await pubClient.set(wpKey(roomName), JSON.stringify(normalized), 'EX', WATCHPARTY_TTL_SEC);
         } catch (err) {
             console.error('[Watch Party] Redis save error:', err.message);
         }
@@ -802,6 +858,16 @@ export const initializeVoiceHandler = (io) => {
 
             const participants = await broadcastParticipants(roomName);
 
+            // Ensure late-joining client (especially mobile Capacitor) directly receives the live Watch Party snapshot
+            try {
+                const liveWp = await loadWatchParty(roomName, true);
+                if (liveWp && liveWp.url) {
+                    socket.emit('voice:watch-state', liveWp);
+                }
+            } catch (wpEmitErr) {
+                console.error('[Watch Party] Failed to emit initial watch-state on join:', wpEmitErr.message);
+            }
+
             if (isNewJoin) {
                 io.to(`voice:${roomName}`).emit('voice:user-joined', {
                     userId: sUserId,
@@ -1026,7 +1092,7 @@ export const initializeVoiceHandler = (io) => {
                 : [];
 
             const now = Date.now();
-            const watchPartyState = {
+            const watchPartyState = normalizeWatchPartyState({
                 roomName,
                 url: url.trim(),
                 isPlaying: false,
@@ -1037,7 +1103,7 @@ export const initializeVoiceHandler = (io) => {
                 subtitles: cleanSubtitles,
                 title: clampString(title, MAX_TITLE_LENGTH),
                 senderId: myId()
-            };
+            }, false);
             await withRoomLock(roomName, async () => {
                 await saveWatchParty(roomName, watchPartyState);
                 await stopState.clear(roomName); // a brand-new video invalidates any pending stop request
@@ -1089,6 +1155,28 @@ export const initializeVoiceHandler = (io) => {
         registerPlaybackEvent('voice:watch-play', (wp, time) => { wp.isPlaying = true; wp.currentTime = time; });
         registerPlaybackEvent('voice:watch-pause', (wp, time) => { wp.isPlaying = false; wp.currentTime = time; });
         registerPlaybackEvent('voice:watch-seek', (wp, time) => { wp.currentTime = time; });
+
+        // Authoritative time-sync endpoint: clients call this after loading/buffering a movie or periodically
+        // to compensate for lost loading time and stay locked to the room master clock.
+        socket.on('voice:watch-request-sync', async (payload) => {
+            await settle();
+            const { roomName } = payload || {};
+            if (!inRoom(roomName)) return;
+            try {
+                const wp = await loadWatchParty(roomName, true);
+                if (!wp || !wp.url) return;
+                socket.emit('voice:watch-sync', {
+                    roomName,
+                    url: wp.url,
+                    currentTime: wp.currentTime || 0,
+                    isPlaying: !!wp.isPlaying,
+                    isLive: !!wp.isLive,
+                    serverTimestamp: wp.serverTimestamp || Date.now()
+                });
+            } catch (err) {
+                console.error('[Watch Party] request-sync error:', err.message);
+            }
+        });
 
         // ─── Watch Party Subtitle Sync ───
         socket.on('voice:watch-subtitle', async (payload) => {

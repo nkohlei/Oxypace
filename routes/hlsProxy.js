@@ -260,6 +260,65 @@ const proxyLimiter = rateLimit({
     message: { error: 'Çok fazla proxy isteği. Lütfen daha sonra tekrar deneyin.' },
 });
 
+const PUBLIC_API_ORIGIN = (process.env.PUBLIC_API_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+
+function getProxyBaseOrigin(req) {
+  const host = String(req?.headers?.host || '').toLowerCase();
+  if (host.startsWith('localhost:') || host.startsWith('127.0.0.1:')) {
+    return `http://${host}`;
+  }
+  return PUBLIC_API_ORIGIN;
+}
+
+// ── Watch Party Jet-Speed RAM Cache & In-Flight Coalescing ──────────────────
+// When multiple users in a live room watch the same movie, their players request
+// the exact same .m3u8 playlists and .ts/.jpg video chunks within milliseconds.
+// Coalescing in-flight fetches and caching recent segments in RAM eliminates
+// duplicate upstream CDN fetches and serves segments to mobile/web peers in <1ms.
+const PROXY_RAM_CACHE = new Map();
+const PROXY_INFLIGHT = new Map();
+let proxyRamCacheBytes = 0;
+const MAX_PROXY_CACHE_BYTES = 96 * 1024 * 1024; // 96 MB per worker (~384 MB total across 4 workers)
+const MAX_CACHEABLE_SEGMENT_BYTES = 6 * 1024 * 1024; // 6 MB per segment
+
+function getCachedProxyEntry(key) {
+  const entry = PROXY_RAM_CACHE.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    proxyRamCacheBytes = Math.max(0, proxyRamCacheBytes - entry.size);
+    PROXY_RAM_CACHE.delete(key);
+    return null;
+  }
+  // Refresh LRU order
+  PROXY_RAM_CACHE.delete(key);
+  PROXY_RAM_CACHE.set(key, entry);
+  return entry;
+}
+
+function setCachedProxyEntry(key, entry, ttlMs) {
+  if (!entry || !entry.buffer || entry.buffer.length > MAX_CACHEABLE_SEGMENT_BYTES) return;
+  const existing = PROXY_RAM_CACHE.get(key);
+  if (existing) {
+    proxyRamCacheBytes = Math.max(0, proxyRamCacheBytes - existing.size);
+    PROXY_RAM_CACHE.delete(key);
+  }
+  const size = entry.buffer.length;
+  while (proxyRamCacheBytes + size > MAX_PROXY_CACHE_BYTES && PROXY_RAM_CACHE.size > 0) {
+    const oldestKey = PROXY_RAM_CACHE.keys().next().value;
+    const oldest = PROXY_RAM_CACHE.get(oldestKey);
+    if (oldest) proxyRamCacheBytes = Math.max(0, proxyRamCacheBytes - oldest.size);
+    PROXY_RAM_CACHE.delete(oldestKey);
+  }
+  PROXY_RAM_CACHE.set(key, {
+    buffer: entry.buffer,
+    contentType: entry.contentType,
+    cacheControl: entry.cacheControl,
+    size,
+    expiresAt: Date.now() + ttlMs,
+  });
+  proxyRamCacheBytes += size;
+}
+
 // GET /api/proxy and /api/proxy-hls
 router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
   const targetUrl = req.query.url;
@@ -276,6 +335,62 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     console.warn(`[SSRF Block] /api/proxy rejected: ${targetUrl} — ${ssrfCheck.reason}`);
     return res.status(400).json({ error: 'Invalid or disallowed target URL' });
   }
+
+  const proxyBaseOrigin = getProxyBaseOrigin(req);
+  const canUseRamCache = !req.headers.range;
+  const cacheKey = canUseRamCache ? `${proxyBaseOrigin}|${targetUrl}|${referer || ''}|${origin || ''}` : '';
+
+  if (canUseRamCache) {
+    const cached = getCachedProxyEntry(cacheKey);
+    if (cached) {
+      const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin);
+      const hitHeaders = {
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Content-Type': cached.contentType,
+        'Cache-Control': cached.cacheControl,
+        'Content-Length': String(cached.buffer.length),
+        'X-Proxy-Cache': 'HIT',
+      };
+      if (allowedCorsOrigin) hitHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;
+      res.set(hitHeaders);
+      return res.status(200).send(cached.buffer);
+    }
+
+    const inflight = PROXY_INFLIGHT.get(cacheKey);
+    if (inflight) {
+      try {
+        const shared = await inflight;
+        if (shared && shared.buffer) {
+          const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin);
+          const sharedHeaders = {
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Content-Type': shared.contentType,
+            'Cache-Control': shared.cacheControl,
+            'Content-Length': String(shared.buffer.length),
+            'X-Proxy-Cache': 'COALESCE',
+          };
+          if (allowedCorsOrigin) sharedHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;
+          res.set(sharedHeaders);
+          return res.status(200).send(shared.buffer);
+        }
+      } catch {
+        // Fall through to normal fetch if in-flight failed
+      }
+    }
+  }
+
+  let resolveInflight = null;
+  if (canUseRamCache && cacheKey) {
+    const p = new Promise((resolve) => { resolveInflight = resolve; });
+    PROXY_INFLIGHT.set(cacheKey, p);
+  }
+  const finishInflight = (val) => {
+    if (cacheKey) PROXY_INFLIGHT.delete(cacheKey);
+    if (resolveInflight) {
+      resolveInflight(val);
+      resolveInflight = null;
+    }
+  };
 
   try {
     let originHeader = '';
@@ -546,7 +661,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
                 if (!p1.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
                   absUrl += baseUrlObj.search;
                 }
-                let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
+                let proxied = `${proxyBaseOrigin}/api/proxy?url=${encodeURIComponent(absUrl)}`;
                 if (refererHeader) proxied += `&referer=${encodeURIComponent(refererHeader)}`;
                 if (originHeader) proxied += `&origin=${encodeURIComponent(originHeader)}`;
                 return `URI="${proxied}"`;
@@ -563,7 +678,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
           if (!trimmed.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
             absUrl += baseUrlObj.search;
           }
-          let proxied = `/api/proxy?url=${encodeURIComponent(absUrl)}`;
+          let proxied = `${proxyBaseOrigin}/api/proxy?url=${encodeURIComponent(absUrl)}`;
           if (refererHeader) proxied += `&referer=${encodeURIComponent(refererHeader)}`;
           if (originHeader) proxied += `&origin=${encodeURIComponent(originHeader)}`;
           return proxied;
@@ -618,13 +733,29 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     if (response.headers.get('Accept-Ranges')) {
       resHeaders['Accept-Ranges'] = response.headers.get('Accept-Ranges');
     }
-    if (response.headers.get('Content-Length')) {
-      resHeaders['Content-Length'] = responseBody.byteLength || response.headers.get('Content-Length');
+
+    const finalBuf = Buffer.from(responseBody);
+    resHeaders['Content-Length'] = String(finalBuf.length);
+
+    if (canUseRamCache && cacheKey && response.status === 200 && finalBuf.length <= MAX_CACHEABLE_SEGMENT_BYTES) {
+      const cacheEntry = {
+        buffer: finalBuf,
+        contentType,
+        cacheControl: resHeaders['Cache-Control'] || 'public, max-age=60',
+      };
+      // VOD playlists (#EXT-X-ENDLIST) and video segments can stay in RAM for 60s so all Watch Party peers get <1ms hits
+      const isVodPlaylist = isPlaylist && sampleHeader.includes('#EXTM3U');
+      const ttlMs = isPlaylist ? (isVodPlaylist ? 30_000 : 4_000) : 60_000;
+      setCachedProxyEntry(cacheKey, cacheEntry, ttlMs);
+      finishInflight(cacheEntry);
+    } else {
+      finishInflight(null);
     }
 
     res.set(resHeaders);
-    return res.status(response.status === 206 ? 206 : 200).send(Buffer.from(responseBody));
+    return res.status(response.status === 206 ? 206 : 200).send(finalBuf);
   } catch (error) {
+    finishInflight(null);
     if (error && typeof error.message === 'string' && error.message.startsWith('SSRF_BLOCKED')) {
       console.warn(`[SSRF Block] /api/proxy redirect/DNS rejected: ${error.message}`);
       return res.status(400).json({ error: 'Invalid or disallowed target URL' });
@@ -636,6 +767,8 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
     return res.status(500).json({
       error: error.message || 'An error occurred while proxying request',
     });
+  } finally {
+    finishInflight(null);
   }
 });
 
@@ -941,10 +1074,11 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
 
   const trimmedUrl = url.trim();
   const lower = trimmedUrl.toLowerCase();
+  const resolveBaseOrigin = getProxyBaseOrigin(req);
 
   // Instant fast-path for direct stream URLs (.m3u8, master.txt, .mp4)
   if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
-    const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
+    const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
     return res.status(200).json({
       success: true,
       status: 'success',
@@ -967,10 +1101,10 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
       const directResult = await directResolveHDFilmCehennemi(trimmedUrl);
       if (directResult && directResult.streamUrl) {
         const streamHeaders = directResult.headers || {};
-        const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(directResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+        const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(directResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
         const proxiedSubtitles = (directResult.subtitles || []).map(sub => ({
           ...sub,
-          playableUrl: `/api/proxy?url=${encodeURIComponent(sub.file)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`,
+          playableUrl: `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(sub.file)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`,
         }));
         return res.status(200).json({
           success: true,
@@ -1015,11 +1149,11 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
         } else if ((fastResult.streamUrl.includes('cdnimages') || fastResult.streamUrl.includes('shop') || fastResult.streamUrl.includes('cyou')) && (!streamHeaders.referer || !streamHeaders.referer.includes('hdfilmcehennemi'))) {
           streamHeaders = { ...streamHeaders, referer: 'https://hdfilmcehennemi.mobi/', origin: 'https://hdfilmcehennemi.mobi' };
         }
-        const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(fastResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+        const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(fastResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 
         const proxiedSubtitles = (fastResult.subtitles || []).map(sub => {
           const subFile = sub.file;
-          const playableUrl = `/api/proxy?url=${encodeURIComponent(subFile)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+          const playableUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(subFile)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
           return {
             ...sub,
             playableUrl,
@@ -1108,7 +1242,7 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
       };
     }
 
-    const playableStreamUrl = `/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+    const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 
     return res.status(200).json({
       success: true,
