@@ -274,6 +274,22 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        appVersion: {
+            type: String,
+            default: null,
+        },
+        versionCode: {
+            type: Number,
+            default: 0,
+        },
+        appPlatform: {
+            type: String,
+            default: 'web',
+        },
+        lastAppSyncAt: {
+            type: Date,
+            default: null,
+        },
         registeredDevices: [
             {
                 deviceId: {

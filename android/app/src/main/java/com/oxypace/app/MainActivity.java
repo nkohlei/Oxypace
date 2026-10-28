@@ -88,24 +88,11 @@ public class MainActivity extends BridgeActivity {
                         ctx.startService(serviceIntent);
                     }
 
-                    // Ensure speakerphone and high-fidelity media audio mode are enabled
+                    // Ensure speakerphone and high-fidelity media audio routing are applied
                     try {
                         android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
-                            applyAudioRouting(am, "media");
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && sModeChangedListener == null) {
-                                android.media.AudioManager.OnModeChangedListener listener = mode -> {
-                                    if (isInCall && (mode == android.media.AudioManager.MODE_IN_COMMUNICATION || mode == android.media.AudioManager.MODE_IN_CALL)) {
-                                        try {
-                                            android.util.Log.d("CallManager", "Intercepted telephony audio mode (" + mode + "). Reverting to MODE_NORMAL and clearing communication device for 48kHz Hi-Fi stereo.");
-                                            am.setMode(android.media.AudioManager.MODE_NORMAL);
-                                            am.clearCommunicationDevice();
-                                        } catch (Exception ignored) {}
-                                    }
-                                };
-                                sModeChangedListener = listener;
-                                am.addOnModeChangedListener(java.util.concurrent.Executors.newSingleThreadExecutor(), listener);
-                            }
+                            applyAudioRouting(am, "call");
                         }
                     } catch (Exception ignored) {}
 
@@ -267,20 +254,44 @@ public class MainActivity extends BridgeActivity {
         public static void routeAudio(android.media.AudioManager am, String targetRoute) {
             if (am == null) return;
             try {
-                // Ensure audio mode strictly remains MODE_NORMAL so all calls, voices and media play in Hi-Fi stereo (48kHz)
-                am.setMode(android.media.AudioManager.MODE_NORMAL);
+                boolean isSpeaker = !"headset".equalsIgnoreCase(targetRoute);
+                sCurrentRoute = isSpeaker ? "speaker" : "headset";
 
-                // Always clear communication device so Android AudioPolicy never drops to telephony voice DSP or ducks background music
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    am.clearCommunicationDevice();
+                    java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
+                    android.media.AudioDeviceInfo chosenDevice = null;
+                    if (isSpeaker) {
+                        for (android.media.AudioDeviceInfo d : devices) {
+                            if (d.getType() == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                                chosenDevice = d;
+                                break;
+                            }
+                        }
+                    } else {
+                        // Find bluetooth, wired headset, or usb headset
+                        for (android.media.AudioDeviceInfo d : devices) {
+                            int type = d.getType();
+                            if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                                type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                                type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                                type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                                type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
+                                chosenDevice = d;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (chosenDevice != null) {
+                        boolean res = am.setCommunicationDevice(chosenDevice);
+                        android.util.Log.d("CallManager", "setCommunicationDevice to " + chosenDevice.getProductName() + " result=" + res);
+                    } else {
+                        am.clearCommunicationDevice();
+                    }
                 }
 
-                // Never enable speakerphone telephony mode (setSpeakerphoneOn=false).
-                // In Android, setSpeakerphoneOn(true) forces the system into phone-call speakerphone routing,
-                // which mutes background music (Spotify) and applies a telephone speech bandpass filter.
-                // In MODE_NORMAL, Android routes media audio to the loud stereo speakers automatically when no headset is plugged in!
-                am.setSpeakerphoneOn(false);
-                sCurrentRoute = "headset".equalsIgnoreCase(targetRoute) ? "headset" : "speaker";
+                // Also maintain legacy speakerphone flag for older subsystems / HALs
+                am.setSpeakerphoneOn(isSpeaker);
             } catch (Exception e) {
                 android.util.Log.w("CallManager", "routeAudio failed: " + e.getMessage());
             }

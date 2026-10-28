@@ -4,10 +4,11 @@ import axios from 'axios';
 import './UpdateModal.css';
 
 import { App as CapacitorApp } from '@capacitor/app';
+import { useSocket } from '../context/SocketContext';
 
 // Fallback APK version (used only if CapacitorApp.getInfo() fails)
-const CURRENT_VERSION = '2.5.4';
-const CURRENT_VERSION_CODE = 254;
+const CURRENT_VERSION = '2.5.5';
+const CURRENT_VERSION_CODE = 255;
 
 /**
  * Compares two semver strings. Returns true if remote > local.
@@ -28,6 +29,21 @@ const UpdateModal = () => {
     const [progress, setProgress] = useState(0);
     const [downloadCompleted, setDownloadCompleted] = useState(false);
     const progressListenerRef = useRef(null);
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket) return;
+        const handlePrompt = (data) => {
+            if (Capacitor.isNativePlatform()) {
+                setInfo(data);
+                setShow(true);
+            }
+        };
+        socket.on('prompt_app_update', handlePrompt);
+        return () => {
+            socket.off('prompt_app_update', handlePrompt);
+        };
+    }, [socket]);
 
     useEffect(() => {
         // Only run on native Android app

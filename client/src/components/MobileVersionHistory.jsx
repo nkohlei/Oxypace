@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.4)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.5)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.5',
+        versionCode: 255,
+        releaseDate: '29 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Veri Tasarrufu Modu, Ses Çıkışı Yönlendirme & Mikrofon Ses Kalitesi Düzeltmesi, Yönetici Sürüm Takibi',
+        summary: 'Canlı görüntülü odalarda varsayılan olarak aktif olan ve mobil internet kotasını %70 oranında koruyan Veri Tasarrufu Modu eklendi. Canlı odadaki hoparlör/kulaklık ses çıkışı ayarı native Android 12+ AudioPolicy API ile onarıldı. Mikrofon açıldığında oluşan ses bozulması ve kapatıldığında düzelmeme sorunu giderildi; mutelendiğinde donanım ses yakalama oturumu durdurularak 48kHz Hi-Fi stereo ses anında geri kazanılır. Yönetici paneline tüm kullanıcıların uygulama sürümlerini görüntüleme ve eski sürümlülere anlık sistem güncelleme mesajı gönderme özelliği kazandırıldı.',
+        category: 'feature',
+        apkSize: '39.0 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Veri Tasarrufu Modu: Canlı görüntülü odalarda varsayılan olarak %70 internet tasarrufu sağlayan akıllı bit hızı ve çözünürlük optimizasyonu',
+            'Ses Çıkışı (Hoparlör / Kulaklık) Onarımı: Android 12+ getAvailableCommunicationDevices ve setCommunicationDevice ile kusursuz ses yönlendirme',
+            'Mikrofon Ses Kalitesi & Stereo Dönüşü: Mikrofon kapatıldığında donanım kaydının durdurulması ve 48kHz stereo ses kalitesinin anında geri gelmesi',
+            'Yönetici Sürüm Takibi & Bildirimi: Kullanıcıların hangi sürümü kullandığının anlık tespiti ve eski sürümlere tek tıkla güncelleme sistem mesajı gönderilmesi'
+        ],
+        changes: [
+            { type: 'Veri Tasarrufu Modu (Data Saver)', detail: 'VoiceContext.jsx, Settings.jsx ve VoiceChannel.jsx üzerinde varsayılan 550kbps kamera, 950kbps ekran ve 48kbps ses tavanları uygulandı.' },
+            { type: 'Android Ses Çıkışı & Routing Onarımı', detail: 'MainActivity.java routeAudio fonksiyonu setCommunicationDevice ve setSpeakerphoneOn ile gerçek donanım yönlendirmesine bağlandı.' },
+            { type: 'Mikrofon Donanım Oturumu & AEC Düzeltmesi', detail: 'Mute edildiğinde track.stop() çağrılarak mikrofon oturumu serbest bırakıldı, native audio mode media moduna döndürüldü.' },
+            { type: 'Yönetici Paneli Sürüm Takip & Sistem Mesajı', detail: 'AdminDashboard.jsx, User modeli ve routes/admin.js üzerinden sürüm takibi ve send-update-prompt sistemi entegre edildi.' }
+        ],
+        filesModified: 10
+    },
     {
         version: 'v2.5.4',
         versionCode: 254,
         releaseDate: '29 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        commitHash: '3358040d',
+        status: 'stable',
         title: 'Arka Plan PiP Kamera/Ses Sürekliliği, Bildirimden Ekran Paylaşımı, Dikey Ekran Paylaşımı Tam Sığdırma, Katman Çakışması ve Birlikte İzle Uzak Oynatma Donma Giderimi',
         summary: 'Canlı görüşme sırasında yüzen pencere (PiP) çarpı (X) butonuyla gizlendiğinde kamera ve ses akışının arka planda kesintisiz devam etmesi sağlandı. Cihaz bildirim çubuğundaki ekran paylaşımı butonu uygulama arka plandayken de tam işlevsel hale getirildi. Dikey mobil ekran paylaşımlarının kırpılmadan tam sığdırılması (fit/contain), Birlikte İzle penceresi kenara alındığında kamera kartlarıyla yaşanan katman çakışması ve karşı taraf videoyu durdurup başlattığında mobilde oluşan donma sorunu kökten giderildi.',
         category: 'bugfix',

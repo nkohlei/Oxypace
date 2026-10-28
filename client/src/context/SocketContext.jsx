@@ -96,6 +96,27 @@ export const SocketProvider = ({ children }) => {
             const isGhost = !!localStorage.getItem('admin_backup_token');
             newSocket.emit('join', uid, isGhost);
             newSocket.emit('get_online_users');
+
+            // Emit version sync via socket
+            try {
+                if (Capacitor.isNativePlatform()) {
+                    import('@capacitor/app').then(({ App: CapApp }) => {
+                        CapApp.getInfo().then(info => {
+                            newSocket.emit('sync_app_version', {
+                                appVersion: info.version,
+                                versionCode: parseInt(info.build, 10),
+                                platform: 'android'
+                            });
+                        }).catch(() => {});
+                    }).catch(() => {});
+                } else {
+                    newSocket.emit('sync_app_version', {
+                        appVersion: 'Web',
+                        versionCode: 0,
+                        platform: 'web'
+                    });
+                }
+            } catch (_) {}
             console.log(`[Socket] SyncPresence — joined visible: ${uid} (voiceActive: ${isVoice})`);
         };
 

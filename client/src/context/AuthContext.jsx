@@ -126,6 +126,27 @@ export const AuthProvider = ({ children }) => {
             try {
                 localStorage.setItem('user', JSON.stringify(userData));
             } catch (_) {}
+
+            // Auto-sync client app version and platform for admin tracking
+            try {
+                if (Capacitor.isNativePlatform()) {
+                    import('@capacitor/app').then(({ App: CapApp }) => {
+                        CapApp.getInfo().then(info => {
+                            axios.post('/api/users/sync-version', {
+                                appVersion: info.version,
+                                versionCode: parseInt(info.build, 10),
+                                platform: 'android'
+                            }, { headers: { Authorization: `Bearer ${authToken}` } }).catch(() => {});
+                        }).catch(() => {});
+                    }).catch(() => {});
+                } else {
+                    axios.post('/api/users/sync-version', {
+                        appVersion: 'Web',
+                        versionCode: 0,
+                        platform: 'web'
+                    }, { headers: { Authorization: `Bearer ${authToken}` } }).catch(() => {});
+                }
+            } catch (_) {}
         } catch (error) {
             console.error('Failed to fetch user:', error);
             // Only logout if it's a 401 (Unauthorized) to avoid logout on network errors

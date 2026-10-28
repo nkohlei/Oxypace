@@ -767,6 +767,28 @@ router.get('/devices', protect, async (req, res) => {
     }
 });
 
+// @route   POST /api/users/sync-version
+// @desc    Sync user app version and platform for admin tracking and version notifications
+// @access  Private
+router.post('/sync-version', protect, async (req, res) => {
+    try {
+        const { appVersion, versionCode, platform } = req.body;
+        const updateData = {
+            appPlatform: platform || 'web',
+            lastAppSyncAt: new Date()
+        };
+        if (appVersion) updateData.appVersion = String(appVersion).trim();
+        if (typeof versionCode === 'number') updateData.versionCode = versionCode;
+
+        const user = await User.findByIdAndUpdate(req.user._id, { $set: updateData }, { new: true })
+            .select('appVersion versionCode appPlatform lastAppSyncAt');
+        res.json({ success: true, user });
+    } catch (err) {
+        console.error('sync-version error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // @route   POST /api/users/devices/save
 // @desc    Explicitly save/register a device when prompted
 // @access  Private

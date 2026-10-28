@@ -47,6 +47,17 @@ const Settings = () => {
         downloadFormat: localStorage.getItem('video_download_format') || 'ask',
         autoplay: localStorage.getItem('video_autoplay') || 'on',
     });
+    // Canlı Oda Kalite & Veri Tasarrufu Modu
+    const [liveRoomQuality, setLiveRoomQuality] = useState(() => {
+        return localStorage.getItem('oxypace_call_quality') || 'saver';
+    });
+
+    const handleLiveRoomQualityChange = (mode) => {
+        setLiveRoomQuality(mode);
+        localStorage.setItem('oxypace_call_quality', mode);
+        window.dispatchEvent(new CustomEvent('oxypace:call_quality_changed', { detail: { mode } }));
+    };
+
     // Watch Party Subtitle Engine Studio States
     const [wpSubScale, setWpSubScale] = useState(() => {
         const s = localStorage.getItem('watchPartySubScale');
@@ -1821,6 +1832,72 @@ const Settings = () => {
 
     const renderLiveRoomsMenu = () => (
         <div className="submenu-content animation-slide-in">
+            {/* CANLI ODA YAYIN VE VERİ TASARRUFU MODÜLÜ */}
+            <div className="settings-group-container" style={{ marginBottom: '24px' }}>
+                <h3 className="settings-group-title">Canlı Oda Kalite & Veri Tasarrufu</h3>
+                <div className="settings-card" style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '16px' }}>
+                    <p className="settings-section-desc" style={{ marginBottom: '14px', color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.5' }}>
+                        Canlı görüntülü odalarda kamera, ekran paylaşımı ve ses akışınızın veri tüketimini yönetin. <b>Veri Tasarrufu Modu</b> internet kotanızı %70 oranında korur, mobil cihazlarda donma ve aşırı ısınmayı önler.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                        <button
+                            type="button"
+                            onClick={() => handleLiveRoomQualityChange('saver')}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: '6px',
+                                padding: '14px',
+                                borderRadius: '10px',
+                                border: liveRoomQuality === 'saver' ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.08)',
+                                background: liveRoomQuality === 'saver' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                <span style={{ fontWeight: 600, fontSize: '14px', color: liveRoomQuality === 'saver' ? '#4ade80' : '#fff' }}>
+                                    ⚡ Veri Tasarrufu (Varsayılan & Önerilen)
+                                </span>
+                                {liveRoomQuality === 'saver' && <Check size={16} color="#4ade80" />}
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                                480p kamera, optimize ekran paylaşımı ve ses. Mobil kotanızı %70 korur ve akıcı bağlantı sunar.
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleLiveRoomQualityChange('high')}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: '6px',
+                                padding: '14px',
+                                borderRadius: '10px',
+                                border: liveRoomQuality === 'high' ? '1.5px solid #60a5fa' : '1px solid rgba(255,255,255,0.08)',
+                                background: liveRoomQuality === 'high' ? 'rgba(96, 165, 250, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                <span style={{ fontWeight: 600, fontSize: '14px', color: liveRoomQuality === 'high' ? '#93c5fd' : '#fff' }}>
+                                    🎬 Yüksek Kalite
+                                </span>
+                                {liveRoomQuality === 'high' && <Check size={16} color="#93c5fd" />}
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                                HD 720p 30fps kamera, yüksek bit hızlı ekran paylaşımı (Yüksek internet kotası tüketir).
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
             {/* SİYAH BEYAZ, KESKİN DİKDÖRTGEN BUTONLU ALTYAZI GÖRÜNÜM MODÜLÜ */}
             <div className="wp-mono-studio">
                 <div className="wp-mono-header">

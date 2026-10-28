@@ -256,6 +256,58 @@ export const VoiceProvider = ({ children }) => {
         localStorage.setItem('voiceUserVolume', userVolume.toString());
     }, [userVolume]);
 
+    // Data Saver vs High Quality Call Mode (Default: 'saver' for all users)
+    const [callQualityMode, setCallQualityModeState] = useState(() => {
+        return localStorage.getItem('oxypace_call_quality') || 'saver';
+    });
+    const callQualityModeRef = useRef(callQualityMode);
+    useEffect(() => {
+        callQualityModeRef.current = callQualityMode;
+    }, [callQualityMode]);
+
+    const updateSendersQuality = useCallback((mode) => {
+        const isSaver = mode === 'saver';
+        peerConnectionsRef.current.forEach(pc => {
+            const senders = pc.getSenders();
+            senders.forEach(sender => {
+                if (!sender.track) return;
+                const isVideo = sender.track.kind === 'video';
+                const isAudio = sender.track.kind === 'audio';
+                const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
+                const isScreen = isVideo && (sender.track === screenTrack || sender.track.label?.toLowerCase().includes('screen'));
+
+                try {
+                    const params = sender.getParameters();
+                    if (!params.encodings || params.encodings.length === 0) {
+                        params.encodings = [{}];
+                    }
+                    params.encodings.forEach(enc => {
+                        if (isScreen) {
+                            enc.maxBitrate = isSaver ? 950000 : 3500000;
+                            enc.maxFramerate = isSaver ? 20 : 30;
+                        } else if (isVideo) {
+                            enc.maxBitrate = isSaver ? 550000 : 1800000;
+                            enc.maxFramerate = isSaver ? 24 : 30;
+                        } else if (isAudio) {
+                            enc.maxBitrate = isSaver ? 48000 : 128000;
+                        }
+                    });
+                    sender.setParameters(params).catch(() => {});
+                } catch (_) {}
+            });
+        });
+    }, []);
+
+    const setCallQualityMode = useCallback((mode) => {
+        const validMode = mode === 'high' ? 'high' : 'saver';
+        setCallQualityModeState(validMode);
+        localStorage.setItem('oxypace_call_quality', validMode);
+        updateSendersQuality(validMode);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('oxypace:call_quality_changed', { detail: { mode: validMode } }));
+        }
+    }, [updateSendersQuality]);
+
     // Prompt "Siteden çıkılsın mı?" browser confirmation modal if user attempts to close tab/window or reload during active live room call
     useEffect(() => {
         const handleBeforeUnload = (e) => {
@@ -946,8 +998,10 @@ export const VoiceProvider = ({ children }) => {
                         if (!params.encodings) {
                             params.encodings = [{}];
                         }
+                        const isSaver = callQualityModeRef.current === 'saver';
                         params.encodings.forEach(enc => {
-                            enc.maxBitrate = 2500000; // 2.5 Mbps for smooth high quality screen share
+                            enc.maxBitrate = isSaver ? 950000 : 2500000;
+                            enc.maxFramerate = isSaver ? 20 : 30;
                             enc.priority = 'high';
                             enc.networkPriority = 'high';
                         });
@@ -1835,51 +1889,67 @@ export const VoiceProvider = ({ children }) => {
             localStreamRef.current = new MediaStream();
         }
         let track = localStreamRef.current.getAudioTracks()[0];
+        const willMute = !localState.isMuted;
 
-        // If audio track is missing or stopped, dynamically request microphone permission and audio stream
-        if (!track || track.readyState === 'ended') {
+        if (willMute) {
+            // MUTING: Stop audio track and release hardware mic session so audio returns to pristine stereo
+            if (track) {
+                try {
+                    track.enabled = false;
+                    track.stop();
+                    localStreamRef.current.removeTrack(track);
+                } catch (e) {}
+            }
+            // Replace track with null on active peer connection senders
+            peerConnectionsRef.current.forEach(pc => {
+                const senders = pc.getSenders();
+                const audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
+                    pc.getTransceivers().find(t => t.sender?.track?.kind === 'audio')?.sender;
+                if (audioSender) {
+                    audioSender.replaceTrack(null).catch(() => {});
+                }
+            });
+
+            if (Capacitor.isNativePlatform()) {
+                CallManager.setAudioMode({ mode: 'media' }).catch(() => {});
+            }
+        } else {
+            // UNMUTING: Request fresh microphone with proper echoCancellation, noiseSuppression, autoGainControl
             try {
-                console.log("[WebRTC] Requesting local audio track dynamically...");
+                console.log("[WebRTC] Requesting local audio track dynamically with AEC & noise suppression...");
                 const audioStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        channelCount: 2,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        channelCount: 1,
                         sampleRate: 48000
                     }
                 });
                 const newAudioTrack = audioStream.getAudioTracks()[0];
                 if (newAudioTrack) {
-                    if (track) {
-                        try { localStreamRef.current.removeTrack(track); } catch (e) {}
-                    }
                     localStreamRef.current.addTrack(newAudioTrack);
                     track = newAudioTrack;
 
-                    // Attach new audio track to all active peer connections
+                    const isSaver = callQualityModeRef.current === 'saver';
                     peerConnectionsRef.current.forEach(pc => {
                         const senders = pc.getSenders();
-                        let audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-                        if (!audioSender) {
-                            const audioTransceiver = pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio');
-                            if (audioTransceiver) {
-                                audioSender = audioTransceiver.sender;
-                            }
-                        }
-                         if (audioSender) {
-                             audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
-                             try {
-                                 const params = audioSender.getParameters();
-                                 if (!params.encodings) params.encodings = [{}];
-                                 params.encodings.forEach(enc => {
-                                     enc.priority = 'high';
-                                     enc.networkPriority = 'high';
-                                     enc.maxBitrate = 128000;
-                                 });
-                                 audioSender.setParameters(params).catch(() => {});
-                             } catch (_) {}
-                         } else {
+                        let audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
+                            pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')?.sender;
+
+                        if (audioSender) {
+                            audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
+                            try {
+                                const params = audioSender.getParameters();
+                                if (!params.encodings) params.encodings = [{}];
+                                params.encodings.forEach(enc => {
+                                    enc.priority = 'high';
+                                    enc.networkPriority = 'high';
+                                    enc.maxBitrate = isSaver ? 48000 : 128000;
+                                });
+                                audioSender.setParameters(params).catch(() => {});
+                            } catch (_) {}
+                        } else {
                             try { pc.addTrack(newAudioTrack, localStreamRef.current); } catch (e) {}
                         }
                     });
@@ -1892,6 +1962,10 @@ export const VoiceProvider = ({ children }) => {
                         setSelectedAudioInput(newDevId);
                     }
                     enumerateDevices();
+
+                    if (Capacitor.isNativePlatform()) {
+                        CallManager.setAudioMode({ mode: 'call' }).catch(() => {});
+                    }
                 }
             } catch (permErr) {
                 console.warn("[WebRTC] Failed to acquire audio stream dynamically:", permErr);
@@ -1899,25 +1973,20 @@ export const VoiceProvider = ({ children }) => {
             }
         }
 
-        if (track) {
-            const willMute = !localState.isMuted;
-            track.enabled = !willMute;
-
-            setLocalState(prev => {
-                const next = { ...prev, isMuted: willMute };
-                if (activeRoom) {
-                    safeEmit('voice:state-update', {
-                        roomName: activeRoom.roomName,
-                        userId: user?._id?.toString(),
-                        isMuted: next.isMuted,
-                        isCameraOn: next.isCameraOn,
-                        isScreenSharing: next.isScreenSharing
-                    });
-                }
-                return next;
-            });
-        }
-    }, [localState, activeRoom, user, safeEmit]);
+        setLocalState(prev => {
+            const next = { ...prev, isMuted: willMute };
+            if (activeRoom) {
+                safeEmit('voice:state-update', {
+                    roomName: activeRoom.roomName,
+                    userId: user?._id?.toString(),
+                    isMuted: next.isMuted,
+                    isCameraOn: next.isCameraOn,
+                    isScreenSharing: next.isScreenSharing
+                });
+            }
+            return next;
+        });
+    }, [localState, activeRoom, user, safeEmit, enumerateDevices]);
 
     const toggleCamera = useCallback(async () => {
         if (!localStreamRef.current) {
@@ -1934,12 +2003,13 @@ export const VoiceProvider = ({ children }) => {
                     console.log("[WebRTC] Requesting local camera stream...");
                     let videoStream;
                     try {
+                        const isSaver = callQualityModeRef.current === 'saver';
                         videoStream = await navigator.mediaDevices.getUserMedia({
                             video: {
                                 facingMode: { ideal: facingMode || 'user' },
-                                width: { ideal: 1280, max: 1280 },
-                                height: { ideal: 720, max: 720 },
-                                frameRate: { ideal: 30, max: 30 }
+                                width: isSaver ? { ideal: 640, max: 854 } : { ideal: 1280, max: 1280 },
+                                height: isSaver ? { ideal: 480, max: 480 } : { ideal: 720, max: 720 },
+                                frameRate: isSaver ? { ideal: 24, max: 24 } : { ideal: 30, max: 30 }
                             }
                         });
                     } catch (e1) {
@@ -1981,9 +2051,10 @@ export const VoiceProvider = ({ children }) => {
                             await videoSender.replaceTrack(cameraTrack);
                             const params = videoSender.getParameters();
                             if (!params.encodings) params.encodings = [{}];
+                            const isSaver = callQualityModeRef.current === 'saver';
                             params.encodings.forEach(enc => {
-                                enc.maxBitrate = 1800000;
-                                enc.maxFramerate = 30;
+                                enc.maxBitrate = isSaver ? 550000 : 1800000;
+                                enc.maxFramerate = isSaver ? 24 : 30;
                                 enc.priority = 'high';
                                 enc.networkPriority = 'high';
                             });
@@ -2263,7 +2334,9 @@ export const VoiceProvider = ({ children }) => {
                                     params.encodings = [{}];
                                 }
                                 params.encodings.forEach(enc => {
-                                    enc.maxBitrate = 5000000; // 5 Mbps for high quality
+                                    const isSaver = callQualityModeRef.current === 'saver';
+                                    enc.maxBitrate = isSaver ? 950000 : 3500000;
+                                    enc.maxFramerate = isSaver ? 20 : 30;
                                     enc.priority = 'high';
                                     enc.networkPriority = 'high';
                                 });
@@ -2911,6 +2984,8 @@ export const VoiceProvider = ({ children }) => {
         setUnreadCount,
         userVolume,
         setUserVolume,
+        callQualityMode,
+        setCallQualityMode,
         consensusRule: activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all',
         socket
     };

@@ -481,13 +481,13 @@ app.get('/downloads/bundle.zip', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.5.4',
-        versionCode: 254,
-        minSupportedVersionCode: 254,
+        latestVersion: '2.5.5',
+        versionCode: 255,
+        minSupportedVersionCode: 255,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.5.4: Yüzen pencere (PiP) kapatıldığında arka planda kesintisiz kamera ve ses akışı, bildirim panelinden doğrudan ekran paylaşımı kontrolü, dikey mobil ekran paylaşımı tam sığdırma (contain), Birlikte İzle ve kamera katman çakışması düzeltmesi ve uzak kullanıcı oynat/durdur donma giderimi.',
+        changelog: 'Oxypace 2.5.5: Canlı görüntülü odalarda %70 kota koruyan Veri Tasarrufu Modu, hoparlör/kulaklık ses çıkışı yönlendirme düzeltmesi, mikrofon açıp kapatıldığında ses kalitesi bozulmasını önleyen donanım ses senkronizasyonu ve yönetici panelinden uygulama sürümleri takibi.',
     });
 });
 

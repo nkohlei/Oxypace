@@ -280,6 +280,24 @@ export const initializeSocket = (io) => {
             }
         });
 
+        // Sync user application version and platform for Admin Dashboard tracking
+        socket.on('sync_app_version', async (payload) => {
+            const userId = socket.data?.userId || userSockets.get(socket.id);
+            if (!userId || !payload) return;
+            const { appVersion, versionCode, platform } = payload;
+            try {
+                const update = {
+                    lastAppSyncAt: new Date(),
+                    appPlatform: platform || 'web'
+                };
+                if (appVersion) update.appVersion = String(appVersion).trim();
+                if (typeof versionCode === 'number') update.versionCode = versionCode;
+                await User.findByIdAndUpdate(userId, { $set: update });
+            } catch (err) {
+                console.warn('sync_app_version socket error:', err.message);
+            }
+        });
+
         // Toggle showOnlineStatus privacy setting live
         socket.on('update_show_online_status', async ({ showOnlineStatus }) => {
             const userId = socket.data?.userId || userSockets.get(socket.id);

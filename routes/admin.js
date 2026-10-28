@@ -181,6 +181,14 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
                 typeFilter.isBot = { $ne: true };
                 typeFilter.isDeleted = { $ne: true };
                 typeFilter.username = { $ne: 'oxypace' };
+            } else if (accountType === 'outdated_app') {
+                typeFilter.appPlatform = 'android';
+                typeFilter.isDeleted = { $ne: true };
+                typeFilter.$or = [
+                    { versionCode: { $lt: 255 } },
+                    { versionCode: null },
+                    { versionCode: 0 }
+                ];
             }
 
             if (Object.keys(typeFilter).length > 0) {
@@ -193,7 +201,7 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals isDeleted deletedAt deletionReason status')
+            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals isDeleted deletedAt deletionReason status appVersion versionCode appPlatform lastAppSyncAt')
             .populate('joinedPortals', 'name avatar members channels')
             .sort({ createdAt: -1 })
             .limit(100)
@@ -2969,6 +2977,102 @@ router.post('/broadcast-announcement', protect, requirePermission('canSendNotifi
     } catch (error) {
         console.error('Broadcast announcement error:', error);
         res.status(500).json({ message: 'Duyuru gönderilirken hata oluştu: ' + error.message });
+    }
+});
+
+// @route   POST /api/admin/users/send-update-prompt
+// @desc    Send system update prompt notification to users with outdated app versions
+// @access  Private/Admin
+router.post('/users/send-update-prompt', protect, requirePermission('canManageUsers'), async (req, res) => {
+    try {
+        const { userId, minVersionCode = 255, customMessage } = req.body;
+        const io = req.app.get('io');
+        const defaultMsg = customMessage || 'Oxypace v2.5.5 yayınlandı! Canlı görüntülü odalarda veri tasarrufu modu, ses çıkışı ve mikrofon kararlılık iyileştirmelerini kullanabilmek için lütfen uygulamanızı güncelleyin.';
+
+        let targetUsers = [];
+        if (userId) {
+            targetUsers = await User.find({ _id: userId, isDeleted: { $ne: true } }).select('_id username fcmTokens settings');
+        } else {
+            // Find all users who are on android and have versionCode < minVersionCode
+            targetUsers = await User.find({
+                isDeleted: { $ne: true },
+                appPlatform: 'android',
+                $or: [
+                    { versionCode: { $lt: minVersionCode } },
+                    { versionCode: null },
+                    { versionCode: 0 }
+                ]
+            }).select('_id username fcmTokens settings');
+        }
+
+        if (targetUsers.length === 0) {
+            return res.json({ message: 'Güncelleme gönderilecek kullanıcı bulunamadı.', count: 0 });
+        }
+
+        // 1. In-app system notifications
+        const notificationDocs = targetUsers.map(u => ({
+            recipient: u._id,
+            sender: req.user._id,
+            type: 'system',
+            content: `📢 [Sistem Güncellemesi] ${defaultMsg}`,
+            link: '/downloads/oxypace.apk',
+            read: false
+        }));
+        await Notification.insertMany(notificationDocs);
+
+        // 2. Socket notification & instant update trigger
+        if (io) {
+            targetUsers.forEach(u => {
+                const uIdStr = String(u._id);
+                io.to(uIdStr).emit('newNotification', {
+                    title: 'Yeni Sürüm Güncellemesi Mevcut!',
+                    content: defaultMsg,
+                    link: '/downloads/oxypace.apk',
+                    type: 'system',
+                    createdAt: new Date()
+                });
+                io.to(uIdStr).emit('prompt_app_update', {
+                    latestVersion: '2.5.5',
+                    versionCode: 255,
+                    changelog: defaultMsg,
+                    downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk'
+                });
+            });
+        }
+
+        // 3. FCM push notifications
+        const allTokens = [];
+        for (const u of targetUsers) {
+            if (u.settings?.notifications?.push !== false && Array.isArray(u.fcmTokens)) {
+                for (const t of u.fcmTokens) {
+                    if (t && typeof t === 'string' && !allTokens.includes(t)) {
+                        allTokens.push(t);
+                    }
+                }
+            }
+        }
+
+        if (allTokens.length > 0) {
+            try {
+                const { sendPushNotification } = await import('../services/pushService.js');
+                for (let i = 0; i < allTokens.length; i += 500) {
+                    const batch = allTokens.slice(i, i + 500);
+                    await sendPushNotification(batch, {
+                        title: '📢 Oxypace Güncellemesi Mevcut!',
+                        body: defaultMsg,
+                        url: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
+                        notificationType: 'system'
+                    });
+                }
+            } catch (pushErr) {
+                console.warn('send-update-prompt push warning:', pushErr.message);
+            }
+        }
+
+        res.json({ message: `${targetUsers.length} kullanıcıya sistem güncelleme mesajı gönderildi.`, count: targetUsers.length });
+    } catch (err) {
+        console.error('send-update-prompt error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

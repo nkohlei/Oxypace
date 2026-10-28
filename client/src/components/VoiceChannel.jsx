@@ -5,7 +5,7 @@ import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
-import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings, Eye, EyeOff, Headphones } from 'lucide-react';
+import { MicOff, Mic, MessageCircle, Video, VideoOff, MonitorUp, PhoneOff, Volume2, RefreshCw, Check, ChevronDown, ChevronUp, VolumeX, Link, Clipboard, X, UserPlus, Radio, Minimize2, Globe, PictureInPicture, Film, Settings, Eye, EyeOff, Headphones, Zap, Sparkles } from 'lucide-react';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
@@ -201,7 +201,9 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         unreadCount,
         setUnreadCount,
         userVolume,
-        setUserVolume
+        setUserVolume,
+        callQualityMode,
+        setCallQualityMode
     } = useVoice();
 
     const handleSendMessage = (text) => {
@@ -1487,6 +1489,24 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                     </button>
                                     <button className={`vc-more-option ${hideSelfView ? 'active' : ''}`} onClick={() => { toggleHideSelfView(); setIsMoreMenuOpen(false); }}>
                                         {hideSelfView ? <Eye size={15} /> : <EyeOff size={15} />} <span>{hideSelfView ? 'Kendi Görüntümü Göster' : 'Kamera görüntü penceremi benden gizle'}</span>
+                                    </button>
+                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>YAYIN KALİTESİ</div>
+                                    <button 
+                                        className={`vc-more-option ${callQualityMode === 'saver' ? 'active' : ''}`} 
+                                        onClick={() => { setCallQualityMode('saver'); setIsMoreMenuOpen(false); }}
+                                    >
+                                        <Zap size={15} style={{ color: callQualityMode === 'saver' ? '#4ade80' : 'inherit' }} />
+                                        <span>⚡ Veri Tasarrufu (Önerilen)</span>
+                                        {callQualityMode === 'saver' && <Check size={13} style={{ color: '#4ade80' }} />}
+                                    </button>
+                                    <button 
+                                        className={`vc-more-option ${callQualityMode === 'high' ? 'active' : ''}`} 
+                                        onClick={() => { setCallQualityMode('high'); setIsMoreMenuOpen(false); }}
+                                    >
+                                        <Sparkles size={15} style={{ color: callQualityMode === 'high' ? '#93c5fd' : 'inherit' }} />
+                                        <span>🎬 Yüksek Kalite (HD)</span>
+                                        {callQualityMode === 'high' && <Check size={13} style={{ color: '#93c5fd' }} />}
                                     </button>
                                     {Capacitor.isNativePlatform() ? (
                                         <>

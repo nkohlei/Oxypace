@@ -4397,6 +4397,26 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleSendUpdatePrompt = async (userId, username) => {
+        if (!window.confirm(`@${username} kullanıcısına v2.5.5 sürüm güncellemesi sistem mesajı ve bildirimi gönderilsin mi?`)) return;
+        try {
+            const { data } = await axios.post('/api/admin/users/send-update-prompt', { userId });
+            alert(data.message || 'Güncelleme mesajı gönderildi.');
+        } catch (err) {
+            alert(err.response?.data?.message || err.message);
+        }
+    };
+
+    const handleBroadcastUpdatePrompt = async () => {
+        if (!window.confirm("Mobil uygulaması v2.5.5'ten eski olan TÜM kullanıcılara sistem güncelleme bildirimi ve mesajı gönderilsin mi?")) return;
+        try {
+            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 255 });
+            alert(data.message || 'Tüm eski sürümlü kullanıcılara güncelleme bildirimi gönderildi.');
+        } catch (err) {
+            alert(err.response?.data?.message || err.message);
+        }
+    };
+
     const fetchBots = async () => {
         setLoading(true);
         try {
@@ -7322,8 +7342,30 @@ const AdminDashboard = () => {
                                             <option value="verified">✅ Onaylı Hesaplar</option>
                                             <option value="deleted">🗑️ Silinmiş / Pasif Hesaplar</option>
                                             <option value="banned">🚫 Engelli Hesaplar</option>
+                                            <option value="outdated_app">📱 Eski Mobil Sürümlüler</option>
                                         </select>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleBroadcastUpdatePrompt}
+                                        style={{
+                                            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(249, 115, 22, 0.15))',
+                                            border: '1px solid rgba(249, 115, 22, 0.35)',
+                                            color: '#fdba74',
+                                            padding: '8px 14px',
+                                            borderRadius: '6px',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                        title="Mobil sürümü 2.5.5'ten eski olan tüm kullanıcılara güncelleme bildirimi ve sistem mesajı yolla"
+                                    >
+                                        📢 Eski Sürümlülere Güncelleme Yolla
+                                    </button>
                                 </div>
                                 <div className="user-type-pills" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     {[
@@ -7335,6 +7377,7 @@ const AdminDashboard = () => {
                                         { id: 'verified', label: 'Onaylı', icon: '✅' },
                                         { id: 'deleted', label: 'Silinmiş / Pasif', icon: '🗑️' },
                                         { id: 'banned', label: 'Engelli', icon: '🚫' },
+                                        { id: 'outdated_app', label: 'Eski Mobil Sürüm', icon: '📱' },
                                     ].map(item => (
                                         <button
                                             key={item.id}
@@ -7417,6 +7460,40 @@ const AdminDashboard = () => {
                                                 </span>
                                             </div>
                                         )}
+                                        <div className="user-stat-item" style={{ gridColumn: 'span 2', background: 'rgba(255, 255, 255, 0.02)', padding: '7px 10px', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div>
+                                                <span className="user-stat-label" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📱 Uygulama Sürümü</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                                    {user.appPlatform === 'android' ? (
+                                                        user.versionCode >= 255 ? (
+                                                            <span style={{ color: '#4ade80', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                                                                Android v{user.appVersion || '2.5.5'} (Güncel)
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ color: '#f87171', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
+                                                                Android {user.appVersion ? `v${user.appVersion}` : 'Eski'} (Güncelleme Gerekli)
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        <span style={{ color: '#93c5fd', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            🌐 Web Tarayıcı
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 255) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSendUpdatePrompt(user._id, user.username)}
+                                                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                                    title="Kullanıcıya sürüm güncelleme sistemi mesajı gönder"
+                                                >
+                                                    📩 Güncelleme Yolla
+                                                </button>
+                                            )}
+                                        </div>
                                         <div className="user-stat-item">
                                             <span className="user-stat-label">Son Bilinen IP</span>
                                             <span className="user-stat-value">{user.lastIP || 'Kayıt Yok'}</span>
