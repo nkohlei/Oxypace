@@ -73,15 +73,15 @@ router.get('/portal-unreads', protect, async (req, res) => {
                 isOrphan = true;
             } else {
                 // 2. Check if user is still a member of the portal
-                const isMember = n.portal.members.some(
-                    (memberId) => memberId.toString() === req.user.id
+                const isMember = (n.portal.members || []).some(
+                    (memberId) => memberId && memberId.toString() === req.user.id
                 );
                 if (!isMember) {
                     isOrphan = true;
                 } else if (n.channel) {
                     // 3. Check if channel still exists in the portal
-                    const channelExists = n.portal.channels.some(
-                        (ch) => ch._id.toString() === n.channel || ch.name === n.channel
+                    const channelExists = (n.portal.channels || []).some(
+                        (ch) => ch && (ch._id?.toString() === n.channel || ch.name === n.channel)
                     );
                     if (!channelExists) {
                         isOrphan = true;

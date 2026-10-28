@@ -259,12 +259,12 @@ router.get('/', optionalProtect, async (req, res) => {
         const userId = req.user?._id?.toString();
         const formattedPortals = portals.map((portal) => {
             const portalObj = portal.toObject();
-            const activeMembers = (portal.members || []).filter(m => !m.isDeleted);
+            const activeMembers = (portal.members || []).filter(m => m && !m.isDeleted);
             portalObj.memberCount = activeMembers.length;
             portalObj.postCount = postCountMap[portal._id.toString()] || 0;
 
             if (userId) {
-                portalObj.isMember = activeMembers.some((m) => (m._id || m).toString() === userId);
+                portalObj.isMember = activeMembers.some((m) => m && (m._id || m).toString() === userId);
                 portalObj.isRequested = portal.joinRequests?.some((r) => r.toString() === userId);
             }
 
@@ -297,10 +297,10 @@ router.get('/showcase', optionalProtect, async (req, res) => {
         const formatPortalHelper = (portalDoc) => {
             if (!portalDoc) return null;
             const p = portalDoc.toObject ? portalDoc.toObject() : { ...portalDoc };
-            const activeMembers = (p.members || []).filter(m => !m.isDeleted);
+            const activeMembers = (p.members || []).filter(m => m && !m.isDeleted);
             p.memberCount = activeMembers.length;
             if (userId) {
-                p.isMember = activeMembers.some((m) => (m._id || m).toString() === userId);
+                p.isMember = activeMembers.some((m) => m && (m._id || m).toString() === userId);
                 p.isRequested = (p.joinRequests || []).some((r) => r.toString() === userId);
             } else {
                 p.isMember = false;
@@ -479,7 +479,7 @@ router.get('/map', optionalProtect, async (req, res) => {
             lat: p.location.lat,
             lng: p.location.lng,
             label: p.location.label || p.name,
-            memberCount: (p.members || []).filter(m => !m.isDeleted).length,
+            memberCount: (p.members || []).filter(m => m && !m.isDeleted).length,
         }));
 
         res.json(result);
@@ -536,7 +536,10 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
         const portalObj = portal.toObject();
 
         if (userId) {
-            portalObj.isMember = portal.members.some((m) => (m._id || m).toString() === userId);
+            portalObj.members = (portalObj.members || []).filter(Boolean);
+        portalObj.admins = (portalObj.admins || []).filter(Boolean);
+        portalObj.allowedUsers = (portalObj.allowedUsers || []).filter(Boolean);
+        portalObj.isMember = (portal.members || []).some((m) => m && (m._id || m).toString() === userId);
             portalObj.isRequested = portal.joinRequests?.some((r) => r.toString() === userId);
         } else {
             portalObj.isMember = false;
@@ -1525,7 +1528,8 @@ router.get('/:id/notifications', protect, async (req, res) => {
         }
 
         // Check if user is member
-        const isMember = portal.members.some((m) => m._id.toString() === req.user._id.toString());
+        const validMembers = (portal.members || []).filter(Boolean);
+        const isMember = validMembers.some((m) => (m._id || m).toString() === req.user._id.toString());
         const isAdmin = portal.admins.some((a) => a.toString() === req.user._id.toString());
         const isOwner = portal.owner.toString() === req.user._id.toString();
 
@@ -1550,7 +1554,7 @@ router.get('/:id/notifications', protect, async (req, res) => {
         // Append admin-only data
         if (isUserAdmin) {
             // Get recent members (last 10)
-            const recentMembers = portal.members
+            const recentMembers = validMembers
                 .slice(-10)
                 .reverse()
                 .map((member) => ({

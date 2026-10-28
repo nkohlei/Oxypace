@@ -134,8 +134,7 @@ setupRedisAdapter(io);
 // Initialize Socket event handlers and presence
 initializeSocket(io);
 
-// Setup MongoDB Change Streams
-setupChangeStreams(io);
+// Setup MongoDB Change Streams (initialized on primary worker after DB connect)
 
 app.set('io', io);
 
@@ -417,7 +416,7 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     isDeploying = true;
     // Arka planda git fetch + reset ve pm2 reload çalıştır
     setTimeout(() => {
-        const deployCmd = 'git fetch origin main && git reset --hard origin/main && npm install --omit=dev && pm2 restart oxypace-backend || pm2 restart all';
+        const deployCmd = 'OLD_HEAD=$(git rev-parse HEAD) && git fetch --depth=1 origin main && git reset --hard origin/main && git gc --prune=now --quiet && if ! git diff --quiet $OLD_HEAD HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi && (pm2 reload oxypace-backend || pm2 restart all)';
         exec(deployCmd, { cwd: '/home/ubuntu/app', env: process.env }, (err, stdout, stderr) => {
             isDeploying = false;
             if (err) {
@@ -459,6 +458,24 @@ app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
         }
     }
     return res.status(404).json({ error: 'APK file not found' });
+});
+
+app.get('/downloads/bundle.zip', (req, res) => {
+    const candidates = [
+        path.join(__dirname, 'public', 'downloads', 'bundle.zip'),
+        path.join(__dirname, 'client', 'public', 'downloads', 'bundle.zip')
+    ];
+    for (const file of candidates) {
+        if (fs.existsSync(file)) {
+            const stat = fs.statSync(file);
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Length', stat.size);
+            res.setHeader('Content-Disposition', 'attachment; filename="bundle.zip"');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+            return res.sendFile(file, { maxAge: 0 });
+        }
+    }
+    return res.status(404).json({ error: 'Bundle file not found' });
 });
 
 // App version check endpoint (public) - used by clients on startup to detect newer APK
@@ -616,7 +633,7 @@ app.get('/api/health', (req, res) => {
 const repairUserFriendships = async () => {
     try {
         console.log('🔧 Starting user friendship repair & deduplication...');
-        const users = await User.find({});
+        const users = await User.find({}).select('username followers following followRequests followerCount followingCount');
         let repairedCount = 0;
         for (const user of users) {
             let modified = false;
@@ -739,20 +756,24 @@ httpServer.listen(PORT, async () => {
         console.log(`📡 Socket.IO ready for real-time connections`);
         console.log('✅ Backend updated: v2.6 - Sitemap Integrated');
 
-        // Database repair on boot
         try {
             await connectDB();
-            await repairUserFriendships();
-            await cleanupExpiredTouristAdmins();
         } catch (err) {
-            console.error('⚠️ Boot DB connect/repair failed:', err.message);
+            console.error('⚠️ Boot DB connect failed:', err.message);
         }
 
-        // Run background worker tasks (Bots & Cron & Tanitim Setup) ONLY on primary cluster instance (Instance 0)
-        // This prevents 4x parallel duplicate scraping, socket spam, and database race conditions.
+        // Run background worker tasks (Bots & Cron & Tanitim Setup & DB Repair & ChangeStreams) ONLY on primary cluster instance (Instance 0)
+        // This prevents 4x parallel duplicate scraping, socket spam, memory spikes, and database race conditions.
         const isPrimaryInstance = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
         if (isPrimaryInstance) {
-            console.log('👑 Primary Cluster Worker (Instance 0): Starting News Bot & System Cron Jobs...');
+            console.log('👑 Primary Cluster Worker (Instance 0): Starting News Bot, ChangeStreams & System Cron Jobs...');
+            setupChangeStreams(io);
+            try {
+                await repairUserFriendships();
+                await cleanupExpiredTouristAdmins();
+            } catch (err) {
+                console.error('⚠️ Boot DB repair failed:', err.message);
+            }
             try {
                 await seedTanitimPortalOnBoot();
             } catch (seedErr) {

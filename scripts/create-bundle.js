@@ -11,10 +11,7 @@ const distMobileDir = path.join(rootDir, 'client', 'dist-mobile');
 const tempZipPath = path.join(rootDir, 'bundle.zip');
 
 const targetDestinations = [
-    path.join(rootDir, 'client', 'public', 'downloads', 'bundle.zip'),
-    path.join(rootDir, 'client', 'dist', 'downloads', 'bundle.zip'),
-    path.join(rootDir, 'public', 'downloads', 'bundle.zip'),
-    path.join(rootDir, 'dist', 'downloads', 'bundle.zip')
+    path.join(rootDir, 'public', 'downloads', 'bundle.zip')
 ];
 
 console.log('📦 [Bundle Creator] Packaging client/dist-mobile into OTA bundle.zip...');

@@ -52,7 +52,7 @@ const Portal = () => {
     const [portal, setPortal] = useState(() => {
         // 1. Check sessionStorage cache first for complete portal with channels
         try {
-            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`);
+            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
             if (cached) {
                 const parsed = JSON.parse(cached);
                 if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
@@ -94,7 +94,7 @@ const Portal = () => {
     const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(() => {
         try {
-            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`);
+            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
             if (cached) {
                 const parsed = JSON.parse(cached);
                 if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
@@ -1049,37 +1049,70 @@ const Portal = () => {
     const fetchPortalData = async () => {
         if (isFetchingPortalRef.current) return;
         isFetchingPortalRef.current = true;
+        setError('');
 
-        // Only show full page spinner on initial portal load or if channels are missing, not channel switches
+        // Hydrate immediately from cache when switching between portals
+        let cachedPortalForId = null;
+        try {
+            const rawCache = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
+            if (rawCache) {
+                const parsed = JSON.parse(rawCache);
+                if (parsed && String(parsed._id) === String(id) && Array.isArray(parsed.channels) && parsed.channels.length > 0) {
+                    cachedPortalForId = parsed;
+                }
+            }
+        } catch (_) {}
+
         if (!portal || String(portal._id) !== String(id) || !Array.isArray(portal.channels) || portal.channels.length === 0) {
-            setLoading(true);
-            setShowScrollTop(false); // Reset scroll button when changing portals
+            if (cachedPortalForId) {
+                setPortal(cachedPortalForId);
+                setLoading(false);
+            } else {
+                setLoading(true);
+            }
+            setShowScrollTop(false);
         }
 
-        try {
-            const res = await axios.get(`/api/portals/${id}`);
-            setPortal(res.data);
+        let lastErr = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                sessionStorage.setItem(`oxypace_portal_cache_${id}`, JSON.stringify(res.data));
-            } catch (_) {}
-            if (res.data?.avatar) preloadImage(res.data.avatar, 'original');
-            const b = res.data?.coverImage || res.data?.banner;
-            if (b) preloadImage(b, 'original');
-            const allMembers = [
-                res.data.owner,
-                ...(res.data.admins || []),
-                ...(res.data.members || [])
-            ].filter(Boolean);
-            preloadUsers(allMembers);
-            setEditFormData({
-                name: res.data.name,
-                description: res.data.description || '',
-                privacy: res.data.privacy || 'public',
-            });
-            setError('');
-        } catch (err) {
-            if (err.response && err.response.status === 403) {
-                const data = err.response.data;
+                const res = await axios.get(`/api/portals/${id}`);
+                setPortal(res.data);
+                try {
+                    const serialized = JSON.stringify(res.data);
+                    sessionStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
+                    localStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
+                } catch (_) {}
+                if (res.data?.avatar) preloadImage(res.data.avatar, 'original');
+                const b = res.data?.coverImage || res.data?.banner;
+                if (b) preloadImage(b, 'original');
+                const allMembers = [
+                    res.data.owner,
+                    ...(res.data.admins || []),
+                    ...(res.data.members || [])
+                ].filter(Boolean);
+                preloadUsers(allMembers);
+                setEditFormData({
+                    name: res.data.name,
+                    description: res.data.description || '',
+                    privacy: res.data.privacy || 'public',
+                });
+                setError('');
+                lastErr = null;
+                break;
+            } catch (err) {
+                lastErr = err;
+                const status = err.response?.status;
+                if (status === 403 || status === 404) break;
+                if (attempt < 2) {
+                    await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+                }
+            }
+        }
+
+        if (lastErr) {
+            if (lastErr.response && lastErr.response.status === 403) {
+                const data = lastErr.response.data || {};
                 if (data.portalStatus === 'suspended' || data.portalStatus === 'closed') {
                     setSuspensionInfo({
                         portalStatus: data.portalStatus,
@@ -1092,16 +1125,16 @@ const Portal = () => {
                 } else {
                     setError('blocked');
                 }
-            } else if (err.response && err.response.status === 404) {
+            } else if (lastErr.response && lastErr.response.status === 404) {
                 setError('blocked');
-            } else {
+            } else if (!cachedPortalForId && (!portal || String(portal._id) !== String(id))) {
                 setError('Portal yüklenemedi');
             }
-            console.error(err);
-        } finally {
-            isFetchingPortalRef.current = false;
-            setLoading(false);
+            console.error(lastErr);
         }
+
+        isFetchingPortalRef.current = false;
+        setLoading(false);
     };
 
     // AbortController ref to cancel pending requests
