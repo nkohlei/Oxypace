@@ -6,8 +6,8 @@ import './UpdateModal.css';
 import { App as CapacitorApp } from '@capacitor/app';
 
 // Fallback APK version (used only if CapacitorApp.getInfo() fails)
-const CURRENT_VERSION = '2.5.2';
-const CURRENT_VERSION_CODE = 252;
+const CURRENT_VERSION = '2.5.3';
+const CURRENT_VERSION_CODE = 253;
 
 /**
  * Compares two semver strings. Returns true if remote > local.

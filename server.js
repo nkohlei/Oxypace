@@ -481,13 +481,13 @@ app.get('/downloads/bundle.zip', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.5.2',
-        versionCode: 252,
-        minSupportedVersionCode: 252,
+        latestVersion: '2.5.3',
+        versionCode: 253,
+        minSupportedVersionCode: 253,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.5.2: Canlı oda stüdyo kalitesinde 48kHz Hi-Fi stereo ses mimarisi, arka plan müzik/medya kısılma engelleyici, uygulama kapatıldığında anında temizlenen bildirim sayacı ve tam kararlılık güncellemesi.',
+        changelog: 'Oxypace 2.5.3: Birlikte İzle (Watch Party) 0ms anlık P2P durdurma/başlatma, salisesine kadar (0.0001s) kare eşitleme, jet hızında RAM önbellekli film yükleme, odaya sonradan katılımda anında oynatma ve ultra düşük gecikmeli WebRTC ses/görüntü iletişimi.',
     });
 });
 

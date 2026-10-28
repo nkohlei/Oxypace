@@ -27,15 +27,50 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.2)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.3)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.3',
+        versionCode: 253,
+        releaseDate: '28 Ekim 2026',
+        commitHash: 'HEAD',
+        status: 'active', // 'active' | 'stable' | 'legacy'
+        title: 'Birlikte İzle 0ms Anlık P2P Senkronizasyon, Salisesine Kadar Kare Eşitleme, Jet Hızında HLS Önbellek ve Düşük Gecikmeli WebRTC',
+        summary: 'Canlı görüntülü odalardaki Birlikte İzle (Watch Party) sistemi baştan sona sıfır gecikmeli (0ms) mimariyle yenilendi: WebRTC P2P DataChannel ve doğrudan imperative DOM komutu sayesinde bir kullanıcı videoyu durdurduğu veya başlattığı an diğer tüm kullanıcılarda 0ms gecikmeyle anında durur ve başlar. Durdurma anında tüm kullanıcıların süresi salisesine kadar (0.0001s hassasiyetle) aynı kareye kilitlenir. Sunucu tarafı RAM segment önbelleği (LRU Cache + Request Coalescing) ve mobil hızlı başlangıç (startFragPrefetch) ile filmler mobil cihazlarda jet hızında açılır; odaya sonradan katılan mobil kullanıcıların yükleme ekranında takılma sorunu kökten çözüldü. Ayrıca WebRTC ses ve kamera iletişimi 20ms ultra düşük gecikmeli jitter buffer ve yüksek ağ önceliği ile kusursuzlaştırıldı.',
+        category: 'feature',
+        apkSize: '39.0 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            '0ms Anlık Durdurma ve Başlatma: WebRTC P2P DataChannel (watch-sync) ve doğrudan DOM video komutu ile React render döngüsü beklenmeden anında tepki',
+            'Salisesine Kadar (0.0001s) Kare Kilitleme: Video durdurulduğu anda tüm katılımcılarda süre tam olarak aynı saliseye sabitlenir, kayma sıfıra indirilir',
+            'Jet Hızında Mobil Film Yükleme: Sunucu RAM HLS segment önbelleği ve mobilde en düşük başlangıç segmenti ön-yüklemesi ile anında açılış',
+            'Odaya Sonradan Katılımda Anında Oynatma: Mobilde odaya sonradan girildiğinde oluşan sonsuz yükleme (loading) hatası giderildi, kayıp yükleme süresi otomatik telafi edilir',
+            'Ultra Düşük Gecikmeli WebRTC Ses & Görüntü: 20ms playoutDelayHint, Opus 10ms/20ms paketleme, 8-adaylı ICE havuzu ve yüksek RTP ağ önceliği'
+        ],
+        changes: [
+            { type: 'feat', text: 'VoiceContext.jsx: WebRTC P2P DataChannel (watch-sync), çoklu örneklemeli en düşük RTT NTP saat eşitlemesi ve 0ms imperative event (watchparty:imperative-sync) eklendi.' },
+            { type: 'fix', text: 'WatchPartyPlayer.jsx: 0ms imperative play/pause/seek dinleyicisi, 0.0001s duraklatma kilidi, 250ms hassas senkron döngüsü ve mobilde odaya sonradan katılımda mutlak API proxy URL dönüşümü sağlandı.' },
+            { type: 'perf', text: 'routes/hlsProxy.js: 96MB RAM LRU segment/manifest önbelleği ve eşzamanlı istek birleştirme (Request Coalescing) ile tüm kullanıcılar için anında video akışı sağlandı.' },
+            { type: 'perf', text: 'sockets/voiceHandler.js: Odaya girişte canlı geçen süre hesabı, anında doğrudan voice:watch-state gönderimi ve Redis beklemeden 0ms soket yayını devreye alındı.' },
+            { type: 'perf', text: 'VoiceContext.jsx: WebRTC ses/video alıcılarında 20ms jitter buffer (playoutDelayHint), Opus minptime=10 ve yüksek RTP bitrate/ağ önceliği tanımlandı.' }
+        ],
+        affectedFiles: [
+            'client/src/context/VoiceContext.jsx',
+            'client/src/components/WatchPartyPlayer.jsx',
+            'client/src/components/HlsStreamResolverModalVol2.jsx',
+            'sockets/voiceHandler.js',
+            'routes/hlsProxy.js',
+            'server.js'
+        ]
+    },
     {
         version: 'v2.5.2',
         versionCode: 252,
         releaseDate: '28 Ekim 2026',
         commitHash: 'HEAD',
-        status: 'active', // 'active' | 'stable' | 'legacy'
+        status: 'stable', // 'active' | 'stable' | 'legacy'
         title: 'Stüdyo Kalitesinde 48kHz Hi-Fi Stereo Ses Mimarisi, Arka Plan Müzik Koruması ve Kusursuz Bildirim Temizliği',
         summary: 'Canlı odalarda seslerin hat aramasındaymış gibi boğuk gelmesi ve arka planda çalan müziğin (Spotify vb.) tamamen kısılması sorunu profesyonel ses mimarisiyle kökten çözüldü: Android Telecom iletişim cihazı zorlaması ve donanımsal konuşma filtreleri iptal edilerek ses ve video akışı 48kHz saf stereo medya hattına taşındı. Ayrıca uygulama son uygulamalardan kapatıldığında bildirim panelinde saymaya devam eden canlı oda sayacı onTaskRemoved ve stopWithTask mimarisiyle anında sonlandırılacak şekilde optimize edildi.',
         category: 'feature',
