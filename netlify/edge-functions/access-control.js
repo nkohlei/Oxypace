@@ -1,30 +1,10 @@
 let isMaintenanceCached = null;
 let lastFetched = 0;
+
 const BACKEND_URL = "https://api.oxypace.com.tr";
 
 async function getMaintenanceStatus() {
-  const now = Date.now();
-  // Son fetch işleminden beri 60 saniye geçmediyse önbellekteki değeri dön (Performans için)
-  if (isMaintenanceCached !== null && (now - lastFetched < 60000)) {
-    return isMaintenanceCached;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 saniyeden fazla bekletme
-    const res = await fetch(`${BACKEND_URL}/api/auth/maintenance-status`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) return false;
-    const data = await res.json();
-    isMaintenanceCached = !!data.active;
-    lastFetched = now;
-    return isMaintenanceCached;
-  } catch (e) {
-    return false; // Hata durumunda siteyi açık tut (fail-safe)
-  }
+  return false;
 }
 
 /**
@@ -38,43 +18,19 @@ function isBot(userAgent) {
   // 1. WhatsApp In-App Browser (WebView) tespiti:
   // Kullanıcı WhatsApp içinde linke tıkladığında gelen gerçek tarayıcı isteğidir.
   // Bu isteklerin bot sayılmaması ve normal SPA/uygulamaya yönlendirilmesi gerekir.
-  const isWhatsAppWebView =
-    ua.includes("whatsapp") &&
-    (ua.includes("mozilla") ||
-      ua.includes("safari") ||
-      ua.includes("chrome") ||
-      ua.includes("applewebkit"));
-  if (
-    isWhatsAppWebView &&
-    !ua.includes("facebookexternalhit") &&
-    !ua.includes("bot")
-  ) {
+  const isWhatsAppWebView = ua.includes('whatsapp') && (ua.includes('mozilla') || ua.includes('safari') || ua.includes('chrome') || ua.includes('applewebkit'));
+  if (isWhatsAppWebView && !ua.includes('facebookexternalhit') && !ua.includes('bot')) {
     return false;
   }
 
   // 2. Diğer In-App Browser'lar (Instagram, Facebook, Telegram vb. mobil dahili tarayıcılar)
-  const isGenericInAppBrowser =
-    (ua.includes("instagram") ||
-      ua.includes("fban") ||
-      ua.includes("fbav") ||
-      ua.includes("line/")) &&
-    (ua.includes("mozilla") ||
-      ua.includes("safari") ||
-      ua.includes("chrome") ||
-      ua.includes("applewebkit"));
-  if (
-    isGenericInAppBrowser &&
-    !ua.includes("facebookexternalhit") &&
-    !ua.includes("bot")
-  ) {
+  const isGenericInAppBrowser = (ua.includes('instagram') || ua.includes('fban') || ua.includes('fbav') || ua.includes('line/')) && (ua.includes('mozilla') || ua.includes('safari') || ua.includes('chrome') || ua.includes('applewebkit'));
+  if (isGenericInAppBrowser && !ua.includes('facebookexternalhit') && !ua.includes('bot')) {
     return false;
   }
 
   // 3. WhatsApp crawler (salt WhatsApp/ sürüm bilgisi içerip tarayıcı motoru içermeyen bot istekleri)
-  if (
-    ua.startsWith("whatsapp/") ||
-    (ua.includes("whatsapp") && !ua.includes("mozilla"))
-  ) {
+  if (ua.startsWith('whatsapp/') || (ua.includes('whatsapp') && !ua.includes('mozilla'))) {
     return true;
   }
 
@@ -112,35 +68,30 @@ function isBot(userAgent) {
     "crawler",
     "bot",
   ];
-
   return botPatterns.some((pattern) => ua.includes(pattern));
 }
 
 /**
  * OG yönlendirme path'lerini eşleştir
+ * /post/:id           → /og/post/:id
+ * /profile/:username  → /og/profile/:username
+ * /portal/:id         → /og/portal/:id
  */
 const OG_PATTERNS = [
   { regex: /^\/post\/([a-f0-9]{24})\/?$/i, path: (m) => `/og/post/${m[1]}` },
-  {
-    regex: /^\/profile\/([a-zA-Z0-9_]{1,50})\/?$/,
-    path: (m) => `/og/profile/${m[1]}`,
-  },
-  {
-    regex: /^\/portal\/([a-f0-9]{24})\/?$/i,
-    path: (m) => `/og/portal/${m[1]}`,
-  },
+  { regex: /^\/profile\/([a-zA-Z0-9_.]{1,50})\/?$/, path: (m) => `/og/profile/${m[1]}` },
+  { regex: /^\/portal\/([a-f0-9]{24})\/?$/i, path: (m) => `/og/portal/${m[1]}` },
   { regex: /^\/blog\/([a-zA-Z0-9_-]+)\/?$/i, path: (m) => `/og/blog/${m[1]}` },
 ];
 
 async function verifyJwt(token, secret) {
   try {
-    const parts = token.split(".");
+    const parts = token.split('.');
     if (parts.length !== 3) return null;
     const [headerB64, payloadB64, signatureB64] = parts;
-    const payload = JSON.parse(
-      atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))
-    );
-
+    
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
     const key = await crypto.subtle.importKey(
@@ -150,14 +101,11 @@ async function verifyJwt(token, secret) {
       false,
       ["verify"]
     );
-
-    const binarySign = Uint8Array.from(
-      atob(signatureB64.replace(/-/g, "+").replace(/_/g, "/")),
-      (c) => c.charCodeAt(0)
-    );
+    
+    const binarySign = Uint8Array.from(atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
     const data = encoder.encode(`${headerB64}.${payloadB64}`);
     const isValid = await crypto.subtle.verify("HMAC", key, binarySign, data);
-
+    
     return isValid ? payload : null;
   } catch (e) {
     return null;
@@ -170,30 +118,22 @@ export default async (request, context) => {
   const userAgent = request.headers.get("user-agent") || "";
 
   // 1. Statik dosya isteklerini (js, css, resimler vb.) doğrudan geçir
-  const isStaticAsset = pathname.match(
-    /\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i
-  );
+  const isStaticAsset = pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|map|json|txt|webmanifest)$/i);
   if (isStaticAsset) {
     return context.next();
   }
 
-  // 1.5. Oturum açmış kullanıcılar ana sayfaya ('/' veya '') gelirse HTTP seviyesinde anında /messages'a yönlendir
-  if (
-    (pathname === "/" || pathname === "" || pathname === "/index.html") &&
-    !isBot(userAgent)
-  ) {
+  // 1.5. Oturum açmış kullanıcılar ana sayfaya ('/' veya '') gelirse HTTP seviyesinde anında /messages'a yönlendir (Sıfır FOUC / Sıfır Gecikme)
+  if ((pathname === "/" || pathname === "" || pathname === "/index.html") && !isBot(userAgent)) {
     const token = context.cookies.get("token");
     if (token && typeof token === "string" && token.length > 10) {
       return Response.redirect(new URL("/messages", request.url), 302);
     }
   }
 
-  // 2. BOT OG META ETİKET ENJEKSİYONU (Yalnızca botlar için çalışır, normal tarayıcıyı kilitlemez)
+  // 2. ── BOT & BROWSER OG META ETİKET ENJEKSİYONU ──────────────────────────
   let targetOgPath = null;
-  if (
-    (pathname === "/blog/post" || pathname === "/blog/post/") &&
-    url.searchParams.get("slug")
-  ) {
+  if ((pathname === "/blog/post" || pathname === "/blog/post/") && url.searchParams.get("slug")) {
     targetOgPath = `/og/blog/${url.searchParams.get("slug")}`;
   } else {
     for (const { regex, path } of OG_PATTERNS) {
@@ -208,22 +148,17 @@ export default async (request, context) => {
     }
   }
 
-  // Sadece sosyal medya / arama motoru botu gelirse OG proxy çalıştır
-  if (targetOgPath && isBot(userAgent)) {
+  if (targetOgPath) {
     const ogUrl = `${BACKEND_URL}${targetOgPath}`;
-    console.log(`[OG Edge] Bot (${userAgent.substring(0, 50)}) ${ogUrl}`);
+    const userAgent = request.headers.get("user-agent") || "";
+    const isBotReq = isBot(userAgent);
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000); // En fazla 2 saniye bekle
-
-      const ogResponse = await fetch(ogUrl, {
-        headers: { "User-Agent": userAgent, Accept: "text/html" },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (ogResponse.ok) {
+    if (isBotReq) {
+      console.log(`[OG Edge] Bot (${userAgent.substring(0, 50)}) → ${ogUrl}`);
+      try {
+        const ogResponse = await fetch(ogUrl, {
+          headers: { "User-Agent": userAgent, "Accept": "text/html" },
+        });
         const html = await ogResponse.text();
         return new Response(html, {
           status: ogResponse.status,
@@ -233,16 +168,48 @@ export default async (request, context) => {
             "X-OG-Served": "true",
           },
         });
+      } catch (fetchErr) {
+        console.error("[OG Edge] Bot Fetch error:", fetchErr.message);
+        return context.next();
       }
-    } catch (fetchErr) {
-      console.error("[OG Edge] Bot Fetch error:", fetchErr.message);
-      // Backend yanıt vermezse veya zaman aşımına düşerse normal SPA'yı servis et
-      return context.next();
+    } else {
+      // WhatsApp Web / Desktop Browser link preview isteği
+      try {
+        const response = await context.next();
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) {
+          const ogResponse = await fetch(ogUrl, {
+            headers: { "Accept": "text/html" },
+          });
+          if (ogResponse.ok) {
+            const ogHtml = await ogResponse.text();
+            const headMatch = ogHtml.match(/<head>([\s\S]*?)<\/head>/i);
+            if (headMatch && headMatch[1]) {
+              let originalHtml = await response.text();
+              const ogHeadTags = headMatch[1].trim();
+              if (originalHtml.includes("</head>")) {
+                originalHtml = originalHtml.replace("</head>", `${ogHeadTags}</head>`);
+              }
+              return new Response(originalHtml, {
+                status: response.status,
+                headers: response.headers,
+              });
+            }
+          }
+        }
+        return response;
+      } catch (injectErr) {
+        console.error("[OG Edge] Inject error:", injectErr.message);
+        return context.next();
+      }
     }
   }
 
-  // 3. API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
+  // 3. Kök sayfa, Blog, API, WebSocket, medya yolları ve hata sayfasının kendisini doğrudan geçir
   if (
+    pathname === "/" ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/og/") ||
     pathname.startsWith("/socket.io/") ||
@@ -252,13 +219,13 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 4. Bakım Modu aktif mi kontrol et
+  // 5. Bakım Modu aktif mi kontrol et
   const isMaintenance = await getMaintenanceStatus();
   if (!isMaintenance) {
     return context.next();
   }
 
-  // 5. Bakım aktifse çerez kontrolü yap: Token varsa ve admin ise siteye erişime izin ver
+  // 6. Bakım aktifse çerez kontrolü yap: Eğer token çerezi varsa ve admin ise siteye normal erişime izin ver
   const token = context.cookies.get("token");
   let hasAccess = false;
   if (token) {
@@ -275,6 +242,6 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // 6. Çerez yoksa ve bakım aktifse sahte 404 sayfasına yönlendir (rewrite)
+  // 7. Çerez yoksa ve bakım aktifse sahte 404 sayfasına yönlendir (rewrite)
   return new URL("/404.html", request.url);
 };
