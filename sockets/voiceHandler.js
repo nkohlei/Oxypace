@@ -745,12 +745,12 @@ export const initializeVoiceHandler = (io) => {
 
     io.on('connection', (socket) => {
         const limits = {
-            join: makeLimiter(0.5, 5),
-            watch: makeLimiter(5, 12),
-            chat: makeLimiter(2, 6),
-            state: makeLimiter(6, 12),
+            join: makeLimiter(1, 8),
+            watch: makeLimiter(25, 50),
+            chat: makeLimiter(3, 8),
+            state: makeLimiter(12, 24),
             vote: makeLimiter(2, 5),
-            signal: makeLimiter(120, 250),
+            signal: makeLimiter(200, 400),
             moderation: makeLimiter(4, 8)
         };
         socket._sigCache = new Map();
@@ -993,16 +993,20 @@ export const initializeVoiceHandler = (io) => {
             const prevScreen = participant ? (!!participant.isScreenSharing) : null;
 
             if (participant) {
+                if (participant.socketId && participant.socketId !== socket.id) return;
                 participant.isMuted = isMuted;
                 participant.isCameraOn = isCameraOn;
                 participant.isScreenSharing = isScreenSharing;
             }
+
+            // Emit immediately for 0ms mic/camera/screen toggle feedback across the room
+            io.to(`voice:${roomName}`).emit('voice:state-update', { userId: sUserId, isMuted, isCameraOn, isScreenSharing });
+
             if (pubClient) {
                 try {
                     const raw = await pubClient.hget(roomKey(roomName), sUserId);
                     if (raw) {
                         const parsed = JSON.parse(raw);
-                        // Ignore updates from a superseded socket (older tab / pre-reconnect socket)
                         if (parsed.socketId && parsed.socketId !== socket.id) return;
                         parsed.isMuted = isMuted;
                         parsed.isCameraOn = isCameraOn;
@@ -1013,8 +1017,6 @@ export const initializeVoiceHandler = (io) => {
                     console.error('Error updating state in Redis:', err.message);
                 }
             }
-
-            io.to(`voice:${roomName}`).emit('voice:state-update', { userId: sUserId, isMuted, isCameraOn, isScreenSharing });
 
             // Detect any state change: mic toggle, camera toggle, or screen share toggle
             const hasChanged = (prevMuted !== null && prevMuted !== isMuted) ||
@@ -1125,25 +1127,38 @@ export const initializeVoiceHandler = (io) => {
 
         const registerPlaybackEvent = (eventName, apply) => {
             socket.on(eventName, async (payload) => {
-                await settle();
                 const { roomName } = payload || {};
                 if (!inRoom(roomName) || !limits.watch()) return;
                 const time = sanitizeTime(payload.time);
                 if (time === null) return;
                 const now = Date.now();
+                const senderId = myId();
+                const cmdId = clampString(payload?.cmdId, 64);
+
+                // ZERO-LATENCY BROADCAST: Emit to all room peers in 0ms before awaiting Redis lock/write!
+                io.to(`voice:${roomName}`).emit(eventName, { time, serverTimestamp: now, senderId, cmdId });
+
+                // Update local cache immediately
+                const localWp = voiceRooms.get(roomName)?.watchParty;
+                if (localWp) {
+                    apply(localWp, time);
+                    localWp.lastUpdated = now;
+                    localWp.serverTimestamp = now;
+                }
+
+                // Persist to Redis asynchronously
                 const updated = await mutateWatchParty(roomName, (wp) => {
                     apply(wp, time);
                     wp.lastUpdated = now;
                     wp.serverTimestamp = now;
                     return wp;
                 });
-                if (!updated) return; // no active watch party → nothing to synchronise
-                io.to(`voice:${roomName}`).emit(eventName, { time, serverTimestamp: now, senderId: myId() });
+                if (!updated) return;
 
                 const parsed = parseRoomName(roomName);
                 const actionName = eventName === 'voice:watch-play' ? 'WP_PLAY' : (eventName === 'voice:watch-pause' ? 'WP_PAUSE' : 'WP_SEEK');
                 logActivity({
-                    user: myId(),
+                    user: senderId,
                     username: socket.data?.voiceProfile?.username || socket.username || 'Kullanıcı',
                     action: actionName,
                     category: 'rtc',
@@ -1308,56 +1323,37 @@ export const initializeVoiceHandler = (io) => {
             }
         });
 
-        // ─── WebRTC Signaling (room scoped relay) ───
-        const canSignal = async (roomName, targetUserId) => {
+        // ─── WebRTC Signaling (0ms room-scoped relay) ───
+        const canSignal = (roomName, targetUserId) => {
             if (!inRoom(roomName) || (typeof targetUserId !== 'string' && typeof targetUserId !== 'number')) return null;
-            const target = String(targetUserId);
-            if (target === myId()) return null;
-
-            const cacheKey = `${roomName}|${target}`;
-            const hit = socket._sigCache.get(cacheKey);
-            if (hit && hit > Date.now()) return target;
-
-            let present = !!voiceRooms.get(roomName)?.participants?.has(target);
-            if (!present && pubClient) {
-                try {
-                    present = (await pubClient.hexists(roomKey(roomName), target)) === 1;
-                } catch {
-                    present = true; // fail open on Redis hiccups: media must not break because of a cache outage
-                }
-            }
-            if (!present) return null;
-            if (socket._sigCache.size > 64) socket._sigCache.clear();
-            socket._sigCache.set(cacheKey, Date.now() + 10_000);
+            const target = String(targetUserId).trim();
+            if (!target || target.length > 64 || target === myId()) return null;
             return target;
         };
 
-        socket.on('voice:video-offer', async (payload) => {
-            await settle();
+        socket.on('voice:video-offer', (payload) => {
             const { roomName, targetUserId, sdp } = payload || {};
             if (!limits.signal() || typeof sdp !== 'string' || sdp.length > MAX_SDP_LENGTH) return;
-            const target = await canSignal(roomName, targetUserId);
+            const target = canSignal(roomName, targetUserId);
             if (!target) return;
             io.to(target).emit('voice:video-offer', { senderId: myId(), sdp });
         });
 
-        socket.on('voice:video-answer', async (payload) => {
-            await settle();
+        socket.on('voice:video-answer', (payload) => {
             const { roomName, targetUserId, sdp } = payload || {};
             if (!limits.signal() || typeof sdp !== 'string' || sdp.length > MAX_SDP_LENGTH) return;
-            const target = await canSignal(roomName, targetUserId);
+            const target = canSignal(roomName, targetUserId);
             if (!target) return;
             io.to(target).emit('voice:video-answer', { senderId: myId(), sdp });
         });
 
-        socket.on('voice:new-ice-candidate', async (payload) => {
-            await settle();
+        socket.on('voice:new-ice-candidate', (payload) => {
             const { roomName, targetUserId, candidate } = payload || {};
             if (!limits.signal() || !candidate || typeof candidate !== 'object') return;
             try {
                 if (JSON.stringify(candidate).length > MAX_CANDIDATE_JSON) return;
             } catch { return; }
-            const target = await canSignal(roomName, targetUserId);
+            const target = canSignal(roomName, targetUserId);
             if (!target) return;
             io.to(target).emit('voice:new-ice-candidate', { senderId: myId(), candidate });
         });

@@ -1785,15 +1785,25 @@ const WatchPartyPlayer = () => {
         const video = videoRef.current;
         if (!video) return;
         
-        // 1.5s cooldown lock to prevent sync loop from overriding user click
-        isUserActionCooldownRef.current = Date.now() + 1500;
+        isUserActionCooldownRef.current = Date.now() + 500;
+        const exactTime = Number((video.currentTime || 0).toFixed(4));
         
         if (watchParty?.isPlaying) {
             video.pause();
-            sendWatchPause(video.currentTime);
+            video.playbackRate = 1.0;
+            lastProgrammaticSeekTimeRef.current = exactTime;
+            video.currentTime = exactTime;
+            setCurrentTime(exactTime);
+            setIsNativePlaying(false);
+            sendWatchPause(exactTime);
         } else {
-            video.play().catch(err => console.warn('[WatchParty] Play click error:', err));
-            sendWatchPlay(video.currentTime);
+            video.playbackRate = 1.0;
+            lastProgrammaticSeekTimeRef.current = exactTime;
+            video.currentTime = exactTime;
+            setCurrentTime(exactTime);
+            setIsNativePlaying(true);
+            safePlay(video);
+            sendWatchPlay(exactTime);
         }
     };
 
@@ -1801,14 +1811,16 @@ const WatchPartyPlayer = () => {
         e.stopPropagation();
         const val = parseFloat(e.target.value);
         if (!isNaN(val)) {
+            const exactTime = Number(val.toFixed(4));
             isSyncingRef.current = true;
-            isUserActionCooldownRef.current = Date.now() + 2500;
-            lastProgrammaticSeekTimeRef.current = val;
+            isUserActionCooldownRef.current = Date.now() + 800;
+            lastProgrammaticSeekTimeRef.current = exactTime;
             if (videoRef.current) {
-                videoRef.current.currentTime = val;
+                videoRef.current.currentTime = exactTime;
             }
-            sendWatchSeek(val);
-            setTimeout(() => { isSyncingRef.current = false; }, 400);
+            setCurrentTime(exactTime);
+            sendWatchSeek(exactTime);
+            setTimeout(() => { isSyncingRef.current = false; }, 250);
         }
     };
 
@@ -1954,6 +1966,109 @@ const WatchPartyPlayer = () => {
 
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+    // ─── ZERO-LATENCY IMPERATIVE SYNC ENGINE (0ms Pause / Play / Seek Execution) ───
+    // Executes in the exact microsecond a P2P WebRTC DataChannel or Socket.IO command arrives,
+    // bypassing React's render scheduling delay completely.
+    useEffect(() => {
+        const localUid = String(user?._id || user?.id || '');
+        const handleImperativeSync = (evt) => {
+            const detail = evt?.detail;
+            if (!detail || !detail.type) return;
+            const isFromSelf = detail.senderId && localUid && String(detail.senderId) === localUid;
+            if (isFromSelf) return;
+
+            // Remote action always overrides any local cooldown immediately
+            isUserActionCooldownRef.current = 0;
+
+            const video = videoRef.current;
+            const stdPlayer = playerRef.current;
+            const baseTime = Number(Number(detail.time || 0).toFixed(4));
+            const refTs = typeof detail.serverTimestamp === 'number' && detail.serverTimestamp > 0
+                ? detail.serverTimestamp
+                : getServerNow();
+
+            if (detail.type === 'watch-pause') {
+                if (video && isNativeVOD) {
+                    isSyncingRef.current = true;
+                    video.pause();
+                    video.playbackRate = 1.0;
+                    setIsNativePlaying(false);
+                    lastProgrammaticSeekTimeRef.current = baseTime;
+                    video.currentTime = baseTime;
+                    setCurrentTime(baseTime);
+                    // Double-lock after hardware decoder settles so frame & millisecond match 100%
+                    setTimeout(() => {
+                        if (video && video.paused && Math.abs((video.currentTime || 0) - baseTime) > 0.001) {
+                            video.currentTime = baseTime;
+                            setCurrentTime(baseTime);
+                        }
+                        isSyncingRef.current = false;
+                    }, 55);
+                } else if (stdPlayer && !isStream) {
+                    isSyncingRef.current = true;
+                    lastProgrammaticSeekTimeRef.current = baseTime;
+                    stdPlayer.seekTo?.(baseTime, 'seconds');
+                    setTimeout(() => { isSyncingRef.current = false; }, 250);
+                }
+            } else if (detail.type === 'watch-play') {
+                const transitSec = Math.max(0, Math.min(2.0, (getServerNow() - refTs) / 1000));
+                const liveTarget = Number((baseTime + transitSec).toFixed(4));
+                if (video && isNativeVOD) {
+                    isSyncingRef.current = true;
+                    video.playbackRate = 1.0;
+                    if (Math.abs((video.currentTime || 0) - liveTarget) > 0.015) {
+                        lastProgrammaticSeekTimeRef.current = liveTarget;
+                        video.currentTime = liveTarget;
+                        setCurrentTime(liveTarget);
+                    }
+                    setIsNativePlaying(true);
+                    safePlay(video);
+                    // Compensate for any hardware decoder startup latency the instant frames start flowing
+                    const verifyStartLock = () => {
+                        if (!video || video.paused) return;
+                        const postStartTarget = baseTime + Math.max(0, Math.min(3.0, (getServerNow() - refTs) / 1000));
+                        const startDrift = postStartTarget - (video.currentTime || 0);
+                        if (Math.abs(startDrift) > 0.04 && !video.seeking) {
+                            lastProgrammaticSeekTimeRef.current = postStartTarget;
+                            video.currentTime = postStartTarget;
+                            setCurrentTime(postStartTarget);
+                        }
+                        isSyncingRef.current = false;
+                    };
+                    video.addEventListener('playing', verifyStartLock, { once: true });
+                    setTimeout(verifyStartLock, 90);
+                } else if (stdPlayer && !isStream) {
+                    isSyncingRef.current = true;
+                    lastProgrammaticSeekTimeRef.current = liveTarget;
+                    stdPlayer.seekTo?.(liveTarget, 'seconds');
+                    setTimeout(() => { isSyncingRef.current = false; }, 250);
+                }
+            } else if (detail.type === 'watch-seek') {
+                const transitSec = watchParty?.isPlaying
+                    ? Math.max(0, Math.min(2.0, (getServerNow() - refTs) / 1000))
+                    : 0;
+                const liveTarget = Number((baseTime + transitSec).toFixed(4));
+                if (video && isNativeVOD) {
+                    isSyncingRef.current = true;
+                    lastProgrammaticSeekTimeRef.current = liveTarget;
+                    video.currentTime = liveTarget;
+                    setCurrentTime(liveTarget);
+                    setTimeout(() => { isSyncingRef.current = false; }, 250);
+                } else if (stdPlayer && !isStream) {
+                    isSyncingRef.current = true;
+                    lastProgrammaticSeekTimeRef.current = liveTarget;
+                    stdPlayer.seekTo?.(liveTarget, 'seconds');
+                    setTimeout(() => { isSyncingRef.current = false; }, 250);
+                }
+            }
+        };
+
+        window.addEventListener('watchparty:imperative-sync', handleImperativeSync);
+        return () => {
+            window.removeEventListener('watchparty:imperative-sync', handleImperativeSync);
+        };
+    }, [user, isNativeVOD, isStream, watchParty?.isPlaying, getServerNow]);
+
     // Native Video Synchronization Engine (Master Clock Smart Pacer + Lost Loading Time Compensator)
     useEffect(() => {
         const video = videoRef.current;
@@ -1986,14 +2101,15 @@ const WatchPartyPlayer = () => {
 
             const targetTime = computeTargetTime();
             const drift = targetTime - (video.currentTime || 0);
-            if (Math.abs(drift) > 0.35 && !video.seeking && (wasStalled || playTransitionGuardActive)) {
+            if (Math.abs(drift) > 0.08 && !video.seeking && (wasStalled || playTransitionGuardActive)) {
                 playTransitionGuardActive = false;
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 lastHardSeekAt = Date.now();
                 video.currentTime = targetTime;
+                setCurrentTime(targetTime);
                 video.playbackRate = 1.0;
-                setTimeout(() => { isSyncingRef.current = false; }, 350);
+                setTimeout(() => { isSyncingRef.current = false; }, 200);
             }
         };
 
@@ -2008,70 +2124,81 @@ const WatchPartyPlayer = () => {
             // 1. If user recently interacted with Play/Pause button or scrubbed/seeked, respect their action
             if (Date.now() < isUserActionCooldownRef.current) return;
 
-            // 2. If video is currently seeking or waiting for network buffer, DO NOT execute another seek!
-            if (video.seeking || (video.readyState < 2 && isBufferingStall)) return;
-
-            const targetTime = computeTargetTime();
+            const targetTime = Number(computeTargetTime().toFixed(4));
             const localTime = video.currentTime || 0;
             const drift = targetTime - localTime;
             const absDrift = Math.abs(drift);
 
-            // 3. Play / Pause State Synchronization
-            if (watchParty.isPlaying && video.paused) {
+            // 2. Play / Pause State Synchronization (Instant, never blocked by buffering check)
+            if (!watchParty.isPlaying && !video.paused) {
+                isSyncingRef.current = true;
+                playTransitionGuardActive = false;
+                if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
+                video.pause();
+                video.playbackRate = 1.0;
+                setIsNativePlaying(false);
+                lastProgrammaticSeekTimeRef.current = targetTime;
+                video.currentTime = targetTime;
+                setCurrentTime(targetTime);
+                setTimeout(() => { isSyncingRef.current = false; }, 200);
+                return;
+            } else if (watchParty.isPlaying && video.paused) {
                 isSyncingRef.current = true;
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
-                }, 700);
-                if (absDrift > 0.35 && !video.seeking) {
+                }, 400);
+                if (absDrift > 0.02 && !video.seeking) {
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
+                    setCurrentTime(targetTime);
                 }
+                setIsNativePlaying(true);
                 safePlay(video);
-                setTimeout(() => { isSyncingRef.current = false; }, 350);
-            } else if (!watchParty.isPlaying && !video.paused) {
-                isSyncingRef.current = true;
-                playTransitionGuardActive = false;
-                if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
-                video.pause();
-                setTimeout(() => { isSyncingRef.current = false; }, 350);
+                setTimeout(() => { isSyncingRef.current = false; }, 200);
+                return;
             }
 
-            // 4. When Paused: Keep tightly aligned
+            // 3. When Paused: Exact Millisecond Lock ("salisesine kadar eşit")
             if (!watchParty.isPlaying) {
                 if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
-                if (absDrift > 0.25 && !video.seeking) {
+                if (absDrift > 0.004 && !video.seeking) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
-                    setTimeout(() => { isSyncingRef.current = false; }, 350);
+                    setCurrentTime(targetTime);
+                    setTimeout(() => { isSyncingRef.current = false; }, 150);
                 }
                 return;
             }
 
-            // 5. When Playing: Tight Lockstep Sync (Hard seek > 1.6s, proportional micro-rate pacing for 0.08s..1.6s)
-            const hardSeekThreshold = 1.6;
-            const canHardSeek = (Date.now() - lastHardSeekAt > 1400) && !playTransitionGuardActive && !video.seeking && video.readyState >= 2;
+            // 4. If video is currently seeking or waiting for network buffer during playback, wait for recovery
+            if (video.seeking || (video.readyState < 2 && isBufferingStall)) return;
+
+            // 5. When Playing: Zero-Drift Lockstep Sync (Hard seek > 0.85s, fast proportional micro-rate pacing for 0.02s..0.85s)
+            const hardSeekThreshold = 0.85;
+            const canHardSeek = (Date.now() - lastHardSeekAt > 1000) && !playTransitionGuardActive && !video.seeking && video.readyState >= 2;
 
             if (absDrift > hardSeekThreshold && canHardSeek) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = targetTime;
                 lastHardSeekAt = Date.now();
                 video.currentTime = targetTime;
+                setCurrentTime(targetTime);
                 video.playbackRate = 1.0;
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
-                }, 900);
-                setTimeout(() => { isSyncingRef.current = false; }, 350);
+                }, 500);
+                setTimeout(() => { isSyncingRef.current = false; }, 200);
             } else if (!playTransitionGuardActive) {
-                if (absDrift > 0.08) {
-                    // Proportional micro-rate pacing (0.92x .. 1.08x) converges drift smoothly to < 50ms
-                    const rateDelta = Math.max(-0.08, Math.min(0.08, drift * 0.065));
+                if (absDrift > 0.02) {
+                    // Fast proportional micro-rate pacing (0.91x .. 1.09x) converges drift to < 20ms
+                    const rateDelta = Math.max(-0.09, Math.min(0.09, drift * 0.12));
                     const nextRate = Number((1.0 + rateDelta).toFixed(3));
-                    if (Math.abs((video.playbackRate || 1.0) - nextRate) >= 0.005) {
+                    if (Math.abs((video.playbackRate || 1.0) - nextRate) >= 0.004) {
                         video.playbackRate = nextRate;
                     }
                 } else if (video.playbackRate !== 1.0) {
@@ -2082,14 +2209,14 @@ const WatchPartyPlayer = () => {
 
         alignNativeVideo();
 
-        syncInterval = setInterval(alignNativeVideo, 400);
+        syncInterval = setInterval(alignNativeVideo, 250);
 
         if (watchParty.isPlaying && requestWatchSync) {
             masterSyncRequestInterval = setInterval(() => {
                 if (!video.seeking && Date.now() >= isUserActionCooldownRef.current) {
                     requestWatchSync();
                 }
-            }, 6000);
+            }, 4000);
         }
 
         return () => {

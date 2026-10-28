@@ -78,16 +78,20 @@ const prioritizeVideoCodec = (sdp) => {
             if (fmtpRegex.test(result)) {
                 result = result.replace(fmtpRegex, (match) => {
                     let fmtp = match;
+                    if (!fmtp.includes('minptime=')) fmtp += ';minptime=10';
+                    if (!fmtp.includes('ptime=')) fmtp += ';ptime=20';
                     if (!fmtp.includes('stereo=')) fmtp += ';stereo=1';
                     if (!fmtp.includes('sprop-stereo=')) fmtp += ';sprop-stereo=1';
                     if (!fmtp.includes('maxaveragebitrate=')) fmtp += ';maxaveragebitrate=128000';
                     if (!fmtp.includes('cbr=')) fmtp += ';cbr=1';
+                    if (!fmtp.includes('useinbandfec=')) fmtp += ';useinbandfec=1';
+                    if (!fmtp.includes('usedtx=')) fmtp += ';usedtx=0';
                     return fmtp;
                 });
             } else {
                 result = result.replace(
                     new RegExp(`(a=rtpmap:${opusPt}\\s+opus\\/48000[^\\r\\n]*)`, 'i'),
-                    `$1\r\na=fmtp:${opusPt} minptime=10;stereo=1;sprop-stereo=1;maxaveragebitrate=128000;cbr=1;useinbandfec=1`
+                    `$1\r\na=fmtp:${opusPt} minptime=10;ptime=20;stereo=1;sprop-stereo=1;maxaveragebitrate=128000;cbr=1;useinbandfec=1;usedtx=0`
                 );
             }
         }
@@ -295,6 +299,8 @@ export const VoiceProvider = ({ children }) => {
     const screenCanvasRef = useRef(null);
     const screenImageRef = useRef(null);
     const peerConnectionsRef = useRef(new Map()); // userId -> RTCPeerConnection
+    const watchDataChannelsRef = useRef(new Map()); // userId -> RTCDataChannel ('watch-sync')
+    const processedWatchCmdIdsRef = useRef(new Set()); // deduplicate P2P + Socket watch commands
     const remoteTracksRef = useRef(new Map()); // userId -> { audio: Track, video: Track, screen: Track }
     const remoteStatesRef = useRef(new Map()); // userId -> { isMuted, isCameraOn, isScreenSharing }
     const rawParticipantsRef = useRef([]); // list of current participants in socket room
@@ -342,6 +348,45 @@ export const VoiceProvider = ({ children }) => {
 
     const getServerNow = useCallback(() => {
         return Date.now() + (serverOffsetRef.current || 0);
+    }, []);
+
+    // Zero-latency imperative Watch Party dispatcher (fires synchronously before React re-renders)
+    const dispatchWatchImperative = useCallback((actionType, payload) => {
+        if (!payload) return false;
+        const { cmdId } = payload;
+        if (cmdId) {
+            if (processedWatchCmdIdsRef.current.has(cmdId)) return false;
+            processedWatchCmdIdsRef.current.add(cmdId);
+            if (processedWatchCmdIdsRef.current.size > 300) {
+                const firstKey = processedWatchCmdIdsRef.current.values().next().value;
+                processedWatchCmdIdsRef.current.delete(firstKey);
+            }
+        }
+        const canonicalTs = (typeof payload.serverTimestamp === 'number' && payload.serverTimestamp > 0)
+            ? payload.serverTimestamp
+            : getServerNow();
+        const detail = {
+            type: actionType,
+            time: typeof payload.time === 'number' ? payload.time : payload.currentTime,
+            serverTimestamp: canonicalTs,
+            senderId: payload.senderId,
+            isPlaying: payload.isPlaying,
+            isLive: payload.isLive,
+            cmdId: cmdId || ''
+        };
+        try {
+            window.dispatchEvent(new CustomEvent('watchparty:imperative-sync', { detail }));
+        } catch (_) {}
+        return detail;
+    }, [getServerNow]);
+
+    const broadcastWatchDataChannel = useCallback((msgObj) => {
+        const raw = JSON.stringify(msgObj);
+        watchDataChannelsRef.current.forEach((dc) => {
+            if (dc && dc.readyState === 'open') {
+                try { dc.send(raw); } catch (_) {}
+            }
+        });
     }, []);
 
     // Local Sound Helper with anti-overlap debouncing
@@ -780,8 +825,75 @@ export const VoiceProvider = ({ children }) => {
         }
 
         console.log(`[WebRTC] Creating new RTCPeerConnection for user ${targetUserId}. IsOfferCreator: ${isOfferCreator}`);
-        const pc = new RTCPeerConnection({ iceServers });
+        const pc = new RTCPeerConnection({
+            iceServers,
+            iceCandidatePoolSize: 8,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
+        });
         peerConnectionsRef.current.set(targetUserId, pc);
+
+        // Bind ultra-low-latency P2P DataChannel ('watch-sync') for instant (<15ms) Watch Party pause/play/seek
+        const bindWatchDataChannel = (dc) => {
+            if (!dc) return;
+            dc.onopen = () => {
+                watchDataChannelsRef.current.set(targetUserId, dc);
+            };
+            dc.onclose = () => {
+                if (watchDataChannelsRef.current.get(targetUserId) === dc) {
+                    watchDataChannelsRef.current.delete(targetUserId);
+                }
+            };
+            dc.onmessage = (evt) => {
+                try {
+                    const data = JSON.parse(evt.data);
+                    if (!data || !data.type) return;
+                    const applied = dispatchWatchImperative(data.type, data);
+                    if (!applied) return;
+                    if (data.type === 'watch-play') {
+                        setWatchParty(prev => prev ? {
+                            ...prev,
+                            isPlaying: true,
+                            currentTime: applied.time,
+                            lastUpdated: applied.serverTimestamp,
+                            serverTimestamp: applied.serverTimestamp,
+                            lastActionBy: applied.senderId
+                        } : null);
+                    } else if (data.type === 'watch-pause') {
+                        setWatchParty(prev => prev ? {
+                            ...prev,
+                            isPlaying: false,
+                            currentTime: applied.time,
+                            lastUpdated: applied.serverTimestamp,
+                            serverTimestamp: applied.serverTimestamp,
+                            lastActionBy: applied.senderId
+                        } : null);
+                    } else if (data.type === 'watch-seek') {
+                        setWatchParty(prev => prev ? {
+                            ...prev,
+                            currentTime: applied.time,
+                            lastUpdated: applied.serverTimestamp,
+                            serverTimestamp: applied.serverTimestamp,
+                            lastActionBy: applied.senderId
+                        } : null);
+                    }
+                } catch (_) {}
+            };
+        };
+
+        if (isOfferCreator) {
+            try {
+                const dc = pc.createDataChannel('watch-sync', { ordered: true });
+                bindWatchDataChannel(dc);
+            } catch (dcErr) {
+                console.warn('[WebRTC] createDataChannel warning:', dcErr);
+            }
+        }
+        pc.ondatachannel = (event) => {
+            if (event.channel && event.channel.label === 'watch-sync') {
+                bindWatchDataChannel(event.channel);
+            }
+        };
 
         // Add local camera/mic stream tracks
         if (localStreamRef.current) {
@@ -925,6 +1037,12 @@ export const VoiceProvider = ({ children }) => {
 
         // Incoming track handler
         pc.ontrack = (event) => {
+            // Minimize receiver jitter buffer delay (~20ms) for real-time voice & video responsiveness
+            try {
+                if (event.receiver && 'playoutDelayHint' in event.receiver) {
+                    event.receiver.playoutDelayHint = 0.02;
+                }
+            } catch (_) {}
             const stream = event.streams[0] || new MediaStream([event.track]);
             console.log(`[WebRTC] Received remote track ${event.track.kind} (${event.track.id}) from ${targetUserId}`);
             
@@ -1096,6 +1214,7 @@ export const VoiceProvider = ({ children }) => {
         // Close peer connections
         peerConnectionsRef.current.forEach(pc => pc.close());
         peerConnectionsRef.current.clear();
+        watchDataChannelsRef.current.clear();
         remoteTracksRef.current.clear();
         remoteStatesRef.current.clear();
         candidateQueuesRef.current.clear();
@@ -1376,46 +1495,56 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
-        const handleWatchPlay = ({ time, serverTimestamp, senderId }) => {
-            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
+        const handleWatchPlay = (payload) => {
+            const applied = dispatchWatchImperative('watch-play', payload);
+            if (!applied) return;
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: true, 
-                currentTime: time, 
-                lastUpdated: canonicalTs,
-                serverTimestamp: canonicalTs,
-                lastActionBy: senderId
+                currentTime: applied.time, 
+                lastUpdated: applied.serverTimestamp,
+                serverTimestamp: applied.serverTimestamp,
+                lastActionBy: applied.senderId
             } : null);
         };
 
-        const handleWatchPause = ({ time, serverTimestamp, senderId }) => {
-            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
+        const handleWatchPause = (payload) => {
+            const applied = dispatchWatchImperative('watch-pause', payload);
+            if (!applied) return;
             setWatchParty(prev => prev ? { 
                 ...prev, 
                 isPlaying: false, 
-                currentTime: time, 
-                lastUpdated: canonicalTs,
-                serverTimestamp: canonicalTs,
-                lastActionBy: senderId
+                currentTime: applied.time, 
+                lastUpdated: applied.serverTimestamp,
+                serverTimestamp: applied.serverTimestamp,
+                lastActionBy: applied.senderId
             } : null);
         };
 
-        const handleWatchSeek = ({ time, serverTimestamp, senderId }) => {
-            const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
+        const handleWatchSeek = (payload) => {
+            const applied = dispatchWatchImperative('watch-seek', payload);
+            if (!applied) return;
             setWatchParty(prev => {
                 if (!prev) return null;
                 return { 
                     ...prev, 
-                    currentTime: time, 
-                    lastUpdated: canonicalTs,
-                    serverTimestamp: canonicalTs,
-                    lastActionBy: senderId
+                    currentTime: applied.time, 
+                    lastUpdated: applied.serverTimestamp,
+                    serverTimestamp: applied.serverTimestamp,
+                    lastActionBy: applied.senderId
                 };
             });
         };
 
-        const handleWatchSync = ({ currentTime, isPlaying, isLive, serverTimestamp, url }) => {
+        const handleWatchSync = (payload) => {
+            const { currentTime, isPlaying, isLive, serverTimestamp, url } = payload || {};
             const canonicalTs = (typeof serverTimestamp === 'number' && serverTimestamp > 0) ? serverTimestamp : getServerNow();
+            dispatchWatchImperative('watch-sync', {
+                time: currentTime,
+                isPlaying,
+                isLive,
+                serverTimestamp: canonicalTs
+            });
             setWatchParty(prev => {
                 if (!prev) return null;
                 return {
@@ -1696,9 +1825,19 @@ export const VoiceProvider = ({ children }) => {
                                 audioSender = audioTransceiver.sender;
                             }
                         }
-                        if (audioSender) {
-                            audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
-                        } else {
+                         if (audioSender) {
+                             audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
+                             try {
+                                 const params = audioSender.getParameters();
+                                 if (!params.encodings) params.encodings = [{}];
+                                 params.encodings.forEach(enc => {
+                                     enc.priority = 'high';
+                                     enc.networkPriority = 'high';
+                                     enc.maxBitrate = 128000;
+                                 });
+                                 audioSender.setParameters(params).catch(() => {});
+                             } catch (_) {}
+                         } else {
                             try { pc.addTrack(newAudioTrack, localStreamRef.current); } catch (e) {}
                         }
                     });
@@ -1756,9 +1895,9 @@ export const VoiceProvider = ({ children }) => {
                         videoStream = await navigator.mediaDevices.getUserMedia({
                             video: {
                                 facingMode: { ideal: facingMode || 'user' },
-                                width: { ideal: 640 },
-                                height: { ideal: 480 },
-                                frameRate: { ideal: 24 }
+                                width: { ideal: 1280, max: 1280 },
+                                height: { ideal: 720, max: 720 },
+                                frameRate: { ideal: 30, max: 30 }
                             }
                         });
                     } catch (e1) {
@@ -1798,6 +1937,15 @@ export const VoiceProvider = ({ children }) => {
                     if (videoSender) {
                         try {
                             await videoSender.replaceTrack(cameraTrack);
+                            const params = videoSender.getParameters();
+                            if (!params.encodings) params.encodings = [{}];
+                            params.encodings.forEach(enc => {
+                                enc.maxBitrate = 1800000;
+                                enc.maxFramerate = 30;
+                                enc.priority = 'high';
+                                enc.networkPriority = 'high';
+                            });
+                            videoSender.setParameters(params).catch(() => {});
                         } catch (e) {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
                         }
@@ -2432,27 +2580,51 @@ export const VoiceProvider = ({ children }) => {
 
     const sendWatchPlay = useCallback((time) => {
         if (activeRoom) {
-            // Do NOT update local state here. Since server now uses io.to() (not socket.to()),
-            // the sender will also receive the 'voice:watch-play' event with the canonical
-            // serverTimestamp from the server, ensuring all clients are in perfect sync.
-            safeEmit('voice:watch-play', { roomName: activeRoom.roomName, time });
+            const exactTime = Number(Number(time || 0).toFixed(4));
+            const now = getServerNow();
+            const senderId = user?._id?.toString() || '';
+            const cmdId = `${senderId || 'u'}-play-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            const packet = { type: 'watch-play', roomName: activeRoom.roomName, time: exactTime, serverTimestamp: now, senderId, cmdId };
+            // 1. P2P DataChannel broadcast (~10ms direct peer-to-peer)
+            broadcastWatchDataChannel(packet);
+            // 2. Socket.IO broadcast (0ms server relay + Redis persistence)
+            safeEmit('voice:watch-play', packet);
+            // 3. Immediate local imperative & state update
+            dispatchWatchImperative('watch-play', packet);
+            setWatchParty(prev => prev ? { ...prev, isPlaying: true, currentTime: exactTime, lastUpdated: now, serverTimestamp: now, lastActionBy: senderId } : null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, safeEmit, getServerNow, user, broadcastWatchDataChannel, dispatchWatchImperative]);
 
     const sendWatchPause = useCallback((time) => {
         if (activeRoom) {
-            // Same rationale: server broadcast (io.to) handles state update for sender too.
-            safeEmit('voice:watch-pause', { roomName: activeRoom.roomName, time });
+            const exactTime = Number(Number(time || 0).toFixed(4));
+            const now = getServerNow();
+            const senderId = user?._id?.toString() || '';
+            const cmdId = `${senderId || 'u'}-pause-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            const packet = { type: 'watch-pause', roomName: activeRoom.roomName, time: exactTime, serverTimestamp: now, senderId, cmdId };
+            // 1. P2P DataChannel broadcast (~10ms direct peer-to-peer)
+            broadcastWatchDataChannel(packet);
+            // 2. Socket.IO broadcast (0ms server relay + Redis persistence)
+            safeEmit('voice:watch-pause', packet);
+            // 3. Immediate local imperative & state update
+            dispatchWatchImperative('watch-pause', packet);
+            setWatchParty(prev => prev ? { ...prev, isPlaying: false, currentTime: exactTime, lastUpdated: now, serverTimestamp: now, lastActionBy: senderId } : null);
         }
-    }, [activeRoom, safeEmit]);
+    }, [activeRoom, safeEmit, getServerNow, user, broadcastWatchDataChannel, dispatchWatchImperative]);
 
     const sendWatchSeek = useCallback((time) => {
         if (activeRoom) {
+            const exactTime = Number(Number(time || 0).toFixed(4));
             const now = getServerNow();
-            safeEmit('voice:watch-seek', { roomName: activeRoom.roomName, time });
-            setWatchParty(prev => prev ? { ...prev, currentTime: time, lastUpdated: now, serverTimestamp: now } : null);
+            const senderId = user?._id?.toString() || '';
+            const cmdId = `${senderId || 'u'}-seek-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            const packet = { type: 'watch-seek', roomName: activeRoom.roomName, time: exactTime, serverTimestamp: now, senderId, cmdId };
+            broadcastWatchDataChannel(packet);
+            safeEmit('voice:watch-seek', packet);
+            dispatchWatchImperative('watch-seek', packet);
+            setWatchParty(prev => prev ? { ...prev, currentTime: exactTime, lastUpdated: now, serverTimestamp: now, lastActionBy: senderId } : null);
         }
-    }, [activeRoom, safeEmit, getServerNow]);
+    }, [activeRoom, safeEmit, getServerNow, user, broadcastWatchDataChannel, dispatchWatchImperative]);
 
     const requestWatchSync = useCallback(() => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
