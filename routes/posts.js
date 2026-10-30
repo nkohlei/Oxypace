@@ -442,9 +442,21 @@ router.post(
                     if (!postData.portal) {
                         io.emit('newPost', populatedPost);
                     } else {
+                        const sPortalId = postData.portal.toString();
+                        const sChannelId = postData.channel ? postData.channel.toString() : '';
+
+                        // Direct real-time delivery to portal and channel rooms
+                        io.to(`portal:${sPortalId}`).emit('post:created', populatedPost);
+                        if (sChannelId) {
+                            io.to(`channel:${sChannelId}`).emit('post:created', populatedPost);
+                        }
+                        // Global broadcast fallback (Portal.jsx has doorman verification check)
+                        io.emit('post:created', populatedPost);
+
+                        // Also emit global portal activity for unread indicators
                         io.emit('global:portal_activity', { 
-                            portalId: postData.portal.toString(),
-                            channelId: postData.channel.toString(),
+                            portalId: sPortalId,
+                            channelId: sChannelId,
                             postId: post._id.toString()
                         });
                     }
@@ -1197,6 +1209,36 @@ router.delete('/:id', protect, mongoIdValidation('id'), async (req, res) => {
 
         await post.deleteOne();
 
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('global:post_deleted', { _id: post._id.toString() });
+                if (post.portal) {
+                    const sPortalId = post.portal.toString();
+                    const sChannelId = post.channel ? post.channel.toString() : '';
+                    io.to(`portal:${sPortalId}`).emit('post:deleted', { 
+                        postId: post._id.toString(), 
+                        portalId: sPortalId, 
+                        channelId: sChannelId 
+                    });
+                    if (sChannelId) {
+                        io.to(`channel:${sChannelId}`).emit('post:deleted', { 
+                            postId: post._id.toString(), 
+                            portalId: sPortalId, 
+                            channelId: sChannelId 
+                        });
+                    }
+                    io.emit('post:deleted', { 
+                        postId: post._id.toString(), 
+                        portalId: sPortalId, 
+                        channelId: sChannelId 
+                    });
+                }
+            }
+        } catch (socketErr) {
+            console.error('Socket emission error in delete:', socketErr);
+        }
+
         logActivity({
             user: req.user._id,
             username: req.user.username,
@@ -1261,6 +1303,24 @@ router.put('/:id/pin', protect, mongoIdValidation('id'), async (req, res) => {
             'author',
             'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted'
         );
+        if (post.portal) {
+            await post.populate('portal', 'name avatar icon privacy members badges customBadge isVerified');
+        }
+
+        try {
+            const io = req.app.get('io');
+            if (io && post.portal) {
+                const sPortalId = post.portal._id ? post.portal._id.toString() : post.portal.toString();
+                const sChannelId = post.channel ? post.channel.toString() : '';
+                io.to(`portal:${sPortalId}`).emit('post:updated', post);
+                if (sChannelId) {
+                    io.to(`channel:${sChannelId}`).emit('post:updated', post);
+                }
+                io.emit('post:updated', post);
+            }
+        } catch (socketErr) {
+            console.error('Socket emission error in pin:', socketErr);
+        }
 
         res.json(post);
     } catch (error) {

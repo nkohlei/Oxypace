@@ -295,7 +295,8 @@ const Portal = () => {
             const newPostPortalId = newPost.portal?._id || newPost.portal;
             const newPostChannelId = newPost.channel?._id || newPost.channel;
             const isTargetPortal = String(newPostPortalId) === String(id);
-            const isTargetChannel = String(newPostChannelId) === String(currentChannel);
+            const isTargetChannel = String(newPostChannelId) === String(currentChannel) || 
+                                    (String(newPostChannelId || 'general') === String(currentChannel || 'general'));
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');
@@ -338,6 +339,14 @@ const Portal = () => {
             const isTargetPortal = !updatedPortalId || String(updatedPortalId) === String(id);
             if (isTargetPortal) {
                 setPosts((prev) => prev.map(p => String(p._id) === String(updatedPost._id) ? updatedPost : p));
+            }
+        };
+
+        const handleRealtimePostDeleted = ({ postId, portalId }) => {
+            if (!portalId || String(portalId) === String(id)) {
+                if (postId) {
+                    setPosts((prev) => prev.filter(p => String(p._id) !== String(postId)));
+                }
             }
         };
 
@@ -400,12 +409,14 @@ const Portal = () => {
 
         socket.on('post:created', handleNewPost);
         socket.on('post:updated', handleUpdatePost);
+        socket.on('post:deleted', handleRealtimePostDeleted);
         socket.on('user_status_change', handleUserStatusChange);
         socket.on('portal_typing_update', handlePortalTypingUpdate);
 
         return () => {
             socket.off('post:created', handleNewPost);
             socket.off('post:updated', handleUpdatePost);
+            socket.off('post:deleted', handleRealtimePostDeleted);
             socket.off('user_status_change', handleUserStatusChange);
             socket.off('portal_typing_update', handlePortalTypingUpdate);
         };
