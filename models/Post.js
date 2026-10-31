@@ -131,7 +131,7 @@ const postSchema = new mongoose.Schema(
         },
         isProcessing: {
             type: Boolean,
-            default: true,
+            default: false,
         },
         processingProgress: {
             type: Number,

@@ -122,6 +122,7 @@ Saf OLED siyahı ve yüksek kontrastlı açık tema. Kişisel profil afişi ve a
             channel: targetChannel,
             content: singleGuideContent,
             isPinned: true,
+            isProcessing: false,
             pinnedAt: new Date(),
         });
         console.log('✅ [TanitimBoot] Seeded single clean guide post in Oxypace Tanıtım');

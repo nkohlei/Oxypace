@@ -66,6 +66,7 @@ router.post(
                 author: req.user._id,
                 content: content || '',
                 quotedPost: quotedPostId || null,
+                isProcessing: false,
             };
 
             // Handle external media (like YouTube or videoUrl)
