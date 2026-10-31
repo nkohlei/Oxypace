@@ -495,10 +495,10 @@ router.get('/map', optionalProtect, async (req, res) => {
 router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const portal = await Portal.findById(req.params.id)
-            .populate('owner', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted')
-            .populate('admins', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted')
-            .populate('members', 'username profile.displayName profile.avatar profile.lowResAvatar lastActive isDeleted')
-            .populate('allowedUsers', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');
+            .populate('owner', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted isBot')
+            .populate('admins', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted isBot')
+            .populate('members', 'username profile.displayName profile.avatar profile.lowResAvatar lastActive isDeleted isBot')
+            .populate('allowedUsers', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted isBot');
 
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
@@ -534,6 +534,9 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
         }
 
         const portalObj = portal.toObject();
+
+        portalObj.humanMemberCount = (portalObj.members || []).filter(m => m && !m.isBot).length;
+        portalObj.botMemberCount = (portalObj.members || []).filter(m => m && m.isBot).length;
 
         if (userId) {
             portalObj.members = (portalObj.members || []).filter(Boolean);
@@ -1960,5 +1963,314 @@ router.get('/:id/audit-logs', protect, mongoIdValidation('id'), async (req, res)
         res.status(500).json({ message: 'Portal denetim kayıtları getirilemedi' });
     }
 });
+
+
+// ==========================================
+// 🤖 PORTAL BOT MANAGEMENT ENDPOINTS
+// ==========================================
+
+// @route   GET /api/portals/:id/bots
+// @desc    Get all bots configured for this portal
+// @access  Private (Portal Owner / Admin / System Admin)
+router.get('/:id/bots', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isPortalAdmin = Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isSystemAdmin = req.user.isAdmin;
+
+        if (!isOwner && !isPortalAdmin && !isSystemAdmin) {
+            return res.status(403).json({ message: 'Bu portalın botlarını görüntüleme yetkiniz yok.' });
+        }
+
+        const configs = await BotConfig.find({ defaultPortal: portal._id })
+            .populate('bot', 'username profile isBot isBanned createdAt postCount')
+            .populate('creator', 'username profile.displayName');
+
+        const botsList = configs.map(c => ({
+            _id: c.bot?._id || c._id,
+            configId: c._id,
+            username: c.bot?.username || 'Bilinmeyen Bot',
+            profile: c.bot?.profile || {},
+            isBot: true,
+            isBanned: c.bot?.isBanned || false,
+            postCount: c.bot?.postCount || 0,
+            channel: c.defaultChannel || 'general',
+            feeds: c.feeds || [],
+            intervalMinutes: c.intervalMinutes || 15,
+            isActive: c.isActive !== false,
+            autoTranslate: c.autoTranslate !== false,
+            postPrefix: c.postPrefix || '📢',
+            creator: c.creator ? { _id: c.creator._id, username: c.creator.username, displayName: c.creator.profile?.displayName } : null,
+            stats: c.stats || {},
+            createdAt: c.createdAt
+        }));
+
+        res.json(botsList);
+    } catch (err) {
+        console.error('Fetch portal bots error:', err);
+        res.status(500).json({ message: 'Portal botları getirilemedi: ' + err.message });
+    }
+});
+
+// @route   POST /api/portals/:id/bots
+// @desc    Create a new bot for this portal
+// @access  Private (Portal Owner / Admin / System Admin)
+router.post('/:id/bots', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isPortalAdmin = Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isSystemAdmin = req.user.isAdmin;
+
+        if (!isOwner && !isPortalAdmin && !isSystemAdmin) {
+            return res.status(403).json({ message: 'Bu portalda bot oluşturma yetkiniz yok.' });
+        }
+
+        const { name, bio, avatar, channel, feeds, intervalMinutes, autoTranslate, postPrefix } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ message: 'Bot adı zorunludur.' });
+        }
+
+        let baseUsername = (req.body.username || name)
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9_]/g, '_')
+            .replace(/_+/g, '_')
+            .substring(0, 15);
+
+        if (!baseUsername.endsWith('bot')) {
+            baseUsername = `${baseUsername}_bot`.substring(0, 20);
+        }
+
+        // Guarantee username uniqueness
+        let finalUsername = baseUsername;
+        let counter = 1;
+        while (await User.findOne({ username: finalUsername })) {
+            finalUsername = `${baseUsername.substring(0, 14)}_${counter++}`;
+        }
+
+        const crypto = await import('crypto');
+        const password = crypto.randomBytes(16).toString('hex');
+        const email = `${finalUsername}@bot.oxypace.internal`;
+
+        const botUser = new User({
+            username: finalUsername,
+            email,
+            password,
+            profile: {
+                displayName: name.trim(),
+                bio: bio ? bio.trim() : `${portal.name} portalı için otomatik haber ve içerik botu.`,
+                avatar: avatar || '/uploads/bot_avatar_default.png',
+                coverImage: ''
+            },
+            isBot: true,
+            isVerified: true,
+            verificationBadge: 'special'
+        });
+
+        await botUser.save();
+
+        // Add to portal members
+        if (!portal.members.includes(botUser._id)) {
+            portal.members.push(botUser._id);
+            await portal.save();
+        }
+
+        const resolvedChannel = channel || (portal.channels[0]?._id?.toString() || 'general');
+        const cleanFeeds = Array.isArray(feeds) 
+            ? feeds.map(f => String(f).trim()).filter(Boolean) 
+            : (feeds ? [String(feeds).trim()] : []);
+
+        const botConfig = new BotConfig({
+            bot: botUser._id,
+            creator: req.user._id,
+            defaultPortal: portal._id,
+            defaultChannel: resolvedChannel,
+            feeds: cleanFeeds,
+            intervalMinutes: intervalMinutes ? parseInt(intervalMinutes) : 15,
+            isActive: true,
+            autoTranslate: autoTranslate !== false,
+            postPrefix: postPrefix || '📢',
+            stats: {
+                totalPosts: 0,
+                lastRunAt: null,
+                lastSuccessAt: null,
+                lastPostTitle: '',
+                lastError: ''
+            }
+        });
+
+        await botConfig.save();
+
+        logActivity({
+            user: req.user._id,
+            username: req.user.username,
+            action: 'PORTAL_BOT_CREATED',
+            category: 'bot',
+            portal: portal._id,
+            portalName: portal.name,
+            details: {
+                botUsername: finalUsername,
+                botName: name.trim(),
+                channel: resolvedChannel,
+                feeds: cleanFeeds
+            }
+        });
+
+        res.status(201).json({
+            message: 'Bot başarıyla oluşturuldu ve portala bağlandı.',
+            bot: {
+                _id: botUser._id,
+                configId: botConfig._id,
+                username: botUser.username,
+                profile: botUser.profile,
+                isBot: true,
+                channel: resolvedChannel,
+                feeds: cleanFeeds,
+                intervalMinutes: botConfig.intervalMinutes,
+                isActive: true,
+                autoTranslate: botConfig.autoTranslate,
+                stats: botConfig.stats,
+                createdAt: botUser.createdAt
+            }
+        });
+    } catch (err) {
+        console.error('Create portal bot error:', err);
+        res.status(500).json({ message: 'Bot oluşturulamadı: ' + err.message });
+    }
+});
+
+// @route   PUT /api/portals/:id/bots/:botId
+// @desc    Update portal bot configuration
+// @access  Private (Portal Owner / Admin / System Admin)
+router.put('/:id/bots/:botId', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isPortalAdmin = Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isSystemAdmin = req.user.isAdmin;
+
+        if (!isOwner && !isPortalAdmin && !isSystemAdmin) {
+            return res.status(403).json({ message: 'Bu portalın botunu düzenleme yetkiniz yok.' });
+        }
+
+        const botUser = await User.findOne({ _id: req.params.botId, isBot: true });
+        if (!botUser) return res.status(404).json({ message: 'Bot hesabı bulunamadı' });
+
+        let botConfig = await BotConfig.findOne({ bot: botUser._id, defaultPortal: portal._id });
+        if (!botConfig) {
+            botConfig = await BotConfig.findOne({ bot: botUser._id });
+        }
+        if (!botConfig) {
+            botConfig = new BotConfig({ bot: botUser._id, defaultPortal: portal._id });
+        }
+
+        const { name, bio, avatar, channel, feeds, intervalMinutes, isActive, autoTranslate, postPrefix } = req.body;
+
+        if (name) botUser.profile.displayName = name.trim();
+        if (bio !== undefined) botUser.profile.bio = bio.trim();
+        if (avatar) botUser.profile.avatar = avatar;
+        await botUser.save();
+
+        if (channel) botConfig.defaultChannel = channel;
+        if (feeds !== undefined) {
+            botConfig.feeds = Array.isArray(feeds) 
+                ? feeds.map(f => String(f).trim()).filter(Boolean) 
+                : [];
+        }
+        if (intervalMinutes) botConfig.intervalMinutes = parseInt(intervalMinutes);
+        if (isActive !== undefined) botConfig.isActive = !!isActive;
+        if (autoTranslate !== undefined) botConfig.autoTranslate = !!autoTranslate;
+        if (postPrefix !== undefined) botConfig.postPrefix = postPrefix;
+
+        await botConfig.save();
+
+        res.json({
+            message: 'Bot ayarları başarıyla güncellendi.',
+            bot: {
+                _id: botUser._id,
+                configId: botConfig._id,
+                username: botUser.username,
+                profile: botUser.profile,
+                isBot: true,
+                channel: botConfig.defaultChannel,
+                feeds: botConfig.feeds,
+                intervalMinutes: botConfig.intervalMinutes,
+                isActive: botConfig.isActive,
+                autoTranslate: botConfig.autoTranslate,
+                stats: botConfig.stats
+            }
+        });
+    } catch (err) {
+        console.error('Update portal bot error:', err);
+        res.status(500).json({ message: 'Bot güncellenemedi: ' + err.message });
+    }
+});
+
+// @route   DELETE /api/portals/:id/bots/:botId
+// @desc    Delete/Remove bot from portal
+// @access  Private (Portal Owner / Admin / System Admin)
+router.delete('/:id/bots/:botId', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isPortalAdmin = Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isSystemAdmin = req.user.isAdmin;
+
+        if (!isOwner && !isPortalAdmin && !isSystemAdmin) {
+            return res.status(403).json({ message: 'Bu portalın botunu silme yetkiniz yok.' });
+        }
+
+        const botUser = await User.findOne({ _id: req.params.botId, isBot: true });
+        if (botUser) {
+            portal.members = (portal.members || []).filter(m => m.toString() !== botUser._id.toString());
+            await portal.save();
+
+            await BotConfig.deleteOne({ bot: botUser._id });
+            await User.deleteOne({ _id: botUser._id });
+        }
+
+        res.json({ message: 'Bot hesabı ve yapılandırması başarıyla silindi.' });
+    } catch (err) {
+        console.error('Delete portal bot error:', err);
+        res.status(500).json({ message: 'Bot silinemedi: ' + err.message });
+    }
+});
+
+// @route   POST /api/portals/:id/bots/:botId/run
+// @desc    Manually test and run bot right now (Immediate Test & Share)
+// @access  Private (Portal Owner / Admin / System Admin)
+router.post('/:id/bots/:botId/run', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const portal = await Portal.findById(req.params.id);
+        if (!portal) return res.status(404).json({ message: 'Portal bulunamadı' });
+
+        const isOwner = portal.owner.toString() === req.user._id.toString();
+        const isPortalAdmin = Array.isArray(portal.admins) && portal.admins.some(a => a.toString() === req.user._id.toString());
+        const isSystemAdmin = req.user.isAdmin;
+
+        if (!isOwner && !isPortalAdmin && !isSystemAdmin) {
+            return res.status(403).json({ message: 'Bot çalıştırma yetkiniz yok.' });
+        }
+
+        const { runSingleBot } = await import('../bots/newsBot.js');
+        const result = await runSingleBot(req.params.botId, req.app.get('io'));
+
+        res.json(result);
+    } catch (err) {
+        console.error('Run portal bot error:', err);
+        res.status(500).json({ success: false, message: 'Bot çalıştırma hatası: ' + err.message });
+    }
+});
+
 
 export default router;

@@ -2597,8 +2597,10 @@ router.post('/mass-notification', protect, requirePermission('canSendNotificatio
 // @access  Private/Admin
 router.get('/bots', protect, requirePermission('canManageBots'), async (req, res) => {
     try {
-        const bots = await User.find({ isBot: true }).select('username email profile verificationBadge isBanned createdAt');
-        const configs = await BotConfig.find().populate('defaultPortal', 'name avatar channels');
+        const bots = await User.find({ isBot: true }).select('username email profile verificationBadge isBanned createdAt postCount');
+        const configs = await BotConfig.find()
+            .populate('defaultPortal', 'name avatar channels')
+            .populate('creator', 'username profile.displayName');
         
         const configsMap = {};
         configs.forEach(c => {
@@ -2617,11 +2619,19 @@ router.get('/bots', protect, requirePermission('canManageBots'), async (req, res
                 verificationBadge: bot.verificationBadge,
                 isBanned: bot.isBanned,
                 createdAt: bot.createdAt,
+                postCount: bot.postCount || 0,
                 config: config ? {
+                    _id: config._id,
                     feeds: config.feeds || [],
                     defaultPortal: config.defaultPortal,
-                    defaultChannel: config.defaultChannel || 'general'
-                } : { feeds: [], defaultPortal: null, defaultChannel: 'general' }
+                    defaultChannel: config.defaultChannel || 'general',
+                    intervalMinutes: config.intervalMinutes || 15,
+                    isActive: config.isActive !== false,
+                    autoTranslate: config.autoTranslate !== false,
+                    postPrefix: config.postPrefix || '📢',
+                    creator: config.creator ? { _id: config.creator._id, username: config.creator.username, displayName: config.creator.profile?.displayName } : null,
+                    stats: config.stats || {}
+                } : { feeds: [], defaultPortal: null, defaultChannel: 'general', intervalMinutes: 15, isActive: true, autoTranslate: true, stats: {} }
             };
         });
 
@@ -2719,7 +2729,7 @@ router.put('/bots/:id/profile', protect, requirePermission('canManageBots'), asy
             return res.status(404).json({ message: 'Bot hesabı bulunamadı.' });
         }
 
-        const { displayName, bio, avatar, coverImage, feeds, defaultPortal, defaultChannel } = req.body;
+        const { displayName, bio, avatar, coverImage, feeds, defaultPortal, defaultChannel, intervalMinutes, isActive, autoTranslate, postPrefix, includeSourceLink } = req.body;
 
         if (displayName !== undefined) botUser.profile.displayName = displayName;
         if (bio !== undefined) botUser.profile.bio = bio;
@@ -2765,6 +2775,26 @@ router.put('/bots/:id/profile', protect, requirePermission('canManageBots'), asy
 
         if (defaultChannel !== undefined) {
             config.defaultChannel = defaultChannel || 'general';
+        }
+
+        if (intervalMinutes !== undefined) {
+            config.intervalMinutes = Math.max(5, Math.min(1440, Number(intervalMinutes) || 15));
+        }
+
+        if (isActive !== undefined) {
+            config.isActive = Boolean(isActive);
+        }
+
+        if (autoTranslate !== undefined) {
+            config.autoTranslate = Boolean(autoTranslate);
+        }
+
+        if (postPrefix !== undefined) {
+            config.postPrefix = postPrefix;
+        }
+
+        if (includeSourceLink !== undefined) {
+            config.includeSourceLink = Boolean(includeSourceLink);
         }
 
         await config.save();
@@ -2881,6 +2911,46 @@ router.post('/bots/:id/post', protect, requirePermission('canManageBots'), async
     } catch (error) {
         console.error('Bot post error:', error);
         res.status(500).json({ message: 'Paylaşım yapılırken hata oluştu: ' + error.message });
+    }
+});
+
+// @route   POST /api/admin/bots/:id/run
+// @desc    Manually test and run bot right now
+// @access  Private/Admin
+router.post('/bots/:id/run', protect, requirePermission('canManageBots'), async (req, res) => {
+    try {
+        const { runSingleBot } = await import('../bots/newsBot.js');
+        const result = await runSingleBot(req.params.id, req.app.get('io'));
+        res.json(result);
+    } catch (error) {
+        console.error('Admin run bot error:', error);
+        res.status(500).json({ success: false, message: 'Bot çalıştırma hatası: ' + error.message });
+    }
+});
+
+// @route   PUT /api/admin/bots/:id/toggle
+// @desc    Toggle bot active / paused status
+// @access  Private/Admin
+router.put('/bots/:id/toggle', protect, requirePermission('canManageBots'), async (req, res) => {
+    try {
+        const botUser = await User.findOne({ _id: req.params.id, isBot: true });
+        if (!botUser) return res.status(404).json({ message: 'Bot bulunamadı' });
+
+        let config = await BotConfig.findOne({ bot: botUser._id });
+        if (!config) {
+            config = new BotConfig({ bot: botUser._id });
+        }
+
+        config.isActive = !config.isActive;
+        await config.save();
+
+        res.json({
+            message: config.isActive ? 'Bot etkinleştirildi.' : 'Bot duraklatıldı.',
+            isActive: config.isActive
+        });
+    } catch (error) {
+        console.error('Admin toggle bot error:', error);
+        res.status(500).json({ message: 'Durum değiştirilemedi: ' + error.message });
     }
 });
 

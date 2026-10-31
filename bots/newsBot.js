@@ -9,7 +9,14 @@ import BotHistory from '../models/BotHistory.js';
 import BotConfig from '../models/BotConfig.js';
 import logActivity from '../utils/auditLogger.js';
 
-const parser = new Parser();
+const parser = new Parser({
+    headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/rdf+xml, application/atom+xml, application/xml, text/xml, */*'
+    },
+    timeout: 15000
+});
+
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
 
 export const BOT_CONFIGS = [
@@ -148,56 +155,44 @@ const protectTerms = (text) => {
         { word: 'Collider', placeholder: '__TERM_COLLIDER__' },
         { word: 'Variety', placeholder: '__TERM_VARIETY__' },
         { word: 'Deadline', placeholder: '__TERM_DEADLINE__' },
-        { word: 'Tony Award', placeholder: '__TERM_TONY__' },
-        { word: 'Tony Awards', placeholder: '__TERM_TONYS__' },
-        { word: 'Cannes Film Festival', placeholder: 'Cannes Film Festivali' }
+        { word: 'The Hollywood Reporter', placeholder: '__TERM_THR__' },
+        { word: 'IGN', placeholder: '__TERM_IGN__' },
+        { word: 'GameSpot', placeholder: '__TERM_GAMESPOT__' },
+        { word: 'TechCrunch', placeholder: '__TERM_TECHCRUNCH__' },
+        { word: 'The Verge', placeholder: '__TERM_THE_VERGE__' },
+        { word: 'NASA', placeholder: '__TERM_NASA__' },
+        { word: 'SpaceX', placeholder: '__TERM_SPACEX__' },
+        { word: 'Webrazzi', placeholder: '__TERM_WEBRAZZI__' }
     ];
-    
+
     let workingText = text;
     const replacements = [];
-    
-    for (const item of protectedList) {
-        const regex = new RegExp(item.word, 'gi');
+
+    protectedList.forEach(({ word, placeholder }) => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
         if (regex.test(workingText)) {
-            workingText = workingText.replace(regex, item.placeholder);
-            replacements.push(item);
+            workingText = workingText.replace(regex, placeholder);
+            replacements.push({ placeholder, original: word });
         }
-    }
+    });
+
     return { text: workingText, replacements };
 };
 
-// Restore protected terms and refine translation mapping
+// Restore protected terms
 const restoreTerms = (text, replacements) => {
     let workingText = text;
-    for (const item of replacements) {
-        // Safe regex escape
-        const cleanPlaceholder = item.placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(cleanPlaceholder, 'g');
-        const originalWord = item.word.replace('\\+', '+');
-        workingText = workingText.replace(regex, originalWord);
-    }
-    
-    // Post-translation jargon refinements
+    replacements.forEach(({ placeholder, original }) => {
+        const regex = new RegExp(placeholder, 'g');
+        workingText = workingText.replace(regex, original);
+    });
+
+    // Turkish idiom polish
     const jargonMap = {
-        'Yeniden Yapım': 'Yeniden Çevrim',
-        'yeniden yapımı': 'yeniden çevrimi',
-        'Yeniden yapım': 'Yeniden çevrim',
-        'Devam Filmi': 'Devam Filmi',
-        'devam filmi': 'devam filmi',
-        'Oyuncu Kadrosu': 'Oyuncu Kadrosu',
-        'oyuncu kadrosu': 'oyuncu kadrosu',
-        'Gişe Rekoru': 'Gişe Rekoru',
-        'gişe rekoru': 'gişe rekoru',
-        'Gişe': 'Gişe',
-        'gişe': 'gişe',
-        'Fragmanı': 'Fragmanı',
-        'fragmanı': 'fragmanı',
-        'Dizi Sorumlusu': 'Dizi Sorumlusu',
-        'dizi sorumlusu': 'dizi sorumlusu',
-        '60 Dakikalık Ateşleme': '60 Minutes Programı',
-        '60 dakikalık ateşleme': '60 Minutes programı',
-        'Ateşleme': 'Programı',
-        'ateşleme': 'programı'
+        'gişe rekorları kıran': 'blockbuster',
+        'kıdemli': 'veteran',
+        'yürütücü yapımcı': 'baş yapımcı',
+        'ateşleme': 'fırlatma'
     };
 
     for (const [eng, tr] of Object.entries(jargonMap)) {
@@ -209,7 +204,7 @@ const restoreTerms = (text, replacements) => {
 };
 
 // Translate and Refine wrapper
-const translateAndRefine = async (text) => {
+export const translateAndRefine = async (text) => {
     if (!text || text.trim() === '') return '';
     try {
         const { text: protectedText, replacements } = protectTerms(text);
@@ -221,6 +216,35 @@ const translateAndRefine = async (text) => {
     }
 };
 
+// Safe feed fetcher with auto candidate URLs (e.g. /feed, /rss, /atom.xml)
+export async function fetchFeedSafely(url) {
+    const rawUrl = (url || '').trim();
+    if (!rawUrl) throw new Error('Geçersiz besleme bağlantısı.');
+
+    const cleanBase = rawUrl.replace(/\/+$/, '');
+    const candidates = [
+        rawUrl,
+        `${cleanBase}/feed`,
+        `${cleanBase}/rss`,
+        `${cleanBase}/feed.xml`,
+        `${cleanBase}/rss.xml`,
+        `${cleanBase}/atom.xml`,
+        `${cleanBase}/index.xml`
+    ];
+
+    let lastError = null;
+    for (const cand of candidates) {
+        try {
+            const feed = await parser.parseURL(cand);
+            if (feed && Array.isArray(feed.items) && feed.items.length > 0) {
+                return { feed, resolvedUrl: cand };
+            }
+        } catch (err) {
+            lastError = err;
+        }
+    }
+    throw lastError || new Error(`Besleme okunamadı (${rawUrl})`);
+}
 
 // Auto-create bot accounts and sync BotConfig if they do not exist
 async function ensureBotAccountsExist() {
@@ -230,10 +254,6 @@ async function ensureBotAccountsExist() {
             let botUser = await User.findOne({ username: config.botUsername });
             if (!botUser) {
                 const crypto = await import('crypto');
-                const fs = await import('fs');
-                const path = await import('path');
-
-                // Generate secure random password
                 const password = crypto.randomBytes(16).toString('hex');
                 const email = config.email;
                 
@@ -248,17 +268,7 @@ async function ensureBotAccountsExist() {
                 });
 
                 await botUser.save();
-
-                // Save credentials to scratch
-                const credentialsPath = path.join(process.cwd(), 'scratch', 'movie_news_bot_credentials.txt');
-                fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
-                fs.appendFileSync(credentialsPath, `[${new Date().toISOString()}] Bot Account Created:\nUsername: ${config.botUsername}\nEmail: ${email}\nPassword: ${password}\n\n`);
-
-                console.log(`\n======================================================`);
                 console.log(`🤖 BOT ACCOUNT CREATED: ${config.botUsername}`);
-                console.log(`📧 Email: ${email}`);
-                console.log(`🔑 Password: ${password}`);
-                console.log(`======================================================\n`);
             }
 
             // Sync BotConfig in DB if missing or incomplete
@@ -281,10 +291,12 @@ async function ensureBotAccountsExist() {
                     bot: botUser._id,
                     defaultPortal: targetPortal ? targetPortal._id : null,
                     defaultChannel: targetChannelId,
-                    feeds: config.feeds || []
+                    feeds: config.feeds || [],
+                    isActive: true,
+                    autoTranslate: true
                 });
                 await botConfig.save();
-                console.log(`🤖 Initialized BotConfig for "${config.botUsername}" -> Portal: "${targetPortal?.name || 'N/A'}", Channel ID: "${targetChannelId}"`);
+                console.log(`🤖 Initialized BotConfig for "${config.botUsername}" -> Portal: "${targetPortal?.name || 'N/A'}"`);
             }
         } catch (err) {
             console.error(`❌ Failed to auto-create bot user "${config.botUsername}":`, err.message);
@@ -292,33 +304,290 @@ async function ensureBotAccountsExist() {
     }
 }
 
-// Extract image URL from feed item
-const extractImage = (item) => {
-    // 1. Check enclosure
-    if (item.enclosure && item.enclosure.url && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
-        return item.enclosure.url;
-    }
-    // 2. Check media content fields
-    const mediaContent = item['media:content'] || item.media || item['media:thumbnail'];
-    if (mediaContent) {
-        if (Array.isArray(mediaContent) && mediaContent.length > 0 && mediaContent[0].$) {
-            return mediaContent[0].$.url;
+// Process a single feed item and deploy as Post
+export const processItem = async (item, { user, config, portal, channel, io }) => {
+    const guid = item.guid || item.link;
+    if (!guid) return null;
+
+    try {
+        // 1. Precise History Check
+        const isShared = await BotHistory.findOne({ guid, botName: user.username });
+        if (isShared) return null;
+
+        // 2. Fuzzy Deduplication (Title check within last 24h)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const titleSnippet = (item.title || '').substring(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (titleSnippet) {
+            const existingSimilarPost = await Post.findOne({
+                portal: portal._id,
+                author: user._id,
+                createdAt: { $gte: oneDayAgo },
+                content: { $regex: new RegExp(titleSnippet, 'i') }
+            });
+
+            if (existingSimilarPost) {
+                console.log(`🛡️ [${user.username}] Fuzzy match triggered. Marking as shared.`);
+                await BotHistory.create({ guid, botName: user.username });
+                return null;
+            }
         }
-        if (mediaContent.$ && mediaContent.$.url) {
-            return mediaContent.$.url;
+
+        console.log(`🆕 [${user.username}] Processing: ${item.title}`);
+        
+        // Translate Title & Description if autoTranslate is enabled
+        let finalTitle = item.title || '';
+        let finalDesc = item.contentSnippet || item.content || '';
+        finalDesc = finalDesc.replace(/<[^>]+>/g, '').trim();
+        if (finalDesc.length > 1000) finalDesc = finalDesc.substring(0, 1000) + '...';
+
+        const shouldTranslate = config?.autoTranslate !== false;
+        if (shouldTranslate) {
+            finalTitle = await translateAndRefine(finalTitle);
+            finalDesc = await translateAndRefine(finalDesc);
         }
+
+        const prefix = config?.postPrefix || '📢';
+        const formattedContent = `${prefix} **${finalTitle}**\n\n${finalDesc ? `📝 ${finalDesc}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
+
+        await BotHistory.create({ guid, botName: user.username });
+
+        const newPost = new Post({
+            content: formattedContent,
+            author: user._id,
+            portal: portal._id,
+            channel: channel._id.toString(),
+            createdAt: new Date()
+        });
+
+        await newPost.save();
+        await User.findByIdAndUpdate(user._id, { $inc: { postCount: 1 } }).catch(() => {});
+        console.log(`✅ [${user.username}] Post Deployed: ${finalTitle.substring(0, 30)}...`);
+
+        // Update BotConfig stats
+        try {
+            const botConf = config || await BotConfig.findOne({ bot: user._id });
+            if (botConf) {
+                botConf.stats = botConf.stats || {};
+                botConf.stats.totalPosts = (botConf.stats.totalPosts || 0) + 1;
+                botConf.stats.lastRunAt = new Date();
+                botConf.stats.lastSuccessAt = new Date();
+                botConf.stats.lastPostTitle = finalTitle;
+                botConf.stats.lastPostUrl = item.link || '';
+                botConf.stats.lastError = '';
+                await botConf.save().catch(() => {});
+            }
+        } catch (statErr) {
+            console.error('Bot stat save error:', statErr.message);
+        }
+
+        logActivity({
+            user: user._id,
+            username: user.username,
+            action: 'BOT_POST',
+            category: 'bot',
+            targetId: newPost._id,
+            targetType: 'Post',
+            details: {
+                title: finalTitle,
+                portal: portal.name,
+                channel: channel.name,
+                link: item.link
+            }
+        });
+
+        // --- REAL-TIME SPREAD & PERSISTENT NOTIFICATIONS ---
+        const populatedPost = await Post.findById(newPost._id)
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot')
+            .populate('portal', 'name avatar icon privacy members badges customBadge isVerified')
+            .exec();
+
+        const activeIo = io || globalIo;
+        if (activeIo && populatedPost) {
+            const sPortalId = portal._id.toString();
+            const sChannelId = channel._id.toString();
+
+            activeIo.to(`portal:${sPortalId}`).emit('post:created', populatedPost);
+            if (sChannelId) {
+                activeIo.to(`channel:${sChannelId}`).emit('post:created', populatedPost);
+            }
+            activeIo.emit('post:created', populatedPost);
+
+            activeIo.emit('global:portal_activity', {
+                portalId: sPortalId,
+                channelId: sChannelId,
+                postId: newPost._id.toString()
+            });
+        }
+
+        try {
+            const memberIds = portal.members.filter(m => m.toString() !== user._id.toString());
+            if (memberIds.length > 0) {
+                const notificationDocs = memberIds.map(userId => ({
+                    recipient: userId,
+                    sender: user._id,
+                    type: 'portal_post',
+                    portal: portal._id,
+                    channel: channel._id.toString(),
+                    post: newPost._id,
+                    read: false
+                }));
+                const Notification = (await import('../models/Notification.js')).default;
+                await Notification.insertMany(notificationDocs);
+            }
+        } catch (notifyErr) {
+            console.error(`⚠️ [${user.username}] Notification sync failed:`, notifyErr.message);
+        }
+
+        return populatedPost;
+
+    } catch (error) {
+        if (error.code === 11000) {
+            // Duplicate detected (Race condition handled)
+            return null;
+        }
+        console.error(`❌ [${user.username}] Failed publish:`, error.message);
+        return null;
     }
-    // 3. Search in description or content
-    const htmlContent = item.content || item.description || '';
-    const imgRegex = /<img[^>]+src=["']([^"']+)["']/i;
-    const match = htmlContent.match(imgRegex);
-    if (match && match[1]) {
-        return match[1];
-    }
-    return null;
 };
 
-// Initialize the master loop
+// Check all feeds for a bot and process items
+export const checkNewsForBot = async (botContext) => {
+    const { user, config, portal, channel, feeds, io } = botContext;
+    let deployedPost = null;
+
+    for (const url of feeds) {
+        try {
+            console.log(`📡 [${user.username}] Scanning: ${url}`);
+            const { feed, resolvedUrl } = await fetchFeedSafely(url);
+
+            if (resolvedUrl !== url && config && Array.isArray(config.feeds) && !config.feeds.includes(resolvedUrl)) {
+                config.feeds.push(resolvedUrl);
+                await config.save().catch(() => {});
+            }
+            
+            if (!feed.items || feed.items.length === 0) {
+                console.warn(`⚠️ [${user.username}] Feed is empty: ${url}`);
+                continue;
+            }
+
+            let itemsToProcess = feed.items;
+            if (user.username === 'MovieNewsBot') {
+                itemsToProcess = itemsToProcess.filter(isGlobalCinemaNews);
+                console.log(`🔍 [${user.username}] Filtered down to ${itemsToProcess.length} cinema items.`);
+            }
+
+            // Keyword filter if configured
+            if (config?.keywords && config.keywords.length > 0) {
+                const kw = config.keywords.map(k => k.toLowerCase().trim()).filter(Boolean);
+                itemsToProcess = itemsToProcess.filter(item => {
+                    const text = `${item.title || ''} ${item.contentSnippet || ''}`.toLowerCase();
+                    return kw.some(k => text.includes(k));
+                });
+            }
+
+            itemsToProcess = itemsToProcess.slice(0, 5).reverse();
+
+            for (const item of itemsToProcess) {
+                const res = await processItem(item, {
+                    user,
+                    config,
+                    portal,
+                    channel,
+                    io: io || globalIo
+                });
+                if (res) {
+                    deployedPost = res;
+                    break; // Process one fresh item per cycle to avoid flooding
+                }
+            }
+
+            if (deployedPost) break;
+
+        } catch (error) {
+            console.error(`⚠️ [${user.username}] Failed fetching feed (${url}):`, error.message);
+            if (config) {
+                config.stats = config.stats || {};
+                config.stats.lastRunAt = new Date();
+                config.stats.lastError = error.message;
+                await config.save().catch(() => {});
+            }
+        }
+    }
+
+    if (config) {
+        config.stats = config.stats || {};
+        config.stats.lastRunAt = new Date();
+        if (deployedPost) {
+            config.stats.lastError = '';
+        }
+        await config.save().catch(() => {});
+    }
+
+    return deployedPost;
+};
+
+// Manually trigger single bot run (Immediate Test & Share)
+export async function runSingleBot(botConfigIdOrBotId, ioInstance = null) {
+    let dConfig = await BotConfig.findById(botConfigIdOrBotId).populate('bot');
+    if (!dConfig) {
+        dConfig = await BotConfig.findOne({ bot: botConfigIdOrBotId }).populate('bot');
+    }
+    if (!dConfig || !dConfig.bot) {
+        throw new Error('Bot hesabı veya yapılandırması bulunamadı.');
+    }
+
+    // Resolve portal
+    let portal = null;
+    if (dConfig.defaultPortal) {
+        portal = await Portal.findById(dConfig.defaultPortal);
+    }
+    if (!portal && dConfig.bot.joinedPortals && dConfig.bot.joinedPortals.length > 0) {
+        portal = await Portal.findById(dConfig.bot.joinedPortals[0]);
+    }
+    if (!portal) {
+        throw new Error('Hedef portal bulunamadı. Lütfen bir hedef portal belirleyin.');
+    }
+
+    // Resolve channel
+    let channel = null;
+    const targetChannelStr = String(dConfig.defaultChannel || '').trim();
+    if (targetChannelStr) {
+        channel = portal.channels.find(c => c._id.toString() === targetChannelStr || c.name.toLowerCase() === targetChannelStr.toLowerCase());
+    }
+    if (!channel && portal.channels && portal.channels.length > 0) {
+        channel = portal.channels[0];
+    }
+    if (!channel) {
+        throw new Error('Hedef kanal bulunamadı. Portalda geçerli bir metin kanalı olmalıdır.');
+    }
+
+    const feeds = dConfig.feeds || [];
+    if (feeds.length === 0) {
+        throw new Error('Kayıtlı besleme (RSS / Web) linki yok. Lütfen en az bir besleme linki ekleyin.');
+    }
+
+    const createdPost = await checkNewsForBot({
+        user: dConfig.bot,
+        config: dConfig,
+        portal,
+        channel,
+        feeds,
+        io: ioInstance || globalIo
+    });
+
+    const refreshedConfig = await BotConfig.findById(dConfig._id);
+
+    return {
+        success: true,
+        createdPost,
+        stats: refreshedConfig?.stats || {},
+        message: createdPost 
+            ? `Harika! "${createdPost.author?.profile?.displayName || dConfig.bot.username}" botu yeni bir gönderiyi başarıyla paylaştı.` 
+            : 'Besleme kaynağındaki içerikler kontrol edildi; yeni paylaşılmamış bir içerik bulunamadı (akış zaten güncel).'
+    };
+}
+
+// Master loop for automatic background scraping
 export default async function startBotLoop(io) {
     globalIo = io;
     console.log('🤖 Starting Elite Multi-News Bot Service (Turkish)...');
@@ -332,147 +601,50 @@ export default async function startBotLoop(io) {
         console.log('✅ DB Connected, proceeding with bots startup...');
     }
 
-    // Ensure bot accounts are present
+    // Ensure system default bots exist
     await ensureBotAccountsExist();
 
     const runScrapeCycle = async () => {
         console.log(`🕒 [${new Date().toLocaleTimeString()}] Starting Bot Scrape Cycle...`);
 
         try {
-            // Fetch all bot configurations from database
             let botConfigs = await BotConfig.find().populate('bot');
 
-            // Ensure any hardcoded bot is present in the list
-            for (const config of BOT_CONFIGS) {
-                if (!botConfigs.some(bc => bc.bot && bc.bot.username === config.botUsername)) {
-                    try {
-                        const user = await User.findOne({ username: config.botUsername });
-                        if (user) {
-                            let portal = null;
-                            if (config.portalId) portal = await Portal.findById(config.portalId);
-                            if (!portal && config.portalName) portal = await Portal.findOne({ name: config.portalName });
-
-                            let channelId = 'general';
-                            if (portal && portal.channels && portal.channels.length > 0) {
-                                const matched = portal.channels.find(c => 
-                                    (config.channelId && c._id.toString() === config.channelId.toString()) ||
-                                    (config.channelName && c.name.toLowerCase() === config.channelName.toLowerCase())
-                                ) || portal.channels[0];
-                                if (matched) channelId = matched._id.toString();
-                            }
-
-                            const newConfig = await BotConfig.create({
-                                bot: user._id,
-                                defaultPortal: portal ? portal._id : null,
-                                defaultChannel: channelId,
-                                feeds: config.feeds || []
-                            });
-                            newConfig.bot = user;
-                            botConfigs.push(newConfig);
-                        }
-                    } catch (seedErr) {
-                        console.error(`Error auto-seeding BotConfig for "${config.botUsername}":`, seedErr.message);
-                    }
-                }
-            }
-
-            // Process each active bot
             for (const dConfig of botConfigs) {
                 try {
                     if (!dConfig.bot) continue;
-                    if (dConfig.bot.isBanned) {
-                        console.log(`🚫 Skipping banned bot "${dConfig.bot.username}"`);
-                        continue;
-                    }
+                    if (dConfig.bot.isBanned) continue;
+                    if (dConfig.isActive === false) continue; // Respect paused bots!
 
-                    // Feeds check (fallback to hardcoded BOT_CONFIGS if empty in DB)
-                    let feeds = dConfig.feeds;
-                    if (!feeds || feeds.length === 0) {
-                        const fallbackConfig = BOT_CONFIGS.find(b => b.botUsername === dConfig.bot.username);
-                        if (fallbackConfig && fallbackConfig.feeds && fallbackConfig.feeds.length > 0) {
-                            feeds = fallbackConfig.feeds;
-                            dConfig.feeds = feeds;
-                            await dConfig.save().catch(() => {});
-                        }
-                    }
-                    if (!feeds || feeds.length === 0) continue;
+                    const feeds = dConfig.feeds || [];
+                    if (feeds.length === 0) continue;
 
-                    // Resolve target portal
                     let portal = null;
                     if (dConfig.defaultPortal) {
                         portal = await Portal.findById(dConfig.defaultPortal);
                     }
-                    if (!portal) {
-                        const fallbackConfig = BOT_CONFIGS.find(b => b.botUsername === dConfig.bot.username);
-                        if (fallbackConfig) {
-                            if (fallbackConfig.portalId) portal = await Portal.findById(fallbackConfig.portalId);
-                            if (!portal && fallbackConfig.portalName) portal = await Portal.findOne({ name: fallbackConfig.portalName });
-                        }
-                    }
                     if (!portal && dConfig.bot.joinedPortals && dConfig.bot.joinedPortals.length > 0) {
                         portal = await Portal.findById(dConfig.bot.joinedPortals[0]);
                     }
+                    if (!portal) continue;
 
-                    if (!portal) {
-                        console.warn(`⚠️ Target portal not found for bot "${dConfig.bot.username}". Skipping.`);
-                        continue;
-                    }
-
-                    // Resolve target channel without EVER creating clone channels
                     let channel = null;
                     const targetChannelStr = String(dConfig.defaultChannel || '').trim();
-
-                    // 1. Exact ID match (channel ID never changes even when renamed!)
                     if (targetChannelStr) {
-                        channel = portal.channels.find(c => c._id.toString() === targetChannelStr);
+                        channel = portal.channels.find(c => c._id.toString() === targetChannelStr || c.name.toLowerCase() === targetChannelStr.toLowerCase());
                     }
-
-                    // 2. Exact or case-insensitive Name match
-                    if (!channel && targetChannelStr && targetChannelStr !== 'general') {
-                        channel = portal.channels.find(c => c.name.toLowerCase() === targetChannelStr.toLowerCase());
-                    }
-
-                    // 3. Fallback for renamed channels: check previous post history for this bot in this portal
-                    if (!channel) {
-                        try {
-                            const lastPost = await Post.findOne({ portal: portal._id, author: dConfig.bot._id }).sort({ createdAt: -1 });
-                            if (lastPost && lastPost.channel) {
-                                const lastChStr = lastPost.channel.toString();
-                                channel = portal.channels.find(c => 
-                                    c._id.toString() === lastChStr || 
-                                    c.name.toLowerCase() === lastChStr.toLowerCase()
-                                );
-                                if (channel) {
-                                    console.log(`🔄 [${dConfig.bot.username}] Channel was renamed. Resolved active channel "${channel.name}" (ID: ${channel._id}) from previous post history.`);
-                                    dConfig.defaultChannel = channel._id.toString();
-                                    await dConfig.save().catch(() => {});
-                                }
-                            }
-                        } catch (historyErr) {
-                            console.error(`Error resolving channel by history for "${dConfig.bot.username}":`, historyErr.message);
-                        }
-                    }
-
-                    // 4. Fallback to portal's primary / general channel if still not found
                     if (!channel && portal.channels && portal.channels.length > 0) {
-                        channel = portal.channels.find(c => c.name.toLowerCase() === 'general' || c.name.toLowerCase() === 'genel') || portal.channels[0];
-                        if (channel) {
-                            console.log(`ℹ️ [${dConfig.bot.username}] Defaulted to primary channel "${channel.name}" on portal "${portal.name}".`);
-                            dConfig.defaultChannel = channel._id.toString();
-                            await dConfig.save().catch(() => {});
-                        }
+                        channel = portal.channels[0];
                     }
-
-                    if (!channel) {
-                        console.warn(`⚠️ No channel available in portal "${portal.name}" for bot "${dConfig.bot.username}". Skipping.`);
-                        continue;
-                    }
+                    if (!channel) continue;
 
                     await checkNewsForBot({
                         user: dConfig.bot,
+                        config: dConfig,
                         portal,
                         channel,
-                        feeds
+                        feeds,
+                        io: globalIo
                     });
 
                 } catch (botErr) {
@@ -487,137 +659,3 @@ export default async function startBotLoop(io) {
     await runScrapeCycle();
     setInterval(runScrapeCycle, CHECK_INTERVAL_MS);
 }
-
-const checkNewsForBot = async (bot) => {
-    for (const url of bot.feeds) {
-        try {
-            console.log(`📡 [${bot.user.username}] Scanning: ${url}`);
-            const feed = await parser.parseURL(url);
-            
-            if (!feed.items || feed.items.length === 0) {
-                console.warn(`⚠️ [${bot.user.username}] Feed is empty or could not be parsed: ${url}`);
-                continue;
-            }
-
-            let itemsToProcess = feed.items;
-            if (bot.user.username === 'MovieNewsBot') {
-                itemsToProcess = itemsToProcess.filter(isGlobalCinemaNews);
-                console.log(`🔍 [${bot.user.username}] Filtered down to ${itemsToProcess.length} global cinema items from ${feed.items.length} total items.`);
-            }
-
-            console.log(`🔍 [${bot.user.username}] Found ${itemsToProcess.length} items to evaluate. Checking top 5...`);
-            itemsToProcess = itemsToProcess.slice(0, 5).reverse();
-
-            for (const item of itemsToProcess) {
-                await processItem(item, bot);
-            }
-        } catch (error) {
-            console.error(`⚠️ [${bot.user.username}] Failed fetching feed (${url}):`, error.message);
-        }
-    }
-};
-
-const processItem = async (item, bot) => {
-    const guid = item.guid || item.link;
-    if (!guid) return;
-
-    try {
-        // 1. Precise History Check
-        const isShared = await BotHistory.findOne({ guid, botName: bot.user.username });
-        if (isShared) return;
-
-        // 2. Fuzzy Deduplication (Title check within last 24h)
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const titleSnippet = item.title.substring(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const existingSimilarPost = await Post.findOne({
-            portal: bot.portal._id,
-            author: bot.user._id,
-            createdAt: { $gte: oneDayAgo },
-            content: { $regex: new RegExp(titleSnippet, 'i') }
-        });
-
-        if (existingSimilarPost) {
-            console.log(`🛡️ [${bot.user.username}] Fuzzy match triggered. Marking as shared.`);
-            await BotHistory.create({ guid, botName: bot.user.username });
-            return;
-        }
-
-        console.log(`🆕 [${bot.user.username}] Processing: ${item.title}`);
-        
-        // Translate Title & Description
-        const translatedTitle = await translateAndRefine(item.title);
-        let description = item.contentSnippet || item.content || '';
-        description = description.replace(/<[^>]+>/g, '').trim();
-        
-        if (description.length > 1000) description = description.substring(0, 1000) + '...';
-        
-        const translatedDesc = await translateAndRefine(description);
-
-        // URL is included in content — LinkPreview card will render it automatically
-        const formattedContent = `📢 **${translatedTitle}**\n\n${translatedDesc ? `📝 ${translatedDesc}\n\n` : ''}🔗 Tamamını Oku: ${item.link}`;
-
-        await BotHistory.create({ guid, botName: bot.user.username });
-
-        const newPost = new Post({
-            content: formattedContent,
-            author: bot.user._id,
-            portal: bot.portal._id,
-            channel: bot.channel._id.toString(),
-            createdAt: new Date()
-        });
-
-        await newPost.save();
-        console.log(`✅ [${bot.user.username}] Post Deployed: ${translatedTitle.substring(0, 30)}...`);
-
-        logActivity({
-            user: bot.user._id,
-            username: bot.user.username,
-            action: 'BOT_POST',
-            category: 'bot',
-            targetId: newPost._id,
-            targetType: 'Post',
-            details: {
-                title: translatedTitle,
-                portal: bot.portal.name,
-                channel: bot.channel.name,
-                link: item.link
-            }
-        });
-
-        // --- PERSISTENT NOTIFICATIONS & REAL-TIME SYNC ---
-        try {
-            const memberIds = bot.portal.members.filter(m => m.toString() !== bot.user._id.toString());
-            if (memberIds.length > 0) {
-                const notificationDocs = memberIds.map(userId => ({
-                    recipient: userId,
-                    sender: bot.user._id,
-                    type: 'portal_post',
-                    portal: bot.portal._id,
-                    channel: bot.channel._id.toString(),
-                    post: newPost._id,
-                    read: false
-                }));
-                const Notification = (await import('../models/Notification.js')).default;
-                await Notification.insertMany(notificationDocs);
-                
-                // Emit global activity signal for sidebar unread indicators
-                if (globalIo) {
-                    globalIo.emit('global:portal_activity', {
-                        portalId: bot.portal._id.toString(),
-                        channelId: bot.channel._id.toString(),
-                        postId: newPost._id.toString()
-                    });
-                }
-            }
-        } catch (notifyErr) {
-            console.error(`⚠️ [${bot.user.username}] Notification sync failed:`, notifyErr.message);
-        }
-
-    } catch (error) {
-        if (error.code === 11000) {
-            // Duplicate detected at the moment of creation (Race condition handled)
-            return;
-        }
-        console.error(`❌ [${bot.user.username}] Failed elite publish:`, error.message);
-    }
-};

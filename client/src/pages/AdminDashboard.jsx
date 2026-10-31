@@ -3717,6 +3717,7 @@ const AdminDashboard = () => {
     const [botFormOpen, setBotFormOpen] = useState(false);
     const [newBotData, setNewBotData] = useState({ username: '', email: '', password: '' });
     const [editingBot, setEditingBot] = useState(null);
+    const [runningBotId, setRunningBotId] = useState(null);
     const [botPostModalOpen, setBotPostModalOpen] = useState(false);
     const [botPostTarget, setBotPostTarget] = useState(null);
     const [botPostData, setBotPostData] = useState({ content: '', portalId: '', channel: 'general', mediaUrl: '', mediaType: 'image' });
@@ -4455,19 +4456,49 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleRunBot = async (botId) => {
+        if (!checkActionPerm('bots', 'full', 'Bot çalıştırma')) return;
+        setRunningBotId(botId);
+        try {
+            const { data } = await axios.post(`/api/admin/bots/${botId}/run`);
+            alert(data.message || 'Bot başarıyla çalıştırıldı.');
+            fetchBots();
+        } catch (err) {
+            alert('Bot çalıştırma başarısız: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setRunningBotId(null);
+        }
+    };
+
+    const handleToggleBot = async (botId) => {
+        if (!checkActionPerm('bots', 'full', 'Bot durumu değiştirme')) return;
+        try {
+            const { data } = await axios.put(`/api/admin/bots/${botId}/toggle`);
+            alert(data.message || 'Bot durumu güncellendi.');
+            fetchBots();
+        } catch (err) {
+            alert('İşlem başarısız: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
     const handleUpdateBotProfile = async (e) => {
         e.preventDefault();
         if (!checkActionPerm('bots', 'full', 'Bot profili ve ayarları güncelleme')) return;
         if (!editingBot) return;
         try {
             await axios.put(`/api/admin/bots/${editingBot._id}/profile`, {
-                displayName: editingBot.profile.displayName,
-                bio: editingBot.profile.bio,
-                avatar: editingBot.profile.avatar,
-                coverImage: editingBot.profile.coverImage,
-                feeds: editingBot.config.feeds,
-                defaultPortal: editingBot.config.defaultPortal?._id || editingBot.config.defaultPortal || null,
-                defaultChannel: editingBot.config.defaultChannel
+                displayName: editingBot.profile?.displayName,
+                bio: editingBot.profile?.bio,
+                avatar: editingBot.profile?.avatar,
+                coverImage: editingBot.profile?.coverImage,
+                feeds: editingBot.config?.feeds,
+                defaultPortal: editingBot.config?.defaultPortal?._id || editingBot.config?.defaultPortal || null,
+                defaultChannel: editingBot.config?.defaultChannel,
+                intervalMinutes: editingBot.config?.intervalMinutes || 15,
+                isActive: editingBot.config?.isActive !== false,
+                autoTranslate: editingBot.config?.autoTranslate !== false,
+                postPrefix: editingBot.config?.postPrefix || '📢',
+                includeSourceLink: editingBot.config?.includeSourceLink !== false
             });
             setEditingBot(null);
             fetchBots();
@@ -6910,6 +6941,79 @@ const AdminDashboard = () => {
                                             </div>
 
                                             <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                                                <h3 style={{ fontSize: '15px', color: '#fff', marginBottom: '12px' }}>⏱️ Çalışma ve Paylaşım Tercihleri</h3>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '14px' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Çalışma Aralığı</label>
+                                                        <select
+                                                            className="badge-select"
+                                                            value={editingBot.config?.intervalMinutes || 15}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, intervalMinutes: Number(e.target.value) }
+                                                            })}
+                                                            style={{ width: '100%', background: '#0a0a0a', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}
+                                                        >
+                                                            <option value={5}>5 dakikada bir</option>
+                                                            <option value={10}>10 dakikada bir</option>
+                                                            <option value={15}>15 dakikada bir (Standart)</option>
+                                                            <option value={30}>30 dakikada bir</option>
+                                                            <option value={60}>1 saatte bir</option>
+                                                            <option value={120}>2 saatte bir</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Gönderi Öneki (Emoji)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={editingBot.config?.postPrefix || '📢'}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, postPrefix: e.target.value }
+                                                            })}
+                                                            className="reason-input-modern"
+                                                            style={{ height: '40px', padding: '10px' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', marginBottom: '14px' }}>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editingBot.config?.isActive !== false}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, isActive: e.target.checked }
+                                                            })}
+                                                        />
+                                                        <span>Bot Aktif (Zamanlanmış paylaşımlar çalışsın)</span>
+                                                    </label>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editingBot.config?.autoTranslate !== false}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, autoTranslate: e.target.checked }
+                                                            })}
+                                                        />
+                                                        <span>Yabancı haberleri otomatik Türkçe'ye çevir</span>
+                                                    </label>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editingBot.config?.includeSourceLink !== false}
+                                                            onChange={(e) => setEditingBot({
+                                                                ...editingBot,
+                                                                config: { ...editingBot.config, includeSourceLink: e.target.checked }
+                                                            })}
+                                                        />
+                                                        <span>Gönderi altına orijinal kaynak linkini ekle</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
                                                 <h3 style={{ fontSize: '15px', color: '#fff', marginBottom: '12px' }}>📡 Dış Kaynak (API/RSS Feed) Bağlantıları</h3>
                                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                                                     <input
@@ -7100,80 +7204,150 @@ const AdminDashboard = () => {
                         {!loading && bots.length === 0 ? (
                             <p className="no-data">Sistemde kayıtlı bot hesap bulunamadı.</p>
                         ) : (
-                            <div className="requests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                            <div className="requests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
                                 {bots
                                     .filter(bot => bot.username.toLowerCase().includes(searchTermBot.toLowerCase()))
-                                    .map(bot => (
-                                        <div key={bot._id} className="request-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', padding: '20px', borderRadius: '12px' }}>
-                                            <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                                                    <img
-                                                        src={bot.profile?.avatar || '/system/deleted-user.png'}
-                                                        alt={bot.username}
-                                                        style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }}
-                                                    />
-                                                    <div>
-                                                        <h3 style={{ fontSize: '16px', color: '#fff', margin: 0 }}>{bot.profile?.displayName || bot.username}</h3>
-                                                        <span style={{ fontSize: '13px', color: '#888' }}>@{bot.username}</span>
+                                    .map(bot => {
+                                        const isRunning = runningBotId === bot._id;
+                                        const isActive = bot.config?.isActive !== false;
+                                        const hasError = Boolean(bot.config?.stats?.lastError);
+                                        const creatorInfo = bot.config?.creator;
+
+                                        return (
+                                            <div key={bot._id} className="request-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', gap: '16px' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <img
+                                                                src={getImageUrl(bot.profile?.avatar) || '/system/deleted-user.png'}
+                                                                alt={bot.username}
+                                                                style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }}
+                                                            />
+                                                            <div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    <h3 style={{ fontSize: '16px', color: '#fff', margin: 0 }}>{bot.profile?.displayName || bot.username}</h3>
+                                                                    <span style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', padding: '1px 5px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 }}>BOT</span>
+                                                                </div>
+                                                                <span style={{ fontSize: '13px', color: '#888' }}>@{bot.username}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Status Pill */}
+                                                        <div>
+                                                            {hasError ? (
+                                                                <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }}></span> Hata
+                                                                </span>
+                                                            ) : !isActive ? (
+                                                                <span style={{ background: 'rgba(234,179,8,0.15)', color: '#facc15', border: '1px solid rgba(234,179,8,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308' }}></span> Duraklatıldı
+                                                                </span>
+                                                            ) : (
+                                                                <span style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }}></span> Aktif
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Şecere & Bilgi Listesi */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '12px', color: '#cbd5e1', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#888' }}>📜 Şecere / Sahip:</span>
+                                                            <strong style={{ color: '#38bdf8' }}>
+                                                                {creatorInfo ? `@${creatorInfo.username || 'Kullanıcı'}` : 'Sistem / Global Admin'}
+                                                            </strong>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#888' }}>🌐 Hedef Portal:</span>
+                                                            <strong style={{ color: '#a78bfa' }}>{bot.config?.defaultPortal?.name || 'Genel / Global'}</strong>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#888' }}>🎯 Hedef Kanal:</span>
+                                                            <strong>#{bot.config?.defaultChannel || 'general'}</strong>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#888' }}>⏱️ Kontrol Aralığı:</span>
+                                                            <strong>Her {bot.config?.intervalMinutes || 15} dakikada bir</strong>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#888' }}>📊 Toplam Paylaşım:</span>
+                                                            <strong style={{ color: '#4ade80' }}>{bot.config?.stats?.totalPosts || 0} gönderi</strong>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#888' }}>🕒 Son Çalışma:</span>
+                                                            <span style={{ color: '#cbd5e1' }}>
+                                                                {bot.config?.stats?.lastRunAt ? new Date(bot.config.stats.lastRunAt).toLocaleString('tr-TR') : 'Henüz çalışmadı'}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ marginTop: '4px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '6px' }}>
+                                                            <span style={{ color: '#888', display: 'block', marginBottom: '2px' }}>📡 RSS/Web Kaynakları:</span>
+                                                            <span style={{ color: '#aaa', wordBreak: 'break-all', fontSize: '11px' }}>
+                                                                {(bot.config?.feeds || []).join(', ') || 'Kaynak yok'}
+                                                            </span>
+                                                        </div>
+                                                        {hasError && (
+                                                            <div style={{ marginTop: '4px', padding: '6px 8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '4px', color: '#f87171', fontSize: '11px' }}>
+                                                                <strong>⚠️ Son Hata:</strong> {bot.config.stats.lastError}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: '#ccc', marginBottom: '16px' }}>
-                                                    <div>
-                                                        <span style={{ color: '#666' }}>E-posta: </span>
-                                                        <strong>{bot.email}</strong>
-                                                    </div>
-                                                    <div>
-                                                        <span style={{ color: '#666' }}>Biyografi: </span>
-                                                        <span style={{ color: '#aaa' }}>{bot.profile?.bio || 'Biyografi belirtilmemiş.'}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span style={{ color: '#666' }}>Hedef Portal: </span>
-                                                        <strong style={{ color: '#3b82f6' }}>{bot.config?.defaultPortal?.name || 'Pasif'}</strong>
-                                                    </div>
-                                                    <div>
-                                                        <span style={{ color: '#666' }}>Hedef Kanal: </span>
-                                                        <strong>{bot.config?.defaultChannel || 'general'}</strong>
-                                                    </div>
-                                                    <div>
-                                                        <span style={{ color: '#666' }}>Kayıtlı Feed: </span>
-                                                        <strong>{(bot.config?.feeds || []).length} Adet</strong>
-                                                    </div>
+                                                <div style={{ display: 'flex', gap: '6px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="approve-btn"
+                                                        style={{ flex: 1, minWidth: '100px', padding: '8px 10px', fontSize: '11px', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                                        disabled={isRunning}
+                                                        onClick={() => handleRunBot(bot._id)}
+                                                        title="RSS beslemesini hemen tara ve yeni içerik paylaş"
+                                                    >
+                                                        {isRunning ? 'Çalışıyor...' : '⚡ Şimdi Çalıştır'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        style={{ padding: '8px 10px', fontSize: '11px', background: 'rgba(255,255,255,0.05)', color: isActive ? '#facc15' : '#4ade80', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer' }}
+                                                        onClick={() => handleToggleBot(bot._id)}
+                                                        title={isActive ? 'Botu Duraklat' : 'Botu Başlat'}
+                                                    >
+                                                        {isActive ? '⏸ Duraklat' : '▶ Başlat'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="approve-btn"
+                                                        style={{ padding: '8px 10px', fontSize: '11px', background: '#3b82f6' }}
+                                                        onClick={() => {
+                                                            setEditingBot(JSON.parse(JSON.stringify(bot)));
+                                                            setFeedInput('');
+                                                        }}
+                                                    >
+                                                        📝 Düzenle
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="approve-btn"
+                                                        style={{ padding: '8px 10px', fontSize: '11px', background: '#10b981' }}
+                                                        onClick={() => {
+                                                            setBotPostTarget(bot);
+                                                            setBotPostData({ content: '', portalId: bot.config?.defaultPortal?._id || '', channel: bot.config?.defaultChannel || 'general', mediaUrl: '', mediaType: 'image' });
+                                                            setBotPostModalOpen(true);
+                                                        }}
+                                                    >
+                                                        🚀 Paylaş
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="reject-btn"
+                                                        style={{ padding: '8px 10px', fontSize: '11px' }}
+                                                        onClick={() => handleDeleteBot(bot._id)}
+                                                    >
+                                                        🗑
+                                                    </button>
                                                 </div>
                                             </div>
-
-                                            <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
-                                                <button
-                                                    className="approve-btn"
-                                                    style={{ flex: 1, padding: '8px 12px', fontSize: '12px', background: '#3b82f6' }}
-                                                    onClick={() => {
-                                                        setEditingBot(JSON.parse(JSON.stringify(bot)));
-                                                        setFeedInput('');
-                                                    }}
-                                                >
-                                                    📝 Düzenle
-                                                </button>
-                                                <button
-                                                    className="approve-btn"
-                                                    style={{ flex: 1, padding: '8px 12px', fontSize: '12px', background: '#10b981' }}
-                                                    onClick={() => {
-                                                        setBotPostTarget(bot);
-                                                        setBotPostData({ content: '', portalId: bot.config?.defaultPortal?._id || '', channel: bot.config?.defaultChannel || 'general', mediaUrl: '', mediaType: 'image' });
-                                                        setBotPostModalOpen(true);
-                                                    }}
-                                                >
-                                                    🚀 Paylaş
-                                                </button>
-                                                <button
-                                                    className="reject-btn"
-                                                    style={{ padding: '8px 12px', fontSize: '12px' }}
-                                                    onClick={() => handleDeleteBot(bot._id)}
-                                                >
-                                                    🗑
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                             </div>
                         )}
                     </div>

@@ -720,6 +720,7 @@ router.get('/search', protect, async (req, res) => {
         const users = await User.find({
             _id: { $ne: req.user._id }, // Exclude current user
             isDeleted: { $ne: true }, // Exclude deleted users
+            isBot: { $ne: true }, // Exclude bot accounts from regular user search
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
             $or: orConditions,
         })

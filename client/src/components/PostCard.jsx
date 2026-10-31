@@ -17,7 +17,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import './PostCard.css';
 import './MessageBubble.css';
 import LinkPreview from './LinkPreview';
-import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2, Archive, Copy, Check, Film } from 'lucide-react';
+import { Youtube, Pin, MoreHorizontal, Bookmark, Download, Send, PinOff, Trash2, Flag, Quote, Heart, MessageCircle, Share2, Eye, Reply, Link as LinkIcon, Globe, Maximize2, Archive, Copy, Check, Film, Bot } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import QuotePortalModal from './QuotePortalModal';
 import QuotedPost from './QuotedPost';
@@ -619,6 +619,26 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                 </span>
                             )}
                             <UserBadges user={author} size={16} />
+                            {author.isBot && (
+                                <span className="bot-tag-pill" style={{
+                                    marginLeft: '4px',
+                                    padding: '1px 6px',
+                                    fontSize: '10px',
+                                    fontWeight: '700',
+                                    borderRadius: '4px',
+                                    background: 'rgba(99, 102, 241, 0.2)',
+                                    color: '#818cf8',
+                                    border: '1px solid rgba(99, 102, 241, 0.4)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    letterSpacing: '0.04em',
+                                    verticalAlign: 'middle',
+                                    lineHeight: '1.2'
+                                }} title="Otomatik Bot Hesabı">
+                                    <Bot size={11} strokeWidth={2.5} /> BOT
+                                </span>
+                            )}
                             <span className="author-username">@{author.username}</span>
                         </Link>
                         <span className="post-time">· {formatDate(post.createdAt)}</span>

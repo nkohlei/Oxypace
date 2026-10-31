@@ -368,7 +368,7 @@ router.post(
             const populatedPost = await Post.findById(post._id)
                 .populate({
                     path: 'author',
-                    select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted'
+                    select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot'
                 })
                 .populate('portal')
                 .populate({
@@ -380,7 +380,7 @@ router.post(
                     populate: [
                         { 
                             path: 'author', 
-                            select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' 
+                            select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' 
                         },
                         { 
                             path: 'portal', 
@@ -391,7 +391,7 @@ router.post(
                             populate: [
                                 { 
                                     path: 'author', 
-                                    select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' 
+                                    select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' 
                                 },
                                 { 
                                     path: 'portal', 
@@ -643,12 +643,12 @@ router.get('/', optionalProtect, async (req, res) => {
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers badges customBadge isVerified' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers badges customBadge isVerified' }
                         ]
                     }
@@ -752,7 +752,7 @@ router.get('/bot-feed', optionalProtect, async (req, res) => {
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                 ]
             })
@@ -812,17 +812,17 @@ router.get('/archived', protect, async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted isBot')
             .populate('portal', 'name avatar channels privacy badges customBadge isVerified')
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                         ]
                     }
@@ -899,7 +899,7 @@ router.put('/:id/unarchive', protect, mongoIdValidation('id'), async (req, res) 
 router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
-            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isShadowbanned isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isShadowbanned isDeleted isBot')
             .populate('portal', 'name avatar privacy members blockedUsers allowedUsers badges customBadge isVerified')
             .populate({
                 path: 'promotedPortal',
@@ -908,12 +908,12 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers badges customBadge isVerified' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers badges customBadge isVerified' }
                         ]
                     }
@@ -1084,17 +1084,17 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted')
+            .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isDeleted isBot')
             .populate('portal', 'name avatar channels privacy badges customBadge isVerified') // Include privacy for secondary checks if needed
             .populate({
                 path: 'quotedPost',
                 populate: [
-                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                    { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                     { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' },
                     {
                         path: 'quotedPost',
                         populate: [
-                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted' },
+                            { path: 'author', select: 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted isBot' },
                             { path: 'portal', select: 'name avatar privacy members blockedUsers allowedUsers' }
                         ]
                     }
