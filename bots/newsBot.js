@@ -550,8 +550,8 @@ export const processItem = async (item, { user, config, portal, channel, io }) =
             author: user._id,
             portal: portal._id,
             channel: channel._id.toString(),
-            mediaType: postImage ? 'image' : 'none',
-            media: postImage || '',
+            mediaType: 'none',
+            media: '',
             isProcessing: false,
             createdAt: new Date()
         });

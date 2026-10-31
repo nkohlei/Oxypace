@@ -292,13 +292,12 @@ const LinkPreview = ({ url, postId }) => {
                         <img
                             src={data.image}
                             alt={data.title}
-                            className="link-preview-image"
-                            onError={(e) => e.target.style.display = 'none'}
+                            className="link-preview-image" referrerPolicy="no-referrer" onError={(e) => { e.target.style.display = 'none'; }}
                         />
                     </div>
                 )}
                 <div className="link-preview-text">
-                    <span className="link-preview-site">{data.siteName || domain}</span>
+                    <span className="link-preview-site">{data.siteName || (data.url ? new URL(data.url).hostname.replace("www.", "") : "")}</span>
                     <h4 className="link-preview-title">{data.title}</h4>
                     {data.description && (
                         <p className="link-preview-description">{data.description}</p>

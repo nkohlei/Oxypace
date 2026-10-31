@@ -1,6 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import ogs from 'open-graph-scraper-lite';
+import * as cheerio from 'cheerio';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
 import { validateSsrfUrl } from '../utils/security.js';
@@ -204,89 +205,116 @@ async function fetchGenericPreview(originalUrl) {
         }
 
         const { data: html } = await axios.get(originalUrl, {
-            timeout: 15000,
+            timeout: 12000,
             maxRedirects: 5,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml',
-                'Accept-Language': 'en-US,en;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
             },
-            // Only accept text responses (don't download binary files)
             responseType: 'text',
             validateStatus: (status) => status < 400,
         });
 
         if (!html || typeof html !== 'string') return null;
 
-        // Limit HTML size to prevent memory issues (increased to 250KB to include complete head metadata)
-        const trimmedHtml = html.substring(0, 250000);
-
-        const { result } = await ogs({ html: trimmedHtml });
-
         const hostname = new URL(originalUrl).hostname.replace('www.', '');
-        
-        let imageUrl = '';
-        if (result?.ogImage) {
-            if (Array.isArray(result.ogImage) && result.ogImage.length > 0) {
-                imageUrl = result.ogImage[0]?.url || result.ogImage[0] || '';
-            } else if (typeof result.ogImage === 'object') {
-                imageUrl = result.ogImage.url || '';
-            } else if (typeof result.ogImage === 'string') {
-                imageUrl = result.ogImage;
+
+        // 1. Cheerio primary robust HTML parsing
+        const $ = cheerio.load(html);
+
+        let title = $('meta[property="og:title"]').attr('content') ||
+                    $('meta[name="twitter:title"]').attr('content') ||
+                    $('meta[property="twitter:title"]').attr('content') ||
+                    $('title').text() ||
+                    hostname;
+
+        let description = $('meta[property="og:description"]').attr('content') ||
+                          $('meta[name="twitter:description"]').attr('content') ||
+                          $('meta[property="twitter:description"]').attr('content') ||
+                          $('meta[name="description"]').attr('content') ||
+                          '';
+
+        let image = $('meta[property="og:image:secure_url"]').attr('content') ||
+                    $('meta[property="og:image"]').attr('content') ||
+                    $('meta[name="twitter:image:src"]').attr('content') ||
+                    $('meta[name="twitter:image"]').attr('content') ||
+                    $('meta[property="twitter:image"]').attr('content') ||
+                    $('link[rel="image_src"]').attr('href') ||
+                    '';
+
+        let siteName = $('meta[property="og:site_name"]').attr('content') || hostname;
+
+        let favicon = $('link[rel="icon"]').attr('href') ||
+                      $('link[rel="shortcut icon"]').attr('href') ||
+                      $('link[rel="apple-touch-icon"]').attr('href') ||
+                      '/favicon.ico';
+
+        // 2. Safe OGS enhancement (wrapped so JSON-LD parse errors never crash extraction)
+        try {
+            const trimmedHtml = html.substring(0, 250000);
+            const ogsRes = await ogs({ html: trimmedHtml });
+            if (ogsRes && ogsRes.result) {
+                const r = ogsRes.result;
+                if ((!title || title === hostname) && (r.ogTitle || r.twitterTitle)) {
+                    title = r.ogTitle || r.twitterTitle;
+                }
+                if (!description && (r.ogDescription || r.twitterDescription)) {
+                    description = r.ogDescription || r.twitterDescription;
+                }
+                if (!image && r.ogImage) {
+                    if (Array.isArray(r.ogImage) && r.ogImage.length > 0) {
+                        image = r.ogImage[0]?.url || r.ogImage[0] || '';
+                    } else if (typeof r.ogImage === 'object') {
+                        image = r.ogImage.url || '';
+                    } else if (typeof r.ogImage === 'string') {
+                        image = r.ogImage;
+                    }
+                }
+                if ((!siteName || siteName === hostname) && r.ogSiteName) {
+                    siteName = r.ogSiteName;
+                }
+                if (!favicon && r.favicon) {
+                    favicon = r.favicon;
+                }
+            }
+        } catch (_) {
+            // OGS parser issue ignored; Cheerio already extracted the data
+        }
+
+        // 3. Fallback: first article/content image if still missing
+        if (!image) {
+            const articleImg = $('article img, .post-content img, .entry-content img, main img').first().attr('src');
+            if (articleImg && !articleImg.includes('1x1') && !articleImg.includes('spacer') && !articleImg.includes('pixel')) {
+                image = articleImg;
             }
         }
 
-        if (!imageUrl && result?.twitterImage) {
-            if (Array.isArray(result.twitterImage) && result.twitterImage.length > 0) {
-                imageUrl = result.twitterImage[0]?.url || result.twitterImage[0] || '';
-            } else if (typeof result.twitterImage === 'object') {
-                imageUrl = result.twitterImage.url || '';
-            } else if (typeof result.twitterImage === 'string') {
-                imageUrl = result.twitterImage;
-            }
-        }
-
-        // Regex fallback on full HTML if ogs parsing did not find any image
-        if (!imageUrl) {
-            const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || 
-                                html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-            if (ogImageMatch && ogImageMatch[1]) {
-                imageUrl = ogImageMatch[1];
-            }
-        }
-        if (!imageUrl) {
-            const twitterImageMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
-                                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
-            if (twitterImageMatch && twitterImageMatch[1]) {
-                imageUrl = twitterImageMatch[1];
-            }
-        }
-
-        // Resolve relative image URLs for external links
-        if (imageUrl && !imageUrl.startsWith('http')) {
+        // 4. Resolve relative URLs
+        if (image && !image.startsWith('http')) {
             try {
-                const base = new URL(originalUrl);
-                imageUrl = new URL(imageUrl, base.origin).href;
-            } catch (e) {
-                // Keep as is if parsing fails
-            }
+                image = new URL(image, originalUrl).href;
+            } catch (_) {}
+        }
+        if (favicon && !favicon.startsWith('http')) {
+            try {
+                favicon = new URL(favicon, originalUrl).href;
+            } catch (_) {}
         }
 
         return {
-            title: result?.ogTitle || result?.twitterTitle || result?.dcTitle || hostname,
-            description: result?.ogDescription || result?.twitterDescription || '',
-            image: imageUrl,
+            title: (title || hostname).trim(),
+            description: (description || '').trim(),
+            image: (image || '').trim(),
             url: originalUrl,
-            siteName: result?.ogSiteName || hostname,
-            favicon: result?.favicon || '',
+            siteName: (siteName || hostname).trim(),
+            favicon: (favicon || '').trim(),
         };
     } catch (err) {
         console.error('Generic preview error:', err.message);
         return null;
     }
 }
-
-
 
 router.get('/', async (req, res) => {
     const originalUrl = req.query.url;
@@ -359,65 +387,13 @@ router.get('/', async (req, res) => {
         const host = req.get('host');
         const baseUrl = `${protocol}://${host}`;
 
-        // Check if this preview belongs to a bot's post
-        let isBotPost = false;
-        const postId = req.query.postId;
-        if (postId && mongoose.Types.ObjectId.isValid(postId)) {
-            try {
-                const post = await Post.findById(postId).populate('author');
-                if (post && post.author && post.author.isBot) {
-                    isBotPost = true;
-                }
-            } catch (err) {
-                console.error('[Preview] Failed to check bot post status:', err.message);
-            }
-        }
-
-        if (isBotPost && previewData && previewData.image && !previewData.image.includes('r2.dev')) {
-            console.log(`[Preview] Bot post link preview detected. Compressing image: ${previewData.image}`);
-            try {
-                const imgResponse = await axios.get(previewData.image, { responseType: 'arraybuffer', timeout: 15000 });
-                const buffer = Buffer.from(imgResponse.data);
-                
-                const compressedBuffer = await sharp(buffer)
-                    .resize({ width: 400, withoutEnlargement: true })
-                    .webp({ quality: 50 })
-                    .toBuffer();
-                
-                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-                const key = `previews/bot-link-${postId}-${uniqueSuffix}.webp`;
-                const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-                
-                const { PutObjectCommand } = await import('@aws-sdk/client-s3');
-                const r2 = (await import('../config/r2.js')).default;
-                
-                await r2.send(new PutObjectCommand({
-                    Bucket: bucketName,
-                    Key: key,
-                    ContentType: 'image/webp',
-                    Body: compressedBuffer,
-                }));
-                
-                const r2Url = ensureFullUrl(key, baseUrl);
-                console.log(`[Preview] Bot preview image compressed and uploaded: ${r2Url}`);
-                previewData.image = r2Url;
-            } catch (err) {
-                console.error('[Preview] Failed to compress bot preview image:', err.message);
-            }
-        }
-
         // Final Safety Check: Force Proxy for ANY R2 URL (Internal or Generic)
-        if (previewData && previewData.image && previewData.image.includes('r2.dev')) {
-            // If it's already a full R2 URL, proxy it
-            if (previewData.image.includes(R2_DOMAIN)) {
-                previewData.image = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.image)}`;
-            }
+        if (previewData && previewData.image && previewData.image.includes(R2_DOMAIN) && !previewData.image.includes('/api/preview/proxy-image')) {
+            previewData.image = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.image)}`;
         }
         
-        if (previewData && previewData.avatar && previewData.avatar.includes('r2.dev')) {
-            if (previewData.avatar.includes(R2_DOMAIN)) {
-                previewData.avatar = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.avatar)}`;
-            }
+        if (previewData && previewData.avatar && previewData.avatar.includes(R2_DOMAIN) && !previewData.avatar.includes('/api/preview/proxy-image')) {
+            previewData.avatar = `${baseUrl}/api/preview/proxy-image?url=${encodeURIComponent(previewData.avatar)}`;
         }
 
         // Cache it
