@@ -3146,5 +3146,23 @@ router.post('/users/send-update-prompt', protect, requirePermission('canManageUs
     }
 });
 
+
+// @route   POST /api/admin/bots/discover-feed
+// @desc    Auto-discover RSS feed from a website URL
+// @access  Private/Admin
+router.post('/bots/discover-feed', protect, requirePermission('canManageBots'), async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url || !url.trim()) {
+            return res.status(400).json({ message: 'Lütfen bir web sitesi veya feed bağlantısı girin.' });
+        }
+        const { discoverRssFeed } = await import('../bots/newsBot.js');
+        const result = await discoverRssFeed(url);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message || 'RSS beslemesi bulunamadı.' });
+    }
+});
+
 export default router;
 

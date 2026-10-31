@@ -295,8 +295,11 @@ const Portal = () => {
             const newPostPortalId = newPost.portal?._id || newPost.portal;
             const newPostChannelId = newPost.channel?._id || newPost.channel;
             const isTargetPortal = String(newPostPortalId) === String(id);
+            const isOnlyChannel = portal?.channels?.length === 1;
             const isTargetChannel = String(newPostChannelId) === String(currentChannel) || 
-                                    (String(newPostChannelId || 'general') === String(currentChannel || 'general'));
+                                    (String(newPostChannelId || 'general') === String(currentChannel || 'general')) ||
+                                    isOnlyChannel ||
+                                    (activeChannelObj && (String(newPostChannelId) === String(activeChannelObj.name) || String(newPostChannelId) === String(activeChannelObj._id)));
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');

@@ -127,6 +127,38 @@ const PortalSettingsModal = ({
     const [editingBot, setEditingBot] = useState(null);
     const [runningBotId, setRunningBotId] = useState(null);
     const [testRunResult, setTestRunResult] = useState(null);
+    const [discoveringFeed, setDiscoveringFeed] = useState(false);
+
+    const handleDiscoverFeed = async (inputUrl, isEdit = false) => {
+        if (!inputUrl || !inputUrl.trim()) {
+            return alert('Lütfen önce bir web sitesi veya feed bağlantısı girin (Örn: shiftdelete.net).');
+        }
+        setDiscoveringFeed(true);
+        try {
+            const { data } = await axios.post(`/api/portals/${portal._id}/bots/discover-feed`, {
+                url: inputUrl.trim()
+            });
+            if (data.success && data.feedUrl) {
+                if (isEdit && editingBot) {
+                    setEditingBot({
+                        ...editingBot,
+                        config: { ...editingBot.config, feeds: [data.feedUrl] }
+                    });
+                } else {
+                    setNewBotData(prev => ({
+                        ...prev,
+                        feedUrl: data.feedUrl,
+                        name: prev.name || data.title || ''
+                    }));
+                }
+                alert(`✓ RSS akışı otomatik olarak bulundu ve eklendi!\n\nBesleme: ${data.feedUrl}\nBaşlık: ${data.title || 'Site Beslemesi'}`);
+            }
+        } catch (err) {
+            alert(err.response?.data?.message || err.message || 'RSS beslemesi otomatik olarak bulunamadı.');
+        } finally {
+            setDiscoveringFeed(false);
+        }
+    };
     const [newBotData, setNewBotData] = useState({
         name: '',
         bio: '',
@@ -2361,18 +2393,46 @@ const PortalSettingsModal = ({
                                             </div>
 
                                             <div>
-                                                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Hedef Web Sitesi RSS / Akış Bağlantısı *</label>
-                                                <input
-                                                    type="url"
-                                                    className="form-input"
-                                                    placeholder="Örn: https://techcrunch.com/feed/"
-                                                    value={newBotData.feedUrl}
-                                                    onChange={(e) => setNewBotData({ ...newBotData, feedUrl: e.target.value })}
-                                                    required
-                                                    style={{ width: '100%' }}
-                                                />
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                    <label style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Hedef Web Sitesi veya RSS Bağlantısı *</label>
+                                                    <span style={{ fontSize: '11px', color: '#38bdf8' }}>✨ Doğrudan site linki de girebilirsiniz</span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input"
+                                                        placeholder="Örn: techcrunch.com veya https://shiftdelete.net/"
+                                                        value={newBotData.feedUrl}
+                                                        onChange={(e) => setNewBotData({ ...newBotData, feedUrl: e.target.value })}
+                                                        required
+                                                        style={{ flex: 1 }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        disabled={discoveringFeed}
+                                                        onClick={() => handleDiscoverFeed(newBotData.feedUrl, false)}
+                                                        style={{
+                                                            padding: '0 14px',
+                                                            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            cursor: discoveringFeed ? 'not-allowed' : 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: 600,
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                        title="Site adresini girip bu butona basarak RSS akışını otomatik bulun"
+                                                    >
+                                                        {discoveringFeed ? <RefreshCw size={13} className="spin" /> : <Search size={13} />}
+                                                        {discoveringFeed ? 'Aranıyor...' : 'Otomatik Bul'}
+                                                    </button>
+                                                </div>
                                                 <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                                                    TechCrunch, IGN, Collider, BBC, ShiftDelete gibi sitelerin RSS linkini yapıştırabilirsiniz.
+                                                    Web sitesi linkini yapıştırıp 'Otomatik Bul' butonuna tıklayarak RSS beslemesini saniyeler içinde çıkarabilirsiniz.
                                                 </span>
                                             </div>
 
@@ -2510,16 +2570,40 @@ const PortalSettingsModal = ({
 
                                             <div>
                                                 <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Hedef RSS / Site Bağlantısı</label>
-                                                <input
-                                                    type="url"
-                                                    className="form-input"
-                                                    value={editingBot.config?.feeds?.[0] || ''}
-                                                    onChange={(e) => setEditingBot({
-                                                        ...editingBot,
-                                                        config: { ...editingBot.config, feeds: [e.target.value] }
-                                                    })}
-                                                    style={{ width: '100%' }}
-                                                />
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input"
+                                                        value={editingBot.config?.feeds?.[0] || ''}
+                                                        onChange={(e) => setEditingBot({
+                                                            ...editingBot,
+                                                            config: { ...editingBot.config, feeds: [e.target.value] }
+                                                        })}
+                                                        style={{ flex: 1 }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        disabled={discoveringFeed}
+                                                        onClick={() => handleDiscoverFeed(editingBot.config?.feeds?.[0] || '', true)}
+                                                        style={{
+                                                            padding: '0 14px',
+                                                            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            cursor: discoveringFeed ? 'not-allowed' : 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: 600,
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        {discoveringFeed ? <RefreshCw size={13} className="spin" /> : <Search size={13} />}
+                                                        {discoveringFeed ? 'Aranıyor...' : 'Otomatik Bul'}
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <div style={{ display: 'flex', gap: '12px' }}>

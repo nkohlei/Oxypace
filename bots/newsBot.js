@@ -216,33 +216,225 @@ export const translateAndRefine = async (text) => {
     }
 };
 
-// Safe feed fetcher with auto candidate URLs (e.g. /feed, /rss, /atom.xml)
-export async function fetchFeedSafely(url) {
-    const rawUrl = (url || '').trim();
-    if (!rawUrl) throw new Error('Geçersiz besleme bağlantısı.');
+// Extract high-quality image from RSS item or target article page
+export async function extractItemImage(item) {
+    if (!item) return '';
 
-    const cleanBase = rawUrl.replace(/\/+$/, '');
+    // 1. Enclosure check (image/jpeg, image/png, etc.)
+    if (item.enclosure && item.enclosure.url) {
+        const encType = String(item.enclosure.type || '').toLowerCase();
+        const encUrl = item.enclosure.url;
+        if (encType.startsWith('image') || /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i.test(encUrl)) {
+            return encUrl;
+        }
+    }
+
+    // 2. Media namespace tags (media:content, media:thumbnail)
+    if (item['media:content']) {
+        const mc = item['media:content'];
+        const url = mc.url || mc.$?.url;
+        if (url && typeof url === 'string') return url;
+        if (Array.isArray(mc) && mc.length > 0) {
+            const firstUrl = mc[0].url || mc[0].$?.url;
+            if (firstUrl) return firstUrl;
+        }
+    }
+
+    if (item['media:thumbnail']) {
+        const mt = item['media:thumbnail'];
+        const url = mt.url || mt.$?.url;
+        if (url && typeof url === 'string') return url;
+        if (Array.isArray(mt) && mt.length > 0) {
+            const firstUrl = mt[0].url || mt[0].$?.url;
+            if (firstUrl) return firstUrl;
+        }
+    }
+
+    // 3. Embedded <img> tag inside description or content:encoded
+    const contentToSearch = [
+        item['content:encoded'],
+        item.content,
+        item.description,
+        item.summary
+    ].filter(Boolean).join(' ');
+
+    if (contentToSearch) {
+        const imgMatch = contentToSearch.match(/<img[^>]+src=["'](https?:\/\/[^"'>]+)["']/i);
+        if (imgMatch && imgMatch[1]) {
+            const imgUrl = imgMatch[1];
+            if (!imgUrl.includes('1x1') && !imgUrl.includes('spacer') && !imgUrl.includes('pixel')) {
+                return imgUrl;
+            }
+        }
+    }
+
+    // 4. Fetch the target article page and extract og:image or twitter:image
+    if (item.link && (item.link.startsWith('http://') || item.link.startsWith('https://'))) {
+        try {
+            const response = await axios.get(item.link, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                },
+                timeout: 6000,
+                maxContentLength: 2 * 1024 * 1024
+            });
+
+            const html = typeof response.data === 'string' ? response.data : '';
+            if (html) {
+                // og:image
+                const ogMatch = html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["'](https?:\/\/[^"'>]+)["']/i) ||
+                                html.match(/<meta[^>]+content=["'](https?:\/\/[^"'>]+)["'][^>]+property=["']og:image(?::secure_url)?["']/i);
+                if (ogMatch && ogMatch[1]) {
+                    return ogMatch[1];
+                }
+
+                // twitter:image
+                const twMatch = html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["'](https?:\/\/[^"'>]+)["']/i) ||
+                                html.match(/<meta[^>]+content=["'](https?:\/\/[^"'>]+)["'][^>]+name=["']twitter:image(?::src)?["']/i);
+                if (twMatch && twMatch[1]) {
+                    return twMatch[1];
+                }
+
+                // apple-touch-icon
+                const touchIconMatch = html.match(/<link[^>]+rel=["']apple-touch-icon(?:-precomposed)?["'][^>]+href=["']([^"'>]+)["']/i);
+                if (touchIconMatch && touchIconMatch[1]) {
+                    try {
+                        return new URL(touchIconMatch[1], item.link).href;
+                    } catch (_) {}
+                }
+            }
+        } catch (_) {}
+    }
+
+    // 5. High-resolution website logo/favicon fallback to guarantee a visual
+    try {
+        const originUrl = new URL(item.link || 'https://oxypace.com.tr').origin;
+        return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(originUrl)}&size=256`;
+    } catch (_) {
+        return '';
+    }
+}
+
+// Auto-discover RSS / Atom feed URL from any web page or domain
+export async function discoverRssFeed(inputUrl) {
+    let rawUrl = (inputUrl || '').trim();
+    if (!rawUrl) throw new Error('Geçersiz web adresi.');
+
+    if (!/^https?:\/\//i.test(rawUrl)) {
+        rawUrl = 'https://' + rawUrl;
+    }
+
+    let urlObj;
+    try {
+        urlObj = new URL(rawUrl);
+    } catch (e) {
+        throw new Error('Geçersiz URL biçimi: ' + inputUrl);
+    }
+
+    const cleanBase = `${urlObj.origin}${urlObj.pathname.replace(/\/+$/, '')}`;
+
     const candidates = [
         rawUrl,
         `${cleanBase}/feed`,
+        `${cleanBase}/feed/`,
         `${cleanBase}/rss`,
-        `${cleanBase}/feed.xml`,
         `${cleanBase}/rss.xml`,
+        `${cleanBase}/feed.xml`,
         `${cleanBase}/atom.xml`,
-        `${cleanBase}/index.xml`
+        `${cleanBase}/index.xml`,
+        `${urlObj.origin}/feed`,
+        `${urlObj.origin}/feed/`,
+        `${urlObj.origin}/rss`,
+        `${urlObj.origin}/rss.xml`,
+        `${urlObj.origin}/atom.xml`,
+        `${urlObj.origin}/feeds/posts/default`
     ];
 
-    let lastError = null;
+    // 1. Test candidates directly
     for (const cand of candidates) {
         try {
             const feed = await parser.parseURL(cand);
             if (feed && Array.isArray(feed.items) && feed.items.length > 0) {
-                return { feed, resolvedUrl: cand };
+                return {
+                    feedUrl: cand,
+                    title: feed.title || urlObj.hostname,
+                    itemCount: feed.items.length
+                };
             }
-        } catch (err) {
-            lastError = err;
-        }
+        } catch (_) {}
     }
+
+    // 2. Fetch page HTML and scan for <link rel="alternate" type="application/rss+xml" ...>
+    try {
+        const response = await axios.get(rawUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            },
+            timeout: 8000,
+            maxContentLength: 2 * 1024 * 1024
+        });
+
+        const html = typeof response.data === 'string' ? response.data : '';
+        if (html) {
+            const linkRegex = /<link[^>]+(?:type=["']application\/(?:rss|atom)\+xml["']|rel=["']alternate["'])[^>]*>/gi;
+            const matches = html.match(linkRegex) || [];
+
+            for (const tag of matches) {
+                const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
+                if (hrefMatch && hrefMatch[1]) {
+                    let feedHref = hrefMatch[1].trim();
+                    try {
+                        const resolvedFeedUrl = new URL(feedHref, rawUrl).href;
+                        const feed = await parser.parseURL(resolvedFeedUrl);
+                        if (feed && Array.isArray(feed.items) && feed.items.length > 0) {
+                            return {
+                                feedUrl: resolvedFeedUrl,
+                                title: feed.title || urlObj.hostname,
+                                itemCount: feed.items.length
+                            };
+                        }
+                    } catch (_) {}
+                }
+            }
+        }
+    } catch (htmlErr) {
+        console.warn('HTML scrape error during RSS discovery:', htmlErr.message);
+    }
+
+    throw new Error(`"${rawUrl}" adresinde geçerli bir RSS/Atom akışı otomatik bulunamadı. Lütfen sitenin doğrudan RSS bağlantısını girin.`);
+}
+
+// Safe feed fetcher with auto discovery fallback
+export async function fetchFeedSafely(url) {
+    const rawUrl = (url || '').trim();
+    if (!rawUrl) throw new Error('Geçersiz besleme bağlantısı.');
+
+    let lastError = null;
+
+    try {
+        const feed = await parser.parseURL(rawUrl);
+        if (feed && Array.isArray(feed.items) && feed.items.length > 0) {
+            return { feed, resolvedUrl: rawUrl };
+        }
+    } catch (err) {
+        lastError = err;
+    }
+
+    // Try auto-discovery
+    try {
+        const discovered = await discoverRssFeed(rawUrl);
+        if (discovered && discovered.feedUrl) {
+            const feed = await parser.parseURL(discovered.feedUrl);
+            if (feed && Array.isArray(feed.items) && feed.items.length > 0) {
+                return { feed, resolvedUrl: discovered.feedUrl };
+            }
+        }
+    } catch (discErr) {
+        lastError = discErr;
+    }
+
     throw lastError || new Error(`Besleme okunamadı (${rawUrl})`);
 }
 
@@ -351,11 +543,15 @@ export const processItem = async (item, { user, config, portal, channel, io }) =
 
         await BotHistory.create({ guid, botName: user.username });
 
+        const postImage = await extractItemImage(item);
+
         const newPost = new Post({
             content: formattedContent,
             author: user._id,
             portal: portal._id,
             channel: channel._id.toString(),
+            mediaType: postImage ? 'image' : 'none',
+            media: postImage || '',
             createdAt: new Date()
         });
 
@@ -556,6 +752,9 @@ export async function runSingleBot(botConfigIdOrBotId, ioInstance = null) {
     }
     if (!channel && portal.channels && portal.channels.length > 0) {
         channel = portal.channels[0];
+        // Permanently persist the resolved channel's unique ID
+        dConfig.defaultChannel = channel._id.toString();
+        await dConfig.save().catch(() => {});
     }
     if (!channel) {
         throw new Error('Hedef kanal bulunamadı. Portalda geçerli bir metin kanalı olmalıdır.');

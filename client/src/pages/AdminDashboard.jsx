@@ -3718,6 +3718,27 @@ const AdminDashboard = () => {
     const [newBotData, setNewBotData] = useState({ username: '', email: '', password: '' });
     const [editingBot, setEditingBot] = useState(null);
     const [runningBotId, setRunningBotId] = useState(null);
+    const [discoveringFeedAdmin, setDiscoveringFeedAdmin] = useState(false);
+
+    const handleDiscoverFeedAdmin = async (inputUrl) => {
+        if (!inputUrl || !inputUrl.trim()) {
+            return alert('Lütfen bir web sitesi veya feed adresi girin.');
+        }
+        setDiscoveringFeedAdmin(true);
+        try {
+            const { data } = await axios.post('/api/admin/bots/discover-feed', {
+                url: inputUrl.trim()
+            });
+            if (data.success && data.feedUrl) {
+                setFeedInput(data.feedUrl);
+                alert(`✓ RSS beslemesi başarıyla bulundu:\n${data.feedUrl}`);
+            }
+        } catch (err) {
+            alert(err.response?.data?.message || err.message || 'RSS beslemesi otomatik bulunamadı.');
+        } finally {
+            setDiscoveringFeedAdmin(false);
+        }
+    };
     const [botPostModalOpen, setBotPostModalOpen] = useState(false);
     const [botPostTarget, setBotPostTarget] = useState(null);
     const [botPostData, setBotPostData] = useState({ content: '', portalId: '', channel: 'general', mediaUrl: '', mediaType: 'image' });
@@ -7015,15 +7036,25 @@ const AdminDashboard = () => {
 
                                             <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
                                                 <h3 style={{ fontSize: '15px', color: '#fff', marginBottom: '12px' }}>📡 Dış Kaynak (API/RSS Feed) Bağlantıları</h3>
-                                                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                                                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
                                                     <input
                                                         type="text"
                                                         value={feedInput}
                                                         onChange={(e) => setFeedInput(e.target.value)}
-                                                        placeholder="RSS/API linki girin... (Örn: https://variety.com/feed/)"
+                                                        placeholder="Web sitesi veya RSS linki girin (Örn: variety.com veya techcrunch.com)"
                                                         className="reason-input-modern"
-                                                        style={{ height: '40px', padding: '10px', flex: 1 }}
+                                                        style={{ height: '40px', padding: '10px', flex: 1, minWidth: '220px' }}
                                                     />
+                                                    <button
+                                                        type="button"
+                                                        className="btn-modern-ghost"
+                                                        style={{ height: '40px', padding: '0 14px', border: '1px solid #38bdf8', color: '#38bdf8' }}
+                                                        disabled={discoveringFeedAdmin}
+                                                        onClick={() => handleDiscoverFeedAdmin(feedInput)}
+                                                        title="Site linkinden RSS akışını otomatik çıkar"
+                                                    >
+                                                        {discoveringFeedAdmin ? 'Aranıyor...' : '🔍 Otomatik Bul'}
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         className="btn-modern-primary"

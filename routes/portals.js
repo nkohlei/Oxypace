@@ -35,30 +35,31 @@ function getPortalChannelFilter(portal, channelQuery) {
     // Try matching by exact ID first
     let targetChannel = portal.channels.find((c) => c._id.toString() === channelStr);
 
-    // If not matched by ID, try matching by exact name
-    if (!targetChannel && channelStr && channelStr !== 'general') {
+    // If not matched by ID, try matching by exact name (case-insensitive)
+    if (!targetChannel && channelStr && channelStr !== 'general' && channelStr !== 'genel') {
         targetChannel = portal.channels.find((c) => c.name.toLowerCase() === channelStr.toLowerCase());
     }
 
-    // If channelStr is 'general' or empty, or still not found, fallback to the portal's primary channel (portal.channels[0])
-    if (!targetChannel && (!channelStr || channelStr === 'general')) {
-        targetChannel = portal.channels[0];
-    }
-
+    // Fallback: If not matched or generic query, ALWAYS fallback to primary channel (channels[0])
     if (!targetChannel) {
-        return null;
+        targetChannel = portal.channels[0];
     }
 
     const targetIdStr = targetChannel._id.toString();
     const isPrimary = portal.channels[0]._id.toString() === targetIdStr;
 
-    // Direct identifiers for target channel
+    // Direct identifiers for target channel: ID string, Name, and ObjectId
     const directMatches = [targetIdStr, targetChannel.name];
     try {
         directMatches.push(new mongoose.Types.ObjectId(targetIdStr));
     } catch (e) {}
 
-    if (!isPrimary) {
+    // If single channel or primary channel, also capture legacy/generic channel strings
+    if (portal.channels.length === 1 || isPrimary) {
+        directMatches.push('general', 'genel', '', null);
+    }
+
+    if (!isPrimary && portal.channels.length > 1) {
         // Specific secondary channel: matches ONLY its own direct matches
         return {
             targetChannel,
@@ -1269,13 +1270,20 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
             channel.name = trimmedName;
 
             try {
-                // Ensure any bot targeting this channel by either its old name or ID points directly to channel ID
+                // 1. Re-bind all existing posts in this portal that were tagged with old name or channelId to the permanent channelId
+                const Post = (await import('../models/Post.js')).default;
+                await Post.updateMany(
+                    { portal: portal._id, channel: { $in: [oldName, req.params.channelId] } },
+                    { $set: { channel: req.params.channelId } }
+                );
+
+                // 2. Ensure any bot targeting this channel points directly to channel ID
                 await BotConfig.updateMany(
-                    { defaultPortal: portal._id, defaultChannel: { $in: [oldName, req.params.channelId] } },
+                    { defaultPortal: portal._id, defaultChannel: { $in: [oldName, req.params.channelId, 'general', 'genel'] } },
                     { $set: { defaultChannel: req.params.channelId } }
                 );
             } catch (botErr) {
-                console.error('Error syncing BotConfig on channel rename:', botErr);
+                console.error('Error syncing Post and BotConfig on channel rename:', botErr);
             }
         }
         if (isPrivate !== undefined) {
@@ -2272,5 +2280,23 @@ router.post('/:id/bots/:botId/run', protect, mongoIdValidation('id'), async (req
     }
 });
 
+
+
+// @route   POST /api/portals/:id/bots/discover-feed
+// @desc    Auto-discover RSS feed from a website URL
+// @access  Private (Owner/Admin)
+router.post('/:id/bots/discover-feed', protect, mongoIdValidation('id'), async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url || !url.trim()) {
+            return res.status(400).json({ message: 'Lütfen bir web sitesi veya feed bağlantısı girin.' });
+        }
+        const { discoverRssFeed } = await import('../bots/newsBot.js');
+        const result = await discoverRssFeed(url);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message || 'RSS beslemesi bulunamadı.' });
+    }
+});
 
 export default router;
