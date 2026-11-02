@@ -269,6 +269,7 @@ const WatchPartyPlayer = () => {
 
     const playerRef = useRef(null);
     const videoRef = useRef(null);
+    const wrapperRef = useRef(null);
     const containerRef = useRef(null);
     const hlsInstanceRef = useRef(null);
     const dashPlayerRef = useRef(null);
@@ -291,6 +292,17 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         controlsVisibleRef.current = controlsVisible;
     }, [controlsVisible]);
+
+    const [isEdgeHidden, setIsEdgeHidden] = useState(false);
+    const isEdgeHiddenRef = useRef(false);
+    useEffect(() => {
+        isEdgeHiddenRef.current = isEdgeHidden;
+    }, [isEdgeHidden]);
+
+    const handleTogglePlayPauseRef = useRef(null);
+    const handleSeekOffsetRef = useRef(null);
+    const triggerDoubleTapFeedbackRef = useRef(null);
+    const triggerControlsTemporaryRef = useRef(null);
 
     const controlsTimeoutRef = useRef(null);
 
@@ -389,6 +401,30 @@ const WatchPartyPlayer = () => {
         if (e && (e.pointerType === 'touch' || (window.matchMedia && !window.matchMedia('(pointer: fine)').matches))) {
             return;
         }
+
+        if (isFullscreen) {
+            const clientX = e.clientX;
+            const screenW = window.innerWidth;
+            const edgeThreshold = 45;
+
+            if (clientX <= edgeThreshold || clientX >= (screenW - edgeThreshold)) {
+                if (!isEdgeHiddenRef.current) {
+                    setIsEdgeHidden(true);
+                }
+                if (controlsVisibleRef.current) {
+                    setControlsVisible(false);
+                }
+                if (controlsTimeoutRef.current) {
+                    clearTimeout(controlsTimeoutRef.current);
+                }
+                return;
+            } else if (isEdgeHiddenRef.current) {
+                setIsEdgeHidden(false);
+            }
+        } else if (isEdgeHiddenRef.current) {
+            setIsEdgeHidden(false);
+        }
+
         triggerControlsTemporary();
     };
 
@@ -463,7 +499,17 @@ const WatchPartyPlayer = () => {
                          document.webkitFullscreenElement || 
                          document.mozFullScreenElement || 
                          document.msFullscreenElement;
-            setIsFullscreen(!!fsEl && (fsEl === containerRef.current || containerRef.current?.contains(fsEl)));
+            const isFs = !!fsEl && (
+                fsEl === wrapperRef.current || 
+                wrapperRef.current?.contains(fsEl) ||
+                fsEl === containerRef.current || 
+                containerRef.current?.contains(fsEl)
+            );
+            setIsFullscreen(isFs);
+            if (!isFs) {
+                setIsEdgeHidden(false);
+                triggerControlsTemporary();
+            }
         };
 
         document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -478,6 +524,100 @@ const WatchPartyPlayer = () => {
             document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
         };
     }, []);
+
+    // Fullscreen edge mouse hover hiding
+    useEffect(() => {
+        if (!isFullscreen) return;
+
+        const handleWindowMouseMove = (e) => {
+            if (e.pointerType === 'touch' || (window.matchMedia && !window.matchMedia('(pointer: fine)').matches)) {
+                return;
+            }
+
+            const clientX = e.clientX;
+            const screenW = window.innerWidth;
+            const edgeThreshold = 45;
+
+            if (clientX <= edgeThreshold || clientX >= (screenW - edgeThreshold)) {
+                if (!isEdgeHiddenRef.current) {
+                    setIsEdgeHidden(true);
+                }
+                if (controlsVisibleRef.current) {
+                    setControlsVisible(false);
+                }
+                if (controlsTimeoutRef.current) {
+                    clearTimeout(controlsTimeoutRef.current);
+                }
+            } else if (isEdgeHiddenRef.current && (clientX > edgeThreshold + 10 && clientX < screenW - (edgeThreshold + 10))) {
+                setIsEdgeHidden(false);
+                if (triggerControlsTemporaryRef.current) {
+                    triggerControlsTemporaryRef.current();
+                }
+            }
+        };
+
+        window.addEventListener('mousemove', handleWindowMouseMove);
+        return () => {
+            window.removeEventListener('mousemove', handleWindowMouseMove);
+        };
+    }, [isFullscreen]);
+
+    // Fullscreen keyboard shortcuts (Space: Play/Pause, ArrowLeft/Right: Seek 10s)
+    useEffect(() => {
+        if (!isFullscreen) return;
+
+        const handleKeyDown = (e) => {
+            const activeEl = document.activeElement;
+            const isInput = activeEl && (
+                activeEl.tagName === 'INPUT' ||
+                activeEl.tagName === 'TEXTAREA' ||
+                activeEl.isContentEditable ||
+                activeEl.getAttribute?.('contenteditable') === 'true' ||
+                activeEl.getAttribute?.('role') === 'textbox'
+            );
+            if (isInput) return;
+
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (handleTogglePlayPauseRef.current) {
+                    handleTogglePlayPauseRef.current();
+                }
+                if (triggerControlsTemporaryRef.current) {
+                    triggerControlsTemporaryRef.current();
+                }
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (handleSeekOffsetRef.current) {
+                    handleSeekOffsetRef.current(-10);
+                }
+                if (triggerDoubleTapFeedbackRef.current) {
+                    triggerDoubleTapFeedbackRef.current('left');
+                }
+                if (triggerControlsTemporaryRef.current) {
+                    triggerControlsTemporaryRef.current();
+                }
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (handleSeekOffsetRef.current) {
+                    handleSeekOffsetRef.current(10);
+                }
+                if (triggerDoubleTapFeedbackRef.current) {
+                    triggerDoubleTapFeedbackRef.current('right');
+                }
+                if (triggerControlsTemporaryRef.current) {
+                    triggerControlsTemporaryRef.current();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown, { capture: true });
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, { capture: true });
+        };
+    }, [isFullscreen]);
 
     // Film Frame Bounds Tracking (Siyah Barları Altyazı Konumlandırmasından Tamamen Dışlar)
     const [filmBounds, setFilmBounds] = useState({ bottomOffset: 0, filmHeight: 0, filmWidth: 0 });
@@ -950,6 +1090,13 @@ const WatchPartyPlayer = () => {
 
         const markReadyAndAlign = () => {
             setIsReady(true);
+            try {
+                video.playbackRate = 1.0;
+                video.defaultPlaybackRate = 1.0;
+                video.preservesPitch = true;
+                if ('webkitPreservesPitch' in video) video.webkitPreservesPitch = true;
+                if ('mozPreservesPitch' in video) video.mozPreservesPitch = true;
+            } catch (_) {}
             if (isNativeVOD) {
                 const liveTarget = getLiveExpectedTime();
                 if (liveTarget > 0.3 && Math.abs((video.currentTime || 0) - liveTarget) > 0.4) {
@@ -1251,7 +1398,7 @@ const WatchPartyPlayer = () => {
     };
 
     const toggleFullscreen = () => {
-        const container = containerRef.current;
+        const container = wrapperRef.current || containerRef.current;
         if (!container) return;
         const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
         if (!fsEl) {
@@ -1975,6 +2122,11 @@ const WatchPartyPlayer = () => {
         }
     };
 
+    handleTogglePlayPauseRef.current = handleTogglePlayPause;
+    handleSeekOffsetRef.current = handleSeekOffset;
+    triggerDoubleTapFeedbackRef.current = triggerDoubleTapFeedback;
+    triggerControlsTemporaryRef.current = triggerControlsTemporary;
+
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     // ─── ZERO-LATENCY IMPERATIVE SYNC ENGINE (0ms Pause / Play / Seek Execution) ───
@@ -2196,8 +2348,13 @@ const WatchPartyPlayer = () => {
             // 4. If video is currently seeking or waiting for network buffer during playback, wait for recovery
             if (video.seeking || (video.readyState < 2 && isBufferingStall)) return;
 
-            // 5. When Playing: Zero-Drift Lockstep Sync (Hard seek > 0.85s, fast proportional micro-rate pacing for 0.02s..0.85s)
-            const hardSeekThreshold = 0.85;
+            // 5. When Playing: Crystal-clear zero-distortion audio sync
+            // Lock playbackRate strictly at 1.0 to eliminate pitch modulation (incelme/kalınlaşma) and DSP flanger artifacts.
+            if (video.playbackRate !== 1.0) {
+                video.playbackRate = 1.0;
+            }
+
+            const hardSeekThreshold = 1.2;
             const canHardSeek = (Date.now() - lastHardSeekAt > 1000) && !playTransitionGuardActive && !video.seeking && video.readyState >= 2;
 
             if (absDrift > hardSeekThreshold && canHardSeek) {
@@ -2213,17 +2370,6 @@ const WatchPartyPlayer = () => {
                     playTransitionGuardActive = false;
                 }, 500);
                 setTimeout(() => { isSyncingRef.current = false; }, 200);
-            } else if (!playTransitionGuardActive) {
-                if (absDrift > 0.02) {
-                    // Fast proportional micro-rate pacing (0.91x .. 1.09x) converges drift to < 20ms
-                    const rateDelta = Math.max(-0.09, Math.min(0.09, drift * 0.12));
-                    const nextRate = Number((1.0 + rateDelta).toFixed(3));
-                    if (Math.abs((video.playbackRate || 1.0) - nextRate) >= 0.004) {
-                        video.playbackRate = nextRate;
-                    }
-                } else if (video.playbackRate !== 1.0) {
-                    video.playbackRate = 1.0;
-                }
             }
         };
 
@@ -2285,7 +2431,11 @@ const WatchPartyPlayer = () => {
     }
 
     return (
-        <div className={`watch-party-player-wrapper ${isFullscreen ? 'is-fullscreen' : ''}`} ref={containerRef}>
+        <div 
+            className={`watch-party-player-wrapper ${isFullscreen ? 'is-fullscreen' : ''} ${(!controlsVisible || isEdgeHidden) ? 'hide-cursor' : ''}`} 
+            ref={wrapperRef}
+            onMouseMove={handleContainerMouseMove}
+        >
             {!isFullscreen && (
                 <div 
                     className="watch-party-header"
@@ -2528,7 +2678,7 @@ const WatchPartyPlayer = () => {
             )}
             <div 
                 ref={containerRef}
-                className="watch-party-player-container"
+                className={`watch-party-player-container ${(!controlsVisible || isEdgeHidden) ? 'hide-cursor' : ''}`}
                 onClick={handlePlayerSurfaceClick}
                 onMouseMove={handleContainerMouseMove}
             >
