@@ -387,8 +387,12 @@ const WatchPartyPlayer = () => {
         }, 650);
     };
 
+    const lastMouseMoveTimeRef = useRef(0);
+
     const triggerControlsTemporary = () => {
-        setControlsVisible(true);
+        if (!controlsVisibleRef.current) {
+            setControlsVisible(true);
+        }
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         controlsTimeoutRef.current = setTimeout(() => {
             if (!isUnifiedMenuOpenRef.current) {
@@ -402,12 +406,26 @@ const WatchPartyPlayer = () => {
             return;
         }
 
+        const now = Date.now();
+        if (now - lastMouseMoveTimeRef.current < 25) return; // 40fps throttle
+        lastMouseMoveTimeRef.current = now;
+
         if (isFullscreen) {
             const clientX = e.clientX;
+            const clientY = e.clientY;
             const screenW = window.innerWidth;
-            const edgeThreshold = 45;
+            const screenH = window.innerHeight;
 
-            if (clientX <= edgeThreshold || clientX >= (screenW - edgeThreshold)) {
+            // Only trigger flush-edge hiding at the extreme pixel border (<= 3px)
+            const isFlushEdge = (clientX <= 3 || clientX >= (screenW - 3));
+            const target = e.target;
+            const isInControlsZone = (
+                clientY >= (screenH - 85) || 
+                clientY <= 60 ||
+                (target && target.closest && target.closest('button, a, input, select, [role="button"], .native-controls-ui, .watch-party-header, .watch-party-volume-container-modern, .watch-party-fullscreen-container-modern, .native-bottom-row, .native-progress-area, .native-right-controls, .native-left-controls'))
+            );
+
+            if (isFlushEdge && !isInControlsZone) {
                 if (!isEdgeHiddenRef.current) {
                     setIsEdgeHidden(true);
                 }
@@ -505,6 +523,7 @@ const WatchPartyPlayer = () => {
                 fsEl === containerRef.current || 
                 containerRef.current?.contains(fsEl)
             );
+            isUserActionCooldownRef.current = Date.now() + 1500;
             setIsFullscreen(isFs);
             if (!isFs) {
                 setIsEdgeHidden(false);
@@ -525,20 +544,34 @@ const WatchPartyPlayer = () => {
         };
     }, []);
 
-    // Fullscreen edge mouse hover hiding
+    // Fullscreen edge mouse hover hiding (Flush edge only, never while near controls)
     useEffect(() => {
         if (!isFullscreen) return;
 
+        let lastWinMouseMove = 0;
         const handleWindowMouseMove = (e) => {
             if (e.pointerType === 'touch' || (window.matchMedia && !window.matchMedia('(pointer: fine)').matches)) {
                 return;
             }
 
-            const clientX = e.clientX;
-            const screenW = window.innerWidth;
-            const edgeThreshold = 45;
+            const now = Date.now();
+            if (now - lastWinMouseMove < 25) return; // 40fps throttle
+            lastWinMouseMove = now;
 
-            if (clientX <= edgeThreshold || clientX >= (screenW - edgeThreshold)) {
+            const clientX = e.clientX;
+            const clientY = e.clientY;
+            const screenW = window.innerWidth;
+            const screenH = window.innerHeight;
+
+            const isFlushEdge = (clientX <= 3 || clientX >= (screenW - 3));
+            const target = e.target;
+            const isInControlsZone = (
+                clientY >= (screenH - 85) || 
+                clientY <= 60 ||
+                (target && target.closest && target.closest('button, a, input, select, [role="button"], .native-controls-ui, .watch-party-header, .watch-party-volume-container-modern, .watch-party-fullscreen-container-modern, .native-bottom-row, .native-progress-area, .native-right-controls, .native-left-controls'))
+            );
+
+            if (isFlushEdge && !isInControlsZone) {
                 if (!isEdgeHiddenRef.current) {
                     setIsEdgeHidden(true);
                 }
@@ -548,7 +581,7 @@ const WatchPartyPlayer = () => {
                 if (controlsTimeoutRef.current) {
                     clearTimeout(controlsTimeoutRef.current);
                 }
-            } else if (isEdgeHiddenRef.current && (clientX > edgeThreshold + 10 && clientX < screenW - (edgeThreshold + 10))) {
+            } else if (isEdgeHiddenRef.current && (clientX > 4 && clientX < (screenW - 4))) {
                 setIsEdgeHidden(false);
                 if (triggerControlsTemporaryRef.current) {
                     triggerControlsTemporaryRef.current();
@@ -649,10 +682,15 @@ const WatchPartyPlayer = () => {
             bottomOffset = 0;
         }
 
-        setFilmBounds({
-            bottomOffset: Math.max(0, Math.round(bottomOffset)),
-            filmHeight: Math.max(1, Math.round(filmHeight)),
-            filmWidth: Math.max(1, Math.round(filmWidth))
+        const nextBottom = Math.max(0, Math.round(bottomOffset));
+        const nextHeight = Math.max(1, Math.round(filmHeight));
+        const nextWidth = Math.max(1, Math.round(filmWidth));
+
+        setFilmBounds(prev => {
+            if (prev.bottomOffset === nextBottom && prev.filmHeight === nextHeight && prev.filmWidth === nextWidth) {
+                return prev;
+            }
+            return { bottomOffset: nextBottom, filmHeight: nextHeight, filmWidth: nextWidth };
         });
     }, []);
 
@@ -1398,6 +1436,7 @@ const WatchPartyPlayer = () => {
     };
 
     const toggleFullscreen = () => {
+        isUserActionCooldownRef.current = Date.now() + 1500;
         const container = wrapperRef.current || containerRef.current;
         if (!container) return;
         const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
@@ -2320,7 +2359,7 @@ const WatchPartyPlayer = () => {
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
                 }, 400);
-                if (absDrift > 0.35 && !video.seeking) {
+                if (absDrift > 1.2 && !video.seeking) {
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
                     setCurrentTime(targetTime);
@@ -2680,7 +2719,6 @@ const WatchPartyPlayer = () => {
                 ref={containerRef}
                 className={`watch-party-player-container ${(!controlsVisible || isEdgeHidden) ? 'hide-cursor' : ''}`}
                 onClick={handlePlayerSurfaceClick}
-                onMouseMove={handleContainerMouseMove}
             >
                 {/* YouTube Style Double Tap Seek Overlay */}
                 {doubleTapFeedback.visible && (
