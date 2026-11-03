@@ -1099,7 +1099,13 @@ const WatchPartyPlayer = () => {
 
         const video = videoRef.current;
         const rawUrl = watchParty.url.trim();
-        const needsNormalizedProxy = useProxy || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/');
+        const isKnownCorsRestricted = 
+            rawUrl.includes('daioncdn.net') || 
+            rawUrl.includes('trt.net') || 
+            rawUrl.includes('trt.com') ||
+            rawUrl.includes('playmix') ||
+            rawUrl.includes('rapidvid');
+        const needsNormalizedProxy = useProxy || isKnownCorsRestricted || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/');
         const streamUrl = needsNormalizedProxy ? getProxiedUrl(rawUrl) : rawUrl;
         const urlIsHls = isHls(rawUrl) || watchParty.isLive;
         const urlIsDash = isDash(rawUrl);

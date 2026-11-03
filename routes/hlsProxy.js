@@ -319,6 +319,42 @@ function setCachedProxyEntry(key, entry, ttlMs) {
   proxyRamCacheBytes += size;
 }
 
+function shouldKeepDirectMediaUrl(urlStr) {
+  try {
+    const urlObj = new URL(urlStr);
+    const host = urlObj.hostname.toLowerCase();
+    const pathname = urlObj.pathname.toLowerCase();
+    
+    // Playlists (.m3u8, .mpd, .txt) must always be proxied so their inner URLs and CORS headers are handled
+    const isPlaylist = 
+      pathname.endsWith('.m3u8') || 
+      pathname.includes('.m3u8') || 
+      pathname.endsWith('.mpd') || 
+      pathname.includes('.mpd') || 
+      pathname.endsWith('.txt');
+    if (isPlaylist) {
+      return false;
+    }
+
+    // Direct CDN hosts for Turkish national broadcasts & geo-restricted streams whose segments
+    // natively support CORS or block foreign datacenter IPs:
+    if (
+      host.includes('medya.trt.com.tr') ||
+      host.includes('trt.com.tr') ||
+      host.includes('trtworld.com') ||
+      host.includes('trt.net.tr') ||
+      host.includes('turkuvaz.com.tr') ||
+      host.includes('dogus.com.tr') ||
+      host.includes('ciner.com.tr') ||
+      host.includes('demiroren.com.tr') ||
+      host.includes('daioncdn.net')
+    ) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 // GET /api/proxy and /api/proxy-hls
 router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
   const targetUrl = req.query.url;
@@ -581,6 +617,30 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         return res.status(200).end(TRANSPARENT_1PX_WEBP);
       }
+
+      // If a binary media chunk (MPEG-TS, m4s, mp4, aac, etc.) failed with 403 or 401 on the server (e.g. geo-restricted or CloudFront blocked),
+      // redirect the client with 302 Found so the client browser downloads it directly using their local residential IP!
+      const isMediaChunk = 
+        lowerUrl.includes('.ts') || 
+        lowerUrl.includes('.m4s') || 
+        lowerUrl.endsWith('.mp4') || 
+        lowerUrl.includes('.aac') || 
+        lowerUrl.includes('/segment') ||
+        lowerUrl.includes('/fragment');
+
+      if (isMediaChunk && (response.status === 403 || response.status === 401)) {
+        console.warn(`[HLSProxy] Upstream ${response.status} for media chunk ${targetUrl}. Redirecting client directly via 302...`);
+        const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin) || '*';
+        res.writeHead(302, {
+          'Location': targetUrl,
+          'Access-Control-Allow-Origin': allowedCorsOrigin,
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Expose-Headers': 'Location',
+          'Cache-Control': 'no-cache',
+        });
+        return res.end();
+      }
+
       return res.status(response.status).json({
         error: `Hedef sunucu hata döndürdü: ${response.status} ${response.statusText}`,
       });
@@ -678,6 +738,12 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
           if (!trimmed.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
             absUrl += baseUrlObj.search;
           }
+
+          // If this is a media segment on a host with direct CORS or geo-restriction, keep it direct
+          if (shouldKeepDirectMediaUrl(absUrl)) {
+            return absUrl;
+          }
+
           let proxied = `${proxyBaseOrigin}/api/proxy?url=${encodeURIComponent(absUrl)}`;
           if (refererHeader) proxied += `&referer=${encodeURIComponent(refererHeader)}`;
           if (originHeader) proxied += `&origin=${encodeURIComponent(originHeader)}`;
