@@ -65,12 +65,14 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
         await handleSaveSettings(newVal, mutedChannels);
     };
 
-    const toggleChannelMute = async (channelId) => {
+    const toggleChannelActive = async (channelId) => {
         const cIdStr = channelId?.toString();
         let updated;
+        // If channel is currently in mutedChannels (notifications off), clicking it turns notifications ON (removes from muted)
         if (mutedChannels.some(id => id === cIdStr)) {
             updated = mutedChannels.filter(id => id !== cIdStr);
         } else {
+            // If channel is currently not in mutedChannels (notifications on), clicking it turns notifications OFF (adds to muted)
             updated = [...mutedChannels, cIdStr];
         }
         setMutedChannels(updated);
@@ -207,13 +209,13 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                         {/* Toggle All */}
                         <div className="settings-group">
                             <div className="settings-info">
-                                <div className="settings-title">Tüm Bildirimleri Kapat</div>
-                                <div className="settings-desc">Bu portal altındaki tüm kanalların bildirimlerini susturur.</div>
+                                <div className="settings-title">Portal Bildirimleri</div>
+                                <div className="settings-desc">Bu portal altındaki kanallardan anlık cihaz bildirimleri ve rozet bildirimleri almanızı sağlar.</div>
                             </div>
                             <label className="switch">
                                 <input
                                     type="checkbox"
-                                    checked={isAllMuted}
+                                    checked={!isAllMuted}
                                     onChange={toggleAllMuted}
                                 />
                                 <span className="slider"></span>
@@ -221,10 +223,10 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                         </div>
 
                         {/* Channel List */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', margin: '24px 0 16px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', margin: '24px 0 16px 0', gap: '12px', flexWrap: 'wrap' }}>
                             <h3 className="channels-mute-title" style={{ margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Kanal Bildirim Tercihleri</h3>
-                            <span className="channels-mute-info-note" style={{ fontSize: '11px', color: '#ff7675', fontWeight: '500', letterSpacing: '0.3px' }}>
-                                Susturulan kanalın bildirimi kanal listesinde görünür, sol menüdeki portal avatar rozetine dahil edilmez.
+                            <span className="channels-mute-info-note" style={{ fontSize: '11px', color: '#10b981', fontWeight: '500', letterSpacing: '0.3px' }}>
+                                Bildirimi açık kanalların yeni paylaşımlarında anlık cihaz bildirimi alırsınız ve sol menüdeki portal rozetinde gösterilir.
                             </span>
                         </div>
                         <div className="channels-mute-list">
@@ -232,7 +234,7 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Kanal bulunamadı.</p>
                             ) : (
                                 portalChannels.map((channel) => {
-                                    const isMuted = isAllMuted || mutedChannels.includes(channel._id?.toString());
+                                    const isChannelActive = !isAllMuted && !mutedChannels.includes(channel._id?.toString());
                                     return (
                                         <div key={channel._id} className="channel-mute-item">
                                             <div className="channel-mute-name-wrapper">
@@ -242,8 +244,8 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                                             <label className={`switch ${isAllMuted ? 'disabled' : ''}`}>
                                                 <input
                                                     type="checkbox"
-                                                    checked={isMuted}
-                                                    onChange={() => !isAllMuted && toggleChannelMute(channel._id)}
+                                                    checked={isChannelActive}
+                                                    onChange={() => !isAllMuted && toggleChannelActive(channel._id)}
                                                     disabled={isAllMuted}
                                                 />
                                                 <span className="slider"></span>

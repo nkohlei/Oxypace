@@ -53,7 +53,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         String type = remoteMessage.getData().get("type");
         if ("voice_invite".equals(type)) {
             showIncomingCallNotification(remoteMessage.getData());
-        } else if ("message".equals(type) || remoteMessage.getData().containsKey("senderId") || remoteMessage.getData().containsKey("senderAvatar")) {
+        } else if ("message".equals(type)) {
+            showMessageNotification(remoteMessage.getData(), remoteMessage.getNotification());
+        } else if ("portal_post".equals(type)) {
+            showPortalPostNotification(remoteMessage.getData(), remoteMessage.getNotification());
+        } else if (remoteMessage.getData().containsKey("senderId") || remoteMessage.getData().containsKey("senderAvatar")) {
             showMessageNotification(remoteMessage.getData(), remoteMessage.getNotification());
         } else {
             String title = remoteMessage.getData().get("title");
@@ -61,6 +65,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             String imageUrl = remoteMessage.getData().get("image");
             if (imageUrl == null) imageUrl = remoteMessage.getData().get("picture");
             if (imageUrl == null) imageUrl = remoteMessage.getData().get("bigPicture");
+            String avatarUrl = remoteMessage.getData().get("portalAvatar");
+            if (avatarUrl == null) avatarUrl = remoteMessage.getData().get("avatar");
 
             if (title == null && remoteMessage.getNotification() != null) {
                 title = remoteMessage.getNotification().getTitle();
@@ -73,7 +79,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             }
 
             if (title != null || body != null) {
-                showStandardSystemNotification(title, body, remoteMessage.getData().get("route"), imageUrl);
+                showStandardSystemNotification(title, body, remoteMessage.getData().get("route"), imageUrl, avatarUrl);
             }
         }
     }
@@ -486,7 +492,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
     }
 
-    private void showStandardSystemNotification(String title, String body, String route, String imageUrl) {
+    private void showStandardSystemNotification(String title, String body, String route, String imageUrl, String avatarUrl) {
         String channelId = "oxypace_general_notifications";
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
@@ -516,9 +522,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
+        android.graphics.Bitmap avatarBitmap = null;
+        if (avatarUrl != null && !avatarUrl.trim().isEmpty()) {
+            avatarBitmap = fetchCircularAvatarWithBadge(avatarUrl.trim());
+        }
+        if (avatarBitmap == null) {
+            avatarBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+        }
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
             .setSmallIcon(getSafeSmallIcon())
-            .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
+            .setLargeIcon(avatarBitmap)
             .setContentTitle(title != null ? title : "Oxypace")
             .setContentText(body != null ? body : "")
             .setAutoCancel(true)
@@ -532,19 +546,22 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 java.net.URL url = new java.net.URL(imageUrl);
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                 conn.setDoInput(true);
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
                 conn.connect();
                 java.io.InputStream is = conn.getInputStream();
                 android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(is);
+                is.close();
+                conn.disconnect();
                 if (bitmap != null) {
-                    builder.setStyle(
-                        new NotificationCompat.BigPictureStyle()
-                            .bigPicture(bitmap)
-                            .setBigContentTitle(title != null ? title : "Oxypace")
-                            .setSummaryText(body != null ? body : "")
-                    );
-                    builder.setLargeIcon(bitmap);
+                    NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
+                        .bigPicture(bitmap)
+                        .setBigContentTitle(title != null ? title : "Oxypace")
+                        .setSummaryText(body != null ? body : "");
+                    if (avatarBitmap != null) {
+                        bigPic.bigLargeIcon((android.graphics.Bitmap) null);
+                    }
+                    builder.setStyle(bigPic);
                 }
             } catch (Exception e) {
                 android.util.Log.w("OxypaceMessaging", "Failed to download push notification image: " + e.getMessage());
@@ -555,6 +572,108 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             nm.notify((int) System.currentTimeMillis(), builder.build());
         } catch (Exception e) {
             android.util.Log.e("OxypaceMessaging", "Failed to notify standard system notification: " + e.getMessage());
+        }
+    }
+
+    private void showStandardSystemNotification(String title, String body, String route, String imageUrl) {
+        showStandardSystemNotification(title, body, route, imageUrl, null);
+    }
+
+    private void showPortalPostNotification(java.util.Map<String, String> data, RemoteMessage.Notification notif) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        wakeScreen();
+        String channelId = "oxypace_portal_posts_v1";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                channelId, "Portal Gönderi Bildirimleri", NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Üye olduğunuz portallardaki yeni paylaşımlar");
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 200, 150, 200});
+            channel.setShowBadge(true);
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+
+            Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build();
+            channel.setSound(defaultSoundUri, audioAttributes);
+            nm.createNotificationChannel(channel);
+        }
+
+        String title = getOrDefault(data, "title", notif != null ? notif.getTitle() : "Oxypace");
+        String body  = getOrDefault(data, "body", notif != null ? notif.getBody() : "");
+        String route = getOrDefault(data, "route", "");
+        String portalAvatar = getOrDefault(data, "portalAvatar", getOrDefault(data, "avatar", ""));
+        String imageUrl = getOrDefault(data, "image", getOrDefault(data, "picture", getOrDefault(data, "bigPicture", "")));
+        if (imageUrl.isEmpty() && notif != null && notif.getImageUrl() != null) {
+            imageUrl = notif.getImageUrl().toString();
+        }
+
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setAction("OPEN_ROUTE");
+        if (!route.isEmpty()) intent.putExtra("route", route);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(
+            this, (int) System.currentTimeMillis(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        android.graphics.Bitmap portalAvatarBitmap = null;
+        if (!portalAvatar.isEmpty()) {
+            portalAvatarBitmap = fetchCircularAvatarWithBadge(portalAvatar);
+        }
+        if (portalAvatarBitmap == null) {
+            String pName = getOrDefault(data, "portalName", "Oxypace");
+            portalAvatarBitmap = createInitialAvatarWithBadge(pName);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(getSafeSmallIcon())
+            .setLargeIcon(portalAvatarBitmap)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL);
+
+        if (!imageUrl.isEmpty()) {
+            try {
+                java.net.URL url = new java.net.URL(imageUrl);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setDoInput(true);
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.connect();
+                java.io.InputStream is = conn.getInputStream();
+                android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(is);
+                is.close();
+                conn.disconnect();
+                if (bitmap != null) {
+                    NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
+                        .bigPicture(bitmap)
+                        .setBigContentTitle(title)
+                        .setSummaryText(body);
+                    if (portalAvatarBitmap != null) {
+                        bigPic.bigLargeIcon((android.graphics.Bitmap) null);
+                    }
+                    builder.setStyle(bigPic);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("OxypaceMessaging", "Failed to download portal post cover image: " + e.getMessage());
+            }
+        }
+
+        try {
+            int notifId = (int) (System.currentTimeMillis() % 100000000);
+            nm.notify(notifId, builder.build());
+        } catch (Exception e) {
+            android.util.Log.e("OxypaceMessaging", "Failed to notify portal post: " + e.getMessage());
         }
     }
 

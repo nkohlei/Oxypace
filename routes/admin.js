@@ -2886,22 +2886,13 @@ router.post('/bots/:id/post', protect, requirePermission('canManageBots'), async
 
         if (portalId) {
             try {
-                const portal = await Portal.findById(portalId);
-                if (portal) {
-                    const memberIds = portal.members.filter(m => m.toString() !== botUser._id.toString());
-                    if (memberIds.length > 0) {
-                        const notificationDocs = memberIds.map(userId => ({
-                            recipient: userId,
-                            sender: botUser._id,
-                            type: 'portal_post',
-                            portal: portalId,
-                            channel: postData.channel,
-                            post: post._id,
-                            read: false
-                        }));
-                        await Notification.insertMany(notificationDocs);
-                    }
-                }
+                const { sendPortalPostNotifications } = await import('../services/portalNotificationService.js');
+                await sendPortalPostNotifications({
+                    post,
+                    portal: portalId,
+                    channelId: postData.channel,
+                    author: botUser
+                });
             } catch (notifyErr) {
                 console.error('Error creating bot portal post notifications:', notifyErr);
             }

@@ -617,20 +617,13 @@ export const processItem = async (item, { user, config, portal, channel, io }) =
         }
 
         try {
-            const memberIds = portal.members.filter(m => m.toString() !== user._id.toString());
-            if (memberIds.length > 0) {
-                const notificationDocs = memberIds.map(userId => ({
-                    recipient: userId,
-                    sender: user._id,
-                    type: 'portal_post',
-                    portal: portal._id,
-                    channel: channel._id.toString(),
-                    post: newPost._id,
-                    read: false
-                }));
-                const Notification = (await import('../models/Notification.js')).default;
-                await Notification.insertMany(notificationDocs);
-            }
+            const { sendPortalPostNotifications } = await import('../services/portalNotificationService.js');
+            await sendPortalPostNotifications({
+                post: newPost,
+                portal,
+                channelId: channel._id.toString(),
+                author: user
+            });
         } catch (notifyErr) {
             console.error(`⚠️ [${user.username}] Notification sync failed:`, notifyErr.message);
         }

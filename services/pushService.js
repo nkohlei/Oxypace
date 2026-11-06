@@ -115,7 +115,7 @@ export const sendPushNotification = async (tokens, payload) => {
 
         for (const [key, val] of Object.entries(rawData)) {
             if (val !== undefined && val !== null) {
-                if (key === 'senderAvatar' && typeof val === 'string' && val.length > 0) {
+                if ((key === 'senderAvatar' || key === 'portalAvatar' || key === 'avatar') && typeof val === 'string' && val.length > 0) {
                     sanitizedData[key] = constructNotifImageUrl(val) || val;
                 } else if (key === 'image' && typeof val === 'string' && val.length > 0) {
                     sanitizedData[key] = constructNotifImageUrl(val) || val;
@@ -133,11 +133,13 @@ export const sendPushNotification = async (tokens, payload) => {
         let channelId = 'oxypace_messages_v2';
         if (notifType === 'voice_invite') {
             channelId = 'oxypace_voice_invite_v2';
+        } else if (notifType === 'portal_post') {
+            channelId = 'oxypace_portal_posts_v1';
         } else if (notifType !== 'message' && !sanitizedData.senderId) {
             channelId = 'oxypace_general_notifications';
         }
 
-        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite';
+        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite' || notifType === 'portal_post';
 
         const message = {
             // For custom-rendered notifications (messages and voice invites), omit the top-level

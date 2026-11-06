@@ -466,25 +466,16 @@ router.post(
                 console.error('Socket emission error:', socketErr);
             }
 
-            // --- PERSISTENT NOTIFICATIONS FOR OFFLINE USERS ---
+            // --- PERSISTENT NOTIFICATIONS & REAL-TIME DEVICE PUSH ---
             if (postData.portal) {
                 try {
-                    const portal = await Portal.findById(postData.portal);
-                    if (portal) {
-                        const memberIds = portal.members.filter(m => m.toString() !== req.user._id.toString());
-                        if (memberIds.length > 0) {
-                            const notificationDocs = memberIds.map(userId => ({
-                                recipient: userId,
-                                sender: req.user._id,
-                                type: 'portal_post',
-                                portal: postData.portal,
-                                channel: postData.channel,
-                                post: post._id,
-                                read: false
-                            }));
-                            await Notification.insertMany(notificationDocs);
-                        }
-                    }
+                    const { sendPortalPostNotifications } = await import('../services/portalNotificationService.js');
+                    await sendPortalPostNotifications({
+                        post,
+                        portal: postData.portal,
+                        channelId: postData.channel,
+                        author: req.user
+                    });
                 } catch (err) {
                     console.error('Error creating portal notifications:', err);
                 }
