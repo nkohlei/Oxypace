@@ -8,11 +8,8 @@ const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
     const pathLower = typeof window !== 'undefined' ? (window.location.pathname + window.location.hash).toLowerCase() : '';
     const isBotPage = pathLower.includes('bot') || pathLower.includes('news') || pathLower.includes('gelismeler');
 
-    if (isBotPage) {
-        return null;
-    }
-
     useEffect(() => {
+        if (isBotPage) return;
         // Watchdog: check if Google ads script loaded within 3 seconds
         const watchdog = setTimeout(() => {
             const adsBlocked = !window.adsbygoogle || !window.adsbygoogle.loaded;
@@ -45,7 +42,11 @@ const AdUnit = ({ slot, style, format = 'auto', responsive = 'true' }) => {
             clearTimeout(timer);
             clearTimeout(watchdog);
         };
-    }, [slot]);
+    }, [slot, isBotPage]);
+
+    if (isBotPage) {
+        return null;
+    }
 
     if (import.meta.env.NODE_ENV === 'development') {
         return (

@@ -1826,7 +1826,8 @@ const Portal = () => {
                                                                 } else if (status === 'joined') {
                                                                     setIsMember(true);
                                                                     setError('');
-                                                                    fetchPosts();
+                                                                    fetchPortalData();
+                                                                    fetchChannelPosts();
                                                                 }
                                                             }}
                                                         />
