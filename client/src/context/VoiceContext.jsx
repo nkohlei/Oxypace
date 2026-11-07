@@ -1104,6 +1104,7 @@ export const VoiceProvider = ({ children }) => {
                 remoteTracksRef.current.set(targetUserId, {});
             }
             const tracks = remoteTracksRef.current.get(targetUserId);
+            const rState = remoteStatesRef.current.get(targetUserId);
 
             // Track lifecycle listeners to immediately reflect frame delivery or track changes
             event.track.onended = () => {
@@ -1134,7 +1135,6 @@ export const VoiceProvider = ({ children }) => {
                     console.log(`[WebRTC] remote audioTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 }
             } else if (event.track.kind === 'video') {
-                const rState = remoteStatesRef.current.get(targetUserId);
                 const videoTransceivers = (pc.getTransceivers?.() || []).filter(t => t.receiver?.track?.kind === 'video');
                 const isSecondVideoTransceiver = videoTransceivers.length > 1 && event.transceiver && event.transceiver !== videoTransceivers[0];
                 const isDifferentStreamFromCam = Boolean(
