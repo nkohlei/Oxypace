@@ -214,6 +214,16 @@ export const AuthProvider = ({ children }) => {
             persistAccounts(reordered);
         }
 
+        // Unbind current FCM device token from previous user before switching
+        try {
+            const currentFcm = localStorage.getItem('fcm_token');
+            if (currentFcm && token) {
+                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => {});
+            }
+        } catch (_) {}
+
         localStorage.setItem('token', target.token);
         localStorage.setItem('user', JSON.stringify({
             _id: target.userId,
@@ -281,6 +291,16 @@ export const AuthProvider = ({ children }) => {
         reordered.push(...filtered);
         persistAccounts(reordered);
 
+        // Unbind current FCM device token from previous user before switching
+        try {
+            const currentFcm = localStorage.getItem('fcm_token');
+            if (currentFcm && token) {
+                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => {});
+            }
+        } catch (_) {}
+
         login(newToken, newUserData);
         sessionStorage.setItem('oxypace_fresh_login', 'true');
 
@@ -297,6 +317,12 @@ export const AuthProvider = ({ children }) => {
 
     const logout = (removeCurrent = true) => {
         try {
+            const currentFcm = localStorage.getItem('fcm_token');
+            if (currentFcm && token) {
+                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => {});
+            }
             if (removeCurrent && user?._id) {
                 setSavedAccounts(prev => {
                     const updated = prev.filter(a => a.userId !== user._id);

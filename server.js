@@ -749,6 +749,58 @@ const cleanupExpiredTouristAdmins = async () => {
     }
 };
 
+const deduplicateDeviceFcmTokens = async () => {
+    try {
+        const users = await User.find({
+            isDeleted: { $ne: true },
+            $or: [
+                { fcmTokens: { $exists: true, $ne: [] } },
+                { fcmToken: { $exists: true, $ne: null } }
+            ]
+        }).sort({ lastActive: -1, updatedAt: -1 });
+
+        const seenTokens = new Set();
+        let cleanedUsersCount = 0;
+
+        for (const user of users) {
+            let modified = false;
+            const currentTokens = Array.isArray(user.fcmTokens) ? [...user.fcmTokens] : [];
+            if (user.fcmToken && !currentTokens.includes(user.fcmToken)) {
+                currentTokens.push(user.fcmToken);
+            }
+
+            const uniqueTokens = [];
+            for (const t of currentTokens) {
+                const tokenStr = typeof t === 'string' ? t.trim() : (t?.token ? String(t.token).trim() : '');
+                if (!tokenStr) continue;
+
+                if (!seenTokens.has(tokenStr)) {
+                    seenTokens.add(tokenStr);
+                    uniqueTokens.push(tokenStr);
+                } else {
+                    modified = true;
+                }
+            }
+
+            if (user.fcmToken && !uniqueTokens.includes(user.fcmToken)) {
+                user.fcmToken = uniqueTokens[0] || null;
+                modified = true;
+            }
+
+            if (modified || uniqueTokens.length !== (user.fcmTokens?.length || 0)) {
+                user.fcmTokens = uniqueTokens;
+                await user.save();
+                cleanedUsersCount++;
+            }
+        }
+        if (cleanedUsersCount > 0) {
+            console.log(`🧹 [FCM Deduplication] Disassociated shared device tokens from ${cleanedUsersCount} inactive accounts.`);
+        }
+    } catch (e) {
+        console.warn('⚠️ [FCM Deduplication] Error:', e.message);
+    }
+};
+
 // Start server unconditionally
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, async () => {
@@ -771,6 +823,7 @@ httpServer.listen(PORT, async () => {
             try {
                 await repairUserFriendships();
                 await cleanupExpiredTouristAdmins();
+                await deduplicateDeviceFcmTokens();
             } catch (err) {
                 console.error('⚠️ Boot DB repair failed:', err.message);
             }

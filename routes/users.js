@@ -28,21 +28,67 @@ router.post('/fcm-token', protect, async (req, res) => {
         const { token } = req.body;
         if (!token) return res.status(400).json({ message: 'Token is required' });
 
-        const user = await User.findById(req.user._id);
-        if (user) {
-            user.fcmToken = token;
-            if (!user.fcmTokens) user.fcmTokens = [];
-            if (!user.fcmTokens.includes(token)) {
-                user.fcmTokens.push(token);
+        const userId = req.user._id;
+        const cleanToken = String(token).trim();
+
+        // 🔒 Single Device Ownership Guarantee:
+        // A physical device can only be logged in with ONE active account at any given moment.
+        // If this FCM token exists in any other user account (e.g. quick-switched inactive accounts),
+        // immediately remove it so inactive accounts NEVER receive push notifications on this device.
+        await User.updateMany(
+            { _id: { $ne: userId } },
+            { 
+                $pull: { 
+                    fcmTokens: { $in: [cleanToken, { token: cleanToken }] } 
+                }
             }
+        );
+        await User.updateMany(
+            { _id: { $ne: userId }, fcmToken: cleanToken },
+            { $unset: { fcmToken: 1 } }
+        );
+
+        const user = await User.findById(userId);
+        if (user) {
+            user.fcmToken = cleanToken;
+            if (!user.fcmTokens) user.fcmTokens = [];
+            if (!user.fcmTokens.includes(cleanToken)) {
+                user.fcmTokens.push(cleanToken);
+            }
+            user.lastActive = new Date();
             await user.save();
-            console.log(`📱 [FCM] Saved token for user @${user.username} (Total tokens: ${user.fcmTokens.length})`);
+            console.log(`📱 [FCM] Device token registered to active user @${user.username}. Disassociated from all other accounts.`);
         }
 
         res.json({ message: 'FCM token saved', tokenCount: user?.fcmTokens?.length || 0 });
     } catch (err) {
         console.error('FCM token save error:', err);
         res.status(500).json({ message: 'Failed to save FCM token' });
+    }
+});
+
+// @route   POST /api/users/unbind-fcm-token
+// @desc    Explicitly unbind a device token when switching accounts or logging out
+// @access  Private
+router.post('/unbind-fcm-token', protect, async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: 'Token is required' });
+
+        const cleanToken = String(token).trim();
+        await User.updateOne(
+            { _id: req.user._id },
+            { 
+                $pull: { 
+                    fcmTokens: { $in: [cleanToken, { token: cleanToken }] }
+                },
+                ...(req.user.fcmToken === cleanToken ? { $unset: { fcmToken: 1 } } : {})
+            }
+        );
+        res.json({ success: true, message: 'FCM token unlinked' });
+    } catch (err) {
+        console.error('FCM token unbind error:', err);
+        res.status(500).json({ message: 'Failed to unbind FCM token' });
     }
 });
 
