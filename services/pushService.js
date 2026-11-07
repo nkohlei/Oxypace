@@ -134,17 +134,21 @@ export const sendPushNotification = async (tokens, payload) => {
         if (notifType === 'voice_invite') {
             channelId = 'oxypace_voice_invite_v2';
         } else if (notifType === 'portal_post') {
-            channelId = 'oxypace_portal_posts_v1';
+            // Use existing high-priority channel with sound and vibration configured on all clients
+            channelId = 'oxypace_messages_v2';
         } else if (notifType !== 'message' && !sanitizedData.senderId) {
-            channelId = 'oxypace_general_notifications';
+            channelId = 'oxypace_messages_v2';
         }
 
-        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite' || notifType === 'portal_post';
+        // Only direct chat messages and voice calls use custom-rendered native layouts (MessagingStyle, CallStyle)
+        // All other notification types (portal posts, announcements, system alerts) MUST include the top-level
+        // notification object so Android OS system tray renders them reliably across all APK versions and sleep states.
+        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite';
 
         const message = {
             // For custom-rendered notifications (messages and voice invites), omit the top-level
             // notification object so Android OS does not intercept with generic system tray notification.
-            // This guarantees OxypaceMessagingService.onMessageReceived() runs in foreground, background, and killed states.
+            // For all other types, include the notification block so Android OS displays it even when app is killed.
             ...(!isCustomHandled && {
                 notification: {
                     title: notificationTitle,
@@ -176,6 +180,7 @@ export const sendPushNotification = async (tokens, payload) => {
                         sound: 'default',
                         defaultSound: true,
                         defaultVibrateTimings: true,
+                        clickAction: 'OPEN_ROUTE',
                         ...(absoluteImageUrl && { imageUrl: absoluteImageUrl }),
                     }
                 })
