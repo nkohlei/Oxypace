@@ -145,46 +145,73 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
         }
 
         // 3. Construct professional notification content
+        const rawContent = (post.content || '').replace(/\s+/g, ' ').trim();
+
+        // Identify any media attachment (image, gif, video, pdf, etc.)
+        let fileTag = '';
+        if (post.mediaType === 'image') {
+            const count = Array.isArray(post.media) && post.media.length > 1 ? ` (${post.media.length} görsel)` : '';
+            fileTag = `🖼️ Görsel${count}`;
+        } else if (post.mediaType === 'gif') {
+            fileTag = '👾 GIF';
+        } else if (post.mediaType === 'video' || post.mediaType === 'youtube' || post.mediaType === 'videoUrl') {
+            fileTag = '🎥 Video';
+        } else if (post.mediaType === 'pdf' || post.pdfUrl) {
+            fileTag = `📄 ${post.pdfName || 'PDF Belgesi'}`;
+        }
+
         let snippet = '';
-        if (post.content && post.content.trim()) {
-            snippet = post.content.replace(/\s+/g, ' ').trim();
-            if (snippet.length > 120) {
-                snippet = snippet.substring(0, 117) + '...';
+        if (rawContent) {
+            if (rawContent.length > 110) {
+                snippet = rawContent.substring(0, 107) + '...';
+            } else {
+                snippet = rawContent;
             }
-        } else if (post.mediaType === 'image' || post.mediaType === 'gif') {
-            snippet = 'Yeni bir görsel paylaştı 🖼️';
-        } else if (post.mediaType === 'video') {
-            snippet = 'Yeni bir video paylaştı 🎥';
-        } else if (post.mediaType === 'pdf') {
-            snippet = `Yeni bir belge paylaştı: ${post.pdfName || 'PDF'}`;
+            if (fileTag) {
+                snippet = `${snippet} [${fileTag}]`;
+            }
+        } else if (fileTag) {
+            snippet = `Yeni bir içerik paylaştı: ${fileTag}`;
         } else {
             snippet = 'Yeni bir paylaşım yaptı ✨';
         }
 
-        // Extract cover image
-        let coverImage = '';
+        // Get portal avatar (normal image or animated gif)
+        const portalAvatar = portalDoc.avatar || portalDoc.lowResAvatar || '';
+
+        // Extract visual cover for the post (image, video thumbnail, pdf first page, link preview, gif)
+        let postMedia = '';
         if (post.pdfThumbnailUrl) {
-            coverImage = post.pdfThumbnailUrl;
+            postMedia = post.pdfThumbnailUrl;
         } else if (post.videoThumbnail) {
-            coverImage = post.videoThumbnail;
+            postMedia = post.videoThumbnail;
         } else if (post.media) {
-            if (Array.isArray(post.media)) {
-                coverImage = post.media[0] || '';
-            } else if (typeof post.media === 'string') {
-                coverImage = post.media;
+            if (Array.isArray(post.media) && post.media.length > 0) {
+                const first = post.media[0];
+                if (typeof first === 'string' && !first.endsWith('.mp4') && !first.endsWith('.webm') && !first.endsWith('.mov')) {
+                    postMedia = first;
+                }
+            } else if (typeof post.media === 'string' && !post.media.endsWith('.mp4') && !post.media.endsWith('.webm') && !post.media.endsWith('.mov')) {
+                postMedia = post.media;
             }
         } else if (post.linkPreview?.image) {
-            coverImage = post.linkPreview.image;
+            postMedia = post.linkPreview.image;
+        } else if (post.gifUrl) {
+            postMedia = post.gifUrl;
         }
 
-        const portalAvatar = portalDoc.avatar || portalDoc.lowResAvatar || '';
+        // ALWAYS ensure a valid cover image:
+        // If post has a media attachment, use it as the main cover image.
+        // If post is text-only or attachment has no thumbnail, ALWAYS use portal avatar as the cover image!
+        const coverImage = postMedia || portalAvatar || '';
+
         const notificationTitle = `${portalDoc.name} • #${channelName}`;
         const notificationBody = `${authorName}: ${snippet}`;
         const targetRoute = `/portal/${portalIdStr}?channel=${channelIdStr}`;
 
         const uniqueTokens = [...new Set(eligibleTokens)];
 
-        console.log(`📢 [PortalNotificationService] Sending device push for ${portalDoc.name} (#${channelName}) to ${uniqueTokens.length} device(s)`);
+        console.log(`📢 [PortalNotificationService] Sending device push for ${portalDoc.name} (#${channelName}) with cover [${coverImage ? 'YES' : 'NO'}] to ${uniqueTokens.length} device(s)`);
 
         await sendPushNotification(uniqueTokens, {
             title: notificationTitle,
@@ -202,6 +229,9 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                 authorUsername: authorUsername,
                 portalAvatar: portalAvatar,
                 avatar: portalAvatar,
+                image: coverImage || portalAvatar,
+                coverImage: coverImage || portalAvatar,
+                postMedia: postMedia || '',
                 route: targetRoute,
                 url: targetRoute
             }

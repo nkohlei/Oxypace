@@ -2,38 +2,48 @@ import admin from 'firebase-admin';
 import { R2_DOMAIN, PROXY_BASE } from '../utils/mediaConfig.js';
 
 /**
- * Constructs the image URL for Android push notifications.
- * Uses the Koyeb proxy URL instead of the direct R2 CDN URL,
- * because Cloudflare R2 (pub-xxx.r2.dev) is blocked by Türk Telekom.
- * Koyeb runs on Google Cloud which is NOT blocked.
+ * Constructs the safe image URL for Android push notifications.
+ * Uses the backend proxy URL instead of the direct R2 CDN URL,
+ * because Cloudflare R2 (pub-xxx.r2.dev) is blocked by Turkish ISPs.
  */
 const constructNotifImageUrl = (key) => {
     if (!key) return null;
 
-    let cleanKey = key;
+    let cleanKey = String(key);
 
-    // If it's already a direct R2 CDN URL, extract the key part
-    if (cleanKey.startsWith(R2_DOMAIN)) {
-        cleanKey = cleanKey.slice(R2_DOMAIN.length).replace(/^\//, '');
-    }
-
-    // Strip any proxy path prefixes
+    // Strip any existing proxy path prefixes
     if (cleanKey.includes('/api/media/')) {
         cleanKey = cleanKey.substring(cleanKey.indexOf('/api/media/') + 11);
     } else if (cleanKey.includes('/r2-media/')) {
         cleanKey = cleanKey.substring(cleanKey.indexOf('/r2-media/') + 10);
     }
 
-    // Decode encoded chars (e.g. %2F → /)
-    try { cleanKey = decodeURIComponent(cleanKey); } catch (e) {}
+    // Decode URL-encoded characters (e.g. %2F, %3A)
+    try { 
+        cleanKey = decodeURIComponent(cleanKey); 
+    } catch (e) {}
 
-    // If it's an unrelated external URL (e.g. https://example.com/img.jpg), keep as-is
+    // Check again after decoding for proxy prefixes
+    if (cleanKey.includes('/api/media/')) {
+        cleanKey = cleanKey.substring(cleanKey.indexOf('/api/media/') + 11);
+    } else if (cleanKey.includes('/r2-media/')) {
+        cleanKey = cleanKey.substring(cleanKey.indexOf('/r2-media/') + 10);
+    }
+
+    // Strip direct R2 domain or any r2.dev domain
+    if (cleanKey.startsWith(R2_DOMAIN)) {
+        cleanKey = cleanKey.slice(R2_DOMAIN.length).replace(/^\//, '');
+    } else if (cleanKey.includes('.r2.dev/')) {
+        cleanKey = cleanKey.substring(cleanKey.indexOf('.r2.dev/') + 8);
+    }
+
+    // If it's an unrelated external URL (e.g. external image host), keep as-is
     if (cleanKey.startsWith('http')) return cleanKey;
 
-    // Normalize leading slash
-    cleanKey = cleanKey.replace(/^\//, '');
+    // Normalize leading slashes
+    cleanKey = cleanKey.replace(/^\/+/, '');
 
-    // Return Koyeb proxy URL — accessible on TTNet without Cloudflare blocking
+    // Return safe backend proxy URL accessible across all Turkish ISPs without blocking
     return `${PROXY_BASE}${cleanKey}`;
 };
 

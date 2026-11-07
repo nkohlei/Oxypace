@@ -559,7 +559,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                         .setBigContentTitle(title != null ? title : "Oxypace")
                         .setSummaryText(body != null ? body : "");
                     if (avatarBitmap != null) {
-                        bigPic.bigLargeIcon((android.graphics.Bitmap) null);
+                        bigPic.bigLargeIcon(avatarBitmap);
                     }
                     builder.setStyle(bigPic);
                 }
@@ -660,7 +660,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                         .setBigContentTitle(title)
                         .setSummaryText(body);
                     if (portalAvatarBitmap != null) {
-                        bigPic.bigLargeIcon((android.graphics.Bitmap) null);
+                        bigPic.bigLargeIcon(portalAvatarBitmap);
                     }
                     builder.setStyle(bigPic);
                 }
