@@ -151,36 +151,13 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             return;
         }
 
-        // 3. Construct professional notification content
+        // 3. Construct clean and professional notification content (no extra file tags)
         const rawContent = (post.content || '').replace(/\s+/g, ' ').trim();
-
-        // Identify any media attachment (image, gif, video, pdf, etc.)
-        let fileTag = '';
-        if (post.mediaType === 'image') {
-            const count = Array.isArray(post.media) && post.media.length > 1 ? ` (${post.media.length} görsel)` : '';
-            fileTag = `🖼️ Görsel${count}`;
-        } else if (post.mediaType === 'gif') {
-            fileTag = '👾 GIF';
-        } else if (post.mediaType === 'video' || post.mediaType === 'youtube' || post.mediaType === 'videoUrl') {
-            fileTag = '🎥 Video';
-        } else if (post.mediaType === 'pdf' || post.pdfUrl) {
-            fileTag = `📄 ${post.pdfName || 'PDF Belgesi'}`;
-        }
-
         let snippet = '';
         if (rawContent) {
-            if (rawContent.length > 110) {
-                snippet = rawContent.substring(0, 107) + '...';
-            } else {
-                snippet = rawContent;
-            }
-            if (fileTag) {
-                snippet = `${snippet} [${fileTag}]`;
-            }
-        } else if (fileTag) {
-            snippet = `Yeni bir içerik paylaştı: ${fileTag}`;
+            snippet = rawContent.length > 120 ? rawContent.substring(0, 117) + '...' : rawContent;
         } else {
-            snippet = 'Yeni bir paylaşım yaptı ✨';
+            snippet = 'Yeni bir paylaşım yaptı';
         }
 
         // Get portal avatar (normal image or animated gif)

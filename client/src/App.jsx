@@ -382,8 +382,8 @@ const AppLayout = () => {
         }
 
         const handleSharedContent = () => {
-            if (window.location.pathname !== '/create-post') {
-                navigate('/create-post?shared=1');
+            if (window.location.pathname !== '/create' && window.location.pathname !== '/create-post') {
+                navigate('/create?shared=1');
             }
         };
         window.addEventListener('oxypace:shared_content', handleSharedContent);
@@ -731,6 +731,14 @@ const AppLayout = () => {
 
                                 <Route
                                     path="/create"
+                                    element={
+                                        <PrivateRoute>
+                                            <CreatePost />
+                                        </PrivateRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/create-post"
                                     element={
                                         <PrivateRoute>
                                             <CreatePost />

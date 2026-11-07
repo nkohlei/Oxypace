@@ -578,7 +578,19 @@ public class MainActivity extends BridgeActivity {
             String token = call.getString("token", "");
             String serverUrl = call.getString("serverUrl", "https://oxypace.com.tr");
             String userId = call.getString("userId", null);
-            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId);
+            com.getcapacitor.JSArray inactiveArr = call.getArray("inactiveUserIds");
+            java.util.Set<String> inactiveSet = new java.util.HashSet<>();
+            if (inactiveArr != null) {
+                try {
+                    for (int i = 0; i < inactiveArr.length(); i++) {
+                        String id = inactiveArr.getString(i);
+                        if (id != null && !id.trim().isEmpty()) {
+                            inactiveSet.add(id.trim());
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId, inactiveSet);
 
             // If a valid JWT token was provided, immediately push device FCM token to backend
             if (token != null && !token.trim().isEmpty()) {
@@ -1952,8 +1964,8 @@ public class MainActivity extends BridgeActivity {
             payload.put("files", filesArray);
             ShareTargetManager.sLatestPayload = payload;
 
-            // Route to /create-post?shared=1
-            this.pendingRoute = "/create-post?shared=1";
+            // Route to /create?shared=1
+            this.pendingRoute = "/create?shared=1";
 
             final String payloadJson = payload.toString();
             android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -1963,12 +1975,12 @@ public class MainActivity extends BridgeActivity {
                     if (webView != null) {
                         String script = "(function(){ " +
                             "try { " +
-                            "  sessionStorage.setItem('pending_mobile_route', '/create-post?shared=1'); " +
+                            "  sessionStorage.setItem('pending_mobile_route', '/create?shared=1'); " +
+                            "  localStorage.setItem('pending_mobile_route', '/create?shared=1'); " +
                             "  window.__oxypaceSharedData = " + payloadJson + "; " +
                             "  window.dispatchEvent(new CustomEvent('oxypace:shared_content', { detail: " + payloadJson + " })); " +
-                            "  if (window.__oxypaceNavigate) { window.__oxypaceNavigate('/create-post?shared=1'); } " +
-                            "  else { window.location.href = '/create-post?shared=1'; } " +
-                            "} catch(e) { window.location.href = '/create-post?shared=1'; } " +
+                            "  if (window.__oxypaceNavigate) { window.__oxypaceNavigate('/create?shared=1'); } " +
+                            "} catch(e) {} " +
                             "})();";
                         webView.evaluateJavascript(script, null);
                     }

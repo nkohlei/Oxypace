@@ -51,16 +51,25 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         // Multi-Account Notification Isolation:
-        // Only show notifications if the target account matches the active logged-in user on this device.
+        // Only suppress if targetUserId is explicitly an inactive background account on this device.
         String targetUserId = remoteMessage.getData().get("targetUserId");
         if (targetUserId == null) targetUserId = remoteMessage.getData().get("recipientUserId");
         if (targetUserId == null) targetUserId = remoteMessage.getData().get("recipientId");
 
         if (targetUserId != null && !targetUserId.trim().isEmpty() && !"all".equalsIgnoreCase(targetUserId.trim())) {
-            String activeUserId = DirectReplyReceiver.getActiveUserId(this);
-            if (activeUserId == null || !activeUserId.trim().equalsIgnoreCase(targetUserId.trim())) {
-                android.util.Log.d("OxypaceMessaging", "Suppressed notification for non-active account. Active: " + activeUserId + ", Target: " + targetUserId);
+            String trimmedTarget = targetUserId.trim();
+            java.util.Set<String> inactiveUserIds = DirectReplyReceiver.getInactiveUserIds(this);
+            if (inactiveUserIds != null && inactiveUserIds.contains(trimmedTarget)) {
+                android.util.Log.d("OxypaceMessaging", "Suppressed notification for inactive background account: " + trimmedTarget);
                 return;
+            }
+
+            String activeUserId = DirectReplyReceiver.getActiveUserId(this);
+            if (activeUserId != null && !activeUserId.isEmpty() && inactiveUserIds != null && !inactiveUserIds.isEmpty()) {
+                if (!activeUserId.equalsIgnoreCase(trimmedTarget)) {
+                    android.util.Log.d("OxypaceMessaging", "Suppressed notification for non-active account. Active: " + activeUserId + ", Target: " + trimmedTarget);
+                    return;
+                }
             }
         }
 
@@ -619,10 +628,18 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         String title = getOrDefault(data, "title", notif != null ? notif.getTitle() : "Oxypace");
         String body  = getOrDefault(data, "body", notif != null ? notif.getBody() : "");
         String route = getOrDefault(data, "route", "");
+        String portalId = getOrDefault(data, "portalId", "portal");
+        String portalName = getOrDefault(data, "portalName", "Oxypace");
         String portalAvatar = getOrDefault(data, "portalAvatar", getOrDefault(data, "avatar", ""));
         String imageUrl = getOrDefault(data, "image", getOrDefault(data, "coverImage", getOrDefault(data, "postMedia", getOrDefault(data, "picture", getOrDefault(data, "bigPicture", "")))));
         if (imageUrl.isEmpty() && notif != null && notif.getImageUrl() != null) {
             imageUrl = notif.getImageUrl().toString();
+        }
+
+        // Clean body: strip any [Görsel], [PDF], etc. tags so text is clean and minimalist
+        String cleanBody = body.replaceAll("\\[.*?(Görsel|GIF|Video|PDF|Belge).*?\\]", "").trim();
+        if (cleanBody.isEmpty()) {
+            cleanBody = body.isEmpty() ? "Yeni bir paylaşım yaptı" : body;
         }
 
         Intent intent = new Intent(this, MainActivity.class);
@@ -634,7 +651,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Fetch circular portal avatar for the left icon (pure portal avatar, no app badge)
+        // Circular avatar bitmap of the portal (pure circular avatar, no app badge overlay)
         android.graphics.Bitmap portalAvatarBitmap = null;
         if (!portalAvatar.isEmpty()) {
             android.graphics.Bitmap rawAvatar = fetchBitmapFromUrl(portalAvatar);
@@ -643,52 +660,95 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             }
         }
         if (portalAvatarBitmap == null) {
-            String pName = getOrDefault(data, "portalName", "Oxypace");
-            portalAvatarBitmap = createInitialAvatar(pName);
+            portalAvatarBitmap = createInitialAvatar(portalName);
         }
 
+        androidx.core.graphics.drawable.IconCompat avatarIconCompat = null;
+        if (portalAvatarBitmap != null) {
+            avatarIconCompat = androidx.core.graphics.drawable.IconCompat.createWithBitmap(portalAvatarBitmap);
+        }
+
+        // Person representing the portal (displays circular avatar on the LEFT like user message notifications)
+        androidx.core.app.Person.Builder personBuilder = new androidx.core.app.Person.Builder()
+            .setName(title)
+            .setKey("portal_" + portalId);
+        if (avatarIconCompat != null) {
+            personBuilder.setIcon(avatarIconCompat);
+        }
+        androidx.core.app.Person portalPerson = personBuilder.build();
+
+        androidx.core.app.Person userPerson = new androidx.core.app.Person.Builder()
+            .setName("Ben")
+            .build();
+
+        // Push dynamic shortcut so modern Android (Android 11+, Samsung OneUI, MIUI) associates this conversation with the portal avatar
+        String shortcutId = "portal_conv_" + portalId;
+        try {
+            androidx.core.content.pm.ShortcutInfoCompat.Builder scBuilder = new androidx.core.content.pm.ShortcutInfoCompat.Builder(this, shortcutId)
+                .setShortLabel(portalName)
+                .setLongLabel(title)
+                .setPerson(portalPerson)
+                .setIntent(intent)
+                .setLongLived(true);
+            if (avatarIconCompat != null) {
+                scBuilder.setIcon(avatarIconCompat);
+            }
+            androidx.core.content.pm.ShortcutManagerCompat.pushDynamicShortcut(this, scBuilder.build());
+        } catch (Exception ignored) {}
+
+        // Use MessagingStyle identical to showMessageNotification:
+        // Android places portalPerson avatar on the LEFT in place of the app icon!
+        NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
+            .setConversationTitle(title)
+            .setGroupConversation(false);
+
+        NotificationCompat.MessagingStyle.Message msg = new NotificationCompat.MessagingStyle.Message(
+            cleanBody, System.currentTimeMillis(), portalPerson
+        );
+
+        // If post has an actual media image (distinct from portal avatar), attach it via contentUri
+        if (!imageUrl.isEmpty() && !imageUrl.equalsIgnoreCase(portalAvatar)) {
+            android.net.Uri contentUri = downloadImageToContentUri(imageUrl, "portal_" + portalId);
+            if (contentUri != null) {
+                msg.setData("image/jpeg", contentUri);
+            }
+        }
+        style.addMessage(msg);
+
+        int smallIcon = getSafeSmallIcon();
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(getSafeSmallIcon())
-            .setLargeIcon(portalAvatarBitmap)
+            .setSmallIcon(smallIcon)
+            .setShortcutId(shortcutId)
+            .setStyle(style)
             .setContentTitle(title)
-            .setContentText(body)
+            .setContentText(cleanBody)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(NotificationCompat.DEFAULT_ALL);
 
-        // Post content media / cover (image, gif, video thumbnail, pdf first page, etc.)
-        android.graphics.Bitmap coverBitmap = null;
-        if (!imageUrl.isEmpty()) {
-            coverBitmap = fetchBitmapFromUrl(imageUrl);
-        }
-
-        if (coverBitmap != null) {
-            NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
-                .bigPicture(coverBitmap)
-                .setBigContentTitle(title)
-                .setSummaryText(body);
-            if (portalAvatarBitmap != null) {
-                bigPic.bigLargeIcon(portalAvatarBitmap);
-            }
-            builder.setStyle(bigPic);
-        } else if (portalAvatarBitmap != null) {
-            NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
-                .bigPicture(portalAvatarBitmap)
-                .bigLargeIcon(portalAvatarBitmap)
-                .setBigContentTitle(title)
-                .setSummaryText(body);
-            builder.setStyle(bigPic);
-        } else {
-            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
+        if (portalAvatarBitmap != null) {
+            builder.setLargeIcon(portalAvatarBitmap);
         }
 
         try {
-            int notifId = (int) (System.currentTimeMillis() % 100000000);
+            int notifId = Math.abs(("portal_" + portalId).hashCode());
             nm.notify(notifId, builder.build());
+            android.util.Log.d("OxypaceMessaging", "Portal post notification successfully posted for: " + portalName);
         } catch (Exception e) {
             android.util.Log.e("OxypaceMessaging", "Failed to notify portal post: " + e.getMessage());
+            try {
+                NotificationCompat.Builder fallback = new NotificationCompat.Builder(this, channelId)
+                    .setSmallIcon(smallIcon)
+                    .setContentTitle(title)
+                    .setContentText(cleanBody)
+                    .setContentIntent(pi)
+                    .setAutoCancel(true);
+                if (portalAvatarBitmap != null) fallback.setLargeIcon(portalAvatarBitmap);
+                nm.notify(Math.abs(("portal_" + portalId).hashCode()), fallback.build());
+            } catch (Exception ignored) {}
         }
     }
     private void showIncomingCallNotification(java.util.Map<String, String> data) {

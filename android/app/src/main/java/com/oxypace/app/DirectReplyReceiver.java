@@ -27,8 +27,9 @@ public class DirectReplyReceiver extends BroadcastReceiver {
     public static final String KEY_JWT_TOKEN = "jwt_token";
     public static final String KEY_SERVER_URL = "server_url";
     public static final String KEY_CURRENT_USER_ID = "current_user_id";
+    public static final String KEY_INACTIVE_USER_IDS = "inactive_user_ids";
 
-    public static void saveAuthCredentials(Context context, String token, String serverUrl, String userId) {
+    public static void saveAuthCredentials(Context context, String token, String serverUrl, String userId, java.util.Set<String> inactiveUserIds) {
         if (context == null) return;
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -46,14 +47,32 @@ public class DirectReplyReceiver extends BroadcastReceiver {
             } else if (token == null || token.trim().isEmpty()) {
                 editor.remove(KEY_CURRENT_USER_ID);
             }
+
+            if (inactiveUserIds != null) {
+                editor.putStringSet(KEY_INACTIVE_USER_IDS, inactiveUserIds);
+            }
             editor.apply();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+    public static void saveAuthCredentials(Context context, String token, String serverUrl, String userId) {
+        saveAuthCredentials(context, token, serverUrl, userId, null);
+    }
+
     public static void saveAuthCredentials(Context context, String token, String serverUrl) {
-        saveAuthCredentials(context, token, serverUrl, null);
+        saveAuthCredentials(context, token, serverUrl, null, null);
+    }
+
+    public static java.util.Set<String> getInactiveUserIds(Context context) {
+        if (context == null) return java.util.Collections.emptySet();
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            java.util.Set<String> set = prefs.getStringSet(KEY_INACTIVE_USER_IDS, null);
+            return set != null ? set : java.util.Collections.emptySet();
+        } catch (Exception ignored) {}
+        return java.util.Collections.emptySet();
     }
 
     public static String getActiveUserId(Context context) {
