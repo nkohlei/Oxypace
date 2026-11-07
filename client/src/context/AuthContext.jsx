@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user?._id, user?.username, user?.profile?.avatar, token]);
 
-    // Set axios default header & sync with native Android for notification direct replies
+    // Set axios default header & sync with native Android for notification direct replies & multi-account isolation
     useEffect(() => {
         const prodServerUrl = 'https://oxypace.com.tr';
         if (token) {
@@ -81,17 +81,21 @@ export const AuthProvider = ({ children }) => {
                 document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Lax`;
             } catch (_) {}
             if (Capacitor.isNativePlatform()) {
-                AuthSync.syncAuth({ token, serverUrl: prodServerUrl }).catch(() => {});
+                AuthSync.syncAuth({
+                    token,
+                    serverUrl: prodServerUrl,
+                    userId: user?._id ? String(user._id) : ''
+                }).catch(() => {});
             }
             // Always fetch fresh user profile in background (Stale-While-Revalidate)
             fetchUser(token);
         } else {
             setLoading(false);
             if (Capacitor.isNativePlatform()) {
-                AuthSync.syncAuth({ token: '', serverUrl: prodServerUrl }).catch(() => {});
+                AuthSync.syncAuth({ token: '', serverUrl: prodServerUrl, userId: '' }).catch(() => {});
             }
         }
-    }, [token]);
+    }, [token, user?._id]);
 
     useEffect(() => {
         if (user && user._id) {
@@ -172,6 +176,13 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(userData));
         } catch (_) {}
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+        if (Capacitor.isNativePlatform()) {
+            AuthSync.syncAuth({
+                token: newToken,
+                serverUrl: 'https://oxypace.com.tr',
+                userId: userData?._id ? String(userData._id) : ''
+            }).catch(() => {});
+        }
     };
 
     const switchAccount = (targetUserId) => {
@@ -213,6 +224,14 @@ export const AuthProvider = ({ children }) => {
         try {
             document.cookie = `token=${encodeURIComponent(target.token)}; path=/; max-age=31536000; SameSite=Lax`;
         } catch (_) {}
+
+        if (Capacitor.isNativePlatform()) {
+            AuthSync.syncAuth({
+                token: target.token,
+                serverUrl: 'https://oxypace.com.tr',
+                userId: String(target.userId)
+            }).catch(() => {});
+        }
 
         localStorage.removeItem('_oxypace_uid');
         sessionStorage.clear();
@@ -295,6 +314,9 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
         setUser(null);
         delete axios.defaults.headers.common['Authorization'];
+        if (Capacitor.isNativePlatform()) {
+            AuthSync.syncAuth({ token: '', serverUrl: 'https://oxypace.com.tr', userId: '' }).catch(() => {});
+        }
         // Reset unread counts and other portal state
         useGlobalStore.getState().resetStore();
     };

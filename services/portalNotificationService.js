@@ -96,7 +96,7 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             return;
         }
 
-        const eligibleTokens = [];
+        const userTokensMap = new Map(); // recipientUserId -> Set<token>
 
         for (const user of candidateUsers) {
             // Check global notification push preference
@@ -128,19 +128,26 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                 continue;
             }
 
+            const uId = user._id.toString();
+            const tokenList = new Set();
+
             // User has notifications ENABLED for this channel!
             if (Array.isArray(user.fcmTokens) && user.fcmTokens.length > 0) {
                 for (const t of user.fcmTokens) {
                     if (t && typeof t === 'string' && t.trim()) {
-                        eligibleTokens.push(t.trim());
+                        tokenList.add(t.trim());
                     }
                 }
             } else if (user.fcmToken && typeof user.fcmToken === 'string' && user.fcmToken.trim()) {
-                eligibleTokens.push(user.fcmToken.trim());
+                tokenList.add(user.fcmToken.trim());
+            }
+
+            if (tokenList.size > 0) {
+                userTokensMap.set(uId, tokenList);
             }
         }
 
-        if (eligibleTokens.length === 0) {
+        if (userTokensMap.size === 0) {
             return;
         }
 
@@ -198,6 +205,12 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             postMedia = post.linkPreview.image;
         } else if (post.gifUrl) {
             postMedia = post.gifUrl;
+        } else if (post.youtubeUrl) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = String(post.youtubeUrl).match(regExp);
+            if (match && match[2].length === 11) {
+                postMedia = `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`;
+            }
         }
 
         // ALWAYS ensure a valid cover image:
@@ -209,33 +222,41 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
         const notificationBody = `${authorName}: ${snippet}`;
         const targetRoute = `/portal/${portalIdStr}?channel=${channelIdStr}`;
 
-        const uniqueTokens = [...new Set(eligibleTokens)];
+        let totalSentTokens = 0;
 
-        console.log(`📢 [PortalNotificationService] Sending device push for ${portalDoc.name} (#${channelName}) with cover [${coverImage ? 'YES' : 'NO'}] to ${uniqueTokens.length} device(s)`);
+        for (const [recipientId, tokensSet] of userTokensMap.entries()) {
+            const tokens = Array.from(tokensSet);
+            if (tokens.length === 0) continue;
+            totalSentTokens += tokens.length;
 
-        await sendPushNotification(uniqueTokens, {
-            title: notificationTitle,
-            body: notificationBody,
-            image: coverImage || undefined,
-            data: {
-                type: 'portal_post',
-                portalId: portalIdStr,
-                channelId: channelIdStr,
-                postId: post._id ? post._id.toString() : '',
-                portalName: portalDoc.name,
-                channelName: channelName,
-                authorId: authorIdStr,
-                authorName: authorName,
-                authorUsername: authorUsername,
-                portalAvatar: portalAvatar,
-                avatar: portalAvatar,
-                image: coverImage || portalAvatar,
-                coverImage: coverImage || portalAvatar,
-                postMedia: postMedia || '',
-                route: targetRoute,
-                url: targetRoute
-            }
-        });
+            sendPushNotification(tokens, {
+                title: notificationTitle,
+                body: notificationBody,
+                image: coverImage || undefined,
+                data: {
+                    type: 'portal_post',
+                    targetUserId: recipientId,
+                    recipientUserId: recipientId,
+                    portalId: portalIdStr,
+                    channelId: channelIdStr,
+                    postId: post._id ? post._id.toString() : '',
+                    portalName: portalDoc.name,
+                    channelName: channelName,
+                    authorId: authorIdStr,
+                    authorName: authorName,
+                    authorUsername: authorUsername,
+                    portalAvatar: portalAvatar,
+                    avatar: portalAvatar,
+                    image: coverImage || portalAvatar,
+                    coverImage: coverImage || portalAvatar,
+                    postMedia: postMedia || '',
+                    route: targetRoute,
+                    url: targetRoute
+                }
+            }).catch(e => console.error(`⚠️ [PortalNotificationService] Push send error for user ${recipientId}:`, e.message));
+        }
+
+        console.log(`📢 [PortalNotificationService] Dispatched device pushes for ${portalDoc.name} (#${channelName}) to ${userTokensMap.size} user(s) (${totalSentTokens} token(s))`);
     } catch (err) {
         console.error('❌ [PortalNotificationService] Error in sendPortalPostNotifications:', err);
     }

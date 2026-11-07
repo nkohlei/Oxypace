@@ -4432,7 +4432,7 @@ const AdminDashboard = () => {
     const handleBroadcastUpdatePrompt = async () => {
         if (!window.confirm("Mobil uygulaması v2.5.5'ten eski olan TÜM kullanıcılara sistem güncelleme bildirimi ve mesajı gönderilsin mi?")) return;
         try {
-            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 255 });
+            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 256 });
             alert(data.message || 'Tüm eski sürümlü kullanıcılara güncelleme bildirimi gönderildi.');
         } catch (err) {
             alert(err.response?.data?.message || err.message);
@@ -7670,10 +7670,10 @@ const AdminDashboard = () => {
                                                 <span className="user-stat-label" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📱 Uygulama Sürümü</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                                     {user.appPlatform === 'android' ? (
-                                                        user.versionCode >= 255 ? (
+                                                        user.versionCode >= 256 ? (
                                                             <span style={{ color: '#4ade80', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
-                                                                Android v{user.appVersion || '2.5.5'} (Güncel)
+                                                                Android v{user.appVersion || '2.5.6'} (Güncel)
                                                             </span>
                                                         ) : (
                                                             <span style={{ color: '#f87171', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -7688,7 +7688,7 @@ const AdminDashboard = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 255) && (
+                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 256) && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleSendUpdatePrompt(user._id, user.username)}

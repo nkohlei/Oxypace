@@ -23,21 +23,67 @@ import java.nio.charset.StandardCharsets;
 public class DirectReplyReceiver extends BroadcastReceiver {
 
     public static final String KEY_TEXT_REPLY = "key_text_reply";
-    private static final String PREFS_NAME = "OxypaceAuthPrefs";
-    private static final String KEY_JWT_TOKEN = "jwt_token";
-    private static final String KEY_SERVER_URL = "server_url";
+    public static final String PREFS_NAME = "OxypaceAuthPrefs";
+    public static final String KEY_JWT_TOKEN = "jwt_token";
+    public static final String KEY_SERVER_URL = "server_url";
+    public static final String KEY_CURRENT_USER_ID = "current_user_id";
 
-    public static void saveAuthCredentials(Context context, String token, String serverUrl) {
+    public static void saveAuthCredentials(Context context, String token, String serverUrl, String userId) {
         if (context == null) return;
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            prefs.edit()
-                .putString(KEY_JWT_TOKEN, token)
-                .putString(KEY_SERVER_URL, serverUrl)
-                .apply();
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString(KEY_JWT_TOKEN, token != null ? token : "");
+            editor.putString(KEY_SERVER_URL, serverUrl != null ? serverUrl : "https://oxypace.com.tr");
+
+            String resolvedUserId = (userId != null && !userId.trim().isEmpty()) ? userId.trim() : null;
+            if (resolvedUserId == null && token != null && !token.trim().isEmpty()) {
+                resolvedUserId = extractUserIdFromJwt(token);
+            }
+
+            if (resolvedUserId != null && !resolvedUserId.isEmpty()) {
+                editor.putString(KEY_CURRENT_USER_ID, resolvedUserId);
+            } else if (token == null || token.trim().isEmpty()) {
+                editor.remove(KEY_CURRENT_USER_ID);
+            }
+            editor.apply();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void saveAuthCredentials(Context context, String token, String serverUrl) {
+        saveAuthCredentials(context, token, serverUrl, null);
+    }
+
+    public static String getActiveUserId(Context context) {
+        if (context == null) return null;
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String uId = prefs.getString(KEY_CURRENT_USER_ID, null);
+            if (uId != null && !uId.trim().isEmpty()) return uId.trim();
+            String jwt = prefs.getString(KEY_JWT_TOKEN, null);
+            if (jwt != null && !jwt.trim().isEmpty()) {
+                return extractUserIdFromJwt(jwt);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    public static String extractUserIdFromJwt(String jwt) {
+        if (jwt == null || jwt.trim().isEmpty()) return null;
+        try {
+            String[] parts = jwt.split("\\.");
+            if (parts.length >= 2) {
+                byte[] decoded = android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
+                String json = new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+                org.json.JSONObject obj = new org.json.JSONObject(json);
+                if (obj.has("id")) return obj.getString("id");
+                if (obj.has("userId")) return obj.getString("userId");
+                if (obj.has("_id")) return obj.getString("_id");
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     @Override

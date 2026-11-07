@@ -50,6 +50,20 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             return;
         }
 
+        // Multi-Account Notification Isolation:
+        // Only show notifications if the target account matches the active logged-in user on this device.
+        String targetUserId = remoteMessage.getData().get("targetUserId");
+        if (targetUserId == null) targetUserId = remoteMessage.getData().get("recipientUserId");
+        if (targetUserId == null) targetUserId = remoteMessage.getData().get("recipientId");
+
+        if (targetUserId != null && !targetUserId.trim().isEmpty() && !"all".equalsIgnoreCase(targetUserId.trim())) {
+            String activeUserId = DirectReplyReceiver.getActiveUserId(this);
+            if (activeUserId == null || !activeUserId.trim().equalsIgnoreCase(targetUserId.trim())) {
+                android.util.Log.d("OxypaceMessaging", "Suppressed notification for non-active account. Active: " + activeUserId + ", Target: " + targetUserId);
+                return;
+            }
+        }
+
         String type = remoteMessage.getData().get("type");
         if ("voice_invite".equals(type)) {
             showIncomingCallNotification(remoteMessage.getData());
@@ -349,20 +363,114 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
     }
 
 
-    private android.graphics.Bitmap createInitialAvatarWithBadge(String name) {
+    private byte[] fetchBytesFromUrl(String urlString) {
+        if (urlString == null || urlString.trim().isEmpty()) return null;
+        String curUrl = urlString.trim();
+        for (int redirectCount = 0; redirectCount < 5; redirectCount++) {
+            java.net.HttpURLConnection conn = null;
+            try {
+                java.net.URL url = new java.net.URL(curUrl);
+                conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setDoInput(true);
+                conn.setInstanceFollowRedirects(false);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) OxypaceApp");
+                conn.setRequestProperty("Accept", "image/*,*/*");
+                conn.setConnectTimeout(12000);
+                conn.setReadTimeout(12000);
+                conn.connect();
+
+                int code = conn.getResponseCode();
+                if (code == java.net.HttpURLConnection.HTTP_MOVED_PERM || 
+                    code == java.net.HttpURLConnection.HTTP_MOVED_TEMP ||
+                    code == java.net.HttpURLConnection.HTTP_SEE_OTHER ||
+                    code == 307 || code == 308) {
+                    String loc = conn.getHeaderField("Location");
+                    conn.disconnect();
+                    if (loc != null && !loc.trim().isEmpty()) {
+                        if (!loc.startsWith("http")) {
+                            java.net.URL base = new java.net.URL(curUrl);
+                            loc = new java.net.URL(base, loc).toString();
+                        }
+                        curUrl = loc;
+                        continue;
+                    }
+                    return null;
+                }
+
+                if (code == java.net.HttpURLConnection.HTTP_OK) {
+                    try (java.io.InputStream is = conn.getInputStream();
+                         java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        while ((read = is.read(buffer)) != -1) {
+                            bos.write(buffer, 0, read);
+                        }
+                        return bos.toByteArray();
+                    }
+                }
+                return null;
+            } catch (Exception e) {
+                android.util.Log.w("OxypaceMessaging", "fetchBytes error for " + curUrl + ": " + e.getMessage());
+                return null;
+            } finally {
+                if (conn != null) {
+                    try { conn.disconnect(); } catch (Exception ignored) {}
+                }
+            }
+        }
+        return null;
+    }
+
+    private android.graphics.Bitmap fetchBitmapFromUrl(String urlString) {
+        byte[] bytes = fetchBytesFromUrl(urlString);
+        if (bytes != null && bytes.length > 0) {
+            try {
+                return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            } catch (Exception e) {
+                android.util.Log.w("OxypaceMessaging", "decodeByteArray error: " + e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    private android.graphics.Bitmap createCircularAvatar(android.graphics.Bitmap src) {
+        if (src == null) return null;
+        try {
+            int size = Math.min(src.getWidth(), src.getHeight());
+            if (size <= 0) return null;
+            int targetSize = 192;
+            android.graphics.Bitmap output = android.graphics.Bitmap.createBitmap(targetSize, targetSize, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(output);
+            final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
+            final android.graphics.Rect srcRect = new android.graphics.Rect(
+                (src.getWidth() - size) / 2,
+                (src.getHeight() - size) / 2,
+                (src.getWidth() + size) / 2,
+                (src.getHeight() + size) / 2
+            );
+            final android.graphics.Rect destRect = new android.graphics.Rect(0, 0, targetSize, targetSize);
+            canvas.drawARGB(0, 0, 0, 0);
+            canvas.drawCircle(targetSize / 2f, targetSize / 2f, targetSize / 2f, paint);
+            paint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
+            canvas.drawBitmap(src, srcRect, destRect, paint);
+            return output;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private android.graphics.Bitmap createInitialAvatar(String name) {
         try {
             int targetSize = 192;
             android.graphics.Bitmap output = android.graphics.Bitmap.createBitmap(targetSize, targetSize, android.graphics.Bitmap.Config.ARGB_8888);
             android.graphics.Canvas canvas = new android.graphics.Canvas(output);
 
             android.graphics.Paint circlePaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-            // Nice vibrant gradient color based on name hash
             int hash = Math.abs(name != null ? name.hashCode() : 0);
             int[] palette = {0xFF6366F1, 0xFF3B82F6, 0xFF0EA5E9, 0xFF10B981, 0xFF8B5CF6, 0xFFEC4899};
             circlePaint.setColor(palette[hash % palette.length]);
             canvas.drawCircle(targetSize / 2f, targetSize / 2f, targetSize / 2f, circlePaint);
 
-            // Initial letter
             String initial = (name != null && !name.trim().isEmpty()) ? name.trim().substring(0, 1).toUpperCase() : "O";
             android.graphics.Paint textPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
             textPaint.setColor(0xFFFFFFFF);
@@ -374,124 +482,24 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             textPaint.getTextBounds(initial, 0, initial.length(), bounds);
             float y = targetSize / 2f + bounds.height() / 2f;
             canvas.drawText(initial, targetSize / 2f, y, textPaint);
-
-            // Mini badge
-            try {
-                android.graphics.Bitmap appLogo = android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
-                if (appLogo != null) {
-                    int badgeSize = (int) (targetSize * 0.38f);
-                    int badgeX = targetSize - badgeSize;
-                    int badgeY = targetSize - badgeSize;
-
-                    android.graphics.Paint borderPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-                    borderPaint.setColor(0xFF090D16);
-                    canvas.drawCircle(badgeX + badgeSize / 2f, badgeY + badgeSize / 2f, badgeSize / 2f + 2, borderPaint);
-
-                    android.graphics.Bitmap circularBadge = android.graphics.Bitmap.createBitmap(badgeSize, badgeSize, android.graphics.Bitmap.Config.ARGB_8888);
-                    android.graphics.Canvas badgeCanvas = new android.graphics.Canvas(circularBadge);
-                    android.graphics.Paint bPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
-                    badgeCanvas.drawCircle(badgeSize / 2f, badgeSize / 2f, badgeSize / 2f, bPaint);
-                    bPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
-                    badgeCanvas.drawBitmap(appLogo, null, new android.graphics.Rect(0, 0, badgeSize, badgeSize), bPaint);
-
-                    canvas.drawBitmap(circularBadge, badgeX, badgeY, null);
-                }
-            } catch (Exception ignored) {}
-
             return output;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private android.graphics.Bitmap createInitialAvatarWithBadge(String name) {
+        return createInitialAvatar(name);
     }
 
     private android.graphics.Bitmap fetchCircularAvatarWithBadge(String imageUrl) {
         if (imageUrl == null || imageUrl.trim().isEmpty()) return null;
-        try {
-            java.net.URL url = new java.net.URL(imageUrl.trim());
-            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-            conn.setDoInput(true);
-            conn.setInstanceFollowRedirects(true);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) OxypaceApp");
-            conn.setRequestProperty("Accept", "image/*,*/*");
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.connect();
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != java.net.HttpURLConnection.HTTP_OK) {
-                android.util.Log.w("OxypaceMessaging", "Avatar HTTP response code: " + responseCode + " for URL: " + imageUrl);
-                return null;
-            }
-
-            java.io.InputStream is = conn.getInputStream();
-            android.graphics.Bitmap src = android.graphics.BitmapFactory.decodeStream(is);
-            is.close();
-            conn.disconnect();
-
-            if (src == null) {
-                android.util.Log.w("OxypaceMessaging", "Decoded bitmap is null for URL: " + imageUrl);
-                return null;
-            }
-
-            int size = Math.min(src.getWidth(), src.getHeight());
-            if (size <= 0) return null;
-
-            // Target uniform 192x192px avatar bitmap for crisp Android notification rendering
-            int targetSize = 192;
-
-            // 1. Create Circular Avatar
-            android.graphics.Bitmap output = android.graphics.Bitmap.createBitmap(targetSize, targetSize, android.graphics.Bitmap.Config.ARGB_8888);
-            android.graphics.Canvas canvas = new android.graphics.Canvas(output);
-
-            final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
-            final android.graphics.Rect srcRect = new android.graphics.Rect(
-                (src.getWidth() - size) / 2,
-                (src.getHeight() - size) / 2,
-                (src.getWidth() + size) / 2,
-                (src.getHeight() + size) / 2
-            );
-            final android.graphics.Rect destRect = new android.graphics.Rect(0, 0, targetSize, targetSize);
-
-            canvas.drawARGB(0, 0, 0, 0);
-            canvas.drawCircle(targetSize / 2f, targetSize / 2f, targetSize / 2f, paint);
-            paint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
-            canvas.drawBitmap(src, srcRect, destRect, paint);
-
-            // 2. Draw Mini App Logo Badge in bottom right corner (WhatsApp style)
-            try {
-                android.graphics.Bitmap appLogo = android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
-                if (appLogo != null) {
-                    int badgeSize = (int) (targetSize * 0.38f);
-                    int badgeX = targetSize - badgeSize;
-                    int badgeY = targetSize - badgeSize;
-
-                    // Draw dark outer border circle
-                    android.graphics.Paint borderPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-                    borderPaint.setColor(0xFF090D16);
-                    canvas.drawCircle(badgeX + badgeSize / 2f, badgeY + badgeSize / 2f, badgeSize / 2f + 2, borderPaint);
-
-                    // Draw app icon inside circular badge
-                    android.graphics.Bitmap circularBadge = android.graphics.Bitmap.createBitmap(badgeSize, badgeSize, android.graphics.Bitmap.Config.ARGB_8888);
-                    android.graphics.Canvas badgeCanvas = new android.graphics.Canvas(circularBadge);
-                    android.graphics.Paint bPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
-                    badgeCanvas.drawCircle(badgeSize / 2f, badgeSize / 2f, badgeSize / 2f, bPaint);
-                    bPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
-                    badgeCanvas.drawBitmap(appLogo, null, new android.graphics.Rect(0, 0, badgeSize, badgeSize), bPaint);
-
-                    paint.setXfermode(null);
-                    canvas.drawBitmap(circularBadge, badgeX, badgeY, paint);
-                }
-            } catch (Exception badgeErr) {
-                // Ignore badge error
-            }
-
-            return output;
-        } catch (Exception e) {
-            android.util.Log.w("OxypaceMessaging", "Failed to fetch circular avatar: " + e.getMessage());
-            return null;
+        android.graphics.Bitmap raw = fetchBitmapFromUrl(imageUrl);
+        if (raw != null) {
+            return createCircularAvatar(raw);
         }
+        return null;
     }
-
     private void showStandardSystemNotification(String title, String body, String route, String imageUrl, String avatarUrl) {
         String channelId = "oxypace_general_notifications";
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -612,7 +620,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         String body  = getOrDefault(data, "body", notif != null ? notif.getBody() : "");
         String route = getOrDefault(data, "route", "");
         String portalAvatar = getOrDefault(data, "portalAvatar", getOrDefault(data, "avatar", ""));
-        String imageUrl = getOrDefault(data, "image", getOrDefault(data, "picture", getOrDefault(data, "bigPicture", "")));
+        String imageUrl = getOrDefault(data, "image", getOrDefault(data, "coverImage", getOrDefault(data, "postMedia", getOrDefault(data, "picture", getOrDefault(data, "bigPicture", "")))));
         if (imageUrl.isEmpty() && notif != null && notif.getImageUrl() != null) {
             imageUrl = notif.getImageUrl().toString();
         }
@@ -626,13 +634,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
+        // Fetch circular portal avatar for the left icon (pure portal avatar, no app badge)
         android.graphics.Bitmap portalAvatarBitmap = null;
         if (!portalAvatar.isEmpty()) {
-            portalAvatarBitmap = fetchCircularAvatarWithBadge(portalAvatar);
+            android.graphics.Bitmap rawAvatar = fetchBitmapFromUrl(portalAvatar);
+            if (rawAvatar != null) {
+                portalAvatarBitmap = createCircularAvatar(rawAvatar);
+            }
         }
         if (portalAvatarBitmap == null) {
             String pName = getOrDefault(data, "portalName", "Oxypace");
-            portalAvatarBitmap = createInitialAvatarWithBadge(pName);
+            portalAvatarBitmap = createInitialAvatar(pName);
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
@@ -646,33 +658,21 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(NotificationCompat.DEFAULT_ALL);
 
+        // Post content media / cover (image, gif, video thumbnail, pdf first page, etc.)
+        android.graphics.Bitmap coverBitmap = null;
         if (!imageUrl.isEmpty()) {
-            try {
-                java.net.URL url = new java.net.URL(imageUrl);
-                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                conn.setDoInput(true);
-                conn.setInstanceFollowRedirects(true);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) OxypaceApp");
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
-                conn.connect();
-                java.io.InputStream is = conn.getInputStream();
-                android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(is);
-                is.close();
-                conn.disconnect();
-                if (bitmap != null) {
-                    NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
-                        .bigPicture(bitmap)
-                        .setBigContentTitle(title)
-                        .setSummaryText(body);
-                    if (portalAvatarBitmap != null) {
-                        bigPic.bigLargeIcon(portalAvatarBitmap);
-                    }
-                    builder.setStyle(bigPic);
-                }
-            } catch (Exception e) {
-                android.util.Log.w("OxypaceMessaging", "Failed to download portal post cover image: " + e.getMessage());
+            coverBitmap = fetchBitmapFromUrl(imageUrl);
+        }
+
+        if (coverBitmap != null) {
+            NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
+                .bigPicture(coverBitmap)
+                .setBigContentTitle(title)
+                .setSummaryText(body);
+            if (portalAvatarBitmap != null) {
+                bigPic.bigLargeIcon(portalAvatarBitmap);
             }
+            builder.setStyle(bigPic);
         } else if (portalAvatarBitmap != null) {
             NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
                 .bigPicture(portalAvatarBitmap)
@@ -680,6 +680,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 .setBigContentTitle(title)
                 .setSummaryText(body);
             builder.setStyle(bigPic);
+        } else {
+            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
         }
 
         try {
@@ -689,7 +691,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             android.util.Log.e("OxypaceMessaging", "Failed to notify portal post: " + e.getMessage());
         }
     }
-
     private void showIncomingCallNotification(java.util.Map<String, String> data) {
         String senderName  = getOrDefault(data, "senderName",  "Birisi");
         String senderAvatar = getOrDefault(data, "senderAvatar", "");

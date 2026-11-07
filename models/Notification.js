@@ -133,11 +133,15 @@ notificationSchema.post('save', async function (doc) {
         // Dynamically import push service to prevent circular dependencies
         const { sendPushNotification } = await import('../services/pushService.js');
         
+        const recipientIdStr = doc.recipient ? doc.recipient.toString() : '';
+
         await sendPushNotification(recipient.fcmTokens, {
             title,
             body,
             image: doc.imageUrl,
             data: {
+                targetUserId: recipientIdStr,
+                recipientUserId: recipientIdStr,
                 url: targetRoute,
                 route: targetRoute,
                 type: doc.type || 'notification',

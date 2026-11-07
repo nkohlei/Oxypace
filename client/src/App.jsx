@@ -380,8 +380,17 @@ const AppLayout = () => {
             localStorage.removeItem('pending_mobile_route');
             navigate(pendingRoute);
         }
+
+        const handleSharedContent = () => {
+            if (window.location.pathname !== '/create-post') {
+                navigate('/create-post?shared=1');
+            }
+        };
+        window.addEventListener('oxypace:shared_content', handleSharedContent);
+
         return () => {
             delete window.__oxypaceNavigate;
+            window.removeEventListener('oxypace:shared_content', handleSharedContent);
         };
     }, [navigate]);
 

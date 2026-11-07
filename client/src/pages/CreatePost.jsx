@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
@@ -8,6 +9,8 @@ import { useUploadStore } from '../store/useUploadStore';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import './CreatePost.css';
+
+const ShareTargetManager = registerPlugin('ShareTargetManager');
 
 const CreatePost = () => {
     const [content, setContent] = useState('');
@@ -55,9 +58,8 @@ const CreatePost = () => {
         }
     };
 
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
+    const processFiles = (files) => {
+        if (!files || files.length === 0) return;
 
         const firstFile = files[0];
         const isPdf = firstFile.type === 'application/pdf' || firstFile.name.toLowerCase().endsWith('.pdf');
@@ -126,9 +128,97 @@ const CreatePost = () => {
             setMediaFiles((prev) => [...prev, ...validFiles]);
             setMediaPreviews((prev) => [...prev, ...newPreviews]);
         }
+    };
 
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        processFiles(files);
         if (e.target) e.target.value = '';
     };
+
+    // Android System Share Intent (Galeri, Dosyalar, Sosyal Medya Paylaş) Integration
+    useEffect(() => {
+        let isSubscribed = true;
+
+        const applySharedPayload = async (payload) => {
+            if (!payload || !isSubscribed) return;
+
+            // 1. Text or Link
+            if (payload.text) {
+                setContent(prev => prev ? `${prev}\n${payload.text}` : payload.text);
+            } else if (payload.subject) {
+                setContent(prev => prev ? `${prev}\n${payload.subject}` : payload.subject);
+            }
+
+            // 2. Shared Files (Images, Videos, PDFs, GIFs)
+            if (Array.isArray(payload.files) && payload.files.length > 0) {
+                const convertedFiles = [];
+                for (const f of payload.files) {
+                    try {
+                        let fileBlob = null;
+                        if (f.base64) {
+                            const byteChars = atob(f.base64);
+                            const byteNums = new Array(byteChars.length);
+                            for (let i = 0; i < byteChars.length; i++) {
+                                byteNums[i] = byteChars.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNums);
+                            fileBlob = new Blob([byteArray], { type: f.mimeType || 'application/octet-stream' });
+                        } else if (f.path && window.Capacitor) {
+                            const fileSrc = window.Capacitor.convertFileSrc(f.path);
+                            const res = await fetch(fileSrc);
+                            fileBlob = await res.blob();
+                        }
+                        if (fileBlob) {
+                            const newFile = new File([fileBlob], f.name || 'shared_file', {
+                                type: f.mimeType || fileBlob.type || 'application/octet-stream'
+                            });
+                            convertedFiles.push(newFile);
+                        }
+                    } catch (err) {
+                        console.error('Error loading shared file:', f.name, err);
+                    }
+                }
+                if (convertedFiles.length > 0 && isSubscribed) {
+                    processFiles(convertedFiles);
+                }
+            }
+        };
+
+        // Check if there was shared data queued globally on cold start
+        if (window.__oxypaceSharedData) {
+            applySharedPayload(window.__oxypaceSharedData);
+            window.__oxypaceSharedData = null;
+        }
+
+        // Query native ShareTargetManager plugin
+        if (Capacitor.isNativePlatform()) {
+            ShareTargetManager.getSharedData()
+                .then(res => {
+                    if (res && res.hasData) {
+                        applySharedPayload(res);
+                        ShareTargetManager.clearSharedData().catch(() => {});
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // Listen for runtime live event while user is already on CreatePost screen
+        const handleSharedEvent = (e) => {
+            if (e.detail) {
+                applySharedPayload(e.detail);
+                if (Capacitor.isNativePlatform()) {
+                    ShareTargetManager.clearSharedData().catch(() => {});
+                }
+            }
+        };
+
+        window.addEventListener('oxypace:shared_content', handleSharedEvent);
+        return () => {
+            isSubscribed = false;
+            window.removeEventListener('oxypace:shared_content', handleSharedEvent);
+        };
+    }, []);
 
     const removeSingleMedia = () => {
         setMediaFile(null);

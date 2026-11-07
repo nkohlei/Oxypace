@@ -481,13 +481,13 @@ app.get('/downloads/bundle.zip', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.5.5',
-        versionCode: 255,
-        minSupportedVersionCode: 255,
+        latestVersion: '2.5.6',
+        versionCode: 256,
+        minSupportedVersionCode: 256,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.5.5: Canlı görüntülü odalarda %70 kota koruyan Veri Tasarrufu Modu, hoparlör/kulaklık ses çıkışı yönlendirme düzeltmesi, mikrofon açıp kapatıldığında ses kalitesi bozulmasını önleyen donanım ses senkronizasyonu ve yönetici panelinden uygulama sürümleri takibi.',
+        changelog: 'Oxypace 2.5.6: Android sistem paylaşım menüsü entegrasyonu (Galeri, Dosyalar ve diğer uygulamalardan doğrudan Oxypace paylaşımları), çoklu hesaplarda sadece aktif oturuma gelen bildirimlerin iletilmesi, portal bildirimlerinde portal logosu ve zengin medya kapak desteği.',
     });
 });
 

@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.5)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.6)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.6',
+        versionCode: 256,
+        releaseDate: '7 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Android Sistem Paylaşım Menüsü (Share Intent), Çoklu Hesap Bildirim İzolasyonu, Portal Logosu & Zengin Medya Kapaklı Cihaz Bildirimleri',
+        summary: 'Oxypace artık Android sistem paylaşım menüsüne tam entegre! Galeri, Dosyalar, tarayıcı veya diğer sosyal medya uygulamalarından paylaşılan tüm metin, bağlantı, resim, video ve belgeler doğrudan Oxypace gönderi oluşturma ekranına aktarılabilir. Çoklu hesap desteğinde cihaz bildirimleri izole edildi; cihazda yalnızca o an oturumu açık olan hesabın bildirimleri gösterilir, arka plandaki hesapların bildirimleri gizlenir. Portal bildirimlerinde ise paylaşımın geldiği portalın özel avatarı sol menüde, post içerikleri (görsel, gif, video veya belge) zengin büyük kapak resmi olarak anlık bildirimde görüntülenir.',
+        category: 'feature',
+        apkSize: '39.2 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Android Sistem Paylaşım Menüsü (ACTION_SEND & SEND_MULTIPLE): Galeri, Dosyalar ve diğer uygulamalardan doğrudan Oxypace üzerinden tek tıkla paylaşım yapabilme',
+            'Çoklu Hesap Bildirim İzolasyonu: Yalnızca uygulamada aktif oturumu açık olan hesaba ait cihaz bildirimlerinin iletilmesi, gizlilik koruması',
+            'Portal Bildirimlerinde Portal Logosu & Büyük Kapak: Paylaşım yapılan portalın avatarı ve içerik kapak görselinin (resim, gif, video/pdf) bildirimde gösterilmesi',
+            'Kanal Bildirim Ayarları Yenilendi: "Susturulan kanallar" yerine doğrudan bildirimleri açık kanallar mantığına geçiş ve portal rozet sayacı senkronizasyonu'
+        ],
+        changes: [
+            { type: 'Android Sistem Paylaşım Menüsü (Share Intent)', detail: 'AndroidManifest.xml ve MainActivity.java üzerinde ACTION_SEND ve ACTION_SEND_MULTIPLE intent-filterları, ShareTargetManager Capacitor eklentisi ve CreatePost sayfası otomatik içerik aktarımı entegre edildi.' },
+            { type: 'Çoklu Hesap Bildirim Filtreleme', detail: 'OxypaceMessagingService, AuthSync ve backend servisleri üzerinde targetUserId eşleştirmesi yapılarak yalnızca aktif kullanıcının bildirimlerinin gösterilmesi sağlandı.' },
+            { type: 'Portal Bildirimleri & Zengin Medya', detail: 'portalNotificationService.js ve OxypaceMessagingService üzerinde portal avatarı (largeIcon) ve post medyası (BigPictureStyle) desteği güçlendirildi.' },
+            { type: 'Zorunlu Güncelleme & Sürüm 2.5.6', detail: 'Tüm kurulu istemciler için minimum sürüm 256 olarak belirlendi ve zorunlu güncelleme motoru devreye alındı.' }
+        ],
+        filesModified: 12
+    },
     {
         version: 'v2.5.5',
         versionCode: 255,
         releaseDate: '29 Ekim 2026',
-        commitHash: 'HEAD',
-        status: 'active',
+        commitHash: 'b149c71e',
+        status: 'stable',
         title: 'Veri Tasarrufu Modu, Ses Çıkışı Yönlendirme & Mikrofon Ses Kalitesi Düzeltmesi, Yönetici Sürüm Takibi',
         summary: 'Canlı görüntülü odalarda varsayılan olarak aktif olan ve mobil internet kotasını %70 oranında koruyan Veri Tasarrufu Modu eklendi. Canlı odadaki hoparlör/kulaklık ses çıkışı ayarı native Android 12+ AudioPolicy API ile onarıldı. Mikrofon açıldığında oluşan ses bozulması ve kapatıldığında düzelmeme sorunu giderildi; mutelendiğinde donanım ses yakalama oturumu durdurularak 48kHz Hi-Fi stereo ses anında geri kazanılır. Yönetici paneline tüm kullanıcıların uygulama sürümlerini görüntüleme ve eski sürümlülere anlık sistem güncelleme mesajı gönderme özelliği kazandırıldı.',
         category: 'feature',

@@ -549,13 +549,36 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    @CapacitorPlugin(name = "ShareTargetManager")
+    public static class ShareTargetManager extends com.getcapacitor.Plugin {
+        public static com.getcapacitor.JSObject sLatestPayload = null;
+
+        @PluginMethod
+        public void getSharedData(PluginCall call) {
+            if (sLatestPayload != null) {
+                call.resolve(sLatestPayload);
+            } else {
+                com.getcapacitor.JSObject empty = new com.getcapacitor.JSObject();
+                empty.put("hasData", false);
+                call.resolve(empty);
+            }
+        }
+
+        @PluginMethod
+        public void clearSharedData(PluginCall call) {
+            sLatestPayload = null;
+            call.resolve();
+        }
+    }
+
     @CapacitorPlugin(name = "AuthSync")
     public static class AuthSync extends com.getcapacitor.Plugin {
         @PluginMethod
         public void syncAuth(PluginCall call) {
             String token = call.getString("token", "");
             String serverUrl = call.getString("serverUrl", "https://oxypace.com.tr");
-            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl);
+            String userId = call.getString("userId", null);
+            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId);
 
             // If a valid JWT token was provided, immediately push device FCM token to backend
             if (token != null && !token.trim().isEmpty()) {
@@ -1301,8 +1324,10 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SystemBarManager.class);
         registerPlugin(NativeMediaPreloader.class);
         registerPlugin(ScreenOrientationManager.class);
+        registerPlugin(ShareTargetManager.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
+        handleShareIntent(getIntent());
 
         // Dynamically detect system navigation bar mode (3-button vs gesture navigation) and safe-areas
         try {
@@ -1551,14 +1576,28 @@ public class MainActivity extends BridgeActivity {
                     // Ensure system navigation safe-area insets are applied to DOM
                     applyInsetsToWebView();
 
-                    // Automatically extract auth token from WebView localStorage for Direct Reply
+                    // Automatically extract auth token and user id from WebView localStorage
                     try {
                         view.evaluateJavascript(
-                            "(function() { return localStorage.getItem('token') || ''; })();",
+                            "(function() { " +
+                            "  var t = localStorage.getItem('token') || ''; " +
+                            "  var u = ''; " +
+                            "  try { var user = JSON.parse(localStorage.getItem('user')); if (user && user._id) u = user._id; } catch(e){} " +
+                            "  return JSON.stringify({ token: t, userId: u }); " +
+                            "})();",
                             value -> {
                                 if (value != null && !value.isEmpty() && !value.equals("\"\"") && !value.equals("null")) {
-                                    String cleanToken = value.replace("\"", "").trim();
-                                    if (!cleanToken.isEmpty()) {
+                                    try {
+                                        String clean = value;
+                                        if (clean.startsWith("\"") && clean.endsWith("\"")) {
+                                            clean = clean.substring(1, clean.length() - 1).replace("\\\"", "\"");
+                                        }
+                                        org.json.JSONObject obj = new org.json.JSONObject(clean);
+                                        String cleanToken = obj.optString("token", "").trim();
+                                        String cleanUserId = obj.optString("userId", "").trim();
+                                        DirectReplyReceiver.saveAuthCredentials(MainActivity.this, cleanToken, "https://oxypace.com.tr", cleanUserId);
+                                    } catch (Exception ex) {
+                                        String cleanToken = value.replace("\"", "").trim();
                                         DirectReplyReceiver.saveAuthCredentials(MainActivity.this, cleanToken, "https://oxypace.com.tr");
                                     }
                                 }
@@ -1807,7 +1846,155 @@ public class MainActivity extends BridgeActivity {
     protected void onNewIntent(android.content.Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        handleShareIntent(intent);
         handleIncomingCallIntent(intent);
+    }
+
+    /**
+     * Handles external Android Send Intent (ACTION_SEND / ACTION_SEND_MULTIPLE)
+     * from Gallery, File managers (Dosyalar), social apps, browser, etc.
+     */
+    private void handleShareIntent(android.content.Intent intent) {
+        if (intent == null) return;
+        String action = intent.getAction();
+        if (!android.content.Intent.ACTION_SEND.equals(action) && !android.content.Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            return;
+        }
+
+        try {
+            com.getcapacitor.JSObject payload = new com.getcapacitor.JSObject();
+            payload.put("hasData", true);
+
+            String sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT);
+            String sharedSubject = intent.getStringExtra(android.content.Intent.EXTRA_SUBJECT);
+            payload.put("text", sharedText != null ? sharedText : "");
+            payload.put("subject", sharedSubject != null ? sharedSubject : "");
+
+            com.getcapacitor.JSArray filesArray = new com.getcapacitor.JSArray();
+
+            java.util.List<android.net.Uri> uris = new java.util.ArrayList<>();
+            if (android.content.Intent.ACTION_SEND.equals(action)) {
+                android.net.Uri uri = intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM);
+                if (uri != null) uris.add(uri);
+            } else if (android.content.Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+                java.util.ArrayList<android.net.Uri> list = intent.getParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM);
+                if (list != null) uris.addAll(list);
+            }
+
+            java.io.File cacheDir = new java.io.File(getCacheDir(), "shared_uploads");
+            if (!cacheDir.exists()) cacheDir.mkdirs();
+
+            for (android.net.Uri uri : uris) {
+                try {
+                    String displayName = "share_" + System.currentTimeMillis();
+                    String mimeType = getContentResolver().getType(uri);
+
+                    android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+                    if (cursor != null) {
+                        try {
+                            if (cursor.moveToFirst()) {
+                                int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                                if (nameIndex >= 0) {
+                                    String n = cursor.getString(nameIndex);
+                                    if (n != null && !n.trim().isEmpty()) displayName = n.trim();
+                                }
+                            }
+                        } finally {
+                            cursor.close();
+                        }
+                    }
+
+                    if (mimeType == null) {
+                        mimeType = getMimeTypeFromFileName(displayName);
+                    }
+
+                    java.io.File destFile = new java.io.File(cacheDir, System.currentTimeMillis() + "_" + displayName);
+                    try (java.io.InputStream in = getContentResolver().openInputStream(uri);
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(destFile)) {
+                        byte[] buffer = new byte[16384];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                        out.flush();
+                    }
+
+                    long fileSize = destFile.length();
+                    String base64 = "";
+                    // If file is reasonably sized (<= 15MB), also provide base64 for direct in-memory File constructor
+                    if (fileSize > 0 && fileSize <= 15 * 1024 * 1024) {
+                        try (java.io.FileInputStream fis = new java.io.FileInputStream(destFile)) {
+                            byte[] fileBytes = new byte[(int) fileSize];
+                            int totalRead = 0;
+                            while (totalRead < fileSize) {
+                                int r = fis.read(fileBytes, totalRead, (int) fileSize - totalRead);
+                                if (r < 0) break;
+                                totalRead += r;
+                            }
+                            base64 = android.util.Base64.encodeToString(fileBytes, android.util.Base64.NO_WRAP);
+                        } catch (Exception ignored) {}
+                    }
+
+                    com.getcapacitor.JSObject fileObj = new com.getcapacitor.JSObject();
+                    fileObj.put("name", displayName);
+                    fileObj.put("mimeType", mimeType != null ? mimeType : "application/octet-stream");
+                    fileObj.put("size", fileSize);
+                    fileObj.put("path", destFile.getAbsolutePath());
+                    if (!base64.isEmpty()) {
+                        fileObj.put("base64", base64);
+                    }
+                    filesArray.put(fileObj);
+                } catch (Exception fileEx) {
+                    android.util.Log.e("ShareTarget", "Error processing shared uri: " + uri, fileEx);
+                }
+            }
+
+            payload.put("files", filesArray);
+            ShareTargetManager.sLatestPayload = payload;
+
+            // Route to /create-post?shared=1
+            this.pendingRoute = "/create-post?shared=1";
+
+            final String payloadJson = payload.toString();
+            android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+            h.postDelayed(() -> {
+                try {
+                    android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+                    if (webView != null) {
+                        String script = "(function(){ " +
+                            "try { " +
+                            "  sessionStorage.setItem('pending_mobile_route', '/create-post?shared=1'); " +
+                            "  window.__oxypaceSharedData = " + payloadJson + "; " +
+                            "  window.dispatchEvent(new CustomEvent('oxypace:shared_content', { detail: " + payloadJson + " })); " +
+                            "  if (window.__oxypaceNavigate) { window.__oxypaceNavigate('/create-post?shared=1'); } " +
+                            "  else { window.location.href = '/create-post?shared=1'; } " +
+                            "} catch(e) { window.location.href = '/create-post?shared=1'; } " +
+                            "})();";
+                        webView.evaluateJavascript(script, null);
+                    }
+                } catch (Exception ignored) {}
+            }, 300);
+
+            // Clear intent action so it doesn't re-trigger on subsequent rotations
+            intent.setAction("");
+        } catch (Exception e) {
+            android.util.Log.e("ShareTarget", "Error handling share intent", e);
+        }
+    }
+
+    private static String getMimeTypeFromFileName(String fileName) {
+        if (fileName == null) return "application/octet-stream";
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".mp4")) return "video/mp4";
+        if (lower.endsWith(".webm")) return "video/webm";
+        if (lower.endsWith(".mov")) return "video/quicktime";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        return "application/octet-stream";
     }
 
     /**
