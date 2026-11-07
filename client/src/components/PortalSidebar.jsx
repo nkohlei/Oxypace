@@ -43,8 +43,8 @@ const PortalSidebar = () => {
             return pId?.toString() === targetIdStr;
         });
 
-        if (settings?.isAllMuted) return 0;
-
+        // Device notifications toggle (isAllMuted) only controls FCM push notifications.
+        // In-app portal avatar unread badge continues to count all active/unmuted channels!
         const allUnread = unreadPostsByPortal[targetIdStr] || [];
         if (!allUnread.length) return 0;
 

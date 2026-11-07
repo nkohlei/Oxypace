@@ -206,11 +206,11 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
             <div className="notifications-content">
                 {activeTab === 'settings' && (
                     <div className="mute-settings-section">
-                        {/* Toggle All */}
+                        {/* Toggle Device Push */}
                         <div className="settings-group">
                             <div className="settings-info">
-                                <div className="settings-title">Portal Bildirimleri</div>
-                                <div className="settings-desc">Bu portal altındaki kanallardan anlık cihaz bildirimleri ve rozet bildirimleri almanızı sağlar.</div>
+                                <div className="settings-title">Cihaz Bildirimleri</div>
+                                <div className="settings-desc">Bu portal için telefonunuza anlık cihaz bildirimi gönderilmesini kontrol eder. Kapatıldığında cihaz bildirimi gelmez; kanal bildirimleri portal rozetinde görünmeye devam eder.</div>
                             </div>
                             <label className="switch">
                                 <input
@@ -234,19 +234,18 @@ const PortalNotifications = ({ portalId, portalChannels = [], onUpdate }) => {
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Kanal bulunamadı.</p>
                             ) : (
                                 portalChannels.map((channel) => {
-                                    const isChannelActive = !isAllMuted && !mutedChannels.includes(channel._id?.toString());
+                                    const isChannelActive = !mutedChannels.includes(channel._id?.toString());
                                     return (
                                         <div key={channel._id} className="channel-mute-item">
                                             <div className="channel-mute-name-wrapper">
                                                 {getChannelIcon(channel.type)}
                                                 <span>{channel.name}</span>
                                             </div>
-                                            <label className={`switch ${isAllMuted ? 'disabled' : ''}`}>
+                                            <label className="switch">
                                                 <input
                                                     type="checkbox"
                                                     checked={isChannelActive}
-                                                    onChange={() => !isAllMuted && toggleChannelActive(channel._id)}
-                                                    disabled={isAllMuted}
+                                                    onChange={() => toggleChannelActive(channel._id)}
                                                 />
                                                 <span className="slider"></span>
                                             </label>
