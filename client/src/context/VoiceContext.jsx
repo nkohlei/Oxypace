@@ -65,6 +65,42 @@ const createPlaceholderVideoTrack = () => {
     return null;
 };
 
+let sharedSilentAudioCtx = null;
+let sharedSilentAudioDest = null;
+
+// Helper to create an in-memory silent audio track as placeholder without touching hardware microphone.
+// Using pc.addTrack(placeholderAudioTrack) guarantees W3C WebRTC Unified Plan [[AddTrackMagic]] association
+// on both Offerer and Answerer so m=audio is always negotiated as a=sendrecv from join time.
+const createPlaceholderAudioTrack = () => {
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return null;
+        if (!sharedSilentAudioCtx || sharedSilentAudioCtx.state === 'closed') {
+            sharedSilentAudioCtx = new AudioContextClass();
+            sharedSilentAudioDest = null;
+        }
+        if (!sharedSilentAudioDest) {
+            sharedSilentAudioDest = sharedSilentAudioCtx.createMediaStreamDestination();
+            const osc = sharedSilentAudioCtx.createOscillator();
+            const gain = sharedSilentAudioCtx.createGain();
+            gain.gain.value = 0; // Strictly silent
+            osc.connect(gain);
+            gain.connect(sharedSilentAudioDest);
+            osc.start();
+        }
+        const baseTrack = sharedSilentAudioDest.stream.getAudioTracks()[0];
+        if (baseTrack && baseTrack.readyState === 'live') {
+            const track = baseTrack.clone();
+            track.enabled = false;
+            track.isPlaceholder = true;
+            return track;
+        }
+    } catch (e) {
+        console.error("[WebRTC] Failed to create placeholder audio track:", e);
+    }
+    return null;
+};
+
 // Helper to prioritize universally supported H264/VP8 codecs in SDP and enable high-fidelity stereo Opus audio
 const prioritizeVideoCodec = (sdp) => {
     if (!sdp) return sdp;
@@ -529,10 +565,16 @@ export const VoiceProvider = ({ children }) => {
     const attachVAD = useCallback((identity, track) => {
         if (!track || track.kind !== 'audio') return;
 
-        // Cleanup existing analyser if any
+        // Keep existing analyser if bound to the exact same track
         if (audioAnalysersRef.current.has(identity)) {
+            const old = audioAnalysersRef.current.get(identity);
+            if (old?.track === track) {
+                if (audioContextRef.current?.state === 'suspended') {
+                    audioContextRef.current.resume().catch(() => {});
+                }
+                return;
+            }
             try {
-                const old = audioAnalysersRef.current.get(identity);
                 if (old?.cleanup) old.cleanup();
             } catch (e) {}
             audioAnalysersRef.current.delete(identity);
@@ -560,6 +602,7 @@ export const VoiceProvider = ({ children }) => {
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
             audioAnalysersRef.current.set(identity, {
+                track,
                 analyser,
                 dataArray,
                 source,
@@ -642,7 +685,7 @@ export const VoiceProvider = ({ children }) => {
 
             if (localStreamRef.current) {
                 localVideoTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder && t.readyState === 'live') || null;
-                localAudioTrack = localStreamRef.current.getAudioTracks().find(t => t.readyState === 'live') || localStreamRef.current.getAudioTracks()[0] || null;
+                localAudioTrack = localStreamRef.current.getAudioTracks().find(t => !t.isPlaceholder && t.readyState === 'live') || null;
             }
             if (screenStreamRef.current) {
                 localScreenTrack = screenStreamRef.current.getVideoTracks().find(t => t.readyState === 'live') || null;
@@ -967,28 +1010,47 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
-        // Add local camera/mic stream tracks
+        // Add local camera/mic stream tracks in deterministic order (1. video, 2. audio)
+        // Using pc.addTrack() with placeholder or live tracks guarantees W3C [[AddTrackMagic]] association on both Offerer & Answerer
+        if (!localStreamRef.current) {
+            localStreamRef.current = new MediaStream();
+        }
         if (localStreamRef.current) {
-            let videoTracks = localStreamRef.current.getVideoTracks();
-            if (videoTracks.length === 0) {
-                const pTrack = createPlaceholderVideoTrack();
-                if (pTrack) {
-                    localStreamRef.current.addTrack(pTrack);
+            if (localStreamRef.current.getVideoTracks().length === 0) {
+                const pVideo = createPlaceholderVideoTrack();
+                if (pVideo) {
+                    localStreamRef.current.addTrack(pVideo);
                 }
             }
-            localStreamRef.current.getTracks().forEach(track => {
-                try {
-                    const sender = pc.addTrack(track, localStreamRef.current);
-                    console.log(`[WebRTC] Added local track ${track.kind} (${track.id}) to peer connection for ${targetUserId}`);
-                } catch (addErr) {
-                    console.warn(`[WebRTC] addTrack warning for ${targetUserId}:`, addErr);
+            if (localStreamRef.current.getAudioTracks().length === 0) {
+                const pAudio = createPlaceholderAudioTrack();
+                if (pAudio) {
+                    localStreamRef.current.addTrack(pAudio);
                 }
-            });
+            }
+            const primaryVideo = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder && t.readyState === 'live') || localStreamRef.current.getVideoTracks()[0];
+            const primaryAudio = localStreamRef.current.getAudioTracks().find(t => !t.isPlaceholder && t.readyState === 'live') || localStreamRef.current.getAudioTracks()[0];
+
+            if (primaryVideo) {
+                try {
+                    pc.addTrack(primaryVideo, localStreamRef.current);
+                    console.log(`[WebRTC] Added local video track (${primaryVideo.id}, placeholder=${!!primaryVideo.isPlaceholder}) to peer connection for ${targetUserId}`);
+                } catch (addErr) {
+                    console.warn(`[WebRTC] addTrack video warning for ${targetUserId}:`, addErr);
+                }
+            }
+            if (primaryAudio) {
+                try {
+                    pc.addTrack(primaryAudio, localStreamRef.current);
+                    console.log(`[WebRTC] Added local audio track (${primaryAudio.id}, placeholder=${!!primaryAudio.isPlaceholder}) to peer connection for ${targetUserId}`);
+                } catch (addErr) {
+                    console.warn(`[WebRTC] addTrack audio warning for ${targetUserId}:`, addErr);
+                }
+            }
         }
 
-        // Ensure bidirectional audio transceiver is always present so incoming remote audio
-        // and future unmuted local audio are seamlessly negotiated without eager hardware mic lock at join time
-        if (!pc.getTransceivers().some(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')) {
+        // Fallback: Only if Offerer and addTrack could not create an audio transceiver (e.g. no WebAudio support)
+        if (isOfferCreator && !pc.getTransceivers().some(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')) {
             try {
                 pc.addTransceiver('audio', { direction: 'sendrecv' });
             } catch (e) {
@@ -1050,7 +1112,8 @@ export const VoiceProvider = ({ children }) => {
                 }
                 const isScreenLive = screenStreamRef.current?.getVideoTracks().some(t => t.readyState === 'live');
                 const isCameraLive = localStreamRef.current?.getVideoTracks().some(t => !t.isPlaceholder && t.readyState === 'live');
-                if (!isOfferCreator && !isScreenLive && !isCameraLive) {
+                const isMicLive = localStreamRef.current?.getAudioTracks().some(t => !t.isPlaceholder && t.readyState === 'live');
+                if (!isOfferCreator && !isScreenLive && !isCameraLive && !isMicLive) {
                     console.log(`[WebRTC] onnegotiationneeded ignored for idle non-offer creator ${targetUserId}`);
                     return;
                 }
@@ -1228,11 +1291,16 @@ export const VoiceProvider = ({ children }) => {
             localStreamRef.current = localStream;
             enumerateDevices();
 
-            // Always add a placeholder video track to ensure the video transceiver/channel is pre-negotiated at join.
+            // Always add placeholder video & audio tracks to ensure both transceivers are pre-negotiated via pc.addTrack() at join.
             const placeholderTrack = createPlaceholderVideoTrack();
             if (placeholderTrack) {
                 localStream.addTrack(placeholderTrack);
                 console.log('[WebRTC] Placeholder video track added to localStream');
+            }
+            const placeholderAudio = createPlaceholderAudioTrack();
+            if (placeholderAudio) {
+                localStream.addTrack(placeholderAudio);
+                console.log('[WebRTC] Placeholder audio track added to localStream');
             }
 
             // Fetch Token details
@@ -1477,10 +1545,10 @@ export const VoiceProvider = ({ children }) => {
                 }
             });
 
-            // If local user is currently sharing screen, announce state so all peers stay in sync
+            // If local user has active mic, camera, or screen share, announce state so all peers stay in sync
             const hasLiveScreen = screenStreamRef.current && 
                 screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
-            if (hasLiveScreen || localStateRef.current?.isScreenSharing) {
+            if (hasLiveScreen || localStateRef.current?.isScreenSharing || localStateRef.current?.isCameraOn || localStateRef.current?.isMuted === false) {
                 const curRoom = activeRoomRef.current;
                 if (curRoom && localUserId) {
                     safeEmit('voice:state-update', {
@@ -1488,7 +1556,7 @@ export const VoiceProvider = ({ children }) => {
                         userId: localUserId,
                         isMuted: localStateRef.current?.isMuted ?? true,
                         isCameraOn: localStateRef.current?.isCameraOn ?? false,
-                        isScreenSharing: true
+                        isScreenSharing: !!(hasLiveScreen || localStateRef.current?.isScreenSharing)
                     });
                 }
             }
@@ -1500,10 +1568,10 @@ export const VoiceProvider = ({ children }) => {
             console.log(`[Socket] voice:user-joined: ${data.username} (${data.userId})`);
             if (String(data.userId) !== user?._id?.toString()) {
                 playInteractionSound('join');
-                // Re-broadcast local state (especially screen share and camera) to ensure new peer has full state immediately
+                // Re-broadcast local state (mic, camera, and screen share) to ensure new peer has full state immediately
                 const hasLiveScreen = screenStreamRef.current && 
                     screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live');
-                if (hasLiveScreen || localStateRef.current?.isScreenSharing || localStateRef.current?.isCameraOn) {
+                if (hasLiveScreen || localStateRef.current?.isScreenSharing || localStateRef.current?.isCameraOn || localStateRef.current?.isMuted === false) {
                     const curRoom = activeRoomRef.current;
                     if (curRoom) {
                         safeEmit('voice:state-update', {
@@ -1800,6 +1868,26 @@ export const VoiceProvider = ({ children }) => {
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
                 console.log(`[WebRTC] setRemoteDescription completed for offer from ${senderId}`);
 
+                // Ensure associated audio transceiver has direction='sendrecv' and local audio track attached BEFORE createAnswer()
+                // so the generated Answer SDP always negotiates a=sendrecv (never a=recvonly)
+                try {
+                    const localAudio = localStreamRef.current?.getAudioTracks().find(t => !t.isPlaceholder && t.readyState === 'live') ||
+                                       localStreamRef.current?.getAudioTracks()[0];
+                    const audioTransceiver = pc.getTransceivers?.().find(t =>
+                        t.mid !== null && (t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')
+                    );
+                    if (audioTransceiver) {
+                        if (audioTransceiver.direction !== 'sendrecv') {
+                            audioTransceiver.direction = 'sendrecv';
+                        }
+                        if (localAudio && audioTransceiver.sender && audioTransceiver.sender.track !== localAudio) {
+                            await audioTransceiver.sender.replaceTrack(localAudio);
+                        }
+                    }
+                } catch (transErr) {
+                    console.warn("[WebRTC] Audio transceiver pre-answer sync warning:", transErr);
+                }
+
                 // Process any ICE candidates that arrived early
                 await processQueuedCandidates(senderId, pc);
 
@@ -1927,26 +2015,50 @@ export const VoiceProvider = ({ children }) => {
         if (!localStreamRef.current) {
             localStreamRef.current = new MediaStream();
         }
-        let track = localStreamRef.current.getAudioTracks()[0];
         const willMute = !localState.isMuted;
+        const screenAudioTrack = screenStreamRef.current?.getAudioTracks()[0];
+        const isScreenAudioSender = (s) => Boolean(screenAudioTrack && s?.track === screenAudioTrack);
 
         if (willMute) {
-            // MUTING: Stop audio track and release hardware mic session so audio returns to pristine stereo
-            if (track) {
-                try {
-                    track.enabled = false;
-                    track.stop();
-                    localStreamRef.current.removeTrack(track);
-                } catch (e) {}
+            // MUTING:
+            // 1. Create a silent placeholder audio track so the transceiver & SSRC stay active
+            const placeholderAudio = createPlaceholderAudioTrack();
+            if (placeholderAudio) {
+                localStreamRef.current.addTrack(placeholderAudio);
             }
-            // Replace track with null on active peer connection senders
-            peerConnectionsRef.current.forEach(pc => {
-                const senders = pc.getSenders();
-                const audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
-                    pc.getTransceivers().find(t => t.sender?.track?.kind === 'audio')?.sender;
+
+            // 2. Swap live mic track with placeholder track on all active peer connections FIRST
+            for (const pc of peerConnectionsRef.current.values()) {
+                const transceivers = pc.getTransceivers?.() || [];
+                const audioTransceiver = transceivers.find(t =>
+                    t.mid !== null &&
+                    (t.sender?.track?.kind === 'audio' || t.receiver?.track?.kind === 'audio') &&
+                    !isScreenAudioSender(t.sender)
+                ) || transceivers.find(t =>
+                    (t.sender?.track?.kind === 'audio' || t.receiver?.track?.kind === 'audio') &&
+                    !isScreenAudioSender(t.sender)
+                );
+                const senders = pc.getSenders?.() || [];
+                const audioSender = audioTransceiver?.sender ||
+                    senders.find(s => s.track && s.track.kind === 'audio' && !isScreenAudioSender(s));
+
                 if (audioSender) {
-                    audioSender.replaceTrack(null).catch(() => {});
+                    try {
+                        await audioSender.replaceTrack(placeholderAudio || null);
+                    } catch (e) {
+                        console.warn("[WebRTC] audio replaceTrack error (MUTE):", e);
+                    }
                 }
+            }
+
+            // 3. ONLY AFTER replaceTrack completes, stop & remove the real hardware mic tracks
+            const liveMicTracks = localStreamRef.current.getAudioTracks().filter(t => !t.isPlaceholder);
+            liveMicTracks.forEach(t => {
+                try {
+                    t.enabled = false;
+                    t.stop();
+                    localStreamRef.current.removeTrack(t);
+                } catch (e) {}
             });
 
             if (Capacitor.isNativePlatform()) {
@@ -1956,48 +2068,94 @@ export const VoiceProvider = ({ children }) => {
             // UNMUTING: Request fresh microphone with proper echoCancellation, noiseSuppression, autoGainControl
             try {
                 console.log("[WebRTC] Requesting local audio track dynamically with AEC & noise suppression...");
-                const audioStream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true,
-                        channelCount: 1,
-                        sampleRate: 48000
-                    }
-                });
+                let audioStream;
+                try {
+                    audioStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            deviceId: selectedAudioInput && selectedAudioInput !== 'default' ? { ideal: selectedAudioInput } : undefined,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                            channelCount: 1,
+                            sampleRate: 48000
+                        }
+                    });
+                } catch (strictErr) {
+                    console.warn("[WebRTC] Strict audio constraints failed, retrying with basic audio fallback:", strictErr);
+                    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                }
+
                 const newAudioTrack = audioStream.getAudioTracks()[0];
                 if (newAudioTrack) {
                     newAudioTrack.enabled = true;
+
+                    // Remove any existing placeholder audio tracks from localStream before adding live mic track
+                    const placeholders = localStreamRef.current.getAudioTracks().filter(t => t.isPlaceholder);
+                    placeholders.forEach(p => {
+                        try { localStreamRef.current.removeTrack(p); } catch (e) {}
+                    });
+
                     localStreamRef.current.addTrack(newAudioTrack);
-                    track = newAudioTrack;
 
                     const isSaver = callQualityModeRef.current === 'saver';
-                    peerConnectionsRef.current.forEach(pc => {
-                        const senders = pc.getSenders();
-                        let audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
-                            pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')?.sender;
+                    let needsRenegotiate = false;
 
-                        const audioTransceiver = pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio');
-                        if (audioTransceiver && audioTransceiver.direction !== 'sendrecv') {
-                            try { audioTransceiver.direction = 'sendrecv'; } catch (_) {}
+                    for (const pc of peerConnectionsRef.current.values()) {
+                        const transceivers = pc.getTransceivers?.() || [];
+                        const audioTransceiver = transceivers.find(t =>
+                            t.mid !== null &&
+                            (t.sender?.track?.kind === 'audio' || t.receiver?.track?.kind === 'audio') &&
+                            !isScreenAudioSender(t.sender)
+                        ) || transceivers.find(t =>
+                            (t.sender?.track?.kind === 'audio' || t.receiver?.track?.kind === 'audio') &&
+                            !isScreenAudioSender(t.sender)
+                        );
+                        const senders = pc.getSenders?.() || [];
+                        const audioSender = audioTransceiver?.sender ||
+                            senders.find(s => s.track && s.track.kind === 'audio' && !isScreenAudioSender(s));
+
+                        if (audioTransceiver) {
+                            if (audioTransceiver.direction !== 'sendrecv') {
+                                try { audioTransceiver.direction = 'sendrecv'; } catch (_) {}
+                            }
+                            if (audioTransceiver.currentDirection && audioTransceiver.currentDirection !== 'sendrecv' && audioTransceiver.currentDirection !== 'sendonly') {
+                                needsRenegotiate = true;
+                            }
                         }
 
                         if (audioSender) {
-                            audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
                             try {
+                                await audioSender.replaceTrack(newAudioTrack);
                                 const params = audioSender.getParameters();
                                 if (!params.encodings) params.encodings = [{}];
                                 params.encodings.forEach(enc => {
                                     enc.priority = 'high';
                                     enc.networkPriority = 'high';
                                     enc.maxBitrate = isSaver ? 48000 : 128000;
+                                    enc.active = true;
                                 });
                                 audioSender.setParameters(params).catch(() => {});
-                            } catch (_) {}
+                            } catch (e) {
+                                console.warn("[WebRTC] audio replaceTrack error (UNMUTE):", e);
+                            }
                         } else {
-                            try { pc.addTrack(newAudioTrack, localStreamRef.current); } catch (e) {}
+                            try {
+                                pc.addTrack(newAudioTrack, localStreamRef.current);
+                                needsRenegotiate = true;
+                            } catch (e) {
+                                console.warn("[WebRTC] audio addTrack error (UNMUTE):", e);
+                            }
                         }
+                    }
+
+                    // Safely stop detached placeholder clones after replaceTrack completes
+                    placeholders.forEach(p => {
+                        try { p.stop(); } catch (e) {}
                     });
+
+                    if (needsRenegotiate) {
+                        await renegotiateAll();
+                    }
 
                     if (user?._id) {
                         attachVAD(user._id.toString(), newAudioTrack);
@@ -2020,9 +2178,10 @@ export const VoiceProvider = ({ children }) => {
 
         setLocalState(prev => {
             const next = { ...prev, isMuted: willMute };
-            if (activeRoom) {
+            const curRoom = activeRoomRef.current || activeRoom;
+            if (curRoom) {
                 safeEmit('voice:state-update', {
-                    roomName: activeRoom.roomName,
+                    roomName: curRoom.roomName,
                     userId: user?._id?.toString(),
                     isMuted: next.isMuted,
                     isCameraOn: next.isCameraOn,
@@ -2031,7 +2190,9 @@ export const VoiceProvider = ({ children }) => {
             }
             return next;
         });
-    }, [localState, activeRoom, user, safeEmit, enumerateDevices]);
+
+        updateParticipantList();
+    }, [localState, activeRoom, user, safeEmit, enumerateDevices, selectedAudioInput, renegotiateAll, updateParticipantList, attachVAD]);
 
     const toggleCamera = useCallback(async () => {
         if (!localStreamRef.current) {
@@ -2510,7 +2671,7 @@ export const VoiceProvider = ({ children }) => {
 
     const setAudioInput = useCallback(async (deviceId) => {
         setSelectedAudioInput(deviceId);
-        if (!activeRoom || !localStreamRef.current) return;
+        if (!activeRoom || localState.isMuted || !localStreamRef.current) return;
         try {
             console.log(`[WebRTC] Switching microphone input device to: ${deviceId}`);
             let newStream;
@@ -2518,9 +2679,9 @@ export const VoiceProvider = ({ children }) => {
                 newStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         deviceId: deviceId && deviceId !== 'default' ? { ideal: deviceId } : undefined,
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
                         channelCount: 2,
                         sampleRate: 48000
                     }
@@ -2535,12 +2696,13 @@ export const VoiceProvider = ({ children }) => {
             const newAudioTrack = newStream.getAudioTracks()[0];
             if (!newAudioTrack) return;
 
-            const oldAudioTrack = localStreamRef.current.getAudioTracks()[0];
-            if (oldAudioTrack) {
-                try { oldAudioTrack.stop(); } catch (e) {}
-                try { localStreamRef.current.removeTrack(oldAudioTrack); } catch (e) {}
-            }
-            newAudioTrack.enabled = !localState.isMuted;
+            const oldAudioTracks = localStreamRef.current.getAudioTracks().filter(t => !t.isPlaceholder);
+            const placeholders = localStreamRef.current.getAudioTracks().filter(t => t.isPlaceholder);
+            placeholders.forEach(p => {
+                try { localStreamRef.current.removeTrack(p); } catch (e) {}
+            });
+
+            newAudioTrack.enabled = true;
             localStreamRef.current.addTrack(newAudioTrack);
 
             // Re-attach VAD so voice activity and speaking indicators continue working on new microphone!
@@ -2549,16 +2711,33 @@ export const VoiceProvider = ({ children }) => {
                 attachVAD(localUserId, newAudioTrack);
             }
 
-            // Replace track on all active peer connections
-            peerConnectionsRef.current.forEach(pc => {
-                const senders = pc.getSenders();
-                const audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
-                                    pc.getTransceivers().find(t => t.sender && t.sender.track && t.sender.track.kind === 'audio')?.sender;
+            const screenAudioTrack = screenStreamRef.current?.getAudioTracks()[0];
+            const isScreenAudioSender = (s) => screenAudioTrack && s?.track === screenAudioTrack;
+
+            // Replace track on all active peer connections FIRST
+            for (const pc of peerConnectionsRef.current.values()) {
+                const audioTransceiver = pc.getTransceivers().find(t =>
+                    t.mid !== null &&
+                    (t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio') &&
+                    !isScreenAudioSender(t.sender)
+                ) || pc.getTransceivers().find(t =>
+                    (t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio') &&
+                    !isScreenAudioSender(t.sender)
+                );
+                const audioSender = audioTransceiver?.sender || pc.getSenders().find(s => s.track && s.track.kind === 'audio' && !isScreenAudioSender(s));
                 if (audioSender) {
-                    audioSender.replaceTrack(newAudioTrack).catch(err => {
+                    try {
+                        await audioSender.replaceTrack(newAudioTrack);
+                    } catch (err) {
                         console.warn("[WebRTC] Error replacing audio track on peer connection:", err);
-                    });
+                    }
                 }
+            }
+
+            // Stop old real tracks AFTER replaceTrack completes
+            oldAudioTracks.forEach(t => {
+                try { t.stop(); } catch (e) {}
+                try { localStreamRef.current.removeTrack(t); } catch (e) {}
             });
 
             updateParticipantList();
@@ -3057,6 +3236,7 @@ const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutput
                     key={`global-audio-${p.identity}`} 
                     track={p.audioTrack.track} 
                     muted={isDeafened} 
+                    isRemoteMuted={p.isMuted}
                     volume={userVolume} 
                     audioOutputId={audioOutputId}
                 />
@@ -3065,7 +3245,7 @@ const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutput
     );
 };
 
-const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
+const AudioTrackPlayer = ({ track, muted, isRemoteMuted, volume, audioOutputId }) => {
     const audioEl = useRef(null);
 
     useEffect(() => {
@@ -3123,6 +3303,19 @@ const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
         };
     }, [track, audioOutputId]);
 
+    // When remote user unmutes via replaceTrack(), the RTCRtpReceiver.track reference stays identical,
+    // so ensure the <audio> element is actively playing whenever isRemoteMuted transitions to false.
+    useEffect(() => {
+        const el = audioEl.current;
+        if (!el || !track || isRemoteMuted) return;
+        try {
+            track.enabled = true;
+        } catch (_) {}
+        if (el.paused) {
+            el.play().catch(() => {});
+        }
+    }, [isRemoteMuted, track]);
+
     useEffect(() => {
         const el = audioEl.current;
         if (!el) return;
@@ -3130,5 +3323,5 @@ const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
         el.volume = Math.max(0, Math.min(1, volume ?? 1.0));
     }, [muted, volume]);
 
-    return <audio ref={audioEl} autoPlay playsInline style={{ display: 'none' }} />;
+    return <audio ref={audioEl} autoPlay playsInline />;
 };
