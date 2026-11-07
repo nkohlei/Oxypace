@@ -697,12 +697,6 @@ export const VoiceProvider = ({ children }) => {
             const rState = remoteStatesRef.current.get(p.userId) || { isMuted: true, isCameraOn: false, isScreenSharing: false };
             const rTracks = remoteTracksRef.current.get(p.userId) || {};
 
-            if (rTracks.audio && !rState.isMuted) {
-                attachVAD(p.userId, rTracks.audio);
-            } else {
-                detachVAD(p.userId);
-            }
-
             // Recover live video track from peer connection transceivers if rTracks.video is missing or ended
             let remoteVideo = rTracks.video;
             if (!remoteVideo || remoteVideo.readyState === 'ended') {
@@ -723,6 +717,32 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
 
+            // Recover live audio track from peer connection transceivers if rTracks.audio is missing or ended
+            let remoteAudio = rTracks.audio;
+            if (!remoteAudio || remoteAudio.readyState === 'ended') {
+                const pc = peerConnectionsRef.current.get(p.userId);
+                if (pc) {
+                    const audioTransceiver = pc.getTransceivers?.().find(t => 
+                        t.receiver?.track?.kind === 'audio' && 
+                        t.receiver.track.readyState !== 'ended' &&
+                        t.receiver.track !== rTracks.screenAudio
+                    );
+                    if (audioTransceiver?.receiver?.track) {
+                        remoteAudio = audioTransceiver.receiver.track;
+                        if (!remoteTracksRef.current.has(p.userId)) {
+                            remoteTracksRef.current.set(p.userId, {});
+                        }
+                        remoteTracksRef.current.get(p.userId).audio = remoteAudio;
+                    }
+                }
+            }
+
+            if (remoteAudio && !rState.isMuted) {
+                attachVAD(p.userId, remoteAudio);
+            } else {
+                detachVAD(p.userId);
+            }
+
             // Valid active camera track for remote user
             const activeVideoTrack = (rState.isCameraOn && remoteVideo && remoteVideo.readyState !== 'ended') 
                 ? remoteVideo 
@@ -740,7 +760,7 @@ export const VoiceProvider = ({ children }) => {
                 isScreenSharing: false,
                 isSpeaking: speakingMapRef.current.get(p.userId) || false,
                 videoTrack: makeTrackObject(activeVideoTrack),
-                audioTrack: makeTrackObject(rTracks.audio),
+                audioTrack: makeTrackObject(remoteAudio),
                 screenShareTrack: null,
             });
 
@@ -1120,17 +1140,22 @@ export const VoiceProvider = ({ children }) => {
             };
 
             if (event.track.kind === 'audio') {
-                const isScreenAudio = stream.id.includes('screen') || 
-                                     (rState?.screenStreamId && stream.id === rState.screenStreamId) ||
-                                     (tracks.camStreamId && stream.id !== tracks.camStreamId);
+                const isExplicitScreenAudio = 
+                    Boolean(stream.id && stream.id.toLowerCase().includes('screen')) || 
+                    Boolean(event.track.label && event.track.label.toLowerCase().includes('screen')) ||
+                    Boolean(rState?.screenStreamId && stream.id === rState.screenStreamId) ||
+                    Boolean(tracks.screenStreamId && stream.id === tracks.screenStreamId);
+                
+                // If the user already has a voice audio track AND is actively screen sharing,
+                // a subsequent audio track from them is treated as screen audio.
+                // Otherwise, any incoming audio track is fundamentally their voice microphone track.
+                const isScreenAudio = isExplicitScreenAudio || 
+                    (Boolean(tracks.audio) && tracks.audio !== event.track && Boolean(rState?.isScreenSharing));
                 
                 if (isScreenAudio) {
                     tracks.screenAudio = event.track;
                     console.log(`[WebRTC] remote screenAudioTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 } else {
-                    if (!tracks.camStreamId) {
-                        tracks.camStreamId = stream.id;
-                    }
                     tracks.audio = event.track;
                     console.log(`[WebRTC] remote audioTrack set for user ${targetUserId} (track ID: ${event.track.id})`);
                 }
@@ -1567,6 +1592,20 @@ export const VoiceProvider = ({ children }) => {
                 }
             }
 
+            if (!isMuted && pc) {
+                const audioTransceiver = pc.getTransceivers?.().find(t => 
+                    t.receiver?.track?.kind === 'audio' && 
+                    t.receiver.track.readyState !== 'ended' &&
+                    t.receiver.track !== rTracks?.screenAudio
+                );
+                if (audioTransceiver?.receiver?.track) {
+                    if (!remoteTracksRef.current.has(userId)) {
+                        remoteTracksRef.current.set(userId, {});
+                    }
+                    remoteTracksRef.current.get(userId).audio = audioTransceiver.receiver.track;
+                }
+            }
+
             updateParticipantList();
         };
 
@@ -1928,6 +1967,7 @@ export const VoiceProvider = ({ children }) => {
                 });
                 const newAudioTrack = audioStream.getAudioTracks()[0];
                 if (newAudioTrack) {
+                    newAudioTrack.enabled = true;
                     localStreamRef.current.addTrack(newAudioTrack);
                     track = newAudioTrack;
 
@@ -1936,6 +1976,11 @@ export const VoiceProvider = ({ children }) => {
                         const senders = pc.getSenders();
                         let audioSender = senders.find(s => s.track && s.track.kind === 'audio') ||
                             pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio')?.sender;
+
+                        const audioTransceiver = pc.getTransceivers().find(t => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio');
+                        if (audioTransceiver && audioTransceiver.direction !== 'sendrecv') {
+                            try { audioTransceiver.direction = 'sendrecv'; } catch (_) {}
+                        }
 
                         if (audioSender) {
                             audioSender.replaceTrack(newAudioTrack).catch(e => console.warn("[WebRTC] audio replaceTrack error:", e));
@@ -3021,87 +3066,69 @@ const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutput
 };
 
 const AudioTrackPlayer = ({ track, muted, volume, audioOutputId }) => {
-    const audioCtxRef = useRef(null);
-    const sourceNodeRef = useRef(null);
-    const gainNodeRef = useRef(null);
     const audioEl = useRef(null);
 
     useEffect(() => {
-        if (!track) return;
+        const el = audioEl.current;
+        if (!el || !track) return;
 
-        let ctx = null;
-        let source = null;
-        let gain = null;
-
-        // Use Web Audio API to output directly through Android STREAM_MUSIC (Media channel) at 48kHz Ultra HD Stereo.
-        // This completely bypasses Android's telephony STREAM_VOICE_CALL, preventing the telephone speech DSP filter
-        // and ensuring background media (Spotify) is never ducked or silenced.
         try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (AudioContextClass) {
-                ctx = new AudioContextClass({ sampleRate: 48000 });
-                audioCtxRef.current = ctx;
+            track.enabled = true;
+        } catch (_) {}
 
-                if (audioOutputId && typeof ctx.setSinkId === 'function') {
-                    ctx.setSinkId(audioOutputId).catch(() => {});
-                }
+        const stream = new MediaStream([track]);
+        el.srcObject = stream;
+        el.muted = Boolean(muted);
+        el.volume = Math.max(0, Math.min(1, volume ?? 1.0));
 
-                const stream = new MediaStream([track]);
-                source = ctx.createMediaStreamSource(stream);
-                sourceNodeRef.current = source;
-
-                gain = ctx.createGain();
-                gain.gain.value = muted ? 0 : (volume ?? 1.0);
-                gainNodeRef.current = gain;
-
-                source.connect(gain);
-                gain.connect(ctx.destination);
-
-                if (ctx.state === 'suspended') {
-                    const resume = () => {
-                        ctx.resume().catch(() => {});
-                        window.removeEventListener('click', resume);
-                        window.removeEventListener('touchstart', resume);
-                    };
-                    window.addEventListener('click', resume, { once: true });
-                    window.addEventListener('touchstart', resume, { once: true });
-                }
-            }
-        } catch (e) {
-            console.warn('[Web Audio] Fallback to HTML5 audio element for track:', e);
-            if (audioEl.current) {
-                audioEl.current.srcObject = new MediaStream([track]);
-                audioEl.current.muted = muted;
-                audioEl.current.volume = volume ?? 1.0;
-                audioEl.current.play().catch(() => {});
-            }
+        if (audioOutputId && typeof el.setSinkId === 'function') {
+            el.setSinkId(audioOutputId).catch(() => {});
         }
 
+        const tryPlay = () => {
+            if (!el) return;
+            const playPromise = el.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                    console.warn('[WebRTC] Audio autoplay blocked or interrupted, unlocking on next gesture:', err);
+                    const unlock = () => {
+                        if (el) {
+                            el.play().catch(() => {});
+                        }
+                        window.removeEventListener('click', unlock);
+                        window.removeEventListener('touchstart', unlock);
+                        window.removeEventListener('keydown', unlock);
+                    };
+                    window.addEventListener('click', unlock, { once: true });
+                    window.addEventListener('touchstart', unlock, { once: true });
+                    window.addEventListener('keydown', unlock, { once: true });
+                });
+            }
+        };
+
+        tryPlay();
+
+        const handleUnmute = () => {
+            console.log(`[WebRTC] Audio track unmuted for track ${track.id}, initiating playback`);
+            tryPlay();
+        };
+        track.addEventListener('unmute', handleUnmute);
+
         return () => {
-            if (source) {
-                try { source.disconnect(); } catch (e) {}
-            }
-            if (gain) {
-                try { gain.disconnect(); } catch (e) {}
-            }
-            if (ctx && ctx.state !== 'closed') {
-                try { ctx.close(); } catch (e) {}
-            }
-            if (audioEl.current) {
-                audioEl.current.srcObject = null;
-            }
+            track.removeEventListener('unmute', handleUnmute);
+            try {
+                el.pause();
+                el.srcObject = null;
+            } catch (_) {}
         };
     }, [track, audioOutputId]);
 
     useEffect(() => {
-        if (gainNodeRef.current) {
-            gainNodeRef.current.gain.value = muted ? 0 : (volume ?? 1.0);
-        }
-        if (audioEl.current) {
-            audioEl.current.muted = muted;
-            audioEl.current.volume = volume ?? 1.0;
-        }
+        const el = audioEl.current;
+        if (!el) return;
+        el.muted = Boolean(muted);
+        el.volume = Math.max(0, Math.min(1, volume ?? 1.0));
     }, [muted, volume]);
 
-    return <audio ref={audioEl} autoPlay playsInline muted style={{ display: 'none' }} />;
+    return <audio ref={audioEl} autoPlay playsInline style={{ display: 'none' }} />;
 };
