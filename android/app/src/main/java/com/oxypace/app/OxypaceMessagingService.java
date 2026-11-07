@@ -584,25 +584,28 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         if (nm == null) return;
 
         wakeScreen();
-        String channelId = "oxypace_portal_posts_v1";
+        String channelId = "oxypace_messages_v2";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                channelId, "Portal Gönderi Bildirimleri", NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription("Üye olduğunuz portallardaki yeni paylaşımlar");
-            channel.enableLights(true);
-            channel.enableVibration(true);
-            channel.setVibrationPattern(new long[]{0, 200, 150, 200});
-            channel.setShowBadge(true);
-            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            NotificationChannel channel = nm.getNotificationChannel(channelId);
+            if (channel == null) {
+                channel = new NotificationChannel(
+                    channelId, "Mesaj ve Portal Bildirimleri", NotificationManager.IMPORTANCE_HIGH
+                );
+                channel.setDescription("Doğrudan mesajlar ve portal gönderi bildirimleri");
+                channel.enableLights(true);
+                channel.enableVibration(true);
+                channel.setVibrationPattern(new long[]{0, 250, 200, 250});
+                channel.setShowBadge(true);
+                channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
-            Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                .build();
-            channel.setSound(defaultSoundUri, audioAttributes);
-            nm.createNotificationChannel(channel);
+                Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build();
+                channel.setSound(defaultSoundUri, audioAttributes);
+                nm.createNotificationChannel(channel);
+            }
         }
 
         String title = getOrDefault(data, "title", notif != null ? notif.getTitle() : "Oxypace");
@@ -639,7 +642,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setContentText(body)
             .setAutoCancel(true)
             .setContentIntent(pi)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(NotificationCompat.DEFAULT_ALL);
 
         if (!imageUrl.isEmpty()) {
@@ -647,8 +651,10 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 java.net.URL url = new java.net.URL(imageUrl);
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                 conn.setDoInput(true);
-                conn.setConnectTimeout(8000);
-                conn.setReadTimeout(8000);
+                conn.setInstanceFollowRedirects(true);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) OxypaceApp");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
                 conn.connect();
                 java.io.InputStream is = conn.getInputStream();
                 android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(is);
@@ -667,6 +673,13 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             } catch (Exception e) {
                 android.util.Log.w("OxypaceMessaging", "Failed to download portal post cover image: " + e.getMessage());
             }
+        } else if (portalAvatarBitmap != null) {
+            NotificationCompat.BigPictureStyle bigPic = new NotificationCompat.BigPictureStyle()
+                .bigPicture(portalAvatarBitmap)
+                .bigLargeIcon(portalAvatarBitmap)
+                .setBigContentTitle(title)
+                .setSummaryText(body);
+            builder.setStyle(bigPic);
         }
 
         try {

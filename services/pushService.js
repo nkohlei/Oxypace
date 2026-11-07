@@ -143,17 +143,14 @@ export const sendPushNotification = async (tokens, payload) => {
         let channelId = 'oxypace_messages_v2';
         if (notifType === 'voice_invite') {
             channelId = 'oxypace_voice_invite_v2';
-        } else if (notifType === 'portal_post') {
-            // Use existing high-priority channel with sound and vibration configured on all clients
-            channelId = 'oxypace_messages_v2';
-        } else if (notifType !== 'message' && !sanitizedData.senderId) {
+        } else {
             channelId = 'oxypace_messages_v2';
         }
 
-        // Only direct chat messages and voice calls use custom-rendered native layouts (MessagingStyle, CallStyle)
-        // All other notification types (portal posts, announcements, system alerts) MUST include the top-level
-        // notification object so Android OS system tray renders them reliably across all APK versions and sleep states.
-        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite';
+        // Custom-rendered notifications use OxypaceMessagingService.onMessageReceived()
+        // so that the circular portal avatar (largeIcon) and media cover (BigPictureStyle)
+        // are rendered natively with circular badge instead of falling back to the generic app icon.
+        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite' || notifType === 'portal_post';
 
         const message = {
             // For custom-rendered notifications (messages and voice invites), omit the top-level
