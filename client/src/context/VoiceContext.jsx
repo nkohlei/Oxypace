@@ -288,6 +288,19 @@ export const VoiceProvider = ({ children }) => {
         return saved !== null ? parseFloat(saved) : 1.0;
     });
 
+    const [screenVolumes, setScreenVolumes] = useState({});
+    const setScreenVolume = useCallback((identity, vol) => {
+        if (!identity) return;
+        const baseId = String(identity).replace(/-screen$/, '');
+        const numeric = Number(vol);
+        const clamped = Number.isFinite(numeric) ? Math.max(0, Math.min(1, numeric)) : 1.0;
+        setScreenVolumes(prev => ({
+            ...prev,
+            [baseId]: clamped,
+            [`${baseId}-screen`]: clamped
+        }));
+    }, []);
+
     useEffect(() => {
         localStorage.setItem('voiceUserVolume', userVolume.toString());
     }, [userVolume]);
@@ -1203,7 +1216,10 @@ export const VoiceProvider = ({ children }) => {
             };
 
             if (event.track.kind === 'audio') {
+                const audioTransceivers = (pc.getTransceivers?.() || []).filter(t => t.receiver?.track?.kind === 'audio');
+                const isSecondAudioTransceiver = audioTransceivers.length > 1 && event.transceiver && event.transceiver !== audioTransceivers[0];
                 const isExplicitScreenAudio = 
+                    isSecondAudioTransceiver ||
                     Boolean(stream.id && stream.id.toLowerCase().includes('screen')) || 
                     Boolean(event.track.label && event.track.label.toLowerCase().includes('screen')) ||
                     Boolean(rState?.screenStreamId && stream.id === rState.screenStreamId) ||
@@ -3208,6 +3224,8 @@ export const VoiceProvider = ({ children }) => {
         setUnreadCount,
         userVolume,
         setUserVolume,
+        screenVolumes,
+        setScreenVolume,
         callQualityMode,
         setCallQualityMode,
         consensusRule: activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all',
@@ -3221,6 +3239,7 @@ export const VoiceProvider = ({ children }) => {
                 participants={participants} 
                 isDeafened={localState.isDeafened} 
                 userVolume={userVolume} 
+                screenVolumes={screenVolumes}
                 audioOutputId={selectedAudioOutput}
             />
         </VoiceContext.Provider>
@@ -3228,24 +3247,32 @@ export const VoiceProvider = ({ children }) => {
 };
 
 // Global Audio Component for cross-navigation persistence with screen audio and output sink support
-const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, audioOutputId }) => {
+const GlobalAudioRenderer = ({ participants, isDeafened, userVolume, screenVolumes, audioOutputId }) => {
     return (
         <div style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-            {participants.filter(p => !p.isLocal && p.audioTrack?.track).map(p => (
-                <AudioTrackPlayer 
-                    key={`global-audio-${p.identity}`} 
-                    track={p.audioTrack.track} 
-                    muted={isDeafened} 
-                    isRemoteMuted={p.isMuted}
-                    volume={userVolume} 
-                    audioOutputId={audioOutputId}
-                />
-            ))}
+            {participants.filter(p => !p.isLocal && p.audioTrack?.track).map(p => {
+                const isScreenCard = !!(p.isScreenSharing || String(p.identity).endsWith('-screen'));
+                const baseId = String(p.identity).replace(/-screen$/, '');
+                const screenVol = screenVolumes?.[p.identity] ?? screenVolumes?.[baseId] ?? 1.0;
+                const effectiveVol = isScreenCard ? screenVol : userVolume;
+                const isScreenMuted = isScreenCard && effectiveVol <= 0;
+                return (
+                    <AudioTrackPlayer 
+                        key={`global-audio-${p.identity}`} 
+                        track={p.audioTrack.track} 
+                        muted={isDeafened || isScreenMuted} 
+                        isRemoteMuted={p.isMuted}
+                        isScreenAudio={isScreenCard}
+                        volume={effectiveVol} 
+                        audioOutputId={audioOutputId}
+                    />
+                );
+            })}
         </div>
     );
 };
 
-const AudioTrackPlayer = ({ track, muted, isRemoteMuted, volume, audioOutputId }) => {
+const AudioTrackPlayer = ({ track, muted, isRemoteMuted, isScreenAudio, volume, audioOutputId }) => {
     const audioEl = useRef(null);
 
     useEffect(() => {
@@ -3307,14 +3334,14 @@ const AudioTrackPlayer = ({ track, muted, isRemoteMuted, volume, audioOutputId }
     // so ensure the <audio> element is actively playing whenever isRemoteMuted transitions to false.
     useEffect(() => {
         const el = audioEl.current;
-        if (!el || !track || isRemoteMuted) return;
+        if (!el || !track || (isRemoteMuted && !isScreenAudio)) return;
         try {
             track.enabled = true;
         } catch (_) {}
         if (el.paused) {
             el.play().catch(() => {});
         }
-    }, [isRemoteMuted, track]);
+    }, [isRemoteMuted, isScreenAudio, track]);
 
     useEffect(() => {
         const el = audioEl.current;

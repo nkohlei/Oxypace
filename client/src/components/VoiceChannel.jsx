@@ -147,7 +147,93 @@ const VideoRenderer = React.memo(({ participant, isShowingScreen, className, ide
     );
 });
 
+const ScreenShareVolumeControl = React.memo(({ identity, volume, onVolumeChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const prevVolRef = useRef(1.0);
+    const closeTimerRef = useRef(null);
 
+    const scheduleAutoClose = (delay = 3000) => {
+        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = setTimeout(() => {
+            setIsOpen(false);
+        }, delay);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        };
+    }, []);
+
+    const currentVol = typeof volume === 'number' ? volume : 1.0;
+    const isMuted = currentVol <= 0;
+
+    const handleBtnClick = (e) => {
+        e.stopPropagation();
+        if (!isOpen) {
+            setIsOpen(true);
+            scheduleAutoClose(3000);
+        } else {
+            if (isMuted) {
+                const restore = prevVolRef.current > 0 ? prevVolRef.current : 1.0;
+                onVolumeChange(identity, restore);
+            } else {
+                prevVolRef.current = currentVol;
+                onVolumeChange(identity, 0);
+            }
+            scheduleAutoClose(3000);
+        }
+    };
+
+    const handleSliderChange = (e) => {
+        e.stopPropagation();
+        const val = parseFloat(e.target.value);
+        if (val > 0) prevVolRef.current = val;
+        onVolumeChange(identity, val);
+        scheduleAutoClose(3000);
+    };
+
+    const stopProp = (e) => {
+        e.stopPropagation();
+        if (isOpen) scheduleAutoClose(3000);
+    };
+
+    return (
+        <div
+            className={`vc-screen-vol-control ${isOpen ? 'open' : ''}`}
+            onClick={stopProp}
+            onMouseDown={stopProp}
+            onTouchStart={stopProp}
+            onTouchMove={stopProp}
+            onMouseEnter={() => { if (isOpen) scheduleAutoClose(3500); }}
+            onMouseLeave={() => { if (isOpen) scheduleAutoClose(1200); }}
+        >
+            <button
+                type="button"
+                className={`vc-screen-vol-btn ${isMuted ? 'muted' : ''}`}
+                onClick={handleBtnClick}
+                title={isOpen ? (isMuted ? 'Ekran Sesini Aç' : 'Ekran Sesini Kapat') : 'Ekran Paylaşımı Sesi'}
+                aria-label="Ekran Paylaşımı Sesi"
+            >
+                {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+            </button>
+            {isOpen && (
+                <div className="vc-screen-vol-slider-wrap">
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.02"
+                        value={currentVol}
+                        onChange={handleSliderChange}
+                        className="vc-screen-vol-slider"
+                    />
+                    <span className="vc-screen-vol-pct">{Math.round(currentVol * 100)}%</span>
+                </div>
+            )}
+        </div>
+    );
+});
 
 const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const { setMobileChannelOpen } = useUI();
@@ -202,6 +288,8 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         setUnreadCount,
         userVolume,
         setUserVolume,
+        screenVolumes,
+        setScreenVolume,
         callQualityMode,
         setCallQualityMode
     } = useVoice();
@@ -634,6 +722,8 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             else handleFocus(p.identity);
         };
         const isShowingScreen = !!(p.isScreenSharing || p.screenShareTrack || String(p.identity).endsWith('-screen'));
+        const baseId = String(p.identity).replace(/-screen$/, '');
+        const screenVol = screenVolumes?.[p.identity] ?? screenVolumes?.[baseId] ?? 1.0;
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
 
         return (
@@ -648,10 +738,17 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         identity={p.identity}
                     />
                 </div>
+                {isShowingScreen && (
+                    <ScreenShareVolumeControl
+                        identity={p.identity}
+                        volume={screenVol}
+                        onVolumeChange={setScreenVolume}
+                    />
+                )}
                 <div className="vc-card-info">
                     <span className="vc-card-name">{p.name} {p.isLocal && '(Sen)'}</span>
                     <div className="vc-card-indicators">
-                        {p.isMuted && <div className="vc-indicator muted"><MicOff size={14} /></div>}
+                        {p.isMuted && !isShowingScreen && <div className="vc-indicator muted"><MicOff size={14} /></div>}
                     </div>
                 </div>
             </div>

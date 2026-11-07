@@ -63,6 +63,94 @@ const VideoRenderer = ({ track, isLocal, className }) => {
     );
 };
 
+const ScreenShareVolumeControl = React.memo(({ identity, volume, onVolumeChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const prevVolRef = useRef(1.0);
+    const closeTimerRef = useRef(null);
+
+    const scheduleAutoClose = (delay = 3000) => {
+        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = setTimeout(() => {
+            setIsOpen(false);
+        }, delay);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        };
+    }, []);
+
+    const currentVol = typeof volume === 'number' ? volume : 1.0;
+    const isMuted = currentVol <= 0;
+
+    const handleBtnClick = (e) => {
+        e.stopPropagation();
+        if (!isOpen) {
+            setIsOpen(true);
+            scheduleAutoClose(3000);
+        } else {
+            if (isMuted) {
+                const restore = prevVolRef.current > 0 ? prevVolRef.current : 1.0;
+                onVolumeChange(identity, restore);
+            } else {
+                prevVolRef.current = currentVol;
+                onVolumeChange(identity, 0);
+            }
+            scheduleAutoClose(3000);
+        }
+    };
+
+    const handleSliderChange = (e) => {
+        e.stopPropagation();
+        const val = parseFloat(e.target.value);
+        if (val > 0) prevVolRef.current = val;
+        onVolumeChange(identity, val);
+        scheduleAutoClose(3000);
+    };
+
+    const stopProp = (e) => {
+        e.stopPropagation();
+        if (isOpen) scheduleAutoClose(3000);
+    };
+
+    return (
+        <div
+            className={`vc-screen-vol-control ${isOpen ? 'open' : ''}`}
+            onClick={stopProp}
+            onMouseDown={stopProp}
+            onTouchStart={stopProp}
+            onTouchMove={stopProp}
+            onMouseEnter={() => { if (isOpen) scheduleAutoClose(3500); }}
+            onMouseLeave={() => { if (isOpen) scheduleAutoClose(1200); }}
+        >
+            <button
+                type="button"
+                className={`vc-screen-vol-btn ${isMuted ? 'muted' : ''}`}
+                onClick={handleBtnClick}
+                title={isOpen ? (isMuted ? 'Ekran Sesini Aç' : 'Ekran Sesini Kapat') : 'Ekran Paylaşımı Sesi'}
+                aria-label="Ekran Paylaşımı Sesi"
+            >
+                {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+            </button>
+            {isOpen && (
+                <div className="vc-screen-vol-slider-wrap">
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.02"
+                        value={currentVol}
+                        onChange={handleSliderChange}
+                        className="vc-screen-vol-slider"
+                    />
+                    <span className="vc-screen-vol-pct">{Math.round(currentVol * 100)}%</span>
+                </div>
+            )}
+        </div>
+    );
+});
+
 const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const {
         activeRoom,
@@ -91,7 +179,9 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
         nativeAudioRoute,
         watchParty,
         startWatchParty,
-        stopWatchParty
+        stopWatchParty,
+        screenVolumes,
+        setScreenVolume
     } = useVoice();
 
     const handleSendMessage = (text) => {
@@ -335,7 +425,10 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     };
 
     const renderSpeakerCard = (p, isFocused = false) => {
-        const trackToRender = (isFocused && p.screenShareTrack) ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
+        const isShowingScreen = !!(p.isScreenSharing || p.screenShareTrack || String(p.identity).endsWith('-screen'));
+        const baseId = String(p.identity).replace(/-screen$/, '');
+        const screenVol = screenVolumes?.[p.identity] ?? screenVolumes?.[baseId] ?? 1.0;
+        const trackToRender = p.screenShareTrack ? p.screenShareTrack : (p.isCameraOn ? p.videoTrack : null);
         return (
             <div key={`${p.identity}-speaker`} className={`vc-card role-grid ${p.isSpeaking ? 'speaking' : ''} ${isFocused ? 'focused' : ''}`} onClick={() => setFocusedIdentity(isFocused ? null : p.identity)}>
                 <div className="vc-card-video-area">
@@ -347,6 +440,13 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         </div>
                     )}
                 </div>
+                {isShowingScreen && (
+                    <ScreenShareVolumeControl
+                        identity={p.identity}
+                        volume={screenVol}
+                        onVolumeChange={setScreenVolume}
+                    />
+                )}
                 <div className="vc-card-info">
                     <span className="vc-card-name">{p.name} {p.isLocal && '(Sen)'}</span>
                     <span className="vc-card-role">
@@ -412,12 +512,12 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
     if (isConnecting) return <div className="vc-container glass-container"><div className="vc-lobby glass-panel"><div className="vc-connecting-spinner loader" /><h2 className="vc-lobby-title">Bağlanılıyor...</h2></div></div>;
 
-    const localUserObject = { identity: user?._id, name: user?.profile?.displayName || user?.username, avatar: user?.profile?.avatar || '', isLocal: true, role: userRole, isMuted: localState.isMuted, isCameraOn: localState.isCameraOn, isSpeaking: participants.find(p => p.isLocal)?.isSpeaking, videoTrack: participants.find(p => p.isLocal)?.videoTrack };
-    const adminSpeakers = participants.filter(p => !p.isLocal && (p.role === 'owner' || p.role === 'admin'));
+    const localUserObject = { identity: user?._id, name: user?.profile?.displayName || user?.username, avatar: user?.profile?.avatar || '', isLocal: true, role: userRole, isMuted: localState.isMuted, isCameraOn: localState.isCameraOn, isSpeaking: participants.find(p => p.isLocal && !p.isScreenSharing)?.isSpeaking, videoTrack: participants.find(p => p.isLocal && !p.isScreenSharing)?.videoTrack };
+    const adminSpeakers = participants.filter(p => !p.isLocal && !p.isScreenSharing && !String(p.identity).endsWith('-screen') && (p.role === 'owner' || p.role === 'admin'));
     if (isAdmin) adminSpeakers.unshift(localUserObject);
-    const guestSpeakers = participants.filter(p => !p.isLocal && p.role !== 'owner' && p.role !== 'admin' && (!p.isMuted || p.isCameraOn));
+    const guestSpeakers = participants.filter(p => (!p.isLocal || p.isScreenSharing) && p.role !== 'owner' && p.role !== 'admin' && (!p.isMuted || p.isCameraOn || p.isScreenSharing));
     if (!isAdmin && canSpeak) guestSpeakers.unshift(localUserObject);
-    const listenerParticipants = participants.filter(p => !p.isLocal && p.role !== 'owner' && p.role !== 'admin' && p.isMuted && !p.isCameraOn);
+    const listenerParticipants = participants.filter(p => !p.isLocal && !p.isScreenSharing && !String(p.identity).endsWith('-screen') && p.role !== 'owner' && p.role !== 'admin' && p.isMuted && !p.isCameraOn);
     const screenSharer = participants.find(p => p.screenShareTrack);
     const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
 

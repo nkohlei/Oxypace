@@ -365,6 +365,141 @@
     color: white;
 }
 
+/* Top-Right Auto-Closing Mini Volume Button & Slider for Screen Share Cards */
+.vc-screen-vol-control {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(12, 14, 20, 0.72);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    padding: 3px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: default;
+    user-select: none;
+}
+
+.vc-screen-vol-control.open {
+    padding: 3px 9px 3px 4px;
+    background: rgba(10, 12, 18, 0.9);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.vc-card.role-carousel .vc-screen-vol-control {
+    top: 5px;
+    right: 5px;
+    padding: 2px;
+}
+
+.vc-card.role-carousel .vc-screen-vol-control.open {
+    padding: 2px 7px 2px 3px;
+}
+
+.vc-screen-vol-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.vc-card.role-carousel .vc-screen-vol-btn {
+    width: 20px;
+    height: 20px;
+}
+
+.vc-screen-vol-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.06);
+}
+
+.vc-screen-vol-btn.muted {
+    background: rgba(239, 68, 68, 0.22);
+    color: #f87171;
+}
+
+.vc-screen-vol-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: vcVolFadeIn 0.16s ease-out;
+}
+
+@keyframes vcVolFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.vc-screen-vol-slider {
+    width: 64px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+}
+
+.vc-card.role-carousel .vc-screen-vol-slider {
+    width: 46px;
+}
+
+.vc-screen-vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+.vc-screen-vol-slider::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: none;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+.vc-screen-vol-pct {
+    font-size: 10px;
+    font-weight: 600;
+    color: #e2e8f0;
+    min-width: 24px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.vc-card.role-carousel .vc-screen-vol-pct {
+    display: none;
+}
+
 .vc-controls {
     position: absolute;
     bottom: calc(12px + var(--safe-area-bottom, max(env(safe-area-inset-bottom, 0px), var(--system-nav-height, 0px))));

@@ -17,6 +17,9 @@ const UserBar = ({ currentChannelId }) => {
 
     // Global Voice State
     const { activeRoom, connectionState, localState, toggleMicrophone, disconnectFromChannel, participants, pinnedParticipant, setPinnedParticipant } = useVoice();
+    const realParticipants = React.useMemo(() => {
+        return (participants || []).filter(p => !p.isScreenSharing && !String(p.identity).endsWith('-screen'));
+    }, [participants]);
     const location = useLocation();
     const isConnected = connectionState === ConnectionState.Connected;
 
@@ -109,9 +112,9 @@ const UserBar = ({ currentChannelId }) => {
                     </div>
 
                     {/* Participant Avatars */}
-                    {participants.length > 0 && (
+                    {realParticipants.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
-                            {participants.map(p => (
+                            {realParticipants.map(p => (
                                 <div
                                     key={p.identity}
                                     onClick={() => setPinnedParticipant(prev => prev === p.identity ? null : p.identity)}

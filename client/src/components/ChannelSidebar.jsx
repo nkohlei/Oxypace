@@ -392,10 +392,10 @@ const ChannelSidebar = ({
                                 channel.type === 'announcement' || channel.name.includes('announcements');
                             const isVoice = channel.type === 'voice' || channel.type === 'conference';
 
-                            // Aktif odada isek doğrudan yerel katılımcı sayısını al, değilse sunucu/socket sayısını kullan
+                            // Aktif odada isek doğrudan yerel katılımcı sayısını al (ekran paylaşımı kartlarını hariç tut), değilse sunucu/socket sayısını kullan
                             let activeCount = voiceCounts[String(channel.id)] ?? 0;
                             if (activeRoom && String(activeRoom.channelId) === String(channel.id) && Array.isArray(participants)) {
-                                activeCount = participants.length;
+                                activeCount = participants.filter(p => !p.isScreenSharing && !String(p.identity).endsWith('-screen')).length;
                             }
 
                             return (
