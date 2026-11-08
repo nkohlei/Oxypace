@@ -479,6 +479,10 @@ const WatchPartyPlayer = () => {
     const [dimensions, setDimensions] = useState({ width: null, height: null });
     const isResizingRef = useRef(false);
     const isUserActionCooldownRef = useRef(0);
+    // Seek-storm guard: persists across sync-effect re-runs (master sync re-triggers the effect every few seconds)
+    const syncCorrectionHistoryRef = useRef([]);
+    const lastSyncSeekEndedAtRef = useRef(0);
+    const lastSyncSeekLatencyRef = useRef(0.25);
 
     // Audio & Subtitle Track States
     const [audioTracks, setAudioTracks] = useState([]);
@@ -2187,6 +2191,8 @@ const WatchPartyPlayer = () => {
 
             // Give the hardware decoder 900ms of protection from background alignNativeVideo interval re-seeks
             isUserActionCooldownRef.current = Date.now() + 900;
+            // A fresh master command is a new timeline baseline: clear seek-storm history
+            syncCorrectionHistoryRef.current = [];
 
             const video = videoRef.current;
             const stdPlayer = playerRef.current;
@@ -2290,8 +2296,42 @@ const WatchPartyPlayer = () => {
         let playTransitionGuardActive = false;
         let playTransitionGuardTimer = null;
         let isBufferingStall = false;
-        let lastHardSeekAt = 0;
         let lastPausedLockedTarget = null;
+
+        // ── Seek-storm guard ──
+        // Every correction seek flushes the hardware decoder and usually triggers a new 'waiting' → recovery → seek cycle,
+        // which makes the film look like a slideshow while the clock keeps running. We therefore (1) lead the target by the
+        // measured seek latency, (2) back off exponentially when corrections repeat, (3) widen tolerance during a storm.
+        const recentCorrections = () => {
+            const now = Date.now();
+            syncCorrectionHistoryRef.current = syncCorrectionHistoryRef.current.filter((t) => now - t < 20000);
+            return syncCorrectionHistoryRef.current.length;
+        };
+        const correctionCooldownMs = () => Math.min(10000, 1500 * Math.pow(2, recentCorrections()));
+        const canCorrectNow = () => {
+            if (video.seeking || video.readyState < 3) return false;
+            return Date.now() - lastSyncSeekEndedAtRef.current > correctionCooldownMs();
+        };
+        const performCorrectionSeek = (targetTime) => {
+            const lead = Math.min(0.8, lastSyncSeekLatencyRef.current || 0.25);
+            const finalTarget = Number((targetTime + lead).toFixed(4));
+            const startedAt = Date.now();
+            syncCorrectionHistoryRef.current.push(startedAt);
+            lastSyncSeekEndedAtRef.current = startedAt;
+            isSyncingRef.current = true;
+            lastProgrammaticSeekTimeRef.current = finalTarget;
+            const onSeeked = () => {
+                const ended = Date.now();
+                lastSyncSeekLatencyRef.current = Math.max(0.1, Math.min(1.5, (ended - startedAt) / 1000));
+                lastSyncSeekEndedAtRef.current = ended;
+                isBufferingStall = false;
+            };
+            video.addEventListener('seeked', onSeeked, { once: true });
+            video.currentTime = finalTarget;
+            setCurrentTime(finalTarget);
+            video.playbackRate = 1.0;
+            setTimeout(() => { isSyncingRef.current = false; }, 200);
+        };
 
         const computeTargetTime = () => {
             const serverNow = getServerNow();
@@ -2313,15 +2353,11 @@ const WatchPartyPlayer = () => {
 
             const targetTime = computeTargetTime();
             const drift = targetTime - (video.currentTime || 0);
-            if (Math.abs(drift) > 0.08 && !video.seeking && (wasStalled || playTransitionGuardActive)) {
+            // Small drifts after a stall are tolerated (a seek costs more than it fixes). Tolerance widens during a seek storm.
+            const recoveryThreshold = recentCorrections() >= 2 ? 2.5 : 0.7;
+            if (Math.abs(drift) > recoveryThreshold && (wasStalled || playTransitionGuardActive) && canCorrectNow()) {
                 playTransitionGuardActive = false;
-                isSyncingRef.current = true;
-                lastProgrammaticSeekTimeRef.current = targetTime;
-                lastHardSeekAt = Date.now();
-                video.currentTime = targetTime;
-                setCurrentTime(targetTime);
-                video.playbackRate = 1.0;
-                setTimeout(() => { isSyncingRef.current = false; }, 200);
+                performCorrectionSeek(targetTime);
             }
         };
 
@@ -2399,22 +2435,16 @@ const WatchPartyPlayer = () => {
                 video.playbackRate = 1.0;
             }
 
-            const hardSeekThreshold = 1.2;
-            const canHardSeek = (Date.now() - lastHardSeekAt > 1000) && !playTransitionGuardActive && !video.seeking && video.readyState >= 2;
+            const hardSeekThreshold = recentCorrections() >= 2 ? 3.0 : 1.5;
+            const canHardSeek = !playTransitionGuardActive && canCorrectNow();
 
             if (absDrift > hardSeekThreshold && canHardSeek) {
-                isSyncingRef.current = true;
-                lastProgrammaticSeekTimeRef.current = targetTime;
-                lastHardSeekAt = Date.now();
-                video.currentTime = targetTime;
-                setCurrentTime(targetTime);
-                video.playbackRate = 1.0;
+                performCorrectionSeek(targetTime);
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
                 }, 500);
-                setTimeout(() => { isSyncingRef.current = false; }, 200);
             }
         };
 
