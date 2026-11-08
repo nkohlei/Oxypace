@@ -1037,16 +1037,22 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
             }
         }
 
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(parseInt(req.query.limit) || 50, 100);
         const skip = (page - 1) * limit;
+        const filterType = req.query.filter;
 
         // --- Portal Privacy Filter ---
         // If the viewer is NOT the author, we must only show posts from portals they have access to
 
         let query = { author: targetUserId, isArchived: { $ne: true } };
 
-        if (!isAuthor) {
+        if (filterType === 'personal') {
+            query.$or = [
+                { portal: { $exists: false } },
+                { portal: null }
+            ];
+        } else if (!isAuthor) {
             // Find all portals where the target user has posted
             const userPortalsIds = await Post.find({ author: targetUserId, isArchived: { $ne: true } }).distinct('portal');
             
@@ -1068,6 +1074,7 @@ router.get('/user/:userId', optionalProtect, mongoIdValidation('userId'), async 
 
             query.$or = [
                 { portal: { $exists: false } },
+                { portal: null },
                 { portal: { $in: accessiblePortalIds } }
             ];
         }

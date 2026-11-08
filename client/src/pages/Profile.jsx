@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { getImageUrl } from '../utils/imageUtils';
 import { preloadImage } from '../utils/preloadUtils';
 import { uploadFile } from '../utils/uploadUtils';
@@ -304,11 +305,28 @@ const Profile = () => {
     });
     const [postsLoading, setPostsLoading] = useState(false);
     const [postsError, setPostsError] = useState('');
+    const [postsPage, setPostsPage] = useState(1);
+    const [hasMorePosts, setHasMorePosts] = useState(false);
+    const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+    const [postsFilter, setPostsFilter] = useState('all'); // 'all' | 'personal'
+    const [showPostsFilterMenu, setShowPostsFilterMenu] = useState(false);
+    const [postsFilterMenuPos, setPostsFilterMenuPos] = useState({ top: 0, left: 0 });
+    const postsTabRef = useRef(null);
+    const postsFilterBtnRef = useRef(null);
+    const postsFilterMenuRef = useRef(null);
+    const loadMorePostsRef = useRef(null);
     const [savedPosts, setSavedPosts] = useState([]);
     const [savedLoading, setSavedLoading] = useState(false);
     const [archivedPosts, setArchivedPosts] = useState([]);
     const [archivedLoading, setArchivedLoading] = useState(false);
     const [selectedArchivedPortalId, setSelectedArchivedPortalId] = useState(null);
+
+    const displayedUserPosts = useMemo(() => {
+        if (postsFilter === 'personal') {
+            return userPosts.filter((p) => !p.portal);
+        }
+        return userPosts;
+    }, [userPosts, postsFilter]);
 
     // Profile Compose State
     const [composeText, setComposeText] = useState('');
@@ -347,6 +365,10 @@ const Profile = () => {
     const coverInputRef = useRef(null);
 
     useEffect(() => {
+        setPostsFilter('all');
+        setShowPostsFilterMenu(false);
+        setPostsPage(1);
+        setHasMorePosts(false);
         if (isOwnProfile) {
             fetchMyProfile();
             setActiveTab('posts'); // Reset to posts for own profile
@@ -355,6 +377,38 @@ const Profile = () => {
             setActiveTab('posts'); // Reset for others
         }
     }, [username, isOwnProfile]);
+
+    // Close posts filter dropdown on outside click or scroll
+    useEffect(() => {
+        if (!showPostsFilterMenu) return;
+        const handleOutside = (e) => {
+            if (
+                postsFilterMenuRef.current &&
+                !postsFilterMenuRef.current.contains(e.target) &&
+                postsFilterBtnRef.current &&
+                !postsFilterBtnRef.current.contains(e.target)
+            ) {
+                setShowPostsFilterMenu(false);
+            }
+        };
+        const handleRepositionOrClose = () => {
+            if (postsTabRef.current) {
+                const rect = postsTabRef.current.getBoundingClientRect();
+                setPostsFilterMenuPos({
+                    top: rect.bottom + 6,
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 190))
+                });
+            }
+        };
+        document.addEventListener('mousedown', handleOutside);
+        document.addEventListener('touchstart', handleOutside);
+        window.addEventListener('resize', handleRepositionOrClose);
+        return () => {
+            document.removeEventListener('mousedown', handleOutside);
+            document.removeEventListener('touchstart', handleOutside);
+            window.removeEventListener('resize', handleRepositionOrClose);
+        };
+    }, [showPostsFilterMenu]);
 
     // Click outside compose box to close
     useEffect(() => {
@@ -391,40 +445,75 @@ const Profile = () => {
         }
     };
 
-    // Fetch user posts
-    const fetchUserPosts = useCallback(async (userId) => {
+    // Fetch user posts with pagination & optional personal filter
+    const fetchUserPosts = useCallback(async (userId, options = {}) => {
         if (!userId) return;
-        setPostsError('');
+        const page = options.page || 1;
+        const filter = options.filter || 'all';
+        const append = Boolean(options.append);
+
+        if (append) {
+            setLoadingMorePosts(true);
+        } else {
+            setPostsError('');
+        }
+
         try {
-            const res = await axios.get(`/api/posts/user/${userId}`);
+            const params = new URLSearchParams({
+                page: String(page),
+                limit: '50'
+            });
+            if (filter === 'personal') {
+                params.set('filter', 'personal');
+            }
+            const res = await axios.get(`/api/posts/user/${userId}?${params.toString()}`);
             // Handle both {posts: [...]} and direct array response formats
             const postsData = Array.isArray(res.data) ? res.data : (res.data?.posts || []);
-            setUserPosts(postsData);
-            try {
-                const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
-                localStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 20)));
-            } catch (_) {
-                try {
-                    const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
-                    sessionStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 15)));
-                } catch (__) {}
+            const totalPages = res.data?.totalPages ?? 1;
+
+            if (append) {
+                setUserPosts((prev) => {
+                    const existingIds = new Set(prev.map((p) => p._id));
+                    const nextItems = postsData.filter((p) => p && !existingIds.has(p._id));
+                    return [...prev, ...nextItems];
+                });
+            } else {
+                setUserPosts(postsData);
+                if (filter === 'all') {
+                    try {
+                        const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
+                        localStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 20)));
+                    } catch (_) {
+                        try {
+                            const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
+                            sessionStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 15)));
+                        } catch (__) {}
+                    }
+                }
             }
+
+            setPostsPage(page);
+            setHasMorePosts(page < totalPages && postsData.length > 0);
         } catch (err) {
             console.error('Failed to fetch user posts:', err);
-            if (err.response?.status === 404) {
-                setPostsError('not_found');
-            } else {
-                setPostsError('error');
+            if (!append) {
+                if (err.response?.status === 404) {
+                    setPostsError('not_found');
+                } else {
+                    setPostsError('error');
+                }
             }
         } finally {
             setPostsLoading(false);
+            setLoadingMorePosts(false);
         }
     }, [username]);
 
-    // Fetch posts when profile user is loaded or tab switches to posts
+    // Fetch posts when profile user is loaded, tab switches to posts, or filter changes
     useEffect(() => {
+        updateTabIndicator();
         if (profileUser?._id && activeTab === 'posts') {
-            fetchUserPosts(profileUser._id);
+            fetchUserPosts(profileUser._id, { page: 1, filter: postsFilter, append: false });
         }
         if (activeTab === 'saved' && isOwnProfile) {
             fetchSavedPosts();
@@ -433,7 +522,29 @@ const Profile = () => {
             fetchArchivedPosts();
             setSelectedArchivedPortalId(null);
         }
-    }, [profileUser?._id, activeTab, fetchUserPosts, isOwnProfile]);
+    }, [profileUser?._id, activeTab, postsFilter, fetchUserPosts, isOwnProfile]);
+
+    // Infinite scroll observer to load all remaining posts on profile
+    useEffect(() => {
+        const sentinel = loadMorePostsRef.current;
+        if (!sentinel || activeTab !== 'posts' || !hasMorePosts || loadingMorePosts || postsLoading || !profileUser?._id) {
+            return;
+        }
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting && hasMorePosts && !loadingMorePosts && !postsLoading) {
+                    fetchUserPosts(profileUser._id, {
+                        page: postsPage + 1,
+                        filter: postsFilter,
+                        append: true
+                    });
+                }
+            },
+            { root: null, rootMargin: '400px' }
+        );
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [activeTab, hasMorePosts, loadingMorePosts, postsLoading, postsPage, postsFilter, profileUser?._id, fetchUserPosts]);
 
     const fetchSavedPosts = async () => {
         setSavedLoading(true);
@@ -1019,7 +1130,7 @@ const Profile = () => {
 
     return (
         <div
-            className="app-wrapper full-height"
+            className="app-wrapper full-height profile-page-wrapper"
             style={{ backgroundColor: 'transparent', color: '#dbdee1' }}
         >
             {profileUser && (
@@ -1323,11 +1434,73 @@ const Profile = () => {
                                 <>
                                     <div className="profile-tabs" ref={tabsContainerRef}>
                                         <div
-                                            className={`profile-tab-item ${activeTab === 'posts' ? 'active' : ''}`}
-                                            onClick={() => setActiveTab('posts')}
+                                            ref={postsTabRef}
+                                            className={`profile-tab-item profile-tab-item-with-dropdown ${activeTab === 'posts' ? 'active' : ''}`}
+                                            onClick={() => {
+                                                if (activeTab !== 'posts') {
+                                                    setActiveTab('posts');
+                                                } else if (postsFilter === 'personal') {
+                                                    setPostsFilter('all');
+                                                    setShowPostsFilterMenu(false);
+                                                }
+                                            }}
                                         >
-                                            Gönderiler
+                                            <span className="profile-tab-label">
+                                                Gönderiler
+                                                {postsFilter === 'personal' && (
+                                                    <span className="profile-tab-filter-pill">Özel</span>
+                                                )}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                ref={postsFilterBtnRef}
+                                                className={`profile-tab-dropdown-arrow ${showPostsFilterMenu ? 'open' : ''} ${postsFilter === 'personal' ? 'filtered' : ''}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (activeTab !== 'posts') {
+                                                        setActiveTab('posts');
+                                                    }
+                                                    if (!showPostsFilterMenu && postsTabRef.current) {
+                                                        const rect = postsTabRef.current.getBoundingClientRect();
+                                                        setPostsFilterMenuPos({
+                                                            top: rect.bottom + 6,
+                                                            left: Math.max(8, Math.min(rect.left, window.innerWidth - 190))
+                                                        });
+                                                    }
+                                                    setShowPostsFilterMenu((prev) => !prev);
+                                                }}
+                                                aria-label="Özel Gönderiler Filtresi"
+                                                title="Özel Gönderiler"
+                                            >
+                                                <ChevronDown size={14} />
+                                            </button>
                                         </div>
+                                        {showPostsFilterMenu && createPortal(
+                                            <div
+                                                ref={postsFilterMenuRef}
+                                                className="profile-posts-filter-dropdown"
+                                                style={{
+                                                    top: `${postsFilterMenuPos.top}px`,
+                                                    left: `${postsFilterMenuPos.left}px`
+                                                }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className={`profile-posts-filter-btn ${postsFilter === 'personal' ? 'active' : ''}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveTab('posts');
+                                                        setPostsFilter((prev) => (prev === 'personal' ? 'all' : 'personal'));
+                                                        setShowPostsFilterMenu(false);
+                                                    }}
+                                                >
+                                                    <User size={14} />
+                                                    <span>Özel Gönderiler</span>
+                                                    {postsFilter === 'personal' && <Check size={14} className="filter-check-icon" />}
+                                                </button>
+                                            </div>,
+                                            document.body
+                                        )}
                                         <div
                                             className={`profile-tab-item ${activeTab === 'memberships' ? 'active' : ''}`}
                                             onClick={() => setActiveTab('memberships')}
@@ -1542,16 +1715,16 @@ const Profile = () => {
                                                     <div className="empty-tab">
                                                         Gönderiler yüklenemedi.
                                                     </div>
-                                                ) : userPosts.length === 0 ? (
+                                                ) : displayedUserPosts.length === 0 ? (
                                                     <div className="empty-tab">
                                                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.3 }}>
                                                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                                                         </svg>
-                                                        <p>Henüz gönderi paylaşılmamış.</p>
+                                                        <p>{postsFilter === 'personal' ? 'Henüz özel gönderi paylaşılmamış.' : 'Henüz gönderi paylaşılmamış.'}</p>
                                                     </div>
                                                 ) : (
                                                     <div className="profile-posts-feed">
-                                                        {userPosts.map((post, index) => (
+                                                        {displayedUserPosts.map((post, index) => (
                                                             <Fragment key={post._id}>
                                                                 <article key={post._id} className="profile-post-card">
                                                                     {/* Portal/Channel Badge */}
@@ -1609,8 +1782,8 @@ const Profile = () => {
                                                                                 <span className="post-author-username">@{post.author?.username || profileUser?.username || 'deleted'}</span>
                                                                             </Link>
                                                                             <span className="post-time-stamp">· {formatPostDate(post.createdAt)}</span>
-                                                                            {isOwnProfile && (
-                                                                                <div className="profile-post-actions-header" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                            <div className="profile-post-actions-header" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                                {isOwnProfile && (
                                                                                     <button
                                                                                         className="archive-post-btn"
                                                                                         onClick={async (e) => {
@@ -1641,21 +1814,19 @@ const Profile = () => {
                                                                                             <line x1="10" y1="12" x2="14" y2="12"></line>
                                                                                         </svg>
                                                                                     </button>
-                                                                                    {post.portal && (
-                                                                                        <button
-                                                                                            className="go-to-post-btn"
-                                                                                            onClick={() => navigate(`/post/${post._id}`)}
-                                                                                            title="Gönderiye Git"
-                                                                                        >
-                                                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                                                                                <polyline points="15 3 21 3 21 9"></polyline>
-                                                                                                <line x1="10" y1="14" x2="21" y2="3"></line>
-                                                                                            </svg>
-                                                                                        </button>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
+                                                                                )}
+                                                                                <button
+                                                                                    className="go-to-post-btn"
+                                                                                    onClick={() => navigate(`/post/${post._id}`)}
+                                                                                    title="Gönderiye Git"
+                                                                                >
+                                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                                                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                                                    </svg>
+                                                                                </button>
+                                                                            </div>
                                                                         </div>
 
                                                                         {post.content && (
@@ -1813,9 +1984,15 @@ const Profile = () => {
                                                                         </div>
                                                                     </div>
                                                                 </article>
-                                                                {index < userPosts.length - 1 && <div className="post-separator" />}
+                                                                {index < displayedUserPosts.length - 1 && <div className="post-separator" />}
                                                             </Fragment>
                                                         ))}
+                                                        <div ref={loadMorePostsRef} style={{ height: '16px', width: '100%' }} />
+                                                        {loadingMorePosts && (
+                                                            <div className="profile-posts-loading" style={{ padding: '16px 0' }}>
+                                                                <div className="spinner" />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

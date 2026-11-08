@@ -117,7 +117,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 0;
     gap: 8px;
 }
 
@@ -172,13 +172,13 @@
 
 /* Content Text */
 .post-content-text {
-    margin-bottom: 8px;
-    margin-top: 0;
+    margin-top: 5px;
+    margin-bottom: 0;
 }
 
 .post-content-text p {
     font-size: 1.15rem;
-    line-height: 1.5;
+    line-height: 1.45;
     color: var(--text-primary);
     margin: 0;
     white-space: pre-wrap;
@@ -187,8 +187,8 @@
 
 /* Media */
 .post-media {
-    margin-bottom: 12px;
-    margin-top: 8px;
+    margin-bottom: 10px;
+    margin-top: 4px;
     width: 100%;
     max-width: 100%;
     display: flex;
@@ -196,6 +196,13 @@
     border-radius: 16px;
     background: transparent;
     overflow: visible;
+}
+
+.post-header-row + .post-media,
+.post-header-row + .quoted-post-container,
+.post-header-row + .post-pdf-container,
+.post-header-row + .link-preview-card {
+    margin-top: 5px;
 }
 
 .post-media:has(.has-open-menu),
@@ -776,10 +783,28 @@
         padding-left: 2px;
     }
 
+    .post-content-text {
+        margin-top: 4px;
+        margin-bottom: 0;
+    }
+
     .post-content-text p {
         font-size: 14px;
         line-height: 1.4;
-        margin-bottom: 4px;
+        margin-bottom: 0;
+    }
+
+    .post-media,
+    .quoted-post-container,
+    .post-pdf-container {
+        margin-top: 3px !important;
+    }
+
+    .post-header-row + .post-media,
+    .post-header-row + .quoted-post-container,
+    .post-header-row + .post-pdf-container,
+    .post-header-row + .link-preview-card {
+        margin-top: 4px !important;
     }
 
     .post-actions {
@@ -814,11 +839,11 @@
 
     /* Top-right post header action buttons (maximize & options) compact size */
     .post-action-btn {
-        min-width: 28px !important;
-        min-height: 28px !important;
-        width: 28px !important;
-        height: 28px !important;
-        padding: 4px !important;
+        min-width: 24px !important;
+        min-height: 22px !important;
+        width: 24px !important;
+        height: 22px !important;
+        padding: 2px !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -920,7 +945,7 @@
     --quote-max-h: 300px;
     --quote-radius: 12px;
 
-    margin-top: 8px;
+    margin-top: 4px;
     margin-bottom: 4px;
     border: 1px solid var(--glass-border);
     border-radius: var(--quote-radius);
@@ -1143,7 +1168,7 @@
 
 /* PDF Glassmorphism Document Card */
 .post-pdf-container {
-    margin-top: 10px;
+    margin-top: 4px;
     margin-bottom: 8px;
     width: 100%;
     max-width: 500px;

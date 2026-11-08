@@ -564,7 +564,7 @@ public class MainActivity extends BridgeActivity {
             }
             if (portalId != null && channelId != null) {
                 MainActivity.activePortalChannelKey = portalId.trim() + "_" + channelId.trim();
-                clearPortalChannelNotification(getContext(), portalId.trim(), channelId.trim());
+                MainActivity.clearPortalChannelNotification(getContext(), portalId.trim(), channelId.trim());
             } else {
                 MainActivity.activePortalChannelKey = null;
             }

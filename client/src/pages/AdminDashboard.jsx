@@ -7670,10 +7670,10 @@ const AdminDashboard = () => {
                                                 <span className="user-stat-label" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📱 Uygulama Sürümü</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                                     {user.appPlatform === 'android' ? (
-                                                        user.versionCode >= 256 ? (
+                                                        user.versionCode >= 257 ? (
                                                             <span style={{ color: '#4ade80', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
-                                                                Android v{user.appVersion || '2.5.6'} (Güncel)
+                                                                Android v{user.appVersion || '2.5.7'} (Güncel)
                                                             </span>
                                                         ) : (
                                                             <span style={{ color: '#f87171', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -7688,7 +7688,7 @@ const AdminDashboard = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 256) && (
+                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 257) && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleSendUpdatePrompt(user._id, user.username)}

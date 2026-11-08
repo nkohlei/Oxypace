@@ -807,93 +807,95 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     </div>
                 </div>
 
-                <div className="post-content-text">
-                    <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {(() => {
-                            const contentStr = isTranslated && translatedText ? translatedText : post.content;
-                            if (!contentStr) return null;
-                            const firstUrl = extractFirstUrl(post.content);
+                {Boolean((isTranslated && translatedText) || (post.content && post.content.trim())) && (
+                    <div className="post-content-text">
+                        <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {(() => {
+                                const contentStr = isTranslated && translatedText ? translatedText : post.content;
+                                if (!contentStr) return null;
+                                const firstUrl = extractFirstUrl(post.content);
 
-                            if (contentStr.length <= MAX_LENGTH) {
-                                return linkifyText(contentStr, firstUrl);
-                            }
+                                if (contentStr.length <= MAX_LENGTH) {
+                                    return linkifyText(contentStr, firstUrl);
+                                }
 
-                            if (isExpanded) {
+                                if (isExpanded) {
+                                    return (
+                                        <>
+                                            {linkifyText(contentStr, firstUrl)}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                                                className="read-more-btn"
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--primary-cyan)',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    marginLeft: '4px',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.95em'
+                                                }}
+                                            >
+                                                daha az gör
+                                            </button>
+                                        </>
+                                    );
+                                }
+
+                                const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH, firstUrl);
+
                                 return (
                                     <>
-                                        {linkifyText(contentStr, firstUrl)}
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                                            className="read-more-btn"
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--primary-cyan)',
-                                                cursor: 'pointer',
-                                                padding: 0,
-                                                marginLeft: '4px',
-                                                fontWeight: 600,
-                                                fontSize: '0.95em'
-                                            }}
-                                        >
-                                            daha az gör
-                                        </button>
+                                        {elements}
+                                        {isTruncated && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+                                                className="read-more-btn"
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--primary-cyan)',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    marginLeft: '4px',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.95em'
+                                                }}
+                                            >
+                                                devamını gör
+                                            </button>
+                                        )}
                                     </>
                                 );
-                            }
-
-                            const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH, firstUrl);
-
-                            return (
-                                <>
-                                    {elements}
-                                    {isTruncated && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-                                            className="read-more-btn"
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--primary-cyan)',
-                                                cursor: 'pointer',
-                                                padding: 0,
-                                                marginLeft: '4px',
-                                                fontWeight: 600,
-                                                fontSize: '0.95em'
-                                            }}
-                                        >
-                                            devamını gör
-                                        </button>
-                                    )}
-                                </>
-                            );
-                        })()}
-                    </p>
-                    {post.content && shouldShowTranslation(post.content) && (
-                        <span
-                            role="button"
-                            tabIndex={0}
-                            className={`translation-toggle ${isTranslated ? 'translated' : ''}`}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleTranslate();
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
+                            })()}
+                        </p>
+                        {post.content && shouldShowTranslation(post.content) && (
+                            <span
+                                role="button"
+                                tabIndex={0}
+                                className={`translation-toggle ${isTranslated ? 'translated' : ''}`}
+                                onClick={(e) => {
                                     e.stopPropagation();
                                     handleTranslate();
-                                }
-                            }}
-                        >
-                            {isTranslating
-                                ? 'Çevriliyor...'
-                                : isTranslated
-                                    ? 'Orijinalini gör'
-                                    : 'Çevirisini gör'}
-                        </span>
-                    )}
-                </div>
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleTranslate();
+                                    }
+                                }}
+                            >
+                                {isTranslating
+                                    ? 'Çevriliyor...'
+                                    : isTranslated
+                                        ? 'Orijinalini gör'
+                                        : 'Çevirisini gör'}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* Promoted Portal Showcase Card */}
                 {post.promotedPortal && (

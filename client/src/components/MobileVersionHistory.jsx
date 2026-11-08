@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.6)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.7)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.7',
+        versionCode: 257,
+        releaseDate: '8 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Hedef Portal & Kanal Seçimli Paylaşım Akışı, Birikimli Cihaz Bildirimleri, Profil Özel Gönderiler Filtresi & Akış İyileştirmeleri',
+        summary: 'Diğer uygulamalardan Oxypace ile içerik paylaşırken doğrudan "Paylaşılacak Portalı Seç" ve hedef kanal seçme penceresi açılarak içeriklerin seçilen kanalın mesaj kutusuna otomatik eklenmesi sağlandı. Cihaz bildirimlerinde her portal/kanal için ayrı okunmamış post birikimi, kullanıcı adı ve post açıklaması gösterimi, minimal PDF kartı ve tekil aktif oturum izolasyonu devreye alındı. Profil sayfalarında tüm gönderilerin kesintisiz kaydırılması, "Özel Gönderiler" filtresi, arkadaş profillerinde gönderiye gitme butonu ve portal akışında optimize edilmiş iç boşluk düzeni eklendi.',
+        category: 'feature',
+        apkSize: '39.2 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Paylaşılacak Portal & Kanal Seçimi: Harici uygulamalardan paylaşılan içeriklerin tıpkı Alıntıla akışındaki gibi hedef portal ve kanal seçilerek doğrudan kanal paylaşım alanına aktarılması',
+            'Birikimli Kanal Bildirimleri & Minimal PDF Kartı: Okunmamış portal/kanal gönderilerinin bildirim silinse dahi birikerek sıralanması, küçük medya önizlemesi ve minimal PDF kartı',
+            'Profil Sayfası Özel Gönderiler Filtresi & Tam Akış: Gönderiler sekmesinde açılır "Özel Gönderiler" filtresi, arkadaş profillerinde gönderiye git butonu ve sınırsız gönderi kaydırma',
+            'Canlı Odalarda Ekran Paylaşımı Ses Kontrolü: Ekran paylaşımı kutularında otomatik kapanan ses kısma butonu ve çevrimiçi kullanıcı sayacı düzeltmesi'
+        ],
+        changes: [
+            { type: 'Harici Paylaşım Portal Seçici', detail: 'MainActivity.java ve App.jsx üzerinde harici paylaşımların /create yerine doğrudan QuotePortalModal ile hedef portal ve kanalın gönderi kutusuna aktarılması sağlandı.' },
+            { type: 'Birikimli Cihaz Bildirimleri & Aktif Hesap İzolasyonu', detail: 'OxypaceMessagingService ve portalNotificationService üzerinde kanal bazlı okunmamış post birikimi, minimal PDF kartı ve tek aktif oturum bildirim kilidi uygulandı.' },
+            { type: 'Profil & Post Kartı Düzenlemeleri', detail: 'Profile.jsx ve PostCard.css üzerinde Özel Gönderiler filtresi, tüm gönderileri yükleme/kaydırma, arkadaş profillerinde gönderiye git butonu ve post iç boşluk optimizasyonu yapıldı.' },
+            { type: 'Zorunlu Güncelleme & Sürüm 2.5.7', detail: 'Tüm kurulu istemciler için minimum sürüm 257 olarak belirlendi ve zorunlu güncelleme devreye alındı.' }
+        ],
+        filesModified: 16
+    },
     {
         version: 'v2.5.6',
         versionCode: 256,
         releaseDate: '7 Kasım 2026',
-        commitHash: 'HEAD',
-        status: 'active',
+        commitHash: 'f4cd64b7',
+        status: 'stable',
         title: 'Android Sistem Paylaşım Menüsü (Share Intent), Çoklu Hesap Bildirim İzolasyonu, Portal Logosu & Zengin Medya Kapaklı Cihaz Bildirimleri',
         summary: 'Oxypace artık Android sistem paylaşım menüsüne tam entegre! Galeri, Dosyalar, tarayıcı veya diğer sosyal medya uygulamalarından paylaşılan tüm metin, bağlantı, resim, video ve belgeler doğrudan Oxypace gönderi oluşturma ekranına aktarılabilir. Çoklu hesap desteğinde cihaz bildirimleri izole edildi; cihazda yalnızca o an oturumu açık olan hesabın bildirimleri gösterilir, arka plandaki hesapların bildirimleri gizlenir. Portal bildirimlerinde ise paylaşımın geldiği portalın özel avatarı sol menüde, post içerikleri (görsel, gif, video veya belge) zengin büyük kapak resmi olarak anlık bildirimde görüntülenir.',
         category: 'feature',

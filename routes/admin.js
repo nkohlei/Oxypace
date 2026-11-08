@@ -186,7 +186,7 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
                 typeFilter.appPlatform = 'android';
                 typeFilter.isDeleted = { $ne: true };
                 typeFilter.$or = [
-                    { versionCode: { $lt: 256 } },
+                    { versionCode: { $lt: 257 } },
                     { versionCode: null },
                     { versionCode: 0 }
                 ];
@@ -3051,9 +3051,9 @@ router.post('/broadcast-announcement', protect, requirePermission('canSendNotifi
 // @access  Private/Admin
 router.post('/users/send-update-prompt', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
-        const { userId, minVersionCode = 256, customMessage } = req.body;
+        const { userId, minVersionCode = 257, customMessage } = req.body;
         const io = req.app.get('io');
-        const defaultMsg = customMessage || 'Oxypace v2.5.6 yayınlandı! Android sistem paylaşım menüsü, çoklu hesap bildirim izolasyonu ve zengin medya kapaklı portal bildirimlerini kullanabilmek için lütfen uygulamanızı güncelleyin.';
+        const defaultMsg = customMessage || 'Oxypace v2.5.7 yayınlandı! Hedef portal seçmeli uygulama paylaşımı, birikimli cihaz bildirimleri ve yeni profil özelliklerini kullanabilmek için lütfen uygulamanızı güncelleyin.';
 
         let targetUsers = [];
         if (userId) {
@@ -3098,8 +3098,8 @@ router.post('/users/send-update-prompt', protect, requirePermission('canManageUs
                     createdAt: new Date()
                 });
                 io.to(uIdStr).emit('prompt_app_update', {
-                    latestVersion: '2.5.6',
-                    versionCode: 256,
+                    latestVersion: '2.5.7',
+                    versionCode: 257,
                     changelog: defaultMsg,
                     downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk'
                 });
