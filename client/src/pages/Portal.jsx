@@ -243,10 +243,135 @@ const Portal = () => {
             if (location.state.selectedChannelId) {
                 setCurrentChannel(location.state.selectedChannelId);
             }
+            if (closeSidebar) closeSidebar();
+            if (setMobileChannelOpen) setMobileChannelOpen(true);
             // Clean up state to prevent re-triggering on manual refresh
             navigate(location.pathname + location.search, { replace: true, state: {} });
         }
     }, [location.state, id]);
+
+    // External Share Target ("Farklı uygulamada paylaş") -> Auto-populate selected Portal & Channel composer
+    useEffect(() => {
+        let isSubscribed = true;
+
+        const applyPendingChannelShare = async () => {
+            const pending = window.__oxypacePendingChannelShare;
+            if (!pending || !pending.payload) return;
+            if (pending.portalId && String(pending.portalId) !== String(id)) return;
+
+            // Consume immediately so it only runs once
+            window.__oxypacePendingChannelShare = null;
+            const payload = pending.payload;
+
+            if (pending.channelId) {
+                setCurrentChannel(pending.channelId);
+            }
+            if (closeSidebar) closeSidebar();
+            if (setMobileChannelOpen) setMobileChannelOpen(true);
+
+            // 1. Shared Text / Link / Subject
+            const incomingText = (payload.text || payload.subject || '').trim();
+            if (incomingText && isSubscribed) {
+                setMessageText((prev) => (prev ? `${prev}\n${incomingText}` : incomingText));
+            }
+
+            // 2. Shared Files (Images, Videos, GIFs, PDFs)
+            if (Array.isArray(payload.files) && payload.files.length > 0) {
+                const convertedFiles = [];
+                for (const f of payload.files) {
+                    try {
+                        let fileBlob = null;
+                        if (f.base64) {
+                            const byteChars = atob(f.base64);
+                            const byteNums = new Array(byteChars.length);
+                            for (let i = 0; i < byteChars.length; i++) {
+                                byteNums[i] = byteChars.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNums);
+                            fileBlob = new Blob([byteArray], { type: f.mimeType || 'application/octet-stream' });
+                        } else if (f.path && window.Capacitor) {
+                            const fileSrc = window.Capacitor.convertFileSrc(f.path);
+                            const res = await fetch(fileSrc);
+                            fileBlob = await res.blob();
+                        }
+                        if (fileBlob) {
+                            const newFile = new File([fileBlob], f.name || 'shared_file', {
+                                type: f.mimeType || fileBlob.type || 'application/octet-stream'
+                            });
+                            convertedFiles.push(newFile);
+                        }
+                    } catch (err) {
+                        console.error('Error loading shared file into portal composer:', f?.name, err);
+                    }
+                }
+
+                if (convertedFiles.length > 0 && isSubscribed) {
+                    const firstFile = convertedFiles[0];
+                    const fileNameLower = (firstFile.name || '').toLowerCase();
+                    const isPdf = firstFile.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
+                    const isVideo = firstFile.type.startsWith('video/') ||
+                        ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(fileNameLower.split('.').pop());
+                    const isGif = firstFile.type === 'image/gif' || fileNameLower.endsWith('.gif');
+
+                    if (isPdf || isVideo || isGif) {
+                        setMediaFiles([]);
+                        setMediaPreviews([]);
+                        setMediaFile(firstFile);
+                        isVideoFileRef.current = isVideo;
+                        setShowPlusMenu(false);
+                    } else {
+                        setMediaFile(null);
+                        isVideoFileRef.current = false;
+                        const allowedFiles = convertedFiles.slice(0, 10);
+                        const validFiles = [];
+                        const newPreviews = [];
+                        for (const file of allowedFiles) {
+                            validFiles.push(file);
+                            newPreviews.push({
+                                url: URL.createObjectURL(file),
+                                name: file.name,
+                                size: file.size,
+                                file: file
+                            });
+                        }
+                        setMediaFiles(validFiles);
+                        setMediaPreviews(newPreviews);
+                        setShowPlusMenu(false);
+                    }
+                }
+            } else if (incomingText && isSubscribed) {
+                // If no binary file was attached, check if the shared text contains a YouTube URL to auto-attach preview
+                const urlMatch = incomingText.match(/https?:\/\/[^\s]+/i);
+                const candidateUrl = urlMatch ? urlMatch[0] : incomingText;
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+                const match = candidateUrl.match(regExp);
+                const ytId = (match && match[2].length === 11) ? match[2] : null;
+                if (ytId) {
+                    setMediaFile({
+                        name: 'YouTube Video',
+                        type: 'youtube',
+                        preview: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+                        url: candidateUrl
+                    });
+                }
+            }
+
+            if (location.state?.sharedTrigger) {
+                navigate(location.pathname + location.search, { replace: true, state: {} });
+            }
+        };
+
+        applyPendingChannelShare();
+
+        const handleShareEvent = () => {
+            applyPendingChannelShare();
+        };
+        window.addEventListener('oxypace:apply_shared_to_channel', handleShareEvent);
+        return () => {
+            isSubscribed = false;
+            window.removeEventListener('oxypace:apply_shared_to_channel', handleShareEvent);
+        };
+    }, [id, location.state?.sharedTrigger]);
 
     const activeChannelObj = portal?.channels?.find((c) => String(c._id) === String(currentChannel));
     const isImageChannel = activeChannelObj?.type === 'image';
@@ -967,7 +1092,7 @@ const Portal = () => {
     }, [portal?._id, portal?.name]);
 
     useEffect(() => {
-        if (!authLoading && portal && portal.channels && portal.channels.length > 0) {
+        if (!authLoading && portal && String(portal._id) === String(id) && portal.channels && portal.channels.length > 0) {
             // Check if we need to set a default channel (only if currentChannel is null)
             if (!currentChannel) {
                 if (urlChannel) {
@@ -2198,7 +2323,7 @@ const Portal = () => {
                                                                             </div>
                                                                         )}
 
-                                                                        {isImageChannel && messageText.trim() && !mediaFile && (
+                                                                        {isImageChannel && messageText.trim() && !mediaFile && mediaFiles.length === 0 && (
                                                                             <div className="image-channel-warning" style={{
                                                                                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
                                                                                 border: '1px solid rgba(239, 68, 68, 0.25)',

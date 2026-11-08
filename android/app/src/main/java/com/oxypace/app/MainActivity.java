@@ -1964,9 +1964,6 @@ public class MainActivity extends BridgeActivity {
             payload.put("files", filesArray);
             ShareTargetManager.sLatestPayload = payload;
 
-            // Route to /create?shared=1
-            this.pendingRoute = "/create?shared=1";
-
             final String payloadJson = payload.toString();
             android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
             h.postDelayed(() -> {
@@ -1975,11 +1972,8 @@ public class MainActivity extends BridgeActivity {
                     if (webView != null) {
                         String script = "(function(){ " +
                             "try { " +
-                            "  sessionStorage.setItem('pending_mobile_route', '/create?shared=1'); " +
-                            "  localStorage.setItem('pending_mobile_route', '/create?shared=1'); " +
                             "  window.__oxypaceSharedData = " + payloadJson + "; " +
                             "  window.dispatchEvent(new CustomEvent('oxypace:shared_content', { detail: " + payloadJson + " })); " +
-                            "  if (window.__oxypaceNavigate) { window.__oxypaceNavigate('/create?shared=1'); } " +
                             "} catch(e) {} " +
                             "})();";
                         webView.evaluateJavascript(script, null);

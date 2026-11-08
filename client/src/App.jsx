@@ -122,8 +122,11 @@ import UpdateModal from './components/UpdateModal';
 import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
 import TourGuide from './components/TourGuide';
 import RegisterDeviceModal from './components/RegisterDeviceModal';
+import QuotePortalModal from './components/QuotePortalModal';
 import { getDeviceInfo } from './utils/deviceHelper';
 import axios from 'axios';
+
+const ShareTargetManager = registerPlugin('ShareTargetManager');
 
 // 🔧 MAINTENANCE MODE - Set to true to show maintenance page
 const MAINTENANCE_MODE = false;
@@ -366,34 +369,6 @@ const handleNotificationRoute = (data, actionId) => {
 const AppLayout = () => {
     useRealtimeSync(); // Global websocket synchronization
     const navigate = useNavigate();
-
-    // Register React router navigation handler for native Android bridge
-    useEffect(() => {
-        window.__oxypaceNavigate = (route) => {
-            if (route) {
-                navigate(route);
-            }
-        };
-        const pendingRoute = sessionStorage.getItem('pending_mobile_route') || localStorage.getItem('pending_mobile_route');
-        if (pendingRoute) {
-            sessionStorage.removeItem('pending_mobile_route');
-            localStorage.removeItem('pending_mobile_route');
-            navigate(pendingRoute);
-        }
-
-        const handleSharedContent = () => {
-            if (window.location.pathname !== '/create' && window.location.pathname !== '/create-post') {
-                navigate('/create?shared=1');
-            }
-        };
-        window.addEventListener('oxypace:shared_content', handleSharedContent);
-
-        return () => {
-            delete window.__oxypaceNavigate;
-            window.removeEventListener('oxypace:shared_content', handleSharedContent);
-        };
-    }, [navigate]);
-
     const { isSidebarOpen, toggleSidebar, closeSidebar, mobileChannelOpen, setMobileChannelOpen } = useUI();
     const { user, token, updateUser, isAuthenticated } = useAuth();
     const userId = user?._id;
@@ -401,6 +376,141 @@ const AppLayout = () => {
     const { socket, connected } = useSocket();
 
     const isLoggedIn = isAuthenticated;
+
+    // External Android Share Target ("Farklı uygulamada paylaş") -> Portal & Channel Picker Modal state
+    const [sharedContentForModal, setSharedContentForModal] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const hasValidSharePayload = (payload) => {
+            if (!payload) return false;
+            const hasText = Boolean(payload.text?.trim() || payload.subject?.trim());
+            const hasFiles = Array.isArray(payload.files) && payload.files.length > 0;
+            return hasText || hasFiles;
+        };
+
+        const openSharedPortalPicker = (payload) => {
+            if (!isMounted || !hasValidSharePayload(payload)) return;
+            window.__oxypaceSharedData = null;
+            sessionStorage.removeItem('pending_mobile_route');
+            localStorage.removeItem('pending_mobile_route');
+            if (Capacitor.isNativePlatform()) {
+                ShareTargetManager.clearSharedData().catch(() => {});
+            }
+            setSharedContentForModal(payload);
+        };
+
+        const consumeNativeSharedData = (incomingPayload = null) => {
+            if (incomingPayload && hasValidSharePayload(incomingPayload)) {
+                openSharedPortalPicker(incomingPayload);
+                return;
+            }
+            if (window.__oxypaceSharedData && hasValidSharePayload(window.__oxypaceSharedData)) {
+                openSharedPortalPicker(window.__oxypaceSharedData);
+                return;
+            }
+            if (Capacitor.isNativePlatform()) {
+                ShareTargetManager.getSharedData()
+                    .then((res) => {
+                        if (res && res.hasData && hasValidSharePayload(res)) {
+                            openSharedPortalPicker(res);
+                        }
+                    })
+                    .catch(() => {});
+            }
+        };
+
+        // Register React router navigation handler for native Android bridge
+        window.__oxypaceNavigate = (route) => {
+            if (!route) return;
+            // Intercept legacy share routes from native MainActivity so we open the Portal/Channel picker modal instead of /create
+            if (route.includes('shared=1') || route.startsWith('/create')) {
+                sessionStorage.removeItem('pending_mobile_route');
+                localStorage.removeItem('pending_mobile_route');
+                consumeNativeSharedData();
+                return;
+            }
+            navigate(route);
+        };
+
+        const pendingRoute = sessionStorage.getItem('pending_mobile_route') || localStorage.getItem('pending_mobile_route');
+        if (pendingRoute) {
+            sessionStorage.removeItem('pending_mobile_route');
+            localStorage.removeItem('pending_mobile_route');
+            if (pendingRoute.includes('shared=1') || pendingRoute.startsWith('/create')) {
+                consumeNativeSharedData();
+            } else {
+                navigate(pendingRoute);
+            }
+        } else {
+            consumeNativeSharedData();
+        }
+
+        const handleSharedContent = (e) => {
+            sessionStorage.removeItem('pending_mobile_route');
+            localStorage.removeItem('pending_mobile_route');
+            consumeNativeSharedData(e?.detail || null);
+        };
+        window.addEventListener('oxypace:shared_content', handleSharedContent);
+
+        let appStateSub = null;
+        if (Capacitor.isNativePlatform()) {
+            appStateSub = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+                if (isActive) {
+                    const pRoute = sessionStorage.getItem('pending_mobile_route') || localStorage.getItem('pending_mobile_route');
+                    if (pRoute && (pRoute.includes('shared=1') || pRoute.startsWith('/create'))) {
+                        sessionStorage.removeItem('pending_mobile_route');
+                        localStorage.removeItem('pending_mobile_route');
+                    }
+                    consumeNativeSharedData();
+                }
+            });
+        }
+
+        return () => {
+            isMounted = false;
+            delete window.__oxypaceNavigate;
+            window.removeEventListener('oxypace:shared_content', handleSharedContent);
+            if (appStateSub) {
+                appStateSub.then((h) => h.remove()).catch(() => {});
+            }
+        };
+    }, [navigate]);
+
+    // If cold start ever landed on /create?shared=1 before React mounted, bounce back cleanly and show the Portal Picker Modal
+    useEffect(() => {
+        if ((location.pathname === '/create' || location.pathname === '/create-post') && location.search.includes('shared=1')) {
+            navigate('/', { replace: true });
+        }
+    }, [location.pathname, location.search, navigate]);
+
+    const handleSharedPortalSelect = (portalId, channelId) => {
+        const payloadToTransfer = sharedContentForModal;
+        setSharedContentForModal(null);
+        if (!payloadToTransfer) return;
+
+        window.__oxypacePendingChannelShare = {
+            payload: payloadToTransfer,
+            portalId: String(portalId),
+            channelId: String(channelId),
+            timestamp: Date.now()
+        };
+
+        if (closeSidebar) closeSidebar();
+        if (setMobileChannelOpen) setMobileChannelOpen(true);
+
+        navigate(`/portal/${portalId}?channel=${channelId}`, {
+            state: {
+                selectedChannelId: channelId,
+                sharedTrigger: Date.now()
+            }
+        });
+
+        window.dispatchEvent(new CustomEvent('oxypace:apply_shared_to_channel', {
+            detail: { portalId: String(portalId), channelId: String(channelId) }
+        }));
+    };
 
     // Auto-dismiss delivered device notifications when accessing chat conversation
     useEffect(() => {
@@ -836,6 +946,16 @@ const AppLayout = () => {
             </Suspense>
             <UpdateModal />
             <TourGuide />
+            {sharedContentForModal && isLoggedIn && (
+                <QuotePortalModal
+                    portals={user?.portals || user?.joinedPortals || []}
+                    onSelect={handleSharedPortalSelect}
+                    onClose={() => {
+                        setSharedContentForModal(null);
+                        window.__oxypacePendingChannelShare = null;
+                    }}
+                />
+            )}
         </div>
     );
 };

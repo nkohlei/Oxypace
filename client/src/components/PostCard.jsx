@@ -352,7 +352,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     const handlePortalSelect = (portalId, channelId) => {
         setShowQuoteModal(false);
-        navigate(`/portal/${portalId}`, { state: { quotedPostId: post._id, quotedPost: post, selectedChannelId: channelId } });
+        navigate(`/portal/${portalId}?channel=${channelId}`, { state: { quotedPostId: post._id, quotedPost: post, selectedChannelId: channelId } });
     };
 
     const getDownloadUrlForQuality = (post, prefQuality, prefFormat = 'mp4') => {
