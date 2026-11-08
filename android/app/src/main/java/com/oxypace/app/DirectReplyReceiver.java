@@ -33,25 +33,80 @@ public class DirectReplyReceiver extends BroadcastReceiver {
         if (context == null) return;
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putString(KEY_JWT_TOKEN, token != null ? token : "");
-            editor.putString(KEY_SERVER_URL, serverUrl != null ? serverUrl : "https://oxypace.com.tr");
+            String prevJwt = prefs.getString(KEY_JWT_TOKEN, "");
+            String prevUserId = prefs.getString(KEY_CURRENT_USER_ID, "");
+            if ((prevUserId == null || prevUserId.trim().isEmpty()) && prevJwt != null && !prevJwt.trim().isEmpty()) {
+                String extractedPrev = extractUserIdFromJwt(prevJwt);
+                if (extractedPrev != null) prevUserId = extractedPrev;
+            }
+            String storedFcmToken = prefs.getString("fcm_token", "");
+            final String resolvedServerUrl = (serverUrl != null && !serverUrl.trim().isEmpty()) ? serverUrl.trim() : "https://oxypace.com.tr";
 
             String resolvedUserId = (userId != null && !userId.trim().isEmpty()) ? userId.trim() : null;
             if (resolvedUserId == null && token != null && !token.trim().isEmpty()) {
                 resolvedUserId = extractUserIdFromJwt(token);
             }
 
-            if (resolvedUserId != null && !resolvedUserId.isEmpty()) {
+            boolean isLogout = (token == null || token.trim().isEmpty()) || (resolvedUserId == null || resolvedUserId.isEmpty());
+            boolean isUserSwitch = (prevUserId != null && !prevUserId.trim().isEmpty()) &&
+                (isLogout || !prevUserId.trim().equalsIgnoreCase(resolvedUserId.trim()));
+
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString(KEY_JWT_TOKEN, token != null ? token : "");
+            editor.putString(KEY_SERVER_URL, resolvedServerUrl);
+
+            if (!isLogout) {
                 editor.putString(KEY_CURRENT_USER_ID, resolvedUserId);
-            } else if (token == null || token.trim().isEmpty()) {
+            } else {
                 editor.remove(KEY_CURRENT_USER_ID);
             }
 
             if (inactiveUserIds != null) {
                 editor.putStringSet(KEY_INACTIVE_USER_IDS, inactiveUserIds);
+            } else if (isUserSwitch && prevUserId != null && !prevUserId.trim().isEmpty()) {
+                java.util.Set<String> existingInactive = new java.util.HashSet<>(getInactiveUserIds(context));
+                existingInactive.add(prevUserId.trim());
+                if (resolvedUserId != null) {
+                    existingInactive.remove(resolvedUserId.trim());
+                }
+                editor.putStringSet(KEY_INACTIVE_USER_IDS, existingInactive);
             }
             editor.apply();
+
+            if (isUserSwitch || isLogout) {
+                try {
+                    NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                    if (nm != null) {
+                        nm.cancelAll();
+                    }
+                    OxypaceMessagingService.clearAllHistory(context);
+                } catch (Exception ignored) {}
+
+                // Natively unbind FCM token from the previous account so it can never receive background pushes
+                if (prevJwt != null && !prevJwt.trim().isEmpty()) {
+                    final String jwtToUnbind = prevJwt.trim();
+                    final String fcmToUnbind = storedFcmToken != null ? storedFcmToken.trim() : "";
+                    new Thread(() -> {
+                        try {
+                            String apiUrl = resolvedServerUrl.replaceAll("/+$", "") + "/api/users/unbind-fcm-token";
+                            URL url = new URL(apiUrl);
+                            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                            conn.setRequestMethod("POST");
+                            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                            conn.setRequestProperty("Authorization", "Bearer " + jwtToUnbind);
+                            conn.setDoOutput(true);
+                            conn.setConnectTimeout(8000);
+                            conn.setReadTimeout(8000);
+                            String body = "{\"token\":\"" + fcmToUnbind + "\"}";
+                            try (OutputStream os = conn.getOutputStream()) {
+                                os.write(body.getBytes(StandardCharsets.UTF_8));
+                            }
+                            conn.getResponseCode();
+                            conn.disconnect();
+                        } catch (Exception ignored) {}
+                    }).start();
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

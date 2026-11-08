@@ -202,6 +202,27 @@ const requestNativePermissions = async () => {
         await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
             console.log('Push notification received in foreground:', notification);
 
+            // Strict Single-Session Guard: Never show notifications if logged out or for an inactive saved account
+            try {
+                const activeToken = localStorage.getItem('token');
+                const activeUserRaw = localStorage.getItem('user');
+                const activeUser = activeUserRaw ? JSON.parse(activeUserRaw) : null;
+                const activeUserId = activeUser?._id ? String(activeUser._id).trim() : '';
+                if (!activeToken || !activeUserId) {
+                    return;
+                }
+                const targetUid = String(
+                    notification.data?.targetUserId ||
+                    notification.data?.recipientUserId ||
+                    notification.data?.recipientId ||
+                    ''
+                ).trim();
+                if (targetUid && targetUid !== 'all' && targetUid.toLowerCase() !== activeUserId.toLowerCase()) {
+                    console.log('🔇 Suppressing foreground notification for inactive account:', targetUid);
+                    return;
+                }
+            } catch (_) {}
+
             // Check if this notification is for a chat/message
             const notifType = notification.data?.type;
             const notifSenderId = notification.data?.senderId || notification.data?.sender;

@@ -29,6 +29,7 @@ import PortalInfoModal from '../components/PortalInfoModal';
 const VoiceChannel = lazy(() => import('../components/VoiceChannel'));
 const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
+import { setActivePortalChannel, dismissPortalChannelNotifications } from '../utils/notificationUtils';
 import { useSocket } from '../context/SocketContext';
 import { X, Youtube, Search, Users, SendHorizontal, MessageSquare } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
@@ -1160,6 +1161,21 @@ const Portal = () => {
             fetchChannelPosts();
         }
     }, [id, currentChannel, portal?._id]);
+
+    // Mark channel posts as read & notify native Android layer when user is actively viewing this channel
+    useEffect(() => {
+        const isViewingChannelPosts = !isMobileView || mobileChannelOpen || !!urlChannel;
+        if (id && currentChannel && isViewingChannelPosts) {
+            setActivePortalChannel(id, currentChannel);
+            dismissPortalChannelNotifications(id, currentChannel);
+            useGlobalStore.getState().clearUnreadForChannel(currentChannel, id);
+        } else {
+            setActivePortalChannel(null, null);
+        }
+        return () => {
+            setActivePortalChannel(null, null);
+        };
+    }, [id, currentChannel, isMobileView, mobileChannelOpen, urlChannel]);
 
     // Scroll to specific post when loaded
     useEffect(() => {

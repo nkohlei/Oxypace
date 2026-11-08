@@ -2118,7 +2118,11 @@ router.post('/users/:id/tourist-admin', protect, admin, async (req, res) => {
                 await sendPushNotification(user.fcmTokens, {
                     title: 'Turist Admin Ataması',
                     body: messageText,
-                    data: { url: '/admin' }
+                    data: {
+                        url: '/admin',
+                        targetUserId: user._id.toString(),
+                        recipientUserId: user._id.toString()
+                    }
                 });
             }
 

@@ -72,19 +72,29 @@ router.post('/fcm-token', protect, async (req, res) => {
 // @access  Private
 router.post('/unbind-fcm-token', protect, async (req, res) => {
     try {
-        const { token } = req.body;
-        if (!token) return res.status(400).json({ message: 'Token is required' });
-
-        const cleanToken = String(token).trim();
-        await User.updateOne(
-            { _id: req.user._id },
-            { 
-                $pull: { 
-                    fcmTokens: { $in: [cleanToken, { token: cleanToken }] }
-                },
-                ...(req.user.fcmToken === cleanToken ? { $unset: { fcmToken: 1 } } : {})
-            }
-        );
+        const { token } = req.body || {};
+        if (token && String(token).trim()) {
+            const cleanToken = String(token).trim();
+            await User.updateOne(
+                { _id: req.user._id },
+                { 
+                    $pull: { 
+                        fcmTokens: { $in: [cleanToken, { token: cleanToken }] }
+                    },
+                    ...(req.user.fcmToken === cleanToken ? { $unset: { fcmToken: 1 } } : {})
+                }
+            );
+        } else {
+            // Fallback when client does not have the raw FCM token in JS memory during account switch/logout:
+            // Clear active push tokens for this account so it cannot receive background pushes while logged out.
+            await User.updateOne(
+                { _id: req.user._id },
+                {
+                    $set: { fcmTokens: [] },
+                    $unset: { fcmToken: 1 }
+                }
+            );
+        }
         res.json({ success: true, message: 'FCM token unlinked' });
     } catch (err) {
         console.error('FCM token unbind error:', err);

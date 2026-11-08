@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
 import { preloadPosts } from '../utils/preloadUtils';
+import { dismissPortalChannelNotifications } from '../utils/notificationUtils';
 
 export const useGlobalStore = create(
     persist(
@@ -103,6 +104,10 @@ export const useGlobalStore = create(
                     return { unreadPostsByPortal: newUnread };
                 });
 
+                if (portalId) {
+                    dismissPortalChannelNotifications(portalId, null);
+                }
+
                 // Sync with backend: mark ALL unread portal_post notifications as read
                 try {
                     await axios.put(`/api/notifications/portal/${portalId}/read`);
@@ -176,6 +181,7 @@ export const useGlobalStore = create(
                 });
 
                 if (portalId && channelId) {
+                    dismissPortalChannelNotifications(portalId, channelId);
                     try {
                         await axios.put(`/api/notifications/portal/${portalId}/read?channel=${channelId}`);
                     } catch (err) {

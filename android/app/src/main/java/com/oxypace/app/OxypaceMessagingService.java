@@ -50,26 +50,31 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        // Multi-Account Notification Isolation:
-        // Only suppress if targetUserId is explicitly an inactive background account on this device.
+        // Strict Single-Session & Multi-Account Notification Isolation:
+        // Only 1 user account can be logged in and active on the mobile app at any given time.
+        // If no user is logged in (activeUserId is empty), or if the notification is targeted at
+        // any account other than the currently active account, suppress it immediately.
+        String activeUserId = DirectReplyReceiver.getActiveUserId(this);
+        if (activeUserId == null || activeUserId.trim().isEmpty()) {
+            android.util.Log.d("OxypaceMessaging", "Suppressed notification because no active user session is logged in.");
+            return;
+        }
+        String cleanActiveUserId = activeUserId.trim();
+
         String targetUserId = remoteMessage.getData().get("targetUserId");
         if (targetUserId == null) targetUserId = remoteMessage.getData().get("recipientUserId");
         if (targetUserId == null) targetUserId = remoteMessage.getData().get("recipientId");
 
         if (targetUserId != null && !targetUserId.trim().isEmpty() && !"all".equalsIgnoreCase(targetUserId.trim())) {
             String trimmedTarget = targetUserId.trim();
+            if (!cleanActiveUserId.equalsIgnoreCase(trimmedTarget)) {
+                android.util.Log.d("OxypaceMessaging", "Suppressed notification for non-active account. Active: " + cleanActiveUserId + ", Target: " + trimmedTarget);
+                return;
+            }
             java.util.Set<String> inactiveUserIds = DirectReplyReceiver.getInactiveUserIds(this);
             if (inactiveUserIds != null && inactiveUserIds.contains(trimmedTarget)) {
                 android.util.Log.d("OxypaceMessaging", "Suppressed notification for inactive background account: " + trimmedTarget);
                 return;
-            }
-
-            String activeUserId = DirectReplyReceiver.getActiveUserId(this);
-            if (activeUserId != null && !activeUserId.isEmpty() && inactiveUserIds != null && !inactiveUserIds.isEmpty()) {
-                if (!activeUserId.equalsIgnoreCase(trimmedTarget)) {
-                    android.util.Log.d("OxypaceMessaging", "Suppressed notification for non-active account. Active: " + activeUserId + ", Target: " + trimmedTarget);
-                    return;
-                }
             }
         }
 
@@ -110,6 +115,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
     // In-memory message history per sender to stack multiple incoming messages in one notification
     private static final java.util.Map<String, java.util.List<MessageItem>> messageHistory = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // Unread portal/channel post history per channelKey (portalId + "_" + channelId)
+    public static final String PORTAL_NOTIF_PREFS = "OxypacePortalNotifPrefs";
+    public static final int MAX_VISIBLE_PORTAL_POSTS = 5;
+    private static final java.util.Map<String, java.util.List<PortalPostItem>> portalChannelHistory = new java.util.concurrent.ConcurrentHashMap<>();
+
     private static class MessageItem {
         final String text;
         final long timestamp;
@@ -124,6 +134,150 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
     }
 
+    private static class PortalPostItem {
+        final String postId;
+        final String authorName;
+        final String authorUsername;
+        final String authorAvatar;
+        final String text;
+        final String mediaType;
+        final String postMedia;
+        final String pdfName;
+        final String pdfSize;
+        final long timestamp;
+
+        PortalPostItem(String postId, String authorName, String authorUsername, String authorAvatar,
+                       String text, String mediaType, String postMedia, String pdfName, String pdfSize, long timestamp) {
+            this.postId = postId != null ? postId : "";
+            this.authorName = authorName != null ? authorName : "Oxypace Üyesi";
+            this.authorUsername = authorUsername != null ? authorUsername : "";
+            this.authorAvatar = authorAvatar != null ? authorAvatar : "";
+            this.text = text != null ? text : "";
+            this.mediaType = mediaType != null ? mediaType : "none";
+            this.postMedia = postMedia != null ? postMedia : "";
+            this.pdfName = pdfName != null ? pdfName : "";
+            this.pdfSize = pdfSize != null ? pdfSize : "";
+            this.timestamp = timestamp > 0 ? timestamp : System.currentTimeMillis();
+        }
+
+        org.json.JSONObject toJson() {
+            org.json.JSONObject obj = new org.json.JSONObject();
+            try {
+                obj.put("postId", postId);
+                obj.put("authorName", authorName);
+                obj.put("authorUsername", authorUsername);
+                obj.put("authorAvatar", authorAvatar);
+                obj.put("text", text);
+                obj.put("mediaType", mediaType);
+                obj.put("postMedia", postMedia);
+                obj.put("pdfName", pdfName);
+                obj.put("pdfSize", pdfSize);
+                obj.put("timestamp", timestamp);
+            } catch (Exception ignored) {}
+            return obj;
+        }
+
+        static PortalPostItem fromJson(org.json.JSONObject obj) {
+            if (obj == null) return null;
+            return new PortalPostItem(
+                obj.optString("postId", ""),
+                obj.optString("authorName", "Oxypace Üyesi"),
+                obj.optString("authorUsername", ""),
+                obj.optString("authorAvatar", ""),
+                obj.optString("text", ""),
+                obj.optString("mediaType", "none"),
+                obj.optString("postMedia", ""),
+                obj.optString("pdfName", ""),
+                obj.optString("pdfSize", ""),
+                obj.optLong("timestamp", System.currentTimeMillis())
+            );
+        }
+    }
+
+    private static java.util.List<PortalPostItem> loadPortalChannelHistory(Context context, String channelKey) {
+        java.util.List<PortalPostItem> memList = portalChannelHistory.get(channelKey);
+        if (memList != null && !memList.isEmpty()) {
+            return new java.util.ArrayList<>(memList);
+        }
+        java.util.List<PortalPostItem> loaded = new java.util.ArrayList<>();
+        if (context != null && channelKey != null) {
+            try {
+                android.content.SharedPreferences prefs = context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE);
+                String raw = prefs.getString("items_" + channelKey, null);
+                if (raw != null && !raw.isEmpty()) {
+                    org.json.JSONArray arr = new org.json.JSONArray(raw);
+                    for (int i = 0; i < arr.length(); i++) {
+                        PortalPostItem item = PortalPostItem.fromJson(arr.optJSONObject(i));
+                        if (item != null) loaded.add(item);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        return loaded;
+    }
+
+    private static void savePortalChannelHistory(Context context, String channelKey, java.util.List<PortalPostItem> items, int totalUnreadCount) {
+        if (channelKey == null) return;
+        portalChannelHistory.put(channelKey, new java.util.ArrayList<>(items));
+        if (context != null) {
+            try {
+                org.json.JSONArray arr = new org.json.JSONArray();
+                for (PortalPostItem item : items) {
+                    arr.put(item.toJson());
+                }
+                android.content.SharedPreferences prefs = context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE);
+                prefs.edit()
+                    .putString("items_" + channelKey, arr.toString())
+                    .putInt("count_" + channelKey, totalUnreadCount)
+                    .apply();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    public static void clearPortalHistoryForChannel(Context context, String channelKey) {
+        if (channelKey == null) return;
+        portalChannelHistory.remove(channelKey);
+        if (context != null) {
+            try {
+                android.content.SharedPreferences prefs = context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE);
+                prefs.edit()
+                    .remove("items_" + channelKey)
+                    .remove("count_" + channelKey)
+                    .apply();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    public static void clearPortalHistoryForPortal(Context context, String portalId) {
+        if (portalId == null || portalId.isEmpty()) return;
+        String prefix = portalId + "_";
+        java.util.Iterator<String> it = portalChannelHistory.keySet().iterator();
+        while (it.hasNext()) {
+            String k = it.next();
+            if (k != null && k.startsWith(prefix)) {
+                it.remove();
+            }
+        }
+        if (context != null) {
+            try {
+                NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                android.content.SharedPreferences prefs = context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE);
+                android.content.SharedPreferences.Editor editor = prefs.edit();
+                for (String key : prefs.getAll().keySet()) {
+                    if (key.startsWith("items_" + prefix)) {
+                        String chKey = key.substring("items_".length());
+                        editor.remove(key);
+                        editor.remove("count_" + chKey);
+                        if (nm != null) {
+                            nm.cancel(Math.abs(("portal_channel_" + chKey).hashCode()));
+                        }
+                    }
+                }
+                editor.apply();
+            } catch (Exception ignored) {}
+        }
+    }
+
     public static void clearHistoryForSender(String senderId) {
         if (senderId != null) {
             messageHistory.remove(senderId.trim());
@@ -132,6 +286,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
     public static void clearAllHistory() {
         messageHistory.clear();
+        portalChannelHistory.clear();
+    }
+
+    public static void clearAllHistory(Context context) {
+        messageHistory.clear();
+        portalChannelHistory.clear();
+        if (context != null) {
+            try {
+                context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+            } catch (Exception ignored) {}
+        }
     }
 
     private void showMessageNotification(java.util.Map<String, String> data, RemoteMessage.Notification notif) {
@@ -600,13 +765,28 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
+        String portalId = getOrDefault(data, "portalId", "portal").trim();
+        String portalName = getOrDefault(data, "portalName", "Oxypace").trim();
+        String channelName = getOrDefault(data, "channelName", "genel").trim();
+        String rawChannelId = getOrDefault(data, "channelId", "").trim();
+        if (rawChannelId.isEmpty() || "oxypace_messages_v2".equalsIgnoreCase(rawChannelId) || "oxypace_voice_invite_v2".equalsIgnoreCase(rawChannelId)) {
+            rawChannelId = channelName.isEmpty() ? "general" : channelName;
+        }
+        String channelKey = portalId + "_" + rawChannelId;
+
+        // If user is actively viewing this exact portal + channel in the foreground, suppress & clear history
+        if (MainActivity.isAppForeground && MainActivity.activePortalChannelKey != null && MainActivity.activePortalChannelKey.equals(channelKey)) {
+            clearPortalHistoryForChannel(this, channelKey);
+            return;
+        }
+
         wakeScreen();
-        String channelId = "oxypace_messages_v2";
+        String notifChannelId = "oxypace_messages_v2";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = nm.getNotificationChannel(channelId);
+            NotificationChannel channel = nm.getNotificationChannel(notifChannelId);
             if (channel == null) {
                 channel = new NotificationChannel(
-                    channelId, "Mesaj ve Portal Bildirimleri", NotificationManager.IMPORTANCE_HIGH
+                    notifChannelId, "Mesaj ve Portal Bildirimleri", NotificationManager.IMPORTANCE_HIGH
                 );
                 channel.setDescription("Doğrudan mesajlar ve portal gönderi bildirimleri");
                 channel.enableLights(true);
@@ -625,33 +805,89 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             }
         }
 
-        String title = getOrDefault(data, "title", notif != null ? notif.getTitle() : "Oxypace");
-        String body  = getOrDefault(data, "body", notif != null ? notif.getBody() : "");
-        String route = getOrDefault(data, "route", "");
-        String portalId = getOrDefault(data, "portalId", "portal");
-        String portalName = getOrDefault(data, "portalName", "Oxypace");
-        String portalAvatar = getOrDefault(data, "portalAvatar", getOrDefault(data, "avatar", ""));
-        String imageUrl = getOrDefault(data, "image", getOrDefault(data, "coverImage", getOrDefault(data, "postMedia", getOrDefault(data, "picture", getOrDefault(data, "bigPicture", "")))));
-        if (imageUrl.isEmpty() && notif != null && notif.getImageUrl() != null) {
-            imageUrl = notif.getImageUrl().toString();
+        String route = getOrDefault(data, "route", "/portal/" + portalId + "?channel=" + rawChannelId);
+        String portalAvatar = getOrDefault(data, "portalAvatar", getOrDefault(data, "avatar", "")).trim();
+        String postId = getOrDefault(data, "postId", String.valueOf(System.currentTimeMillis())).trim();
+        String authorName = getOrDefault(data, "authorName", "Oxypace Üyesi").trim();
+        String authorUsername = getOrDefault(data, "authorUsername", "").trim();
+        String authorAvatar = getOrDefault(data, "authorAvatar", "").trim();
+        String postText = getOrDefault(data, "postText", "").trim();
+        String mediaType = getOrDefault(data, "mediaType", "none").trim();
+        String postMedia = getOrDefault(data, "postMedia", "").trim();
+        String pdfName = getOrDefault(data, "pdfName", "").trim();
+        String pdfSize = getOrDefault(data, "pdfSize", "").trim();
+
+        // Fallback extraction if legacy payload without postText was sent
+        if (postText.isEmpty() && "none".equalsIgnoreCase(mediaType)) {
+            String rawBody = getOrDefault(data, "body", notif != null && notif.getBody() != null ? notif.getBody() : "").trim();
+            String prefix = authorName + ":";
+            if (rawBody.startsWith(prefix)) {
+                rawBody = rawBody.substring(prefix.length()).trim();
+            }
+            if (!"Yeni bir paylaşım yaptı".equalsIgnoreCase(rawBody)) {
+                postText = rawBody;
+            }
         }
 
-        // Clean body: strip any [Görsel], [PDF], etc. tags so text is clean and minimalist
-        String cleanBody = body.replaceAll("\\[.*?(Görsel|GIF|Video|PDF|Belge).*?\\]", "").trim();
-        if (cleanBody.isEmpty()) {
-            cleanBody = body.isEmpty() ? "Yeni bir paylaşım yaptı" : body;
+        // Load persistent unread post history for this portal/channel (survives notification swipe/dismiss)
+        java.util.List<PortalPostItem> existingHistory = loadPortalChannelHistory(this, channelKey);
+        java.util.Map<String, PortalPostItem> mergedMap = new java.util.LinkedHashMap<>();
+        for (PortalPostItem oldItem : existingHistory) {
+            String key = (oldItem.postId != null && !oldItem.postId.isEmpty()) ? oldItem.postId : (oldItem.authorName + "_" + oldItem.timestamp);
+            mergedMap.put(key, oldItem);
         }
+
+        // Merge unreadItems array from backend (represents all unread posts in MongoDB for this portal/channel)
+        String unreadItemsJson = getOrDefault(data, "unreadItems", "");
+        if (!unreadItemsJson.isEmpty()) {
+            try {
+                org.json.JSONArray arr = new org.json.JSONArray(unreadItemsJson);
+                for (int i = 0; i < arr.length(); i++) {
+                    PortalPostItem pItem = PortalPostItem.fromJson(arr.optJSONObject(i));
+                    if (pItem != null) {
+                        String key = !pItem.postId.isEmpty() ? pItem.postId : (pItem.authorName + "_" + pItem.timestamp);
+                        mergedMap.put(key, pItem);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Ensure current incoming post is also in mergedMap
+        PortalPostItem currentItem = new PortalPostItem(
+            postId, authorName, authorUsername, authorAvatar,
+            postText, mediaType, postMedia, pdfName, pdfSize, System.currentTimeMillis()
+        );
+        String currentKey = !postId.isEmpty() ? postId : (authorName + "_" + currentItem.timestamp);
+        mergedMap.put(currentKey, currentItem);
+
+        java.util.List<PortalPostItem> allMerged = new java.util.ArrayList<>(mergedMap.values());
+        int backendUnreadCount = 1;
+        try {
+            backendUnreadCount = Integer.parseInt(getOrDefault(data, "unreadCount", "1"));
+        } catch (Exception ignored) {}
+        int totalUnreadCount = Math.max(backendUnreadCount, allMerged.size());
+
+        // Enforce visual limit: only keep the latest MAX_VISIBLE_PORTAL_POSTS (5) items so notification never overflows
+        java.util.List<PortalPostItem> itemsToDisplay;
+        if (allMerged.size() > MAX_VISIBLE_PORTAL_POSTS) {
+            itemsToDisplay = new java.util.ArrayList<>(allMerged.subList(allMerged.size() - MAX_VISIBLE_PORTAL_POSTS, allMerged.size()));
+        } else {
+            itemsToDisplay = allMerged;
+        }
+
+        savePortalChannelHistory(this, channelKey, itemsToDisplay, totalUnreadCount);
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.setAction("OPEN_ROUTE");
         if (!route.isEmpty()) intent.putExtra("route", route);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int notifId = Math.abs(("portal_channel_" + channelKey).hashCode());
         PendingIntent pi = PendingIntent.getActivity(
-            this, (int) System.currentTimeMillis(), intent,
+            this, notifId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Circular avatar bitmap of the portal (pure circular avatar, no app badge overlay)
+        // Circular avatar bitmap of the portal (shown on the LEFT of the notification)
         android.graphics.Bitmap portalAvatarBitmap = null;
         if (!portalAvatar.isEmpty()) {
             android.graphics.Bitmap rawAvatar = fetchBitmapFromUrl(portalAvatar);
@@ -663,65 +899,211 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             portalAvatarBitmap = createInitialAvatar(portalName);
         }
 
-        androidx.core.graphics.drawable.IconCompat avatarIconCompat = null;
+        androidx.core.graphics.drawable.IconCompat portalIconCompat = null;
         if (portalAvatarBitmap != null) {
-            avatarIconCompat = androidx.core.graphics.drawable.IconCompat.createWithBitmap(portalAvatarBitmap);
+            portalIconCompat = androidx.core.graphics.drawable.IconCompat.createWithBitmap(portalAvatarBitmap);
         }
 
-        // Person representing the portal (displays circular avatar on the LEFT like user message notifications)
-        androidx.core.app.Person.Builder personBuilder = new androidx.core.app.Person.Builder()
-            .setName(title)
-            .setKey("portal_" + portalId);
-        if (avatarIconCompat != null) {
-            personBuilder.setIcon(avatarIconCompat);
+        String baseTitle = portalName + " • #" + channelName;
+        String headerTitle = baseTitle;
+        if (totalUnreadCount > MAX_VISIBLE_PORTAL_POSTS) {
+            headerTitle = baseTitle + " (+" + (totalUnreadCount - MAX_VISIBLE_PORTAL_POSTS) + " diğer • " + totalUnreadCount + " yeni)";
+        } else if (totalUnreadCount > 1) {
+            headerTitle = baseTitle + " (" + totalUnreadCount + " yeni)";
         }
-        androidx.core.app.Person portalPerson = personBuilder.build();
+
+        androidx.core.app.Person portalPerson = new androidx.core.app.Person.Builder()
+            .setName(baseTitle)
+            .setKey("portal_channel_" + channelKey)
+            .setIcon(portalIconCompat)
+            .build();
 
         androidx.core.app.Person userPerson = new androidx.core.app.Person.Builder()
             .setName("Ben")
             .build();
 
-        // Push dynamic shortcut so modern Android (Android 11+, Samsung OneUI, MIUI) associates this conversation with the portal avatar
-        String shortcutId = "portal_conv_" + portalId;
+        // Push dynamic shortcut per portal/channel so each portal/channel has its own distinct conversation entry
+        String shortcutId = "portal_conv_" + channelKey;
         try {
             androidx.core.content.pm.ShortcutInfoCompat.Builder scBuilder = new androidx.core.content.pm.ShortcutInfoCompat.Builder(this, shortcutId)
-                .setShortLabel(portalName)
-                .setLongLabel(title)
+                .setShortLabel("#" + channelName)
+                .setLongLabel(baseTitle)
                 .setPerson(portalPerson)
                 .setIntent(intent)
                 .setLongLived(true);
-            if (avatarIconCompat != null) {
-                scBuilder.setIcon(avatarIconCompat);
+            if (portalIconCompat != null) {
+                scBuilder.setIcon(portalIconCompat);
             }
             androidx.core.content.pm.ShortcutManagerCompat.pushDynamicShortcut(this, scBuilder.build());
         } catch (Exception ignored) {}
 
-        // Use MessagingStyle identical to showMessageNotification:
-        // Android places portalPerson avatar on the LEFT in place of the app icon!
+        // Group conversation = true ensures Android ALWAYS displays each post's author name & @username
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
-            .setConversationTitle(title)
-            .setGroupConversation(false);
+            .setConversationTitle(headerTitle)
+            .setGroupConversation(true);
 
-        NotificationCompat.MessagingStyle.Message msg = new NotificationCompat.MessagingStyle.Message(
-            cleanBody, System.currentTimeMillis(), portalPerson
-        );
+        boolean isAccumulated = itemsToDisplay.size() > 1;
+        String latestSummaryText = "";
 
-        // If post has an actual media image (distinct from portal avatar), attach it via contentUri
-        if (!imageUrl.isEmpty() && !imageUrl.equalsIgnoreCase(portalAvatar)) {
-            android.net.Uri contentUri = downloadImageToContentUri(imageUrl, "portal_" + portalId);
-            if (contentUri != null) {
-                msg.setData("image/jpeg", contentUri);
+        if (!isAccumulated) {
+            // SINGLE UNREAD POST:
+            // Show Author (@username) + Post Description clearly in Message 1,
+            // and if there is a PDF or Media, attach a clean minimal card/preview in Message 2 below it.
+            PortalPostItem item = itemsToDisplay.get(0);
+            String authorLabel = formatAuthorLabel(item.authorName, item.authorUsername);
+
+            android.graphics.Bitmap authorBmp = null;
+            if (!item.authorAvatar.isEmpty()) {
+                android.graphics.Bitmap rawAuthor = fetchBitmapFromUrl(item.authorAvatar);
+                if (rawAuthor != null) authorBmp = createCircularAvatar(rawAuthor);
+            }
+            if (authorBmp == null) {
+                authorBmp = createInitialAvatar(item.authorName);
+            }
+
+            androidx.core.app.Person.Builder authorBuilder = new androidx.core.app.Person.Builder()
+                .setName(authorLabel)
+                .setKey("author_" + (item.authorUsername.isEmpty() ? item.authorName : item.authorUsername));
+            if (authorBmp != null) {
+                authorBuilder.setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(authorBmp));
+            } else if (portalIconCompat != null) {
+                authorBuilder.setIcon(portalIconCompat);
+            }
+            androidx.core.app.Person authorPerson = authorBuilder.build();
+
+            String fallbackText = item.text;
+            if (fallbackText.isEmpty()) {
+                if ("pdf".equalsIgnoreCase(item.mediaType)) {
+                    String pName = item.pdfName.isEmpty() ? "Doküman.pdf" : item.pdfName;
+                    fallbackText = "📄 " + pName + (item.pdfSize.isEmpty() ? "" : " • " + item.pdfSize);
+                } else if ("video".equalsIgnoreCase(item.mediaType)) {
+                    fallbackText = "🎬 Video paylaştı";
+                } else if ("gif".equalsIgnoreCase(item.mediaType)) {
+                    fallbackText = "👾 GIF paylaştı";
+                } else if (!item.postMedia.isEmpty() || "image".equalsIgnoreCase(item.mediaType)) {
+                    fallbackText = "🖼️ Görsel paylaştı";
+                } else {
+                    fallbackText = "Yeni bir paylaşım yaptı";
+                }
+            }
+            latestSummaryText = authorLabel + ": " + fallbackText;
+
+            boolean addedAttachmentMsg = false;
+            android.net.Uri attachmentUri = null;
+            String attachmentMime = "image/jpeg";
+
+            if ("pdf".equalsIgnoreCase(item.mediaType)) {
+                android.graphics.Bitmap pageThumb = null;
+                if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
+                    pageThumb = fetchBitmapFromUrl(item.postMedia);
+                }
+                android.graphics.Bitmap pdfCardBmp = createMinimalPdfCardBitmap(
+                    pageThumb,
+                    item.pdfName.isEmpty() ? "Doküman.pdf" : item.pdfName,
+                    item.pdfSize.isEmpty() ? "PDF" : item.pdfSize
+                );
+                attachmentUri = saveBitmapToContentUri(pdfCardBmp, "portal_pdf_" + channelKey);
+                attachmentMime = "image/png";
+            } else if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
+                android.graphics.Bitmap rawMedia = fetchBitmapFromUrl(item.postMedia);
+                if (rawMedia != null) {
+                    android.graphics.Bitmap compactMedia = createCompactMediaPreviewBitmap(rawMedia);
+                    attachmentUri = saveBitmapToContentUri(compactMedia, "portal_media_" + channelKey);
+                    attachmentMime = "image/jpeg";
+                }
+            }
+
+            // If post has description text (or has no visual attachment), add the text message first
+            // so the post description is ALWAYS visible above the attachment!
+            if (!item.text.isEmpty() || attachmentUri == null) {
+                NotificationCompat.MessagingStyle.Message textMsg = new NotificationCompat.MessagingStyle.Message(
+                    !item.text.isEmpty() ? item.text : fallbackText,
+                    item.timestamp,
+                    authorPerson
+                );
+                style.addMessage(textMsg);
+            }
+
+            // If post has a visual attachment (Minimal PDF Card or Compact Media Preview), add it cleanly
+            if (attachmentUri != null) {
+                NotificationCompat.MessagingStyle.Message mediaMsg = new NotificationCompat.MessagingStyle.Message(
+                    fallbackText,
+                    item.timestamp + 1,
+                    authorPerson
+                );
+                mediaMsg.setData(attachmentMime, attachmentUri);
+                style.addMessage(mediaMsg);
+                addedAttachmentMsg = true;
+            }
+        } else {
+            // ACCUMULATED UNREAD POSTS (itemsToDisplay.size() > 1, capped at MAX_VISIBLE_PORTAL_POSTS = 5):
+            // Never attach full-size setData images when accumulated.
+            // Instead, show media/PDFs in SMALL size (96x96 thumbnail icon on the message row + compact tag).
+            for (int i = 0; i < itemsToDisplay.size(); i++) {
+                PortalPostItem item = itemsToDisplay.get(i);
+                String authorLabel = formatAuthorLabel(item.authorName, item.authorUsername);
+                boolean hasMedia = "pdf".equalsIgnoreCase(item.mediaType)
+                    || (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar))
+                    || "image".equalsIgnoreCase(item.mediaType)
+                    || "video".equalsIgnoreCase(item.mediaType)
+                    || "gif".equalsIgnoreCase(item.mediaType);
+
+                android.graphics.Bitmap rowIconBmp = null;
+                if (hasMedia) {
+                    android.graphics.Bitmap rawThumb = null;
+                    if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
+                        rawThumb = fetchBitmapFromUrl(item.postMedia);
+                    }
+                    rowIconBmp = createSmallMediaThumbIcon(rawThumb, item.mediaType);
+                } else {
+                    if (!item.authorAvatar.isEmpty()) {
+                        android.graphics.Bitmap rawAuthor = fetchBitmapFromUrl(item.authorAvatar);
+                        if (rawAuthor != null) rowIconBmp = createCircularAvatar(rawAuthor);
+                    }
+                    if (rowIconBmp == null) {
+                        rowIconBmp = createInitialAvatar(item.authorName);
+                    }
+                }
+
+                androidx.core.app.Person.Builder rowPersonBuilder = new androidx.core.app.Person.Builder()
+                    .setName(authorLabel)
+                    .setKey("row_" + i + "_" + item.postId);
+                if (rowIconBmp != null) {
+                    rowPersonBuilder.setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(rowIconBmp));
+                }
+
+                String rowText;
+                if ("pdf".equalsIgnoreCase(item.mediaType)) {
+                    String pName = item.pdfName.isEmpty() ? "Doküman.pdf" : item.pdfName;
+                    String pdfBadge = "📄 " + pName + (item.pdfSize.isEmpty() ? "" : " (" + item.pdfSize + ")");
+                    rowText = item.text.isEmpty() ? pdfBadge : (item.text + " • " + pdfBadge);
+                } else if ("video".equalsIgnoreCase(item.mediaType)) {
+                    rowText = item.text.isEmpty() ? "🎬 Video" : (item.text + " • 🎬 Video");
+                } else if ("gif".equalsIgnoreCase(item.mediaType)) {
+                    rowText = item.text.isEmpty() ? "👾 GIF" : (item.text + " • 👾 GIF");
+                } else if (!item.postMedia.isEmpty() || "image".equalsIgnoreCase(item.mediaType)) {
+                    rowText = item.text.isEmpty() ? "🖼️ Görsel" : (item.text + " • 🖼️ Görsel");
+                } else {
+                    rowText = item.text.isEmpty() ? "Yeni bir paylaşım yaptı" : item.text;
+                }
+
+                latestSummaryText = authorLabel + ": " + rowText;
+                style.addMessage(new NotificationCompat.MessagingStyle.Message(
+                    rowText,
+                    item.timestamp > 0 ? item.timestamp : (System.currentTimeMillis() + i),
+                    rowPersonBuilder.build()
+                ));
             }
         }
-        style.addMessage(msg);
 
         int smallIcon = getSafeSmallIcon();
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, notifChannelId)
             .setSmallIcon(smallIcon)
             .setShortcutId(shortcutId)
             .setStyle(style)
-            .setContentTitle(title)
-            .setContentText(cleanBody)
+            .setContentTitle(headerTitle)
+            .setContentText(latestSummaryText)
+            .setNumber(totalUnreadCount)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -734,21 +1116,212 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         try {
-            int notifId = Math.abs(("portal_" + portalId).hashCode());
             nm.notify(notifId, builder.build());
-            android.util.Log.d("OxypaceMessaging", "Portal post notification successfully posted for: " + portalName);
+            android.util.Log.d("OxypaceMessaging", "Portal channel notification posted for " + headerTitle + " (unread=" + totalUnreadCount + ")");
         } catch (Exception e) {
             android.util.Log.e("OxypaceMessaging", "Failed to notify portal post: " + e.getMessage());
             try {
-                NotificationCompat.Builder fallback = new NotificationCompat.Builder(this, channelId)
+                NotificationCompat.Builder fallback = new NotificationCompat.Builder(this, notifChannelId)
                     .setSmallIcon(smallIcon)
-                    .setContentTitle(title)
-                    .setContentText(cleanBody)
+                    .setContentTitle(headerTitle)
+                    .setContentText(latestSummaryText)
                     .setContentIntent(pi)
                     .setAutoCancel(true);
                 if (portalAvatarBitmap != null) fallback.setLargeIcon(portalAvatarBitmap);
-                nm.notify(Math.abs(("portal_" + portalId).hashCode()), fallback.build());
+                nm.notify(notifId, fallback.build());
             } catch (Exception ignored) {}
+        }
+    }
+
+    private static String formatAuthorLabel(String authorName, String authorUsername) {
+        String name = (authorName != null && !authorName.trim().isEmpty()) ? authorName.trim() : "Oxypace Üyesi";
+        String user = (authorUsername != null && !authorUsername.trim().isEmpty()) ? authorUsername.trim() : "";
+        if (!user.isEmpty()) {
+            if (name.equalsIgnoreCase(user)) {
+                return "@" + user;
+            }
+            return name + " (@" + user + ")";
+        }
+        return name;
+    }
+
+    /**
+     * Renders a minimal horizontal PDF card bitmap matching the clean dark UI card:
+     * Left: small vertical page preview with red "PDF" bottom strip.
+     * Right: bold filename (e.g. EEM203_04.pdf) and muted file size (e.g. 0.48 MB).
+     */
+    private android.graphics.Bitmap createMinimalPdfCardBitmap(android.graphics.Bitmap pageThumb, String pdfName, String pdfSize) {
+        int width = 520;
+        int height = 132;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
+
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+        // Dark rounded card background (#14161B)
+        paint.setColor(0xFF14161B);
+        android.graphics.RectF cardRect = new android.graphics.RectF(2f, 2f, width - 2f, height - 2f);
+        canvas.drawRoundRect(cardRect, 22f, 22f, paint);
+
+        // Subtle border (#262A34)
+        android.graphics.Paint borderPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        borderPaint.setStyle(android.graphics.Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(2f);
+        borderPaint.setColor(0xFF262A34);
+        canvas.drawRoundRect(cardRect, 22f, 22f, borderPaint);
+
+        // Left PDF page thumbnail box (x: 18..90, y: 16..116 -> 72x100)
+        float thumbLeft = 18f;
+        float thumbTop = 16f;
+        float thumbWidth = 72f;
+        float thumbHeight = 100f;
+        android.graphics.RectF thumbRect = new android.graphics.RectF(thumbLeft, thumbTop, thumbLeft + thumbWidth, thumbTop + thumbHeight);
+
+        android.graphics.Path clipPath = new android.graphics.Path();
+        clipPath.addRoundRect(thumbRect, 12f, 12f, android.graphics.Path.Direction.CW);
+        canvas.save();
+        canvas.clipPath(clipPath);
+
+        // White page background
+        paint.setColor(0xFFFFFFFF);
+        canvas.drawRect(thumbRect, paint);
+
+        if (pageThumb != null) {
+            android.graphics.Rect src = new android.graphics.Rect(0, 0, pageThumb.getWidth(), pageThumb.getHeight());
+            android.graphics.RectF dst = new android.graphics.RectF(thumbLeft, thumbTop, thumbLeft + thumbWidth, thumbTop + thumbHeight - 24f);
+            canvas.drawBitmap(pageThumb, src, dst, paint);
+        } else {
+            // Minimalist document lines placeholder on white page
+            paint.setColor(0xFFD0D5DD);
+            canvas.drawRoundRect(new android.graphics.RectF(thumbLeft + 10f, thumbTop + 14f, thumbLeft + thumbWidth - 10f, thumbTop + 20f), 3f, 3f, paint);
+            canvas.drawRoundRect(new android.graphics.RectF(thumbLeft + 10f, thumbTop + 28f, thumbLeft + thumbWidth - 16f, thumbTop + 33f), 2.5f, 2.5f, paint);
+            canvas.drawRoundRect(new android.graphics.RectF(thumbLeft + 10f, thumbTop + 40f, thumbLeft + thumbWidth - 12f, thumbTop + 45f), 2.5f, 2.5f, paint);
+            canvas.drawRoundRect(new android.graphics.RectF(thumbLeft + 10f, thumbTop + 52f, thumbLeft + thumbWidth - 22f, thumbTop + 57f), 2.5f, 2.5f, paint);
+        }
+
+        // Red "PDF" badge banner at the bottom of the page thumbnail
+        paint.setColor(0xFFE53935);
+        android.graphics.RectF badgeRect = new android.graphics.RectF(thumbLeft, thumbTop + thumbHeight - 26f, thumbLeft + thumbWidth, thumbTop + thumbHeight);
+        canvas.drawRect(badgeRect, paint);
+
+        android.graphics.Paint badgeTextPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        badgeTextPaint.setColor(0xFFFFFFFF);
+        badgeTextPaint.setTextSize(17f);
+        badgeTextPaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+        badgeTextPaint.setTextAlign(android.graphics.Paint.Align.CENTER);
+        canvas.drawText("PDF", thumbLeft + thumbWidth / 2f, thumbTop + thumbHeight - 7f, badgeTextPaint);
+        canvas.restore();
+
+        // Right side: Filename (bold white) + File size (muted gray)
+        float textLeft = thumbLeft + thumbWidth + 22f;
+        float maxTextWidth = width - textLeft - 20f;
+
+        android.text.TextPaint titlePaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        titlePaint.setColor(0xFFF2F4F7);
+        titlePaint.setTextSize(26f);
+        titlePaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+
+        String cleanName = (pdfName != null && !pdfName.isEmpty()) ? pdfName : "Doküman.pdf";
+        CharSequence ellipsizedName = android.text.TextUtils.ellipsize(cleanName, titlePaint, maxTextWidth, android.text.TextUtils.TruncateAt.MIDDLE);
+        canvas.drawText(ellipsizedName.toString(), textLeft, 60f, titlePaint);
+
+        android.text.TextPaint sizePaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        sizePaint.setColor(0xFF98A2B3);
+        sizePaint.setTextSize(21f);
+        String cleanSize = (pdfSize != null && !pdfSize.isEmpty()) ? pdfSize : "PDF Belgesi";
+        canvas.drawText(cleanSize, textLeft, 92f, sizePaint);
+
+        return bmp;
+    }
+
+    /**
+     * Creates a small 96x96 thumbnail icon for accumulated notification rows
+     * so media/PDFs are displayed in small size alongside the message without taking up vertical space.
+     */
+    private android.graphics.Bitmap createSmallMediaThumbIcon(android.graphics.Bitmap rawBmp, String mediaType) {
+        int size = 96;
+        android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(out);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+        android.graphics.RectF rect = new android.graphics.RectF(4f, 4f, size - 4f, size - 4f);
+        android.graphics.Path path = new android.graphics.Path();
+        path.addRoundRect(rect, 18f, 18f, android.graphics.Path.Direction.CW);
+        canvas.save();
+        canvas.clipPath(path);
+
+        if ("pdf".equalsIgnoreCase(mediaType)) {
+            paint.setColor(0xFFFFFFFF);
+            canvas.drawRect(rect, paint);
+            if (rawBmp != null) {
+                android.graphics.Rect src = new android.graphics.Rect(0, 0, rawBmp.getWidth(), rawBmp.getHeight());
+                android.graphics.RectF dst = new android.graphics.RectF(4f, 4f, size - 4f, size - 28f);
+                canvas.drawBitmap(rawBmp, src, dst, paint);
+            }
+            paint.setColor(0xFFE53935);
+            canvas.drawRect(new android.graphics.RectF(4f, size - 28f, size - 4f, size - 4f), paint);
+            android.graphics.Paint tp = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            tp.setColor(0xFFFFFFFF);
+            tp.setTextSize(18f);
+            tp.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+            tp.setTextAlign(android.graphics.Paint.Align.CENTER);
+            canvas.drawText("PDF", size / 2f, size - 10f, tp);
+        } else if (rawBmp != null) {
+            int bw = rawBmp.getWidth();
+            int bh = rawBmp.getHeight();
+            int crop = Math.min(bw, bh);
+            int cx = (bw - crop) / 2;
+            int cy = (bh - crop) / 2;
+            android.graphics.Rect src = new android.graphics.Rect(cx, cy, cx + crop, cy + crop);
+            canvas.drawBitmap(rawBmp, src, rect, paint);
+        } else {
+            paint.setColor(0xFF1F242F);
+            canvas.drawRect(rect, paint);
+        }
+        canvas.restore();
+        return out;
+    }
+
+    /**
+     * Scales a post media image to a clean, compact rounded preview bitmap for single-post notifications.
+     */
+    private android.graphics.Bitmap createCompactMediaPreviewBitmap(android.graphics.Bitmap rawBmp) {
+        if (rawBmp == null) return null;
+        int maxW = 540;
+        int maxH = 270;
+        int w = rawBmp.getWidth();
+        int h = rawBmp.getHeight();
+        if (w <= 0 || h <= 0) return rawBmp;
+
+        float scale = Math.min((float) maxW / w, (float) maxH / h);
+        int targetW = Math.max(120, Math.round(w * scale));
+        int targetH = Math.max(80, Math.round(h * scale));
+
+        android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(targetW, targetH, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(out);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        android.graphics.RectF rect = new android.graphics.RectF(0f, 0f, targetW, targetH);
+        android.graphics.Path path = new android.graphics.Path();
+        path.addRoundRect(rect, 18f, 18f, android.graphics.Path.Direction.CW);
+        canvas.clipPath(path);
+        canvas.drawBitmap(rawBmp, new android.graphics.Rect(0, 0, w, h), rect, paint);
+        return out;
+    }
+
+    private android.net.Uri saveBitmapToContentUri(android.graphics.Bitmap bmp, String fileKey) {
+        if (bmp == null) return null;
+        try {
+            File cacheDir = getCacheDir();
+            String safeName = fileKey.replaceAll("[^a-zA-Z0-9_-]", "_");
+            File imgFile = new File(cacheDir, "notif_" + safeName + ".png");
+            FileOutputStream fos = new FileOutputStream(imgFile);
+            bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 92, fos);
+            fos.flush();
+            fos.close();
+            return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imgFile);
+        } catch (Exception e) {
+            android.util.Log.w("OxypaceMessaging", "saveBitmapToContentUri failed: " + e.getMessage());
+            return null;
         }
     }
     private void showIncomingCallNotification(java.util.Map<String, String> data) {

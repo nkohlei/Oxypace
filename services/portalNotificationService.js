@@ -1,7 +1,121 @@
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Portal from '../models/Portal.js';
-import { sendPushNotification } from './pushService.js';
+import { sendPushNotification, constructNotifImageUrl } from './pushService.js';
+
+/**
+ * Helper to extract clean notification details from a Post document
+ */
+function extractPostNotificationDetails(p) {
+    if (!p) {
+        return {
+            text: '',
+            snippet: 'Yeni bir paylaşım yaptı',
+            mediaType: 'none',
+            postMedia: '',
+            pdfName: '',
+            pdfSize: ''
+        };
+    }
+
+    const rawContent = (p.content || '').replace(/\s+/g, ' ').trim();
+    const text = rawContent.length > 140 ? rawContent.substring(0, 137) + '...' : rawContent;
+
+    let mediaType = 'none';
+    if (p.mediaType === 'pdf' || p.pdfUrl || p.pdfName || p.pdfThumbnailUrl) {
+        mediaType = 'pdf';
+    } else if (p.mediaType === 'video' || p.mediaType === 'videoUrl' || p.videoThumbnail || p.videoUrl) {
+        mediaType = 'video';
+    } else if (p.mediaType === 'gif' || p.gifUrl) {
+        mediaType = 'gif';
+    } else if (p.mediaType === 'youtube' || p.youtubeUrl) {
+        mediaType = 'youtube';
+    } else if (p.mediaType === 'image') {
+        mediaType = 'image';
+    } else if (p.media) {
+        const firstMedia = Array.isArray(p.media) ? p.media[0] : p.media;
+        if (typeof firstMedia === 'string' && firstMedia.trim()) {
+            const lower = firstMedia.toLowerCase();
+            if (lower.endsWith('.pdf')) mediaType = 'pdf';
+            else if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) mediaType = 'video';
+            else if (lower.endsWith('.gif')) mediaType = 'gif';
+            else mediaType = 'image';
+        }
+    }
+
+    let rawMediaUrl = '';
+    if (p.pdfThumbnailUrl) {
+        rawMediaUrl = p.pdfThumbnailUrl;
+    } else if (p.videoThumbnail) {
+        rawMediaUrl = p.videoThumbnail;
+    } else if (p.media) {
+        if (Array.isArray(p.media) && p.media.length > 0) {
+            const first = p.media[0];
+            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf)(\?|$)/i.test(first)) {
+                rawMediaUrl = first;
+            }
+        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf)(\?|$)/i.test(p.media)) {
+            rawMediaUrl = p.media;
+        }
+    } else if (p.linkPreview?.image) {
+        rawMediaUrl = p.linkPreview.image;
+    } else if (p.gifUrl) {
+        rawMediaUrl = p.gifUrl;
+    } else if (p.youtubeUrl || (p.mediaType === 'youtube' && typeof p.media === 'string')) {
+        const ytSource = p.youtubeUrl || p.media;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = String(ytSource).match(regExp);
+        if (match && match[2].length === 11) {
+            rawMediaUrl = `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`;
+        }
+    }
+
+    const postMedia = rawMediaUrl ? (constructNotifImageUrl(rawMediaUrl) || rawMediaUrl) : '';
+
+    let pdfName = '';
+    let pdfSize = '';
+    if (mediaType === 'pdf') {
+        pdfName = p.pdfName || '';
+        if (!pdfName && p.pdfUrl) {
+            try {
+                pdfName = decodeURIComponent(String(p.pdfUrl).split('/').pop().split('?')[0]);
+            } catch (e) {
+                pdfName = 'Doküman.pdf';
+            }
+        }
+        if (!pdfName) pdfName = 'Doküman.pdf';
+
+        if (typeof p.pdfSize === 'number' && p.pdfSize > 0) {
+            pdfSize = (p.pdfSize / (1024 * 1024)).toFixed(2) + ' MB';
+        } else {
+            pdfSize = 'PDF';
+        }
+    }
+
+    let snippet = text;
+    if (!snippet) {
+        if (mediaType === 'pdf') {
+            snippet = `📄 ${pdfName}${pdfSize ? ` (${pdfSize})` : ''}`;
+        } else if (mediaType === 'video') {
+            snippet = '🎬 Video paylaştı';
+        } else if (mediaType === 'gif') {
+            snippet = '👾 GIF paylaştı';
+        } else if (mediaType === 'image') {
+            snippet = '🖼️ Görsel paylaştı';
+        } else {
+            snippet = 'Yeni bir paylaşım yaptı';
+        }
+    }
+
+    return {
+        text,
+        snippet,
+        mediaType,
+        postMedia,
+        pdfName,
+        pdfSize
+    };
+}
 
 /**
  * Sends in-app notifications and real-time FCM device push notifications
@@ -39,21 +153,25 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             }
         }
 
-        // Determine author display name and username
+        // Determine author display name, username, and avatar
         let authorName = 'Oxypace Üyesi';
         let authorUsername = '';
+        let authorAvatar = '';
         if (author && typeof author === 'object' && (author.profile || author.username)) {
             authorName = author.profile?.displayName || author.username || 'Oxypace Üyesi';
             authorUsername = author.username || '';
+            authorAvatar = author.profile?.avatar || author.profile?.lowResAvatar || '';
         } else if (post.author && typeof post.author === 'object' && (post.author.profile || post.author.username)) {
             authorName = post.author.profile?.displayName || post.author.username || 'Oxypace Üyesi';
             authorUsername = post.author.username || '';
+            authorAvatar = post.author.profile?.avatar || post.author.profile?.lowResAvatar || '';
         } else if (authorIdStr) {
             try {
-                const authorDoc = await User.findById(authorIdStr).select('username profile.displayName');
+                const authorDoc = await User.findById(authorIdStr).select('username profile.displayName profile.avatar profile.lowResAvatar');
                 if (authorDoc) {
                     authorName = authorDoc.profile?.displayName || authorDoc.username || 'Oxypace Üyesi';
                     authorUsername = authorDoc.username || '';
+                    authorAvatar = authorDoc.profile?.avatar || authorDoc.profile?.lowResAvatar || '';
                 }
             } catch (e) {}
         }
@@ -151,52 +269,45 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             return;
         }
 
-        // 3. Construct clean and professional notification content (no extra file tags)
-        const rawContent = (post.content || '').replace(/\s+/g, ' ').trim();
-        let snippet = '';
-        if (rawContent) {
-            snippet = rawContent.length > 120 ? rawContent.substring(0, 117) + '...' : rawContent;
-        } else {
-            snippet = 'Yeni bir paylaşım yaptı';
-        }
-
-        // Get portal avatar (normal image or animated gif)
+        // 3. Extract current post details (strictly separating portalAvatar from postMedia)
+        const currentPostDetails = extractPostNotificationDetails(post);
         const portalAvatar = portalDoc.avatar || portalDoc.lowResAvatar || '';
+        const proxiedAuthorAvatar = authorAvatar ? (constructNotifImageUrl(authorAvatar) || authorAvatar) : '';
 
-        // Extract visual cover for the post (image, video thumbnail, pdf first page, link preview, gif)
-        let postMedia = '';
-        if (post.pdfThumbnailUrl) {
-            postMedia = post.pdfThumbnailUrl;
-        } else if (post.videoThumbnail) {
-            postMedia = post.videoThumbnail;
-        } else if (post.media) {
-            if (Array.isArray(post.media) && post.media.length > 0) {
-                const first = post.media[0];
-                if (typeof first === 'string' && !first.endsWith('.mp4') && !first.endsWith('.webm') && !first.endsWith('.mov')) {
-                    postMedia = first;
+        // 4. Query unread portal_post notifications for these recipients in this portal + channel
+        // so that even if a user swiped away an earlier device notification, any unread posts in
+        // this portal/channel accumulate cleanly up to the visual limit (max 5 items).
+        const recipientIds = Array.from(userTokensMap.keys());
+        const unreadByRecipient = new Map(); // recipientId -> Array of unread notification docs
+
+        try {
+            const allUnreadDocs = await Notification.find({
+                recipient: { $in: recipientIds },
+                portal: portalDoc._id,
+                channel: channelIdStr,
+                type: 'portal_post',
+                read: false
+            })
+                .sort({ createdAt: -1 })
+                .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar')
+                .populate('post', 'content media mediaType pdfUrl pdfName pdfSize pdfThumbnailUrl videoThumbnail videoUrl createdAt')
+                .lean();
+
+            for (const doc of allUnreadDocs) {
+                if (!doc.post) continue; // skip if post was deleted
+                const rId = doc.recipient.toString();
+                if (!unreadByRecipient.has(rId)) {
+                    unreadByRecipient.set(rId, []);
                 }
-            } else if (typeof post.media === 'string' && !post.media.endsWith('.mp4') && !post.media.endsWith('.webm') && !post.media.endsWith('.mov')) {
-                postMedia = post.media;
+                unreadByRecipient.get(rId).push(doc);
             }
-        } else if (post.linkPreview?.image) {
-            postMedia = post.linkPreview.image;
-        } else if (post.gifUrl) {
-            postMedia = post.gifUrl;
-        } else if (post.youtubeUrl) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-            const match = String(post.youtubeUrl).match(regExp);
-            if (match && match[2].length === 11) {
-                postMedia = `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`;
-            }
+        } catch (unreadErr) {
+            console.warn('⚠️ [PortalNotificationService] Could not query unread notifications for accumulation:', unreadErr.message);
         }
-
-        // ALWAYS ensure a valid cover image:
-        // If post has a media attachment, use it as the main cover image.
-        // If post is text-only or attachment has no thumbnail, ALWAYS use portal avatar as the cover image!
-        const coverImage = postMedia || portalAvatar || '';
 
         const notificationTitle = `${portalDoc.name} • #${channelName}`;
-        const notificationBody = `${authorName}: ${snippet}`;
+        const displayAuthor = authorUsername ? `${authorName} (@${authorUsername})` : authorName;
+        const notificationBody = `${displayAuthor}: ${currentPostDetails.snippet}`;
         const targetRoute = `/portal/${portalIdStr}?channel=${channelIdStr}`;
 
         let totalSentTokens = 0;
@@ -206,10 +317,56 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             if (tokens.length === 0) continue;
             totalSentTokens += tokens.length;
 
+            const userUnreadDocs = unreadByRecipient.get(recipientId) || [];
+            const totalUnreadCount = Math.max(1, userUnreadDocs.length);
+
+            // Take up to 5 latest unread posts in chronological order (oldest -> newest)
+            const latestFiveDocs = userUnreadDocs.slice(0, 5).reverse();
+            let unreadItemsPayload = [];
+
+            if (latestFiveDocs.length > 0) {
+                unreadItemsPayload = latestFiveDocs.map(doc => {
+                    const pDoc = doc.post || {};
+                    const sDoc = doc.sender || {};
+                    const sName = sDoc.profile?.displayName || sDoc.username || authorName;
+                    const sUser = sDoc.username || authorUsername || '';
+                    const sAvatarRaw = sDoc.profile?.avatar || sDoc.profile?.lowResAvatar || '';
+                    const sAvatar = sAvatarRaw ? (constructNotifImageUrl(sAvatarRaw) || sAvatarRaw) : '';
+                    const details = extractPostNotificationDetails(pDoc);
+                    return {
+                        postId: (pDoc._id || post._id || '').toString(),
+                        authorName: sName,
+                        authorUsername: sUser,
+                        authorAvatar: sAvatar,
+                        text: details.text,
+                        snippet: details.snippet,
+                        mediaType: details.mediaType,
+                        postMedia: details.postMedia,
+                        pdfName: details.pdfName,
+                        pdfSize: details.pdfSize,
+                        timestamp: pDoc.createdAt ? new Date(pDoc.createdAt).getTime() : Date.now()
+                    };
+                });
+            } else {
+                unreadItemsPayload = [{
+                    postId: post._id ? post._id.toString() : '',
+                    authorName: authorName,
+                    authorUsername: authorUsername,
+                    authorAvatar: proxiedAuthorAvatar,
+                    text: currentPostDetails.text,
+                    snippet: currentPostDetails.snippet,
+                    mediaType: currentPostDetails.mediaType,
+                    postMedia: currentPostDetails.postMedia,
+                    pdfName: currentPostDetails.pdfName,
+                    pdfSize: currentPostDetails.pdfSize,
+                    timestamp: Date.now()
+                }];
+            }
+
             sendPushNotification(tokens, {
                 title: notificationTitle,
                 body: notificationBody,
-                image: coverImage || undefined,
+                image: currentPostDetails.postMedia || undefined,
                 data: {
                     type: 'portal_post',
                     targetUserId: recipientId,
@@ -222,11 +379,16 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                     authorId: authorIdStr,
                     authorName: authorName,
                     authorUsername: authorUsername,
+                    authorAvatar: proxiedAuthorAvatar,
                     portalAvatar: portalAvatar,
                     avatar: portalAvatar,
-                    image: coverImage || portalAvatar,
-                    coverImage: coverImage || portalAvatar,
-                    postMedia: postMedia || '',
+                    postText: currentPostDetails.text,
+                    mediaType: currentPostDetails.mediaType,
+                    postMedia: currentPostDetails.postMedia,
+                    pdfName: currentPostDetails.pdfName,
+                    pdfSize: currentPostDetails.pdfSize,
+                    unreadCount: String(totalUnreadCount),
+                    unreadItems: JSON.stringify(unreadItemsPayload),
                     route: targetRoute,
                     url: targetRoute
                 }

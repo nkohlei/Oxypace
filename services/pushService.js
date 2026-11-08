@@ -6,7 +6,7 @@ import { R2_DOMAIN, PROXY_BASE } from '../utils/mediaConfig.js';
  * Uses the backend proxy URL instead of the direct R2 CDN URL,
  * because Cloudflare R2 (pub-xxx.r2.dev) is blocked by Turkish ISPs.
  */
-const constructNotifImageUrl = (key) => {
+export const constructNotifImageUrl = (key) => {
     if (!key) return null;
 
     let cleanKey = String(key);
@@ -125,9 +125,18 @@ export const sendPushNotification = async (tokens, payload) => {
 
         for (const [key, val] of Object.entries(rawData)) {
             if (val !== undefined && val !== null) {
-                if ((key === 'senderAvatar' || key === 'portalAvatar' || key === 'avatar') && typeof val === 'string' && val.length > 0) {
-                    sanitizedData[key] = constructNotifImageUrl(val) || val;
-                } else if (key === 'image' && typeof val === 'string' && val.length > 0) {
+                if (
+                    (key === 'senderAvatar' ||
+                        key === 'portalAvatar' ||
+                        key === 'authorAvatar' ||
+                        key === 'avatar' ||
+                        key === 'image' ||
+                        key === 'coverImage' ||
+                        key === 'postMedia' ||
+                        key === 'pdfThumbnailUrl') &&
+                    typeof val === 'string' &&
+                    val.length > 0
+                ) {
                     sanitizedData[key] = constructNotifImageUrl(val) || val;
                 } else {
                     sanitizedData[key] = String(val);
@@ -148,9 +157,9 @@ export const sendPushNotification = async (tokens, payload) => {
         }
 
         // Custom-rendered notifications use OxypaceMessagingService.onMessageReceived()
-        // so that the circular portal avatar (largeIcon) and media cover (BigPictureStyle)
-        // are rendered natively with circular badge instead of falling back to the generic app icon.
-        const isCustomHandled = notifType === 'message' || notifType === 'voice_invite' || notifType === 'portal_post';
+        // so that single-active-session isolation (activeUserId verification) and custom circular avatars
+        // are always enforced on the device before any notification is shown.
+        const isCustomHandled = true;
 
         const message = {
             // For custom-rendered notifications (messages and voice invites), omit the top-level

@@ -72,6 +72,58 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user?._id, user?.username, user?.profile?.avatar, token]);
 
+    const getInactiveAccountIds = (activeId) => {
+        try {
+            const list = getStoredAccounts();
+            const activeStr = activeId ? String(activeId).trim() : '';
+            return list
+                .map(a => (a?.userId ? String(a.userId).trim() : ''))
+                .filter(id => id && id !== activeStr);
+        } catch (_) {
+            return [];
+        }
+    };
+
+    const unbindFcmTokenReliable = (authToken) => {
+        if (!authToken) return;
+        try {
+            const currentFcm = localStorage.getItem('fcm_token') || '';
+            // keepalive: true ensures the request completes even during window.location.reload() / navigation
+            fetch('/api/users/unbind-fcm-token', {
+                method: 'POST',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ token: currentFcm })
+            }).catch(() => {});
+            if (currentFcm) {
+                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                }).catch(() => {});
+            }
+        } catch (_) {}
+    };
+
+    const bindFcmTokenReliable = (authToken) => {
+        if (!authToken) return;
+        try {
+            const currentFcm = localStorage.getItem('fcm_token') || '';
+            if (currentFcm) {
+                fetch('/api/users/fcm-token', {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ token: currentFcm })
+                }).catch(() => {});
+            }
+        } catch (_) {}
+    };
+
     // Set axios default header & sync with native Android for notification direct replies & multi-account isolation
     useEffect(() => {
         const prodServerUrl = 'https://oxypace.com.tr';
@@ -81,10 +133,12 @@ export const AuthProvider = ({ children }) => {
                 document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Lax`;
             } catch (_) {}
             if (Capacitor.isNativePlatform()) {
+                const activeUid = user?._id ? String(user._id) : '';
                 AuthSync.syncAuth({
                     token,
                     serverUrl: prodServerUrl,
-                    userId: user?._id ? String(user._id) : ''
+                    userId: activeUid,
+                    inactiveUserIds: getInactiveAccountIds(activeUid)
                 }).catch(() => {});
             }
             // Always fetch fresh user profile in background (Stale-While-Revalidate)
@@ -92,7 +146,12 @@ export const AuthProvider = ({ children }) => {
         } else {
             setLoading(false);
             if (Capacitor.isNativePlatform()) {
-                AuthSync.syncAuth({ token: '', serverUrl: prodServerUrl, userId: '' }).catch(() => {});
+                AuthSync.syncAuth({
+                    token: '',
+                    serverUrl: prodServerUrl,
+                    userId: '',
+                    inactiveUserIds: getInactiveAccountIds('')
+                }).catch(() => {});
             }
         }
     }, [token, user?._id]);
@@ -176,11 +235,14 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(userData));
         } catch (_) {}
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+        bindFcmTokenReliable(newToken);
         if (Capacitor.isNativePlatform()) {
+            const activeUid = userData?._id ? String(userData._id) : '';
             AuthSync.syncAuth({
                 token: newToken,
                 serverUrl: 'https://oxypace.com.tr',
-                userId: userData?._id ? String(userData._id) : ''
+                userId: activeUid,
+                inactiveUserIds: getInactiveAccountIds(activeUid)
             }).catch(() => {});
         }
     };
@@ -215,14 +277,9 @@ export const AuthProvider = ({ children }) => {
         }
 
         // Unbind current FCM device token from previous user before switching
-        try {
-            const currentFcm = localStorage.getItem('fcm_token');
-            if (currentFcm && token) {
-                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }).catch(() => {});
-            }
-        } catch (_) {}
+        if (token) {
+            unbindFcmTokenReliable(token);
+        }
 
         localStorage.setItem('token', target.token);
         localStorage.setItem('user', JSON.stringify({
@@ -235,11 +292,16 @@ export const AuthProvider = ({ children }) => {
             document.cookie = `token=${encodeURIComponent(target.token)}; path=/; max-age=31536000; SameSite=Lax`;
         } catch (_) {}
 
+        // Immediately bind device FCM token to newly switched account
+        bindFcmTokenReliable(target.token);
+
         if (Capacitor.isNativePlatform()) {
+            const nextUid = String(target.userId);
             AuthSync.syncAuth({
                 token: target.token,
                 serverUrl: 'https://oxypace.com.tr',
-                userId: String(target.userId)
+                userId: nextUid,
+                inactiveUserIds: getInactiveAccountIds(nextUid)
             }).catch(() => {});
         }
 
@@ -292,14 +354,9 @@ export const AuthProvider = ({ children }) => {
         persistAccounts(reordered);
 
         // Unbind current FCM device token from previous user before switching
-        try {
-            const currentFcm = localStorage.getItem('fcm_token');
-            if (currentFcm && token) {
-                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }).catch(() => {});
-            }
-        } catch (_) {}
+        if (token) {
+            unbindFcmTokenReliable(token);
+        }
 
         login(newToken, newUserData);
         sessionStorage.setItem('oxypace_fresh_login', 'true');
@@ -317,11 +374,8 @@ export const AuthProvider = ({ children }) => {
 
     const logout = (removeCurrent = true) => {
         try {
-            const currentFcm = localStorage.getItem('fcm_token');
-            if (currentFcm && token) {
-                axios.post('/api/users/unbind-fcm-token', { token: currentFcm }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }).catch(() => {});
+            if (token) {
+                unbindFcmTokenReliable(token);
             }
             if (removeCurrent && user?._id) {
                 setSavedAccounts(prev => {
@@ -341,7 +395,12 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         delete axios.defaults.headers.common['Authorization'];
         if (Capacitor.isNativePlatform()) {
-            AuthSync.syncAuth({ token: '', serverUrl: 'https://oxypace.com.tr', userId: '' }).catch(() => {});
+            AuthSync.syncAuth({
+                token: '',
+                serverUrl: 'https://oxypace.com.tr',
+                userId: '',
+                inactiveUserIds: getInactiveAccountIds('')
+            }).catch(() => {});
         }
         // Reset unread counts and other portal state
         useGlobalStore.getState().resetStore();

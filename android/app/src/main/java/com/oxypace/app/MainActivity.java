@@ -494,6 +494,7 @@ public class MainActivity extends BridgeActivity {
 
     public static volatile boolean isAppForeground = false;
     public static volatile String activeChatPartnerId = null;
+    public static volatile String activePortalChannelKey = null;
 
     public static void clearChatNotification(Context context, String senderId) {
         if (context == null || senderId == null || senderId.trim().isEmpty()) return;
@@ -507,6 +508,30 @@ public class MainActivity extends BridgeActivity {
             OxypaceMessagingService.clearHistoryForSender(senderId.trim());
         } catch (Exception e) {
             android.util.Log.w("ChatNotification", "Error clearing notification: " + e.getMessage());
+        }
+    }
+
+    public static void clearPortalChannelNotification(Context context, String portalId, String channelId) {
+        if (context == null || portalId == null || portalId.trim().isEmpty()) return;
+        try {
+            String cleanPortalId = portalId.trim();
+            android.app.NotificationManager nm = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (channelId != null && !channelId.trim().isEmpty() && !channelId.equalsIgnoreCase("null") && !channelId.equalsIgnoreCase("undefined")) {
+                String cleanChannelId = channelId.trim();
+                String channelKey = cleanPortalId + "_" + cleanChannelId;
+                if (nm != null) {
+                    nm.cancel(Math.abs(("portal_channel_" + channelKey).hashCode()));
+                    nm.cancel(Math.abs(("portal_" + cleanPortalId).hashCode()));
+                }
+                OxypaceMessagingService.clearPortalHistoryForChannel(context, channelKey);
+            } else {
+                if (nm != null) {
+                    nm.cancel(Math.abs(("portal_" + cleanPortalId).hashCode()));
+                }
+                OxypaceMessagingService.clearPortalHistoryForPortal(context, cleanPortalId);
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ChatNotification", "Error clearing portal channel notification: " + e.getMessage());
         }
     }
 
@@ -528,6 +553,35 @@ public class MainActivity extends BridgeActivity {
         }
 
         @PluginMethod
+        public void setActivePortalChannel(PluginCall call) {
+            String portalId = call.getString("portalId", null);
+            String channelId = call.getString("channelId", null);
+            if (portalId != null && (portalId.trim().isEmpty() || portalId.equalsIgnoreCase("null") || portalId.equalsIgnoreCase("undefined"))) {
+                portalId = null;
+            }
+            if (channelId != null && (channelId.trim().isEmpty() || channelId.equalsIgnoreCase("null") || channelId.equalsIgnoreCase("undefined"))) {
+                channelId = null;
+            }
+            if (portalId != null && channelId != null) {
+                MainActivity.activePortalChannelKey = portalId.trim() + "_" + channelId.trim();
+                clearPortalChannelNotification(getContext(), portalId.trim(), channelId.trim());
+            } else {
+                MainActivity.activePortalChannelKey = null;
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void clearPortalChannelNotification(PluginCall call) {
+            String portalId = call.getString("portalId", null);
+            String channelId = call.getString("channelId", null);
+            if (portalId != null && !portalId.trim().isEmpty()) {
+                MainActivity.clearPortalChannelNotification(getContext(), portalId.trim(), channelId);
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
         public void clearNotificationForSender(PluginCall call) {
             String senderId = call.getString("senderId", null);
             if (senderId != null && !senderId.trim().isEmpty()) {
@@ -543,7 +597,7 @@ public class MainActivity extends BridgeActivity {
                 if (nm != null) {
                     nm.cancelAll();
                 }
-                OxypaceMessagingService.clearAllHistory();
+                OxypaceMessagingService.clearAllHistory(getContext());
             } catch (Exception ignored) {}
             call.resolve();
         }

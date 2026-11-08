@@ -726,7 +726,11 @@ const cleanupExpiredTouristAdmins = async () => {
                         await sendPushNotification(user.fcmTokens, {
                             title: 'Yetki Süresi Doldu',
                             body: 'Turist Admin yetkilerinizin süresi doldu.',
-                            data: { url: '/' }
+                            data: {
+                                url: '/',
+                                targetUserId: user._id.toString(),
+                                recipientUserId: user._id.toString()
+                            }
                         });
                     }
 

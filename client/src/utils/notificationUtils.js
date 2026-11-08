@@ -93,3 +93,34 @@ export const dismissDeliveredMessageNotifications = async (senderId = null) => {
         console.warn('Failed to dismiss push delivered notifications:', pushErr);
     }
 };
+
+/**
+ * Tell native Android which portal/channel the user is actively viewing right now.
+ * While viewing that portal/channel, device notifications for it are suppressed and unread history is cleared.
+ */
+export const setActivePortalChannel = async (portalId = null, channelId = null) => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+        await ChatNotificationManager.setActivePortalChannel({
+            portalId: portalId ? String(portalId).trim() : null,
+            channelId: channelId ? String(channelId).trim() : null
+        });
+    } catch (err) {
+        console.warn('Failed to set active portal channel on native layer:', err);
+    }
+};
+
+/**
+ * Clear delivered device notifications and accumulated unread history for a specific portal/channel (or entire portal).
+ */
+export const dismissPortalChannelNotifications = async (portalId, channelId = null) => {
+    if (!Capacitor.isNativePlatform() || !portalId) return;
+    try {
+        await ChatNotificationManager.clearPortalChannelNotification({
+            portalId: String(portalId).trim(),
+            channelId: channelId ? String(channelId).trim() : null
+        });
+    } catch (err) {
+        console.warn('Failed to clear portal channel notification on native layer:', err);
+    }
+};
