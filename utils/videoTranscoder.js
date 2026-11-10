@@ -46,10 +46,9 @@ function safeUnlink(filePath) {
     try { fs.unlinkSync(filePath); } catch (_) {}
 }
 
-const FFMPEG_RAM_SAFE_FLAGS = [
-    '-threads', '1',
-    '-preset', 'ultrafast',
-    '-tune', 'fastdecode',
+const FFMPEG_SAFE_FLAGS = [
+    '-threads', '2',
+    '-preset', 'veryfast',
     '-pix_fmt', 'yuv420p'
 ];
 
@@ -64,20 +63,24 @@ const formatEstimatedTime = (totalSeconds) => {
 };
 
 /**
- * Transcode a single quality level synchronously.
+ * Transcode a single quality level with YouTube-standard clean scaling and in-loop deblocking.
+ * Deblocking is preserved (no fastdecode) to prevent square macroblock / ceramic tile artifacts.
+ * Bicubic scaling ensures smooth anti-aliased detail.
  * Returns the output file path on success, null on failure.
  */
-function transcodeQuality({ inputPath, outputPath, scaleFilter, videoBitrate, maxrate, bufsize, onProgress }) {
+function transcodeQuality({ inputPath, outputPath, scaleFilter, crf, maxrate, bufsize, audioBitrate, onProgress }) {
     return new Promise((resolve) => {
         ffmpeg(inputPath)
             .videoCodec('libx264')
             .outputOptions([
-                ...FFMPEG_RAM_SAFE_FLAGS,
+                ...FFMPEG_SAFE_FLAGS,
                 '-vf', scaleFilter,
-                '-b:v', videoBitrate,
+                '-crf', String(crf || 23),
                 '-maxrate', maxrate,
                 '-bufsize', bufsize,
                 '-c:a', 'aac',
+                '-b:a', audioBitrate || '96k',
+                '-ar', '44100',
                 '-movflags', '+faststart'
             ])
             .output(outputPath)
@@ -172,53 +175,47 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             estimatedTime: formatEstimatedTime(totalEstimatedTimeSeconds)
         });
 
-        // ── Step 3: Determine original quality label ──────────────────────────
-        let maxLabel     = '144p';
-        let maxField     = 'p144';
-        let maxRootField = 'video144';
-
-        if      (srcHeight >= 2160 || srcWidth >= 3840) { maxLabel = '2160p'; maxField = 'p2160'; maxRootField = 'video2160'; }
-        else if (srcHeight >= 1350 || srcWidth >= 2400) { maxLabel = '1440p'; maxField = 'p1440'; maxRootField = 'video1440'; }
-        else if (srcHeight >= 1080 || srcWidth >= 1920) { maxLabel = '1080p'; maxField = 'p1080'; maxRootField = 'video1080'; }
-        else if (srcHeight >= 720  || srcWidth >= 1280) { maxLabel = '720p';  maxField = 'p720';  maxRootField = 'video720';  }
-        else if (srcHeight >= 360  || srcWidth >= 640 ) { maxLabel = '360p';  maxField = 'p360';  maxRootField = 'video360';  }
+        // ── Step 3: Determine original quality label & dimensions ────────────
+        const srcShortSide = (srcWidth && srcHeight) ? Math.min(srcWidth, srcHeight) : (srcHeight || srcWidth || 0);
+        const srcLongSide  = (srcWidth && srcHeight) ? Math.max(srcWidth, srcHeight) : 0;
+        const maxLabel     = `${srcShortSide || 720}p`;
 
         // ── Step 4: Upload original immediately → guarantee playback from t=0 ─
-        const keyOriginal = `${folder}/video_${maxLabel}_${postId}.mp4`;
+        const keyOriginal = `${folder}/video_original_${postId}.mp4`;
         console.log(`[VideoTranscoder] Uploading original (${maxLabel}) via stream → ${keyOriginal}`);
         await uploadFileToR2(localInputPath, keyOriginal, bucketName);
         const urlOriginal = constructProxiedUrl(keyOriginal);
 
         // Write original to DB right away — video is playable via videoUrl even if transcode crashes
-        // Orijinal dosya URL'si, kaynak kalite alanına (p2160, p1440, p1080 vb.) yazılıyor
-        // böylece player doğru kalite etiketini hemen gösterebiliyor.
-        // ÖNEMLİ: Bu URL, VideoDownloadModal'da "Evrensel MP4" sekmesinde GÖRÜNTÜLENMEZ
-        // (transcode edilmemiş = galeri uyumsuz olabilir). Sadece "Orijinal Ham" sekmesinde görünür.
         const initialQualities = {
-            high:  urlOriginal,
-            low:   urlOriginal,
-            p144:  '',
-            p360:  '',
-            p720:  '',
-            p1080: '',
-            p1440: '',
-            p2160: ''
+            high:     urlOriginal,
+            low:      urlOriginal,
+            p144:     '',
+            p360:     srcShortSide === 360 ? urlOriginal : '',
+            p720:     srcShortSide === 720 ? urlOriginal : '',
+            p1080:    srcShortSide === 1080 ? urlOriginal : '',
+            p1440:    srcShortSide === 1440 ? urlOriginal : '',
+            p2160:    srcShortSide === 2160 ? urlOriginal : '',
+            original: urlOriginal
         };
-        // Kaynak kalite alanına orijinal URL'yi yaz (player için şart)
-        initialQualities[maxField] = urlOriginal;
 
         const initialUpdates = {
-            videoUrl:           urlOriginal,
-            media:              urlOriginal,
-            lowVideoUrl:        urlOriginal,
-            videoQualities:     initialQualities,
-            isProcessing:       true,
-            processingProgress: 0,
-            processingStage:    `${maxLabel} kaynak video yüklendi, alt kaliteler ayrıştırılıyor...`,
-            estimatedTime:      formatEstimatedTime(totalEstimatedTimeSeconds)
+            videoUrl:            urlOriginal,
+            media:               urlOriginal,
+            lowVideoUrl:         urlOriginal,
+            videoQualities:      initialQualities,
+            videoOriginalHeight: srcShortSide,
+            videoOriginalWidth:  srcLongSide,
+            isProcessing:        true,
+            processingProgress:  0,
+            processingStage:     `${maxLabel} kaynak video yüklendi, alt kaliteler ayrıştırılıyor...`,
+            estimatedTime:       formatEstimatedTime(totalEstimatedTimeSeconds)
         };
-        // Root field'e de yaz (video2160, video1440, video1080 vb.) — player src resolver için
-        initialUpdates[maxRootField] = urlOriginal;
+        if (srcShortSide === 360)  initialUpdates.video360  = urlOriginal;
+        if (srcShortSide === 720)  initialUpdates.video720  = urlOriginal;
+        if (srcShortSide === 1080) initialUpdates.video1080 = urlOriginal;
+        if (srcShortSide === 1440) initialUpdates.video1440 = urlOriginal;
+        if (srcShortSide === 2160) initialUpdates.video2160 = urlOriginal;
 
         const postAfterOriginal = await Post.findByIdAndUpdate(postId, initialUpdates, { new: true })
             .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
@@ -236,17 +233,20 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         console.log(`[VideoTranscoder] Source codec: ${codecName} (isH264: ${isH264})`);
 
         // ── Step 5: Sequential low-memory transcoding queue ───────────────────
+        // YouTube-standard encoding ladder:
+        // Bicubic anti-aliased scaling, in-loop deblocking enabled (eliminates ceramic block tiles),
+        // balanced CRF + VBV maxrate/bufsize for crystal clarity and smooth playback.
         const qualityLadder = [
-            { targetH: 1440, label: '1440p', field: 'p1440', rootField: 'video1440', bitrate: '5500k', maxrate: '6500k', bufsize: '11000k' },
-            { targetH: 1080, label: '1080p', field: 'p1080', rootField: 'video1080', bitrate: '2400k', maxrate: '2800k', bufsize: '4800k' },
-            { targetH: 720,  label: '720p',  field: 'p720',  rootField: 'video720',  bitrate: '1100k', maxrate: '1300k', bufsize: '2200k' },
-            { targetH: 360,  label: '360p',  field: 'p360',  rootField: 'video360',  bitrate: '400k',  maxrate: '450k',  bufsize: '800k'  },
-            { targetH: 144,  label: '144p',  field: 'p144',  rootField: 'video144',  bitrate: '150k',  maxrate: '180k',  bufsize: '300k'  }
+            { targetH: 1440, label: '1440p', field: 'p1440', rootField: 'video1440', crf: 20, maxrate: '7000k', bufsize: '14000k', audioBitrate: '192k' },
+            { targetH: 1080, label: '1080p', field: 'p1080', rootField: 'video1080', crf: 21, maxrate: '4200k', bufsize: '8400k',  audioBitrate: '160k' },
+            { targetH: 720,  label: '720p',  field: 'p720',  rootField: 'video720',  crf: 22, maxrate: '2200k', bufsize: '4400k',  audioBitrate: '128k' },
+            { targetH: 360,  label: '360p',  field: 'p360',  rootField: 'video360',  crf: 24, maxrate: '900k',  bufsize: '1800k',  audioBitrate: '96k'  },
+            { targetH: 144,  label: '144p',  field: 'p144',  rootField: 'video144',  crf: 26, maxrate: '320k',  bufsize: '640k',   audioBitrate: '64k'   }
         ];
 
-        // Filter to jobs below source resolution, OR equal to source resolution if original is not standard H.264 (e.g. AV1/HEVC)
-        const jobs = qualityLadder.filter(q => srcHeight > q.targetH || (srcHeight >= q.targetH && !isH264 && srcHeight <= q.targetH + 120));
-        console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued (sequential, -threads 1, -preset ultrafast)`);
+        // MUST transcode to all quality ladder rungs strictly below the video's original height!
+        const jobs = qualityLadder.filter(q => q.targetH < srcShortSide);
+        console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued for ${maxLabel} source (strictly below ${srcShortSide}p)`);
 
         const finalQualities = { ...initialQualities };
         let lastUpdatedProgress = 0;
@@ -302,10 +302,11 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             const outputPath = await transcodeQuality({
                 inputPath:    localInputPath,          // always from original
                 outputPath:   tempOut,
-                scaleFilter:  `scale=-2:${job.targetH}`, // preserves AR
-                videoBitrate: job.bitrate,
+                scaleFilter:  `scale='trunc(oh*a/2)*2':${job.targetH}:flags=bicubic`, // clean anti-aliased scaling
+                crf:          job.crf,
                 maxrate:      job.maxrate,
                 bufsize:      job.bufsize,
+                audioBitrate: job.audioBitrate,
                 onProgress: async (percent) => {
                     const overallPercent = Math.min(99, Math.round(((jobIndex + (percent / 100)) / jobs.length) * 100));
                     // Update DB every 10% progress interval
@@ -377,17 +378,19 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         else if (finalQualities.p1440) lowestUrl = finalQualities.p1440;
         else if (finalQualities.p2160) lowestUrl = finalQualities.p2160;
 
-        finalQualities.low  = lowestUrl;
-        finalQualities.high = urlOriginal;
+        finalQualities.low      = lowestUrl;
+        finalQualities.high     = urlOriginal;
+        finalQualities.original = urlOriginal;
 
         const updatedPost = await Post.findByIdAndUpdate(postId, {
-            [maxRootField]: urlOriginal,
-            lowVideoUrl:    lowestUrl,
-            videoQualities: finalQualities,
-            isProcessing:   false,
-            processingProgress: 100,
-            processingStage: 'Tüm kaliteler hazır',
-            estimatedTime:  '0 sn'
+            lowVideoUrl:         lowestUrl,
+            videoQualities:      finalQualities,
+            videoOriginalHeight: srcShortSide,
+            videoOriginalWidth:  srcLongSide,
+            isProcessing:        false,
+            processingProgress:  100,
+            processingStage:     'Tüm kaliteler hazır',
+            estimatedTime:       '0 sn'
         }, { new: true })
         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
         .populate('portal');

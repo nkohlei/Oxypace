@@ -87,7 +87,16 @@ const postSchema = new mongoose.Schema(
             p720: { type: String, default: '' },
             p1080: { type: String, default: '' },
             p1440: { type: String, default: '' },
-            p2160: { type: String, default: '' }
+            p2160: { type: String, default: '' },
+            original: { type: String, default: '' }
+        },
+        videoOriginalHeight: {
+            type: Number,
+            default: 0,
+        },
+        videoOriginalWidth: {
+            type: Number,
+            default: 0,
         },
         videoThumbnail: {
             type: String,

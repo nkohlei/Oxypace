@@ -207,6 +207,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                     video1080={getImageUrl(activePost.video1080)}
                                     video1440={getImageUrl(activePost.video1440)}
                                     video2160={getImageUrl(activePost.video2160)}
+                                    originalHeight={activePost.videoOriginalHeight}
                                     className="quoted-player"
                                     isProcessing={activePost.isProcessing}
                                     processingProgress={activePost.processingProgress}

@@ -41,7 +41,7 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
   const url1080 = validUrl(post.video1080) ? post.video1080 : (validUrl(qualities.video1080) ? qualities.video1080 : (validUrl(qualities.p1080) ? qualities.p1080 : null));
   const url1440 = validUrl(post.video1440) ? post.video1440 : (validUrl(qualities.video1440) ? qualities.video1440 : (validUrl(qualities.p1440) ? qualities.p1440 : null));
   const url2160 = validUrl(post.video2160) ? post.video2160 : (validUrl(qualities.video2160) ? qualities.video2160 : (validUrl(qualities.p2160) ? qualities.p2160 : null));
-  const rawMedia = Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl);
+  const rawMedia = (qualities && validUrl(qualities.original)) ? qualities.original : (Array.isArray(post.media) ? post.media[0] : (post.media || post.videoUrl));
 
   // Gerçekten transcode edilmiş kalite seçeneklerini oluştur
   const options = [];
@@ -49,6 +49,17 @@ const VideoDownloadModal = ({ isOpen, onClose, post, onDownload }) => {
   if (activeFormat === 'mp4') {
     // Evrensel MP4 (H.264 / AAC) - Galeri Uyumlu
     // SADECE transcode tamamlanmış URL'leri göster — boş alanlar = transcode henüz bitmedi
+    const origH = Number(post.videoOriginalHeight);
+    if (origH && ![2160, 1440, 1080, 720, 360, 144].includes(origH) && rawMedia) {
+      options.push({
+        label: `${origH}p`,
+        sublabel: 'Evrensel MP4 • Maksimum Kalite',
+        resolution: post.videoOriginalWidth ? `${post.videoOriginalWidth}×${origH}` : `${origH}p`,
+        value: 'original',
+        url: rawMedia
+      });
+    }
+
     if (url2160) {
       options.push({
         label: '4K Ultra HD (2160p)',

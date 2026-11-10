@@ -307,7 +307,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video1440, video2160, videoOriginal, poster, className, isProcessing = false, processingProgress = 0, processingStage = 'Kaliteler ayrıştırılıyor...', estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, serverNow: serverNowProp, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
+const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360, video720, video1080, video1440, video2160, videoOriginal, originalHeight, poster, className, isProcessing = false, processingProgress = 0, processingStage = 'Kaliteler ayrıştırılıyor...', estimatedTime = 'Hesaplanıyor...', watchParty, disableWatchSync = false, serverNow: serverNowProp, onReady, onPlay, onPause, onSeek, volume: propVolume, muted: propMuted, onVolumeChange, onMuteChange }) => {
   const { user } = useAuth();
   const videoRefA = useRef(null);
   const videoRefB = useRef(null);
@@ -342,6 +342,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const [derivedPoster, setDerivedPoster] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
+  const [probedOriginalHeight, setProbedOriginalHeight] = useState(0);
 
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -579,7 +580,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     : (qualities || {});
 
   // --- URL resolution & natural dimension analysis ---
-  const rawBase = resolveVideoUrl(videoOriginal || parsedQualities?.videoOriginal || parsedQualities?.high || videoUrl || src);
+  const srcOriginal = resolveVideoUrl(parsedQualities?.original || videoOriginal || parsedQualities?.high || videoUrl || src);
+  const rawBase = srcOriginal;
 
   const raw2160 = resolveVideoUrl(video2160 || parsedQualities?.video2160 || parsedQualities?.p2160 || parsedQualities?.['2160p']);
   const raw1440 = resolveVideoUrl(video1440 || parsedQualities?.video1440 || parsedQualities?.p1440 || parsedQualities?.['1440p']);
@@ -590,43 +592,44 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   const natH = naturalDimensions?.height || 0;
   const natW = naturalDimensions?.width || 0;
-  const isNatural4K = natH >= 2160 || natW >= 3840;
-  const isNatural1440 = (natH >= 1350 || natW >= 2400) && !isNatural4K;
-  const isNatural1080 = (natH >= 1080 || natW >= 1920) && !isNatural4K && !isNatural1440;
-  const isNatural720  = (natH >= 720  || natW >= 1280) && !isNatural4K && !isNatural1440 && !isNatural1080;
-  const isNatural360  = (natH >= 360  || natW >= 640 ) && !isNatural4K && !isNatural1440 && !isNatural1080 && !isNatural720;
+  const natShortSide = (natH && natW) ? Math.min(natH, natW) : (natH || natW || 0);
 
-  // 2160p (4K): explicitly present OR detected from video element metadata
-  const has2160 = !!raw2160 || (isNatural4K && !!rawBase);
-  const src2160 = raw2160 || (has2160 ? rawBase : '');
+  const knownOriginalHeight = Number(originalHeight) || 0;
+  const effectiveOriginalHeight = knownOriginalHeight || natShortSide || probedOriginalHeight || 0;
 
-  // 1440p (2K): explicitly present OR detected from video element metadata
-  const has1440 = !!raw1440 || (isNatural1440 && !!rawBase);
-  const src1440 = raw1440 || (has1440 ? rawBase : '');
+  // 2160p (4K): explicitly present
+  const has2160 = !!raw2160;
+  const src2160 = raw2160 || '';
+
+  // 1440p (2K): explicitly present
+  const has1440 = !!raw1440;
+  const src1440 = raw1440 || '';
 
   // 1080p:
-  const has1080 = !!raw1080 || (isNatural1080 && !!rawBase) || (!has2160 && !has1440 && !raw720 && !raw360 && !raw144 && !!rawBase);
-  const src1080 = raw1080 || (has1080 ? rawBase : '');
+  const has1080 = !!raw1080;
+  const src1080 = raw1080 || '';
 
   // 720p:
-  const has720 = !!raw720 || (isNatural720 && !has1080 && !has1440 && !has2160 && !!rawBase);
-  const src720 = raw720 || (has720 ? rawBase : '');
+  const has720 = !!raw720;
+  const src720 = raw720 || '';
 
   // 360p:
-  const has360 = !!raw360 || (isNatural360 && !has720 && !has1080 && !has1440 && !has2160 && !!rawBase);
-  const src360 = raw360 || (has360 ? rawBase : '');
+  const has360 = !!raw360;
+  const src360 = raw360 || '';
 
   // 144p:
   const has144 = !!raw144;
   const src144 = raw144 || '';
 
-  let maxResolution = '1080p';
-  if (has2160) maxResolution = '2160p';
-  else if (has1440) maxResolution = '1440p';
-  else if (has1080) maxResolution = '1080p';
-  else if (has720) maxResolution = '720p';
-  else if (has360) maxResolution = '360p';
-  else if (has144) maxResolution = '144p';
+  let maxResolution = effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : '1080p';
+  if (!effectiveOriginalHeight) {
+    if (has2160) maxResolution = '2160p';
+    else if (has1440) maxResolution = '1440p';
+    else if (has1080) maxResolution = '1080p';
+    else if (has720) maxResolution = '720p';
+    else if (has360) maxResolution = '360p';
+    else if (has144) maxResolution = '144p';
+  }
 
   const isSlowConnection = () => {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -648,7 +651,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       if (src1440) return src1440;
       if (src360) return src360;
       if (src144) return src144;
-      return rawBase || src2160;
+      return srcOriginal || src2160;
     }
 
     // Desktop feed optimization: 1440p / 1080p preferred for smooth playback
@@ -658,44 +661,104 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (src2160) return src2160;
     if (src360) return src360;
     if (src144) return src144;
-    return rawBase;
-  }, [src144, src360, src720, src1080, src1440, src2160, rawBase]);
+    return srcOriginal;
+  }, [src144, src360, src720, src1080, src1440, src2160, srcOriginal]);
 
   const getPreferredSrc = useCallback(() => {
     const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
     if (pref === 'performance') {
+      if (srcOriginal) return srcOriginal;
       if (src2160) return src2160;
       if (src1440) return src1440;
       if (src1080) return src1080;
       if (src720) return src720;
       if (src360) return src360;
       if (src144) return src144;
-      return rawBase;
+      return srcOriginal;
     } else if (pref === 'saver') {
       if (src720) return src720;
       if (src360) return src360;
       if (src144) return src144;
       if (src1080) return src1080;
       if (src1440) return src1440;
-      return src2160 || rawBase;
+      return src2160 || srcOriginal;
     } else if (pref === 'lowest') {
       if (src144) return src144;
       if (src360) return src360;
       if (src720) return src720;
       if (src1080) return src1080;
       if (src1440) return src1440;
-      return src2160 || rawBase;
+      return src2160 || srcOriginal;
     }
     return getBestSrc();
-  }, [user, src2160, src1440, src1080, src720, src360, src144, rawBase, getBestSrc]);
+  }, [user, src2160, src1440, src1080, src720, src360, src144, srcOriginal, getBestSrc]);
+
+  const isSameVideoUrl = (a, b) => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    try {
+      return new URL(a, window.location.href).href === new URL(b, window.location.href).href;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const standardTiers = [
+    { value: '2160', label: '2160p', height: 2160, has: has2160, src: src2160 },
+    { value: '1440', label: '1440p', height: 1440, has: has1440, src: src1440 },
+    { value: '1080', label: '1080p', height: 1080, has: has1080, src: src1080 },
+    { value: '720',  label: '720p',  height: 720,  has: has720,  src: src720  },
+    { value: '360',  label: '360p',  height: 360,  has: has360,  src: src360  },
+    { value: '144',  label: '144p',  height: 144,  has: has144,  src: src144  },
+  ].filter(t => t.has && t.src);
 
   const availableQualities = [{ value: 'auto', label: 'Oto' }];
-  if (has2160 && src2160) availableQualities.push({ value: '2160', label: '2160p' });
-  if (has1440 && src1440) availableQualities.push({ value: '1440', label: '1440p' });
-  if (has1080 && src1080) availableQualities.push({ value: '1080', label: '1080p' });
-  if (has720  && src720)  availableQualities.push({ value: '720',  label: '720p'  });
-  if (has360  && src360)  availableQualities.push({ value: '360',  label: '360p'  });
-  if (has144  && src144)  availableQualities.push({ value: '144',  label: '144p'  });
+
+  if (srcOriginal) {
+    const topLabel = effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : 'En Yüksek';
+    availableQualities.push({
+      value: 'original',
+      label: topLabel,
+      src: srcOriginal
+    });
+  }
+
+  standardTiers
+    .filter(t => {
+      // Don't duplicate if pointing to identical file as original
+      if (srcOriginal && isSameVideoUrl(t.src, srcOriginal)) return false;
+      // All quality rungs strictly below the original video height MUST be shown
+      if (effectiveOriginalHeight && t.height >= effectiveOriginalHeight) return false;
+      return true;
+    })
+    .forEach(t => {
+      availableQualities.push({ value: t.value, label: t.label, src: t.src });
+    });
+
+  // Probe metadata on menu open for legacy posts with no stored dimensions
+  useEffect(() => {
+    if (!isQualityMenuOpen || knownOriginalHeight || probedOriginalHeight || !srcOriginal) return;
+    let cancelled = false;
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.muted = true;
+    const cleanup = () => {
+      probe.removeAttribute('src');
+      try { probe.load(); } catch (_) {}
+    };
+    probe.onloadedmetadata = () => {
+      if (!cancelled && probe.videoWidth && probe.videoHeight) {
+        setProbedOriginalHeight(Math.min(probe.videoWidth, probe.videoHeight));
+      }
+      cleanup();
+    };
+    probe.onerror = cleanup;
+    probe.src = srcOriginal;
+    return () => {
+      cancelled = true;
+      cleanup();
+    };
+  }, [isQualityMenuOpen, knownOriginalHeight, probedOriginalHeight, srcOriginal]);
 
   // --- Helpers ---
   const getActiveEl  = () => (activeVideoRef.current === 'A' ? videoRefA : videoRefB).current;
@@ -1227,16 +1290,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setIsQualityMenuOpen(false);
 
     let targetSrc = '';
-    if      (mode === '2160') targetSrc = src2160;
-    else if (mode === '1440') targetSrc = src1440;
-    else if (mode === '1080') targetSrc = src1080;
-    else if (mode === '720')  targetSrc = src720;
-    else if (mode === '360')  targetSrc = src360;
-    else if (mode === '144')  targetSrc = src144;
-    else                      targetSrc = getBestSrc();
+    if      (mode === 'original') targetSrc = srcOriginal;
+    else if (mode === '2160')     targetSrc = src2160;
+    else if (mode === '1440')     targetSrc = src1440;
+    else if (mode === '1080')     targetSrc = src1080;
+    else if (mode === '720')      targetSrc = src720;
+    else if (mode === '360')      targetSrc = src360;
+    else if (mode === '144')      targetSrc = src144;
+    else                          targetSrc = getBestSrc();
 
     if (targetSrc) initiateQualitySwap(targetSrc);
-  }, [src144, src360, src720, src1080, src1440, src2160, getBestSrc, initiateQualitySwap]);
+  }, [srcOriginal, src144, src360, src720, src1080, src1440, src2160, getBestSrc, initiateQualitySwap]);
 
   // ─── Network change listeners ─────────────────────────────────────────
   useEffect(() => {
@@ -2053,7 +2117,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
                   onClick={e => { e.stopPropagation(); setIsQualityMenuOpen(v => !v); setIsSettingsOpen(false); }}
                   title="Video Kalitesi"
                 >
-                  {qualityMode === 'auto' ? 'Oto' : `${qualityMode}p`}
+                  {qualityMode === 'auto' ? 'Oto' : (qualityMode === 'original' ? (effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : 'Oto') : `${qualityMode}p`)}
                 </button>
 
                 <button

@@ -986,6 +986,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                                         video1080={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1080)}
                                         video1440={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video1440)}
                                         video2160={post.mediaType === 'videoUrl' ? '' : getImageUrl(post.video2160)}
+                                        originalHeight={post.videoOriginalHeight}
                                         className="post-video-player"
                                         isProcessing={Boolean(post.mediaType === 'video' && post.isProcessing)}
                                         processingProgress={post.processingProgress}

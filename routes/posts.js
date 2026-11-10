@@ -188,41 +188,28 @@ router.post(
 
                         const clientWidth = Number(req.body.videoWidth) || 0;
                         const clientHeight = Number(req.body.videoHeight) || 0;
-
-                        let initialP2160 = '';
-                        let initialP1440 = '';
-                        let initialP1080 = '';
-                        let initialP720 = '';
-                        let initialP360 = '';
-
-                        if (clientHeight >= 2160 || clientWidth >= 3840) {
-                            initialP2160 = actualVideoUrl;
-                        } else if (clientHeight >= 1350 || clientWidth >= 2400) {
-                            initialP1440 = actualVideoUrl;
-                        } else if (clientHeight >= 1080 || clientWidth >= 1920) {
-                            initialP1080 = actualVideoUrl;
-                        } else if (clientHeight >= 720 || clientWidth >= 1280) {
-                            initialP720 = actualVideoUrl;
-                        } else if (clientHeight >= 360 || clientWidth >= 640) {
-                            initialP360 = actualVideoUrl;
-                        }
+                        const shortSide = (clientWidth && clientHeight) ? Math.min(clientWidth, clientHeight) : (clientHeight || clientWidth || 0);
+                        const longSide  = (clientWidth && clientHeight) ? Math.max(clientWidth, clientHeight) : 0;
 
                         postData.videoQualities = {
-                            high:  actualVideoUrl,
-                            low:   actualVideoUrl,
-                            p144:  '',
-                            p360:  initialP360,
-                            p720:  initialP720,
-                            p1080: initialP1080,
-                            p1440: initialP1440,
-                            p2160: initialP2160
+                            high:     actualVideoUrl,
+                            low:      actualVideoUrl,
+                            p144:     '',
+                            p360:     shortSide === 360 ? actualVideoUrl : '',
+                            p720:     shortSide === 720 ? actualVideoUrl : '',
+                            p1080:    shortSide === 1080 ? actualVideoUrl : '',
+                            p1440:    shortSide === 1440 ? actualVideoUrl : '',
+                            p2160:    shortSide === 2160 ? actualVideoUrl : '',
+                            original: actualVideoUrl
                         };
+                        postData.videoOriginalHeight = shortSide;
+                        postData.videoOriginalWidth  = longSide;
                         postData.video144    = '';
-                        postData.video360    = initialP360;
-                        postData.video720    = initialP720;
-                        postData.video1080   = initialP1080;
-                        postData.video1440   = initialP1440;
-                        postData.video2160   = initialP2160;
+                        postData.video360    = shortSide === 360 ? actualVideoUrl : '';
+                        postData.video720    = shortSide === 720 ? actualVideoUrl : '';
+                        postData.video1080   = shortSide === 1080 ? actualVideoUrl : '';
+                        postData.video1440   = shortSide === 1440 ? actualVideoUrl : '';
+                        postData.video2160   = shortSide === 2160 ? actualVideoUrl : '';
                         postData.videoUrl    = actualVideoUrl;
                         postData.lowVideoUrl = actualVideoUrl;
                         postData.media       = actualVideoUrl;
@@ -288,41 +275,28 @@ router.post(
 
                     const clientWidth = Number(req.body.videoWidth) || 0;
                     const clientHeight = Number(req.body.videoHeight) || 0;
-
-                    let initialP2160 = '';
-                    let initialP1440 = '';
-                    let initialP1080 = '';
-                    let initialP720 = '';
-                    let initialP360 = '';
-
-                    if (clientHeight >= 2160 || clientWidth >= 3840) {
-                        initialP2160 = actualVideoUrl;
-                    } else if (clientHeight >= 1350 || clientWidth >= 2400) {
-                        initialP1440 = actualVideoUrl;
-                    } else if (clientHeight >= 1080 || clientWidth >= 1920) {
-                        initialP1080 = actualVideoUrl;
-                    } else if (clientHeight >= 720 || clientWidth >= 1280) {
-                        initialP720 = actualVideoUrl;
-                    } else if (clientHeight >= 360 || clientWidth >= 640) {
-                        initialP360 = actualVideoUrl;
-                    }
+                    const shortSide = (clientWidth && clientHeight) ? Math.min(clientWidth, clientHeight) : (clientHeight || clientWidth || 0);
+                    const longSide  = (clientWidth && clientHeight) ? Math.max(clientWidth, clientHeight) : 0;
 
                     postData.videoQualities = {
-                        high:  actualVideoUrl,
-                        low:   actualVideoUrl,
-                        p144:  '',
-                        p360:  initialP360,
-                        p720:  initialP720,
-                        p1080: initialP1080,
-                        p1440: initialP1440,
-                        p2160: initialP2160
+                        high:     actualVideoUrl,
+                        low:      actualVideoUrl,
+                        p144:     '',
+                        p360:     shortSide === 360 ? actualVideoUrl : '',
+                        p720:     shortSide === 720 ? actualVideoUrl : '',
+                        p1080:    shortSide === 1080 ? actualVideoUrl : '',
+                        p1440:    shortSide === 1440 ? actualVideoUrl : '',
+                        p2160:    shortSide === 2160 ? actualVideoUrl : '',
+                        original: actualVideoUrl
                     };
+                    postData.videoOriginalHeight = shortSide;
+                    postData.videoOriginalWidth  = longSide;
                     postData.video144    = '';
-                    postData.video360    = initialP360;
-                    postData.video720    = initialP720;
-                    postData.video1080   = initialP1080;
-                    postData.video1440   = initialP1440;
-                    postData.video2160   = initialP2160;
+                    postData.video360    = shortSide === 360 ? actualVideoUrl : '';
+                    postData.video720    = shortSide === 720 ? actualVideoUrl : '';
+                    postData.video1080   = shortSide === 1080 ? actualVideoUrl : '';
+                    postData.video1440   = shortSide === 1440 ? actualVideoUrl : '';
+                    postData.video2160   = shortSide === 2160 ? actualVideoUrl : '';
                     postData.videoUrl    = actualVideoUrl;
                     postData.lowVideoUrl = actualVideoUrl;
                     postData.media       = actualVideoUrl;

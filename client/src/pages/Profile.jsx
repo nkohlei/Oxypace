@@ -1931,6 +1931,7 @@ const Profile = () => {
                                                                                         video1080={getImageUrl(post.video1080)}
                                                                                         video1440={getImageUrl(post.video1440)}
                                                                                         video2160={getImageUrl(post.video2160)}
+                                                                                        originalHeight={post.videoOriginalHeight}
                                                                                         className="post-video-player"
                                                                                         isProcessing={post.isProcessing}
                                                                                         processingProgress={post.processingProgress}
