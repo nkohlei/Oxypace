@@ -3,6 +3,8 @@ import fs from 'fs';
 import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import Post from '../models/Post.js';
+import User from '../models/User.js';
+import Portal from '../models/Portal.js';
 import { constructProxiedUrl } from './mediaConfig.js';
 import axios from 'axios';
 import https from 'https';
@@ -382,7 +384,8 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         finalQualities.high     = urlOriginal;
         finalQualities.original = urlOriginal;
 
-        const updatedPost = await Post.findByIdAndUpdate(postId, {
+        const updateFields = {
+            videoUrl:            urlOriginal,
             lowVideoUrl:         lowestUrl,
             videoQualities:      finalQualities,
             videoOriginalHeight: srcShortSide,
@@ -391,7 +394,14 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             processingProgress:  100,
             processingStage:     'Tüm kaliteler hazır',
             estimatedTime:       '0 sn'
-        }, { new: true })
+        };
+
+        const currentDoc = await Post.findById(postId);
+        if (currentDoc && !Array.isArray(currentDoc.media)) {
+            updateFields.media = urlOriginal;
+        }
+
+        const updatedPost = await Post.findByIdAndUpdate(postId, updateFields, { new: true })
         .populate('author', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge settings.privacy isDeleted')
         .populate('portal');
 
