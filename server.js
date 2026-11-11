@@ -481,13 +481,13 @@ app.get('/downloads/bundle.zip', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.5.8',
-        versionCode: 258,
-        minSupportedVersionCode: 258,
+        latestVersion: '2.5.9',
+        versionCode: 259,
+        minSupportedVersionCode: 259,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.5.8: Genişletilmiş dosya türleri (.pptx, .doc, .xlsx, .html vb.), ses/klasör/karma içerik paylaşımı, dahili Kamera & Ses kaydedici, otomatik YouTube algılama ve yenilenmiş siyah/gümüş/beyaz Paylaş penceresi (kanonik bağlantılar).',
+        changelog: 'Oxypace 2.5.9: Alttan açılır Paylaşım & ortalı Davet pencereleri, kapak görselli ve hareketli paletli ses kartları, oynatıcı boyutuna orantılı sürüklemeli video zaman önizleme ve canlı oda tam ekran/dokunmatik düzeltmeleri.',
     });
 });
 

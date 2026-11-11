@@ -734,17 +734,30 @@ html.has-3button-nav .vc-controls {
     pointer-events: auto;
 }
 
-/* User Idle / Auto-hide styles */
-.vc-container.user-idle .vc-top-right-controls,
-.vc-container.user-idle .vc-controls {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    transform: translate(-50%, 15px) !important;
+/* Keep live controls responsive across touch devices (never auto-disable pointer-events via user-idle) */
+.vc-controls,
+.vc-top-right-controls,
+.vc-mobile-back-btn,
+.vc-lobby-back-btn,
+.vc-settings-dropdown,
+.voice-chat-sidebar {
+    pointer-events: auto;
+    touch-action: manipulation;
 }
 
-.vc-container.user-idle .vc-top-right-controls {
-    transform: translateY(-15px) !important;
+/* Watch Party pass-through on desktop/tablet/landscape so clicks on WatchParty background reach the video player */
+.vc-container.vc-has-watchparty {
+    pointer-events: none !important;
+}
+.vc-container.vc-has-watchparty .vc-card,
+.vc-container.vc-has-watchparty .vc-controls,
+.vc-container.vc-has-watchparty .vc-top-right-controls,
+.vc-container.vc-has-watchparty .vc-mobile-back-btn,
+.vc-container.vc-has-watchparty .vc-lobby-back-btn,
+.vc-container.vc-has-watchparty .vc-settings-dropdown,
+.vc-container.vc-has-watchparty .voice-chat-sidebar,
+.vc-container.vc-has-watchparty .vc-lobby {
+    pointer-events: auto !important;
 }
 
 .sidebar-toggle-btn {
@@ -1025,7 +1038,32 @@ html.has-3button-nav .vc-controls {
 }
 
 /* Landscape Mode Adjustments */
-@media (max-width: 900px) and (orientation: landscape), (max-height: 520px) {
+@media (max-width: 960px) and (orientation: landscape), (max-height: 520px) {
+    .discord-layout.voice-channel-active .navbar {
+        display: none !important;
+    }
+    .vc-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 60 !important;
+        padding-top: var(--safe-area-top, 0px);
+        background: transparent !important;
+        pointer-events: none !important;
+    }
+    .vc-container.lobby-bg,
+    .vc-container.lobby-bg *,
+    .vc-card,
+    .vc-controls,
+    .vc-top-right-controls,
+    .vc-mobile-back-btn,
+    .vc-lobby-back-btn,
+    .vc-settings-dropdown,
+    .voice-chat-sidebar {
+        pointer-events: auto !important;
+    }
     .layout-spotlight .vc-carousel {
         bottom: 12px !important;
         right: 16px !important;

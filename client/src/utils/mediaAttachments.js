@@ -1,3 +1,5 @@
+import { createCoverPreviewAndPalette } from './audioMetadata';
+
 export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB standard limit
 export const MAX_FILE_SIZE_LABEL = '2 GB';
 export const MAX_POST_ATTACHMENTS = 15;
@@ -103,12 +105,22 @@ export const createAttachmentDraftFromFile = (file, extra = {}) => {
         throw new Error(check.error);
     }
     const meta = categorizeFile(file);
-    const isMediaPreview = meta.kind === 'image' || meta.kind === 'gif' || meta.kind === 'video' || meta.kind === 'audio';
+    const kind = extra.kind || meta.kind;
+    const isVoiceRecording = Boolean(extra.isVoiceRecording);
+    const isMediaPreview = kind === 'image' || kind === 'gif' || kind === 'video' || kind === 'audio';
     const previewUrl = isMediaPreview ? URL.createObjectURL(file) : '';
+    const coverMetaPromise =
+        kind === 'audio' && !isVoiceRecording && file
+            ? createCoverPreviewAndPalette(file).catch(() => ({
+                  coverBlob: null,
+                  coverPreviewUrl: '',
+                  palette: [],
+              }))
+            : null;
 
     return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        kind: extra.kind || meta.kind,
+        kind,
         file,
         previewUrl,
         name: extra.name || file.name,
@@ -117,6 +129,10 @@ export const createAttachmentDraftFromFile = (file, extra = {}) => {
         mimeType: meta.mimeType,
         size: file.size || 0,
         duration: Number(extra.duration) || 0,
+        isVoiceRecording,
+        coverPreviewUrl: '',
+        palette: [],
+        coverMetaPromise,
         folderName: extra.folderName || '',
         fileCount: Number(extra.fileCount) || 0,
         folderFiles: extra.folderFiles || [],
@@ -127,6 +143,11 @@ export const revokeAttachmentDraft = (draft) => {
     if (draft?.previewUrl && draft.previewUrl.startsWith('blob:')) {
         try {
             URL.revokeObjectURL(draft.previewUrl);
+        } catch (_) {}
+    }
+    if (draft?.coverPreviewUrl && draft.coverPreviewUrl.startsWith('blob:')) {
+        try {
+            URL.revokeObjectURL(draft.coverPreviewUrl);
         } catch (_) {}
     }
 };
@@ -290,6 +311,9 @@ export const buildOptimisticPostMedia = (drafts = [], detectedYouTube = null) =>
         ext: d.ext,
         size: d.size,
         duration: d.duration || 0,
+        isVoiceRecording: Boolean(d.isVoiceRecording),
+        coverUrl: d.coverPreviewUrl || '',
+        palette: Array.isArray(d.palette) ? d.palette : [],
         folderName: d.folderName || '',
         fileCount: d.fileCount || 0,
         folderFiles: d.folderFiles || [],
@@ -315,6 +339,8 @@ export const buildOptimisticPostMedia = (drafts = [], detectedYouTube = null) =>
 const uploadDraftItem = async (draft, uploadFileFn, targetId, onDraftProgress) => {
     const key = await uploadFileFn(draft.file, 'post', targetId, onDraftProgress);
     let thumbnailKey = '';
+    let coverKey = '';
+    let palette = Array.isArray(draft.palette) ? draft.palette : [];
     let width = 0;
     let height = 0;
 
@@ -328,6 +354,21 @@ const uploadDraftItem = async (draft, uploadFileFn, targetId, onDraftProgress) =
                 thumbnailKey = await uploadFileFn(thumbFile, 'post', targetId);
             }
         } catch (_) {}
+    } else if (draft.kind === 'audio' && !draft.isVoiceRecording) {
+        try {
+            const extracted = draft.coverMetaPromise
+                ? await draft.coverMetaPromise
+                : await createCoverPreviewAndPalette(draft.file);
+            if (Array.isArray(extracted?.palette) && extracted.palette.length >= 2) {
+                palette = extracted.palette;
+            }
+            if (extracted?.coverBlob) {
+                const mime = extracted.coverBlob.type || 'image/jpeg';
+                const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+                const coverFile = new File([extracted.coverBlob], `cover-${Date.now()}.${ext}`, { type: mime });
+                coverKey = (await uploadFileFn(coverFile, 'post', targetId)) || '';
+            }
+        } catch (_) {}
     }
 
     return {
@@ -338,6 +379,9 @@ const uploadDraftItem = async (draft, uploadFileFn, targetId, onDraftProgress) =
         ext: draft.ext,
         size: draft.size,
         duration: draft.duration || 0,
+        isVoiceRecording: Boolean(draft.isVoiceRecording),
+        coverKey,
+        palette,
         width,
         height,
         thumbnailKey,

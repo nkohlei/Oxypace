@@ -235,9 +235,15 @@ const ScreenShareVolumeControl = React.memo(({ identity, volume, onVolumeChange 
     );
 });
 
+const detectMobileLayout = () => {
+    if (typeof window === 'undefined') return false;
+    const isCoarse = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
+    return isCoarse ? Math.min(window.innerWidth, window.innerHeight) <= 768 : window.innerWidth <= 768;
+};
+
 const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const { setMobileChannelOpen } = useUI();
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [isMobile, setIsMobile] = useState(detectMobileLayout);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -433,42 +439,14 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     }, [startWatchParty]);
 
     useEffect(() => {
-        if (!isConnected) {
-            setIsIdle(false);
-            const btn = document.querySelector('.sidebar-toggle-btn');
-            if (btn) btn.classList.remove('user-idle-btn');
-            return;
-        }
-
-        const handleMouseMove = () => {
-            setIsIdle(false);
-            const btn = document.querySelector('.sidebar-toggle-btn');
-            if (btn) btn.classList.remove('user-idle-btn');
-
-            if (idleTimerRef.current) {
-                clearTimeout(idleTimerRef.current);
-            }
-
-            idleTimerRef.current = setTimeout(() => {
-                setIsIdle(true);
-                const btn2 = document.querySelector('.sidebar-toggle-btn');
-                if (btn2) btn2.classList.add('user-idle-btn');
-            }, 3000);
-        };
-
-        handleMouseMove();
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('touchstart', handleMouseMove);
-
+        // Controls stay permanently responsive so touch devices never suffer dead taps after 3s idle
+        setIsIdle(false);
+        const btn = document.querySelector('.sidebar-toggle-btn');
+        if (btn) btn.classList.remove('user-idle-btn');
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('touchstart', handleMouseMove);
             if (idleTimerRef.current) {
                 clearTimeout(idleTimerRef.current);
             }
-            const btn = document.querySelector('.sidebar-toggle-btn');
-            if (btn) btn.classList.remove('user-idle-btn');
         };
     }, [isConnected]);
 
@@ -542,9 +520,13 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     };
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        const handleResize = () => setIsMobile(detectMobileLayout());
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('orientationchange', handleResize);
+        };
     }, []);
 
     useEffect(() => {
@@ -849,9 +831,15 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         : `layout-dynamic grid-${Math.min(displayParticipants.length, 4)}`;
 
     return (
-        <div className={`vc-container glass-container ${isIdle ? 'user-idle' : ''}`} onClick={handleContainerClick}>
+        <div className={`vc-container glass-container ${watchParty?.url ? 'vc-has-watchparty' : ''}`} onClick={handleContainerClick}>
             {isMobile && (
-                <button className="vc-mobile-back-btn" onClick={() => setMobileChannelOpen(false)} title="Geri">
+                <button
+                    type="button"
+                    className="vc-mobile-back-btn"
+                    onClick={() => (onBack ? onBack() : setMobileChannelOpen(false))}
+                    title="Geri"
+                    aria-label="Geri"
+                >
                     <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -1028,7 +1016,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                         flexShrink: 0
                                     }}
                                 >
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'transparent' }} />
+                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, background: 'transparent' }} />
                                 </div>
                             )}
                             {displayParticipants.filter(p => !focusedParticipant || p.identity !== focusedParticipant.identity).map(p => 

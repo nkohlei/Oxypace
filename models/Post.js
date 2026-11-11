@@ -55,6 +55,9 @@ const postSchema = new mongoose.Schema(
                         mimeType: { type: String, default: '' },
                     }
                 ],
+                isVoiceRecording: { type: Boolean, default: false },
+                coverUrl: { type: String, default: '' },
+                palette: { type: [String], default: [] },
             }
         ],
         pdfUrl: {

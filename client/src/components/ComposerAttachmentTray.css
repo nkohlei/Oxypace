@@ -144,6 +144,23 @@
     flex-shrink: 0;
 }
 
+.cat-chip-cover {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    flex-shrink: 0;
+}
+
+.cat-file-chip.has-palette .cat-chip-name {
+    color: #ffffff !important;
+}
+
+.cat-file-chip.has-palette .cat-chip-sub {
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+
 .cat-chip-meta {
     flex: 1;
     min-width: 0;

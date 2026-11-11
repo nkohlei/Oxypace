@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { preloadImage, preloadUsers } from '../utils/preloadUtils';
 import { useUI } from '../context/UIContext';
+import { useVoice } from '../context/VoiceContext';
 const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
 const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
 import AdUnit from '../components/AdUnit';
@@ -59,6 +60,8 @@ const Portal = () => {
     const navigate = useNavigate();
     const uiContext = useUI();
     const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = uiContext || {};
+    const { activeRoom } = useVoice();
+    const explicitMobileBackRef = useRef(false);
     const isDesktopSidebarCollapsed = uiContext?.isDesktopSidebarCollapsed || false;
     const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
 
@@ -72,7 +75,7 @@ const Portal = () => {
                     return parsed;
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
 
         // 2. Only use location.state.portal if it has channels
         if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
@@ -114,7 +117,7 @@ const Portal = () => {
                     return false;
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
         if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
             if (Array.isArray(location.state.portal.channels) && location.state.portal.channels.length > 0) {
                 return false;
@@ -387,17 +390,17 @@ const Portal = () => {
         // --- STRICT CONTEXT FILTERING ---
         // We listen here (within the component lifecycle) instead of globally
         // to ensure we only process events meant for THIS specific portal/channel.
-        
+
         const handleNewPost = (newPost) => {
             // BEGİNSE: The "Doorman" check
             const newPostPortalId = newPost.portal?._id || newPost.portal;
             const newPostChannelId = newPost.channel?._id || newPost.channel;
             const isTargetPortal = String(newPostPortalId) === String(id);
             const isOnlyChannel = portal?.channels?.length === 1;
-            const isTargetChannel = String(newPostChannelId) === String(currentChannel) || 
-                                    (String(newPostChannelId || 'general') === String(currentChannel || 'general')) ||
-                                    isOnlyChannel ||
-                                    (activeChannelObj && (String(newPostChannelId) === String(activeChannelObj.name) || String(newPostChannelId) === String(activeChannelObj._id)));
+            const isTargetChannel = String(newPostChannelId) === String(currentChannel) ||
+                (String(newPostChannelId || 'general') === String(currentChannel || 'general')) ||
+                isOnlyChannel ||
+                (activeChannelObj && (String(newPostChannelId) === String(activeChannelObj.name) || String(newPostChannelId) === String(activeChannelObj._id)));
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');
@@ -411,7 +414,7 @@ const Portal = () => {
                 }
                 setPosts((prev) => {
                     if (prev.some(p => p._id === newPost._id)) return prev;
-                    
+
                     // Stitch deeply populated quotedPost from existing feed or state to avoid 'Yükleniyor...'
                     const qId = newPost.quotedPost && (typeof newPost.quotedPost === 'string' ? newPost.quotedPost : newPost.quotedPost._id);
                     if (qId) {
@@ -422,7 +425,7 @@ const Portal = () => {
                             newPost.quotedPost = quotedPost;
                         }
                     }
-                    
+
                     return [newPost, ...prev];
                 });
             } else {
@@ -609,6 +612,7 @@ const Portal = () => {
     }, [scrollToTop, portal?._id, portal?.channels?.length]);
 
     const handleChannelSelect = (channelId) => {
+        explicitMobileBackRef.current = false;
         setCurrentChannel(channelId);
         setShowScrollTop(false); // Reset scroll button when changing channels
         if (isMobileView) {
@@ -616,6 +620,29 @@ const Portal = () => {
             setMobileChannelOpen(true); // Go to fullscreen feed mode
         }
     };
+
+    // Guard against Android WebView / browser fullscreen exit kicking connected users back to the portal channel menu
+    useEffect(() => {
+        const isCurrentVoiceConnected = Boolean(
+            isVoiceChannel &&
+            activeRoom &&
+            String(activeRoom.portalId) === String(id) &&
+            String(activeRoom.channelId) === String(currentChannel)
+        );
+        const restoreLiveRoomOnFsExit = () => {
+            const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (!fsEl && isCurrentVoiceConnected && !explicitMobileBackRef.current) {
+                closeSidebar?.();
+                setMobileChannelOpen?.(true);
+            }
+        };
+        document.addEventListener('fullscreenchange', restoreLiveRoomOnFsExit);
+        document.addEventListener('webkitfullscreenchange', restoreLiveRoomOnFsExit);
+        return () => {
+            document.removeEventListener('fullscreenchange', restoreLiveRoomOnFsExit);
+            document.removeEventListener('webkitfullscreenchange', restoreLiveRoomOnFsExit);
+        };
+    }, [isVoiceChannel, activeRoom, id, currentChannel, closeSidebar, setMobileChannelOpen]);
 
     const triggerToast = useCallback((message, type = 'info') => {
         setToast({ show: true, message, type });
@@ -957,7 +984,7 @@ const Portal = () => {
                 if (topPortal) {
                     localStorage.setItem('oxypace_top_portal', JSON.stringify({ id: topPortal.id, name: topPortal.name }));
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
     }, [portal?._id, portal?.name]);
 
@@ -1085,7 +1112,7 @@ const Portal = () => {
                     cachedPortalForId = parsed;
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
 
         if (!portal || String(portal._id) !== String(id) || !Array.isArray(portal.channels) || portal.channels.length === 0) {
             if (cachedPortalForId) {
@@ -1106,7 +1133,7 @@ const Portal = () => {
                     const serialized = JSON.stringify(res.data);
                     sessionStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
                     localStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
-                } catch (_) {}
+                } catch (_) { }
                 if (res.data?.avatar) preloadImage(res.data.avatar, 'original');
                 const b = res.data?.coverImage || res.data?.banner;
                 if (b) preloadImage(b, 'original');
@@ -1197,7 +1224,7 @@ const Portal = () => {
                         hasCachedPosts = true;
                     }
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             if (!hasCachedPosts) {
                 setContentLoading(true);
@@ -1254,7 +1281,7 @@ const Portal = () => {
                 try {
                     localStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 20)));
                 } catch (_) {
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 15))); } catch (__) {}
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 15))); } catch (__) { }
                 }
             }
 
@@ -1597,9 +1624,9 @@ const Portal = () => {
                     <div className="nsfw-gate-card">
                         <div className="nsfw-gate-icon">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                                <line x1="12" y1="9" x2="12" y2="13"/>
-                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
                             </svg>
                         </div>
                         <div className="nsfw-gate-badge">+18</div>
@@ -1685,8 +1712,8 @@ const Portal = () => {
                 <main className={`discord-main-content ${isMobileView && !mobileChannelOpen ? 'mobile-content-hidden' : ''} ${isVoiceChannel ? 'voice-channel-active' : ''}`}>
                     {/* Dual Header: Sub-Header System */}
                     {isMobileView && !mobileChannelOpen && (
-                        <SubHeader 
-                            title={portal?.name || 'Portal'} 
+                        <SubHeader
+                            title={portal?.name || 'Portal'}
                             showBack={false}
                         />
                     )}
@@ -1715,14 +1742,20 @@ const Portal = () => {
                                                         portalId={id}
                                                         channelId={currentChannel}
                                                         channelName={channelName}
-                                                        onBack={() => setMobileChannelOpen(false)}
+                                                        onBack={() => {
+                                                            explicitMobileBackRef.current = true;
+                                                            setMobileChannelOpen(false);
+                                                        }}
                                                     />
                                                 ) : (
                                                     <VoiceChannel
                                                         portalId={id}
                                                         channelId={currentChannel}
                                                         channelName={channelName}
-                                                        onBack={() => setMobileChannelOpen(false)}
+                                                        onBack={() => {
+                                                            explicitMobileBackRef.current = true;
+                                                            setMobileChannelOpen(false);
+                                                        }}
                                                     />
                                                 )}
                                             </Suspense>
@@ -1753,8 +1786,8 @@ const Portal = () => {
                                                         <header className={`channel-top-bar ${!isMobileView ? 'desktop-only' : ''}`}>
                                                             <div className="channel-title-wrapper">
                                                                 {isMobileView && (
-                                                                    <button 
-                                                                        className="mobile-back-btn-inline" 
+                                                                    <button
+                                                                        className="mobile-back-btn-inline"
                                                                         onClick={() => setMobileChannelOpen(false)}
                                                                     >
                                                                         <svg
@@ -1850,287 +1883,287 @@ const Portal = () => {
 
                                                             {/* Message Area */}
                                                             <div
-                                                                        className={`portal-feed-container discord-feed ${isTanitimPortal ? 'tanitim-feed-mode' : ''}`}
-                                                                        onScroll={handleScroll}
-                                                                        ref={feedRef}
-                                                                    >
-                                                                        {isTanitimPortal ? (
-                                                                            <TanitimShowcase />
-                                                                        ) : (
-                                                                            <>
-                                                                                {/* Feed Header / Welcome */}
-                                                                                {posts.length === 0 && !loading && (
-                                                                                    <div className="empty-portal">
-                                                                                        <div className="empty-portal-icon">👋</div>
-                                                                                        <h3>
-                                                                                            {portal?.channels?.find((c) => c._id === currentChannel)?.type === 'voice' ? '🎙️' :
-                                                                                            portal?.channels?.find((c) => c._id === currentChannel)?.type === 'conference' ? '🎤' : 
+                                                                className={`portal-feed-container discord-feed ${isTanitimPortal ? 'tanitim-feed-mode' : ''}`}
+                                                                onScroll={handleScroll}
+                                                                ref={feedRef}
+                                                            >
+                                                                {isTanitimPortal ? (
+                                                                    <TanitimShowcase />
+                                                                ) : (
+                                                                    <>
+                                                                        {/* Feed Header / Welcome */}
+                                                                        {posts.length === 0 && !loading && (
+                                                                            <div className="empty-portal">
+                                                                                <div className="empty-portal-icon">👋</div>
+                                                                                <h3>
+                                                                                    {portal?.channels?.find((c) => c._id === currentChannel)?.type === 'voice' ? '🎙️' :
+                                                                                        portal?.channels?.find((c) => c._id === currentChannel)?.type === 'conference' ? '🎤' :
                                                                                             portal?.channels?.find((c) => c._id === currentChannel)?.type === 'image' ? '🖼️' : '#'}
-                                                                                            {portal?.channels?.find(
-                                                                                                (c) => String(c._id) === String(currentChannel)
-                                                                                            )?.name || '...'}{' '}
-                                                                                            kanalına hoş geldin!
-                                                                                        </h3>
-                                                                                        <p>
-                                                                                            Bu kanalda henüz mesaj yok. İlk mesajı sen at!
-                                                                                        </p>
-                                                                                    </div>
-                                                                                )}
-
-                                                                                {/* Posts List */}
-                                                                                {(() => {
-                                                                                    let organicCount = 0;
-                                                                                    return Array.isArray(posts) && posts.map((post, index) => {
-                                                                                        const isBotPost = post.isBot === true || post.author?.isBot === true;
-                                                                                        if (!isBotPost) {
-                                                                                            organicCount++;
-                                                                                        }
-                                                                                        const showAdAfter = adsConfig.enableAds && !isBotPost && organicCount > 0 && organicCount % 8 === 0;
-                                                                                        return (
-                                                                                            <Fragment key={post._id}>
-                                                                                                <PostCard
-                                                                                                    key={post._id}
-                                                                                                    post={post}
-                                                                                                    onDelete={handleDeletePost}
-                                                                                                    onPin={handlePin}
-                                                                                                    onArchive={handleArchivePost}
-                                                                                                    isAdmin={isAdmin}
-                                                                                                />
-                                                                                                {index < posts.length - 1 && <div className="post-separator" />}
-                                                                                                {showAdAfter && (
-                                                                                                    <Fragment key={`ad-${post._id}-${index}`}>
-                                                                                                        {adsConfig.enableAdsterraAds ? (
-                                                                                                            <AdsterraPostCard />
-                                                                                                        ) : adsConfig.enableProgrammaticAds ? (
-                                                                                                            <ExternalAdHolder />
-                                                                                                        ) : (
-                                                                                                            <AdPostCard index={Math.floor(organicCount / 8) - 1} />
-                                                                                                        )}
-                                                                                                        {index < posts.length - 1 && <div className="post-separator" />}
-                                                                                                    </Fragment>
-                                                                                                )}
-                                                                                            </Fragment>
-                                                                                        );
-                                                                                    });
-                                                                                })()}
-
-                                                                                {/* Infinite Scroll Sentinel */}
-                                                                                <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                                    {loadingMore && <div className="spinner-small"></div>}
-                                                                                </div>
-                                                                            </>
+                                                                                    {portal?.channels?.find(
+                                                                                        (c) => String(c._id) === String(currentChannel)
+                                                                                    )?.name || '...'}{' '}
+                                                                                    kanalına hoş geldin!
+                                                                                </h3>
+                                                                                <p>
+                                                                                    Bu kanalda henüz mesaj yok. İlk mesajı sen at!
+                                                                                </p>
+                                                                            </div>
                                                                         )}
-                                                                    </div>
 
-                                                                    {/* Scroll To Top Button - Round with progress ring */}
-                                                                    {(() => {
-                                                                        const radius = 20;
-                                                                        const circumference = 2 * Math.PI * radius;
-                                                                        const strokeDashoffset = circumference - (scrollProgress / 100) * circumference;
-                                                                        return (
-                                                                            <button
-                                                                                className={`floating-scroll-top portal-scroll-top ${showScrollTop ? 'visible' : ''}`}
-                                                                                onClick={scrollToTop}
-                                                                                aria-label="Yukarı Çık"
-                                                                            >
-                                                                                <svg className="progress-ring" width="50" height="50" viewBox="0 0 50 50">
-                                                                                    <circle className="progress-ring-track" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" />
-                                                                                    <circle className="progress-ring-fill" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" style={{ strokeDasharray: circumference, strokeDashoffset }} />
-                                                                                </svg>
-                                                                                <div className="scroll-icon">
-                                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                                        <path d="m18 15-6-6-6 6" />
-                                                                                    </svg>
-                                                                                </div>
-                                                                            </button>
-                                                                        );
-                                                                    })()}
+                                                                        {/* Posts List */}
+                                                                        {(() => {
+                                                                            let organicCount = 0;
+                                                                            return Array.isArray(posts) && posts.map((post, index) => {
+                                                                                const isBotPost = post.isBot === true || post.author?.isBot === true;
+                                                                                if (!isBotPost) {
+                                                                                    organicCount++;
+                                                                                }
+                                                                                const showAdAfter = adsConfig.enableAds && !isBotPost && organicCount > 0 && organicCount % 8 === 0;
+                                                                                return (
+                                                                                    <Fragment key={post._id}>
+                                                                                        <PostCard
+                                                                                            key={post._id}
+                                                                                            post={post}
+                                                                                            onDelete={handleDeletePost}
+                                                                                            onPin={handlePin}
+                                                                                            onArchive={handleArchivePost}
+                                                                                            isAdmin={isAdmin}
+                                                                                        />
+                                                                                        {index < posts.length - 1 && <div className="post-separator" />}
+                                                                                        {showAdAfter && (
+                                                                                            <Fragment key={`ad-${post._id}-${index}`}>
+                                                                                                {adsConfig.enableAdsterraAds ? (
+                                                                                                    <AdsterraPostCard />
+                                                                                                ) : adsConfig.enableProgrammaticAds ? (
+                                                                                                    <ExternalAdHolder />
+                                                                                                ) : (
+                                                                                                    <AdPostCard index={Math.floor(organicCount / 8) - 1} />
+                                                                                                )}
+                                                                                                {index < posts.length - 1 && <div className="post-separator" />}
+                                                                                            </Fragment>
+                                                                                        )}
+                                                                                    </Fragment>
+                                                                                );
+                                                                            });
+                                                                        })()}
 
-                                                                    {isTanitimPortal ? null : canCreatePostInPortal ? (
-                                                                        <div className="channel-input-area">
-                                                                        {showPlusMenu && createPortal(
+                                                                        {/* Infinite Scroll Sentinel */}
+                                                                        <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                            {loadingMore && <div className="spinner-small"></div>}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Scroll To Top Button - Round with progress ring */}
+                                                            {(() => {
+                                                                const radius = 20;
+                                                                const circumference = 2 * Math.PI * radius;
+                                                                const strokeDashoffset = circumference - (scrollProgress / 100) * circumference;
+                                                                return (
+                                                                    <button
+                                                                        className={`floating-scroll-top portal-scroll-top ${showScrollTop ? 'visible' : ''}`}
+                                                                        onClick={scrollToTop}
+                                                                        aria-label="Yukarı Çık"
+                                                                    >
+                                                                        <svg className="progress-ring" width="50" height="50" viewBox="0 0 50 50">
+                                                                            <circle className="progress-ring-track" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" />
+                                                                            <circle className="progress-ring-fill" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" style={{ strokeDasharray: circumference, strokeDashoffset }} />
+                                                                        </svg>
+                                                                        <div className="scroll-icon">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                <path d="m18 15-6-6-6 6" />
+                                                                            </svg>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })()}
+
+                                                            {isTanitimPortal ? null : canCreatePostInPortal ? (
+                                                                <div className="channel-input-area">
+                                                                    {showPlusMenu && createPortal(
+                                                                        <div
+                                                                            className="plus-menu portal-plus-menu-portal"
+                                                                            ref={plusMenuRef}
+                                                                            style={{
+                                                                                position: 'fixed',
+                                                                                top: menuPosition.top,
+                                                                                left: menuPosition.left,
+                                                                                zIndex: 99999,
+                                                                            }}
+                                                                        >
                                                                             <div
-                                                                                className="plus-menu portal-plus-menu-portal"
-                                                                                ref={plusMenuRef}
-                                                                                style={{
-                                                                                    position: 'fixed',
-                                                                                    top: menuPosition.top,
-                                                                                    left: menuPosition.left,
-                                                                                    zIndex: 99999,
+                                                                                className="plus-menu-item"
+                                                                                onClick={() => {
+                                                                                    galleryInputRef.current?.click();
+                                                                                    setShowPlusMenu(false);
                                                                                 }}
                                                                             >
+                                                                                <div className="plus-menu-icon">
+                                                                                    <Image size={18} strokeWidth={1.9} />
+                                                                                </div>
+                                                                                Galeri
+                                                                            </div>
+                                                                            <div
+                                                                                className="plus-menu-item"
+                                                                                onClick={() => {
+                                                                                    setShowCameraModal(true);
+                                                                                    setShowPlusMenu(false);
+                                                                                }}
+                                                                            >
+                                                                                <div className="plus-menu-icon">
+                                                                                    <Camera size={18} strokeWidth={1.9} />
+                                                                                </div>
+                                                                                Kamera
+                                                                            </div>
+                                                                            {!isImageChannel && (
+                                                                                <>
                                                                                     <div
                                                                                         className="plus-menu-item"
                                                                                         onClick={() => {
-                                                                                            galleryInputRef.current?.click();
+                                                                                            setShowAudioPopover(true);
                                                                                             setShowPlusMenu(false);
                                                                                         }}
                                                                                     >
                                                                                         <div className="plus-menu-icon">
-                                                                                            <Image size={18} strokeWidth={1.9} />
+                                                                                            <Mic size={18} strokeWidth={1.9} />
                                                                                         </div>
-                                                                                        Galeri
+                                                                                        Ses
                                                                                     </div>
                                                                                     <div
                                                                                         className="plus-menu-item"
                                                                                         onClick={() => {
-                                                                                            setShowCameraModal(true);
+                                                                                            setShowFilePickerModal(true);
                                                                                             setShowPlusMenu(false);
                                                                                         }}
                                                                                     >
                                                                                         <div className="plus-menu-icon">
-                                                                                            <Camera size={18} strokeWidth={1.9} />
+                                                                                            <FolderOpen size={18} strokeWidth={1.9} />
                                                                                         </div>
-                                                                                        Kamera
+                                                                                        Dosya
                                                                                     </div>
-                                                                                    {!isImageChannel && (
-                                                                                        <>
-                                                                                            <div
-                                                                                                className="plus-menu-item"
-                                                                                                onClick={() => {
-                                                                                                    setShowAudioPopover(true);
-                                                                                                    setShowPlusMenu(false);
-                                                                                                }}
-                                                                                            >
-                                                                                                <div className="plus-menu-icon">
-                                                                                                    <Mic size={18} strokeWidth={1.9} />
-                                                                                                </div>
-                                                                                                Ses
-                                                                                            </div>
-                                                                                            <div
-                                                                                                className="plus-menu-item"
-                                                                                                onClick={() => {
-                                                                                                    setShowFilePickerModal(true);
-                                                                                                    setShowPlusMenu(false);
-                                                                                                }}
-                                                                                            >
-                                                                                                <div className="plus-menu-icon">
-                                                                                                    <FolderOpen size={18} strokeWidth={1.9} />
-                                                                                                </div>
-                                                                                                Dosya
-                                                                                            </div>
-                                                                                        </>
-                                                                                    )}
-                                                                                </div>,
-                                                                                document.body
+                                                                                </>
                                                                             )}
-                                                                        <input
-                                                                            type="file"
-                                                                            ref={galleryInputRef}
-                                                                            onChange={handleGallerySelect}
-                                                                            style={{ display: 'none' }}
-                                                                            accept={isImageChannel ? 'image/*,.gif' : 'image/*,video/*,.gif'}
-                                                                            multiple
-                                                                        />
+                                                                        </div>,
+                                                                        document.body
+                                                                    )}
+                                                                    <input
+                                                                        type="file"
+                                                                        ref={galleryInputRef}
+                                                                        onChange={handleGallerySelect}
+                                                                        style={{ display: 'none' }}
+                                                                        accept={isImageChannel ? 'image/*,.gif' : 'image/*,video/*,.gif'}
+                                                                        multiple
+                                                                    />
 
-                                                                        {quotedPost && (
-                                                                            <div className="input-quoted-preview">
-                                                                                <div className="input-quoted-preview-header">
-                                                                                    {quotedPost.author?.profile?.avatar ? (
-                                                                                        <img
-                                                                                            src={getImageUrl(quotedPost.author.profile.avatar)}
-                                                                                            alt=""
-                                                                                            className="quoted-preview-avatar"
-                                                                                            loading="lazy"
-                                                                                            decoding="async"
-                                                                                            width="32"
-                                                                                            height="32"
-                                                                                        />
-                                                                                    ) : (
-                                                                                        <div className="quoted-preview-avatar-placeholder">
-                                                                                            {quotedPost.author?.username?.charAt(0).toUpperCase()}
-                                                                                        </div>
-                                                                                    )}
-                                                                                    <div className="quoted-preview-meta">
-                                                                                        <span className="quoted-preview-author">{quotedPost.author?.profile?.displayName || quotedPost.author?.username}</span>
-                                                                                        <span className="quoted-preview-username">@{quotedPost.author?.username}</span>
+                                                                    {quotedPost && (
+                                                                        <div className="input-quoted-preview">
+                                                                            <div className="input-quoted-preview-header">
+                                                                                {quotedPost.author?.profile?.avatar ? (
+                                                                                    <img
+                                                                                        src={getImageUrl(quotedPost.author.profile.avatar)}
+                                                                                        alt=""
+                                                                                        className="quoted-preview-avatar"
+                                                                                        loading="lazy"
+                                                                                        decoding="async"
+                                                                                        width="32"
+                                                                                        height="32"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <div className="quoted-preview-avatar-placeholder">
+                                                                                        {quotedPost.author?.username?.charAt(0).toUpperCase()}
                                                                                     </div>
-                                                                                    <button
-                                                                                        className="remove-quote-btn"
-                                                                                        onClick={() => setQuotedPost(null)}
-                                                                                    >
-                                                                                        <X size={16} />
-                                                                                    </button>
+                                                                                )}
+                                                                                <div className="quoted-preview-meta">
+                                                                                    <span className="quoted-preview-author">{quotedPost.author?.profile?.displayName || quotedPost.author?.username}</span>
+                                                                                    <span className="quoted-preview-username">@{quotedPost.author?.username}</span>
                                                                                 </div>
-                                                                                <div className="input-quoted-preview-body">
-                                                                                    <p className="input-quoted-preview-text">
-                                                                                        {quotedPost.content}
-                                                                                    </p>
-                                                                                    {quotedPost.media && (
-                                                                                        <div className="input-quoted-preview-media">
-                                                                                            {quotedPost.mediaType === 'video' ? (
-                                                                                                <div className="media-placeholder">
-                                                                                                    <Youtube size={20} />
-                                                                                                    <span>Video Alıntısı</span>
-                                                                                                </div>
-                                                                                            ) : (
-                                                                                                <img
-                                                                    src={getImageUrl(quotedPost.media)}
-                                                                    alt=""
-                                                                    loading="lazy"
-                                                                    decoding="async"
-                                                                    width="120"
-                                                                    height="80"
-                                                                />
-                                                                                            )}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
+                                                                                <button
+                                                                                    className="remove-quote-btn"
+                                                                                    onClick={() => setQuotedPost(null)}
+                                                                                >
+                                                                                    <X size={16} />
+                                                                                </button>
                                                                             </div>
-                                                                        )}
-
-                                                                        {isImageChannel && messageText.trim() && attachmentDrafts.length === 0 && (
-                                                                            <div className="image-channel-warning" style={{
-                                                                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                                                                border: '1px solid rgba(239, 68, 68, 0.25)',
-                                                                                color: '#f87171',
-                                                                                padding: '8px 12px',
-                                                                                borderRadius: '8px',
-                                                                                fontSize: '13px',
-                                                                                marginBottom: '8px',
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                gap: '8px'
-                                                                            }}>
-                                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                                                                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                                                                    <line x1="12" y1="9" x2="12" y2="13" />
-                                                                                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                                                                                </svg>
-                                                                                <span>Görsel kanallarında paylaşım yapabilmek için mutlaka bir görsel eklemelisiniz.</span>
+                                                                            <div className="input-quoted-preview-body">
+                                                                                <p className="input-quoted-preview-text">
+                                                                                    {quotedPost.content}
+                                                                                </p>
+                                                                                {quotedPost.media && (
+                                                                                    <div className="input-quoted-preview-media">
+                                                                                        {quotedPost.mediaType === 'video' ? (
+                                                                                            <div className="media-placeholder">
+                                                                                                <Youtube size={20} />
+                                                                                                <span>Video Alıntısı</span>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <img
+                                                                                                src={getImageUrl(quotedPost.media)}
+                                                                                                alt=""
+                                                                                                loading="lazy"
+                                                                                                decoding="async"
+                                                                                                width="120"
+                                                                                                height="80"
+                                                                                            />
+                                                                                        )}
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
-                                                                        )}
+                                                                        </div>
+                                                                    )}
 
-                                                                        {!isGhost && (
-                                                                            <ComposerAttachmentTray
-                                                                                attachments={attachmentDrafts}
-                                                                                detectedYouTube={detectedYouTube}
-                                                                                onRemoveAttachment={handleRemoveAttachmentDraft}
-                                                                                onClearAll={handleClearAttachmentDrafts}
-                                                                            />
-                                                                        )}
+                                                                    {isImageChannel && messageText.trim() && attachmentDrafts.length === 0 && (
+                                                                        <div className="image-channel-warning" style={{
+                                                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                                            color: '#f87171',
+                                                                            padding: '8px 12px',
+                                                                            borderRadius: '8px',
+                                                                            fontSize: '13px',
+                                                                            marginBottom: '8px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '8px'
+                                                                        }}>
+                                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                                                                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                                                                <line x1="12" y1="9" x2="12" y2="13" />
+                                                                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                                                                            </svg>
+                                                                            <span>Görsel kanallarında paylaşım yapabilmek için mutlaka bir görsel eklemelisiniz.</span>
+                                                                        </div>
+                                                                    )}
 
-                                                                        {isGhost ? (
-                                                                            <div className="ghost-channel-notice" style={{
-                                                                                backgroundColor: '#0c0c0c',
-                                                                                borderTop: '1px solid #222',
-                                                                                color: '#888',
-                                                                                padding: '14px 20px',
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                justifyContent: 'center',
-                                                                                gap: '10px',
-                                                                                fontSize: '13px'
-                                                                            }}>
-                                                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.7 }}>
-                                                                                    <path d="M12 2a5 5 0 0 0-5 5v14l3-2 2 2 2-2 3 2V7a5 5 0 0 0-5-5z" />
-                                                                                    <circle cx="10" cy="8" r="1" fill="currentColor" />
-                                                                                    <circle cx="14" cy="8" r="1" fill="currentColor" />
-                                                                                </svg>
-                                                                                <span>Hayalet Modu: Salt okunur izleme modundasınız. Kanalda mesaj ve gönderi paylaşılamaz.</span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="message-input-wrapper">
+                                                                    {!isGhost && (
+                                                                        <ComposerAttachmentTray
+                                                                            attachments={attachmentDrafts}
+                                                                            detectedYouTube={detectedYouTube}
+                                                                            onRemoveAttachment={handleRemoveAttachmentDraft}
+                                                                            onClearAll={handleClearAttachmentDrafts}
+                                                                        />
+                                                                    )}
+
+                                                                    {isGhost ? (
+                                                                        <div className="ghost-channel-notice" style={{
+                                                                            backgroundColor: '#0c0c0c',
+                                                                            borderTop: '1px solid #222',
+                                                                            color: '#888',
+                                                                            padding: '14px 20px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            gap: '10px',
+                                                                            fontSize: '13px'
+                                                                        }}>
+                                                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.7 }}>
+                                                                                <path d="M12 2a5 5 0 0 0-5 5v14l3-2 2 2 2-2 3 2V7a5 5 0 0 0-5-5z" />
+                                                                                <circle cx="10" cy="8" r="1" fill="currentColor" />
+                                                                                <circle cx="14" cy="8" r="1" fill="currentColor" />
+                                                                            </svg>
+                                                                            <span>Hayalet Modu: Salt okunur izleme modundasınız. Kanalda mesaj ve gönderi paylaşılamaz.</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="message-input-wrapper">
                                                                             <button
                                                                                 ref={plusButtonRef}
                                                                                 className={`input-action-btn upload-btn ${showPlusMenu ? 'active' : ''}`}
@@ -2205,70 +2238,70 @@ const Portal = () => {
                                                                             </div>
                                                                         </div>
                                                                     )}
-                                                                        {/* Portal Typing Indicator */}
-                                                                        {portalTypingUsers && portalTypingUsers.length > 0 && (
-                                                                            <div className="portal-typing-indicator" style={{ marginTop: '8px' }}>
-                                                                                <div className="typing-avatars-group">
-                                                                                    {portalTypingUsers.map((typer) => (
-                                                                                        <img
-                                                                                            key={typer.userId}
-                                                                                            src={getImageUrl(typer.avatar)}
-                                                                                            alt={typer.displayName}
-                                                                                            className="typing-avatar"
-                                                                                            title={typer.displayName}
-                                                                                        />
-                                                                                    ))}
-                                                                                </div>
-                                                                                <span className="typing-text">
-                                                                                    {portalTypingUsers.length === 1 ? (
-                                                                                        <><strong>{portalTypingUsers[0].displayName}</strong> yazıyor...</>
-                                                                                    ) : portalTypingUsers.length === 2 ? (
-                                                                                        <><strong>{portalTypingUsers[0].displayName}</strong> ve <strong>{portalTypingUsers[1].displayName}</strong> yazıyor...</>
-                                                                                    ) : (
-                                                                                        <><strong>{portalTypingUsers[0].displayName}</strong> ve {portalTypingUsers.length - 1} kişi daha yazıyor...</>
-                                                                                    )}
-                                                                                </span>
+                                                                    {/* Portal Typing Indicator */}
+                                                                    {portalTypingUsers && portalTypingUsers.length > 0 && (
+                                                                        <div className="portal-typing-indicator" style={{ marginTop: '8px' }}>
+                                                                            <div className="typing-avatars-group">
+                                                                                {portalTypingUsers.map((typer) => (
+                                                                                    <img
+                                                                                        key={typer.userId}
+                                                                                        src={getImageUrl(typer.avatar)}
+                                                                                        alt={typer.displayName}
+                                                                                        className="typing-avatar"
+                                                                                        title={typer.displayName}
+                                                                                    />
+                                                                                ))}
                                                                             </div>
+                                                                            <span className="typing-text">
+                                                                                {portalTypingUsers.length === 1 ? (
+                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> yazıyor...</>
+                                                                                ) : portalTypingUsers.length === 2 ? (
+                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> ve <strong>{portalTypingUsers[1].displayName}</strong> yazıyor...</>
+                                                                                ) : (
+                                                                                    <><strong>{portalTypingUsers[0].displayName}</strong> ve {portalTypingUsers.length - 1} kişi daha yazıyor...</>
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="channel-input-area" style={{ padding: '0 20px 24px 20px', backgroundColor: 'transparent', borderTop: 'none' }}>
+                                                                    <div style={{
+                                                                        display: 'flex',
+                                                                        justifyContent: 'space-between',
+                                                                        alignItems: 'center',
+                                                                        background: 'var(--glass-bg)',
+                                                                        padding: '12px 20px',
+                                                                        borderRadius: '8px',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        backdropFilter: 'blur(20px) saturate(160%)',
+                                                                        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+                                                                        boxShadow: 'var(--glass-shadow)'
+                                                                    }}>
+                                                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '14px' }}>
+                                                                            Bu kanalda mesaj göndermek için {user ? 'portala katılmalısın.' : 'giriş yapmalısın.'}
+                                                                        </span>
+                                                                        {user ? (
+                                                                            <button
+                                                                                className="privacy-join-btn"
+                                                                                onClick={handleJoin}
+                                                                                disabled={portal.isRequested}
+                                                                                style={{ margin: 0, padding: '8px 16px', borderRadius: '4px', fontSize: '13px', minWidth: 'auto', width: 'auto' }}
+                                                                            >
+                                                                                {portal.isRequested ? 'İstek Gönderildi' : 'Portala Katıl'}
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                className="privacy-join-btn"
+                                                                                onClick={() => navigate('/login')}
+                                                                                style={{ margin: 0, padding: '8px 16px', borderRadius: '4px', fontSize: '13px', minWidth: 'auto', width: 'auto' }}
+                                                                            >
+                                                                                Giriş Yap
+                                                                            </button>
                                                                         )}
                                                                     </div>
-                                                                ) : (
-                                                                    <div className="channel-input-area" style={{ padding: '0 20px 24px 20px', backgroundColor: 'transparent', borderTop: 'none' }}>
-                                                                        <div style={{
-                                                                            display: 'flex', 
-                                                                            justifyContent: 'space-between', 
-                                                                            alignItems: 'center', 
-                                                                            background: 'var(--glass-bg)', 
-                                                                            padding: '12px 20px', 
-                                                                            borderRadius: '8px',
-                                                                            border: '1px solid var(--glass-border)',
-                                                                            backdropFilter: 'blur(20px) saturate(160%)',
-                                                                            WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-                                                                            boxShadow: 'var(--glass-shadow)'
-                                                                        }}>
-                                                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '14px' }}>
-                                                                                Bu kanalda mesaj göndermek için {user ? 'portala katılmalısın.' : 'giriş yapmalısın.'}
-                                                                            </span>
-                                                                            {user ? (
-                                                                                <button 
-                                                                                    className="privacy-join-btn" 
-                                                                                    onClick={handleJoin} 
-                                                                                    disabled={portal.isRequested}
-                                                                                    style={{ margin: 0, padding: '8px 16px', borderRadius: '4px', fontSize: '13px', minWidth: 'auto', width: 'auto' }}
-                                                                                >
-                                                                                    {portal.isRequested ? 'İstek Gönderildi' : 'Portala Katıl'}
-                                                                                </button>
-                                                                            ) : (
-                                                                                <button 
-                                                                                    className="privacy-join-btn" 
-                                                                                    onClick={() => navigate('/login')}
-                                                                                    style={{ margin: 0, padding: '8px 16px', borderRadius: '4px', fontSize: '13px', minWidth: 'auto', width: 'auto' }}
-                                                                                >
-                                                                                    Giriş Yap
-                                                                                </button>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
+                                                                </div>
+                                                            )}
                                                         </>
                                                     )}
                                                 </>

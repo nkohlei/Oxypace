@@ -1,6 +1,78 @@
-import { X, FileText, Folder, Music, Video, Youtube } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, FileText, Folder, Music, Mic, Video, Youtube } from 'lucide-react';
 import { formatDuration, formatFileSize } from '../utils/mediaAttachments';
 import './ComposerAttachmentTray.css';
+
+const AudioDraftChip = ({ att, onRemoveAttachment }) => {
+    const [coverUrl, setCoverUrl] = useState(att.coverPreviewUrl || '');
+    const [palette, setPalette] = useState(att.palette || []);
+
+    useEffect(() => {
+        if (att.coverPreviewUrl) {
+            setCoverUrl(att.coverPreviewUrl);
+        }
+        if (Array.isArray(att.palette) && att.palette.length >= 2) {
+            setPalette(att.palette);
+        }
+        let active = true;
+        if (!att.isVoiceRecording && att.coverMetaPromise) {
+            att.coverMetaPromise.then((res) => {
+                if (!active || !res) return;
+                if (res.coverPreviewUrl) {
+                    att.coverPreviewUrl = res.coverPreviewUrl;
+                    setCoverUrl(res.coverPreviewUrl);
+                }
+                if (Array.isArray(res.palette) && res.palette.length >= 2) {
+                    att.palette = res.palette;
+                    setPalette(res.palette);
+                }
+            }).catch(() => {});
+        }
+        return () => { active = false; };
+    }, [att]);
+
+    const chipStyle = !att.isVoiceRecording && palette.length >= 2
+        ? {
+            background: `linear-gradient(125deg, ${palette[0]}, ${palette[1]})`,
+            borderColor: 'rgba(255, 255, 255, 0.24)',
+        }
+        : undefined;
+
+    return (
+        <div
+            className={`cat-file-chip ${!att.isVoiceRecording && palette.length >= 2 ? 'has-palette' : ''}`}
+            style={chipStyle}
+        >
+            {coverUrl ? (
+                <img src={coverUrl} alt="" className="cat-chip-cover" />
+            ) : (
+                <div className="cat-chip-icon">
+                    {att.isVoiceRecording ? (
+                        <Mic size={16} strokeWidth={2} />
+                    ) : (
+                        <Music size={16} strokeWidth={2} />
+                    )}
+                </div>
+            )}
+            <div className="cat-chip-meta">
+                <span className="cat-chip-name" title={att.name}>{att.name}</span>
+                <span className="cat-chip-sub">
+                    {att.isVoiceRecording ? 'SES KAYDI' : (att.badge || 'SES DOSYASI')}
+                    {att.duration ? ` • ${formatDuration(att.duration)}` : ''}
+                    {` • ${formatFileSize(att.size)}`}
+                </span>
+            </div>
+            <button
+                type="button"
+                className="cat-chip-del"
+                onClick={() => onRemoveAttachment?.(att.id)}
+                aria-label="Kaldır"
+            >
+                <X size={14} strokeWidth={2.2} />
+            </button>
+        </div>
+    );
+};
 
 const ComposerAttachmentTray = ({
     attachments = [],
@@ -73,27 +145,11 @@ const ComposerAttachmentTray = ({
 
                         if (att.kind === 'audio') {
                             return (
-                                <div key={att.id} className="cat-file-chip">
-                                    <div className="cat-chip-icon">
-                                        <Music size={16} strokeWidth={2} />
-                                    </div>
-                                    <div className="cat-chip-meta">
-                                        <span className="cat-chip-name" title={att.name}>{att.name}</span>
-                                        <span className="cat-chip-sub">
-                                            {att.badge || 'SES'}
-                                            {att.duration ? ` • ${formatDuration(att.duration)}` : ''}
-                                            {` • ${formatFileSize(att.size)}`}
-                                        </span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="cat-chip-del"
-                                        onClick={() => onRemoveAttachment?.(att.id)}
-                                        aria-label="Kaldır"
-                                    >
-                                        <X size={14} strokeWidth={2.2} />
-                                    </button>
-                                </div>
+                                <AudioDraftChip
+                                    key={att.id}
+                                    att={att}
+                                    onRemoveAttachment={onRemoveAttachment}
+                                />
                             );
                         }
 

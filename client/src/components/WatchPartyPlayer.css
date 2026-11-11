@@ -60,13 +60,15 @@
     padding: 0 !important;
 }
 
-/* Hide mouse cursor when controls are hidden or when cursor is moved to screen edges in fullscreen */
-.watch-party-player-wrapper.hide-cursor,
-.watch-party-player-wrapper.hide-cursor *,
-.watch-party-player-container.hide-cursor,
-.watch-party-player-container.hide-cursor *,
-.watch-party-player-wrapper.hide-cursor .watch-party-subtitle-overlay {
-    cursor: none !important;
+/* Hide mouse cursor on desktop fine-pointer devices only (never interfere with touch hit-testing) */
+@media (hover: hover) and (pointer: fine) {
+    .watch-party-player-wrapper.hide-cursor,
+    .watch-party-player-wrapper.hide-cursor *,
+    .watch-party-player-container.hide-cursor,
+    .watch-party-player-container.hide-cursor *,
+    .watch-party-player-wrapper.hide-cursor .watch-party-subtitle-overlay {
+        cursor: none !important;
+    }
 }
 
 .watch-party-player-wrapper:fullscreen .watch-party-player-container,

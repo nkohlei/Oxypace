@@ -6,6 +6,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
 import { adsConfig } from '../config/ads';
+import TimelineScrubPreview from './TimelineScrubPreview';
 import './VideoPlayer.css';
 
 const mountedVideos = new Set();
@@ -353,6 +354,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
       const isFs = !!(fsEl && (fsEl === containerRef.current || containerRef.current?.contains(fsEl)));
       setIsFullscreen(isFs);
+      if (!isFs) {
+        setIsQualityMenuOpen(false);
+        setIsSettingsOpen(false);
+      }
     };
     document.addEventListener('fullscreenchange', handleFsChange);
     document.addEventListener('webkitfullscreenchange', handleFsChange);
@@ -1499,19 +1504,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   }, [activeVideo, naturalDimensions, handleTimeUpdate, watchParty, onReady, handleCaptureFrame]);
 
-  const handleScrub = useCallback((e) => {
-    e.stopPropagation();
+  const handleCommitSeek = useCallback((targetTime) => {
     if (isAdPlaying) return; // Lock scrubbing during ad
     const el = getActiveEl(); if (!el || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const frac = (e.clientX - rect.left) / rect.width;
-    const targetTime = frac * duration;
     if (watchParty) {
       if (onSeek) onSeek(targetTime);
       return;
     }
     el.currentTime = targetTime;
-    setProgress(frac * 100);
+    setCurrentTime(targetTime);
+    setProgress((targetTime / duration) * 100);
   }, [duration, activeVideo, isAdPlaying, watchParty, onSeek]);
 
   const handleSeekOffset = useCallback((offset, e) => {
@@ -2042,13 +2044,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
       {!showCenterPlayBtn && (
         <div className={`native-controls-ui is-always-visible ${!showControls ? 'controls-hidden' : ''}`}>
-        <div className={`native-progress-area ${isAdPlaying ? 'ad-locked' : ''}`} style={isAdPlaying ? { pointerEvents: 'none' } : {}} onClick={handleScrub}>
-          <div className="native-progress-track">
-            <div className="native-progress-fill" style={{ width: `${progress}%` }}>
-              {!isAdPlaying && <div className="native-progress-thumb" />}
-            </div>
-          </div>
-        </div>
+        <TimelineScrubPreview
+          currentTime={currentTime}
+          duration={duration}
+          previewSrc={src360 || src144 || srcOriginal || resolveVideoUrl(src)}
+          containerRef={containerRef}
+          disabled={isAdPlaying}
+          formatTime={formatTime}
+          onScrubStart={() => setShowControls(true)}
+          onScrubMove={() => setShowControls(true)}
+          onCommitSeek={handleCommitSeek}
+          className={isAdPlaying ? 'ad-locked' : ''}
+        />
 
         <div className="native-bottom-row">
           <div className="native-left-controls">

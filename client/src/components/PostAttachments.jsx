@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
     Play,
     Pause,
@@ -8,6 +8,7 @@ import {
     ChevronDown,
     ChevronUp,
     Music,
+    Mic,
     Film,
     Copy,
     Check,
@@ -20,6 +21,7 @@ import {
 import { getImageUrl } from '../utils/imageUtils';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import { formatDuration, formatFileSize, extractYouTubeInfo } from '../utils/mediaAttachments';
+import { extractPaletteFromImageSource } from '../utils/audioMetadata';
 import VideoPlayer from './VideoPlayer';
 import PostImageGallery from './PostImageGallery';
 import './PostAttachments.css';
@@ -97,11 +99,42 @@ const InlineYouTubeFacade = ({ url, youtubeId }) => {
 
 const AudioAttachmentCard = ({ att }) => {
     const audioRef = useRef(null);
+    const sliderRef = useRef(null);
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(att.duration || 0);
+    const [scrubbingPct, setScrubbingPct] = useState(null);
+
+    const isVoiceRecording =
+        typeof att.isVoiceRecording === 'boolean'
+            ? att.isVoiceRecording
+            : /^ses-kaydi-\d+/i.test(String(att.name || ''));
 
     const src = getImageUrl(att.url);
+    const resolvedCover = !isVoiceRecording && att.coverUrl ? getImageUrl(att.coverUrl) : '';
+
+    const [palette, setPalette] = useState(() =>
+        !isVoiceRecording && Array.isArray(att.palette) ? att.palette.filter(Boolean).slice(0, 3) : []
+    );
+
+    useEffect(() => {
+        if (!isVoiceRecording && Array.isArray(att.palette) && att.palette.length >= 2) {
+            setPalette(att.palette.filter(Boolean).slice(0, 3));
+            return;
+        }
+        if (resolvedCover) {
+            let active = true;
+            extractPaletteFromImageSource(resolvedCover).then((colors) => {
+                if (active && Array.isArray(colors) && colors.length >= 2) {
+                    setPalette(colors);
+                }
+            });
+            return () => {
+                active = false;
+            };
+        }
+        setPalette([]);
+    }, [isVoiceRecording, resolvedCover, att.palette]);
 
     const togglePlay = (e) => {
         e.stopPropagation();
@@ -115,20 +148,44 @@ const AudioAttachmentCard = ({ att }) => {
         }
     };
 
-    const handleSeek = (e) => {
-        e.stopPropagation();
-        const next = Number(e.target.value) || 0;
-        if (audioRef.current) {
-            audioRef.current.currentTime = next;
+    const seekFromClientX = (clientX, commit = true) => {
+        const trackEl = sliderRef.current;
+        if (!trackEl) return;
+        const rect = trackEl.getBoundingClientRect();
+        const ratio = rect.width > 0 ? Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) : 0;
+        setScrubbingPct(ratio * 100);
+        const targetDur = duration > 0 ? duration : (audioRef.current?.duration || 0);
+        if (commit && targetDur > 0) {
+            const nextTime = ratio * targetDur;
+            if (audioRef.current) audioRef.current.currentTime = nextTime;
+            setCurrentTime(nextTime);
         }
-        setCurrentTime(next);
     };
 
     const extLabel = (att.ext || '.audio').replace('.', '').toUpperCase() || 'SES';
     const totalDur = duration || 0;
+    const pct =
+        scrubbingPct !== null
+            ? scrubbingPct
+            : totalDur > 0
+                ? Math.max(0, Math.min(100, (currentTime / totalDur) * 100))
+                : 0;
+
+    const hasPalette = !isVoiceRecording && palette.length >= 2;
+    const cardStyle = hasPalette
+        ? {
+              '--pa-c1': palette[0],
+              '--pa-c2': palette[1],
+              '--pa-c3': palette[2] || palette[0],
+          }
+        : undefined;
 
     return (
-        <div className="pa-audio-card" onClick={(e) => e.stopPropagation()}>
+        <div
+            className={`pa-audio-card ${isVoiceRecording ? 'is-voice' : 'is-file'} ${hasPalette ? 'has-palette' : ''}`}
+            style={cardStyle}
+            onClick={(e) => e.stopPropagation()}
+        >
             <audio
                 ref={audioRef}
                 src={src}
@@ -144,6 +201,12 @@ const AudioAttachmentCard = ({ att }) => {
                 }}
             />
 
+            {resolvedCover && (
+                <div className="pa-audio-cover-wrap">
+                    <img src={resolvedCover} alt="" className="pa-audio-cover-img" />
+                </div>
+            )}
+
             <button
                 type="button"
                 className="pa-audio-play-btn"
@@ -155,23 +218,66 @@ const AudioAttachmentCard = ({ att }) => {
 
             <div className="pa-audio-center">
                 <div className="pa-audio-top">
-                    <span className="pa-audio-name" title={att.name || 'Ses Kaydı'}>
-                        <Music size={12} strokeWidth={2} />
-                        <span>{att.name || 'Ses Kaydı'}</span>
+                    <span className="pa-audio-name" title={att.name || (isVoiceRecording ? 'Ses Kaydı' : 'Ses Dosyası')}>
+                        {isVoiceRecording ? <Mic size={12} strokeWidth={2.2} /> : <Music size={12} strokeWidth={2} />}
+                        <span>{att.name || (isVoiceRecording ? 'Ses Kaydı' : 'Ses Dosyası')}</span>
                     </span>
-                    <span className="pa-audio-badge">{extLabel}</span>
+                    <span className="pa-audio-badges">
+                        <span className={`pa-audio-kind-pill ${isVoiceRecording ? 'is-voice' : 'is-file'}`}>
+                            {isVoiceRecording ? 'SES KAYDI' : 'SES DOSYASI'}
+                        </span>
+                        <span className="pa-audio-badge">{extLabel}</span>
+                    </span>
                 </div>
 
-                <input
-                    type="range"
-                    min={0}
-                    max={Math.max(1, totalDur)}
-                    step={0.1}
-                    value={Math.min(currentTime, Math.max(1, totalDur))}
-                    onChange={handleSeek}
-                    className="pa-audio-scrubber"
+                <div
+                    ref={sliderRef}
+                    className="pa-audio-slider"
+                    role="slider"
+                    tabIndex={0}
                     aria-label="Ses konumu"
-                />
+                    aria-valuemin={0}
+                    aria-valuemax={Math.round(totalDur)}
+                    aria-valuenow={Math.round(currentTime)}
+                    onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        seekFromClientX(e.clientX, false);
+                        const onMove = (ev) => seekFromClientX(ev.clientX, false);
+                        const onUp = (ev) => {
+                            seekFromClientX(ev.clientX, true);
+                            setScrubbingPct(null);
+                            window.removeEventListener('pointermove', onMove);
+                            window.removeEventListener('pointerup', onUp);
+                            window.removeEventListener('pointercancel', onUp);
+                        };
+                        window.addEventListener('pointermove', onMove);
+                        window.addEventListener('pointerup', onUp);
+                        window.addEventListener('pointercancel', onUp);
+                    }}
+                    onKeyDown={(e) => {
+                        if (!audioRef.current || totalDur <= 0) return;
+                        if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            const next = Math.min(totalDur, (audioRef.current.currentTime || 0) + 5);
+                            audioRef.current.currentTime = next;
+                            setCurrentTime(next);
+                        } else if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            const next = Math.max(0, (audioRef.current.currentTime || 0) - 5);
+                            audioRef.current.currentTime = next;
+                            setCurrentTime(next);
+                        }
+                    }}
+                >
+                    <div className="pa-audio-track">
+                        <div className="pa-audio-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div
+                        className="pa-audio-thumb"
+                        style={{ left: `clamp(5px, ${pct}%, calc(100% - 5px))` }}
+                    />
+                </div>
 
                 <div className="pa-audio-meta">
                     <span>

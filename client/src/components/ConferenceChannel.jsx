@@ -151,6 +151,12 @@ const ScreenShareVolumeControl = React.memo(({ identity, volume, onVolumeChange 
     );
 });
 
+const detectMobileLayout = () => {
+    if (typeof window === 'undefined') return false;
+    const isCoarse = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
+    return isCoarse ? Math.min(window.innerWidth, window.innerHeight) <= 768 : window.innerWidth <= 768;
+};
+
 const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const {
         activeRoom,
@@ -216,7 +222,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const [watchUrl, setWatchUrl] = useState('');
     const [isLiveWatchInputOpen, setIsLiveWatchInputOpen] = useState(false);
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [isMobile, setIsMobile] = useState(detectMobileLayout);
     const autoJoinedRef = useRef(false);
 
     // Call duration timer
@@ -304,9 +310,14 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const isAdmin = userRole === 'owner' || userRole === 'admin';
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        const handleResize = () => setIsMobile(detectMobileLayout());
+        handleResize();
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('orientationchange', handleResize);
+        };
     }, []);
 
     useEffect(() => {
@@ -522,7 +533,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const activeFocusIdentity = screenSharer ? screenSharer.identity : focusedIdentity;
 
     return (
-        <div className="vc-container glass-container">
+        <div className={`vc-container glass-container ${watchParty?.url ? 'vc-has-watchparty' : ''}`.trim()}>
             {isMobile && (
                 <button 
                     className="vc-mobile-back-btn" 

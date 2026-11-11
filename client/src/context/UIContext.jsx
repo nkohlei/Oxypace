@@ -17,15 +17,39 @@ export const UIProvider = ({ children }) => {
     // Track viewport width for mobile detection
     useEffect(() => {
         const handleResize = () => {
-            const mobile = window.innerWidth <= 768;
+            const isFullscreen = Boolean(
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement
+            );
+            const isCoarsePointer = typeof window !== 'undefined' && (
+                (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+                ('ontouchstart' in window && Math.min(window.innerWidth, window.innerHeight) <= 920)
+            );
+            const shortestSide = Math.min(window.innerWidth, window.innerHeight);
+            const mobile = (isFullscreen || isCoarsePointer)
+                ? shortestSide <= 768
+                : window.innerWidth <= 768;
+
             setIsMobileView(mobile);
-            // Reset mobile channel state when switching to desktop
-            if (!mobile) {
+            // Only reset mobile channel state on genuine desktop viewport transitions — never during fullscreen or mobile rotation
+            if (!mobile && !isFullscreen && !isCoarsePointer) {
                 setMobileChannelOpen(false);
             }
         };
+
+        handleResize();
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', handleResize);
+        document.addEventListener('fullscreenchange', handleResize);
+        document.addEventListener('webkitfullscreenchange', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('orientationchange', handleResize);
+            document.removeEventListener('fullscreenchange', handleResize);
+            document.removeEventListener('webkitfullscreenchange', handleResize);
+        };
     }, []);
 
     const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);

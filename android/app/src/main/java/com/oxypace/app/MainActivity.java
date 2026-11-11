@@ -1879,6 +1879,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        checkAndApplySystemInsets();
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::checkAndApplySystemInsets, 120);
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         isAppForeground = true;

@@ -292,7 +292,7 @@ const AudioRecorderPopover = ({ isOpen, onClose, onAttach }) => {
         const dur = recordedData.duration;
         stopTracksAndTimer();
         clearRecordedPreview();
-        onAttach?.(fileToAttach, { duration: dur });
+        onAttach?.(fileToAttach, { duration: dur, isVoiceRecording: true });
         onClose?.();
     };
 
@@ -302,7 +302,7 @@ const AudioRecorderPopover = ({ isOpen, onClose, onAttach }) => {
         e.target.value = '';
         stopTracksAndTimer();
         clearRecordedPreview();
-        onAttach?.(file, {});
+        onAttach?.(file, { isVoiceRecording: false });
         onClose?.();
     };
 

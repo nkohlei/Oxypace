@@ -6,8 +6,10 @@ import { useAuth } from '../context/AuthContext';
 import { X, Volume2, VolumeX, Maximize, Minimize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film, Sliders, Type, MoveVertical } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
+import TimelineScrubPreview from './TimelineScrubPreview';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import { registerPlugin, Capacitor } from '@capacitor/core';
+import { StatusBar } from '@capacitor/status-bar';
 import './WatchPartyPlayer.css';
 
 const CallManager = registerPlugin('CallManager');
@@ -531,6 +533,19 @@ const WatchPartyPlayer = () => {
             setIsFullscreen(isFs);
             if (!isFs) {
                 setIsEdgeHidden(false);
+                setIsUnifiedMenuOpen(false);
+                setIsLandscapeLocked(false);
+                if (Capacitor.isNativePlatform()) {
+                    try { StatusBar.show().catch(() => {}); } catch (_) {}
+                    if (Capacitor.Plugins?.ScreenOrientationManager) {
+                        try {
+                            Capacitor.Plugins.ScreenOrientationManager.setOrientation({ orientation: 'unspecified' });
+                        } catch (_) {}
+                    }
+                }
+                if (typeof window !== 'undefined' && window.screen?.orientation?.unlock) {
+                    try { window.screen.orientation.unlock(); } catch (_) {}
+                }
                 triggerControlsTemporary();
             }
         };
@@ -2071,19 +2086,16 @@ const WatchPartyPlayer = () => {
         }, 120);
     };
 
-    const handleScrubClick = (e) => {
-        e.stopPropagation();
+    const handleScrubCommit = (targetTime) => {
         const video = videoRef.current;
         if (!video || !duration) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        const targetTime = frac * duration;
+        const safeTarget = Math.max(0, Math.min(duration, Number(targetTime) || 0));
         isSyncingRef.current = true;
         isUserActionCooldownRef.current = Date.now() + 2500;
-        lastProgrammaticSeekTimeRef.current = targetTime;
-        video.currentTime = targetTime;
-        setCurrentTime(targetTime);
-        sendWatchSeek(targetTime);
+        lastProgrammaticSeekTimeRef.current = safeTarget;
+        video.currentTime = safeTarget;
+        setCurrentTime(safeTarget);
+        sendWatchSeek(safeTarget);
         setTimeout(() => { isSyncingRef.current = false; }, 400);
     };
 
@@ -2899,13 +2911,31 @@ const WatchPartyPlayer = () => {
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="native-progress-area" onClick={handleScrubClick}>
-                                    <div className="native-progress-track">
-                                        <div className="native-progress-fill" style={{ width: `${progress}%` }}>
-                                            <div className="native-progress-thumb" />
-                                        </div>
-                                    </div>
-                                </div>
+                                <TimelineScrubPreview
+                                    currentTime={currentTime}
+                                    duration={duration}
+                                    previewSrc={(() => {
+                                        const rawUrl = (watchParty?.url || '').trim();
+                                        if (!rawUrl) return '';
+                                        const needsProxy = useProxy
+                                            || rawUrl.includes('daioncdn.net')
+                                            || rawUrl.includes('trt.net')
+                                            || rawUrl.includes('trt.com')
+                                            || rawUrl.includes('playmix')
+                                            || rawUrl.includes('rapidvid')
+                                            || rawUrl.startsWith('/')
+                                            || rawUrl.startsWith('api/')
+                                            || rawUrl.includes('/api/proxy')
+                                            || rawUrl.includes('/api/media/');
+                                        return needsProxy ? getProxiedUrl(rawUrl) : rawUrl;
+                                    })()}
+                                    containerRef={wrapperRef}
+                                    isLive={isLive}
+                                    formatTime={formatTime}
+                                    onScrubStart={() => triggerControlsTemporary()}
+                                    onScrubMove={() => triggerControlsTemporary()}
+                                    onCommitSeek={handleScrubCommit}
+                                />
 
                                 <div className="native-bottom-row">
                                     <div className="native-left-controls">
@@ -3362,39 +3392,83 @@ export const GlobalWatchPartyWrapper = () => {
             return true;
         };
 
+        let rafId = null;
+        let currentPlaceholder = null;
+        let resizeObs = null;
+
         const updateCoords = () => {
             const placeholder = document.getElementById('watch-party-portal-placeholder') || document.getElementById('watch-party-portal-target');
+            if (placeholder !== currentPlaceholder) {
+                if (resizeObs) {
+                    resizeObs.disconnect();
+                    resizeObs = null;
+                }
+                currentPlaceholder = placeholder;
+                if (currentPlaceholder && typeof ResizeObserver !== 'undefined') {
+                    resizeObs = new ResizeObserver(scheduleUpdate);
+                    resizeObs.observe(currentPlaceholder);
+                }
+            }
+
             if (placeholder && isElementVisible(placeholder)) {
                 const rect = placeholder.getBoundingClientRect();
                 if (rect.width > 0 && rect.height > 0) {
-                    setCoords({
-                        top: Math.round(rect.top),
-                        left: Math.round(rect.left),
-                        width: Math.round(rect.width),
-                        height: Math.round(rect.height),
-                        visible: true
-                    });
+                    const top = Math.round(rect.top);
+                    const left = Math.round(rect.left);
+                    const width = Math.round(rect.width);
+                    const height = Math.round(rect.height);
+                    setCoords((prev) =>
+                        prev &&
+                        prev.visible &&
+                        prev.top === top &&
+                        prev.left === left &&
+                        prev.width === width &&
+                        prev.height === height
+                            ? prev
+                            : { top, left, width, height, visible: true }
+                    );
                     return;
                 }
             }
-            setCoords({ visible: false });
+            setCoords((prev) => (prev && !prev.visible ? prev : { visible: false }));
+        };
+
+        const scheduleUpdate = () => {
+            if (rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                updateCoords();
+            });
         };
 
         updateCoords();
 
-        // Observe DOM mutations to catch target container mounts/unmounts instantly
-        const observer = new MutationObserver(updateCoords);
-        observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+        // Observe structural childList / class changes smoothly via rAF rather than firing synchronously on every text mutation
+        const observer = new MutationObserver(scheduleUpdate);
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+        });
 
-        window.addEventListener('resize', updateCoords);
-        window.addEventListener('scroll', updateCoords);
-        
-        const interval = setInterval(updateCoords, 400);
+        window.addEventListener('resize', scheduleUpdate);
+        window.addEventListener('orientationchange', scheduleUpdate);
+        window.addEventListener('scroll', scheduleUpdate, true);
+        document.addEventListener('fullscreenchange', scheduleUpdate);
+        document.addEventListener('webkitfullscreenchange', scheduleUpdate);
+
+        const interval = setInterval(updateCoords, 450);
 
         return () => {
+            if (rafId !== null) cancelAnimationFrame(rafId);
+            if (resizeObs) resizeObs.disconnect();
             observer.disconnect();
-            window.removeEventListener('resize', updateCoords);
-            window.removeEventListener('scroll', updateCoords);
+            window.removeEventListener('resize', scheduleUpdate);
+            window.removeEventListener('orientationchange', scheduleUpdate);
+            window.removeEventListener('scroll', scheduleUpdate, true);
+            document.removeEventListener('fullscreenchange', scheduleUpdate);
+            document.removeEventListener('webkitfullscreenchange', scheduleUpdate);
             clearInterval(interval);
         };
     }, [watchParty?.url]);
@@ -3413,11 +3487,11 @@ export const GlobalWatchPartyWrapper = () => {
         display: 'block',
         visibility: 'visible',
         opacity: 1,
-        zIndex: 1,
+        zIndex: 55,
         overflow: 'hidden',
         borderRadius: isCarouselDocked ? '12px' : '16px',
         pointerEvents: 'auto',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+        transition: 'none'
     } : {
         position: 'fixed',
         top: '-9999px',

@@ -96,6 +96,18 @@ function parseIncomingAttachments(rawAttachments) {
                 ? constructProxiedUrl(thumbKey)
                 : (typeof item.thumbnailUrl === 'string' ? item.thumbnailUrl : '');
 
+            const coverKey = typeof item.coverKey === 'string' ? item.coverKey : '';
+            const resolvedCover = coverKey
+                ? constructProxiedUrl(coverKey)
+                : (typeof item.coverUrl === 'string' ? item.coverUrl : '');
+            const palette = Array.isArray(item.palette)
+                ? item.palette
+                    .map((c) => String(c || '').trim())
+                    .filter((c) => /^#[0-9a-fA-F]{3,8}$/.test(c))
+                    .slice(0, 4)
+                : [];
+            const isVoiceRecording = Boolean(item.isVoiceRecording);
+
             const name = String(item.name || item.folderName || (key ? key.split('/').pop() : 'Dosya')).slice(0, 220);
             const ext = String(item.ext || (name.includes('.') ? '.' + name.split('.').pop().toLowerCase() : '')).slice(0, 20);
             const kind = inferAttachmentKind(key || name, item.mimeType, item.kind);
@@ -117,6 +129,9 @@ function parseIncomingAttachments(rawAttachments) {
                 ext,
                 size: Math.max(0, Number(item.size) || 0),
                 thumbnailUrl: resolvedThumb,
+                coverUrl: resolvedCover,
+                palette,
+                isVoiceRecording,
                 duration: Math.max(0, Number(item.duration) || 0),
                 width: Math.max(0, Number(item.width) || 0),
                 height: Math.max(0, Number(item.height) || 0),

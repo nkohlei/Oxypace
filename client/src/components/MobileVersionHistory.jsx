@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.8)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.9)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.9',
+        versionCode: 259,
+        releaseDate: '12 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Alt Sayfa Paylaşım Deneyimi, Kapak/Paletli Ses Kartları, Orantılı Video Zaman Önizleme & Tam Ekran / Dokunmatik Kararlılığı',
+        summary: 'Gönderi paylaşım penceresi Portal katmanına taşınıp masaüstünde ortalanırken mobilde ekranın altından açılan pratik bir sayfaya dönüştürüldü; portal davet penceresi tüm platformlarda ortalanıp siyah/gümüş/beyaz mimari tema ile yenilendi. Ses dosyalarında kapak görseli, kapağa uyumlu hareketli renk paleti, Ses Kaydı / Ses Dosyası ayrımı ve 00:00 hiza hatası düzeltildi. Normal gönderi ve Birlikte İzle videolarına oynatıcı boyutuna orantılı büyüyüp küçülen dokun-sürükle zaman çizelgesi önizlemesi eklendi; canlı odalarda tam ekrandan çıkışta portal menüsüne yönlendirme ve dokunmatik kilitlenme sorunları giderildi.',
+        category: 'feature',
+        apkSize: '40 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Paylaş & Davet Penceresi Portal Düzeni: Paylaşım alanı masaüstünde ekran ortasında, mobilde alttan açılır yapıda; kullanıcı davet penceresi web ve mobilde tam ortalı',
+            'Gelişmiş Ses Kartları: Minimal kapak görseli, kapak rengine uyarlanan hareketli arka plan paleti, Ses Kaydı / Ses Dosyası ayrımı ve 00:00 tam sıfır hizalı süre çubuğu',
+            'Orantılı Video Zaman Çizelgesi Önizleme: Normal video gönderileri ve Birlikte İzle VOD akışlarında oynatıcı boyutuyla orantılı küçülüp tam ekranda büyüyen dokunup sürüklenebilir anlık kare önizleme',
+            'Canlı Oda Tam Ekran & Dokunmatik Onarımı: Tam ekrandan çıkınca portal menüsüne atma hatası, görünmez katmanlar/idle kilidi ve yatay/dikey geçiş sonrası dokunmatik tepkisizlik sorunları giderildi'
+        ],
+        changes: [
+            { type: 'Paylaş & Davet Penceresi', detail: 'ShareModal.jsx ve InviteUserModal.jsx document.body üzerine taşındı; mobilde alt sayfa paylaşım ve tüm ekranlarda ortalı davet penceresi eklendi.' },
+            { type: 'Ses Meta Verisi & Oynatıcı Kartı', detail: 'audioMetadata.js, mediaAttachments.js, PostAttachments.jsx ve Post.js üzerinde kapak çıkarma, hareketli renk paleti, ses kaydı ayrımı ve özel sıfır hizalı çubuk geliştirildi.' },
+            { type: 'Orantılı Video Zaman Önizleme', detail: 'TimelineScrubPreview.jsx ile VideoPlayer ve WatchPartyPlayer için oynatıcı ölçeğine göre büyüyen sürüklemeli kare/süre önizlemesi eklendi.' },
+            { type: 'Canlı Oda Tam Ekran & Dokunmatik', detail: 'UIContext, Portal, VoiceChannel, ConferenceChannel, WatchPartyPlayer ve MainActivity.java üzerinde yön değişimi, tam ekran çıkışı ve overlay dokunmatik öncelikleri onarıldı.' }
+        ],
+        filesModified: 18
+    },
     {
         version: 'v2.5.8',
         versionCode: 258,
         releaseDate: '11 Kasım 2026',
         commitHash: 'HEAD',
-        status: 'active',
+        status: 'stable',
         title: 'Genişletilmiş Dosya/Ses/Klasör & Karma İçerik Paylaşımı, Dahili Kamera & Ses Kaydedici, Otomatik YouTube Algılama & Yenilenen Paylaşım Penceresi',
         summary: 'Oxypace paylaşım altyapısı baştan sona yenilendi. Artık aynı gönderi içinde görsel, video, ses kaydı, belge (.pptx, .doc, .xlsx, .html vb.), sıkıştırılmış klasör (.zip) ve YouTube bağlantıları bir arada paylaşılabiliyor. Açılır menü Galeri, Kamera, Ses ve Dosya seçenekleriyle sadeleştirildi; YouTube bağlantıları metin veya bağlantı alanından otomatik algılanır hale getirildi. Siyah/gümüş/beyaz mimari tema ile anlık fotoğraf/video çekimi sunan Kamera Stüdyosu, ses kaydedici açılır penceresi ve paylaşım bağlantılarını mobil localhost yerine doğrudan kanonik adrese yönlendiren yeni Paylaş penceresi yayınlandı.',
         category: 'feature',
