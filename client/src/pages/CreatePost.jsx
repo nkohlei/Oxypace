@@ -1,140 +1,58 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Capacitor, registerPlugin } from '@capacitor/core';
 import axios from 'axios';
+import { Image, Camera, Mic, FolderOpen } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
-import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 import { useUploadStore } from '../store/useUploadStore';
+import {
+    MAX_POST_ATTACHMENTS,
+    appendAttachmentDrafts,
+    createFolderDraftFromPackage,
+    extractYouTubeInfo,
+    prepareAndUploadPostAttachments,
+    revokeAttachmentDraft,
+} from '../utils/mediaAttachments';
 
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
+import CameraCaptureModal from '../components/CameraCaptureModal';
+import AudioRecorderPopover from '../components/AudioRecorderPopover';
+import FileFolderPickerModal from '../components/FileFolderPickerModal';
+import ComposerAttachmentTray from '../components/ComposerAttachmentTray';
 import './CreatePost.css';
-
-const ShareTargetManager = registerPlugin('ShareTargetManager');
 
 const CreatePost = () => {
     const [content, setContent] = useState('');
     const [externalUrl, setExternalUrl] = useState('');
-    const [mediaFile, setMediaFile] = useState(null); // Used for single video/gif/pdf
-    const [mediaFiles, setMediaFiles] = useState([]); // Array of File objects (up to 10)
-    const [mediaPreview, setMediaPreview] = useState(null); // Single preview (video/gif/pdf/youtube)
-    const [mediaPreviews, setMediaPreviews] = useState([]); // Array of preview objects for multi-image
-    const [youtubeUrl, setYoutubeUrl] = useState('');
-    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+    const [attachmentDrafts, setAttachmentDrafts] = useState([]);
+    const [showCameraModal, setShowCameraModal] = useState(false);
+    const [showAudioPopover, setShowAudioPopover] = useState(false);
+    const [showFilePickerModal, setShowFilePickerModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [uploadPercentage, setUploadPercentage] = useState(0);
     const [error, setError] = useState('');
-    const fileInputRef = useRef(null);
+    const galleryInputRef = useRef(null);
+    const audioTriggerRef = useRef(null);
+    const attachmentDraftsRef = useRef([]);
+    const handedOffRef = useRef(false);
     const navigate = useNavigate();
     const location = useLocation();
     const portalId = location.state?.portalId;
+    const channelId = location.state?.channelId || location.state?.channel;
     const quotedPostId = location.state?.quotedPostId;
     const quotedPost = location.state?.quotedPost;
 
-    // Video transcoder hook (lazy — WASM loads only when video selected)
-    const { transcodeAndUpload, isTranscoding, progress: transcodeProgress, stage, error: transcodeError } = useVideoTranscoder();
-    const isVideoRef = useRef(false);
+    useEffect(() => {
+        attachmentDraftsRef.current = attachmentDrafts;
+    }, [attachmentDrafts]);
 
-    // Helper to extract YouTube ID
-    const getYoutubeId = (url) => {
-        if (!url) return null;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    };
-
-    const handleYoutubeChange = (e) => {
-        const url = e.target.value;
-        setYoutubeUrl(url);
-
-        const videoId = getYoutubeId(url);
-        if (videoId) {
-            setMediaPreview(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
-            setMediaFile(null);
-            setMediaFiles([]);
-            setMediaPreviews([]);
-        } else if (!url) {
-            setMediaPreview(null);
-        }
-    };
-
-    const processFiles = (files) => {
-        if (!files || files.length === 0) return;
-
-        const firstFile = files[0];
-        const isPdf = firstFile.type === 'application/pdf' || firstFile.name.toLowerCase().endsWith('.pdf');
-        const isVideo = firstFile.type.startsWith('video/') ||
-            ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(firstFile.name.split('.').pop().toLowerCase());
-        const isGif = firstFile.type === 'image/gif';
-
-        if (isPdf || isVideo || isGif) {
-            if (firstFile.size > 2 * 1024 * 1024 * 1024) {
-                setError("Dosya boyutu 2 GB'dan büyük olamaz.");
-                return;
+    useEffect(() => {
+        return () => {
+            if (!handedOffRef.current) {
+                attachmentDraftsRef.current.forEach(revokeAttachmentDraft);
             }
-            setMediaFiles([]);
-            setMediaPreviews([]);
-            setMediaFile(firstFile);
-            isVideoRef.current = isVideo;
-
-            if (isPdf) {
-                setMediaPreview({ isPdf: true, name: firstFile.name, size: firstFile.size });
-            } else {
-                setMediaPreview(URL.createObjectURL(firstFile));
-            }
-            setYoutubeUrl('');
-            setShowYoutubeInput(false);
-            setError('');
-        } else {
-            // Multi-image selection flow (images only)
-            setMediaFile(null);
-            setMediaPreview(null);
-            isVideoRef.current = false;
-            setYoutubeUrl('');
-            setShowYoutubeInput(false);
-
-            const currentCount = mediaFiles.length;
-            const remainingSlots = 10 - currentCount;
-
-            if (remainingSlots <= 0) {
-                setError("Bir gönderiye en fazla 10 görsel ekleyebilirsiniz.");
-                return;
-            }
-
-            const allowedFiles = files.slice(0, remainingSlots);
-            if (files.length > remainingSlots) {
-                setError(`En fazla 10 görsel ekleyebilirsiniz. İlk ${remainingSlots} görsel eklendi.`);
-            } else {
-                setError('');
-            }
-
-            const validFiles = [];
-            const newPreviews = [];
-
-            for (const file of allowedFiles) {
-                if (file.size > 2 * 1024 * 1024 * 1024) {
-                    setError(`${file.name} boyutu 2 GB'dan büyük olamaz.`);
-                    continue;
-                }
-                validFiles.push(file);
-                newPreviews.push({
-                    url: URL.createObjectURL(file),
-                    name: file.name,
-                    size: file.size,
-                    file: file
-                });
-            }
-
-            setMediaFiles((prev) => [...prev, ...validFiles]);
-            setMediaPreviews((prev) => [...prev, ...newPreviews]);
-        }
-    };
-
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files || []);
-        processFiles(files);
-        if (e.target) e.target.value = '';
-    };
+        };
+    }, []);
 
     // Redirect legacy /create?shared=1 routes to the global QuotePortalModal selector in App.jsx
     useEffect(() => {
@@ -143,57 +61,109 @@ const CreatePost = () => {
         }
     }, [location.search, navigate]);
 
-    const removeSingleMedia = () => {
-        setMediaFile(null);
-        setMediaPreview(null);
-        setYoutubeUrl('');
-        isVideoRef.current = false;
+    const combinedTextForYouTube = useMemo(() => {
+        const trimmedContent = content.trim();
+        const trimmedUrl = externalUrl.trim();
+        if (trimmedContent && trimmedUrl) return `${trimmedContent}\n\n${trimmedUrl}`;
+        return trimmedContent || trimmedUrl;
+    }, [content, externalUrl]);
+
+    const detectedYouTube = useMemo(
+        () => extractYouTubeInfo(combinedTextForYouTube),
+        [combinedTextForYouTube]
+    );
+
+    const appendFilesToDrafts = useCallback((files, extra = {}) => {
+        if (!files || files.length === 0) return;
+        setAttachmentDrafts((prev) => {
+            const { nextDrafts, warnings } = appendAttachmentDrafts(prev, files, { extra });
+            if (warnings.length > 0) {
+                setError(warnings[0]);
+            } else {
+                setError('');
+            }
+            return nextDrafts;
+        });
+    }, []);
+
+    const handleGalleryFileChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (files.length > 0) {
+            appendFilesToDrafts(files);
+        }
     };
 
-    const removeMultiImage = (indexToRemove) => {
-        setMediaFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-        setMediaPreviews((prev) => {
-            const item = prev[indexToRemove];
-            if (item && item.url && item.url.startsWith('blob:')) {
-                try { URL.revokeObjectURL(item.url); } catch (e) {}
-            }
-            return prev.filter((_, idx) => idx !== indexToRemove);
+    const handleCameraCapture = (file) => {
+        if (file) appendFilesToDrafts([file]);
+    };
+
+    const handleAudioAttach = (file, meta = {}) => {
+        if (file) appendFilesToDrafts([file], meta);
+    };
+
+    const handlePickerFiles = (files) => {
+        if (files && files.length > 0) appendFilesToDrafts(files);
+    };
+
+    const handlePickerFolder = (packaged) => {
+        try {
+            const draft = createFolderDraftFromPackage(packaged);
+            if (!draft) return;
+            setAttachmentDrafts((prev) => {
+                if (prev.length >= MAX_POST_ATTACHMENTS) {
+                    revokeAttachmentDraft(draft);
+                    setError(`Bir gönderiye en fazla ${MAX_POST_ATTACHMENTS} dosya veya içerik eklenebilir.`);
+                    return prev;
+                }
+                setError('');
+                return [...prev, draft];
+            });
+        } catch (err) {
+            setError(err?.message || 'Klasör eklenemedi.');
+        }
+    };
+
+    const handleRemoveAttachment = (draftId) => {
+        setAttachmentDrafts((prev) => {
+            const target = prev.find((d) => d.id === draftId);
+            if (target) revokeAttachmentDraft(target);
+            return prev.filter((d) => d.id !== draftId);
         });
+    };
+
+    const handleClearAttachments = () => {
+        attachmentDrafts.forEach(revokeAttachmentDraft);
+        setAttachmentDrafts([]);
+        setError('');
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        const hasText = !!content.trim();
-        const hasSingleMedia = !!mediaFile;
-        const hasMultiImages = mediaFiles.length > 0;
-        const hasYoutube = !!youtubeUrl.trim();
-        const hasExternal = !!externalUrl.trim();
+        const hasText = Boolean(content.trim());
+        const hasAttachments = attachmentDrafts.length > 0;
+        const hasExternal = Boolean(externalUrl.trim());
 
-        if (!hasText && !hasSingleMedia && !hasMultiImages && !hasYoutube && !hasExternal) {
-            setError('Lütfen bir içerik veya medya ekleyin');
+        if (!hasText && !hasAttachments && !hasExternal) {
+            setError('Lütfen bir içerik, bağlantı veya dosya ekleyin');
             return;
         }
 
         setLoading(true);
         setUploadPercentage(0);
+        const currentDrafts = [...attachmentDrafts];
 
         try {
-            let finalContent = content;
-            if (externalUrl) {
-                finalContent = content ? content + '\n\n' + externalUrl : externalUrl;
+            let finalContent = content.trim();
+            const trimmedExternal = externalUrl.trim();
+            if (trimmedExternal) {
+                finalContent = finalContent ? `${finalContent}\n\n${trimmedExternal}` : trimmedExternal;
             }
 
-            let mediaKey = null;
-            let mediaKeys = null;
-            let videoQualitiesPayload = null;
-            let youtubeMedia = null;
-            let youtubeMediaType = null;
             let detectedVideo = null;
-
-            // Detect external video URL
-            if (!mediaFile && mediaFiles.length === 0 && !youtubeUrl && finalContent) {
+            if (!hasAttachments && !detectedYouTube && finalContent) {
                 const urlRegex = /(https?:\/\/[^\s]+)/gi;
                 const matches = finalContent.match(urlRegex);
                 if (matches) {
@@ -205,94 +175,61 @@ const CreatePost = () => {
                                 detectedVideo = url;
                                 break;
                             }
-                        } catch (e) {}
+                        } catch {
+                            // Ignore malformed URLs
+                        }
                     }
                 }
             }
 
-            if (hasMultiImages) {
-                // Upload multiple images in parallel
-                const totalFiles = mediaFiles.length;
-                const fileProgresses = new Array(totalFiles).fill(0);
+            const prepared = await prepareAndUploadPostAttachments({
+                drafts: currentDrafts,
+                uploadFileFn: uploadFile,
+                targetId: portalId || 'global',
+                hasAutoYouTube: Boolean(detectedYouTube),
+                onProgress: (p) => setUploadPercentage(p),
+            });
 
-                const uploadPromises = mediaFiles.map((file, idx) => {
-                    return uploadFile(file, 'post', portalId, (p) => {
-                        fileProgresses[idx] = p;
-                        const avgProgress = Math.round(fileProgresses.reduce((a, b) => a + b, 0) / totalFiles);
-                        setUploadPercentage(avgProgress);
-                    });
+            if (prepared.mode === 'video') {
+                handedOffRef.current = true;
+                useUploadStore.getState().startVideoUpload({
+                    file: prepared.primaryVideoFile,
+                    portalId,
+                    channel: channelId,
+                    content: finalContent,
+                    quotedPostId,
+                    extraAttachments: prepared.extraAttachments,
+                    onFinish: () => {
+                        currentDrafts.forEach(revokeAttachmentDraft);
+                    },
                 });
 
-                mediaKeys = await Promise.all(uploadPromises);
-            } else if (mediaFile) {
-                if (isVideoRef.current) {
-                    // Start background upload
-                    useUploadStore.getState().startVideoUpload({
-                        file: mediaFile,
-                        portalId,
-                        channel: location.state?.channelId || location.state?.channel,
-                        content: finalContent,
-                        quotedPostId,
-                    });
-                    
-                    // Immediately navigate to let it run in the background
-                    if (portalId) {
-                        navigate(`/portal/${portalId}`);
-                    } else {
-                        navigate('/');
-                    }
-                    return;
+                if (portalId) {
+                    navigate(`/portal/${portalId}`);
                 } else {
-                    // ── IMAGE / PDF / GIF: existing presigned upload flow ──
-                    mediaKey = await uploadFile(mediaFile, 'post', portalId, (p) => {
-                        setUploadPercentage(p);
-                    });
+                    navigate('/');
                 }
-            } else {
-                setUploadPercentage(100);
-            }
-
-            if (!mediaFile && mediaFiles.length === 0 && youtubeUrl) {
-                const videoId = getYoutubeId(youtubeUrl);
-                if (videoId) {
-                    youtubeMedia = `https://www.youtube.com/watch?v=${videoId}`;
-                    youtubeMediaType = 'youtube';
-                } else {
-                    setError('Geçersiz YouTube bağlantısı');
-                    setLoading(false);
-                    return;
-                }
+                return;
             }
 
             const postData = {
                 content: finalContent,
-                portalId: portalId,
-                quotedPostId: quotedPostId,
+                portalId,
+                quotedPostId,
+                ...(channelId ? { channel: channelId } : {}),
+                ...prepared.payloadFields,
             };
 
-            if (mediaKeys && mediaKeys.length > 0) {
-                postData.mediaKeys = mediaKeys;
-                postData.mediaType = 'image';
-            } else if (mediaKey) {
-                postData.mediaKey = mediaKey;
-                if (isVideoRef.current) {
-                    postData.mediaType = 'video';
-                    if (videoQualitiesPayload) {
-                        postData.videoQualities = JSON.stringify(videoQualitiesPayload);
-                    }
-                } else if (mediaFile && (mediaFile.type === 'application/pdf' || mediaFile.name.toLowerCase().endsWith('.pdf'))) {
-                    postData.pdfName = mediaFile.name;
-                    postData.pdfSize = mediaFile.size;
-                }
-            } else if (youtubeMedia) {
-                postData.media = youtubeMedia;
-                postData.mediaType = youtubeMediaType;
-            } else if (detectedVideo) {
+            if (!hasAttachments && detectedYouTube && !postData.media && (!postData.attachments || postData.attachments.length === 0)) {
+                postData.media = detectedYouTube.url;
+                postData.mediaType = 'youtube';
+            } else if (!hasAttachments && detectedVideo && !postData.media && (!postData.attachments || postData.attachments.length === 0)) {
                 postData.media = detectedVideo;
                 postData.mediaType = 'videoUrl';
             }
 
             await axios.post('/api/posts', postData);
+            currentDrafts.forEach(revokeAttachmentDraft);
 
             if (portalId) {
                 navigate(`/portal/${portalId}`);
@@ -300,17 +237,15 @@ const CreatePost = () => {
                 navigate('/');
             }
         } catch (err) {
-            setError(err.response?.data?.message || transcodeError || 'Gönderi oluşturulamadı');
+            setError(err.response?.data?.message || 'Gönderi oluşturulamadı');
         } finally {
             setLoading(false);
             setUploadPercentage(0);
         }
     };
 
-    // ── Unified loading indicator for both upload and transcode phases ────────
-    const isSubmitting  = loading || isTranscoding;
-    const displayPct    = isTranscoding ? transcodeProgress : uploadPercentage;
-    const displayStage  = isTranscoding ? stage : (loading ? 'Yükleniyor...' : '');
+    const isSubmitting = loading;
+    const canSubmit = Boolean(content.trim() || attachmentDrafts.length > 0 || externalUrl.trim());
 
     return (
         <div className="app-wrapper">
@@ -323,14 +258,14 @@ const CreatePost = () => {
                     <button
                         className="share-btn"
                         onClick={handleSubmit}
-                        disabled={isSubmitting || (!content.trim() && !mediaFile && !externalUrl.trim() && !youtubeUrl.trim())}
+                        disabled={isSubmitting || !canSubmit}
                     >
                         {isSubmitting ? (
                             <>
                                 <div className="compose-spinner-wrapper" style={{ width: '18px', height: '18px', marginRight: '6px' }}>
-                                    <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: '#fff' }} />
-                                    <span className="compose-progress-text" style={{ fontSize: '7px', color: '#fff' }}>
-                                        {displayPct}%
+                                    <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: 'currentColor' }} />
+                                    <span className="compose-progress-text" style={{ fontSize: '7px' }}>
+                                        {uploadPercentage}%
                                     </span>
                                 </div>
                                 Paylaşılıyor...
@@ -352,14 +287,14 @@ const CreatePost = () => {
                         <button
                             className="share-btn"
                             onClick={handleSubmit}
-                            disabled={isSubmitting || (!content.trim() && !mediaFile && mediaFiles.length === 0 && !externalUrl.trim() && !youtubeUrl.trim())}
+                            disabled={isSubmitting || !canSubmit}
                         >
                             {isSubmitting ? (
                                 <>
                                     <div className="compose-spinner-wrapper" style={{ width: '18px', height: '18px', marginRight: '6px' }}>
-                                        <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: '#fff' }} />
-                                        <span className="compose-progress-text" style={{ fontSize: '7px', color: '#fff' }}>
-                                            {displayPct}%
+                                        <div className="compose-spinner" style={{ width: '18px', height: '18px', borderTopColor: 'currentColor' }} />
+                                        <span className="compose-progress-text" style={{ fontSize: '7px' }}>
+                                            {uploadPercentage}%
                                         </span>
                                     </div>
                                     Paylaşılıyor...
@@ -370,7 +305,7 @@ const CreatePost = () => {
 
                     <form onSubmit={handleSubmit} className="create-form">
                         <textarea
-                            placeholder="Ne düşünüyorsun?"
+                            placeholder="Ne düşünüyorsun? (YouTube bağlantıları otomatik algılanır)"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             rows="4"
@@ -378,7 +313,7 @@ const CreatePost = () => {
                         <div className="url-input-container">
                             <input
                                 type="text"
-                                placeholder="Bağlantı ekle (URL)"
+                                placeholder="Bağlantı ekle (URL veya YouTube linki)"
                                 value={externalUrl}
                                 onChange={(e) => setExternalUrl(e.target.value)}
                                 className="url-input"
@@ -395,212 +330,82 @@ const CreatePost = () => {
                             </div>
                         )}
 
-                        {/* Video transcoding progress indicator */}
-                        {isTranscoding && (
-                            <div className="video-transcode-progress" style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.12)',
-                                borderRadius: '12px',
-                                padding: '14px 16px',
-                                margin: '10px 0',
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                                    <div className="compose-spinner" style={{ width: '16px', height: '16px', borderTopColor: '#60a5fa', flexShrink: 0 }} />
-                                    <span style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 500 }}>
-                                        {stage || 'Video işleniyor...'}
-                                    </span>
-                                    <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#94a3b8', fontWeight: 700 }}>
-                                        {transcodeProgress}%
-                                    </span>
-                                </div>
-                                <div style={{
-                                    height: '4px',
-                                    background: 'rgba(255,255,255,0.08)',
-                                    borderRadius: '4px',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{
-                                        height: '100%',
-                                        width: `${transcodeProgress}%`,
-                                        background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
-                                        borderRadius: '4px',
-                                        transition: 'width 0.3s ease'
-                                    }} />
-                                </div>
-                                <p style={{ fontSize: '11px', color: '#64748b', margin: '6px 0 0', lineHeight: 1.4 }}>
-                                    Video cihazınızda farklı kalitelere dönüştürülüyor. Sayfayı kapatmayın.
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Multi-Image Selected Previews Gallery (Left to Right, Square Grid) */}
-                        {mediaPreviews && mediaPreviews.length > 0 && (
-                            <div className="create-post-multi-images-container">
-                                <div className="create-post-multi-images-header">
-                                    <span className="create-post-multi-images-count">
-                                        Seçilen Görseller ({mediaPreviews.length}/10)
-                                    </span>
-                                    {mediaPreviews.length < 10 && (
-                                        <button
-                                            type="button"
-                                            className="create-post-add-more-btn"
-                                            onClick={() => fileInputRef.current?.click()}
-                                        >
-                                            + Görsel Ekle
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="create-post-multi-images-list">
-                                    {mediaPreviews.map((preview, index) => (
-                                        <div key={index} className="create-post-image-item">
-                                            <img src={preview.url} alt={`Preview ${index + 1}`} />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeMultiImage(index)}
-                                                className="create-post-image-remove-btn"
-                                                title="Görseli Kaldır"
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                                </svg>
-                                            </button>
-                                            <span className="create-post-image-badge">{index + 1}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {mediaPreview && (
-                            <div className="media-preview">
-                                {mediaPreview.isPdf ? (
-                                    <div className="pdf-upload-preview" style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        padding: '16px',
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '12px',
-                                        backdropFilter: 'blur(10px)',
-                                        color: '#fff',
-                                        position: 'relative',
-                                        width: '100%',
-                                        boxSizing: 'border-box'
-                                    }}>
-                                        <div className="pdf-icon" style={{
-                                            background: 'rgba(239, 68, 68, 0.2)',
-                                            color: '#f87171',
-                                            padding: '10px 14px',
-                                            borderRadius: '8px',
-                                            fontWeight: 'bold',
-                                            fontSize: '14px'
-                                        }}>PDF</div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 600 }}>{mediaPreview.name}</div>
-                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{(mediaPreview.size / (1024 * 1024)).toFixed(2)} MB</div>
-                                        </div>
-                                        <button type="button" onClick={removeSingleMedia} className="remove-btn">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <line x1="18" y1="6" x2="6" y2="18" />
-                                                <line x1="6" y1="6" x2="18" y2="18" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <img src={mediaPreview} alt="Preview" />
-                                        <button type="button" onClick={removeSingleMedia} className="remove-btn">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <line x1="18" y1="6" x2="6" y2="18" />
-                                                <line x1="6" y1="6" x2="18" y2="18" />
-                                            </svg>
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                        {(attachmentDrafts.length > 0 || detectedYouTube) && (
+                            <ComposerAttachmentTray
+                                attachments={attachmentDrafts}
+                                detectedYouTube={detectedYouTube}
+                                onRemoveAttachment={handleRemoveAttachment}
+                                onClearAll={attachmentDrafts.length > 1 ? handleClearAttachments : undefined}
+                            />
                         )}
 
                         {error && <div className="error-message">{error}</div>}
 
                         <div className="media-options">
-                            <label className="media-btn">
+                            <label className={`media-btn${isSubmitting ? ' disabled' : ''}`}>
                                 <input
                                     type="file"
-                                    ref={fileInputRef}
-                                    accept="image/*,video/*,.gif,.pdf"
-                                    onChange={handleFileChange}
+                                    ref={galleryInputRef}
+                                    accept="image/*,video/*,.gif"
+                                    onChange={handleGalleryFileChange}
                                     style={{ display: 'none' }}
-                                    disabled={isTranscoding}
+                                    disabled={isSubmitting}
                                     multiple
                                 />
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <circle cx="8.5" cy="8.5" r="1.5" />
-                                    <polyline points="21 15 16 10 5 21" />
-                                </svg>
-                                <span>Fotoğraf / Video</span>
-                            </label>
-                            <label className="media-btn">
-                                <input
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleFileChange}
-                                    style={{ display: 'none' }}
-                                    disabled={isTranscoding}
-                                />
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14 2 14 8 20 8" />
-                                    <line x1="16" y1="13" x2="8" y2="13" />
-                                    <line x1="16" y1="17" x2="8" y2="17" />
-                                </svg>
-                                <span>PDF Belgesi</span>
-                            </label>
-                            <label className="media-btn">
-                                <input
-                                    type="file"
-                                    accept="image/gif"
-                                    onChange={handleFileChange}
-                                    style={{ display: 'none' }}
-                                    disabled={isTranscoding}
-                                />
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                </svg>
-                                <span>GIF</span>
+                                <Image size={20} strokeWidth={1.8} />
+                                <span>Galeri</span>
                             </label>
                             <button
                                 type="button"
                                 className="media-btn"
-                                onClick={() => setShowYoutubeInput(!showYoutubeInput)}
-                                disabled={isTranscoding}
+                                onClick={() => setShowCameraModal(true)}
+                                disabled={isSubmitting}
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
-                                    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
-                                    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" />
-                                </svg>
-                                <span>YouTube</span>
+                                <Camera size={20} strokeWidth={1.8} />
+                                <span>Kamera</span>
                             </button>
-                        </div>
-
-                        {showYoutubeInput && (
-                            <div className="youtube-input-container">
-                                <input
-                                    type="text"
-                                    placeholder="YouTube video bağlantısını yapıştırın..."
-                                    value={youtubeUrl}
-                                    onChange={handleYoutubeChange}
-                                    className="url-input"
-                                    autoFocus
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    ref={audioTriggerRef}
+                                    type="button"
+                                    className="media-btn"
+                                    onClick={() => setShowAudioPopover((prev) => !prev)}
+                                    disabled={isSubmitting}
+                                >
+                                    <Mic size={20} strokeWidth={1.8} />
+                                    <span>Ses</span>
+                                </button>
+                                <AudioRecorderPopover
+                                    isOpen={showAudioPopover}
+                                    onClose={() => setShowAudioPopover(false)}
+                                    onAttach={handleAudioAttach}
                                 />
                             </div>
-                        )}
+                            <button
+                                type="button"
+                                className="media-btn"
+                                onClick={() => setShowFilePickerModal(true)}
+                                disabled={isSubmitting}
+                            >
+                                <FolderOpen size={20} strokeWidth={1.8} />
+                                <span>Dosya</span>
+                            </button>
+                        </div>
                     </form>
                 </div>
             </main>
+
+            <CameraCaptureModal
+                isOpen={showCameraModal}
+                onClose={() => setShowCameraModal(false)}
+                onCapture={handleCameraCapture}
+            />
+            <FileFolderPickerModal
+                isOpen={showFilePickerModal}
+                onClose={() => setShowFilePickerModal(false)}
+                onFilesSelected={handlePickerFiles}
+                onFolderPackaged={handlePickerFolder}
+            />
         </div>
     );
 };

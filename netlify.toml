@@ -60,6 +60,13 @@
 
 # ── OG Bot Proxy (Bot preview için) ──────────────
 [[redirects]]
+  from = "/post/*"
+  to = "https://api.oxypace.com.tr/og/post/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["bot"]}
+
+[[redirects]]
   from = "/portal/post/*"
   to = "https://api.oxypace.com.tr/og/post/:splat"
   status = 200

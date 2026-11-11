@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
+import { getPortalShareUrl, copyTextSafely } from '../utils/shareUtils';
 import { Copy, X } from 'lucide-react';
 import './InviteUserModal.css';
 
@@ -49,10 +50,14 @@ const InviteUserModal = ({ portalId, onClose }) => {
         }
     };
 
-    const handleCopyLink = () => {
-        const url = `${window.location.origin}/portal/${portalId}`;
-        navigator.clipboard.writeText(url);
-        alert('Davet bağlantısı kopyalandı!');
+    const handleCopyLink = async () => {
+        const url = getPortalShareUrl(portalId);
+        const copied = await copyTextSafely(url);
+        if (copied) {
+            alert('Davet bağlantısı kopyalandı!');
+        } else {
+            alert(`Bağlantı kopyalanamadı: ${url}`);
+        }
     };
 
     return (

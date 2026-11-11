@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.7)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.8)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.5.8',
+        versionCode: 258,
+        releaseDate: '11 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Genişletilmiş Dosya/Ses/Klasör & Karma İçerik Paylaşımı, Dahili Kamera & Ses Kaydedici, Otomatik YouTube Algılama & Yenilenen Paylaşım Penceresi',
+        summary: 'Oxypace paylaşım altyapısı baştan sona yenilendi. Artık aynı gönderi içinde görsel, video, ses kaydı, belge (.pptx, .doc, .xlsx, .html vb.), sıkıştırılmış klasör (.zip) ve YouTube bağlantıları bir arada paylaşılabiliyor. Açılır menü Galeri, Kamera, Ses ve Dosya seçenekleriyle sadeleştirildi; YouTube bağlantıları metin veya bağlantı alanından otomatik algılanır hale getirildi. Siyah/gümüş/beyaz mimari tema ile anlık fotoğraf/video çekimi sunan Kamera Stüdyosu, ses kaydedici açılır penceresi ve paylaşım bağlantılarını mobil localhost yerine doğrudan kanonik adrese yönlendiren yeni Paylaş penceresi yayınlandı.',
+        category: 'feature',
+        apkSize: '40 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Genişletilmiş Dosya, Ses & Klasör Paylaşımı: .pptx, .doc/.docx, .xlsx, .html, arşiv, ses dosyaları ve klasörlerin (.zip paketleme) 2 GB yükleme sınırıyla tek gönderide veya karma içerik olarak paylaşılabilmesi',
+            'Dahili Kamera Stüdyosu & Ses Kaydedici: Neon öğelerden arındırılmış siyah/gümüş/beyaz tasarımlı anlık fotoğraf/video çekim penceresi ve ses kaydı açılır aracı',
+            'Otomatik YouTube Algılama: Manuel YouTube seçeneği kaldırılarak yapıştırılan YouTube URL’lerinin tüm gönderi oluşturma alanlarında otomatik tanınması',
+            'Yenilenen Paylaş Penceresi & Kanonik URL Düzeltmesi: Mobildeki localhost paylaşım bağlantısı hatası giderilerek tüm platformlarda https://oxypace.com.tr bağlantıları ve yeni Telegram/kopyalama seçenekli monokrom paylaşım penceresi eklendi'
+        ],
+        changes: [
+            { type: 'Çoklu & Karma Dosya Altyapısı', detail: 'middleware/upload.js, models/Post.js, routes/media.js, routes/posts.js ve client/src/utils/mediaAttachments.js ile belge, ses, klasör (.zip) ve karma ek desteği eklendi.' },
+            { type: 'Kamera, Ses & Dosya Modülleri', detail: 'CameraCaptureModal, AudioRecorderPopover, FileFolderPickerModal ve ComposerAttachmentTray bileşenleri Portal, Profile ve CreatePost sayfalarına entegre edildi.' },
+            { type: 'Paylaş Penceresi & Kanonik URL', detail: 'shareUtils.js, ShareModal.jsx, InviteUserModal.jsx ve routes/og.js üzerinde localhost bağlantı hatası giderilerek siyah/gümüş/beyaz tasarım uygulandı.' },
+            { type: 'Zorunlu Güncelleme & Sürüm 2.5.8', detail: 'Tüm istemciler için sürüm 258 (v2.5.8) yapılandırması ve zorunlu güncelleme devreye alındı.' }
+        ],
+        filesModified: 27
+    },
     {
         version: 'v2.5.7',
         versionCode: 257,
         releaseDate: '8 Kasım 2026',
         commitHash: 'HEAD',
-        status: 'active',
+        status: 'stable',
         title: 'Hedef Portal & Kanal Seçimli Paylaşım Akışı, Birikimli Cihaz Bildirimleri, Profil Özel Gönderiler Filtresi & Akış İyileştirmeleri',
         summary: 'Diğer uygulamalardan Oxypace ile içerik paylaşırken doğrudan "Paylaşılacak Portalı Seç" ve hedef kanal seçme penceresi açılarak içeriklerin seçilen kanalın mesaj kutusuna otomatik eklenmesi sağlandı. Cihaz bildirimlerinde her portal/kanal için ayrı okunmamış post birikimi, kullanıcı adı ve post açıklaması gösterimi, minimal PDF kartı ve tekil aktif oturum izolasyonu devreye alındı. Profil sayfalarında tüm gönderilerin kesintisiz kaydırılması, "Özel Gönderiler" filtresi, arkadaş profillerinde gönderiye gitme butonu ve portal akışında optimize edilmiş iç boşluk düzeni eklendi.',
         category: 'feature',

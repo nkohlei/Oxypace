@@ -21,13 +21,42 @@ const postSchema = new mongoose.Schema(
         },
         mediaType: {
             type: String,
-            enum: ['none', 'image', 'gif', 'video', 'youtube', 'pdf', 'videoUrl'],
+            enum: ['none', 'image', 'gif', 'video', 'youtube', 'pdf', 'videoUrl', 'audio', 'file', 'folder', 'mixed'],
             default: 'none',
         },
         media: {
             type: mongoose.Schema.Types.Mixed, // String URL or Array of String URLs
             default: '',
         },
+        attachments: [
+            {
+                kind: {
+                    type: String,
+                    enum: ['image', 'gif', 'video', 'audio', 'pdf', 'file', 'folder', 'youtube', 'videoUrl'],
+                    required: true,
+                },
+                url: { type: String, default: '' },
+                key: { type: String, default: '' },
+                name: { type: String, default: '' },
+                mimeType: { type: String, default: '' },
+                ext: { type: String, default: '' },
+                size: { type: Number, default: 0 },
+                thumbnailUrl: { type: String, default: '' },
+                duration: { type: Number, default: 0 },
+                width: { type: Number, default: 0 },
+                height: { type: Number, default: 0 },
+                youtubeId: { type: String, default: '' },
+                folderName: { type: String, default: '' },
+                fileCount: { type: Number, default: 0 },
+                folderFiles: [
+                    {
+                        path: { type: String, default: '' },
+                        size: { type: Number, default: 0 },
+                        mimeType: { type: String, default: '' },
+                    }
+                ],
+            }
+        ],
         pdfUrl: {
             type: String,
             default: '',

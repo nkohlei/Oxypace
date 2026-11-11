@@ -25,6 +25,8 @@ import ReportModal from './ReportModal';
 import VideoDownloadModal from './VideoDownloadModal';
 import PostImageGallery from './PostImageGallery';
 import PromotedPortalCard from './PromotedPortalCard';
+import PostAttachments from './PostAttachments';
+import { extractYouTubeInfo } from '../utils/mediaAttachments';
 
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
@@ -399,6 +401,15 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     const handleDownload = async (e) => {
         if (e) e.stopPropagation();
+        if (Array.isArray(post.attachments) && post.attachments.length > 0 && ['mixed', 'audio', 'file', 'folder'].includes(post.mediaType)) {
+            for (const att of post.attachments) {
+                if (att?.url && att.kind !== 'youtube') {
+                    await nativeDownloadFile(getImageUrl(att.url), att.name || `oxypace-ek-${Date.now()}`);
+                }
+            }
+            setShowMenu(false);
+            return;
+        }
         if (post.pdfUrl) {
             const url = getImageUrl(post.pdfUrl);
             const filename = post.pdfName || 'Doküman.pdf';
@@ -902,19 +913,44 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                     <PromotedPortalCard portal={post.promotedPortal} />
                 )}
 
-                {/* Link Preview (Isolated from media, suppressed when promotedPortal is shown) */}
+                {/* Link Preview (Isolated from media, suppressed when promotedPortal or YouTube embed is shown) */}
                 {(() => {
                     if (post.promotedPortal) return null;
-                    if (post.mediaType === 'videoUrl') return null;
+                    if (post.mediaType === 'videoUrl' || post.mediaType === 'youtube') return null;
                     const firstUrl = extractFirstUrl(post.content);
                     if (firstUrl) {
+                        const isYt = Boolean(extractYouTubeInfo(firstUrl));
+                        const hasYtEmbed = post.attachments?.some((a) => a.kind === 'youtube');
+                        if (isYt && hasYtEmbed) return null;
                         return <LinkPreview url={firstUrl} postId={post._id} />;
                     }
                     return null;
                 })()}
 
+                {/* Structured Rich / Mixed Attachments (Audio, Office/Web Docs, Folders, Mixed Media) */}
+                {(() => {
+                    const useRichAttachments = Array.isArray(post.attachments) && post.attachments.length > 0 && (
+                        post.mediaType === 'mixed' ||
+                        ['audio', 'file', 'folder'].includes(post.mediaType) ||
+                        post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind))
+                    );
+
+                    if (useRichAttachments) {
+                        return (
+                            <PostAttachments
+                                post={post}
+                                showVideoIdBadge={true}
+                                onCopyVideoId={handleCopyVideoId}
+                                copiedVideoId={copiedVideoId}
+                            />
+                        );
+                    }
+
+                    return null;
+                })()}
+
                 {/* PDF Document Card */}
-                {post.pdfUrl && (
+                {!(Array.isArray(post.attachments) && post.attachments.length > 0 && (post.mediaType === 'mixed' || post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind)))) && post.pdfUrl && (
                     <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
                         <div
                             className="pdf-glass-card"
@@ -969,7 +1005,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                 )}
 
                 {/* Media */}
-                {post.media && (
+                {!(Array.isArray(post.attachments) && post.attachments.length > 0 && (post.mediaType === 'mixed' || ['audio', 'file', 'folder'].includes(post.mediaType) || post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind)))) && post.media && (
                     <div className="post-media" onClick={(e) => e.stopPropagation()}>
                         <div style={{ position: 'relative', width: '100%', maxWidth: '650px' }}>
                             {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (

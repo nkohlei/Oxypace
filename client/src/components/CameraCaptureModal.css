@@ -1,0 +1,422 @@
+/* CameraCaptureModal — Architectural Black / Silver / White Studio */
+.cam-studio-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 22000;
+    background: #000000;
+    display: flex;
+    flex-direction: column;
+    color: #ffffff;
+    animation: camFadeIn 0.16s ease-out;
+}
+
+@keyframes camFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.cam-studio-shell {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+
+.cam-studio-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #070709;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cam-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 36px;
+    justify-content: flex-end;
+}
+
+.cam-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #121215;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #e4e4e7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.cam-icon-btn:hover:not(:disabled) {
+    background: #1d1d22;
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #ffffff;
+}
+
+.cam-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.cam-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #111114;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.cam-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #a1a1aa;
+}
+
+.cam-status-dot.is-live {
+    background: #ffffff;
+    animation: camDotPulse 1s ease-in-out infinite;
+}
+
+@keyframes camDotPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.cam-status-text {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #f4f4f5;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Main Viewfinder Stage */
+.cam-studio-stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 16px;
+    background: #000000;
+}
+
+.cam-viewfinder-box,
+.cam-preview-frame {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    background: #08080a;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cam-live-video,
+.cam-preview-media {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000000;
+}
+
+.cam-live-video.is-mirrored {
+    transform: scaleX(-1);
+}
+
+.cam-corner {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-color: rgba(255, 255, 255, 0.48);
+    border-style: solid;
+    pointer-events: none;
+}
+
+.cam-corner-tl {
+    top: 12px;
+    left: 12px;
+    border-width: 1.5px 0 0 1.5px;
+    border-top-left-radius: 3px;
+}
+
+.cam-corner-tr {
+    top: 12px;
+    right: 12px;
+    border-width: 1.5px 1.5px 0 0;
+    border-top-right-radius: 3px;
+}
+
+.cam-corner-bl {
+    bottom: 12px;
+    left: 12px;
+    border-width: 0 0 1.5px 1.5px;
+    border-bottom-left-radius: 3px;
+}
+
+.cam-corner-br {
+    bottom: 12px;
+    right: 12px;
+    border-width: 0 1.5px 1.5px 0;
+    border-bottom-right-radius: 3px;
+}
+
+.cam-lens-badge,
+.cam-preview-meta-chip {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(10, 10, 12, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #d4d4d8;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.cam-error-card {
+    max-width: 380px;
+    width: 100%;
+    padding: 24px 20px;
+    border-radius: 10px;
+    background: #0c0c0f;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+}
+
+.cam-error-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    background: #18181b;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #e4e4e7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cam-error-title {
+    margin: 4px 0 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.cam-error-desc {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: #a1a1aa;
+}
+
+.cam-fallback-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.cam-fallback-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 13px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #ffffff;
+    color: #000000;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Bottom Dock */
+.cam-studio-dock {
+    padding: 12px 16px 18px;
+    background: #070709;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.cam-mode-switch {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 8px;
+    background: #121215;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    gap: 4px;
+}
+
+.cam-mode-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #a1a1aa;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cam-mode-tab.is-active {
+    background: #ffffff;
+    color: #000000;
+}
+
+.cam-mode-tab:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.cam-shutter-row {
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cam-side-tool {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: #121215;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #d4d4d8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.cam-side-tool:hover:not(:disabled) {
+    background: #1e1e24;
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #ffffff;
+}
+
+.cam-side-tool:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.cam-shutter-btn {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    padding: 4px;
+    background: transparent;
+    border: 2px solid #e4e4e7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.15s ease;
+}
+
+.cam-shutter-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.cam-shutter-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.cam-shutter-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #ffffff;
+    transition: border-radius 0.18s ease, transform 0.18s ease, background-color 0.15s ease;
+}
+
+.cam-shutter-btn.is-video .cam-shutter-core {
+    background: #d4d4d8;
+}
+
+.cam-shutter-btn.is-video.is-recording {
+    border-color: #ffffff;
+}
+
+.cam-shutter-btn.is-video.is-recording .cam-shutter-core {
+    background: #ffffff;
+    border-radius: 6px;
+    transform: scale(0.46);
+}
+
+.cam-review-actions {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cam-retake-btn,
+.cam-attach-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.cam-retake-btn {
+    background: #141418;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f4f4f5;
+}
+
+.cam-retake-btn:hover {
+    background: #1e1e24;
+}
+
+.cam-attach-btn {
+    background: #ffffff;
+    border: 1px solid #ffffff;
+    color: #000000;
+}
+
+.cam-attach-btn:hover {
+    background: #e4e4e7;
+}
+

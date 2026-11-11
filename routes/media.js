@@ -4,7 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { protect as auth } from '../middleware/auth.js';
 
 import axios from 'axios';
-import upload from '../middleware/upload.js';
+import upload, { isAllowedUpload, MAX_UPLOAD_BYTES } from '../middleware/upload.js';
 import multer from 'multer';
 import sharp from 'sharp';
 import r2 from '../config/r2.js';
@@ -222,12 +222,18 @@ router.post('/presigned-url', auth, async (req, res) => {
     try {
         const { fileName, fileType, fileSize, purpose } = req.body;
 
-        if (!fileName || !fileType) {
-            return res.status(400).json({ message: 'File name and type are required' });
+        if (!fileName) {
+            return res.status(400).json({ message: 'File name is required' });
+        }
+
+        const effectiveFileType = fileType || 'application/octet-stream';
+        const allowedCheck = isAllowedUpload(fileName, effectiveFileType);
+        if (!allowedCheck.allowed) {
+            return res.status(400).json({ message: allowedCheck.reason || 'Bu dosya türü yüklenemez.' });
         }
 
         // Validate file size (2GB max)
-        const MAX_SIZE = 2 * 1024 * 1024 * 1024;
+        const MAX_SIZE = MAX_UPLOAD_BYTES;
         if (fileSize && fileSize > MAX_SIZE) {
             return res.status(400).json({ message: "Dosya boyutu 2 GB'dan büyük olamaz." });
         }
@@ -1154,10 +1160,23 @@ router.get('/*', async (req, res) => {
         const contentType = response.ContentType || 'image/jpeg';
         const contentLength = response.ContentLength;
 
+        const ext = path.extname(targetKey || '').toLowerCase();
+        const isActiveWebDoc = ['.html', '.htm', '.xhtml', '.js', '.mjs', '.hta', '.swf'].includes(ext)
+            || contentType.toLowerCase().includes('html')
+            || contentType.toLowerCase().includes('javascript');
+        const isSvgOrXml = ext === '.svg' || ext === '.xml' || contentType.toLowerCase().includes('svg');
+
         // Clean headers for Edge CDN caching (Netlify / Cloudflare Edge)
         res.removeHeader('set-cookie');
         res.removeHeader('Set-Cookie');
         res.set('Content-Type', contentType);
+        res.set('X-Content-Type-Options', 'nosniff');
+        if (isActiveWebDoc) {
+            res.set('Content-Security-Policy', "sandbox; default-src 'none'");
+            res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(path.basename(targetKey))}"`);
+        } else if (isSvgOrXml) {
+            res.set('Content-Security-Policy', "sandbox; default-src 'none'");
+        }
         res.set('ETag', etag);
         res.set('Cache-Control', ccValue);
         res.set('Netlify-CDN-Cache-Control', cdnValue);

@@ -33,6 +33,8 @@ import LinkPreview from '../components/LinkPreview';
 import QuotedPost from '../components/QuotedPost';
 import VideoDownloadModal from '../components/VideoDownloadModal';
 import PostImageGallery from '../components/PostImageGallery';
+import PostAttachments from '../components/PostAttachments';
+import { extractYouTubeInfo } from '../utils/mediaAttachments';
 
 // YouTube video ID'sini URL'den çıkar
 const extractYouTubeId = (url) => {
@@ -581,15 +583,36 @@ const PostDetail = () => {
 
                             {/* Link Preview (Isolated from media) */}
                             {(() => {
+                                if (post.mediaType === 'youtube' || post.mediaType === 'videoUrl') return null;
                                 const firstUrl = extractFirstUrl(post.content);
                                 if (firstUrl) {
+                                    const isYt = Boolean(extractYouTubeInfo(firstUrl));
+                                    const hasYtEmbed = post.attachments?.some((a) => a.kind === 'youtube');
+                                    if (isYt && hasYtEmbed) return null;
                                     return <LinkPreview url={firstUrl} postId={post._id} />;
                                 }
                                 return null;
                             })()}
 
+                            {(() => {
+                                const useRichAttachments = Array.isArray(post.attachments) && post.attachments.length > 0 && (
+                                    post.mediaType === 'mixed' ||
+                                    ['audio', 'file', 'folder'].includes(post.mediaType) ||
+                                    post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind))
+                                );
+                                if (!useRichAttachments) return null;
+                                return (
+                                    <PostAttachments
+                                        post={post}
+                                        showVideoIdBadge={true}
+                                        onCopyVideoId={handleCopyVideoId}
+                                        copiedVideoId={copiedVideoId}
+                                    />
+                                );
+                            })()}
+
                             {/* PDF Document Card */}
-                            {post.pdfUrl && (
+                            {!(Array.isArray(post.attachments) && post.attachments.length > 0 && (post.mediaType === 'mixed' || post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind)))) && post.pdfUrl && (
                                 <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
                                     <div
                                         className="pdf-glass-card"
@@ -647,9 +670,11 @@ const PostDetail = () => {
                                 <QuotedPost quotedPost={post.quotedPost} viewer={user} />
                             )}
 
-                            {post.media && (
+                            {!(Array.isArray(post.attachments) && post.attachments.length > 0 && (post.mediaType === 'mixed' || ['audio', 'file', 'folder'].includes(post.mediaType) || post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind)))) && post.media && (
                                 <div className="pd-media-showcase">
-                                    {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
+                                    {post.mediaType === 'youtube' ? (
+                                        <PostAttachments post={{ ...post, attachments: [{ kind: 'youtube', url: post.media }] }} showVideoIdBadge={false} />
+                                    ) : post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
                                         <div className="pd-media-item">
                                             <VideoPlayer 
                                                 src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)} 

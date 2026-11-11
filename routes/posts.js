@@ -20,6 +20,114 @@ const router = express.Router();
 // Configure multer for file uploads
 import upload from '../middleware/upload.js';
 
+const YOUTUBE_URL_REGEX = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?[^\s]*v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s]*)/i;
+
+function extractYouTubeFromText(text = '') {
+    if (!text || typeof text !== 'string') return null;
+    const match = text.match(YOUTUBE_URL_REGEX);
+    if (!match || !match[1]) return null;
+    let rawUrl = match[0].replace(/[.,!?;:)\]]+$/, '');
+    if (!/^https?:\/\//i.test(rawUrl)) {
+        rawUrl = `https://${rawUrl}`;
+    }
+    return { url: rawUrl, id: match[1] };
+}
+
+function inferAttachmentKind(keyOrName = '', declaredMime = '', declaredKind = '') {
+    const allowedKinds = new Set(['image', 'gif', 'video', 'audio', 'pdf', 'file', 'folder', 'youtube', 'videoUrl']);
+    if (declaredKind && allowedKinds.has(declaredKind)) return declaredKind;
+
+    const cleanName = String(keyOrName || '').split('?')[0].split('#')[0].toLowerCase();
+    const ext = cleanName.includes('.') ? cleanName.split('.').pop() : '';
+    const mime = String(declaredMime || '').toLowerCase();
+
+    if (ext === 'pdf' || mime === 'application/pdf') return 'pdf';
+    if (ext === 'gif' || mime === 'image/gif') return 'gif';
+    if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'heic', 'svg'].includes(ext) || mime.startsWith('image/')) return 'image';
+    if (['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi', 'flv', '3gp', 'wmv'].includes(ext) || mime.startsWith('video/')) return 'video';
+    if (['mp3', 'wav', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'flac', 'weba', 'amr', 'wma'].includes(ext) || mime.startsWith('audio/')) return 'audio';
+    return 'file';
+}
+
+async function generateAndUploadPdfThumbnail(pdfKey, portalId) {
+    try {
+        const pdfFullUrl = constructProxiedUrl(pdfKey);
+        const response = await axios.get(pdfFullUrl, { responseType: 'arraybuffer' });
+        const pdfBuffer = Buffer.from(response.data);
+        const thumbnailBuffer = await generatePdfThumbnail(pdfBuffer);
+        const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const thumbnailKey = `posts/${portalId || 'general'}/pdf-thumb-${uniqueSuffix}.jpg`;
+
+        const putCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: thumbnailKey,
+            ContentType: 'image/jpeg',
+            Body: thumbnailBuffer,
+        });
+        await r2.send(putCommand);
+        return constructProxiedUrl(thumbnailKey);
+    } catch (thumbError) {
+        console.error('❌ [POST Route] Failed to generate/upload PDF thumbnail:', thumbError);
+        return '';
+    }
+}
+
+function parseIncomingAttachments(rawAttachments) {
+    if (!rawAttachments) return [];
+    let list = rawAttachments;
+    if (typeof rawAttachments === 'string') {
+        try {
+            list = JSON.parse(rawAttachments);
+        } catch (_) {
+            return [];
+        }
+    }
+    if (!Array.isArray(list)) return [];
+
+    return list
+        .slice(0, 15)
+        .filter((item) => item && typeof item === 'object' && (item.key || item.url || item.youtubeId))
+        .map((item) => {
+            const key = typeof item.key === 'string' ? item.key : '';
+            const resolvedUrl = key ? constructProxiedUrl(key) : (typeof item.url === 'string' ? item.url : '');
+            const thumbKey = typeof item.thumbnailKey === 'string' ? item.thumbnailKey : '';
+            const resolvedThumb = thumbKey
+                ? constructProxiedUrl(thumbKey)
+                : (typeof item.thumbnailUrl === 'string' ? item.thumbnailUrl : '');
+
+            const name = String(item.name || item.folderName || (key ? key.split('/').pop() : 'Dosya')).slice(0, 220);
+            const ext = String(item.ext || (name.includes('.') ? '.' + name.split('.').pop().toLowerCase() : '')).slice(0, 20);
+            const kind = inferAttachmentKind(key || name, item.mimeType, item.kind);
+
+            const folderFiles = Array.isArray(item.folderFiles)
+                ? item.folderFiles.slice(0, 300).map((f) => ({
+                    path: String(f?.path || f?.name || '').slice(0, 300),
+                    size: Number(f?.size) || 0,
+                    mimeType: String(f?.mimeType || '').slice(0, 100),
+                }))
+                : [];
+
+            return {
+                kind,
+                url: resolvedUrl,
+                key,
+                name,
+                mimeType: String(item.mimeType || '').slice(0, 120),
+                ext,
+                size: Math.max(0, Number(item.size) || 0),
+                thumbnailUrl: resolvedThumb,
+                duration: Math.max(0, Number(item.duration) || 0),
+                width: Math.max(0, Number(item.width) || 0),
+                height: Math.max(0, Number(item.height) || 0),
+                youtubeId: String(item.youtubeId || '').slice(0, 32),
+                folderName: String(item.folderName || '').slice(0, 180),
+                fileCount: Math.max(0, Number(item.fileCount) || folderFiles.length || 0),
+                folderFiles,
+            };
+        });
+}
+
 // @route   POST /api/posts
 // @desc    Create a new post
 // @access  Private
@@ -55,10 +163,11 @@ router.post(
         try {
             console.log('📤 Handler started. Body keys:', Object.keys(req.body));
             const { content, portalId, media, mediaType, quotedPostId } = req.body;
+            const parsedAttachments = parseIncomingAttachments(req.body.attachments);
 
-            // If no file and no content and no external media and no direct upload, reject
-            if (!content && !req.file && !media && !req.body.mediaKey && (!req.body.mediaKeys || req.body.mediaKeys.length === 0)) {
-                console.log('📤 Rejected: No content, no file, no mediaKey, and no external media');
+            // If no file and no content and no external media and no direct upload and no attachments, reject
+            if (!content && !req.file && !media && !req.body.mediaKey && (!req.body.mediaKeys || req.body.mediaKeys.length === 0) && parsedAttachments.length === 0) {
+                console.log('📤 Rejected: No content, no file, no mediaKey, no attachments, and no external media');
                 return res.status(400).json({ message: 'Post must have content or media' });
             }
 
@@ -69,25 +178,41 @@ router.post(
                 isProcessing: false,
             };
 
-            // Handle external media (like YouTube or videoUrl)
-            if (media && mediaType) {
-                postData.media = media;
-                postData.mediaType = mediaType;
-            } else if (!req.file && !req.body.mediaKey && content) {
-                // Detect video/live stream URL in the content if no other media is uploaded
-                const urlRegex = /(https?:\/\/[^\s]+)/gi;
-                const matches = content.match(urlRegex);
-                if (matches) {
-                    for (const url of matches) {
-                        try {
-                            const cleanUrl = url.split('?')[0].split('#')[0];
-                            const ext = cleanUrl.split('.').pop().toLowerCase();
-                            if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
-                                postData.media = url;
-                                postData.mediaType = 'videoUrl';
-                                break;
+            // Handle structured attachments or auto-detected links
+            const autoYouTube = extractYouTubeFromText(content);
+
+            // Handle external media (like YouTube or videoUrl) when no structured attachments exist
+            if (parsedAttachments.length === 0) {
+                if (media && mediaType) {
+                    postData.media = media;
+                    postData.mediaType = mediaType;
+                } else if (!req.file && !req.body.mediaKey && !(Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) && content) {
+                    if (autoYouTube) {
+                        postData.media = autoYouTube.url;
+                        postData.mediaType = 'youtube';
+                        postData.attachments = [{
+                            kind: 'youtube',
+                            url: autoYouTube.url,
+                            youtubeId: autoYouTube.id,
+                            name: 'YouTube Video',
+                        }];
+                    } else {
+                        // Detect video/live stream URL in the content if no other media is uploaded
+                        const urlRegex = /(https?:\/\/[^\s]+)/gi;
+                        const matches = content.match(urlRegex);
+                        if (matches) {
+                            for (const url of matches) {
+                                try {
+                                    const cleanUrl = url.split('?')[0].split('#')[0];
+                                    const ext = cleanUrl.split('.').pop().toLowerCase();
+                                    if (['mp4', 'webm', 'ogg', 'm3u8', 'mpd'].includes(ext)) {
+                                        postData.media = url;
+                                        postData.mediaType = 'videoUrl';
+                                        break;
+                                    }
+                                } catch (e) {}
                             }
-                        } catch (e) {}
+                        }
                     }
                 }
             }
@@ -136,7 +261,7 @@ router.post(
 
                 // Visual Channel Validation
                 if (matchedChannel && matchedChannel.type === 'image') {
-                    const hasMedia = req.file || req.body.mediaKey || (Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) || (media && mediaType);
+                    const hasMedia = req.file || req.body.mediaKey || (Array.isArray(req.body.mediaKeys) && req.body.mediaKeys.length > 0) || parsedAttachments.length > 0 || (media && mediaType);
                     if (!hasMedia) {
                         return res.status(400).json({
                             message: 'Bu kanalda en az 1 görsel paylaşılması zorunludur',
@@ -155,154 +280,203 @@ router.post(
                 } catch (e) {}
             }
 
-            // PDF File Handling & Media Key parsing
+            const applyVideoFields = (target, actualVideoUrl, w = 0, h = 0) => {
+                target.isProcessing = true;
+                target.processingProgress = 0;
+                target.estimatedTime = 'Hesaplanıyor...';
+
+                const clientWidth = Number(w) || 0;
+                const clientHeight = Number(h) || 0;
+                const shortSide = (clientWidth && clientHeight) ? Math.min(clientWidth, clientHeight) : (clientHeight || clientWidth || 0);
+                const longSide = (clientWidth && clientHeight) ? Math.max(clientWidth, clientHeight) : 0;
+
+                target.videoQualities = {
+                    high: actualVideoUrl,
+                    low: actualVideoUrl,
+                    p144: '',
+                    p360: shortSide === 360 ? actualVideoUrl : '',
+                    p720: shortSide === 720 ? actualVideoUrl : '',
+                    p1080: shortSide === 1080 ? actualVideoUrl : '',
+                    p1440: shortSide === 1440 ? actualVideoUrl : '',
+                    p2160: shortSide === 2160 ? actualVideoUrl : '',
+                    original: actualVideoUrl,
+                };
+                target.videoOriginalHeight = shortSide;
+                target.videoOriginalWidth = longSide;
+                target.video144 = '';
+                target.video360 = shortSide === 360 ? actualVideoUrl : '';
+                target.video720 = shortSide === 720 ? actualVideoUrl : '';
+                target.video1080 = shortSide === 1080 ? actualVideoUrl : '';
+                target.video1440 = shortSide === 1440 ? actualVideoUrl : '';
+                target.video2160 = shortSide === 2160 ? actualVideoUrl : '';
+                target.videoUrl = actualVideoUrl;
+                target.lowVideoUrl = actualVideoUrl;
+                target.processingStage = 'Kaliteler ayrıştırılıyor...';
+            };
+
             let pdfKey = null;
             let pdfName = '';
             let pdfSize = 0;
+            let primaryVideoKeyForTranscode = null;
 
-            // Check for multi-image upload
-            const mediaKeys = req.body.mediaKeys || (req.body.mediaKey ? [req.body.mediaKey] : null);
-            if (Array.isArray(mediaKeys) && mediaKeys.length > 0) {
-                const limitedKeys = mediaKeys.slice(0, 10);
-                const isSingle = limitedKeys.length === 1;
-                
-                // If it's a PDF
-                const firstKey = limitedKeys[0];
-                const isPdf = firstKey.split('?')[0].split('.').pop().toLowerCase() === 'pdf';
+            if (parsedAttachments.length > 0) {
+                const enriched = [...parsedAttachments];
 
-                if (isPdf) {
-                    pdfKey = firstKey;
-                    pdfName = req.body.pdfName || 'Doküman.pdf';
-                    pdfSize = Number(req.body.pdfSize) || 0;
-                } else {
-                    const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'm4v'];
-                    const ext = firstKey.split('?')[0].split('.').pop().toLowerCase();
-                    const isVideo = req.body.mediaType === 'video' || videoExts.includes(ext);
+                // Auto-append detected YouTube URL if typed alongside uploaded media
+                if (autoYouTube && !enriched.some((a) => a.kind === 'youtube' && (a.youtubeId === autoYouTube.id || a.url === autoYouTube.url))) {
+                    enriched.push({
+                        kind: 'youtube',
+                        url: autoYouTube.url,
+                        key: '',
+                        name: 'YouTube Video',
+                        mimeType: '',
+                        ext: '',
+                        size: 0,
+                        thumbnailUrl: '',
+                        duration: 0,
+                        width: 0,
+                        height: 0,
+                        youtubeId: autoYouTube.id,
+                        folderName: '',
+                        fileCount: 0,
+                        folderFiles: [],
+                    });
+                }
 
-                    if (isVideo) {
-                        postData.mediaType = 'video';
-                        const actualVideoUrl = constructProxiedUrl(firstKey);
-                        postData.isProcessing = true;
-                        postData.processingProgress = 0;
-                        postData.estimatedTime = 'Hesaplanıyor...';
-
-                        const clientWidth = Number(req.body.videoWidth) || 0;
-                        const clientHeight = Number(req.body.videoHeight) || 0;
-                        const shortSide = (clientWidth && clientHeight) ? Math.min(clientWidth, clientHeight) : (clientHeight || clientWidth || 0);
-                        const longSide  = (clientWidth && clientHeight) ? Math.max(clientWidth, clientHeight) : 0;
-
-                        postData.videoQualities = {
-                            high:     actualVideoUrl,
-                            low:      actualVideoUrl,
-                            p144:     '',
-                            p360:     shortSide === 360 ? actualVideoUrl : '',
-                            p720:     shortSide === 720 ? actualVideoUrl : '',
-                            p1080:    shortSide === 1080 ? actualVideoUrl : '',
-                            p1440:    shortSide === 1440 ? actualVideoUrl : '',
-                            p2160:    shortSide === 2160 ? actualVideoUrl : '',
-                            original: actualVideoUrl
-                        };
-                        postData.videoOriginalHeight = shortSide;
-                        postData.videoOriginalWidth  = longSide;
-                        postData.video144    = '';
-                        postData.video360    = shortSide === 360 ? actualVideoUrl : '';
-                        postData.video720    = shortSide === 720 ? actualVideoUrl : '';
-                        postData.video1080   = shortSide === 1080 ? actualVideoUrl : '';
-                        postData.video1440   = shortSide === 1440 ? actualVideoUrl : '';
-                        postData.video2160   = shortSide === 2160 ? actualVideoUrl : '';
-                        postData.videoUrl    = actualVideoUrl;
-                        postData.lowVideoUrl = actualVideoUrl;
-                        postData.media       = actualVideoUrl;
-                        postData.processingStage = 'Kaliteler ayrıştırılıyor...';
-                    } else {
-                        postData.mediaType = req.body.mediaType || 'image';
-                        if (isSingle) {
-                            postData.media = constructProxiedUrl(firstKey);
-                        } else {
-                            postData.media = limitedKeys.map(k => constructProxiedUrl(k));
-                        }
+                // PDF thumbnail for first PDF attachment if needed
+                const firstPdfAtt = enriched.find((a) => a.kind === 'pdf');
+                if (firstPdfAtt) {
+                    if (!firstPdfAtt.thumbnailUrl && firstPdfAtt.key) {
+                        firstPdfAtt.thumbnailUrl = await generateAndUploadPdfThumbnail(firstPdfAtt.key, postData.portal);
+                    }
+                    postData.pdfUrl = firstPdfAtt.url;
+                    postData.pdfName = firstPdfAtt.name || 'Doküman.pdf';
+                    postData.pdfSize = firstPdfAtt.size || 0;
+                    if (firstPdfAtt.thumbnailUrl) {
+                        postData.pdfThumbnailUrl = firstPdfAtt.thumbnailUrl;
                     }
                 }
-            } else if (Array.isArray(media) && media.length > 0) {
-                const limitedMedia = media.slice(0, 10);
-                postData.media = limitedMedia.length === 1 ? limitedMedia[0] : limitedMedia;
-                postData.mediaType = mediaType || 'image';
-            }
 
-            if (pdfKey) {
-                postData.mediaType = 'pdf';
-                postData.pdfUrl = constructProxiedUrl(pdfKey);
-                postData.pdfName = pdfName;
-                postData.pdfSize = pdfSize;
-                
-                try {
-                    console.log('📄 [POST Route] PDF detected. Downloading for thumbnail generation...');
-                    const pdfFullUrl = constructProxiedUrl(pdfKey);
-                    const response = await axios.get(pdfFullUrl, { responseType: 'arraybuffer' });
-                    const pdfBuffer = Buffer.from(response.data);
-
-                    console.log('📄 [POST Route] Extracting first page thumbnail...');
-                    const thumbnailBuffer = await generatePdfThumbnail(pdfBuffer);
-
-                    console.log('📄 [POST Route] Uploading PDF thumbnail to Cloudflare R2...');
-                    const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
-                    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-                    const thumbnailKey = `posts/${portalId || 'general'}/pdf-thumb-${uniqueSuffix}.jpg`;
-
-                    const putCommand = new PutObjectCommand({
-                        Bucket: bucketName,
-                        Key: thumbnailKey,
-                        ContentType: 'image/jpeg',
-                        Body: thumbnailBuffer,
-                    });
-                    await r2.send(putCommand);
-
-                    postData.pdfThumbnailUrl = constructProxiedUrl(thumbnailKey);
-                    console.log('✅ [POST Route] PDF thumbnail uploaded successfully:', postData.pdfThumbnailUrl);
-                } catch (thumbError) {
-                    console.error('❌ [POST Route] Failed to generate/upload PDF thumbnail:', thumbError);
+                // Adaptive video config for first video attachment
+                const firstVideoAtt = enriched.find((a) => a.kind === 'video');
+                if (firstVideoAtt && firstVideoAtt.url) {
+                    primaryVideoKeyForTranscode = firstVideoAtt.key || null;
+                    applyVideoFields(
+                        postData,
+                        firstVideoAtt.url,
+                        req.body.videoWidth || firstVideoAtt.width,
+                        req.body.videoHeight || firstVideoAtt.height
+                    );
+                    if (firstVideoAtt.thumbnailUrl && !postData.videoThumbnail) {
+                        postData.videoThumbnail = firstVideoAtt.thumbnailUrl;
+                    }
                 }
-            } else if (req.file) {
-                postData.media = constructProxiedUrl(req.file.key);
-                console.log('📤 Media Proxied URL (from utility):', postData.media);
 
-                if (req.file.mimetype.includes('video')) {
-                    postData.mediaType = 'video';
-                    const actualVideoUrl = postData.media;
-                    postData.isProcessing = true;
-                    postData.processingProgress = 0;
-                    postData.estimatedTime = 'Hesaplanıyor...';
+                postData.attachments = enriched;
 
-                    const clientWidth = Number(req.body.videoWidth) || 0;
-                    const clientHeight = Number(req.body.videoHeight) || 0;
-                    const shortSide = (clientWidth && clientHeight) ? Math.min(clientWidth, clientHeight) : (clientHeight || clientWidth || 0);
-                    const longSide  = (clientWidth && clientHeight) ? Math.max(clientWidth, clientHeight) : 0;
-
-                    postData.videoQualities = {
-                        high:     actualVideoUrl,
-                        low:      actualVideoUrl,
-                        p144:     '',
-                        p360:     shortSide === 360 ? actualVideoUrl : '',
-                        p720:     shortSide === 720 ? actualVideoUrl : '',
-                        p1080:    shortSide === 1080 ? actualVideoUrl : '',
-                        p1440:    shortSide === 1440 ? actualVideoUrl : '',
-                        p2160:    shortSide === 2160 ? actualVideoUrl : '',
-                        original: actualVideoUrl
-                    };
-                    postData.videoOriginalHeight = shortSide;
-                    postData.videoOriginalWidth  = longSide;
-                    postData.video144    = '';
-                    postData.video360    = shortSide === 360 ? actualVideoUrl : '';
-                    postData.video720    = shortSide === 720 ? actualVideoUrl : '';
-                    postData.video1080   = shortSide === 1080 ? actualVideoUrl : '';
-                    postData.video1440   = shortSide === 1440 ? actualVideoUrl : '';
-                    postData.video2160   = shortSide === 2160 ? actualVideoUrl : '';
-                    postData.videoUrl    = actualVideoUrl;
-                    postData.lowVideoUrl = actualVideoUrl;
-                    postData.media       = actualVideoUrl;
-                    postData.processingStage = 'Kaliteler ayrıştırılıyor...';
+                const allImages = enriched.every((a) => a.kind === 'image');
+                if (allImages) {
+                    postData.mediaType = 'image';
+                    postData.media = enriched.length === 1 ? enriched[0].url : enriched.map((a) => a.url);
+                } else if (enriched.length === 1) {
+                    const only = enriched[0];
+                    postData.mediaType = only.kind;
+                    postData.media = only.url;
+                    if (only.kind === 'file' || only.kind === 'folder' || only.kind === 'audio') {
+                        postData.pdfName = only.folderName || only.name || '';
+                        postData.pdfSize = only.size || 0;
+                    }
                 } else {
-                    postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
+                    postData.mediaType = 'mixed';
+                    const visualPreferred = enriched.find((a) => ['image', 'gif', 'video', 'youtube'].includes(a.kind));
+                    postData.media = (visualPreferred || enriched[0]).url;
+                }
+            } else {
+                // Legacy mediaKeys / media / req.file path
+                const mediaKeys = req.body.mediaKeys || (req.body.mediaKey ? [req.body.mediaKey] : null);
+                if (Array.isArray(mediaKeys) && mediaKeys.length > 0) {
+                    const limitedKeys = mediaKeys.slice(0, 10);
+                    const isSingle = limitedKeys.length === 1;
+                    const firstKey = limitedKeys[0];
+                    const firstKind = inferAttachmentKind(firstKey, req.body.fileType || '', req.body.mediaType || '');
+
+                    if (firstKind === 'pdf') {
+                        pdfKey = firstKey;
+                        pdfName = req.body.pdfName || 'Doküman.pdf';
+                        pdfSize = Number(req.body.pdfSize) || 0;
+                    } else if (firstKind === 'video') {
+                        postData.mediaType = 'video';
+                        const actualVideoUrl = constructProxiedUrl(firstKey);
+                        primaryVideoKeyForTranscode = firstKey;
+                        applyVideoFields(postData, actualVideoUrl, req.body.videoWidth, req.body.videoHeight);
+                        postData.media = actualVideoUrl;
+                    } else if (firstKind === 'audio' || firstKind === 'file' || firstKind === 'folder') {
+                        postData.mediaType = firstKind;
+                        postData.media = constructProxiedUrl(firstKey);
+                        postData.attachments = limitedKeys.map((k) => ({
+                            kind: inferAttachmentKind(k, '', req.body.mediaType || ''),
+                            url: constructProxiedUrl(k),
+                            key: k,
+                            name: req.body.fileName || req.body.pdfName || k.split('/').pop(),
+                            size: Number(req.body.fileSize) || Number(req.body.pdfSize) || 0,
+                        }));
+                    } else {
+                        postData.mediaType = req.body.mediaType || 'image';
+                        postData.media = isSingle
+                            ? constructProxiedUrl(firstKey)
+                            : limitedKeys.map((k) => constructProxiedUrl(k));
+                    }
+                } else if (Array.isArray(media) && media.length > 0) {
+                    const limitedMedia = media.slice(0, 10);
+                    postData.media = limitedMedia.length === 1 ? limitedMedia[0] : limitedMedia;
+                    postData.mediaType = mediaType || 'image';
+                }
+
+                if (pdfKey) {
+                    postData.mediaType = 'pdf';
+                    postData.pdfUrl = constructProxiedUrl(pdfKey);
+                    postData.pdfName = pdfName;
+                    postData.pdfSize = pdfSize;
+                    const thumbUrl = await generateAndUploadPdfThumbnail(pdfKey, postData.portal);
+                    if (thumbUrl) {
+                        postData.pdfThumbnailUrl = thumbUrl;
+                    }
+                } else if (req.file) {
+                    postData.media = constructProxiedUrl(req.file.key);
+                    console.log('📤 Media Proxied URL (from utility):', postData.media);
+
+                    if (req.file.mimetype.includes('video')) {
+                        postData.mediaType = 'video';
+                        primaryVideoKeyForTranscode = req.file.key;
+                        applyVideoFields(postData, postData.media, req.body.videoWidth, req.body.videoHeight);
+                    } else if (req.file.mimetype.includes('pdf') || req.file.originalname?.toLowerCase().endsWith('.pdf')) {
+                        postData.mediaType = 'pdf';
+                        postData.pdfUrl = postData.media;
+                        postData.pdfName = req.file.originalname || 'Doküman.pdf';
+                        postData.pdfSize = req.file.size || 0;
+                    } else if (req.file.mimetype.startsWith('audio/')) {
+                        postData.mediaType = 'audio';
+                        postData.attachments = [{
+                            kind: 'audio',
+                            url: postData.media,
+                            key: req.file.key,
+                            name: req.file.originalname || 'Ses Kaydı',
+                            mimeType: req.file.mimetype,
+                            size: req.file.size || 0,
+                        }];
+                    } else if (req.file.mimetype.startsWith('image/')) {
+                        postData.mediaType = req.file.mimetype.includes('gif') ? 'gif' : 'image';
+                    } else {
+                        postData.mediaType = 'file';
+                        postData.attachments = [{
+                            kind: 'file',
+                            url: postData.media,
+                            key: req.file.key,
+                            name: req.file.originalname || 'Dosya',
+                            mimeType: req.file.mimetype,
+                            size: req.file.size || 0,
+                        }];
+                    }
                 }
             }
 
@@ -320,6 +494,7 @@ router.post(
                 content: postData.content ? postData.content.substring(0, 50) : '(empty)',
                 media: postData.media,
                 mediaType: postData.mediaType,
+                attachmentsCount: Array.isArray(postData.attachments) ? postData.attachments.length : 0,
                 videoThumbnail: postData.videoThumbnail || '(none)',
                 portal: postData.portal,
             });
@@ -327,16 +502,16 @@ router.post(
             const post = await Post.create(postData);
             console.log('✅ Post created successfully! ID:', post._id);
 
+            const resolvedVideoKey = primaryVideoKeyForTranscode
+                || req.body.mediaKey
+                || (req.file && req.file.mimetype?.includes('video') ? req.file.key : null)
+                || (Array.isArray(req.body.mediaKeys) ? req.body.mediaKeys[0] : null);
 
-
-            if (post.mediaType === 'video') {
-                const videoKey = req.body.mediaKey || (req.file ? req.file.key : null) || (Array.isArray(req.body.mediaKeys) ? req.body.mediaKeys[0] : null);
-                if (videoKey) {
-                    console.log(`[POST Route] Triggering background transcoding for post ${post._id}`);
-                    transcodeVideoInBackground(post._id.toString(), videoKey).catch(err => {
-                        console.error('Failed to run background transcode:', err);
-                    });
-                }
+            if ((post.mediaType === 'video' || (post.mediaType === 'mixed' && post.attachments?.some((a) => a.kind === 'video'))) && resolvedVideoKey) {
+                console.log(`[POST Route] Triggering background transcoding for post ${post._id}`);
+                transcodeVideoInBackground(post._id.toString(), resolvedVideoKey).catch(err => {
+                    console.error('Failed to run background transcode:', err);
+                });
             }
             // Re-fetch with deep population for nested quotes
             // Using a separate query to ensure fresh data from DB with all relations

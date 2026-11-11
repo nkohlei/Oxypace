@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, lazy, Suspense, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
@@ -31,8 +31,20 @@ const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
 import { setActivePortalChannel, dismissPortalChannelNotifications } from '../utils/notificationUtils';
 import { useSocket } from '../context/SocketContext';
-import { X, Youtube, Search, Users, SendHorizontal, MessageSquare } from 'lucide-react';
+import { X, Youtube, Search, Users, SendHorizontal, MessageSquare, Image, Camera, Mic, FolderOpen } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
+import CameraCaptureModal from '../components/CameraCaptureModal';
+import AudioRecorderPopover from '../components/AudioRecorderPopover';
+import FileFolderPickerModal from '../components/FileFolderPickerModal';
+import ComposerAttachmentTray from '../components/ComposerAttachmentTray';
+import {
+    extractYouTubeInfo,
+    revokeAttachmentDraft,
+    appendAttachmentDrafts,
+    createFolderDraftFromPackage,
+    buildOptimisticPostMedia,
+    prepareAndUploadPostAttachments,
+} from '../utils/mediaAttachments';
 import './Portal.css';
 
 
@@ -133,19 +145,15 @@ const Portal = () => {
 
     const [showPlusMenu, setShowPlusMenu] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    const [youtubeUrl, setYoutubeUrl] = useState('');
-    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
-    const fileInputRef = useRef(null);
-    const videoInputRef = useRef(null);
-    const gifInputRef = useRef(null);
-    const pdfInputRef = useRef(null);
-    const [mediaFile, setMediaFile] = useState(null); // Used for single video/gif/pdf/youtube
-    const [mediaFiles, setMediaFiles] = useState([]); // Array of File objects for multi-image (up to 10)
-    const [mediaPreviews, setMediaPreviews] = useState([]); // Array of { url, name, size } for previews
+    const galleryInputRef = useRef(null);
+    const [attachmentDrafts, setAttachmentDrafts] = useState([]);
+    const [showCameraModal, setShowCameraModal] = useState(false);
+    const [showAudioPopover, setShowAudioPopover] = useState(false);
+    const [showFilePickerModal, setShowFilePickerModal] = useState(false);
     const [quotedPost, setQuotedPost] = useState(null);
     const [uploadPercentage, setUploadPercentage] = useState(0);
     const [uploadLoading, setUploadLoading] = useState(false);
-    const isVideoFileRef = useRef(false);
+    const detectedYouTube = useMemo(() => extractYouTubeInfo(messageText), [messageText]);
 
     // Video transcoder hook (WASM, lazy-loaded)
     const { transcodeAndUpload } = useVideoTranscoder();
@@ -155,7 +163,7 @@ const Portal = () => {
     useEffect(() => {
         if (activeUpload && activeUpload.status === 'uploading') {
             setPosts((current) =>
-                current.map((p) => p.isOptimistic && p.mediaType === 'video' ? { ...p, uploadProgress: activeUpload.progress } : p)
+                current.map((p) => (p.isOptimistic && (p.mediaType === 'video' || p.mediaType === 'mixed')) ? { ...p, uploadProgress: activeUpload.progress } : p)
             );
         }
     }, [activeUpload?.progress, activeUpload?.status]);
@@ -307,54 +315,18 @@ const Portal = () => {
                 }
 
                 if (convertedFiles.length > 0 && isSubscribed) {
-                    const firstFile = convertedFiles[0];
-                    const fileNameLower = (firstFile.name || '').toLowerCase();
-                    const isPdf = firstFile.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
-                    const isVideo = firstFile.type.startsWith('video/') ||
-                        ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(fileNameLower.split('.').pop());
-                    const isGif = firstFile.type === 'image/gif' || fileNameLower.endsWith('.gif');
-
-                    if (isPdf || isVideo || isGif) {
-                        setMediaFiles([]);
-                        setMediaPreviews([]);
-                        setMediaFile(firstFile);
-                        isVideoFileRef.current = isVideo;
-                        setShowPlusMenu(false);
-                    } else {
-                        setMediaFile(null);
-                        isVideoFileRef.current = false;
-                        const allowedFiles = convertedFiles.slice(0, 10);
-                        const validFiles = [];
-                        const newPreviews = [];
-                        for (const file of allowedFiles) {
-                            validFiles.push(file);
-                            newPreviews.push({
-                                url: URL.createObjectURL(file),
-                                name: file.name,
-                                size: file.size,
-                                file: file
-                            });
+                    setAttachmentDrafts((prev) => {
+                        const { nextDrafts, warnings } = appendAttachmentDrafts(prev, convertedFiles);
+                        if (warnings.length > 0) {
+                            triggerToast(warnings[0], 'warning');
                         }
-                        setMediaFiles(validFiles);
-                        setMediaPreviews(newPreviews);
-                        setShowPlusMenu(false);
-                    }
+                        return nextDrafts;
+                    });
+                    setShowPlusMenu(false);
                 }
             } else if (incomingText && isSubscribed) {
-                // If no binary file was attached, check if the shared text contains a YouTube URL to auto-attach preview
-                const urlMatch = incomingText.match(/https?:\/\/[^\s]+/i);
-                const candidateUrl = urlMatch ? urlMatch[0] : incomingText;
-                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
-                const match = candidateUrl.match(regExp);
-                const ytId = (match && match[2].length === 11) ? match[2] : null;
-                if (ytId) {
-                    setMediaFile({
-                        name: 'YouTube Video',
-                        type: 'youtube',
-                        preview: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
-                        url: candidateUrl
-                    });
-                }
+                // Auto-detected YouTube links in messageText will automatically show in ComposerAttachmentTray
+                setShowPlusMenu(false);
             }
 
             if (location.state?.sharedTrigger) {
@@ -552,35 +524,7 @@ const Portal = () => {
     }, [socket, connected, id, currentChannel, user?._id]);
 
 
-    // Helper to extract YouTube ID
-    const getYoutubeId = (url) => {
-        if (!url) return null;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    };
 
-    const handleYoutubeChange = (e) => {
-        const url = e.target.value;
-        setYoutubeUrl(url);
-    };
-
-    const handleAddYoutube = () => {
-        const videoId = getYoutubeId(youtubeUrl);
-        if (!videoId) {
-            triggerToast("Geçersiz YouTube URL'si", 'error');
-            return;
-        }
-        // We'll treat it as attached media but string
-        setMediaFile({
-            name: 'YouTube Video',
-            type: 'youtube', // Custom type
-            preview: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-            url: youtubeUrl
-        });
-        setShowYoutubeInput(false);
-        setYoutubeUrl('');
-    };
 
     // Scroll To Top Logic - 100% High FPS Smooth Animation
     const [showScrollTop, setShowScrollTop] = useState(false);
@@ -678,77 +622,74 @@ const Portal = () => {
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
     }, []);
 
-    const handleImageSelect = (e) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
-
-        // Reset single mediaFile (video/gif/pdf) if selecting photos
-        setMediaFile(null);
-        isVideoFileRef.current = false;
-
-        const currentCount = mediaFiles.length;
-        const remainingSlots = 10 - currentCount;
-
-        if (remainingSlots <= 0) {
-            triggerToast("Bir gönderiye en fazla 10 görsel ekleyebilirsiniz.", 'warning');
-            return;
-        }
-
-        const allowedFiles = files.slice(0, remainingSlots);
-        if (files.length > remainingSlots) {
-            triggerToast(`En fazla 10 görsel ekleyebilirsiniz. İlk ${remainingSlots} görsel eklendi.`, 'warning');
-        }
-
-        const validFiles = [];
-        const newPreviews = [];
-
-        for (const file of allowedFiles) {
-            if (file.size > 2 * 1024 * 1024 * 1024) {
-                triggerToast(`${file.name} boyutu 2 GB'dan büyük olamaz.`, 'error');
-                continue;
-            }
-            validFiles.push(file);
-            newPreviews.push({
-                url: URL.createObjectURL(file),
-                name: file.name,
-                size: file.size,
-                file: file
+    // Composer helpers for gallery, camera studio, audio recorder, files & folders (YouTube links are auto-detected)
+    const appendComposerFiles = useCallback((files, extra = {}) => {
+        if (!files || files.length === 0) return;
+        setAttachmentDrafts((prev) => {
+            const { nextDrafts, warnings } = appendAttachmentDrafts(prev, files, {
+                extra,
+                imagesOnly: isImageChannel,
             });
-        }
+            if (warnings.length > 0) {
+                triggerToast(warnings[0], 'warning');
+            }
+            return nextDrafts;
+        });
+    }, [isImageChannel, triggerToast]);
 
-        setMediaFiles((prev) => [...prev, ...validFiles]);
-        setMediaPreviews((prev) => [...prev, ...newPreviews]);
+    const handleGallerySelect = (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (files.length === 0) return;
+        appendComposerFiles(files);
         setShowPlusMenu(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleRemoveImage = (indexToRemove) => {
-        setMediaFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-        setMediaPreviews((prev) => {
-            const item = prev[indexToRemove];
-            if (item && item.url && item.url.startsWith('blob:')) {
-                try { URL.revokeObjectURL(item.url); } catch (e) {}
-            }
-            return prev.filter((_, idx) => idx !== indexToRemove);
+    const handleCameraCapture = (file) => {
+        if (!file) return;
+        appendComposerFiles([file]);
+    };
+
+    const handleAudioAttach = (file, meta = {}) => {
+        if (!file) return;
+        appendComposerFiles([file], meta);
+    };
+
+    const handlePickerFilesSelected = (files) => {
+        if (!files || files.length === 0) return;
+        appendComposerFiles(files);
+    };
+
+    const handleFolderPackaged = (packaged) => {
+        try {
+            const draft = createFolderDraftFromPackage(packaged);
+            if (!draft) return;
+            setAttachmentDrafts((prev) => {
+                if (prev.length >= 15) {
+                    revokeAttachmentDraft(draft);
+                    triggerToast('Bir gönderiye en fazla 15 dosya veya içerik eklenebilir.', 'warning');
+                    return prev;
+                }
+                return [...prev, draft];
+            });
+        } catch (err) {
+            triggerToast(err?.message || 'Klasör eklenemedi.', 'error');
+        }
+    };
+
+    const handleRemoveAttachmentDraft = (draftId) => {
+        setAttachmentDrafts((prev) => {
+            const target = prev.find((d) => d.id === draftId);
+            if (target) revokeAttachmentDraft(target);
+            return prev.filter((d) => d.id !== draftId);
         });
     };
 
-    const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024 * 1024) {
-                triggerToast("Dosya boyutu 2 GB'dan büyük olamaz.", 'error');
-                return;
-            }
-            // Clear multi-images when choosing single video/gif/pdf
-            setMediaFiles([]);
-            setMediaPreviews([]);
-            setMediaFile(file);
-            // Track whether the selected file is a video
-            isVideoFileRef.current = file.type.startsWith('video/') ||
-                ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(file.name.split('.').pop().toLowerCase());
-            setShowPlusMenu(false);
-        }
+    const handleClearAttachmentDrafts = () => {
+        setAttachmentDrafts((prev) => {
+            prev.forEach(revokeAttachmentDraft);
+            return [];
+        });
     };
 
     // Typing Indicator Persistence logic
@@ -756,7 +697,7 @@ const Portal = () => {
         if (isGhost) return;
         if (!socket || !id) return;
 
-        if (messageText.trim().length > 0 || mediaFile !== null || mediaFiles.length > 0) {
+        if (messageText.trim().length > 0 || attachmentDrafts.length > 0) {
             if (!isTypingSent) {
                 setIsTypingSent(true);
                 socket.emit('portal_typing', { portalId: id, isTyping: true });
@@ -767,7 +708,7 @@ const Portal = () => {
                 setIsTypingSent(false);
             }
         }
-    }, [messageText, mediaFile, mediaFiles, id, socket, isTypingSent, isGhost]);
+    }, [messageText, attachmentDrafts, id, socket, isTypingSent, isGhost]);
 
     useEffect(() => {
         return () => {
@@ -783,10 +724,9 @@ const Portal = () => {
             return;
         }
         const hasText = messageText.trim().length > 0;
-        const hasSingleMedia = !!mediaFile;
-        const hasMultiImages = mediaFiles.length > 0;
+        const hasAttachments = attachmentDrafts.length > 0;
 
-        if (!hasText && !hasSingleMedia && !hasMultiImages) return;
+        if (!hasText && !hasAttachments) return;
 
         // Clear typing indicator instantly on send
         if (socket && id) {
@@ -794,203 +734,134 @@ const Portal = () => {
         }
         setIsTypingSent(false);
 
-        // Store current data for rollback if needed
         const currentData = {
             content: messageText,
-            media: mediaFile,
-            mediaFiles: [...mediaFiles],
-            mediaPreviews: [...mediaPreviews]
+            drafts: [...attachmentDrafts],
+            detectedYouTube,
+            quotedPost,
         };
-
-        // Check if it's a YouTube "file"
-        const isYoutube = mediaFile && mediaFile.type === 'youtube';
 
         // 1. Optimistic Update
         const tempId = `temp-${Date.now()}`;
-        let optimisticMedia = null;
-        let optimisticMediaType = null;
-
-        if (isYoutube) {
-            optimisticMedia = mediaFile.url;
-            optimisticMediaType = 'youtube';
-        } else if (hasMultiImages) {
-            optimisticMedia = mediaPreviews.map(p => p.url);
-            optimisticMediaType = 'image';
-        } else if (mediaFile) {
-            optimisticMedia = URL.createObjectURL(mediaFile);
-            optimisticMediaType = mediaFile.type.startsWith('video') ? 'video' : (mediaFile.type.includes('gif') ? 'gif' : 'image');
-        }
-
-        const isVideoUpload = optimisticMediaType === 'video';
+        const optimisticVisual = buildOptimisticPostMedia(currentData.drafts, currentData.detectedYouTube);
         const optimisticPost = {
             _id: tempId,
-            content: messageText,
-            media: optimisticMedia,
-            mediaType: optimisticMediaType || 'none',
+            content: currentData.content,
+            media: optimisticVisual.media,
+            mediaType: optimisticVisual.mediaType || 'none',
+            attachments: optimisticVisual.attachments || [],
             author: user,
             createdAt: new Date().toISOString(),
             likes: [],
             likeCount: 0,
-            isOptimistic: true, // Flag for styling
-            quotedPost: quotedPost, // Inject full deeply-populated quotedPost
-            isProcessing: isVideoUpload ? true : false,
+            isOptimistic: true,
+            quotedPost: currentData.quotedPost,
+            isProcessing: optimisticVisual.isVideoUpload,
             processingProgress: 0,
-            estimatedTime: isVideoUpload ? 'Hesaplanıyor...' : ''
+            estimatedTime: optimisticVisual.isVideoUpload ? 'Hesaplanıyor...' : '',
         };
 
-        // Add to feed immediately
         setPosts((current) => [optimisticPost, ...current]);
         if (currentChannel) {
             const chKey = String(currentChannel);
             setChannelPostCounts((prev) => ({
                 ...prev,
-                [chKey]: (prev[chKey] !== undefined ? prev[chKey] : (activeChannelObj?.postCount || 0)) + 1
+                [chKey]: (prev[chKey] !== undefined ? prev[chKey] : (activeChannelObj?.postCount || 0)) + 1,
             }));
         }
 
-        // Clear input immediately
+        // Clear composer immediately without revoking preview blobs needed by optimistic card
         setMessageText('');
-        setMediaFile(null);
-        setMediaFiles([]);
-        setMediaPreviews([]);
+        setAttachmentDrafts([]);
         setShowPlusMenu(false);
         setUploadLoading(true);
         setUploadPercentage(0);
 
         try {
-            let mediaKey = null;
-            let mediaKeys = null;
-            let youtubeMedia = null;
-            let youtubeMediaType = null;
-            let videoQualitiesPayload = null;
+            const prepared = await prepareAndUploadPostAttachments({
+                drafts: currentData.drafts,
+                uploadFileFn: uploadFile,
+                targetId: id,
+                hasAutoYouTube: Boolean(currentData.detectedYouTube),
+                onProgress: (progress) => {
+                    setUploadPercentage(progress);
+                    setPosts((current) =>
+                        current.map((p) => (String(p._id) === String(tempId) ? { ...p, uploadProgress: progress } : p))
+                    );
+                },
+            });
 
-            if (isYoutube) {
-                youtubeMedia = currentData.media.url;
-                youtubeMediaType = 'youtube';
-            } else if (currentData.mediaFiles && currentData.mediaFiles.length > 0) {
-                // Multi-image upload flow (up to 10 images in parallel)
-                const totalFiles = currentData.mediaFiles.length;
-                const fileProgresses = new Array(totalFiles).fill(0);
-
-                const uploadPromises = currentData.mediaFiles.map((file, idx) => {
-                    return uploadFile(file, 'post', id, (progress) => {
-                        fileProgresses[idx] = progress;
-                        const avgProgress = Math.round(fileProgresses.reduce((a, b) => a + b, 0) / totalFiles);
-                        setUploadPercentage(avgProgress);
-                        setPosts((current) =>
-                            current.map((p) => String(p._id) === String(tempId) ? { ...p, uploadProgress: avgProgress } : p)
-                        );
-                    });
+            if (prepared.mode === 'video') {
+                useUploadStore.getState().startVideoUpload({
+                    file: prepared.primaryVideoFile,
+                    portalId: id,
+                    channel: currentChannel,
+                    content: currentData.content,
+                    quotedPostId: currentData.quotedPost?._id,
+                    extraAttachments: prepared.extraAttachments,
+                    onFinish: (err, createdPost) => {
+                        currentData.drafts.forEach(revokeAttachmentDraft);
+                        if (err) {
+                            setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+                            if (currentChannel) {
+                                const chKey = String(currentChannel);
+                                setChannelPostCounts((prev) => ({
+                                    ...prev,
+                                    [chKey]: Math.max(0, (prev[chKey] || 1) - 1),
+                                }));
+                            }
+                            triggerToast('Video yükleme başarısız oldu.', 'error');
+                        } else if (createdPost) {
+                            const tempStrId = String(tempId);
+                            setPosts((currentPosts) => {
+                                const responseId = String(createdPost._id);
+                                const alreadyExists = currentPosts.some((p) => String(p._id) === responseId);
+                                if (alreadyExists) {
+                                    return currentPosts.filter((p) => String(p._id) !== tempStrId);
+                                }
+                                return currentPosts.map((p) => {
+                                    if (String(p._id) === tempStrId) {
+                                        const backendPost = createdPost;
+                                        const bqId = backendPost.quotedPost && (typeof backendPost.quotedPost === 'string' ? backendPost.quotedPost : backendPost.quotedPost._id);
+                                        if (bqId && p.quotedPost && bqId === p.quotedPost._id) {
+                                            backendPost.quotedPost = p.quotedPost;
+                                        }
+                                        return backendPost;
+                                    }
+                                    return p;
+                                });
+                            });
+                        }
+                    },
                 });
 
-                mediaKeys = await Promise.all(uploadPromises);
-            } else if (currentData.media) {
-                if (isVideoFileRef.current) {
-                    // Start background video upload
-                    useUploadStore.getState().startVideoUpload({
-                        file: currentData.media,
-                        portalId: id,
-                        channel: currentChannel,
-                        content: currentData.content,
-                        quotedPostId: quotedPost?._id,
-                        onFinish: (err, createdPost) => {
-                            if (err) {
-                                // Rollback optimistic update
-                                setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
-                                if (currentChannel) {
-                                    const chKey = String(currentChannel);
-                                    setChannelPostCounts((prev) => ({
-                                        ...prev,
-                                        [chKey]: Math.max(0, (prev[chKey] || 1) - 1)
-                                    }));
-                                }
-                                triggerToast('Video yükleme başarısız oldu.', 'error');
-                            } else if (createdPost) {
-                                // Replace optimistic temp post with real post
-                                const tempStrId = String(tempId);
-                                setPosts((currentPosts) => {
-                                    const responseId = String(createdPost._id);
-                                    const alreadyExists = currentPosts.some(p => String(p._id) === responseId);
-                                    if (alreadyExists) {
-                                        return currentPosts.filter(p => String(p._id) !== tempStrId);
-                                    }
-                                    return currentPosts.map((p) => {
-                                        if (String(p._id) === tempStrId) {
-                                            const backendPost = createdPost;
-                                            const bqId = backendPost.quotedPost && (typeof backendPost.quotedPost === 'string' ? backendPost.quotedPost : backendPost.quotedPost._id);
-                                            if (bqId && p.quotedPost && bqId === p.quotedPost._id) {
-                                                backendPost.quotedPost = p.quotedPost;
-                                            }
-                                            return backendPost;
-                                        }
-                                        return p;
-                                    });
-                                });
-                            }
-                        }
-                    });
-                    
-                    // Reset local upload states and finish handleSendMessage
-                    setUploadLoading(false);
-                    setQuotedPost(null);
-                    return;
-                } else {
-                    // Image / PDF / GIF: existing presigned upload
-                    mediaKey = await uploadFile(currentData.media, 'post', id, (progress) => {
-                        setUploadPercentage(progress);
-                        setPosts((current) =>
-                            current.map((p) => String(p._id) === String(tempId) ? { ...p, uploadProgress: progress } : p)
-                        );
-                    });
-                }
-            } else {
-                setUploadPercentage(100);
+                setUploadLoading(false);
+                setQuotedPost(null);
+                return;
             }
 
             const postData = {
                 content: currentData.content,
                 portalId: id,
                 channel: currentChannel,
-                quotedPostId: quotedPost?._id,
+                quotedPostId: currentData.quotedPost?._id,
+                ...prepared.payloadFields,
             };
 
-            if (mediaKeys && mediaKeys.length > 0) {
-                postData.mediaKeys = mediaKeys;
-                postData.mediaType = 'image';
-            } else if (mediaKey) {
-                postData.mediaKey = mediaKey;
-                if (isVideoFileRef.current) {
-                    postData.mediaType = 'video';
-                    if (videoQualitiesPayload) {
-                        postData.videoQualities = JSON.stringify(videoQualitiesPayload);
-                    }
-                } else if (currentData.media && (currentData.media.type === 'application/pdf' || currentData.media.name.toLowerCase().endsWith('.pdf'))) {
-                    postData.pdfName = currentData.media.name;
-                    postData.pdfSize = currentData.media.size;
-                }
-            } else if (youtubeMedia) {
-                postData.media = youtubeMedia;
-                postData.mediaType = youtubeMediaType;
-            }
-
             const res = await axios.post('/api/posts', postData);
+            setQuotedPost(null);
+            currentData.drafts.forEach(revokeAttachmentDraft);
 
-            setQuotedPost(null); // Clear after send
-
-            // 2. Success: Replace temp post with real data
             const tempStrId = String(tempId);
             setPosts((currentPosts) => {
                 const responseId = String(res.data._id);
-                const alreadyExists = currentPosts.some(p => String(p._id) === responseId);
-                
+                const alreadyExists = currentPosts.some((p) => String(p._id) === responseId);
                 if (alreadyExists) {
-                    // Socket already added it, just remove the optimistic temp
-                    return currentPosts.filter(p => String(p._id) !== tempStrId);
+                    return currentPosts.filter((p) => String(p._id) !== tempStrId);
                 }
                 return currentPosts.map((p) => {
                     if (String(p._id) === tempStrId) {
                         const backendPost = res.data;
-                        // Inject deeply populated quotedPost if backend missed it or returned just ID
                         const bqId = backendPost.quotedPost && (typeof backendPost.quotedPost === 'string' ? backendPost.quotedPost : backendPost.quotedPost._id);
                         if (bqId && p.quotedPost && bqId === p.quotedPost._id) {
                             backendPost.quotedPost = p.quotedPost;
@@ -1005,19 +876,17 @@ const Portal = () => {
             const errorMsg = err.response?.data?.message || err.message;
             triggerToast(errorMsg, 'error');
 
-            // 3. Failure: Remove optimistic post and restore input
             setPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
             if (currentChannel) {
                 const chKey = String(currentChannel);
                 setChannelPostCounts((prev) => ({
                     ...prev,
-                    [chKey]: Math.max(0, (prev[chKey] || 1) - 1)
+                    [chKey]: Math.max(0, (prev[chKey] || 1) - 1),
                 }));
             }
             setMessageText(currentData.content);
-            setMediaFile(currentData.media);
-            setMediaFiles(currentData.mediaFiles || []);
-            setMediaPreviews(currentData.mediaPreviews || []);
+            setAttachmentDrafts(currentData.drafts);
+            setQuotedPost(currentData.quotedPost || null);
         } finally {
             setUploadLoading(false);
             setUploadPercentage(0);
@@ -2093,115 +1962,52 @@ const Portal = () => {
                                                                                     <div
                                                                                         className="plus-menu-item"
                                                                                         onClick={() => {
-                                                                                            fileInputRef.current.click();
+                                                                                            galleryInputRef.current?.click();
                                                                                             setShowPlusMenu(false);
                                                                                         }}
                                                                                     >
                                                                                         <div className="plus-menu-icon">
-                                                                                            <svg
-                                                                                                width="20"
-                                                                                                height="20"
-                                                                                                viewBox="0 0 24 24"
-                                                                                                fill="none"
-                                                                                                stroke="currentColor"
-                                                                                                strokeWidth="2"
-                                                                                            >
-                                                                                                <rect
-                                                                                                    x="3"
-                                                                                                    y="3"
-                                                                                                    width="18"
-                                                                                                    height="18"
-                                                                                                    rx="2"
-                                                                                                    ry="2"
-                                                                                                ></rect>
-                                                                                                <circle
-                                                                                                    cx="8.5"
-                                                                                                    cy="8.5"
-                                                                                                    r="1.5"
-                                                                                                ></circle>
-                                                                                                <polyline points="21 15 16 10 5 21"></polyline>
-                                                                                            </svg>
+                                                                                            <Image size={18} strokeWidth={1.9} />
                                                                                         </div>
-                                                                                        Görsel
+                                                                                        Galeri
+                                                                                    </div>
+                                                                                    <div
+                                                                                        className="plus-menu-item"
+                                                                                        onClick={() => {
+                                                                                            setShowCameraModal(true);
+                                                                                            setShowPlusMenu(false);
+                                                                                        }}
+                                                                                    >
+                                                                                        <div className="plus-menu-icon">
+                                                                                            <Camera size={18} strokeWidth={1.9} />
+                                                                                        </div>
+                                                                                        Kamera
                                                                                     </div>
                                                                                     {!isImageChannel && (
                                                                                         <>
                                                                                             <div
                                                                                                 className="plus-menu-item"
                                                                                                 onClick={() => {
-                                                                                                    videoInputRef.current.click();
+                                                                                                    setShowAudioPopover(true);
                                                                                                     setShowPlusMenu(false);
                                                                                                 }}
                                                                                             >
                                                                                                 <div className="plus-menu-icon">
-                                                                                                    <svg
-                                                                                                        width="20"
-                                                                                                        height="20"
-                                                                                                        viewBox="0 0 24 24"
-                                                                                                        fill="none"
-                                                                                                        stroke="currentColor"
-                                                                                                        strokeWidth="2"
-                                                                                                    >
-                                                                                                        <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                                                                                        <rect
-                                                                                                            x="1"
-                                                                                                            y="5"
-                                                                                                            width="15"
-                                                                                                            height="14"
-                                                                                                            rx="2"
-                                                                                                            ry="2"
-                                                                                                        ></rect>
-                                                                                                    </svg>
+                                                                                                    <Mic size={18} strokeWidth={1.9} />
                                                                                                 </div>
-                                                                                                Video
+                                                                                                Ses
                                                                                             </div>
                                                                                             <div
                                                                                                 className="plus-menu-item"
                                                                                                 onClick={() => {
-                                                                                                    gifInputRef.current.click();
-                                                                                                    setShowPlusMenu(false);
-                                                                                                }}
-                                                                                            >
-                                                                                                <div
-                                                                                                    className="plus-menu-icon"
-                                                                                                    style={{
-                                                                                                        fontWeight: 800,
-                                                                                                        fontSize: '10px',
-                                                                                                    }}
-                                                                                                >
-                                                                                                    GIF
-                                                                                                </div>
-                                                                                                GIF
-                                                                                            </div>
-                                                                                            <div
-                                                                                                className="plus-menu-item"
-                                                                                                onClick={() => {
-                                                                                                    pdfInputRef.current.click();
+                                                                                                    setShowFilePickerModal(true);
                                                                                                     setShowPlusMenu(false);
                                                                                                 }}
                                                                                             >
                                                                                                 <div className="plus-menu-icon">
-                                                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                                                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                                                                        <polyline points="14 2 14 8 20 8" />
-                                                                                                    </svg>
+                                                                                                    <FolderOpen size={18} strokeWidth={1.9} />
                                                                                                 </div>
-                                                                                                PDF
-                                                                                            </div>
-                                                                                            <div
-                                                                                                className="plus-menu-item"
-                                                                                                onClick={() => {
-                                                                                                    setShowYoutubeInput(!showYoutubeInput);
-                                                                                                    setShowPlusMenu(false);
-                                                                                                }}
-                                                                                            >
-                                                                                                <div className="plus-menu-icon">
-                                                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                                                                                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
-                                                                                                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" />
-                                                                                                    </svg>
-                                                                                                </div>
-                                                                                                YouTube
+                                                                                                Dosya
                                                                                             </div>
                                                                                         </>
                                                                                     )}
@@ -2210,78 +2016,12 @@ const Portal = () => {
                                                                             )}
                                                                         <input
                                                                             type="file"
-                                                                            ref={fileInputRef}
-                                                                            onChange={handleImageSelect}
+                                                                            ref={galleryInputRef}
+                                                                            onChange={handleGallerySelect}
                                                                             style={{ display: 'none' }}
-                                                                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                                                                            accept={isImageChannel ? 'image/*,.gif' : 'image/*,video/*,.gif'}
                                                                             multiple
                                                                         />
-                                                                        <input
-                                                                            type="file"
-                                                                            ref={videoInputRef}
-                                                                            onChange={handleFileSelect}
-                                                                            style={{ display: 'none' }}
-                                                                            accept="video/mp4, video/webm, video/quicktime"
-                                                                        />
-                                                                        <input
-                                                                            type="file"
-                                                                            ref={gifInputRef}
-                                                                            onChange={handleFileSelect}
-                                                                            style={{ display: 'none' }}
-                                                                            accept="image/gif"
-                                                                        />
-                                                                        <input
-                                                                            type="file"
-                                                                            ref={pdfInputRef}
-                                                                            onChange={handleFileSelect}
-                                                                            style={{ display: 'none' }}
-                                                                            accept=".pdf"
-                                                                        />
-
-                                                                        {showYoutubeInput && (
-                                                                            <div className="edit-modal-overlay" style={{ zIndex: 9999 }}>
-                                                                                <div className="edit-modal-modern" style={{ maxWidth: '400px', height: 'auto', maxHeight: 'none' }}>
-                                                                                    <div className="edit-modal-header-modern">
-                                                                                        <div className="header-left">
-                                                                                            <h3 className="header-title-modern">YouTube Videosu Ekle</h3>
-                                                                                        </div>
-                                                                                        <button onClick={() => setShowYoutubeInput(false)} className="close-btn-modern">
-                                                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                                                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                                                            </svg>
-                                                                                        </button>
-                                                                                    </div>
-                                                                                    <div className="edit-modal-content-modern" style={{ padding: '20px' }}>
-                                                                                        <div className="floating-label-group">
-                                                                                            <label className="floating-label">Video Bağlantısı</label>
-                                                                                            <input
-                                                                                                type="text"
-                                                                                                className="floating-input"
-                                                                                                placeholder="https://www.youtube.com/watch?v=..."
-                                                                                                value={youtubeUrl}
-                                                                                                onChange={handleYoutubeChange}
-                                                                                                autoFocus
-                                                                                                onKeyDown={(e) => {
-                                                                                                    if (e.key === 'Enter') {
-                                                                                                        e.preventDefault();
-                                                                                                        handleAddYoutube();
-                                                                                                    }
-                                                                                                }}
-                                                                                            />
-                                                                                        </div>
-                                                                                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                                                                                            <button onClick={() => setShowYoutubeInput(false)} className="join-btn outline" style={{ padding: '8px 16px' }}>
-                                                                                                İptal
-                                                                                            </button>
-                                                                                            <button onClick={handleAddYoutube} className="join-btn primary" style={{ padding: '8px 20px' }}>
-                                                                                                Ekle
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
 
                                                                         {quotedPost && (
                                                                             <div className="input-quoted-preview">
@@ -2339,7 +2079,7 @@ const Portal = () => {
                                                                             </div>
                                                                         )}
 
-                                                                        {isImageChannel && messageText.trim() && !mediaFile && mediaFiles.length === 0 && (
+                                                                        {isImageChannel && messageText.trim() && attachmentDrafts.length === 0 && (
                                                                             <div className="image-channel-warning" style={{
                                                                                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
                                                                                 border: '1px solid rgba(239, 68, 68, 0.25)',
@@ -2359,6 +2099,15 @@ const Portal = () => {
                                                                                 </svg>
                                                                                 <span>Görsel kanallarında paylaşım yapabilmek için mutlaka bir görsel eklemelisiniz.</span>
                                                                             </div>
+                                                                        )}
+
+                                                                        {!isGhost && (
+                                                                            <ComposerAttachmentTray
+                                                                                attachments={attachmentDrafts}
+                                                                                detectedYouTube={detectedYouTube}
+                                                                                onRemoveAttachment={handleRemoveAttachmentDraft}
+                                                                                onClearAll={handleClearAttachmentDrafts}
+                                                                            />
                                                                         )}
 
                                                                         {isGhost ? (
@@ -2393,7 +2142,7 @@ const Portal = () => {
                                                                                     height: '32px',
                                                                                     marginRight: '12px',
                                                                                     color: showPlusMenu
-                                                                                        ? 'var(--primary-color)'
+                                                                                        ? '#ffffff'
                                                                                         : '#b9bbbe',
                                                                                 }}
                                                                             >
@@ -2406,73 +2155,6 @@ const Portal = () => {
                                                                                     <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" />
                                                                                 </svg>
                                                                             </button>
-
-                                                                            {mediaFile && (
-                                                                                <div
-                                                                                    className="input-media-preview"
-                                                                                    style={{
-                                                                                        marginRight: '12px',
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                                                        backgroundColor: 'var(--bg-secondary)',
-                                                                                        borderRadius: '8px',
-                                                                                        padding: '4px',
-                                                                                        gap: '8px',
-                                                                                        border: '1px solid var(--border-subtle)'
-                                                                                    }}
-                                                                                >
-                                                                                    {mediaFile.type === 'youtube' && mediaFile.preview ? (
-                                                                                        <img
-                                                                                            src={mediaFile.preview}
-                                                                                            alt="Video Preview"
-                                                                                            style={{
-                                                                                                width: '40px',
-                                                                                                height: '30px',
-                                                                                                objectFit: 'cover',
-                                                                                                borderRadius: '4px'
-                                                                                            }}
-                                                                                            loading="lazy"
-                                                                                            decoding="async"
-                                                                                            width="40"
-                                                                                            height="30"
-                                                                                        />
-                                                                                    ) : (
-                                                                                        <span
-                                                                                            style={{
-                                                                                                fontSize: '20px',
-                                                                                                lineHeight: 1,
-                                                                                                padding: '4px'
-                                                                                            }}
-                                                                                        >
-                                                                                            {mediaFile.type.startsWith('video')
-                                                                                                ? '🎥'
-                                                                                                : mediaFile.type.includes('gif')
-                                                                                                    ? '👾'
-                                                                                                    : mediaFile.type === 'application/pdf' || (mediaFile.name && mediaFile.name.toLowerCase().endsWith('.pdf'))
-                                                                                                        ? '📄'
-                                                                                                        : '🖼️'}
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                    <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '100px' }}>
-                                                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                                            {mediaFile.name || 'Medya'}
-                                                                                        </span>
-                                                                                    </div>
-
-                                                                                    <button
-                                                                                        onClick={() => setMediaFile(null)}
-                                                                                        style={{
-                                                                                            background: 'transparent',
-                                                                                            border: 'none',
-                                                                                            color: 'var(--text-muted)',
-                                                                                            cursor: 'pointer',
-                                                                                        }}
-                                                                                    >
-                                                                                        ×
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
 
                                                                             <input
                                                                                 type="text"
@@ -2498,13 +2180,13 @@ const Portal = () => {
                                                                                     onClick={handleSendMessage}
                                                                                     disabled={
                                                                                         uploadLoading || (isImageChannel
-                                                                                            ? (!mediaFile && mediaFiles.length === 0)
-                                                                                            : (!messageText.trim() && !mediaFile && mediaFiles.length === 0))
+                                                                                            ? attachmentDrafts.length === 0
+                                                                                            : (!messageText.trim() && attachmentDrafts.length === 0))
                                                                                     }
                                                                                     title="Gönder"
                                                                                     style={{
                                                                                         color:
-                                                                                            messageText.trim() || mediaFile || mediaFiles.length > 0
+                                                                                            messageText.trim() || attachmentDrafts.length > 0
                                                                                                 ? 'var(--primary-color)'
                                                                                                 : 'var(--text-tertiary)',
                                                                                     }}
@@ -2523,46 +2205,6 @@ const Portal = () => {
                                                                             </div>
                                                                         </div>
                                                                     )}
-
-                                                                        {/* Multi-Image Selected Previews Gallery (Left to Right, Square Grid/Row) */}
-                                                                        {mediaPreviews && mediaPreviews.length > 0 && (
-                                                                            <div className="portal-image-previews-container">
-                                                                                <div className="portal-image-previews-header">
-                                                                                    <span className="portal-image-previews-count">
-                                                                                        Seçilen Görseller ({mediaPreviews.length}/10)
-                                                                                    </span>
-                                                                                    {mediaPreviews.length < 10 && (
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            className="portal-add-more-images-btn"
-                                                                                            onClick={() => fileInputRef.current?.click()}
-                                                                                        >
-                                                                                            + Görsel Ekle
-                                                                                        </button>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="portal-image-previews-list">
-                                                                                    {mediaPreviews.map((preview, index) => (
-                                                                                        <div key={index} className="portal-image-preview-item">
-                                                                                            <img
-                                                                                                src={preview.url}
-                                                                                                alt={`Preview ${index + 1}`}
-                                                                                                className="portal-image-preview-thumb"
-                                                                                            />
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                className="portal-image-remove-btn"
-                                                                                                onClick={() => handleRemoveImage(index)}
-                                                                                                title="Görseli Kaldır"
-                                                                                            >
-                                                                                                <X size={14} />
-                                                                                            </button>
-                                                                                            <span className="portal-image-index-badge">{index + 1}</span>
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
                                                                         {/* Portal Typing Indicator */}
                                                                         {portalTypingUsers && portalTypingUsers.length > 0 && (
                                                                             <div className="portal-typing-indicator" style={{ marginTop: '8px' }}>
@@ -2723,6 +2365,31 @@ const Portal = () => {
                         navigate('/');
                     }}
                 />
+            )}
+            {showCameraModal && createPortal(
+                <CameraCaptureModal
+                    isOpen={showCameraModal}
+                    onClose={() => setShowCameraModal(false)}
+                    onCapture={handleCameraCapture}
+                />,
+                document.body
+            )}
+            {showAudioPopover && createPortal(
+                <AudioRecorderPopover
+                    isOpen={showAudioPopover}
+                    onClose={() => setShowAudioPopover(false)}
+                    onAttach={handleAudioAttach}
+                />,
+                document.body
+            )}
+            {showFilePickerModal && createPortal(
+                <FileFolderPickerModal
+                    isOpen={showFilePickerModal}
+                    onClose={() => setShowFilePickerModal(false)}
+                    onFilesSelected={handlePickerFilesSelected}
+                    onFolderPackaged={handleFolderPackaged}
+                />,
+                document.body
             )}
         </div>
     );

@@ -23,11 +23,24 @@ import PostCard from '../components/PostCard';
 import LinkPreview from '../components/LinkPreview';
 import { extractFirstUrl } from '../utils/linkify';
 import PostImageGallery from '../components/PostImageGallery';
+import PostAttachments from '../components/PostAttachments';
+import {
+    extractYouTubeInfo,
+    revokeAttachmentDraft,
+    appendAttachmentDrafts,
+    createFolderDraftFromPackage,
+    buildOptimisticPostMedia,
+    prepareAndUploadPostAttachments,
+} from '../utils/mediaAttachments';
+import CameraCaptureModal from '../components/CameraCaptureModal';
+import AudioRecorderPopover from '../components/AudioRecorderPopover';
+import FileFolderPickerModal from '../components/FileFolderPickerModal';
+import ComposerAttachmentTray from '../components/ComposerAttachmentTray';
 import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
 import PortalInfoModal from '../components/PortalInfoModal';
 import { useSocket } from '../context/SocketContext';
-import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown, Search, Download } from 'lucide-react';
+import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown, Search, Download, Image, Camera, Mic, FolderOpen } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import { validateProfileFields } from '../utils/profanityFilter';
 import './Profile.css';
@@ -330,15 +343,16 @@ const Profile = () => {
 
     // Profile Compose State
     const [composeText, setComposeText] = useState('');
-    const [composeMedia, setComposeMedia] = useState(null);
-    const [composeMediaPreview, setComposeMediaPreview] = useState(null);
+    const [composeAttachments, setComposeAttachments] = useState([]);
+    const [showComposeCamera, setShowComposeCamera] = useState(false);
+    const [showComposeAudio, setShowComposeAudio] = useState(false);
+    const [showComposeFilePicker, setShowComposeFilePicker] = useState(false);
     const [composeLoading, setComposeLoading] = useState(false);
     const [uploadPercentage, setUploadPercentage] = useState(0);
     const [composeFocused, setComposeFocused] = useState(false);
-    const composeMediaInputRef = useRef(null);
+    const composeGalleryInputRef = useRef(null);
     const composeBoxRef = useRef(null);
-    const isVideoFileRef = useRef(false);
-    const isPdfFileRef = useRef(false);
+    const composeDetectedYouTube = useMemo(() => extractYouTubeInfo(composeText), [composeText]);
 
     // Video transcoder hook (WASM, lazy-loaded)
     const { transcodeAndUpload } = useVideoTranscoder();
@@ -348,7 +362,7 @@ const Profile = () => {
     useEffect(() => {
         if (activeUpload && activeUpload.status === 'uploading') {
             setUserPosts((current) =>
-                current.map((p) => p.isOptimistic && p.mediaType === 'video' ? { ...p, uploadProgress: activeUpload.progress } : p)
+                current.map((p) => (p.isOptimistic && (p.mediaType === 'video' || p.mediaType === 'mixed')) ? { ...p, uploadProgress: activeUpload.progress } : p)
             );
         }
     }, [activeUpload?.progress, activeUpload?.status]);
@@ -410,20 +424,20 @@ const Profile = () => {
         };
     }, [showPostsFilterMenu]);
 
-    // Click outside compose box to close
+    // Click outside compose box to close (ignored when sub-modals are open)
     useEffect(() => {
-        if (!composeFocused) return;
+        if (!composeFocused || showComposeCamera || showComposeAudio || showComposeFilePicker) return;
         const handleClickOutside = (e) => {
             if (composeBoxRef.current && !composeBoxRef.current.contains(e.target)) {
-                // Only collapse if there's no text or media
-                if (!composeText.trim() && !composeMedia) {
+                // Only collapse if there's no text or attachments
+                if (!composeText.trim() && composeAttachments.length === 0) {
                     setComposeFocused(false);
                 }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [composeFocused, composeText, composeMedia]);
+    }, [composeFocused, composeText, composeAttachments, showComposeCamera, showComposeAudio, showComposeFilePicker]);
 
     const fetchMyProfile = async () => {
         try {
@@ -622,170 +636,164 @@ const Profile = () => {
 
     // Handle profile compose post
     const handleProfilePost = async () => {
-        if (!composeText.trim() && !composeMedia) return;
+        if (!composeText.trim() && composeAttachments.length === 0) return;
         setComposeLoading(true);
         setUploadPercentage(0);
+        const currentText = composeText;
+        const currentDrafts = [...composeAttachments];
+        const currentYt = composeDetectedYouTube;
+
         try {
-            let mediaKey = null;
-            let videoQualitiesPayload = null;
+            const prepared = await prepareAndUploadPostAttachments({
+                drafts: currentDrafts,
+                uploadFileFn: uploadFile,
+                targetId: currentUser._id,
+                hasAutoYouTube: Boolean(currentYt),
+                onProgress: (progress) => setUploadPercentage(progress),
+            });
 
-            if (composeMedia) {
-                if (isVideoFileRef.current) {
-                    const tempId = `temp-${Date.now()}`;
-                    const optimisticPost = {
-                        _id: tempId,
-                        content: composeText,
-                        media: URL.createObjectURL(composeMedia),
-                        mediaType: 'video',
-                        author: {
-                            _id: currentUser._id,
-                            username: currentUser.username,
-                            profile: currentUser.profile,
-                            verificationBadge: currentUser.verificationBadge
-                        },
-                        isOptimistic: true,
-                        createdAt: new Date().toISOString(),
-                        likes: [],
-                        likeCount: 0,
-                    };
-                    
-                    setUserPosts(prev => [optimisticPost, ...prev]);
+            if (prepared.mode === 'video') {
+                const tempId = `temp-${Date.now()}`;
+                const optimisticVisual = buildOptimisticPostMedia(currentDrafts, currentYt);
+                const optimisticPost = {
+                    _id: tempId,
+                    content: currentText,
+                    media: optimisticVisual.media,
+                    mediaType: optimisticVisual.mediaType || 'video',
+                    attachments: optimisticVisual.attachments || [],
+                    author: {
+                        _id: currentUser._id,
+                        username: currentUser.username,
+                        profile: currentUser.profile,
+                        verificationBadge: currentUser.verificationBadge,
+                    },
+                    isOptimistic: true,
+                    createdAt: new Date().toISOString(),
+                    likes: [],
+                    likeCount: 0,
+                };
 
-                    useUploadStore.getState().startVideoUpload({
-                        file: composeMedia,
-                        portalId: null,
-                        content: composeText,
-                        authorId: currentUser._id,
-                        onFinish: (err, createdPost) => {
-                            if (err) {
-                                // Rollback optimistic update
-                                setUserPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
-                            } else if (createdPost) {
-                                // Replace optimistic temp post with real post
-                                const tempStrId = String(tempId);
-                                setUserPosts((currentPosts) => {
-                                    const responseId = String(createdPost._id);
-                                    const alreadyExists = currentPosts.some(p => String(p._id) === responseId);
-                                    if (alreadyExists) {
-                                        return currentPosts.filter(p => String(p._id) !== tempStrId);
-                                    }
-                                    return currentPosts.map((p) => {
-                                        if (String(p._id) === tempStrId) {
-                                            return createdPost;
-                                        }
-                                        return p;
-                                    });
-                                });
-                            }
+                setUserPosts((prev) => [optimisticPost, ...prev]);
+
+                useUploadStore.getState().startVideoUpload({
+                    file: prepared.primaryVideoFile,
+                    portalId: null,
+                    content: currentText,
+                    authorId: currentUser._id,
+                    extraAttachments: prepared.extraAttachments,
+                    onFinish: (err, createdPost) => {
+                        currentDrafts.forEach(revokeAttachmentDraft);
+                        if (err) {
+                            setUserPosts((currentPosts) => currentPosts.filter((p) => String(p._id) !== String(tempId)));
+                        } else if (createdPost) {
+                            const tempStrId = String(tempId);
+                            setUserPosts((currentPosts) => {
+                                const responseId = String(createdPost._id);
+                                const alreadyExists = currentPosts.some((p) => String(p._id) === responseId);
+                                if (alreadyExists) {
+                                    return currentPosts.filter((p) => String(p._id) !== tempStrId);
+                                }
+                                return currentPosts.map((p) => (String(p._id) === tempStrId ? createdPost : p));
+                            });
                         }
-                    });
-                    
-                    // Reset composer state immediately
-                    setComposeText('');
-                    setComposeMedia(null);
-                    setComposeMediaPreview(null);
-                    setComposeFocused(false);
-                    setComposeLoading(false);
-                    return;
-                } else {
-                    // Image / PDF / GIF
-                    mediaKey = await uploadFile(composeMedia, 'post', currentUser._id, (progress) => {
-                        setUploadPercentage(progress);
-                    });
-                }
-            } else {
-                setUploadPercentage(100);
+                    },
+                });
+
+                setComposeText('');
+                setComposeAttachments([]);
+                setComposeFocused(false);
+                setComposeLoading(false);
+                return;
             }
 
             const postData = {
-                content: composeText,
+                content: currentText,
+                ...prepared.payloadFields,
             };
 
-            if (mediaKey) {
-                postData.mediaKey = mediaKey;
-                if (isVideoFileRef.current) {
-                    postData.mediaType = 'video';
-                    if (videoQualitiesPayload) {
-                        postData.videoQualities = JSON.stringify(videoQualitiesPayload);
-                    }
-                } else if (isPdfFileRef.current || (composeMedia && (composeMedia.type === 'application/pdf' || composeMedia.name?.toLowerCase().endsWith('.pdf')))) {
-                    postData.pdfName = composeMedia.name;
-                    postData.pdfSize = composeMedia.size;
-                }
-            }
-
             const res = await axios.post('/api/posts', postData);
+            currentDrafts.forEach(revokeAttachmentDraft);
 
-
-            // Prepend optimistically
-            setUserPosts(prev => [{
+            setUserPosts((prev) => [{
                 ...res.data,
                 author: {
                     _id: currentUser._id,
                     username: currentUser.username,
                     profile: currentUser.profile,
-                    verificationBadge: currentUser.verificationBadge
+                    verificationBadge: currentUser.verificationBadge,
                 },
-                isOptimistic: true
+                isOptimistic: false,
             }, ...prev]);
             setComposeText('');
-            setComposeMedia(null);
-            setComposeMediaPreview(null);
-            isVideoFileRef.current = false;
-            isPdfFileRef.current = false;
+            setComposeAttachments([]);
             setComposeFocused(false);
         } catch (err) {
             console.error('Profile post failed:', err);
-            setError('Gönderi paylaşılamadı');
+            setError(err?.response?.data?.message || 'Gönderi paylaşılamadı');
         } finally {
             setComposeLoading(false);
             setUploadPercentage(0);
         }
     };
 
-    const handleComposeMediaSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024 * 1024) {
-            setError("Dosya boyutu 2 GB'dan büyük olamaz.");
-            return;
-        }
-        setComposeMedia(file);
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        const isVideo = file.type.startsWith('video/') ||
-            ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(file.name.split('.').pop().toLowerCase());
-        isVideoFileRef.current = isVideo;
-        isPdfFileRef.current = isPdf;
-        if (isPdf) {
-            setComposeMediaPreview({ isPdf: true, name: file.name, size: file.size });
-        } else {
-            setComposeMediaPreview(URL.createObjectURL(file));
-        }
+    const appendComposeFiles = useCallback((files, extra = {}) => {
+        if (!files || files.length === 0) return;
+        setComposeAttachments((prev) => {
+            const { nextDrafts, warnings } = appendAttachmentDrafts(prev, files, { extra });
+            if (warnings.length > 0) setError(warnings[0]);
+            return nextDrafts;
+        });
+    }, []);
+
+    const handleComposeGallerySelect = (e) => {
+        const files = Array.from(e.target.files || []);
         e.target.value = '';
+        if (files.length > 0) appendComposeFiles(files);
     };
 
-    const removeComposeMedia = () => {
-        setComposeMedia(null);
-        setComposeMediaPreview(null);
-        isVideoFileRef.current = false;
-        isPdfFileRef.current = false;
-        if (composeMediaInputRef.current) {
-            composeMediaInputRef.current.value = '';
+    const handleComposeCameraCapture = (file) => {
+        if (file) appendComposeFiles([file]);
+    };
+
+    const handleComposeAudioAttach = (file, meta = {}) => {
+        if (file) appendComposeFiles([file], meta);
+    };
+
+    const handleComposePickerFiles = (files) => {
+        if (files && files.length > 0) appendComposeFiles(files);
+    };
+
+    const handleComposeFolderPackaged = (packaged) => {
+        try {
+            const draft = createFolderDraftFromPackage(packaged);
+            if (!draft) return;
+            setComposeAttachments((prev) => {
+                if (prev.length >= 15) {
+                    revokeAttachmentDraft(draft);
+                    setError('Bir gönderiye en fazla 15 dosya veya içerik eklenebilir.');
+                    return prev;
+                }
+                return [...prev, draft];
+            });
+        } catch (err) {
+            setError(err?.message || 'Klasör eklenemedi.');
         }
     };
 
-    // Close compose box on outside click
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (composeFocused && composeBoxRef.current && !composeBoxRef.current.contains(e.target)) {
-                if (!composeText.trim() && !composeMedia) {
-                    setComposeFocused(false);
-                }
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [composeFocused, composeText, composeMedia]);
+    const handleRemoveComposeAttachment = (draftId) => {
+        setComposeAttachments((prev) => {
+            const target = prev.find((d) => d.id === draftId);
+            if (target) revokeAttachmentDraft(target);
+            return prev.filter((d) => d.id !== draftId);
+        });
+    };
+
+    const handleClearComposeAttachments = () => {
+        setComposeAttachments((prev) => {
+            prev.forEach(revokeAttachmentDraft);
+            return [];
+        });
+    };
 
     // Format date helper for posts
     const formatPostDate = (date) => {
@@ -1590,54 +1598,25 @@ const Profile = () => {
                                                                         rows={3}
                                                                         className="compose-textarea"
                                                                     />
-                                                                    {composeMediaPreview && (
-                                                                        <div className="compose-media-preview">
-                                                                            {composeMediaPreview?.isPdf ? (
-                                                                                <div className="compose-preview-pdf">
-                                                                                    <FileText size={24} style={{ color: '#f87171', flexShrink: 0 }} />
-                                                                                    <div className="compose-preview-pdf-info">
-                                                                                        <span className="compose-preview-pdf-name" title={composeMediaPreview.name}>
-                                                                                            {composeMediaPreview.name}
-                                                                                        </span>
-                                                                                        <span className="compose-preview-pdf-size">
-                                                                                            {(composeMediaPreview.size / (1024 * 1024)).toFixed(2)} MB
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
-                                                                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                                                                        </svg>
-                                                                                    </button>
-                                                                                </div>
-                                                                            ) : composeMedia?.type?.startsWith('video') ? (
-                                                                                <video src={composeMediaPreview} className="compose-preview-video" />
-                                                                            ) : (
-                                                                                <img
-                                                                                    src={composeMediaPreview}
-                                                                                    alt="Preview"
-                                                                                    loading="lazy"
-                                                                                    decoding="async"
-                                                                                    width="200"
-                                                                                    height="150"
-                                                                                />
-                                                                            )}
-                                                                            {!composeMediaPreview?.isPdf && (
-                                                                                <button className="compose-remove-media" onClick={removeComposeMedia} type="button">
-                                                                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                                                                    </svg>
-                                                                                </button>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
+                                                                    <ComposerAttachmentTray
+                                                                        attachments={composeAttachments}
+                                                                        detectedYouTube={composeDetectedYouTube}
+                                                                        onRemoveAttachment={handleRemoveComposeAttachment}
+                                                                        onClearAll={handleClearComposeAttachments}
+                                                                    />
                                                                     <div className="compose-actions">
                                                                         <div className="compose-tools">
-                                                                            <button type="button" className="compose-tool-btn" onClick={() => composeMediaInputRef.current?.click()} title="Fotoğraf / Video / PDF / GIF">
-                                                                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                                                                    <circle cx="8.5" cy="8.5" r="1.5" />
-                                                                                    <polyline points="21 15 16 10 5 21" />
-                                                                                </svg>
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => composeGalleryInputRef.current?.click()} title="Galeri (Görsel / Video / GIF)">
+                                                                                <Image size={18} strokeWidth={1.8} />
+                                                                            </button>
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => setShowComposeCamera(true)} title="Kamera">
+                                                                                <Camera size={18} strokeWidth={1.8} />
+                                                                            </button>
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => setShowComposeAudio(true)} title="Ses Kaydı / Ses Dosyası">
+                                                                                <Mic size={18} strokeWidth={1.8} />
+                                                                            </button>
+                                                                            <button type="button" className="compose-tool-btn" onClick={() => setShowComposeFilePicker(true)} title="Dosya / Klasör">
+                                                                                <FolderOpen size={18} strokeWidth={1.8} />
                                                                             </button>
                                                                             <button type="button" className="compose-tool-btn" onClick={() => {
                                                                                 const ta = composeBoxRef.current?.querySelector('.compose-textarea');
@@ -1658,10 +1637,11 @@ const Profile = () => {
                                                                                 </svg>
                                                                             </button>
                                                                             <input
-                                                                                ref={composeMediaInputRef}
+                                                                                ref={composeGalleryInputRef}
                                                                                 type="file"
-                                                                                accept="image/*,video/*,.gif,.pdf,application/pdf"
-                                                                                onChange={handleComposeMediaSelect}
+                                                                                accept="image/*,video/*,.gif"
+                                                                                multiple
+                                                                                onChange={handleComposeGallerySelect}
                                                                                 style={{ display: 'none' }}
                                                                             />
                                                                         </div>
@@ -1672,7 +1652,7 @@ const Profile = () => {
                                                                             <button
                                                                                 className="compose-submit-btn"
                                                                                 onClick={handleProfilePost}
-                                                                                disabled={composeLoading || (!composeText.trim() && !composeMedia)}
+                                                                                disabled={composeLoading || (!composeText.trim() && composeAttachments.length === 0)}
                                                                             >
                                                                                 {composeLoading ? (
                                                                                     <div className="compose-spinner-wrapper">
@@ -1850,15 +1830,28 @@ const Profile = () => {
 
                                                                         {/* URL Box View (Link Preview) */}
                                                                         {(() => {
+                                                                            if (post.mediaType === 'youtube' || post.mediaType === 'videoUrl') return null;
                                                                             const firstUrl = extractFirstUrl(post.content);
                                                                             if (firstUrl) {
+                                                                                const isYt = Boolean(extractYouTubeInfo(firstUrl));
+                                                                                const hasYtEmbed = post.attachments?.some((a) => a.kind === 'youtube');
+                                                                                if (isYt && hasYtEmbed) return null;
                                                                                 return <div style={{ marginTop: '8px' }}><LinkPreview url={firstUrl} postId={post._id} /></div>;
                                                                             }
                                                                             return null;
                                                                         })()}
 
+                                                                        {/* Structured Rich / Mixed Attachments */}
+                                                                        {Array.isArray(post.attachments) && post.attachments.length > 0 && (
+                                                                            post.mediaType === 'mixed' ||
+                                                                            ['audio', 'file', 'folder'].includes(post.mediaType) ||
+                                                                            post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind))
+                                                                        ) && (
+                                                                            <PostAttachments post={post} showVideoIdBadge={false} />
+                                                                        )}
+
                                                                         {/* PDF Document Card */}
-                                                                        {(post.pdfUrl || (post.media && (post.mediaType === 'pdf' || (typeof post.media === 'string' && post.media.toLowerCase().endsWith('.pdf'))))) && (() => {
+                                                                        {!(Array.isArray(post.attachments) && post.attachments.length > 0 && (post.mediaType === 'mixed' || ['audio', 'file', 'folder'].includes(post.mediaType) || post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind)))) && (post.pdfUrl || (post.media && (post.mediaType === 'pdf' || (typeof post.media === 'string' && post.media.toLowerCase().endsWith('.pdf'))))) && (() => {
                                                                             const pdfUrl = post.pdfUrl || post.media;
                                                                             return (
                                                                                 <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
@@ -1916,7 +1909,7 @@ const Profile = () => {
                                                                         })()}
 
                                                                         {/* Media */}
-                                                                        {post.media && post.mediaType !== 'pdf' && !post.pdfUrl && !(typeof post.media === 'string' && post.media.toLowerCase().endsWith('.pdf')) && (
+                                                                        {!(Array.isArray(post.attachments) && post.attachments.length > 0 && (post.mediaType === 'mixed' || ['audio', 'file', 'folder'].includes(post.mediaType) || post.attachments.some((a) => ['audio', 'file', 'folder'].includes(a.kind)))) && post.media && post.mediaType !== 'pdf' && !post.pdfUrl && !(typeof post.media === 'string' && post.media.toLowerCase().endsWith('.pdf')) && (
                                                                             <div className="profile-post-media">
                                                                                 {post.mediaType === 'video' ? (
                                                                                     <VideoPlayer
@@ -2950,6 +2943,31 @@ const Profile = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {showComposeCamera && createPortal(
+                <CameraCaptureModal
+                    isOpen={showComposeCamera}
+                    onClose={() => setShowComposeCamera(false)}
+                    onCapture={handleComposeCameraCapture}
+                />,
+                document.body
+            )}
+            {showComposeAudio && createPortal(
+                <AudioRecorderPopover
+                    isOpen={showComposeAudio}
+                    onClose={() => setShowComposeAudio(false)}
+                    onAttach={handleComposeAudioAttach}
+                />,
+                document.body
+            )}
+            {showComposeFilePicker && createPortal(
+                <FileFolderPickerModal
+                    isOpen={showComposeFilePicker}
+                    onClose={() => setShowComposeFilePicker(false)}
+                    onFilesSelected={handleComposePickerFiles}
+                    onFolderPackaged={handleComposeFolderPackaged}
+                />,
+                document.body
             )}
         </div>
     );

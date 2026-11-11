@@ -1,339 +1,444 @@
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { getImageUrl } from '../utils/imageUtils';
-import UserBadges from './UserBadges';
+import { X, Search, Check, Link2, Share2, Send, Mail, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { X, Link2, Share2, MessageCircle, Twitter, Facebook, Mail } from 'lucide-react';
+import { getImageUrl } from '../utils/imageUtils';
+import { getPostShareUrl, copyTextSafely, systemShare, openExternalShareUrl } from '../utils/shareUtils';
+import UserBadges from './UserBadges';
 import './ShareModal.css';
-import { Capacitor } from '@capacitor/core';
 
 const ShareModal = ({ postId, onClose }) => {
     const { user: currentUser } = useAuth();
-    const [query, setQuery] = useState('');
-    const [results, setResults] = useState([]); // Search results
+    const [searchQuery, setSearchQuery] = useState('');
+    const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [selectedUsers, setSelectedUsers] = useState([]); // Store full user objects for easy lookup
     const [sending, setSending] = useState(false);
-    const [selectedUsers, setSelectedUsers] = useState([]);
-    const [showCopyAlert, setShowCopyAlert] = useState(false);
     const [sentSuccess, setSentSuccess] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [statusBanner, setStatusBanner] = useState('');
 
-    useEffect(() => {
-        // Prevent background scrolling
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, []);
+    const searchTimerRef = useRef(null);
+    const feedbackTimerRef = useRef(null);
 
     const friends = currentUser?.friends || [];
+    const shareUrl = getPostShareUrl(postId);
+    const shareLeadText = 'Oxypace üzerinde bu gönderiye göz at:';
 
-    const handleSearch = async (searchQuery) => {
-        if (!searchQuery.trim()) {
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') onClose?.();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+            if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        };
+    }, [onClose]);
+
+    const showFeedback = (msg) => {
+        setStatusBanner(msg);
+        if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = setTimeout(() => {
+            setStatusBanner('');
+        }, 2600);
+    };
+
+    const handleSearchInput = (value) => {
+        setSearchQuery(value);
+        if (searchTimerRef.current) {
+            clearTimeout(searchTimerRef.current);
+        }
+
+        const trimmed = value.trim();
+        if (!trimmed) {
             setResults([]);
+            setLoading(false);
             return;
         }
 
         setLoading(true);
-        try {
-            const response = await axios.get(`/api/users/search?q=${searchQuery}`);
-            setResults(response.data);
-        } catch (err) {
-            console.error('Search failed:', err);
-        } finally {
-            setLoading(false);
-        }
+        searchTimerRef.current = setTimeout(async () => {
+            try {
+                const response = await axios.get(`/api/users/search?q=${encodeURIComponent(trimmed)}`);
+                const list = Array.isArray(response.data) ? response.data : [];
+                setResults(list.filter((u) => u && u._id !== currentUser?._id));
+            } catch (err) {
+                console.error('[ShareModal] Search failed:', err);
+                setResults([]);
+            } finally {
+                setLoading(false);
+            }
+        }, 320);
     };
 
-    const handleInputChange = (e) => {
-        const value = e.target.value;
-        setQuery(value);
-        const timeoutId = setTimeout(() => handleSearch(value), 300);
-        return () => clearTimeout(timeoutId);
+    const toggleSelectUser = (userObj) => {
+        if (!userObj?._id) return;
+        setSelectedUsers((prev) => {
+            const exists = prev.some((u) => u._id === userObj._id);
+            if (exists) {
+                return prev.filter((u) => u._id !== userObj._id);
+            }
+            return [...prev, userObj];
+        });
     };
 
-    const toggleSelectUser = (userId) => {
-        setSelectedUsers((prev) =>
-            prev.includes(userId)
-                ? prev.filter((id) => id !== userId)
-                : [...prev, userId]
-        );
-    };
-
-    const handleSendMultiple = async () => {
-        if (selectedUsers.length === 0) return;
+    const handleSendToFriends = async () => {
+        if (selectedUsers.length === 0 || sending) return;
         setSending(true);
         try {
             await Promise.all(
-                selectedUsers.map((userId) =>
+                selectedUsers.map((recipient) =>
                     axios.post('/api/messages', {
-                        recipientId: userId,
-                        postId: postId,
+                        recipientId: recipient._id,
+                        postId,
                     })
                 )
             );
             setSentSuccess(true);
-            setTimeout(() => {
-                onClose();
-            }, 2000);
-        } catch (error) {
-            console.error('Share failed:', error);
-            alert('Gönderilemedi.');
+            feedbackTimerRef.current = setTimeout(() => {
+                onClose?.();
+            }, 1300);
+        } catch (err) {
+            console.error('[ShareModal] DM share failed:', err);
+            showFeedback(err.response?.data?.message || 'Gönderilemedi. Lütfen tekrar dene.');
         } finally {
             setSending(false);
         }
     };
 
-    const getShareUrl = () => {
-        return `${window.location.origin}/post/${postId}`;
-    };
-
-    const handleCopyLink = () => {
-        const url = getShareUrl();
-        navigator.clipboard.writeText(url).then(() => {
-            setShowCopyAlert(true);
-            setTimeout(() => setShowCopyAlert(false), 2000);
-        });
-    };
-
-    // Open native app via custom URI scheme with web fallback
-    const openAppOrWeb = (appUri, webUrl) => {
-        if (Capacitor.isNativePlatform()) {
-            // Set href so Android shouldOverrideUrlLoading intercepts & launches native app
-            window.location.href = appUri;
+    const handleCopyLink = async () => {
+        const ok = await copyTextSafely(shareUrl);
+        if (ok) {
+            setCopiedLink(true);
+            showFeedback('Bağlantı panoya kopyalandı.');
+            if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+            feedbackTimerRef.current = setTimeout(() => {
+                setCopiedLink(false);
+                setStatusBanner('');
+            }, 2200);
         } else {
-            window.open(webUrl, '_blank');
+            showFeedback('Bağlantı kopyalanamadı.');
         }
     };
 
-    // External Share Helpers
-    const shareToWhatsapp = () => {
-        const url = getShareUrl();
-        openAppOrWeb(
-            `whatsapp://send?text=${encodeURIComponent(url)}`,
-            `https://wa.me/?text=${encodeURIComponent(url)}`
-        );
-    };
-
-    const shareToTwitter = () => {
-        const url = getShareUrl();
-        openAppOrWeb(
-            `twitter://post?message=${encodeURIComponent(url)}`,
-            `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`
-        );
-    };
-
-    const shareToFacebook = () => {
-        const url = getShareUrl();
-        openAppOrWeb(
-            `fb://facewebmodal/f?href=${encodeURIComponent(url)}`,
-            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
-        );
-    };
-
-    const shareToEmail = () => {
-        const url = getShareUrl();
-        window.location.href = `mailto:?subject=Oxypace Post&body=${encodeURIComponent(url)}`;
-    };
-
-    const handleSystemShare = async () => {
-        const url = getShareUrl();
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'Deepace Post',
-                    text: 'Check this out!',
-                    url: url,
-                });
-            } catch (err) {
-                console.log('Share canceled:', err);
+    const handleNativeShare = async () => {
+        try {
+            const res = await systemShare({
+                title: 'Oxypace',
+                text: shareLeadText,
+                url: shareUrl,
+                dialogTitle: 'Oxypace Gönderisini Paylaş',
+            });
+            if (!res.shared && !res.cancelled) {
+                const copied = await copyTextSafely(shareUrl);
+                if (copied) {
+                    setCopiedLink(true);
+                    showFeedback('Sistem paylaşımı desteklenmiyor, bağlantı kopyalandı.');
+                }
             }
-        } else {
-            handleCopyLink();
+        } catch (err) {
+            console.error('[ShareModal] System share failed:', err);
+            const copied = await copyTextSafely(shareUrl);
+            if (copied) {
+                setCopiedLink(true);
+                showFeedback('Bağlantı panoya kopyalandı.');
+            }
         }
     };
 
-    const showSearchResults = query.length > 0;
-    const listToRender = showSearchResults ? results : friends;
+    const handleExternalShare = (platform) => {
+        const fullMessage = `${shareLeadText} ${shareUrl}`;
+        const encodedUrl = encodeURIComponent(shareUrl);
+        const encodedMsg = encodeURIComponent(fullMessage);
+        const encodedLead = encodeURIComponent(shareLeadText);
 
-    if (sentSuccess) {
-        return createPortal(
-            <div className="share-modal-overlay" onClick={onClose}>
-                <div className="share-modal success-state" onClick={(e) => e.stopPropagation()}>
-                    <div className="success-content">
-                        <div className="success-icon-circle">
-                            <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                                <circle className="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-                                <path className="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-                            </svg>
-                        </div>
-                        <h2>Gönderildi</h2>
-                    </div>
-                </div>
-            </div>,
-            document.body
-        );
-    }
+        switch (platform) {
+            case 'whatsapp':
+                openExternalShareUrl(`https://wa.me/?text=${encodedMsg}`);
+                break;
+            case 'telegram':
+                openExternalShareUrl(`https://t.me/share/url?url=${encodedUrl}&text=${encodedLead}`);
+                break;
+            case 'x':
+                openExternalShareUrl(`https://twitter.com/intent/tweet?text=${encodedLead}&url=${encodedUrl}`);
+                break;
+            case 'facebook':
+                openExternalShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`);
+                break;
+            case 'email':
+                openExternalShareUrl(`mailto:?subject=${encodeURIComponent('Oxypace Gönderisi')}&body=${encodedMsg}`);
+                break;
+            default:
+                break;
+        }
+    };
 
-    return createPortal(
-        <div
-            className="share-modal-overlay"
-            onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-            }}
-        >
+    const trimmedQuery = searchQuery.trim();
+    const isSearching = trimmedQuery.length > 0;
+    const listToRender = isSearching ? results : friends;
+
+    return (
+        <div className="share-modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Gönderiyi Paylaş">
             <div className="share-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="share-header">
-                    <button onClick={onClose} className="close-btn">
-                        <X size={24} strokeWidth={2} />
+                <header className="share-modal-header">
+                    <div className="share-modal-title-group">
+                        <span className="share-modal-eyebrow">OXYPACE PAYLAŞIM</span>
+                        <h3 className="share-modal-heading">Gönderiyi Paylaş</h3>
+                    </div>
+                    <button
+                        type="button"
+                        className="share-modal-close-btn"
+                        onClick={onClose}
+                        aria-label="Kapat"
+                    >
+                        <X size={18} strokeWidth={2} />
                     </button>
-                    <h3>Paylaş</h3>
-                    <div style={{ width: 32 }}></div> {/* Spacer for centering */}
-                </div>
+                </header>
 
-                <div className="share-search">
-                    <input
-                        type="text"
-                        placeholder="Ara"
-                        value={query}
-                        onChange={handleInputChange}
-                    />
-                </div>
-
-                <div className="share-results">
-                    {loading ? (
-                        <div
-                            className="spinner-small"
-                            style={{ margin: '20px auto', display: 'block' }}
-                        ></div>
-                    ) : listToRender.length === 0 ? (
-                        <p className="no-results">
-                            {showSearchResults ? 'Kullanıcı bulunamadı' : 'Arkadaş bulunamadı'}
-                        </p>
-                    ) : showSearchResults ? (
-                        /* List Layout for Search */
-                        <div className="share-list">
-                            {results.map((user) => {
-                                const isSelected = selectedUsers.includes(user._id);
-                                return (
-                                    <div
-                                        key={user._id}
-                                        className={`share-user-item ${isSelected ? 'selected' : ''}`}
-                                        onClick={() => toggleSelectUser(user._id)}
-                                    >
-                                        <div className="user-info">
-                                            <img
-                                                src={getImageUrl(user.profile?.avatar)}
-                                                alt={user.username}
-                                                className="user-avatar"
-                                            />
-                                            <div className="user-text">
-                                                <span className="user-name">
-                                                    {user.profile?.displayName || user.username}{' '}
-                                                    <UserBadges user={user} size={14} />
-                                                </span>
-                                                <span className="user-username">@{user.username}</span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            className={`send-share-btn ${isSelected ? 'selected' : ''}`}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleSelectUser(user._id);
-                                            }}
-                                        >
-                                            {isSelected ? 'Seçildi' : 'Seç'}
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        /* Grid Layout for Friends */
-                        <div className="share-grid">
-                            {friends.map((user) => {
-                                const isSelected = selectedUsers.includes(user._id);
-                                return (
-                                    <div
-                                        key={user._id}
-                                        className={`share-user-card ${isSelected ? 'selected' : ''}`}
-                                        onClick={() => toggleSelectUser(user._id)}
-                                    >
-                                        <div className="avatar-wrapper">
-                                            <img
-                                                src={getImageUrl(user.profile?.avatar)}
-                                                alt={user.username}
-                                                className="user-avatar"
-                                            />
-                                        </div>
-                                        <span className="user-name">
-                                            {user.profile?.displayName || user.username}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                <div className="share-modal-body">
+                    {statusBanner && (
+                        <div className="share-status-banner" role="status">
+                            {statusBanner}
                         </div>
                     )}
+
+                    {/* Direct Link Box */}
+                    <section className="share-section">
+                        <div className="share-link-box">
+                            <div className="share-link-icon-wrap">
+                                <Link2 size={16} strokeWidth={2} />
+                            </div>
+                            <input
+                                type="text"
+                                readOnly
+                                value={shareUrl}
+                                className="share-link-readonly"
+                                onClick={(e) => e.target.select()}
+                                aria-label="Gönderi bağlantısı"
+                            />
+                            <button
+                                type="button"
+                                className={`share-link-copy-btn ${copiedLink ? 'is-copied' : ''}`}
+                                onClick={handleCopyLink}
+                            >
+                                {copiedLink ? (
+                                    <>
+                                        <Check size={14} strokeWidth={2.5} />
+                                        <span>Kopyalandı</span>
+                                    </>
+                                ) : (
+                                    <span>Kopyala</span>
+                                )}
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* External Share Targets */}
+                    <section className="share-section">
+                        <div className="share-section-label">Harici Paylaşım</div>
+                        <div className="share-targets-grid">
+                            <button
+                                type="button"
+                                className="share-target-tile"
+                                onClick={handleNativeShare}
+                            >
+                                <span className="share-target-icon">
+                                    <Share2 size={18} strokeWidth={1.9} />
+                                </span>
+                                <span className="share-target-name">Sistem</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="share-target-tile"
+                                onClick={() => handleExternalShare('whatsapp')}
+                            >
+                                <span className="share-target-icon">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                    </svg>
+                                </span>
+                                <span className="share-target-name">WhatsApp</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="share-target-tile"
+                                onClick={() => handleExternalShare('telegram')}
+                            >
+                                <span className="share-target-icon">
+                                    <Send size={17} strokeWidth={1.9} />
+                                </span>
+                                <span className="share-target-name">Telegram</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="share-target-tile"
+                                onClick={() => handleExternalShare('x')}
+                            >
+                                <span className="share-target-icon">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                    </svg>
+                                </span>
+                                <span className="share-target-name">X</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="share-target-tile"
+                                onClick={() => handleExternalShare('facebook')}
+                            >
+                                <span className="share-target-icon">
+                                    <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+                                        <path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z" />
+                                    </svg>
+                                </span>
+                                <span className="share-target-name">Facebook</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="share-target-tile"
+                                onClick={() => handleExternalShare('email')}
+                            >
+                                <span className="share-target-icon">
+                                    <Mail size={17} strokeWidth={1.9} />
+                                </span>
+                                <span className="share-target-name">E-posta</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* Direct Message / Friends */}
+                    <section className="share-section share-friends-section">
+                        <div className="share-section-row">
+                            <span className="share-section-label">
+                                <Users size={13} strokeWidth={2} />
+                                <span>Arkadaşa Mesaj Olarak Gönder</span>
+                            </span>
+                            {selectedUsers.length > 0 && (
+                                <span className="share-selected-count">
+                                    {selectedUsers.length} seçili
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="share-search-field">
+                            <Search size={15} strokeWidth={2} className="share-search-icon" />
+                            <input
+                                type="text"
+                                className="share-search-input"
+                                placeholder="Kullanıcı adı veya isim ara..."
+                                value={searchQuery}
+                                onChange={(e) => handleSearchInput(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    className="share-search-clear"
+                                    onClick={() => handleSearchInput('')}
+                                    aria-label="Aramayı temizle"
+                                >
+                                    <X size={14} strokeWidth={2} />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="share-friends-scroll custom-scrollbar">
+                            {loading ? (
+                                <div className="share-empty-state">Kullanıcılar aranıyor...</div>
+                            ) : listToRender.length === 0 ? (
+                                <div className="share-empty-state">
+                                    {isSearching
+                                        ? 'Aramanızla eşleşen kullanıcı bulunamadı.'
+                                        : 'Henüz arkadaş listenizde kişi yok. Yukarıdan kullanıcı arayabilirsiniz.'}
+                                </div>
+                            ) : (
+                                <div className="share-user-list">
+                                    {listToRender.map((u) => {
+                                        const isSelected = selectedUsers.some((s) => s._id === u._id);
+                                        return (
+                                            <button
+                                                key={u._id}
+                                                type="button"
+                                                className={`share-user-row ${isSelected ? 'is-selected' : ''}`}
+                                                onClick={() => toggleSelectUser(u)}
+                                            >
+                                                <div className="share-user-avatar-wrap">
+                                                    {u.profileImage ? (
+                                                        <img
+                                                            src={getImageUrl(u.profileImage)}
+                                                            alt={u.username || 'Kullanıcı'}
+                                                            className="share-user-avatar-img"
+                                                        />
+                                                    ) : (
+                                                        <span className="share-user-avatar-fallback">
+                                                            {(u.displayName || u.username || 'U').charAt(0).toUpperCase()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="share-user-meta">
+                                                    <span className="share-user-name">
+                                                        {u.displayName || u.username}
+                                                        <UserBadges
+                                                            badgeType={u.badgeType}
+                                                            verificationBadge={u.verificationBadge}
+                                                            size={13}
+                                                        />
+                                                    </span>
+                                                    <span className="share-user-handle">@{u.username}</span>
+                                                </div>
+                                                <span className={`share-user-check ${isSelected ? 'is-selected' : ''}`}>
+                                                    {isSelected && <Check size={13} strokeWidth={2.8} />}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </section>
                 </div>
 
-                {selectedUsers.length > 0 && (
-                    <div className="share-action-container">
-                        <button className="share-submit-btn" onClick={handleSendMultiple} disabled={sending}>
-                            {sending ? 'Gönderiliyor...' : `Gönder (${selectedUsers.length})`}
-                        </button>
-                    </div>
-                )}
-
-                {/* Footer Apps */}
-                <div className="share-footer">
-                    <div className="share-apps-row">
-                        <button className="share-app-item" onClick={handleCopyLink}>
-                            <div className="app-icon-circle">
-                                <Link2 size={24} strokeWidth={2} />
-                            </div>
-                            <span>{showCopyAlert ? 'Kopyalandı' : 'Kopyala'}</span>
-                        </button>
-
-                        <button className="share-app-item" onClick={handleSystemShare}>
-                            <div className="app-icon-circle">
-                                <Share2 size={24} strokeWidth={2} />
-                            </div>
-                            <span>Diğer</span>
-                        </button>
-
-                        <button className="share-app-item" onClick={shareToWhatsapp}>
-                            <div className="app-icon-circle">
-                                <MessageCircle size={24} strokeWidth={2} />
-                            </div>
-                            <span>WhatsApp</span>
-                        </button>
-
-                        <button className="share-app-item" onClick={shareToTwitter}>
-                            <div className="app-icon-circle">
-                                <Twitter size={24} strokeWidth={2} />
-                            </div>
-                            <span>X</span>
-                        </button>
-
-                        <button className="share-app-item" onClick={shareToFacebook}>
-                            <div className="app-icon-circle">
-                                <Facebook size={24} strokeWidth={2} />
-                            </div>
-                            <span>Facebook</span>
-                        </button>
-
-                        <button className="share-app-item" onClick={shareToEmail}>
-                            <div className="app-icon-circle">
-                                <Mail size={24} strokeWidth={2} />
-                            </div>
-                            <span>Email</span>
-                        </button>
-                    </div>
-                </div>
+                <footer className="share-modal-footer">
+                    <button
+                        type="button"
+                        className="share-cancel-btn"
+                        onClick={onClose}
+                    >
+                        İptal
+                    </button>
+                    <button
+                        type="button"
+                        className={`share-send-btn ${sentSuccess ? 'is-sent' : ''}`}
+                        disabled={selectedUsers.length === 0 || sending || sentSuccess}
+                        onClick={handleSendToFriends}
+                    >
+                        {sentSuccess ? (
+                            <>
+                                <Check size={16} strokeWidth={2.4} />
+                                <span>Gönderildi</span>
+                            </>
+                        ) : sending ? (
+                            <span>Gönderiliyor...</span>
+                        ) : (
+                            <>
+                                <Send size={15} strokeWidth={2} />
+                                <span>
+                                    {selectedUsers.length > 0
+                                        ? `Gönder (${selectedUsers.length})`
+                                        : 'Kişi Seç'}
+                                </span>
+                            </>
+                        )}
+                    </button>
+                </footer>
             </div>
-        </div>,
-        document.body
+        </div>
     );
 };
 

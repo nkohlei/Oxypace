@@ -124,6 +124,29 @@ function getThumbnailForPost(post) {
         };
     }
 
+    if (mediaType === 'mixed' && Array.isArray(post.attachments)) {
+        const imgAtt = post.attachments.find((a) => a.kind === 'image' || a.kind === 'gif');
+        if (imgAtt?.url) {
+            return { imageUrl: resolveMediaUrl(imgAtt.url), videoUrl: null, isVideo: false };
+        }
+        const ytAtt = post.attachments.find((a) => a.kind === 'youtube');
+        if (ytAtt) {
+            const ytId = ytAtt.youtubeId || extractYouTubeId(ytAtt.url);
+            if (ytId) {
+                return { imageUrl: `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`, videoUrl: null, isVideo: false };
+            }
+        }
+        const vidAtt = post.attachments.find((a) => a.kind === 'video');
+        if (vidAtt?.url) {
+            const resolved = resolveMediaUrl(vidAtt.url);
+            return { imageUrl: resolved, videoUrl: resolved, isVideo: true };
+        }
+    }
+
+    if (post.pdfThumbnailUrl) {
+        return { imageUrl: resolveMediaUrl(post.pdfThumbnailUrl), videoUrl: null, isVideo: false };
+    }
+
     return { imageUrl: null, videoUrl: null, isVideo: false };
 }
 

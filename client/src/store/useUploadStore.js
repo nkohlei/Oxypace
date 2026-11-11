@@ -100,7 +100,7 @@ const uploadBlobToR2 = async (blob, fileName, fileType, purpose, portalId, onPro
 export const useUploadStore = create((set, get) => ({
     activeUploads: {}, // { [uploadKey]: { portalId, fileName, progress, stage, status: 'uploading' | 'completed' | 'failed', error } }
 
-    startVideoUpload: async ({ file, portalId = null, channel = null, content, quotedPostId = null, authorId = null, onFinish }) => {
+    startVideoUpload: async ({ file, portalId = null, channel = null, content, quotedPostId = null, authorId = null, extraAttachments = [], onFinish }) => {
         // Generate a unique upload key
         const uploadKey = portalId ? `portal-${portalId}` : `profile-${authorId || 'general'}`;
         
@@ -178,18 +178,42 @@ export const useUploadStore = create((set, get) => ({
                 };
             });
 
-            // 3. Create the post
-            const postData = {
-                content,
-                portalId,
-                channel,
-                quotedPostId,
-                mediaKey,
-                mediaType: 'video',
-                videoWidth: width,
-                videoHeight: height,
-                videoThumbnailKey,
-            };
+            // 3. Create the post (supports standalone video OR video combined with extra mixed attachments)
+            const hasExtra = Array.isArray(extraAttachments) && extraAttachments.length > 0;
+            const postData = hasExtra
+                ? {
+                    content,
+                    portalId,
+                    channel,
+                    quotedPostId,
+                    videoWidth: width,
+                    videoHeight: height,
+                    videoThumbnailKey,
+                    attachments: [
+                        {
+                            kind: 'video',
+                            key: mediaKey,
+                            name: file.name || 'video.mp4',
+                            mimeType: file.type || 'video/mp4',
+                            size: file.size || 0,
+                            width,
+                            height,
+                            thumbnailKey: videoThumbnailKey || '',
+                        },
+                        ...extraAttachments,
+                    ],
+                }
+                : {
+                    content,
+                    portalId,
+                    channel,
+                    quotedPostId,
+                    mediaKey,
+                    mediaType: 'video',
+                    videoWidth: width,
+                    videoHeight: height,
+                    videoThumbnailKey,
+                };
 
             const response = await axios.post('/api/posts', postData);
 

@@ -6,6 +6,36 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
 
+export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2GB standard limit
+
+export const BLOCKED_EXECUTABLE_EXTS = new Set([
+    '.exe', '.msi', '.bat', '.cmd', '.com', '.scr', '.pif',
+    '.vbs', '.vbe', '.jse', '.wsf', '.wsh', '.ps1', '.psm1',
+    '.dll', '.sys', '.drv', '.cpl', '.hta', '.reg', '.msc', '.jar'
+]);
+
+const BLOCKED_EXECUTABLE_MIMES = new Set([
+    'application/x-msdownload',
+    'application/x-dosexec',
+    'application/x-msdos-program',
+    'application/x-msi',
+    'application/x-bat',
+    'application/x-csh',
+    'application/java-archive'
+]);
+
+export function isAllowedUpload(fileName = '', mimeType = '') {
+    const ext = path.extname(String(fileName || '')).toLowerCase();
+    const mime = String(mimeType || '').toLowerCase();
+    if (ext && BLOCKED_EXECUTABLE_EXTS.has(ext)) {
+        return { allowed: false, reason: `Güvenlik nedeniyle "${ext}" çalıştırılabilir dosya türü yüklenemez.` };
+    }
+    if (mime && BLOCKED_EXECUTABLE_MIMES.has(mime)) {
+        return { allowed: false, reason: 'Güvenlik nedeniyle çalıştırılabilir dosya türleri yüklenemez.' };
+    }
+    return { allowed: true };
+}
+
 /**
  * HIGH-2: Magic byte (file signature) verification.
  * Rejects files whose binary content doesn't match their declared MIME type,
@@ -15,10 +45,22 @@ import { constructProxiedUrl } from '../utils/mediaConfig.js';
  * @param {string} mimetype - declared MIME type
  * @returns {{ valid: boolean, reason?: string }}
  */
-function verifyMagicBytes(buffer, mimetype) {
-    if (!buffer || buffer.length < 4) return { valid: false, reason: 'File too small to verify' };
+function verifyMagicBytes(buffer, mimetype = '') {
+    if (!buffer || buffer.length === 0) return { valid: false, reason: 'Empty file cannot be uploaded' };
 
+    const safeMime = String(mimetype || '').toLowerCase();
     const b = buffer;
+
+    // Block disguised Windows PE/MZ executables regardless of declared extension/MIME
+    if (!safeMime.startsWith('text/') && buffer.length >= 2 && b[0] === 0x4D && b[1] === 0x5A) {
+        if (buffer.length >= 4 && (b[2] === 0x90 || b[2] === 0x50 || b[2] === 0x00)) {
+            return { valid: false, reason: 'Executable binary content is not allowed' };
+        }
+    }
+
+    if (buffer.length < 4 && (safeMime.startsWith('image/') || safeMime.startsWith('video/') || safeMime === 'application/pdf')) {
+        return { valid: false, reason: 'File too small to verify' };
+    }
 
     if (mimetype.startsWith('image/jpeg') || mimetype === 'image/jpg') {
         // JPEG: FF D8 FF
@@ -87,19 +129,13 @@ const storage = multer.memoryStorage();
 
 const multerInstance = multer({
     storage: storage,
-    limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB limit
+    limits: { fileSize: MAX_UPLOAD_BYTES }, // 2GB limit
     fileFilter: (req, file, cb) => {
-        const ext = path.extname(file.originalname || '').toLowerCase();
-        // Accept images, videos, and PDFs
-        if (
-            file.mimetype.startsWith('image/') || 
-            file.mimetype.startsWith('video/') || 
-            file.mimetype === 'application/pdf' ||
-            ext === '.pdf'
-        ) {
+        const check = isAllowedUpload(file.originalname, file.mimetype);
+        if (check.allowed) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only images, videos, and PDFs are allowed.'), false);
+            cb(new Error(check.reason || 'Invalid file type.'), false);
         }
     },
 });
@@ -108,8 +144,13 @@ const multerInstance = multer({
 async function processAndUploadFile(req, file) {
     if (!file || !file.buffer) return;
 
+    const extCheck = isAllowedUpload(file.originalname, file.mimetype);
+    if (!extCheck.allowed) {
+        throw new Error(extCheck.reason || 'Invalid file type.');
+    }
+
     // HIGH-2: Verify magic bytes before any processing — reject MIME spoofing
-    const magicCheck = verifyMagicBytes(file.buffer, file.mimetype);
+    const magicCheck = verifyMagicBytes(file.buffer, file.mimetype || '');
     if (!magicCheck.valid) {
         console.warn(`[Upload] Magic byte mismatch for file "${file.originalname}" (${file.mimetype}): ${magicCheck.reason}`);
         throw new Error(`Invalid file content: ${magicCheck.reason}`);
