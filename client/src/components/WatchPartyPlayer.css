@@ -1997,3 +1997,188 @@ video.watch-party-native-video::-webkit-media-text-track-display {
 .native-rotate-btn:active {
     transform: scale(0.92) rotate(90deg);
 }
+
+/* Alternatif & Kalite Seçim Menüsü (Monokrom Brutalist) */
+.watch-party-header-alt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 9px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 6px;
+    color: #e4e4e7;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.watch-party-header-alt-btn:hover,
+.watch-party-header-alt-btn.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+}
+
+.alt-popover-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #ffffff;
+    padding: 2px 4px;
+}
+
+.alt-groups-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.alt-group-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.alt-group-header {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #a1a1aa;
+    padding: 2px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.alt-items-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.alt-switch-error {
+    font-size: 11px;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+}
+
+.native-track-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 8px 2px;
+}
+
+/* Kalite Seçici (Alt Bar Sağ Kontroller) */
+.native-quality-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.native-quality-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    color: #f4f4f5;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.native-quality-btn:hover,
+.native-quality-btn.active {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #ffffff;
+}
+
+.native-quality-dropdown {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: 0;
+    min-width: 145px;
+    background: rgba(12, 12, 15, 0.97);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85);
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 99999;
+}
+
+.native-quality-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    color: #d4d4d8;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.native-quality-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.native-quality-item.active {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.native-fullscreen-quick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 5px;
+    color: #e4e4e7;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.native-fullscreen-quick-btn:hover,
+.native-fullscreen-quick-btn.active {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+}

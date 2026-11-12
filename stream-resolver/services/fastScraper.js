@@ -7,6 +7,7 @@
  */
 
 const vm = require('vm');
+const crypto = require('crypto');
 const logger = require('../utils/logger');
 const browserPool = require('./browserPool');
 
@@ -16,6 +17,7 @@ const FAST_STREAM_PATTERNS = [
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/hls\/[^"'\s\\<>{}|^`[\]]*\.(?:m3u8|txt|mp4)[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/txt\/master\.txt[^"'\s\\<>{}|^`[\]]*)/i,
   /(https?:\/\/[^"'\s\\<>{}|^`[\]]+\/playlist\.m3u8[^"'\s\\<>{}|^`[\]]*)/i,
+  /(https?:\/\/[^"'\s\\<>{}|^`[\]]*vixolity\.com\/vs\/[^"'\s\\<>{}|^`[\]]*)/i,
 ];
 
 /**
@@ -24,7 +26,12 @@ const FAST_STREAM_PATTERNS = [
  */
 function decodeDynamicObfuscation(html, targetUrl = '') {
   try {
-    const scriptTags = html.match(/<script[\s\S]*?<\/script>/gi) || [];
+    if (!html || typeof html !== 'string') return null;
+    let scriptTags = html.match(/<script[\s\S]*?<\/script>/gi) || [];
+    // Support raw unpacked JS snippets that contain no <script> wrapper tags
+    if (scriptTags.length === 0 && (html.includes('function') || html.includes('sources'))) {
+      scriptTags = [html];
+    }
     let embedHost = 'hdfilmcehennemi.mobi';
     try {
       if (targetUrl) embedHost = new URL(targetUrl).hostname;
@@ -373,23 +380,25 @@ function fetchWithTlsImpersonation(targetUrl, referer = '') {
 /**
  * Fetches HTML directly, via TLS Impersonator, or via ScraperAPI if Cloudflare blocked
  */
-async function fetchHtmlWithBypass(targetUrl, referer = '') {
+async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
   const apiKey = process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
   const isHdf = targetUrl.includes('hdfilmcehennemi');
+  const isHdfAjax = /hdfilmcehennemi\.[^/]+\/(?:search\/|video\/\d+)/i.test(targetUrl);
   const effectiveReferer = referer || (isHdf ? 'https://www.hdfilmcehennemi.nl/' : '');
 
   const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': isHdf ? 'application/json, text/plain, */*' : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    'Accept': isHdfAjax ? 'application/json, text/plain, */*' : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1',
     'Upgrade-Insecure-Requests': '1',
+    ...extraHeaders,
   };
   if (effectiveReferer) headers['Referer'] = effectiveReferer;
-  if (isHdf) headers['x-requested-with'] = 'fetch';
+  if (isHdfAjax) headers['x-requested-with'] = 'fetch';
 
   const parseJsonIfAny = (text) => {
     if (!text || typeof text !== 'string') return '';
@@ -397,6 +406,7 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     if (trimmed.startsWith('{')) {
       try {
         const parsed = JSON.parse(trimmed);
+        if (parsed.data?.html) return parsed.data.html;
         if (parsed.html) return parsed.html;
         if (parsed.content) return parsed.content;
       } catch {}
@@ -404,16 +414,17 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     return text;
   };
 
-  // 1. Python TLS Chrome Impersonation + Residential/Tor Routing (En Yüksek Başarı Oranı)
+  // 1. Doğrudan İstek Denemesi (En hızlı — ~200-500ms, sıfır ek process maliyeti)
   try {
-    const tlsHtml = await fetchWithTlsImpersonation(targetUrl, effectiveReferer);
-    if (tlsHtml && tlsHtml.length > 0 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
-      const parsedBody = parseJsonIfAny(tlsHtml);
-      logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
-      return parsedBody;
+    const res = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(7000) });
+    if (res.ok) {
+      const text = await res.text();
+      if (text && text.length > 80 && !text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare') && !text.includes('Access denied') && !text.includes('403 Forbidden')) {
+        return parseJsonIfAny(text);
+      }
     }
   } catch (e) {
-    logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
+    // Fallback
   }
 
   // 1.5. Doğrudan Curl İsteği (Cloudflare TLS fingerprinting atlatır)
@@ -426,12 +437,12 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
       '-H', `Accept-Language: ${headers['Accept-Language']}`,
     ];
     if (effectiveReferer) curlArgs.push('-H', `Referer: ${effectiveReferer}`);
-    if (isHdf) {
+    if (isHdfAjax) {
       curlArgs.push('-H', 'x-requested-with: fetch');
     }
     curlArgs.push(targetUrl);
     const { stdout } = await execFileAsync(curlBin, curlArgs);
-    if (stdout && stdout.length > 100 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
+    if (stdout && stdout.length > 80 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
       const parsedBody = parseJsonIfAny(stdout);
       logger.info(`[FastScraper] ⚡ Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
       return parsedBody;
@@ -440,28 +451,27 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
     // continue
   }
 
-  // 2. Doğrudan İstek Denemesi
+  // 2. Python TLS Chrome Impersonation (sadece local/yüklü ortamlar için fallback)
   try {
-    const res = await fetch(targetUrl, { headers, redirect: 'follow' });
-    if (res.ok) {
-      const text = await res.text();
-      if (!text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare') && !text.includes('Access denied') && !text.includes('403 Forbidden')) {
-        return text;
-      }
+    const tlsHtml = await fetchWithTlsImpersonation(targetUrl, effectiveReferer);
+    if (tlsHtml && tlsHtml.length > 80 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
+      const parsedBody = parseJsonIfAny(tlsHtml);
+      logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
+      return parsedBody;
     }
   } catch (e) {
-    // Fallback
+    logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
   }
 
   // 3. ScraperAPI Standart Bypass
   if (apiKey) {
     try {
       const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(proxyUrl, { headers });
+      const res = await fetch(proxyUrl, { headers, signal: AbortSignal.timeout(10000) });
       if (res.ok) {
         const text = await res.text();
         if (text && text.length > 200 && !text.includes('Request failed. You will not be charged') && !text.includes('exhausted')) {
-          return text;
+          return parseJsonIfAny(text);
         }
       }
     } catch (err) {
@@ -477,33 +487,44 @@ async function fetchHtmlWithBypass(targetUrl, referer = '') {
  */
 function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
   let referer = targetUrl;
-  
-  if (streamUrl.includes('playmix') || embedUrl.includes('playmix')) {
+  const s = streamUrl || '';
+  const e = embedUrl || '';
+  const t = targetUrl || '';
+
+  if (s.includes('vixolity') || e.includes('vixolity')) {
+    referer = 'https://pl.vixolity.com/';
+  } else if (s.includes('playmix') || e.includes('playmix')) {
     referer = 'https://playmix.uno/';
-  } else if (streamUrl.includes('imagecdn') || streamUrl.includes('rapidvid') || embedUrl.includes('rapidvid') || targetUrl.includes('fullhdfilmizlesene')) {
-    referer = 'https://rapidvid.org/';
-  } else if (streamUrl.includes('cdnimages') || streamUrl.includes('shop') || streamUrl.includes('rapidrame') || embedUrl.includes('hdfilmcehennemi') || targetUrl.includes('hdfilmcehennemi') || embedUrl.includes('rapidrame') || embedUrl.includes('rplayer')) {
-    referer = 'https://hdfilmcehennemi.mobi/';
-  } else if (streamUrl.includes('closeload') || embedUrl.includes('closeload') || targetUrl.includes('filmmakinesi')) {
+  } else if (s.includes('closeload') || e.includes('closeload') || t.includes('filmmakinesi')) {
     referer = 'https://closeload.filmmakinesi.to/';
-  } else if (streamUrl.includes('vidmoly') || embedUrl.includes('vidmoly')) {
+  } else if (s.includes('imagecdn') || s.includes('rapidvid') || e.includes('rapidvid') || t.includes('fullhdfilmizlesene')) {
+    referer = 'https://rapidvid.org/';
+  } else if (s.includes('cdnimages') || s.includes('shop') || e.includes('rplayer') || t.includes('hdfilmcehennemi')) {
+    referer = e.includes('rplayer') ? 'https://www.hdfilmcehennemi.nl/' : 'https://hdfilmcehennemi.mobi/';
+  } else if (e.includes('hdfilmcehennemi') || e.includes('rapidrame')) {
+    referer = 'https://hdfilmcehennemi.mobi/';
+  } else if (s.includes('vidmoly') || e.includes('vidmoly')) {
     referer = 'https://vidmoly.to/';
-  } else if (streamUrl.includes('vidoza') || embedUrl.includes('vidoza')) {
+  } else if (s.includes('okcdn') || s.includes('mycdn.me') || s.includes('vkuser') || e.includes('ok.ru')) {
+    referer = 'https://ok.ru/';
+  } else if (s.includes('uptostream') || e.includes('uptostream')) {
+    referer = 'https://uptostream.com/';
+  } else if (s.includes('vidoza') || e.includes('vidoza')) {
     referer = 'https://vidoza.net/';
-  } else if (streamUrl.includes('filemoon') || embedUrl.includes('filemoon')) {
+  } else if (s.includes('filemoon') || e.includes('filemoon')) {
     referer = 'https://filemoon.sx/';
-  } else if (streamUrl.includes('dood') || embedUrl.includes('dood')) {
+  } else if (s.includes('dood') || e.includes('dood')) {
     referer = 'https://doodstream.com/';
-  } else if (streamUrl.includes('bbstream') || embedUrl.includes('bbstream')) {
-    referer = embedUrl || 'https://bbstream.org/';
-  } else if (embedUrl && /^https?:\/\//i.test(embedUrl)) {
-    referer = embedUrl;
+  } else if (s.includes('bbstream') || e.includes('bbstream')) {
+    referer = e || 'https://bbstream.org/';
+  } else if (e && /^https?:\/\//i.test(e)) {
+    referer = e;
   }
 
   let origin = referer;
   try {
     origin = new URL(referer).origin;
-  } catch (e) {
+  } catch (err) {
     origin = targetUrl;
   }
 
@@ -632,10 +653,383 @@ function buildResult(streamUrl, embedUrl, targetUrl, type, pageTitle, searchCorp
   };
 }
 
+function decodeVixolityEmbed(html) {
+  if (!html || typeof html !== 'string') return null;
+  if (!html.includes('vixolity') && !html.includes('String.fromCharCode(parseInt(')) return null;
+  try {
+    const m = html.match(/\('([0-9a-fA-F]+)',\s*(\d+)\)/);
+    if (!m) return null;
+    const hex = m[1];
+    const shift = parseInt(m[2], 10);
+    let raw = '';
+    for (let i = 0; i < hex.length; i += 2) {
+      raw += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    const step1 = Buffer.from(raw.split('').reverse().join(''), 'base64').toString('binary');
+    let shifted = '';
+    for (let i = 0; i < step1.length; i++) {
+      shifted += String.fromCharCode(step1.charCodeAt(i) - shift);
+    }
+    const decoded = decodeURIComponent(escape(Buffer.from(shifted, 'base64').toString('binary')));
+    const srcMatch = decoded.match(/"kaynak"\s*:\s*"([^"]+)"/) || decoded.match(/(https?:\/\/[^"'\s]+vixolity\.com\/vs\/[^"'\s]+)/i);
+    if (srcMatch && srcMatch[1]) {
+      return srcMatch[1].replace(/\\\//g, '/');
+    }
+  } catch (e) {
+    logger.debug(`[FastScraper] Vixolity decode warning: ${e.message}`);
+  }
+  return null;
+}
+
+function decodeOkRuEmbed(html) {
+  if (!html || typeof html !== 'string' || (!html.includes('data-options') && !html.includes('ondemandHls'))) return null;
+  try {
+    const optsMatch = html.match(/data-options="([^"]+)"/i);
+    if (optsMatch && optsMatch[1]) {
+      const unescaped = optsMatch[1]
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&#039;/g, "'");
+      const opts = JSON.parse(unescaped);
+      const metaRaw = opts?.flashvars?.metadata;
+      const meta = typeof metaRaw === 'string' ? JSON.parse(metaRaw) : metaRaw;
+      if (meta) {
+        if (meta.ondemandHls && meta.ondemandHls.startsWith('http')) {
+          return { url: meta.ondemandHls, type: 'm3u8' };
+        }
+        if (meta.hlsManifestUrl && meta.hlsManifestUrl.startsWith('http')) {
+          return { url: meta.hlsManifestUrl, type: 'm3u8' };
+        }
+        if (Array.isArray(meta.videos) && meta.videos.length > 0) {
+          const priority = { full: 4, hd: 3, sd: 2, low: 1, lowest: 0, mobile: 0 };
+          const sorted = [...meta.videos]
+            .filter(v => v && v.url && v.url.startsWith('http'))
+            .sort((a, b) => (priority[b.name] ?? 1) - (priority[a.name] ?? 1));
+          if (sorted[0]) return { url: sorted[0].url, type: 'mp4' };
+        }
+      }
+    }
+  } catch (e) {
+    logger.debug(`[FastScraper] OK.ru decode warning: ${e.message}`);
+  }
+  return null;
+}
+
+function decryptRoketDiziEnc(html) {
+  if (!html || typeof html !== 'string') return '';
+  try {
+    const normalized = html.replace(/\\"/g, '"').replace(/\\\\\//g, '/').replace(/\\\//g, '/');
+    const m = normalized.match(/"enc"\s*:\s*\{\s*"ciphertext"\s*:\s*"([^"]+)"\s*,\s*"iv"\s*:\s*"([^"]+)"\s*,\s*"salt"\s*:\s*"([^"]+)"\s*\}\s*,\s*"k"\s*:\s*"([^"]+)"/);
+    if (!m) return '';
+    const key = crypto.pbkdf2Sync(Buffer.from(m[4], 'utf8'), Buffer.from(m[3], 'hex'), 999, 32, 'sha512');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(m[2], 'hex'));
+    let dec = decipher.update(m[1], 'base64', 'utf8');
+    dec += decipher.final('utf8');
+    const clean = dec.trim();
+    if (clean.startsWith('//')) return 'https:' + clean;
+    if (clean.startsWith('http://')) return clean.replace(/^http:\/\//i, 'https://');
+    if (clean.startsWith('https://')) return clean;
+  } catch (e) {
+    logger.debug(`[FastScraper] RoketDizi decrypt warning: ${e.message}`);
+  }
+  return '';
+}
+
+function isTrailerOrAdEmbed(url, label = '') {
+  const lower = (url || '').toLowerCase();
+  const lbl = (label || '').toLowerCase();
+  return (
+    lbl.includes('fragman') ||
+    lower.includes('youtube.com') ||
+    lower.includes('youtu.be') ||
+    lower.includes('google') ||
+    lower.includes('doubleclick') ||
+    lower.includes('analytics') ||
+    lower.includes('recaptcha') ||
+    lower.includes('facebook')
+  );
+}
+
+/**
+ * Extracts all candidate embed URLs + readable labels from a movie page across all 6 sites
+ */
+async function collectPageEmbedCandidates(targetUrl, html) {
+  const candidates = [];
+  const seenUrls = new Set();
+
+  const pushCandidate = (rawUrl, label = '') => {
+    if (!rawUrl || typeof rawUrl !== 'string') return;
+    let clean = rawUrl.replace(/\\\//g, '/').replace(/&amp;/g, '&').trim();
+    if (clean.startsWith('//')) clean = 'https:' + clean;
+    if (!clean.startsWith('http')) return;
+    if (/\.(jpg|jpeg|png|webp|gif|svg|ico|css|woff2?|ttf)(\?|$)/i.test(clean)) return;
+    if (isTrailerOrAdEmbed(clean, label)) return;
+    if (seenUrls.has(clean)) return;
+    seenUrls.add(clean);
+    candidates.push({ url: clean, label: (label || '').trim() });
+  };
+
+  // 1. HDFilmCehennemi: <button class="alternative-link" data-video="ID">Label</button> -> AJAX /video/ID/
+  if (targetUrl.includes('hdfilmcehennemi')) {
+    const altButtons = [...html.matchAll(/<button[^>]*class="[^"]*alternative-link[^"]*"[^>]*data-video=["'](\d+)["'][^>]*>([\s\S]*?)<\/button>/gi)];
+    if (altButtons.length > 0) {
+      const origin = (() => { try { return new URL(targetUrl).origin; } catch { return 'https://www.hdfilmcehennemi.nl'; } })();
+      const fetchedAlts = await Promise.allSettled(
+        altButtons.slice(0, 6).map(async ([, videoId, rawLbl]) => {
+          const cleanLabel = rawLbl.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+          const ajaxHtml = await fetchHtmlWithBypass(`${origin}/video/${videoId}/`, targetUrl);
+          if (!ajaxHtml) return [];
+          const iframes = [...ajaxHtml.matchAll(/<iframe\b[^>]*\b(?:data-src|src)=["']([^"']+)["']/gi)].map(m => ({ url: m[1], label: cleanLabel }));
+          return iframes;
+        })
+      );
+      for (const settled of fetchedAlts) {
+        if (settled.status === 'fulfilled') {
+          for (const item of settled.value) {
+            pushCandidate(item.url, item.label);
+            // Add playmix mirror right after close if applicable
+            const idM = item.url.match(/\/video\/embed\/([^/?#]+)/);
+            if (item.url.includes('hdfilmcehennemi.mobi') && idM?.[1]) {
+              pushCandidate(`https://playmix.uno/video/embed/${idM[1]}/`, item.label ? `${item.label} Ayna` : '');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 2. FullHDFilmİzlesene: rapidvid + scx ROT13 JSON
+  if (targetUrl.includes('fullhdfilmizlesene')) {
+    const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
+    if (rapidMatch) pushCandidate(rapidMatch[0], 'RapidVid');
+
+    const scxMatch = html.match(/var\s+scx\s*=\s*({[\s\S]*?});/);
+    if (scxMatch) {
+      try {
+        const scx = JSON.parse(scxMatch[1]);
+        for (const key of Object.keys(scx)) {
+          const sx = scx[key]?.sx;
+          if (!sx) continue;
+          const allUrls = [...(sx.p || []), ...(sx.t || [])];
+          for (const u of allUrls) {
+            if (typeof u !== 'string') continue;
+            if (u.startsWith('http')) {
+              pushCandidate(u, key);
+            } else {
+              try {
+                const rot = u.replace(/[a-z]/gi, (s) =>
+                  String.fromCharCode(s.charCodeAt(0) + (s.toLowerCase() < 'n' ? 13 : -13))
+                );
+                const dec = Buffer.from(rot, 'base64').toString('utf8');
+                if (dec && dec.startsWith('http')) {
+                  pushCandidate(dec, key);
+                }
+              } catch {}
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // 3. FilmMakinesi: <a data-video_url="...">Label</a>
+  if (targetUrl.includes('filmmakinesi')) {
+    const fmBtns = [...html.matchAll(/<a[^>]+data-video_url=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+    for (const [, vUrl, rawLbl] of fmBtns) {
+      pushCandidate(vUrl, rawLbl.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+    }
+  }
+
+  // 4. FilmDozu: <button class="src-btn" onclick="loadSource('URL', this)">Label</button>
+  if (targetUrl.includes('filmdozu')) {
+    const fdzBtns = [...html.matchAll(/loadSource\(\s*['"]([^'"]+)['"][^)]*\)[^>]*>([\s\S]*?)<\/button>/gi)];
+    for (const [, sUrl, rawLbl] of fdzBtns) {
+      pushCandidate(sUrl, rawLbl.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+    }
+  }
+
+  // 5. Filmİzyon: .fz-player__part panels
+  if (targetUrl.includes('filmizyon')) {
+    const fizPanels = [...html.matchAll(/data-part-panel=["'](\d+)["'][\s\S]{0,600}?<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi)];
+    for (const [, pNum, pUrl] of fizPanels) {
+      pushCandidate(pUrl, `Kaynak ${pNum}`);
+    }
+  }
+
+  // 6. RoketDizi: decrypt enc+k on current page & follow ?player= tabs
+  if (targetUrl.includes('roketdizi')) {
+    const firstDec = decryptRoketDiziEnc(html);
+    if (firstDec) pushCandidate(firstDec, 'Roket Player');
+
+    const normalized = html.replace(/\\"/g, '"').replace(/\\\\\//g, '/').replace(/\\\//g, '/');
+    const sourcesM = normalized.match(/"sources"\s*:\s*(\[[\s\S]*?\])/);
+    if (sourcesM) {
+      try {
+        const srcList = JSON.parse(sourcesM[1]);
+        const otherTabs = srcList.filter(s => s && s.href && !s.on).slice(0, 4);
+        const tabResults = await Promise.allSettled(
+          otherTabs.map(async (tab) => {
+            const tabUrl = tab.href.startsWith('http') ? tab.href : new URL(tab.href, 'https://roketdizi.life').href;
+            const tabHtml = await fetchHtmlWithBypass(tabUrl, targetUrl);
+            const dec = decryptRoketDiziEnc(tabHtml);
+            return dec ? { url: dec, label: tab.label || 'Alternatif' } : null;
+          })
+        );
+        for (const r of tabResults) {
+          if (r.status === 'fulfilled' && r.value) {
+            pushCandidate(r.value.url, r.value.label);
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // 7. Generic fallback extractors (standard iframes, data-src, script vars)
+  for (const [, src] of html.matchAll(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
+    pushCandidate(src);
+  }
+  for (const [, src] of html.matchAll(/data-(?:src|url|embed)=["']([^"']+)["']/gi)) {
+    pushCandidate(src);
+  }
+  for (const [, src] of html.matchAll(/(?:video_url|player_url|embed_url|iframe_url)\s*[:=]\s*["']([^"']+)["']/gi)) {
+    pushCandidate(src);
+  }
+
+  return candidates;
+}
+
+/**
+ * Resolves a single embed URL (and follows nested videoSrc if present)
+ */
+async function resolveSingleEmbed(initialEmbedUrl, targetUrl, pageTitle = '') {
+  const queue = [initialEmbedUrl];
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const embedUrl = queue.shift();
+    if (!embedUrl || visited.has(embedUrl)) continue;
+    visited.add(embedUrl);
+
+    logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
+    const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
+    if (!embedHtml) continue;
+
+    // Respect anti-bot PoW gates (never compute/solve NP_GATE or captcha challenges)
+    if (embedHtml.includes('window.NP_GATE') || embedHtml.includes('cf-turnstile') || embedHtml.includes('g-recaptcha')) {
+      logger.info(`[FastScraper] ⏭️ Güvenlik kapısı içeren oynatıcı atlanıyor: ${embedUrl}`);
+      continue;
+    }
+
+    // Filmİzyon Vixolity obfuscated embed
+    const vixKaynak = decodeVixolityEmbed(embedHtml);
+    if (vixKaynak) {
+      return buildResult(vixKaynak, embedUrl, targetUrl, 'm3u8', pageTitle, embedHtml);
+    }
+
+    // OK.ru videoembed metadata extractor
+    const okRu = decodeOkRuEmbed(embedHtml);
+    if (okRu && okRu.url) {
+      return buildResult(okRu.url, embedUrl, targetUrl, okRu.type, pageTitle, embedHtml);
+    }
+
+    // RapidVid custom payload
+    if (embedUrl.includes('rapidvid') || embedHtml.includes('_p8')) {
+      const rapidStream = decodeRapidVid(embedHtml);
+      if (rapidStream) {
+        return buildResult(rapidStream, embedUrl, targetUrl, rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
+      }
+    }
+
+    // ?do=getVideo API
+    if (embedUrl.includes('/video/') || embedUrl.includes('/fireplayer/') || embedUrl.includes('/player/')) {
+      try {
+        const getVideoUrl = embedUrl.split('?')[0] + '?do=getVideo';
+        const videoDataRaw = await fetchHtmlWithBypass(getVideoUrl, embedUrl);
+        if (videoDataRaw && (videoDataRaw.includes('videoSrc') || videoDataRaw.includes('videoSource') || videoDataRaw.includes('securedLink'))) {
+          const videoData = JSON.parse(videoDataRaw);
+          const foundDirectStream = videoData.securedLink || videoData.videoSource;
+          if (foundDirectStream) {
+            return buildResult(foundDirectStream, embedUrl, targetUrl, foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, videoDataRaw);
+          }
+          if (videoData.videoSrc && !visited.has(videoData.videoSrc)) {
+            queue.push(videoData.videoSrc);
+          }
+        }
+      } catch {}
+    }
+
+    // Dynamic obfuscation or dc_ encoded stream
+    const decodedStream = decodeDynamicObfuscation(embedHtml, embedUrl) || decodeDcFunction(embedHtml);
+    if (decodedStream) {
+      return buildResult(decodedStream, embedUrl, targetUrl, decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
+    }
+
+    // Packed JS / P.A.C.K.E.R eval
+    let searchCorpus = embedHtml;
+    if (embedHtml.includes('eval(function(p,a,c,k,e') || embedHtml.includes('eval(function(')) {
+      const unpacked = unpackJs(embedHtml);
+      if (unpacked) {
+        searchCorpus += '\n' + unpacked;
+        const vmStream = extractStreamFromUnpackedJs(unpacked, embedHtml);
+        if (vmStream) {
+          return buildResult(vmStream, embedUrl, targetUrl, vmStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+        }
+        const unpackedDecoded = decodeDynamicObfuscation(unpacked, embedUrl) || decodeDcFunction(unpacked);
+        if (unpackedDecoded) {
+          return buildResult(unpackedDecoded, embedUrl, targetUrl, unpackedDecoded.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+        }
+      }
+    }
+
+    // Direct stream regexes
+    for (const pattern of FAST_STREAM_PATTERNS) {
+      const match = searchCorpus.match(pattern);
+      if (match && match[1]) {
+        const streamUrl = match[1].replace(/\\/g, '');
+        const lowerStream = streamUrl.toLowerCase();
+        const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
+        const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
+        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
+          return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+        }
+      }
+    }
+
+    // Variable assignments
+    const varStreamMatch = searchCorpus.match(/(?:var|let|const)\s+(?:videolink|video_url|videoUrl|streamUrl|fileLink|source_url|videoSrc)\s*=\s*["'](https?:[^"']+)["']/i);
+    if (varStreamMatch && varStreamMatch[1]) {
+      const streamUrl = varStreamMatch[1].replace(/\\/g, '');
+      const lowerStream = streamUrl.toLowerCase();
+      if (!lowerStream.endsWith('.js') && !lowerStream.endsWith('.vtt')) {
+        return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+      }
+    }
+
+    // Dynamic nested iframe
+    for (const [, src] of searchCorpus.matchAll(/iframe\.src\s*=\s*["'](https?:[^"']+)["']/gi)) {
+      if (!visited.has(src)) queue.push(src);
+    }
+
+    // JSON "file": "https://..."
+    for (const fMatch of searchCorpus.matchAll(/["']file["']\s*:\s*["'](https?:[^"']+)["']/gi)) {
+      if (fMatch && fMatch[1]) {
+        const streamUrl = fMatch[1].replace(/\\/g, '');
+        const lowerStream = streamUrl.toLowerCase();
+        const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/') || lowerStream.includes('/subtitles/');
+        const isImage = /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(lowerStream);
+        const isIgnored = lowerStream.includes('blank.mp4') || lowerStream.endsWith('.js') || isSubtitle || isImage;
+        if (!isIgnored) {
+          return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * @param {string} targetUrl
- * @param {{ timeout?: number }} [options]
- * @returns {Promise<{ streamUrl: string, type: string, headers: any, pageTitle: string, subtitles: any[] } | null>}
+ * @param {{ timeout?: number, collectAlternatives?: boolean }} [options]
  */
 async function fastResolve(targetUrl, options = {}) {
   try {
@@ -647,12 +1041,13 @@ async function fastResolve(targetUrl, options = {}) {
       mainReferer = 'https://closeload.filmmakinesi.to/';
     } else if (targetUrl.includes('rapidvid')) {
       mainReferer = 'https://rapidvid.net/';
+    } else if (targetUrl.includes('vixolity')) {
+      mainReferer = 'https://www.filmizyon.net/';
     }
 
     const html = await fetchHtmlWithBypass(targetUrl, mainReferer);
     if (!html) return null;
 
-    // HTTP 451 DMCA / Legal Takedown check
     if (html.includes('451 - Yasal Nedenlerle') || html.includes('Yasal Nedenlerle Erisime Kapali')) {
       logger.warn(`[FastScraper] ⛔ Telif takedown: ${targetUrl}`);
       return { error: 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.', isTakedown: true };
@@ -662,223 +1057,70 @@ async function fastResolve(targetUrl, options = {}) {
     if (targetUrl.includes('/dizi/') && !targetUrl.includes('/bolum-')) {
       const epMatch = html.match(/href="([^"]*\/dizi\/[^"]+\/sezon-\d+\/bolum-\d+\/?)"/i) || html.match(/href="([^"]*(?:sezon-1\/bolum-1|bolum-1)[^"]*)"/i);
       if (epMatch && epMatch[1]) {
-        let epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], targetUrl).href;
+        const epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], targetUrl).href;
         logger.info(`[FastScraper] 📺 Dizi sayfası tespit edildi, 1. bölüme yönlendiriliyor: ${epUrl}`);
         return await fastResolve(epUrl, options);
       }
     }
 
-    // Extract Title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-    // 1. Check dynamic obfuscated or dc_ decoded stream in main page
+    // Fast path if targetUrl itself IS an embed URL
+    if (targetUrl.includes('vixolity.com') || targetUrl.includes('ok.ru/videoembed') || targetUrl.includes('/video/embed/') || targetUrl.includes('/rplayer/') || targetUrl.includes('vidmoly')) {
+      const directEmbedRes = await resolveSingleEmbed(targetUrl, mainReferer || targetUrl, pageTitle);
+      if (directEmbedRes) return directEmbedRes;
+    }
+
     const decodedFromMain = decodeDynamicObfuscation(html, targetUrl) || decodeDcFunction(html);
-    if (decodedFromMain) {
+    if (decodedFromMain && !options.collectAlternatives) {
       return buildResult(decodedFromMain, '', targetUrl, 'm3u8', pageTitle, html);
     }
 
-    // 2. Direct stream pattern in main page
     for (const pattern of FAST_STREAM_PATTERNS) {
       const match = html.match(pattern);
-      if (match && match[1]) {
+      if (match && match[1] && !options.collectAlternatives) {
         const streamUrl = match[1].replace(/\\/g, '');
         const lowerStream = streamUrl.toLowerCase();
         const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
         const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
         if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
-          logger.info(`[FastScraper] ✅ Doğrudan akış bulundu: ${streamUrl}`);
           return buildResult(streamUrl, '', targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, html);
         }
       }
     }
 
-    // 3. Extract Embed iFrames and Players
-    const embedQueue = [];
-    const visitedEmbeds = new Set();
+    const candidates = await collectPageEmbedCandidates(targetUrl, html);
+    logger.info(`[FastScraper] Bulunan embed aday sayısı: ${candidates.length} (${targetUrl})`);
 
-    function addEmbed(u) {
-      if (!u || typeof u !== 'string') return;
-      let clean = u.replace(/\\\//g, '/').trim();
-      if (clean.startsWith('//')) clean = 'https:' + clean;
-      if (!clean.startsWith('http')) return;
-      if (/\.(jpg|jpeg|png|webp|gif|svg|ico|css|woff2?|ttf)(\?|$)/i.test(clean)) return;
-      if (clean.includes('google') || clean.includes('doubleclick') || clean.includes('analytics') || clean.includes('facebook')) return;
-      if (!visitedEmbeds.has(clean)) {
-        visitedEmbeds.add(clean);
-        embedQueue.push(clean);
+    if (options.collectAlternatives) {
+      // Resolve up to 4 candidates concurrently so we have both instant stream and ready alternatives
+      const resolvedList = await Promise.allSettled(
+        candidates.slice(0, 5).map(async (cand, idx) => {
+          const r = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
+          return r ? { ...r, candidateLabel: cand.label || `Alternatif ${idx + 1}`, embedUrl: cand.url } : null;
+        })
+      );
+      const working = resolvedList
+        .filter(r => r.status === 'fulfilled' && r.value && r.value.streamUrl)
+        .map(r => r.value);
+
+      if (working.length > 0) {
+        return {
+          ...working[0],
+          alternatives: working,
+          candidateEmbeds: candidates,
+        };
       }
+      return null;
     }
 
-    // 2.5 Extract Fullhdfilmizlesene specific player sources (scx / atom / rapidvid)
-    if (targetUrl.includes('fullhdfilmizlesene')) {
-      const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
-      if (rapidMatch) addEmbed(rapidMatch[0]);
-
-      const scxMatch = html.match(/var\s+scx\s*=\s*({[\s\S]*?});/);
-      if (scxMatch) {
-        try {
-          const scx = JSON.parse(scxMatch[1]);
-          for (const key of Object.keys(scx)) {
-            const sx = scx[key]?.sx;
-            if (sx) {
-              const allUrls = [...(sx.p || []), ...(sx.t || [])];
-              for (const u of allUrls) {
-                if (typeof u === 'string') {
-                  if (u.startsWith('http')) {
-                    addEmbed(u);
-                  } else {
-                    // Try ROT13 + Base64 decode (Fullhdfilmizlesene Atom Player standard)
-                    try {
-                      const rot = u.replace(/[a-z]/gi, (s) =>
-                        String.fromCharCode(s.charCodeAt(0) + (s.toLowerCase() < 'n' ? 13 : -13))
-                      );
-                      const dec = Buffer.from(rot, 'base64').toString('utf8');
-                      if (dec && dec.startsWith('http')) {
-                        logger.info(`[FastScraper] 🔓 Fullhdfilmizlesene ROT13 linki çözüldü: ${dec}`);
-                        addEmbed(dec);
-                      }
-                    } catch (decErr) {}
-                  }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-
-    // Standard iframe src extraction
-    const iframeMatches = [...html.matchAll(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi)];
-    for (const [, src] of iframeMatches) {
-      if (src && !src.includes('google') && !src.includes('ads') && !src.includes('recaptcha') && !src.includes('facebook')) {
-        addEmbed(src);
-      }
-    }
-
-    // Additional data-src / data-url / embedUrl attribute extraction
-    const dataSrcMatches = [...html.matchAll(/data-(?:src|url|embed)=["']([^"']+)["']/gi)];
-    for (const [, src] of dataSrcMatches) {
-      addEmbed(src);
-    }
-
-    // Specific player script embed extraction (e.g. video_url = "...")
-    const scriptEmbedMatches = [...html.matchAll(/(?:video_url|player_url|embed_url|iframe_url)\s*[:=]\s*["']([^"']+)["']/gi)];
-    for (const [, src] of scriptEmbedMatches) {
-      addEmbed(src);
-    }
-
-    logger.info(`[FastScraper] Bulunan embed URL sayısı: ${embedQueue.length}`);
-
-    // 4. Scan each embed URL
-    for (const embedUrl of embedQueue) {
-      logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
-      const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
-      if (!embedHtml) continue;
-
-      // Check RapidVid custom payload
-      if (embedUrl.includes('rapidvid') || embedHtml.includes('_p8')) {
-        const rapidStream = decodeRapidVid(embedHtml);
-        if (rapidStream) {
-          return buildResult(rapidStream, embedUrl, targetUrl, rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
-        }
-      }
-
-      // Check ?do=getVideo API for players that support it
-      if (embedUrl.includes('/video/') || embedUrl.includes('/fireplayer/') || embedUrl.includes('/player/')) {
-        try {
-          const getVideoUrl = embedUrl.split('?')[0] + '?do=getVideo';
-          const videoDataRaw = await fetchHtmlWithBypass(getVideoUrl, embedUrl);
-          if (videoDataRaw && (videoDataRaw.includes('videoSrc') || videoDataRaw.includes('videoSource') || videoDataRaw.includes('securedLink'))) {
-            const videoData = JSON.parse(videoDataRaw);
-            const foundDirectStream = videoData.securedLink || videoData.videoSource;
-            if (foundDirectStream) {
-              logger.info(`[FastScraper] 🎯 API üzerinden doğrudan stream bulundu: ${foundDirectStream}`);
-              return buildResult(foundDirectStream, embedUrl, targetUrl, foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, videoDataRaw);
-            }
-            if (videoData.videoSrc) {
-              logger.info(`[FastScraper] 🎯 Nested videoSrc bulundu: ${videoData.videoSrc}`);
-              addEmbed(videoData.videoSrc);
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      // Check dynamic obfuscation or dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix, HDFilmCehennemi)
-      const decodedStream = decodeDynamicObfuscation(embedHtml, embedUrl) || decodeDcFunction(embedHtml);
-      if (decodedStream) {
-        return buildResult(decodedStream, embedUrl, targetUrl, decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
-      }
-
-      // Check unpacked JS / Packer eval
-      let searchCorpus = embedHtml;
-      if (embedHtml.includes('eval(function(p,a,c,k,e') || embedHtml.includes('eval(function(')) {
-        const unpacked = unpackJs(embedHtml);
-        if (unpacked) {
-          searchCorpus += '\n' + unpacked;
-          const vmStream = extractStreamFromUnpackedJs(unpacked, embedHtml);
-          if (vmStream) {
-            logger.info(`[FastScraper] 🔓 Unpacked VM stream bulundu: ${vmStream}`);
-            return buildResult(vmStream, embedUrl, targetUrl, vmStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
-          }
-          const unpackedDecoded = decodeDynamicObfuscation(unpacked) || decodeDcFunction(unpacked);
-          if (unpackedDecoded) {
-            return buildResult(unpackedDecoded, embedUrl, targetUrl, 'm3u8', pageTitle, searchCorpus);
-          }
-        }
-      }
-
-      // Check direct stream patterns in embed (excluding bogus schema meta tags and blank placeholders)
-      for (const pattern of FAST_STREAM_PATTERNS) {
-        const match = searchCorpus.match(pattern);
-        if (match && match[1]) {
-          const streamUrl = match[1].replace(/\\/g, '');
-          const lowerStream = streamUrl.toLowerCase();
-          const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
-          const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
-          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
-            logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
-            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
-          }
-        }
-      }
-
-      // Check variable stream assignments e.g. var videolink = "https://..."
-      const varStreamMatch = searchCorpus.match(/(?:var|let|const)\s+(?:videolink|video_url|videoUrl|streamUrl|fileLink|source_url|videoSrc)\s*=\s*["'](https?:[^"']+)["']/i);
-      if (varStreamMatch && varStreamMatch[1]) {
-        const streamUrl = varStreamMatch[1].replace(/\\/g, '');
-        const lowerStream = streamUrl.toLowerCase();
-        if (!lowerStream.endsWith('.js') && !lowerStream.endsWith('.vtt')) {
-          logger.info(`[FastScraper] ✅ Değişken atamasından akış bulundu: ${streamUrl}`);
-          return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
-        }
-      }
-
-      // Check dynamic iframe.src inside embed scripts (e.g. zipfilmizle / HivePlayer -> fireplayer)
-      const jsIfrMatches = [...searchCorpus.matchAll(/iframe\.src\s*=\s*["'](https?:[^"']+)["']/gi)];
-      for (const [, src] of jsIfrMatches) {
-        addEmbed(src);
-      }
-
-      // Check JSON sources config e.g. "file": "https://..." (strictly ignoring .vtt, .srt, image subtitles)
-      const fileMatches = [...searchCorpus.matchAll(/["']file["']\s*:\s*["'](https?:[^"']+)["']/gi)];
-      for (const fMatch of fileMatches) {
-        if (fMatch && fMatch[1]) {
-          const streamUrl = fMatch[1].replace(/\\/g, '');
-          const lowerStream = streamUrl.toLowerCase();
-          const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/') || lowerStream.includes('/subtitles/');
-          const isImage = /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(lowerStream);
-          const isIgnored = lowerStream.includes('blank.mp4') || lowerStream.endsWith('.js') || isSubtitle || isImage;
-
-          if (!isIgnored) {
-            logger.info(`[FastScraper] ✅ JSON config içinden akış bulundu: ${streamUrl}`);
-            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
-          }
-        }
+    // Standard mode: return first working embed
+    for (const cand of candidates) {
+      const resolved = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
+      if (resolved) {
+        resolved.candidateEmbeds = candidates;
+        return resolved;
       }
     }
 
@@ -889,4 +1131,4 @@ async function fastResolve(targetUrl, options = {}) {
   }
 }
 
-module.exports = { fastResolve, determineRefererAndOrigin, extractSubtitles };
+module.exports = { fastResolve, determineRefererAndOrigin, extractSubtitles, resolveSingleEmbed, collectPageEmbedCandidates };

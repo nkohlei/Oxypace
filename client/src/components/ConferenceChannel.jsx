@@ -1011,8 +1011,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             <HlsStreamResolverModalVol2
                                 isOpen={isHlsVol2ModalOpen}
                                 onClose={() => setIsHlsVol2ModalOpen(false)}
-                                onStartWatchParty={(streamUrl) => {
-                                    startWatchParty(streamUrl, false);
+                                onStartWatchParty={(streamUrl, isLive = false, subtitles = [], title = '', watchMeta = null) => {
+                                    startWatchParty(streamUrl, isLive, subtitles, title, watchMeta);
                                 }}
                             />
 

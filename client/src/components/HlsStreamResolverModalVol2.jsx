@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { Capacitor } from '@capacitor/core';
+import { useAuth } from '../context/AuthContext';
 import { 
   X, Film, Play, Link2, AlertCircle, CheckCircle2, 
-  Clipboard, ArrowRight, Search, Tv, Layers
+  Clipboard, ArrowRight, Search
 } from 'lucide-react';
 import './HlsStreamResolverModalVol2.css';
 
@@ -19,6 +19,9 @@ const formatPlayableUrl = (relativeOrAbsoluteUrl) => {
 };
 
 export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty }) => {
+  const { user } = useAuth();
+  const isPrivileged = Boolean(user?.isAdmin || user?.isTouristAdmin);
+
   // Tab state: 'search' (default) | 'manual'
   const [activeTab, setActiveTab] = useState('search');
 
@@ -27,9 +30,9 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchError, setSearchError] = useState(null);
-  const [activeProviderFilter, setActiveProviderFilter] = useState('all'); // 'all' | 'hdfilmcehennemi' | 'fullhdfilmizlesene'
+  const [activeProviderFilter, setActiveProviderFilter] = useState('all');
 
-  // Resolver state (shared between manual URL and search click)
+  // Resolver state
   const [url, setUrl] = useState('');
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
@@ -46,6 +49,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       setResolvedData(null);
       setErrorMsg(null);
       setSearchError(null);
+      setActiveProviderFilter('all');
       if (timerRef.current) clearInterval(timerRef.current);
     }
   }, [isOpen]);
@@ -70,6 +74,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     setSearchResults([]);
     setSelectedMovie(null);
     setResolvedData(null);
+    setActiveProviderFilter('all');
 
     try {
       const response = await axios.get(`/api/search-movies?q=${encodeURIComponent(q)}`, {
@@ -78,7 +83,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
       if (response.data && response.data.success && Array.isArray(response.data.results)) {
         if (response.data.results.length === 0) {
-          setSearchError(`"${q}" için entegre film sitelerinde sonuç bulunamadı. Farklı bir isim deneyebilir veya doğrudan bağlantı yapıştırabilirsiniz.`);
+          setSearchError(`"${q}" için sonuç bulunamadı. Farklı bir isim deneyebilir veya doğrudan bağlantı yapıştırabilirsiniz.`);
         } else {
           setSearchResults(response.data.results);
         }
@@ -88,7 +93,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     } catch (err) {
       let msg = err.response?.data?.error || err.message;
       if (typeof msg === 'string' && (msg.includes('Endpoint bulunamadı') || msg.includes('NOT_FOUND') || msg.includes('404'))) {
-        msg = 'Film arama servisi şu anda güncelleniyor. Lütfen birkaç saniye sonra tekrar deneyin veya film bağlantısını "Link Yapıştır" sekmesinden doğrudan girin.';
+        msg = 'Film arama servisi şu anda güncelleniyor. Lütfen birkaç saniye sonra tekrar deneyin veya bağlantıyı doğrudan girin.';
       }
       setSearchError(msg || 'Film arama servisine bağlanılamadı. Lütfen tekrar deneyin.');
     } finally {
@@ -110,15 +115,26 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     }
   };
 
-  // Stream Resolution Logic
-  const startResolveUrl = async (targetUrl, movieMeta = null) => {
-    const trimmedUrl = targetUrl.trim();
-    if (!trimmedUrl) {
-      setErrorMsg('Lütfen geçerli bir film sayfa bağlantısı seçin veya girin.');
+  const buildWatchMeta = (resData, movieMeta) => ({
+    alternativeGroups: Array.isArray(resData?.alternativeGroups) ? resData.alternativeGroups : [],
+    activeAlternativeId: resData?.activeAlternativeId || '',
+    externalSubtitles: Array.isArray(resData?.externalSubtitles) ? resData.externalSubtitles : [],
+    movieMeta: {
+      imdbId: movieMeta?.imdbId || '',
+      year: movieMeta?.year || '',
+    },
+  });
+
+  // Stream Resolution Logic (supports multi-source tokens OR manual direct URL)
+  const startResolveMovieOrUrl = async ({ targetUrl = '', movieMeta = null }) => {
+    const trimmedUrl = (targetUrl || '').trim();
+    const hasTokens = Array.isArray(movieMeta?.sourceTokens) && movieMeta.sourceTokens.length > 0;
+
+    if (!hasTokens && !trimmedUrl) {
+      setErrorMsg('Lütfen geçerli bir film seçin veya bağlantı girin.');
       return;
     }
-
-    if (!validateUrl(trimmedUrl)) {
+    if (!hasTokens && !validateUrl(trimmedUrl)) {
       setErrorMsg('Lütfen geçerli bir web bağlantısı (http:// veya https://) girin.');
       return;
     }
@@ -135,78 +151,74 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     }, 100);
 
     try {
-      // 1. Direct stream URL bypass (.m3u8, .mp4, master.txt)
-      const lower = trimmedUrl.toLowerCase();
-      if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
-        clearInterval(timerRef.current);
-        const playableUrl = formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(trimmedUrl)}`);
-        const result = {
-          streamUrl: trimmedUrl,
-          playableStreamUrl: playableUrl,
-          type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
-          pageTitle: movieMeta?.title || 'Doğrudan Akış Bağlantısı',
-          resolvedIn: Date.now() - startTime,
-        };
-        setResolvedData(result);
-        setIsResolving(false);
-
-        // Auto start in room if triggered from search card
-        if (movieMeta && onStartWatchParty) {
-          setTimeout(() => {
-            onStartWatchParty(playableUrl, false, [], movieMeta?.title || 'Doğrudan Akış');
-            onClose();
-          }, 400);
+      if (!hasTokens && trimmedUrl) {
+        const lower = trimmedUrl.toLowerCase();
+        if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
+          clearInterval(timerRef.current);
+          const playableUrl = formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(trimmedUrl)}`);
+          const result = {
+            streamUrl: trimmedUrl,
+            playableStreamUrl: playableUrl,
+            type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
+            pageTitle: movieMeta?.title || 'Doğrudan Akış Bağlantısı',
+            resolvedIn: Date.now() - startTime,
+            alternativeGroups: [],
+            externalSubtitles: [],
+          };
+          setResolvedData(result);
+          setIsResolving(false);
+          return;
         }
-        return;
       }
 
-      // 2. Call backend Stream Resolver
-      const response = await axios.post(
-        '/api/resolve-stream',
-        {
-          url: trimmedUrl,
-          timeout: 20000,
-        },
-        { timeout: 23000 }
-      );
+      const payload = {
+        ...(hasTokens ? { sourceTokens: movieMeta.sourceTokens } : { url: trimmedUrl }),
+        ...(isPrivileged && Array.isArray(movieMeta?.sources) ? { sources: movieMeta.sources } : {}),
+        title: movieMeta?.title || '',
+        year: movieMeta?.year || '',
+        imdbId: movieMeta?.imdbId || '',
+        timeout: 20000,
+      };
 
+      const response = await axios.post('/api/resolve-stream', payload, { timeout: 25000 });
       clearInterval(timerRef.current);
 
-      if (response.data && response.data.success) {
+      if (response.data && response.data.success && response.data.playableStreamUrl) {
         const resData = {
           ...response.data,
           playableStreamUrl: formatPlayableUrl(response.data.playableStreamUrl),
-          pageTitle: movieMeta?.title || response.data.pageTitle
+          pageTitle: movieMeta?.title || response.data.pageTitle || 'Film Akışı',
         };
         setResolvedData(resData);
 
-        // Auto start in room if selected directly from search
         if (movieMeta && onStartWatchParty) {
+          const watchMeta = buildWatchMeta(resData, movieMeta);
           setTimeout(() => {
             onStartWatchParty(
               resData.playableStreamUrl,
               false,
               resData.subtitles || [],
-              resData.pageTitle || movieMeta?.title || ''
+              resData.pageTitle || movieMeta?.title || '',
+              watchMeta
             );
             onClose();
-          }, 400);
+          }, 300);
         }
       } else {
         setErrorMsg(
           response.data?.error ||
-            'Bu kaynaktan oynatılabilir video akışı alınamadı. Lütfen listedeki alternatif bir kaynağı deneyin.'
+            'Bu film için oynatılabilir akış bulunamadı. Lütfen başka bir sonuç deneyin.'
         );
       }
     } catch (err) {
       clearInterval(timerRef.current);
       const serverErr = err.response?.data?.error || err.message;
       if (err.response?.status === 404) {
-        setErrorMsg('Bu film sayfasında video akışı tespit edilemedi. Lütfen listedeki diğer seçeneği deneyin.');
+        setErrorMsg('Bu içerik için uygun video akışı bulunamadı. Lütfen farklı bir sonuç seçin.');
       } else if (err.code === 'ECONNABORTED' || err.response?.status === 408) {
-        setErrorMsg('Sayfa yanıt vermedi (zaman aşımı). Lütfen tekrar deneyin.');
+        setErrorMsg('Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.');
       } else {
-        setErrorMsg(serverErr || 'Çözümleme sırasında bir hata oluştu. Lütfen bağlantıyı kontrol edin.');
+        setErrorMsg(serverErr || 'Çözümleme sırasında bir hata oluştu.');
       }
     } finally {
       setIsResolving(false);
@@ -215,12 +227,12 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
   const handleManualResolveSubmit = (e) => {
     if (e) e.preventDefault();
-    startResolveUrl(url, null);
+    startResolveMovieOrUrl({ targetUrl: url, movieMeta: null });
   };
 
   const handleMovieSelect = (movie) => {
-    setUrl(movie.url);
-    startResolveUrl(movie.url, movie);
+    if (movie.url) setUrl(movie.url);
+    startResolveMovieOrUrl({ targetUrl: movie.url || '', movieMeta: movie });
   };
 
   const handleStartInRoom = () => {
@@ -230,32 +242,32 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         formatPlayableUrl(resolvedData.playableStreamUrl),
         false,
         resolvedData.subtitles || [],
-        resolvedData.pageTitle || selectedMovie?.title || ''
+        resolvedData.pageTitle || selectedMovie?.title || '',
+        buildWatchMeta(resolvedData, selectedMovie)
       );
       onClose();
     }
   };
 
-  const getProviderLogo = (providerKey) => {
-    if (providerKey === 'hdfilmcehennemi') return '/providers/hdfilmcehennemi.png';
-    if (providerKey === 'filmmakinesi') return '/providers/filmmakinesi.png';
-    return '/providers/fullhdfilmizlesene.png';
-  };
+  // Admin-only provider filter chips computed dynamically from unified movie sources
+  const adminProviderCounts = new Map();
+  if (isPrivileged) {
+    for (const item of searchResults) {
+      const seenForItem = new Set();
+      for (const s of (item.sources || [])) {
+        if (!s?.providerKey || seenForItem.has(s.providerKey)) continue;
+        seenForItem.add(s.providerKey);
+        const cur = adminProviderCounts.get(s.providerKey) || { key: s.providerKey, label: s.provider || s.providerKey, count: 0 };
+        cur.count += 1;
+        adminProviderCounts.set(s.providerKey, cur);
+      }
+    }
+  }
+  const adminFilterChips = Array.from(adminProviderCounts.values());
 
-  const getSafePosterUrl = (posterUrl, providerKey) => {
-    if (!posterUrl) return null;
-    return posterUrl;
-  };
-
-  // Filtered results by provider
-  const filteredResults = searchResults.filter(item => {
-    if (activeProviderFilter === 'all') return true;
-    return item.providerKey === activeProviderFilter;
-  });
-
-  const hdfCount = searchResults.filter(r => r.providerKey === 'hdfilmcehennemi').length;
-  const fhfCount = searchResults.filter(r => r.providerKey === 'fullhdfilmizlesene').length;
-  const fmCount = searchResults.filter(r => r.providerKey === 'filmmakinesi').length;
+  const filteredResults = (isPrivileged && activeProviderFilter !== 'all')
+    ? searchResults.filter(item => (item.sources || []).some(s => s.providerKey === activeProviderFilter))
+    : searchResults;
 
   const modalContent = (
     <div className="vol2-resolver-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -318,7 +330,9 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                   <span className="vol2-loading-timer">{(elapsedMs / 1000).toFixed(1)}s</span>
                 </div>
                 <p className="vol2-resolving-sub">
-                  {selectedMovie?.provider ? `${selectedMovie.provider} üzerinden güvenli HLS akışı hazırlanıyor.` : 'Hedef sayfa taranıyor...'}
+                  {isPrivileged && selectedMovie?.providers?.length
+                    ? `${selectedMovie.providers.join(', ')} üzerinden en hızlı ve en yüksek kaliteli akış seçiliyor...`
+                    : 'En hızlı ve en yüksek kaliteli akış hazırlanıyor...'}
                 </p>
                 <div className="vol2-progress-bar-bg">
                   <div className="vol2-progress-bar-fill" />
@@ -335,7 +349,9 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                   <h4 className="vol2-result-title">
                     {resolvedData.pageTitle || 'Video Akışı Başarıyla Çözümlendi'}
                   </h4>
-                  <p className="vol2-result-url-sub">{resolvedData.streamUrl}</p>
+                  {isPrivileged && resolvedData.streamUrl && (
+                    <p className="vol2-result-url-sub">{resolvedData.streamUrl}</p>
+                  )}
                 </div>
                 <CheckCircle2 size={20} color="#ffffff" style={{ flexShrink: 0 }} />
               </div>
@@ -343,10 +359,13 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
               <div className="vol2-result-meta">
                 <span className="vol2-meta-tag success">Hazır</span>
                 <span className="vol2-meta-tag">Format: {resolvedData.type?.toUpperCase() || 'HLS'}</span>
+                {resolvedData.bestQualityHeight > 0 && (
+                  <span className="vol2-meta-tag">{resolvedData.bestQualityHeight}p</span>
+                )}
                 {resolvedData.resolvedIn > 0 && (
                   <span className="vol2-meta-tag">{resolvedData.resolvedIn} ms</span>
                 )}
-                {selectedMovie?.provider && (
+                {isPrivileged && selectedMovie?.provider && (
                   <span className="vol2-meta-tag">
                     {selectedMovie.provider}
                   </span>
@@ -423,10 +442,10 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 </div>
               )}
 
-              {/* Provider Filter Chips (Siteye Göre Filtrele) */}
-              {searchResults.length > 0 && (
+              {/* Admin/Turist Admin: Kaynak Web Sitelerine Göre Filtre */}
+              {isPrivileged && searchResults.length > 0 && adminFilterChips.length > 0 && (
                 <div className="vol2-filter-row">
-                  <span className="vol2-filter-label">Kaynak:</span>
+                  <span className="vol2-filter-label">Kaynak Siteler:</span>
                   <div className="vol2-filter-chips">
                     <button
                       type="button"
@@ -435,48 +454,31 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                     >
                       Tümü ({searchResults.length})
                     </button>
-                    {hdfCount > 0 && (
+                    {adminFilterChips.map(chip => (
                       <button
+                        key={chip.key}
                         type="button"
-                        className={`vol2-filter-chip hdfilmcehennemi ${activeProviderFilter === 'hdfilmcehennemi' ? 'active' : ''}`}
-                        onClick={() => setActiveProviderFilter('hdfilmcehennemi')}
+                        className={`vol2-filter-chip ${activeProviderFilter === chip.key ? 'active' : ''}`}
+                        onClick={() => setActiveProviderFilter(chip.key)}
                       >
-                        HDFilmCehennemi ({hdfCount})
+                        {chip.label} ({chip.count})
                       </button>
-                    )}
-                    {fhfCount > 0 && (
-                      <button
-                        type="button"
-                        className={`vol2-filter-chip fullhdfilmizlesene ${activeProviderFilter === 'fullhdfilmizlesene' ? 'active' : ''}`}
-                        onClick={() => setActiveProviderFilter('fullhdfilmizlesene')}
-                      >
-                        FullHDFilmİzlesene ({fhfCount})
-                      </button>
-                    )}
-                    {fmCount > 0 && (
-                      <button
-                        type="button"
-                        className={`vol2-filter-chip filmmakinesi ${activeProviderFilter === 'filmmakinesi' ? 'active' : ''}`}
-                        onClick={() => setActiveProviderFilter('filmmakinesi')}
-                      >
-                        FilmMakinesi ({fmCount})
-                      </button>
-                    )}
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Search Results Grid */}
+              {/* Search Results Grid (Unified Original Cards) */}
               {filteredResults.length > 0 && (
                 <div className="vol2-results-grid">
                   {filteredResults.map((movie, idx) => {
-                    const safePoster = getSafePosterUrl(movie.poster, movie.providerKey);
+                    const safePoster = movie.poster || null;
                     return (
                       <div 
-                        key={`${movie.url}-${idx}`} 
+                        key={movie.id || `${movie.title}-${idx}`} 
                         className="vol2-movie-card"
                         onClick={() => handleMovieSelect(movie)}
-                        title={`${movie.title} (${movie.provider}) - Oynatmak için tıkla`}
+                        title={`${movie.title}${movie.year ? ` (${movie.year})` : ''} - Oynatmak için tıkla`}
                       >
                         <div className="vol2-movie-poster-wrap">
                           {safePoster ? (
@@ -498,6 +500,9 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                             <Film size={26} strokeWidth={1.5} />
                             <span className="vol2-fallback-text">{movie.title}</span>
                           </div>
+                          {movie.year && (
+                            <span className="vol2-card-year-tag">{movie.year}</span>
+                          )}
                           <div className="vol2-card-hover-overlay">
                             <div className="vol2-card-play-btn">
                               <Play size={16} fill="currentColor" />
@@ -506,15 +511,16 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                           </div>
                         </div>
 
-                        {/* Ek'te verilen etiket (Provider Badge) */}
-                        <div className="vol2-card-provider-badge-wrap">
-                          <img 
-                            src={getProviderLogo(movie.providerKey)} 
-                            alt={movie.provider} 
-                            className="vol2-card-provider-logo"
-                            loading="lazy"
-                          />
-                        </div>
+                        {/* Sadece Admin ve Turist Admin'ler kaynak web sitelerini görebilir */}
+                        {isPrivileged && Array.isArray(movie.providers) && movie.providers.length > 0 && (
+                          <div className="vol2-card-provider-badge-wrap vol2-admin-sources-wrap">
+                            {movie.providers.map((pName) => (
+                              <span key={pName} className="vol2-admin-source-tag">
+                                {pName}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="vol2-movie-details">
                           <h5 className="vol2-movie-title">{movie.title}</h5>

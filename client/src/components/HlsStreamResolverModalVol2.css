@@ -464,17 +464,46 @@
   transform: scale(1.06);
 }
 
-/* Provider Badge Bar Underneath Poster */
+/* Provider Badge Bar Underneath Poster (Admin Only Multi-Site Tags) */
 .vol2-card-provider-badge-wrap {
   background: #09090b;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 4px 8px;
+  padding: 5px 7px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  height: 28px;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 26px;
   box-sizing: border-box;
+}
+
+.vol2-admin-source-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #e4e4e7;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  padding: 1px 5px;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.vol2-card-year-tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  background: rgba(9, 9, 11, 0.85);
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  pointer-events: none;
 }
 
 .vol2-card-provider-logo {
