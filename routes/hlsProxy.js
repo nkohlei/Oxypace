@@ -1635,8 +1635,8 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     });
   }
 
-  // 6. Probe top stream candidates concurrently to pick the fastest + highest quality stream
-  const candidatesToProbe = streamCandidates.slice(0, 6);
+  // 6. Probe top stream candidates concurrently across all providers to pick the fastest + highest quality stream
+  const candidatesToProbe = streamCandidates.slice(0, 10);
   const probeResults = await Promise.all(
     candidatesToProbe.map(async (c) => {
       const probe = await probeStreamCandidate(c.streamUrl, c.headers);
@@ -1705,11 +1705,30 @@ function convertSrtBufferToVtt(buf) {
   let text = decodeSubtitleText(buf);
   if (!text) return Buffer.from('WEBVTT\n\n', 'utf8');
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\uFEFF/, '');
+
+  const normalizeVttTs = (rawTs) => {
+    const clean = String(rawTs || '').trim();
+    const m = clean.match(/^(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/);
+    if (!m) return null;
+    const h = String(m[1] ? parseInt(m[1], 10) : 0).padStart(2, '0');
+    const mm = String(parseInt(m[2], 10)).padStart(2, '0');
+    const ss = String(parseInt(m[3], 10)).padStart(2, '0');
+    const ms = String(m[4]).padEnd(3, '0').slice(0, 3);
+    const totalSec = parseInt(h, 10) * 3600 + parseInt(mm, 10) * 60 + parseInt(ss, 10) + parseInt(ms, 10) / 1000;
+    return { formatted: `${h}:${mm}:${ss}.${ms}`, totalSec };
+  };
+
   if (/^\s*WEBVTT/i.test(text)) {
-    return Buffer.from(text, 'utf8');
+    // Normalize any comma-milliseconds or 2-digit ms even inside WebVTT files
+    const fixed = text.replace(
+      /(\d{1,3}:\d{2}(?::\d{2})?)[,.](\d{1,3})/g,
+      (_m, hms, ms) => `${hms}.${String(ms).padEnd(3, '0').slice(0, 3)}`
+    );
+    return Buffer.from(fixed, 'utf8');
   }
+
   const blocks = text.split(/\n{2,}/);
-  const vttCues = [];
+  const parsedCues = [];
   for (const block of blocks) {
     const lines = block.split('\n').map(l => l.trimEnd()).filter(Boolean);
     if (lines.length === 0) continue;
@@ -1719,13 +1738,21 @@ function convertSrtBufferToVtt(buf) {
     }
     const tsLine = lines[startIdx];
     if (!tsLine || !tsLine.includes('-->')) continue;
-    const normalizedTs = tsLine.replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2').replace(/(\d{1,2}:\d{2}),(\d{3})/g, '00:$1.$2');
+    const arrowParts = tsLine.split(/\s*-->\s*/);
+    if (arrowParts.length < 2) continue;
+    const startObj = normalizeVttTs(arrowParts[0]);
+    const endTokens = arrowParts[1].trim().split(/\s+/);
+    const endObj = normalizeVttTs(endTokens[0]);
+    if (!startObj || !endObj || endObj.totalSec <= startObj.totalSec) continue;
+    const cueSettings = endTokens.slice(1).join(' ');
+    const header = `${startObj.formatted} --> ${endObj.formatted}${cueSettings ? ` ${cueSettings}` : ''}`;
     const body = lines.slice(startIdx + 1).join('\n');
     if (body) {
-      vttCues.push(`${normalizedTs}\n${body}`);
+      parsedCues.push({ startSec: startObj.totalSec, text: `${header}\n${body}` });
     }
   }
-  return Buffer.from(`WEBVTT\n\n${vttCues.join('\n\n')}\n`, 'utf8');
+  parsedCues.sort((a, b) => a.startSec - b.startSec);
+  return Buffer.from(`WEBVTT\n\n${parsedCues.map(c => c.text).join('\n\n')}\n`, 'utf8');
 }
 
 function extractBestSubFromZipBuffer(zipBuf) {
@@ -1788,6 +1815,7 @@ function cleanMovieTitleForSubtitleSearch(rawTitle = '') {
     .replace(/\b(türkçe|turkce|dublaj|altyazılı|altyazili|altyazı|altyazi|dual|full\s*hd|1080p|720p|4k|uhd|izle|film|filmi|hd)\b/gi, ' ')
     .replace(/[|/\\–—]+/g, ' ')
     .replace(/\s+/g, ' ')
+    .replace(/\s+1$/, '')
     .trim();
 }
 
@@ -1919,7 +1947,8 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
       const fullSubUrl = `https://turkcealtyazi.org${subPath}`;
       subRows.push({
         id: `ta_${subId}`,
-        label: `Türkçe Altyazı TA-${subRows.length + 1}${fpsText}`,
+        label: `TR Altyazı TA-${subRows.length + 1}${fpsText}`,
+        fpsHint: fpsText.trim(),
         lang: 'tr',
         kind: 'subtitles',
         playableUrl: `/api/subtitles/ta?subUrl=${encodeURIComponent(fullSubUrl)}`,
@@ -1943,24 +1972,30 @@ async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {
     return cached.items;
   }
 
+  const withSoftCap = (promise, ms) => Promise.race([
+    promise.catch(() => []),
+    new Promise(resolve => setTimeout(() => resolve([]), ms)),
+  ]);
+
   const [osRes, taRes] = await Promise.allSettled([
-    searchOpenSubtitlesStremio(imdbId, cleanTitle, year),
-    searchTurkceAltyaziOrg(cleanTitle, year),
+    withSoftCap(searchOpenSubtitlesStremio(imdbId, cleanTitle, year), 3200),
+    withSoftCap(searchTurkceAltyaziOrg(cleanTitle, year), 3200),
   ]);
 
   const combined = [];
   if (osRes.status === 'fulfilled' && Array.isArray(osRes.value)) combined.push(...osRes.value);
   if (taRes.status === 'fulfilled' && Array.isArray(taRes.value)) combined.push(...taRes.value);
 
-  // Deduplicate by playableUrl and limit cleanly
+  // Deduplicate by playableUrl and keep clean neutral labels (with optional fps hint for timing matching)
   const deduped = [];
   const seen = new Set();
   for (const item of combined) {
     if (!item?.playableUrl || seen.has(item.playableUrl)) continue;
     seen.add(item.playableUrl);
+    const fpsSuffix = item.fpsHint ? ` ${item.fpsHint}` : '';
     deduped.push({
       id: item.id,
-      label: `TR Altyazı ${deduped.length + 1}`,
+      label: `TR Altyazı ${deduped.length + 1}${fpsSuffix}`,
       lang: 'tr',
       kind: 'subtitles',
       playableUrl: item.playableUrl,
@@ -2578,7 +2613,11 @@ async function searchRoketDizi(query) {
 // Film başlıklarını çapraz site birleştirmesi için normalize eder (devam filmlerini korur!)
 function normalizeMovieTitleKey(title = '') {
   if (!title) return '';
-  let str = String(title).toLowerCase();
+  let str = String(title)
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/ı/g, 'i')
+    .toLowerCase();
   const removeWords = [
     'türkçe dublaj', 'turkce dublaj', 'türkçe altyazı', 'turkce altyazi',
     'altyazılı', 'altyazili', 'dublaj', 'dual', 'tr-en', 'full hd', '1080p',
@@ -2593,6 +2632,7 @@ function normalizeMovieTitleKey(title = '') {
     }
   }
   str = str
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[ıİ]/g, 'i')
     .replace(/ş/g, 's')
     .replace(/ğ/g, 'g')
@@ -2602,18 +2642,70 @@ function normalizeMovieTitleKey(title = '') {
   return str.replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
 }
 
+function addDerivedTitleAliases(aliasSet, norm) {
+  if (!norm || norm.length < 2) return;
+  aliasSet.add(norm);
+  // Strip leading English articles ("the matrix" -> "matrix")
+  const noArticle = norm.replace(/^(?:the|a|an)\s+/, '').trim();
+  if (noArticle && noArticle.length >= 2) aliasSet.add(noArticle);
+  // Normalize trailing sequel " 1" vs plain title ("matrix 1" <-> "matrix", year guard protects against unrelated films)
+  for (const base of [norm, noArticle]) {
+    if (!base) continue;
+    const withoutOne = base.replace(/\s+1$/, '').trim();
+    if (withoutOne && withoutOne.length >= 2) aliasSet.add(withoutOne);
+    // Normalize Part II / III / IV <-> 2 / 3 / 4
+    const romanNorm = base
+      .replace(/\bpart\s+(?:ii|2)\b/g, '2')
+      .replace(/\bpart\s+(?:iii|3)\b/g, '3')
+      .replace(/\bpart\s+(?:iv|4)\b/g, '4')
+      .replace(/\bpart\s+i\b/g, '1')
+      .replace(/\bii\b/g, '2')
+      .replace(/\biii\b/g, '3')
+      .replace(/\biv\b/g, '4')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (romanNorm && romanNorm.length >= 2) aliasSet.add(romanNorm);
+  }
+}
+
 function extractTitleAliases(item) {
   const aliases = new Set();
   const rawParts = [item.title, item.altTitle]
     .filter(Boolean)
-    .flatMap(t => String(t).split(/\s*[|/]\s*|\s+-\s+/));
+    .flatMap(t => String(t).split(/\s*[|/]\s*|\s+[-–]\s+/));
   for (const p of rawParts) {
-    const norm = normalizeMovieTitleKey(p);
-    if (norm && norm.length >= 2) aliases.add(norm);
+    addDerivedTitleAliases(aliases, normalizeMovieTitleKey(p));
   }
-  const fullNorm = normalizeMovieTitleKey(item.title);
-  if (fullNorm) aliases.add(fullNorm);
+  addDerivedTitleAliases(aliases, normalizeMovieTitleKey(item.title));
   return Array.from(aliases);
+}
+
+function canMergeGroupsOrItems(aImdb, aYear, aAliasSet, bImdb, bYear, bAliases) {
+  if (aImdb && bImdb) {
+    return aImdb === bImdb;
+  }
+  if (aYear && bYear && Math.abs(Number(aYear) - Number(bYear)) > 1) {
+    return false;
+  }
+  for (const a of bAliases) {
+    if (aAliasSet.has(a)) return true;
+  }
+  return false;
+}
+
+function mergeGroupInto(target, donor) {
+  for (const a of donor.aliasSet) target.aliasSet.add(a);
+  if (!target.poster && donor.poster) target.poster = donor.poster;
+  if (!target.year && donor.year) target.year = donor.year;
+  if (!target.imdbId && donor.imdbId) target.imdbId = donor.imdbId;
+  if (donor.title && donor.title.length > 1 && donor.title.length < target.title.length && !/[|/]\s/.test(donor.title)) {
+    target.title = donor.title;
+  }
+  for (const src of donor.sources) {
+    if (!target.sources.some(s => s.url === src.url)) {
+      target.sources.push(src);
+    }
+  }
 }
 
 // Çapraz site birleştirme: aynı filmi (tüm sitelerden gelen kaynaklarıyla) tek orijinal kartta toplar, benzer/devam filmlerini ayrı bırakır
@@ -2629,20 +2721,10 @@ function deduplicateMovieResults(movies) {
 
     let matchedGroup = null;
     for (const g of groups) {
-      if (itemImdb && g.imdbId) {
-        if (itemImdb === g.imdbId) {
-          matchedGroup = g;
-          break;
-        }
-        continue; // Farklı IMDB ID'leri asla birleştirme
+      if (canMergeGroupsOrItems(g.imdbId, g.year, g.aliasSet, itemImdb, itemYear, aliases)) {
+        matchedGroup = g;
+        break;
       }
-      const shareAlias = aliases.some(a => g.aliasSet.has(a));
-      if (!shareAlias) continue;
-      if (itemYear && g.year && Math.abs(Number(itemYear) - Number(g.year)) > 1) {
-        continue; // Farklı yıllarda çıkan aynı isimli filmleri (remake vb.) koru
-      }
-      matchedGroup = g;
-      break;
     }
 
     const cleanDisplayTitle = decodeHtmlEntities(String(item.title || ''))
@@ -2675,22 +2757,45 @@ function deduplicateMovieResults(movies) {
       if (!matchedGroup.poster && item.poster) matchedGroup.poster = item.poster;
       if (!matchedGroup.year && itemYear) matchedGroup.year = itemYear;
       if (!matchedGroup.imdbId && itemImdb) matchedGroup.imdbId = itemImdb;
-      // Tercihen temiz/İngilizce orijinal başlık veya yıl bilgisi olan başlık seçimi
       if (cleanDisplayTitle.length > 1 && cleanDisplayTitle.length < matchedGroup.title.length && !/[|/]\s/.test(cleanDisplayTitle)) {
         matchedGroup.title = cleanDisplayTitle;
       }
       const existsSameSiteUrl = matchedGroup.sources.some(s => s.url === sourceEntry.url);
       if (!existsSameSiteUrl) {
-        // Aynı sitede dublaj varsa ek veya öncelikli tut
         matchedGroup.sources.push(sourceEntry);
       }
     }
   }
 
+  // Transitive union pass: bridges groups connected later via bilingual "TR / EN" titles
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < groups.length; i++) {
+      if (!groups[i]) continue;
+      for (let j = i + 1; j < groups.length; j++) {
+        if (!groups[j]) continue;
+        if (canMergeGroupsOrItems(
+          groups[i].imdbId,
+          groups[i].year,
+          groups[i].aliasSet,
+          groups[j].imdbId,
+          groups[j].year,
+          groups[j].aliasSet
+        )) {
+          mergeGroupInto(groups[i], groups[j]);
+          groups[j] = null;
+          changed = true;
+        }
+      }
+    }
+  }
+
   return groups
+    .filter(Boolean)
     .sort((a, b) => b.sources.length - a.sources.length)
-    .map(g => ({
-      id: g.id,
+    .map((g, idx) => ({
+      id: `mov_${idx + 1}`,
       title: g.title,
       year: g.year,
       imdbId: g.imdbId,
@@ -2752,7 +2857,7 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
   }
 
   const trimmedQuery = query.trim();
-  const cacheKey = `unified_v2:${trimmedQuery.toLowerCase()}`;
+  const cacheKey = `unified_v3:${trimmedQuery.toLowerCase()}`;
   const isPrivileged = isAdminOrTouristUser(req);
 
   // 1. Önbellek kontrolü (yetkiye göre dinamik maskelenmiş yanıt üret)

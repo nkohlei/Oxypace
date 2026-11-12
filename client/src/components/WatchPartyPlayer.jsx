@@ -518,6 +518,9 @@ const WatchPartyPlayer = () => {
     const [activeCueText, setActiveCueText] = useState('');
     const activeCueTextRef = useRef('');
     const parsedCuesRef = useRef([]);
+    const [subTimeOffsetSec, setSubTimeOffsetSec] = useState(0);
+    const subTimeOffsetRef = useRef(0);
+    const subtitleLoadSeqRef = useRef(0);
     const [subSyncNotice, setSubSyncNotice] = useState(null);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
     const audioMenuRef = useRef(null);
@@ -1254,6 +1257,9 @@ const WatchPartyPlayer = () => {
         activeSubtitleIdRef.current = 'off';
         userDisabledSubtitlesRef.current = false;
         parsedCuesRef.current = [];
+        subtitleLoadSeqRef.current += 1;
+        subTimeOffsetRef.current = 0;
+        setSubTimeOffsetSec(0);
         activeCueTextRef.current = '';
         setActiveCueText('');
         setIsSubMenuOpen(false);
@@ -1750,8 +1756,8 @@ const WatchPartyPlayer = () => {
     };
 
     const syncCurrentSubtitleCue = useCallback(() => {
-        if (!videoRef.current) return;
-        const cur = videoRef.current.currentTime || 0;
+        const video = videoRef.current;
+        if (!video) return;
 
         if (activeSubtitleIdRef.current === 'off') {
             if (activeCueTextRef.current) {
@@ -1761,10 +1767,40 @@ const WatchPartyPlayer = () => {
             return;
         }
 
-        // 1. Check parsed cues first (custom uploaded or external vtt)
-        if (parsedCuesRef.current && parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.find(c => cur >= c.start && cur <= c.end);
-            const text = active ? active.text : '';
+        const rawCur = video.currentTime || 0;
+        const offset = subTimeOffsetRef.current || 0;
+        const cur = Math.max(0, rawCur - offset);
+
+        // 1. Check parsed cues first (external / repo / custom SRT & VTT)
+        const cues = parsedCuesRef.current;
+        if (cues && cues.length > 0) {
+            const activeLines = [];
+            // Binary search upper bound: first index where cue.start <= cur
+            let lo = 0;
+            let hi = cues.length - 1;
+            let upper = -1;
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                if (cues[mid].start <= cur) {
+                    upper = mid;
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            // Scan backwards from upper (cues can span several seconds and overlap)
+            if (upper >= 0) {
+                const startScan = Math.max(0, upper - 12);
+                for (let idx = startScan; idx <= upper; idx++) {
+                    const c = cues[idx];
+                    if (cur >= c.start && cur <= c.end && c.text) {
+                        if (!activeLines.includes(c.text)) {
+                            activeLines.push(c.text);
+                        }
+                    }
+                }
+            }
+            const text = activeLines.join('\n');
             if (text !== activeCueTextRef.current) {
                 activeCueTextRef.current = text;
                 setActiveCueText(text);
@@ -1772,15 +1808,28 @@ const WatchPartyPlayer = () => {
             return;
         }
 
-        // 2. Fallback to native textTracks activeCues (HLS or browser track)
-        if (videoRef.current.textTracks && videoRef.current.textTracks.length > 0) {
+        // 2. Native textTracks fallback (HLS embedded WebVTT tracks), with offset support via tt.cues
+        if (video.textTracks && video.textTracks.length > 0) {
             let foundText = '';
-            for (let i = 0; i < videoRef.current.textTracks.length; i++) {
-                const tt = videoRef.current.textTracks[i];
+            for (let i = 0; i < video.textTracks.length; i++) {
+                const tt = video.textTracks[i];
                 if (tt.mode === 'showing') {
                     tt.mode = 'hidden';
                 }
-                if (tt.mode === 'hidden' && tt.activeCues && tt.activeCues.length > 0) {
+                if (tt.mode !== 'hidden') continue;
+                if (offset !== 0 && tt.cues && tt.cues.length > 0) {
+                    const matched = [];
+                    for (let j = 0; j < tt.cues.length; j++) {
+                        const cue = tt.cues[j];
+                        if (cue.startTime > cur) break;
+                        if (cur >= cue.startTime && cur <= cue.endTime && cue.text) {
+                            matched.push(cue.text);
+                        }
+                    }
+                    foundText = matched.join('\n');
+                    break;
+                }
+                if (tt.activeCues && tt.activeCues.length > 0) {
                     foundText = Array.from(tt.activeCues).map(c => c.text).join('\n');
                     break;
                 }
@@ -1791,6 +1840,15 @@ const WatchPartyPlayer = () => {
             }
         }
     }, []);
+
+    const adjustSubTimeOffset = useCallback((deltaSec, reset = false) => {
+        const nextOffset = reset
+            ? 0
+            : Math.max(-300, Math.min(300, Math.round(((subTimeOffsetRef.current || 0) + deltaSec) * 10) / 10));
+        subTimeOffsetRef.current = nextOffset;
+        setSubTimeOffsetSec(nextOffset);
+        syncCurrentSubtitleCue();
+    }, [syncCurrentSubtitleCue]);
 
     const onTimeUpdate = () => {
         if (!videoRef.current) return;
@@ -1812,13 +1870,51 @@ const WatchPartyPlayer = () => {
         setIsNativePlaying(false);
     };
 
-    // High-precision subtitle ticker: Ensures cues sync smoothly at 100ms intervals
-    // even during seek, pauses, micro-rate pacing, or low-frequency browser onTimeUpdate events!
+    // Frame-accurate subtitle synchronizer: rAF loop while playing + event listeners + background fallback
     useEffect(() => {
-        const subTicker = setInterval(() => {
+        let rafId = null;
+        let cancelled = false;
+        const tickFrame = () => {
+            if (cancelled) return;
             syncCurrentSubtitleCue();
-        }, 100);
-        return () => clearInterval(subTicker);
+            const vid = videoRef.current;
+            if (vid && !vid.paused && !vid.ended) {
+                rafId = requestAnimationFrame(tickFrame);
+            } else {
+                rafId = null;
+            }
+        };
+
+        const startRaf = () => {
+            if (rafId === null && !cancelled) {
+                rafId = requestAnimationFrame(tickFrame);
+            }
+        };
+
+        const vid = videoRef.current;
+        if (vid) {
+            vid.addEventListener('play', startRaf);
+            vid.addEventListener('playing', startRaf);
+            vid.addEventListener('seeked', syncCurrentSubtitleCue);
+            vid.addEventListener('seeking', syncCurrentSubtitleCue);
+            if (!vid.paused && !vid.ended) startRaf();
+        }
+
+        const fallbackTimer = setInterval(() => {
+            syncCurrentSubtitleCue();
+        }, 120);
+
+        return () => {
+            cancelled = true;
+            if (rafId !== null) cancelAnimationFrame(rafId);
+            clearInterval(fallbackTimer);
+            if (vid) {
+                vid.removeEventListener('play', startRaf);
+                vid.removeEventListener('playing', startRaf);
+                vid.removeEventListener('seeked', syncCurrentSubtitleCue);
+                vid.removeEventListener('seeking', syncCurrentSubtitleCue);
+            }
+        };
     }, [syncCurrentSubtitleCue]);
 
     // Label formatters for Audio and Subtitles
@@ -1864,8 +1960,8 @@ const WatchPartyPlayer = () => {
         const lines = cleanText.split('\n');
 
         // Comprehensive timestamp regex matching both SRT and WebVTT:
-        // Matches: HH:MM:SS,mmm or HH:MM:SS.mmm or H:MM:SS,mmm or MM:SS,mmm or MM:SS.mmm
-        const timeRegex = /(?:(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{2,3}))\s*-->\s*(?:(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{2,3}))/;
+        // Matches: HH:MM:SS,mmm or HH:MM:SS.mmm or H:MM:SS,m or MM:SS,mmm
+        const timeRegex = /(?:(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{1,3}))\s*-->\s*(?:(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{1,3}))/;
 
         const parseTimestampSeconds = (h, m, s, ms) => {
             const hours = h ? parseInt(h, 10) : 0;
@@ -1873,7 +1969,7 @@ const WatchPartyPlayer = () => {
             const secs = s ? parseInt(s, 10) : 0;
             let millis = 0;
             if (ms) {
-                const msStr = ms.length === 2 ? `${ms}0` : ms.slice(0, 3);
+                const msStr = String(ms).padEnd(3, '0').slice(0, 3);
                 millis = parseInt(msStr, 10);
             }
             return hours * 3600 + mins * 60 + secs + millis / 1000;
@@ -1881,7 +1977,7 @@ const WatchPartyPlayer = () => {
 
         const parseSingleTimestamp = (ts) => {
             if (!ts) return null;
-            const m = ts.trim().match(/(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{2,3})/);
+            const m = ts.trim().match(/(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/);
             if (!m) return null;
             return parseTimestampSeconds(m[1], m[2], m[3], m[4]);
         };
@@ -1923,13 +2019,18 @@ const WatchPartyPlayer = () => {
             }
             i++;
         }
+        cues.sort((a, b) => a.start - b.start || a.end - b.end);
         return cues;
     };
 
     const loadSubtitleTrackText = async (option) => {
-        if (option.type === 'off') {
-            parsedCuesRef.current = [];
-            setActiveCueText('');
+        const seq = ++subtitleLoadSeqRef.current;
+        parsedCuesRef.current = [];
+        activeCueTextRef.current = '';
+        setActiveCueText('');
+
+        if (option.type === 'off' || option.type === 'hls') {
+            syncCurrentSubtitleCue();
             return;
         }
         try {
@@ -1963,8 +2064,10 @@ const WatchPartyPlayer = () => {
                     vttContent = await res.text();
                 }
             }
+            if (seq !== subtitleLoadSeqRef.current) return;
             if (vttContent) {
                 parsedCuesRef.current = parseSubtitleCues(vttContent);
+                syncCurrentSubtitleCue();
             }
         } catch (err) {
             console.warn("[WatchPartyPlayer] Altyazı ayrıştırma hatası:", err);
@@ -3022,6 +3125,24 @@ const WatchPartyPlayer = () => {
                                     {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && externalRepoSubtitles.length === 0 && customSubtitles.length === 0 && (
                                         <div className="native-track-empty-note">
                                             Otomatik altyazı bulunamadı
+                                        </div>
+                                    )}
+
+                                    {activeSubtitleId !== 'off' && (
+                                        <div className="native-sub-offset-box">
+                                            <div className="native-sub-offset-header">
+                                                <span>Zamanlama (Senkron)</span>
+                                                <span className="native-sub-offset-val">
+                                                    {subTimeOffsetSec > 0 ? `+${subTimeOffsetSec.toFixed(1)}s` : `${subTimeOffsetSec.toFixed(1)}s`}
+                                                </span>
+                                            </div>
+                                            <div className="native-sub-offset-controls">
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-2)}>-2s</button>
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-0.5)}>-0.5s</button>
+                                                <button type="button" className="native-sub-offset-btn reset" onClick={() => adjustSubTimeOffset(0, true)}>Sıfırla</button>
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(0.5)}>+0.5s</button>
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(2)}>+2s</button>
+                                            </div>
                                         </div>
                                     )}
 

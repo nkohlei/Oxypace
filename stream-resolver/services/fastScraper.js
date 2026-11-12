@@ -289,9 +289,28 @@ function unpackJs(packedJs) {
 
       let depth = 1;
       let i = evalIdx + 5; // right after 'eval('
+      let inStr = null;
+      let escaped = false;
       while (i < packedJs.length && depth > 0) {
-        if (packedJs[i] === '(') depth++;
-        else if (packedJs[i] === ')') depth--;
+        const ch = packedJs[i];
+        if (escaped) {
+          escaped = false;
+          i++;
+          continue;
+        }
+        if (inStr) {
+          if (ch === '\\') escaped = true;
+          else if (ch === inStr) inStr = null;
+          i++;
+          continue;
+        }
+        if (ch === "'" || ch === '"' || ch === '`') {
+          inStr = ch;
+        } else if (ch === '(') {
+          depth++;
+        } else if (ch === ')') {
+          depth--;
+        }
         i++;
       }
 
@@ -317,39 +336,80 @@ function unpackJs(packedJs) {
 }
 
 /**
+ * Checks whether a URL looks like a real playable media stream (excluding decoy/ad/asset URLs)
+ */
+function isRealMediaStreamUrl(val) {
+  if (typeof val !== 'string' || !val.startsWith('http')) return false;
+  const low = val.toLowerCase();
+  if (low.includes('filmakinesimp4') || low.includes('blank.mp4')) return false;
+  if (/\.(?:js|css|jpg|jpeg|png|webp|gif|svg|ico|vtt|srt)(?:\?|$)/i.test(low)) return false;
+  return low.includes('.m3u8') || low.includes('.mp4') || low.includes('master') || low.includes('urlset');
+}
+
+/**
  * Executes unpacked JavaScript in an isolated VM sandbox to extract stream variables
  * e.g. Rapidrame / rplayer: sources: [{file: rle}] where rle is computed by an unpacked function
  */
-function extractStreamFromUnpackedJs(unpackedJs, outerHtml = '') {
+function extractStreamFromUnpackedJs(unpackedJs, outerHtml = '', embedUrl = '') {
   if (!unpackedJs || typeof unpackedJs !== 'string') return null;
   try {
+    let parsedUrl = null;
+    try {
+      if (embedUrl && embedUrl.startsWith('http')) parsedUrl = new URL(embedUrl);
+    } catch {}
+    const locObj = {
+      hostname: parsedUrl?.hostname || 'rapid.filmmakinesi.to',
+      host: parsedUrl?.host || 'rapid.filmmakinesi.to',
+      href: parsedUrl?.href || 'https://rapid.filmmakinesi.to/',
+      origin: parsedUrl?.origin || 'https://rapid.filmmakinesi.to',
+      protocol: parsedUrl?.protocol || 'https:',
+    };
+
     const sandbox = {
       atob: (s) => Buffer.from(s, 'base64').toString('binary'),
       btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
       String,
       Math,
       Array,
+      Object,
+      RegExp,
+      JSON,
       parseInt,
       parseFloat,
-      window: {},
+      encodeURIComponent,
+      decodeURIComponent,
+      location: { ...locObj },
+      window: { location: { ...locObj } },
+      document: { location: { ...locObj }, referrer: locObj.origin },
+      navigator: { userAgent: 'Mozilla/5.0' },
     };
+    sandbox.window.window = sandbox.window;
+    sandbox.self = sandbox.window;
+
     vm.createContext(sandbox);
     vm.runInContext(unpackedJs, sandbox, { timeout: 2000 });
 
-    const targetVarMatch = outerHtml.match(/sources\s*:\s*\[\s*\{\s*file\s*:\s*([a-zA-Z0-9_$]+)/);
-    if (targetVarMatch && targetVarMatch[1]) {
-      const varName = targetVarMatch[1];
-      const val = sandbox[varName];
-      if (typeof val === 'string' && val.startsWith('http') && (val.includes('.m3u8') || val.includes('.mp4') || val.includes('master'))) {
-        return val;
-      }
+    // Prioritize variables referenced in sources: [{ file: VAR }] or file: VAR
+    const targetVarMatches = [
+      ...outerHtml.matchAll(/sources\s*:\s*\[\s*\{\s*file\s*:\s*([a-zA-Z0-9_$]+)/g),
+      ...unpackedJs.matchAll(/["']?file["']?\s*:\s*([a-zA-Z0-9_$]+)/g),
+    ];
+    for (const m of targetVarMatches) {
+      const val = sandbox[m[1]];
+      if (isRealMediaStreamUrl(val)) return val;
     }
 
+    // Otherwise scan all sandbox variables while skipping decoy URLs
+    const allFound = [];
     for (const key of Object.keys(sandbox)) {
       const val = sandbox[key];
-      if (typeof val === 'string' && val.startsWith('http') && (val.includes('.m3u8') || val.includes('.mp4') || val.includes('master'))) {
-        return val;
+      if (isRealMediaStreamUrl(val)) {
+        allFound.push(val);
       }
+    }
+    if (allFound.length > 0) {
+      // Prefer master.m3u8 / urlset over generic master.txt decoys
+      return allFound.find(u => u.includes('.m3u8')) || allFound[allFound.length - 1];
     }
   } catch (e) {
     logger.debug(`[FastScraper] extractStreamFromUnpackedJs error: ${e.message}`);
@@ -798,19 +858,25 @@ async function collectPageEmbedCandidates(targetUrl, html) {
     }
   }
 
-  // 2. FullHDFilmİzlesene: rapidvid + scx ROT13 JSON
+  // 2. FullHDFilmİzlesene: all rapidvid links + all scx keys & arrays
   if (targetUrl.includes('fullhdfilmizlesene')) {
-    const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
-    if (rapidMatch) pushCandidate(rapidMatch[0], 'RapidVid');
+    for (const rMatch of html.matchAll(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/gi)) {
+      pushCandidate(rMatch[0], 'RapidVid');
+    }
 
     const scxMatch = html.match(/var\s+scx\s*=\s*({[\s\S]*?});/);
     if (scxMatch) {
       try {
         const scx = JSON.parse(scxMatch[1]);
         for (const key of Object.keys(scx)) {
-          const sx = scx[key]?.sx;
-          if (!sx) continue;
-          const allUrls = [...(sx.p || []), ...(sx.t || [])];
+          const entry = scx[key];
+          const sx = entry?.sx || entry;
+          if (!sx || typeof sx !== 'object') continue;
+          const allUrls = [];
+          for (const v of Object.values(sx)) {
+            if (Array.isArray(v)) allUrls.push(...v);
+            else if (typeof v === 'string' && v.length > 10 && v !== key && v !== entry?.tt) allUrls.push(v);
+          }
           for (const u of allUrls) {
             if (typeof u !== 'string') continue;
             if (u.startsWith('http')) {
@@ -970,7 +1036,7 @@ async function resolveSingleEmbed(initialEmbedUrl, targetUrl, pageTitle = '') {
       const unpacked = unpackJs(embedHtml);
       if (unpacked) {
         searchCorpus += '\n' + unpacked;
-        const vmStream = extractStreamFromUnpackedJs(unpacked, embedHtml);
+        const vmStream = extractStreamFromUnpackedJs(unpacked, embedHtml, embedUrl);
         if (vmStream) {
           return buildResult(vmStream, embedUrl, targetUrl, vmStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
         }
@@ -1094,9 +1160,9 @@ async function fastResolve(targetUrl, options = {}) {
     logger.info(`[FastScraper] Bulunan embed aday sayısı: ${candidates.length} (${targetUrl})`);
 
     if (options.collectAlternatives) {
-      // Resolve up to 4 candidates concurrently so we have both instant stream and ready alternatives
+      // Resolve up to 6 candidates concurrently so we have both instant stream and ready alternatives
       const resolvedList = await Promise.allSettled(
-        candidates.slice(0, 5).map(async (cand, idx) => {
+        candidates.slice(0, 6).map(async (cand, idx) => {
           const r = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
           return r ? { ...r, candidateLabel: cand.label || `Alternatif ${idx + 1}`, embedUrl: cand.url } : null;
         })
@@ -1109,6 +1175,14 @@ async function fastResolve(targetUrl, options = {}) {
         return {
           ...working[0],
           alternatives: working,
+          candidateEmbeds: candidates,
+        };
+      }
+      if (candidates.length > 0) {
+        return {
+          streamUrl: null,
+          pageTitle,
+          alternatives: [],
           candidateEmbeds: candidates,
         };
       }
