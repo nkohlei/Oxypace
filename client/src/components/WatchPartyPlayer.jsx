@@ -508,6 +508,19 @@ const WatchPartyPlayer = () => {
     const audioMenuRef = useRef(null);
     const subMenuRef = useRef(null);
     const customFileInputRef = useRef(null);
+    // Quality Selector & Ready Subtitle Sync States
+    const [qualityLevels, setQualityLevels] = useState([]);
+    const [currentQualityLevel, setCurrentQualityLevel] = useState(-1); // -1 = Otomatik
+    const [activePlayingHeight, setActivePlayingHeight] = useState(0);
+    const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
+    const qualityMenuRef = useRef(null);
+    const [readySubtitles, setReadySubtitles] = useState([]);
+    const [isSearchingReadySubs, setIsSearchingReadySubs] = useState(false);
+    const [subOffsetSec, setSubOffsetSec] = useState(0);
+    const subOffsetSecRef = useRef(0);
+    const [subFpsMode, setSubFpsMode] = useState('1:1');
+    const subFpsModeRef = useRef('1:1');
+    const [autoFpsNotice, setAutoFpsNotice] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isApprovingStop, setIsApprovingStop] = useState(false);
 
@@ -954,6 +967,49 @@ const WatchPartyPlayer = () => {
         return () => { isCancelled = true; };
     }, [watchParty?.url]);
 
+    // Ready Turkish Subtitles auto-search + reset quality/sync states on media change
+    const fetchReadySubtitles = useCallback(async (titleToSearch) => {
+        if (!titleToSearch || titleToSearch.trim().length < 2) {
+            setReadySubtitles([]);
+            return;
+        }
+        setIsSearchingReadySubs(true);
+        try {
+            const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+            const res = await fetch(`${apiBase}/api/subtitles/search?title=${encodeURIComponent(titleToSearch.trim())}`);
+            const data = await res.json().catch(() => null);
+            if (data?.success && Array.isArray(data.subtitles)) {
+                setReadySubtitles(data.subtitles);
+            }
+        } catch {
+            // keep empty
+        } finally {
+            setIsSearchingReadySubs(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        setReadySubtitles([]);
+        setQualityLevels([]);
+        setCurrentQualityLevel(-1);
+        setActivePlayingHeight(0);
+        setIsQualityMenuOpen(false);
+        setSubOffsetSec(0);
+        subOffsetSecRef.current = 0;
+        setSubFpsMode('1:1');
+        subFpsModeRef.current = '1:1';
+        setAutoFpsNotice('');
+        if (!watchParty?.url || !watchParty?.title) return;
+        let cancelled = false;
+        const timer = setTimeout(() => {
+            if (!cancelled) fetchReadySubtitles(watchParty.title);
+        }, 250);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [watchParty?.url, watchParty?.title, fetchReadySubtitles]);
+
     // Close audio, subtitle, unified menus and volume when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -969,6 +1025,9 @@ const WatchPartyPlayer = () => {
                 (!popoverContentRef.current || !popoverContentRef.current.contains(e.target))
             ) {
                 setIsUnifiedMenuOpen(false);
+            }
+            if (qualityMenuRef.current && !qualityMenuRef.current.contains(e.target)) {
+                setIsQualityMenuOpen(false);
             }
             if (volumeContainerRef.current && !volumeContainerRef.current.contains(e.target)) {
                 setVolumeOpen(false);
@@ -1286,9 +1345,39 @@ const WatchPartyPlayer = () => {
                         });
 
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            try {
+                                const lvls = Array.isArray(hls.levels) ? hls.levels : [];
+                                const byHeight = new Map();
+                                lvls.forEach((lvl, idx) => {
+                                    const h = Number(lvl?.height || 0);
+                                    const br = Number(lvl?.bitrate || 0);
+                                    const key = h > 0 ? `h-${h}` : `b-${idx}`;
+                                    const existing = byHeight.get(key);
+                                    if (!existing || br > existing.bitrate) {
+                                        byHeight.set(key, {
+                                            index: idx,
+                                            height: h,
+                                            bitrate: br,
+                                            label: h > 0 ? `${h}p` : br > 0 ? `${Math.round(br / 1000)}k` : `Kalite ${idx + 1}`,
+                                        });
+                                    }
+                                });
+                                const sortedLevels = Array.from(byHeight.values()).sort((a, b) => (b.height - a.height) || (b.bitrate - a.bitrate));
+                                setQualityLevels(sortedLevels);
+                                if (typeof hls.currentLevel === 'number') {
+                                    setCurrentQualityLevel(hls.currentLevel);
+                                }
+                            } catch {}
                             updateAudio();
                             updateSubs();
                             markReadyAndAlign();
+                        });
+
+                        hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+                            try {
+                                const lvl = hls.levels?.[data?.level];
+                                if (lvl?.height > 0) setActivePlayingHeight(lvl.height);
+                            } catch {}
                         });
 
                         hls.on(Hls.Events.FRAG_BUFFERED, () => {
@@ -1541,6 +1630,14 @@ const WatchPartyPlayer = () => {
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
+    const getSubFpsMultiplier = (mode) => {
+        if (mode === '25->23.976') return 23.976 / 25.0;
+        if (mode === '23.976->25') return 25.0 / 23.976;
+        if (mode === '24->23.976') return 23.976 / 24.0;
+        if (mode === '23.976->24') return 24.0 / 23.976;
+        return 1.0;
+    };
+
     const syncCurrentSubtitleCue = useCallback(() => {
         if (!videoRef.current) return;
         const cur = videoRef.current.currentTime || 0;
@@ -1553,9 +1650,11 @@ const WatchPartyPlayer = () => {
             return;
         }
 
-        // 1. Check parsed cues first (custom uploaded or external vtt)
+        // 1. Check parsed cues first (custom uploaded, ready external, or provider vtt)
         if (parsedCuesRef.current && parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.find(c => cur >= c.start && cur <= c.end);
+            const fpsMult = getSubFpsMultiplier(subFpsModeRef.current);
+            const lookupTime = Math.max(0, (cur - (subOffsetSecRef.current || 0)) * fpsMult);
+            const active = parsedCuesRef.current.find(c => lookupTime >= c.start && lookupTime <= c.end);
             const text = active ? active.text : '';
             if (text !== activeCueTextRef.current) {
                 activeCueTextRef.current = text;
@@ -1744,9 +1843,41 @@ const WatchPartyPlayer = () => {
                     const res = await fetch(targetUrl);
                     vttContent = await res.text();
                 }
+            } else if (option.type === 'ready') {
+                const sub = readySubtitles[option.index];
+                if (sub?.playableUrl) {
+                    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
+                    const targetUrl = sub.playableUrl.startsWith('http') ? sub.playableUrl : `${apiBase}${sub.playableUrl}`;
+                    const res = await fetch(targetUrl);
+                    vttContent = await res.text();
+                }
             }
             if (vttContent) {
-                parsedCuesRef.current = parseSubtitleCues(vttContent);
+                const cues = parseSubtitleCues(vttContent);
+                parsedCuesRef.current = cues;
+                setSubOffsetSec(0);
+                subOffsetSecRef.current = 0;
+
+                // Auto-detect FPS mismatch (25fps vs 23.976fps) for ready external subtitles
+                let nextFpsMode = '1:1';
+                let nextNotice = '';
+                if (option.type === 'ready' && cues.length > 5) {
+                    const subMeta = readySubtitles[option.index];
+                    const vidDur = videoRef.current?.duration || 0;
+                    const lastCueEnd = cues[cues.length - 1]?.end || 0;
+                    const ratio = (vidDur > 600 && lastCueEnd > 600) ? (lastCueEnd / vidDur) : 1;
+                    if (subMeta?.fps === 25 || (ratio >= 0.952 && ratio <= 0.966)) {
+                        nextFpsMode = '25->23.976';
+                        nextNotice = 'Oto FPS: 25→23.976';
+                    } else if (ratio >= 1.036 && ratio <= 1.050) {
+                        nextFpsMode = '23.976->25';
+                        nextNotice = 'Oto FPS: 23.976→25';
+                    }
+                }
+                setSubFpsMode(nextFpsMode);
+                subFpsModeRef.current = nextFpsMode;
+                setAutoFpsNotice(nextNotice);
+                syncCurrentSubtitleCue();
             }
         } catch (err) {
             console.warn("[WatchPartyPlayer] Altyazı ayrıştırma hatası:", err);
@@ -1856,6 +1987,10 @@ const WatchPartyPlayer = () => {
             const idx = parseInt(activeSubtitleId.replace('ext-', ''), 10);
             return formatSubtitleLabel(allProviderSubtitles[idx], idx, true);
         }
+        if (activeSubtitleId.startsWith('ready-')) {
+            const idx = parseInt(activeSubtitleId.replace('ready-', ''), 10);
+            return readySubtitles[idx]?.label ? readySubtitles[idx].label.slice(0, 10) : 'Hazır TR';
+        }
         if (activeSubtitleId.startsWith('custom-')) {
             const idx = parseInt(activeSubtitleId.replace('custom-', ''), 10);
             const sub = customSubtitlesRef.current[idx] || customSubtitles[idx];
@@ -1943,6 +2078,30 @@ const WatchPartyPlayer = () => {
         setIsAudioMenuOpen(false);
     };
 
+    const handleSelectQualityLevel = (levelIndex) => {
+        if (hlsInstanceRef.current) {
+            hlsInstanceRef.current.currentLevel = levelIndex;
+            setCurrentQualityLevel(levelIndex);
+        }
+        setIsQualityMenuOpen(false);
+    };
+
+    const adjustSubOffset = (delta) => {
+        const next = delta === null
+            ? 0
+            : Math.max(-60, Math.min(60, Math.round((subOffsetSecRef.current + delta) * 10) / 10));
+        subOffsetSecRef.current = next;
+        setSubOffsetSec(next);
+        syncCurrentSubtitleCue();
+    };
+
+    const changeSubFpsMode = (mode) => {
+        subFpsModeRef.current = mode;
+        setSubFpsMode(mode);
+        setAutoFpsNotice('');
+        syncCurrentSubtitleCue();
+    };
+
     const handleSelectSubtitleTrack = (option) => {
         loadSubtitleTrackText(option);
         if (option.type === 'off') {
@@ -1986,6 +2145,19 @@ const WatchPartyPlayer = () => {
             }
             activeSubtitleIdRef.current = `ext-${option.index}`;
             setActiveSubtitleId(`ext-${option.index}`);
+            setTimeout(syncCurrentSubtitleCue, 100);
+        } else if (option.type === 'ready') {
+            userDisabledSubtitlesRef.current = false;
+            if (hlsInstanceRef.current) {
+                hlsInstanceRef.current.subtitleTrack = -1;
+            }
+            if (videoRef.current && videoRef.current.textTracks) {
+                for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+                    videoRef.current.textTracks[i].mode = 'disabled';
+                }
+            }
+            activeSubtitleIdRef.current = `ready-${option.index}`;
+            setActiveSubtitleId(`ready-${option.index}`);
             setTimeout(syncCurrentSubtitleCue, 100);
         } else if (option.type === 'custom') {
             userDisabledSubtitlesRef.current = false;
@@ -2716,7 +2888,90 @@ const WatchPartyPlayer = () => {
                                                 );
                                             })}
 
-                                            {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && (
+                                            {/* Hazır TR Altyazılar (OpenSubtitles / TurkceAltyazi) */}
+                                            {(readySubtitles.length > 0 || isSearchingReadySubs || watchParty?.title) && (
+                                                <>
+                                                    <div className="native-track-divider" />
+                                                    <div className="native-sub-section-header">
+                                                        <span>Hazır TR Altyazılar</span>
+                                                        {watchParty?.title && !isSearchingReadySubs && (
+                                                            <button
+                                                                type="button"
+                                                                className="native-sub-refresh-btn"
+                                                                onClick={() => fetchReadySubtitles(watchParty.title)}
+                                                            >
+                                                                Yenile
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {isSearchingReadySubs && (
+                                                        <div className="native-track-empty-note">TR altyazı aranıyor...</div>
+                                                    )}
+                                                    {!isSearchingReadySubs && readySubtitles.map((sub, i) => {
+                                                        const isSelected = activeSubtitleId === `ready-${i}`;
+                                                        return (
+                                                            <button
+                                                                key={`pop-ready-sub-${sub.id || i}`}
+                                                                className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                                onClick={() => {
+                                                                    handleSelectSubtitleTrack({ type: 'ready', index: i });
+                                                                }}
+                                                            >
+                                                                <span className="native-track-item-check">
+                                                                    {isSelected ? <Check size={13} /> : null}
+                                                                </span>
+                                                                <span className="native-track-item-name">{sub.label}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                    {!isSearchingReadySubs && readySubtitles.length === 0 && (
+                                                        <div className="native-track-empty-note">Hazır TR altyazı bulunamadı</div>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            {/* Kayma Önleme: Zamanlama (+0.1s/-0.1s) & FPS Uyumu */}
+                                            {(activeSubtitleId.startsWith('ready-') || activeSubtitleId.startsWith('ext-') || activeSubtitleId.startsWith('custom-')) && (
+                                                <div className="native-sub-sync-panel" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="native-sub-sync-row">
+                                                        <span className="native-sub-sync-label">Senkron</span>
+                                                        <span className="native-sub-sync-value">
+                                                            {subOffsetSec > 0 ? `+${subOffsetSec.toFixed(1)}s` : `${subOffsetSec.toFixed(1)}s`}
+                                                        </span>
+                                                        {autoFpsNotice && (
+                                                            <span className="native-sub-fps-badge">{autoFpsNotice}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="native-sub-sync-btns">
+                                                        <button type="button" onClick={() => adjustSubOffset(-1)}>-1s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(-0.5)}>-0.5s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(-0.1)}>-0.1s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(null)}>0s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(0.1)}>+0.1s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(0.5)}>+0.5s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(1)}>+1s</button>
+                                                    </div>
+                                                    <div className="native-sub-fps-row">
+                                                        {[
+                                                            { id: '1:1', label: '1:1' },
+                                                            { id: '25->23.976', label: '25→23.976' },
+                                                            { id: '23.976->25', label: '23.976→25' },
+                                                            { id: '24->23.976', label: '24→23.976' },
+                                                        ].map((preset) => (
+                                                            <button
+                                                                key={preset.id}
+                                                                type="button"
+                                                                className={subFpsMode === preset.id ? 'active' : ''}
+                                                                onClick={() => changeSubFpsMode(preset.id)}
+                                                            >
+                                                                {preset.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {hlsSubtitleTracks.length === 0 && allProviderSubtitles.length === 0 && customSubtitles.length === 0 && readySubtitles.length === 0 && !isSearchingReadySubs && (
                                                 <div className="native-track-empty-note">
                                                     Otomatik altyazı yok
                                                 </div>
@@ -2994,6 +3249,61 @@ const WatchPartyPlayer = () => {
                                     </div>
 
                                     <div className="native-right-controls">
+                                        {/* Video Kalitesi Seçici */}
+                                        <div className="native-quality-container" ref={qualityMenuRef}>
+                                            <button
+                                                type="button"
+                                                className={`native-quality-btn ${isQualityMenuOpen ? 'active' : ''}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsUnifiedMenuOpen(false);
+                                                    setIsQualityMenuOpen(prev => !prev);
+                                                    triggerControlsTemporary();
+                                                }}
+                                                title="Video Kalitesi"
+                                                aria-label="Video Kalitesi"
+                                            >
+                                                <Sliders size={12} />
+                                                <span>
+                                                    {currentQualityLevel === -1
+                                                        ? (activePlayingHeight > 0
+                                                            ? `Oto (${activePlayingHeight}p)`
+                                                            : (videoRef.current?.videoHeight > 0 ? `${videoRef.current.videoHeight}p` : 'Oto'))
+                                                        : (qualityLevels.find(l => l.index === currentQualityLevel)?.label || 'Kalite')}
+                                                </span>
+                                            </button>
+
+                                            {isQualityMenuOpen && (
+                                                <div className="native-quality-dropdown" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        className={`native-quality-item ${currentQualityLevel === -1 ? 'active' : ''}`}
+                                                        onClick={() => handleSelectQualityLevel(-1)}
+                                                    >
+                                                        <span>Otomatik {activePlayingHeight > 0 ? `(${activePlayingHeight}p)` : ''}</span>
+                                                        {currentQualityLevel === -1 && <Check size={12} />}
+                                                    </button>
+                                                    {qualityLevels.length > 0 ? (
+                                                        qualityLevels.map((lvl) => (
+                                                            <button
+                                                                key={`ql-${lvl.index}`}
+                                                                type="button"
+                                                                className={`native-quality-item ${currentQualityLevel === lvl.index ? 'active' : ''}`}
+                                                                onClick={() => handleSelectQualityLevel(lvl.index)}
+                                                            >
+                                                                <span>{lvl.label}</span>
+                                                                {currentQualityLevel === lvl.index && <Check size={12} />}
+                                                            </button>
+                                                        ))
+                                                    ) : (
+                                                        <div className="native-quality-single-note">
+                                                            Tek Kalite Akışı ({videoRef.current?.videoHeight > 0 ? `${videoRef.current.videoHeight}p` : 'HD'})
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {isFullscreen && (
                                             <button 
                                                 type="button"

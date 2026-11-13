@@ -8,6 +8,7 @@ import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify } from 'util';
 import net from 'net';
 import path from 'path';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 
 const execFileAsync = promisify(execFile);
@@ -2022,6 +2023,504 @@ function deduplicateMovieResults(movies) {
     count: 0,
     results: []
   });
+});
+
+// ==========================================
+// READY TURKISH SUBTITLE SEARCH & VTT PROXY
+// ==========================================
+const subtitleResultCache = new Map();
+const subtitleFileCache = new Map();
+const SUBTITLE_CACHE_TTL_MS = 30 * 60 * 1000;
+
+function decodeSubtitleText(buf) {
+  if (!buf || !buf.length) return '';
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+    return buf.subarray(3).toString('utf8');
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch {
+    try {
+      return new TextDecoder('windows-1254').decode(buf);
+    } catch {
+      return buf.toString('utf8');
+    }
+  }
+}
+
+function convertSrtBufferToVtt(buf) {
+  let text = decodeSubtitleText(buf);
+  if (!text) return Buffer.from('WEBVTT\n\n', 'utf8');
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\uFEFF/, '');
+
+  const normalizeVttTs = (rawTs) => {
+    const clean = String(rawTs || '').trim();
+    const m = clean.match(/^(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/);
+    if (!m) return null;
+    const h = String(m[1] ? parseInt(m[1], 10) : 0).padStart(2, '0');
+    const mm = String(parseInt(m[2], 10)).padStart(2, '0');
+    const ss = String(parseInt(m[3], 10)).padStart(2, '0');
+    const ms = String(m[4]).padEnd(3, '0').slice(0, 3);
+    const totalSec = parseInt(h, 10) * 3600 + parseInt(mm, 10) * 60 + parseInt(ss, 10) + parseInt(ms, 10) / 1000;
+    return { formatted: `${h}:${mm}:${ss}.${ms}`, totalSec };
+  };
+
+  if (/^\s*WEBVTT/i.test(text)) {
+    const fixed = text.replace(
+      /(\d{1,3}:\d{2}(?::\d{2})?)[,.](\d{1,3})/g,
+      (_m, hms, ms) => `${hms}.${String(ms).padEnd(3, '0').slice(0, 3)}`
+    );
+    return Buffer.from(fixed, 'utf8');
+  }
+
+  const blocks = text.split(/\n{2,}/);
+  const parsedCues = [];
+  for (const block of blocks) {
+    const lines = block.split('\n').map(l => l.trimEnd()).filter(Boolean);
+    if (lines.length === 0) continue;
+    let startIdx = 0;
+    if (/^\d+$/.test(lines[0].trim()) && lines.length > 1 && lines[1].includes('-->')) {
+      startIdx = 1;
+    }
+    const tsLine = lines[startIdx];
+    if (!tsLine || !tsLine.includes('-->')) continue;
+    const arrowParts = tsLine.split(/\s*-->\s*/);
+    if (arrowParts.length < 2) continue;
+    const startObj = normalizeVttTs(arrowParts[0]);
+    const endTokens = arrowParts[1].trim().split(/\s+/);
+    const endObj = normalizeVttTs(endTokens[0]);
+    if (!startObj || !endObj || endObj.totalSec <= startObj.totalSec) continue;
+    const cueSettings = endTokens.slice(1).join(' ');
+    const header = `${startObj.formatted} --> ${endObj.formatted}${cueSettings ? ` ${cueSettings}` : ''}`;
+    const body = lines.slice(startIdx + 1).join('\n');
+    if (body) {
+      parsedCues.push({ startSec: startObj.totalSec, text: `${header}\n${body}` });
+    }
+  }
+  parsedCues.sort((a, b) => a.startSec - b.startSec);
+  return Buffer.from(`WEBVTT\n\n${parsedCues.map(c => c.text).join('\n\n')}\n`, 'utf8');
+}
+
+function extractBestSubFromZipBuffer(zipBuf) {
+  if (!Buffer.isBuffer(zipBuf) || zipBuf.length < 30) return null;
+  let eocdOffset = -1;
+  for (let i = zipBuf.length - 22; i >= Math.max(0, zipBuf.length - 65557); i--) {
+    if (zipBuf.readUInt32LE(i) === 0x06054b50) {
+      eocdOffset = i;
+      break;
+    }
+  }
+  const candidates = [];
+  if (eocdOffset !== -1) {
+    const cdOffset = zipBuf.readUInt32LE(eocdOffset + 16);
+    const totalEntries = zipBuf.readUInt16LE(eocdOffset + 10);
+    let pos = cdOffset;
+    for (let idx = 0; idx < totalEntries && pos + 46 <= zipBuf.length; idx++) {
+      if (zipBuf.readUInt32LE(pos) !== 0x02014b50) break;
+      const method = zipBuf.readUInt16LE(pos + 10);
+      const compSize = zipBuf.readUInt32LE(pos + 20);
+      const uncompSize = zipBuf.readUInt32LE(pos + 24);
+      const nameLen = zipBuf.readUInt16LE(pos + 28);
+      const extraLen = zipBuf.readUInt16LE(pos + 30);
+      const commentLen = zipBuf.readUInt16LE(pos + 32);
+      const localHeaderOffset = zipBuf.readUInt32LE(pos + 42);
+      const fileName = zipBuf.subarray(pos + 46, pos + 46 + nameLen).toString('utf8');
+      pos += 46 + nameLen + extraLen + commentLen;
+      const lower = fileName.toLowerCase();
+      if (!lower.endsWith('.srt') && !lower.endsWith('.vtt')) continue;
+      if (/\b(trailer|teaser|sample|fragman)\b/i.test(lower)) continue;
+      if (localHeaderOffset + 30 > zipBuf.length || zipBuf.readUInt32LE(localHeaderOffset) !== 0x04034b50) continue;
+      const lNameLen = zipBuf.readUInt16LE(localHeaderOffset + 26);
+      const lExtraLen = zipBuf.readUInt16LE(localHeaderOffset + 28);
+      const dataStart = localHeaderOffset + 30 + lNameLen + lExtraLen;
+      const dataEnd = dataStart + compSize;
+      if (dataEnd > zipBuf.length) continue;
+      const compData = zipBuf.subarray(dataStart, dataEnd);
+      try {
+        let outBuf = null;
+        if (method === 0) outBuf = compData;
+        else if (method === 8) outBuf = zlib.inflateRawSync(compData);
+        if (outBuf && outBuf.length > 30) {
+          let score = lower.endsWith('.vtt') ? 10 : 8;
+          if (/web[\s.-]?dl|webrip/i.test(lower)) score += 6;
+          if (/bluray|brrip/i.test(lower)) score += 4;
+          if (/23\.?976/.test(lower)) score += 5;
+          if (/\.tr\.|\.tur\.|turkce/i.test(lower)) score += 4;
+          score += Math.min(5, (uncompSize || outBuf.length) / 30000);
+          candidates.push({ score, buf: outBuf });
+        }
+      } catch {}
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.buf || null;
+}
+
+function cleanMovieTitleForSubtitleSearch(rawTitle) {
+  if (!rawTitle || typeof rawTitle !== 'string') return '';
+  let t = decodeHtmlEntities(rawTitle)
+    .replace(/\b(1080p|720p|480p|4k|uhd|bluray|web-?dl|hdrip|türkçe dublaj|türkçe altyazı|altyazılı|dublaj|full hd|izle|film izle|hdfilmcehennemi|fullhdfilmizlesene|filmmakinesi)\b/gi, ' ')
+    .replace(/\(\s*\d{4}\s*\)/g, ' ')
+    .replace(/[|•–—]/g, ' - ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return t.replace(/^[-:\s]+|[-:\s]+$/g, '').trim();
+}
+
+function splitTitleCandidates(cleanTitle) {
+  if (!cleanTitle) return [];
+  const parts = cleanTitle.split(/\s+-\s+/).map(p => p.trim()).filter(p => p.length >= 2);
+  // Prefer second part if bilingual (e.g. "Yıldızlar Arasında - Interstellar")
+  const ordered = [];
+  if (parts.length >= 2) ordered.push(parts[parts.length - 1], parts[0]);
+  ordered.push(cleanTitle);
+  return [...new Set(ordered)];
+}
+
+function parseSubtitleReleaseMeta(rawText = '', explicitFps = 0) {
+  const s = String(rawText || '').toLowerCase();
+  let fps = explicitFps > 15 ? explicitFps : 0;
+  if (!fps) {
+    if (/23\.?976|23\.?98/.test(s)) fps = 23.976;
+    else if (/\b25(?:\.000?)?\s*fps\b|\b25fps\b/.test(s)) fps = 25;
+    else if (/\b24(?:\.000?)?\s*fps\b|\b24fps\b/.test(s)) fps = 24;
+  }
+  let releaseTag = '';
+  let score = 0;
+  if (/web[\s._-]?dl|webrip|amzn|nf|dsnp|hmax|atvp/i.test(s)) {
+    releaseTag = 'WEB-DL';
+    score += 22;
+  } else if (/bluray|blu-ray|bdrip|brrip|remux/i.test(s)) {
+    releaseTag = 'BluRay';
+    score += 18;
+  } else if (/hdrip|hdtv/i.test(s)) {
+    releaseTag = 'HDTV';
+    score += 6;
+  } else if (/dvdrip|cam|ts\b|telesync/i.test(s)) {
+    releaseTag = 'DVDRip';
+    score -= 10;
+  }
+  if (fps === 23.976) score += 12;
+  else if (fps === 24) score += 4;
+  else if (fps === 25) score -= 6;
+  return {
+    fps,
+    fpsLabel: fps ? `${fps} fps` : '',
+    releaseTag,
+    score,
+  };
+}
+
+async function resolveImdbViaCinemeta(cleanTitle, year = '') {
+  const candidates = splitTitleCandidates(cleanTitle);
+  for (const q of candidates) {
+    try {
+      const res = await fetch(`https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(q)}.json`, {
+        signal: AbortSignal.timeout(3500),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const metas = Array.isArray(data?.metas) ? data.metas : [];
+      if (metas.length === 0) continue;
+      const match = year ? (metas.find(m => String(m.releaseInfo || '').includes(String(year))) || metas[0]) : metas[0];
+      if (match?.imdb_id && /^tt\d+$/i.test(match.imdb_id)) return match.imdb_id;
+      if (match?.id && /^tt\d+$/i.test(match.id)) return match.id;
+    } catch {}
+  }
+  return '';
+}
+
+async function searchOpenSubtitlesStremio(imdbId, cleanTitle, year) {
+  const id = imdbId && /^tt\d+$/i.test(imdbId) ? imdbId : await resolveImdbViaCinemeta(cleanTitle, year);
+  if (!id) return [];
+  try {
+    const res = await fetch(`https://opensubtitles-v3.strem.io/subtitles/movie/${encodeURIComponent(id)}.json`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const subs = Array.isArray(data?.subtitles) ? data.subtitles : [];
+    const trSubs = subs.filter(s => s && s.url && (s.lang === 'tur' || s.lang === 'tr' || String(s.SubLanguageID || '').toLowerCase() === 'tur'));
+    const mapped = [];
+    trSubs.forEach((s, idx) => {
+      const metaFields = [
+        s.subtitleFileName,
+        s.movieReleaseName,
+        s.releaseFormat,
+        s.releaseOther,
+        s.release,
+        s.SubFileName,
+        s.filename,
+      ].filter(Boolean).join(' ');
+      if (/\b(teaser|trailer|fragman|sample|preview)\b/i.test(metaFields)) return;
+      const explicitFps = Number(s.fpsMilli) > 15000 ? Number((Number(s.fpsMilli) / 1000).toFixed(3)) : 0;
+      const meta = parseSubtitleReleaseMeta(metaFields, explicitFps);
+      const downloads = Number(s.downloadCount || s.downloads || 0);
+      const dlBonus = downloads > 0 ? Math.log10(downloads + 1) * 4 : 0;
+      mapped.push({
+        id: `os_${idx}_${s.id || idx}`,
+        fps: meta.fps,
+        fpsHint: meta.fpsLabel,
+        releaseTag: meta.releaseTag,
+        score: meta.score + dlBonus + Math.max(0, 4 - idx * 0.2),
+        lang: 'tr',
+        kind: 'subtitles',
+        playableUrl: `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}`,
+        external: true,
+      });
+    });
+    return mapped;
+  } catch {
+    return [];
+  }
+}
+
+async function searchTurkceAltyaziOrg(cleanTitle, year) {
+  const candidates = splitTitleCandidates(cleanTitle);
+  for (const q of candidates) {
+    if (!q || q.length < 2) continue;
+    try {
+      const findUrl = `https://turkcealtyazi.org/find.php?cat=sub&find=${encodeURIComponent(q)}`;
+      const findRes = await fetch(findUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (!findRes.ok) continue;
+      const findHtml = decodeSubtitleText(Buffer.from(await findRes.arrayBuffer()));
+      const movMatches = [...findHtml.matchAll(/href="(\/mov\/\d+\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      let targetMovPath = null;
+      if (findRes.url && findRes.url.includes('/mov/')) {
+        targetMovPath = new URL(findRes.url).pathname;
+      } else if (movMatches.length > 0) {
+        const normQ = q.toLowerCase();
+        let bestScore = -1;
+        for (const m of movMatches.slice(0, 12)) {
+          const text = m[2].replace(/<[^>]+>/g, '').trim().toLowerCase();
+          const around = findHtml.slice(Math.max(0, m.index - 100), Math.min(findHtml.length, m.index + 300));
+          let score = 0;
+          if (text === normQ) score += 10;
+          else if (text.includes(normQ)) score += 6;
+          if (year && (m[0].includes(String(year)) || around.includes(String(year)))) score += 8;
+          if (score > bestScore) {
+            bestScore = score;
+            targetMovPath = m[1];
+          }
+        }
+        if (!targetMovPath) targetMovPath = movMatches[0][1];
+      }
+      if (!targetMovPath) continue;
+
+      const movUrl = `https://turkcealtyazi.org${targetMovPath.startsWith('/') ? '' : '/'}${targetMovPath}`;
+      const movRes = await fetch(movUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': findUrl,
+        },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (!movRes.ok) continue;
+      const movHtml = decodeSubtitleText(Buffer.from(await movRes.arrayBuffer()));
+      const subMatches = [...movHtml.matchAll(/href="(\/sub\/(\d+)\/[^"]+\.html)"/gi)];
+      const seenSubIds = new Set();
+      const mapped = [];
+      for (const sm of subMatches) {
+        const subId = sm[2];
+        if (seenSubIds.has(subId)) continue;
+        seenSubIds.add(subId);
+        const ctx = movHtml.slice(Math.max(0, sm.index - 220), Math.min(movHtml.length, sm.index + 500));
+        if (/flag-(?:en|gb|de|fr|es|it|ru)/i.test(ctx) && !/flag-tr/i.test(ctx)) continue;
+        if (/\b(teaser|trailer|fragman|sample|preview)\b/i.test(ctx)) continue;
+        const meta = parseSubtitleReleaseMeta(ctx, 0);
+        mapped.push({
+          id: `ta_${subId}`,
+          fps: meta.fps,
+          fpsHint: meta.fpsLabel,
+          releaseTag: meta.releaseTag,
+          score: meta.score + (/flag-tr/i.test(ctx) ? 10 : 0),
+          lang: 'tr',
+          kind: 'subtitles',
+          playableUrl: `/api/subtitles/turkcealtyazi?id=${encodeURIComponent(subId)}&ref=${encodeURIComponent(movUrl)}`,
+          external: true,
+        });
+        if (mapped.length >= 10) break;
+      }
+      if (mapped.length > 0) return mapped;
+    } catch {}
+  }
+  return [];
+}
+
+async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {}) {
+  const cleanTitle = cleanMovieTitleForSubtitleSearch(title);
+  if (!cleanTitle && !imdbId) return [];
+  const cacheKey = `${imdbId || ''}|${cleanTitle.toLowerCase()}|${year || ''}`;
+  const cached = subtitleResultCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
+    return cached.items;
+  }
+
+  const withSoftCap = (promise, ms) => Promise.race([
+    promise.catch(() => []),
+    new Promise(resolve => setTimeout(() => resolve([]), ms)),
+  ]);
+
+  const [osRes, taRes] = await Promise.allSettled([
+    withSoftCap(searchOpenSubtitlesStremio(imdbId, cleanTitle, year), 4500),
+    withSoftCap(searchTurkceAltyaziOrg(cleanTitle, year), 4500),
+  ]);
+
+  const combined = [];
+  if (osRes.status === 'fulfilled' && Array.isArray(osRes.value)) combined.push(...osRes.value);
+  if (taRes.status === 'fulfilled' && Array.isArray(taRes.value)) combined.push(...taRes.value);
+
+  combined.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  const deduped = [];
+  const seen = new Set();
+  for (const item of combined) {
+    if (!item?.playableUrl || seen.has(item.playableUrl)) continue;
+    seen.add(item.playableUrl);
+    const hints = [item.releaseTag, item.fpsHint].filter(Boolean);
+    const suffix = hints.length > 0 ? ` (${hints.join(' • ')})` : '';
+    deduped.push({
+      id: item.id,
+      label: `Hazır TR ${deduped.length + 1}${suffix}`,
+      fps: item.fps || 0,
+      lang: 'tr',
+      kind: 'subtitles',
+      playableUrl: item.playableUrl,
+      external: true,
+    });
+    if (deduped.length >= 10) break;
+  }
+
+  if (deduped.length > 0) {
+    subtitleResultCache.set(cacheKey, { ts: Date.now(), items: deduped });
+  }
+  return deduped;
+}
+
+// GET /api/subtitles/search?title=...&imdbId=...&year=...
+router.get('/subtitles/search', resolverLimiter, async (req, res) => {
+  try {
+    const { title = '', imdbId = '', year = '' } = req.query || {};
+    if (!title && !imdbId) {
+      return res.status(400).json({ success: false, error: 'title veya imdbId gereklidir.', subtitles: [] });
+    }
+    const subtitles = await searchTurkishSubtitles({ title: String(title), imdbId: String(imdbId), year: String(year) });
+    return res.status(200).json({ success: true, subtitles, count: subtitles.length });
+  } catch (err) {
+    return res.status(200).json({ success: false, subtitles: [], count: 0, error: err.message });
+  }
+});
+
+// GET /api/subtitles/vtt?url=<encoded_srt_or_vtt_or_zip_url>
+router.get('/subtitles/vtt', resolverLimiter, async (req, res) => {
+  try {
+    const targetUrl = String(req.query?.url || '').trim();
+    const ssrf = validateSsrfUrl(targetUrl);
+    if (!targetUrl || !ssrf.safe) {
+      return res.status(400).json({ error: 'Geçersiz altyazı URL.' });
+    }
+    const cached = subtitleFileCache.get(`vtt:${targetUrl}`);
+    if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
+      res.set({
+        'Content-Type': 'text/vtt; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=1800',
+      });
+      return res.status(200).send(cached.buf);
+    }
+
+    const upstream = await safeFetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      },
+    });
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: 'Altyazı indirilemedi.' });
+    }
+    let rawBuf = Buffer.from(await upstream.arrayBuffer());
+    if (rawBuf.length >= 4 && rawBuf[0] === 0x50 && rawBuf[1] === 0x4b && rawBuf[2] === 0x03 && rawBuf[3] === 0x04) {
+      const extracted = extractBestSubFromZipBuffer(rawBuf);
+      if (!extracted) return res.status(404).json({ error: 'ZIP içerisinden geçerli altyazı çıkmadı.' });
+      rawBuf = extracted;
+    }
+    const rawHead = rawBuf.subarray(0, 128).toString('utf8').trimStart().toLowerCase();
+    if (rawHead.startsWith('<!doctype') || rawHead.startsWith('<html') || rawBuf.length < 30) {
+      return res.status(404).json({ error: 'Geçerli altyazı içeriği alınamadı.' });
+    }
+    const vttBuf = convertSrtBufferToVtt(rawBuf);
+    subtitleFileCache.set(`vtt:${targetUrl}`, { ts: Date.now(), buf: vttBuf });
+    res.set({
+      'Content-Type': 'text/vtt; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=1800',
+    });
+    return res.status(200).send(vttBuf);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/subtitles/turkcealtyazi?id=<subId>&ref=<movUrl>
+router.get('/subtitles/turkcealtyazi', resolverLimiter, async (req, res) => {
+  try {
+    const subId = String(req.query?.id || '').trim();
+    const refUrl = String(req.query?.ref || 'https://turkcealtyazi.org/').trim();
+    if (!/^\d+$/.test(subId)) {
+      return res.status(400).json({ error: 'Geçersiz altyazı ID.' });
+    }
+    const cacheKey = `ta:${subId}`;
+    const cached = subtitleFileCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
+      res.set({
+        'Content-Type': 'text/vtt; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=1800',
+      });
+      return res.status(200).send(cached.buf);
+    }
+
+    const form = new URLSearchParams({ idid: subId, altid: subId, submit: 'Altyazıyı İndir' });
+    const dlRes = await fetch('https://turkcealtyazi.org/ind', {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': refUrl.startsWith('https://turkcealtyazi.org') ? refUrl : 'https://turkcealtyazi.org/',
+        'Origin': 'https://turkcealtyazi.org',
+      },
+      body: form.toString(),
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!dlRes.ok) {
+      return res.status(dlRes.status).json({ error: 'TurkceAltyazi indirilemedi.' });
+    }
+    let rawBuf = Buffer.from(await dlRes.arrayBuffer());
+    if (rawBuf.length >= 4 && rawBuf[0] === 0x50 && rawBuf[1] === 0x4b && rawBuf[2] === 0x03 && rawBuf[3] === 0x04) {
+      const extracted = extractBestSubFromZipBuffer(rawBuf);
+      if (!extracted) return res.status(404).json({ error: 'ZIP içerisinden geçerli altyazı çıkmadı.' });
+      rawBuf = extracted;
+    }
+    const rawHead = rawBuf.subarray(0, 128).toString('utf8').trimStart().toLowerCase();
+    if (rawHead.startsWith('<!doctype') || rawHead.startsWith('<html') || rawBuf.length < 30) {
+      return res.status(404).json({ error: 'Geçerli altyazı içeriği alınamadı.' });
+    }
+    const vttBuf = convertSrtBufferToVtt(rawBuf);
+    subtitleFileCache.set(cacheKey, { ts: Date.now(), buf: vttBuf });
+    res.set({
+      'Content-Type': 'text/vtt; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=1800',
+    });
+    return res.status(200).send(vttBuf);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
