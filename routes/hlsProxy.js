@@ -35,7 +35,7 @@ try {
 // Track exhausted ScraperAPI keys to avoid waiting or failing on dead quotas
 const exhaustedScraperKeys = new Set();
 function getValidScraperApiKey() {
-  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || '')
+  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || process.env.SCRAPER_API_KEY || '')
     .split(',')
     .map(k => k.trim())
     .filter(Boolean);
@@ -1107,6 +1107,29 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       }
     } catch (e) {}
 
+    // 4. ScraperAPI TR fallback (only if configured and not exhausted)
+    const apiKey = getValidScraperApiKey();
+    if (apiKey) {
+      try {
+        const fHeaders = {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        };
+        for (const h of headers) {
+          const idx = h.indexOf(':');
+          if (idx !== -1) fHeaders[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
+        }
+        const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&keep_headers=true&url=${encodeURIComponent(url)}`;
+        const res = await fetch(sUrl, { headers: fHeaders, signal: AbortSignal.timeout((timeoutSec + 10) * 1000) });
+        if (res.status === 401 || res.status === 403) {
+          exhaustedScraperKeys.add(apiKey);
+        } else if (res.ok) {
+          const t = await res.text();
+          if (t && t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required')) return t;
+        }
+      } catch (e) {}
+    }
+
     return '';
   };
 
@@ -1642,6 +1665,28 @@ async function searchHDFilmCehennemi(query) {
         'x-requested-with: fetch',
         'Accept: application/json, text/plain, */*'
       ], 6);
+    }
+    if (!raw || !raw.startsWith('{')) {
+      const apiKey = getValidScraperApiKey();
+      if (apiKey) {
+        try {
+          const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
+          const sRes = await fetch(sUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Referer': 'https://www.hdfilmcehennemi.nl/',
+              'x-requested-with': 'fetch',
+              'Accept': 'application/json, text/plain, */*',
+            },
+            signal: AbortSignal.timeout(15000),
+          });
+          if (sRes.status === 401 || sRes.status === 403) {
+            exhaustedScraperKeys.add(apiKey);
+          } else if (sRes.ok) {
+            raw = await sRes.text();
+          }
+        } catch {}
+      }
     }
 
     const json = JSON.parse(raw);
