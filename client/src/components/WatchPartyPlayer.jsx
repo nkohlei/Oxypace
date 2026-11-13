@@ -1861,26 +1861,11 @@ const WatchPartyPlayer = () => {
                 parsedCuesRef.current = cues;
                 setSubOffsetSec(0);
                 subOffsetSecRef.current = 0;
-
-                // Auto-detect FPS mismatch (25fps vs 23.976fps) for ready external subtitles
-                let nextFpsMode = '1:1';
-                let nextNotice = '';
-                if (option.type === 'ready' && cues.length > 5) {
-                    const subMeta = readySubtitles[option.index];
-                    const vidDur = videoRef.current?.duration || 0;
-                    const lastCueEnd = cues[cues.length - 1]?.end || 0;
-                    const ratio = (vidDur > 600 && lastCueEnd > 600) ? (lastCueEnd / vidDur) : 1;
-                    if (subMeta?.fps === 25 || (ratio >= 0.952 && ratio <= 0.966)) {
-                        nextFpsMode = '25->23.976';
-                        nextNotice = 'Oto FPS: 25→23.976';
-                    } else if (ratio >= 1.036 && ratio <= 1.050) {
-                        nextFpsMode = '23.976->25';
-                        nextNotice = 'Oto FPS: 23.976→25';
-                    }
-                }
-                setSubFpsMode(nextFpsMode);
-                subFpsModeRef.current = nextFpsMode;
-                setAutoFpsNotice(nextNotice);
+                // Always start at 1:1 exact timestamps (identical to manual upload)
+                // so end-credits length differences never cause false FPS drift
+                setSubFpsMode('1:1');
+                subFpsModeRef.current = '1:1';
+                setAutoFpsNotice('');
                 syncCurrentSubtitleCue();
             }
         } catch (err) {
@@ -2956,14 +2941,28 @@ const WatchPartyPlayer = () => {
                                                             <span className="native-sub-fps-badge">{autoFpsNotice}</span>
                                                         )}
                                                     </div>
+                                                    <input
+                                                        type="range"
+                                                        min="-30"
+                                                        max="30"
+                                                        step="0.1"
+                                                        value={subOffsetSec}
+                                                        onChange={(e) => {
+                                                            const next = Math.round(parseFloat(e.target.value) * 10) / 10;
+                                                            subOffsetSecRef.current = next;
+                                                            setSubOffsetSec(next);
+                                                            syncCurrentSubtitleCue();
+                                                        }}
+                                                        className="native-sub-sync-slider"
+                                                    />
                                                     <div className="native-sub-sync-btns">
+                                                        <button type="button" onClick={() => adjustSubOffset(-5)}>-5s</button>
                                                         <button type="button" onClick={() => adjustSubOffset(-1)}>-1s</button>
-                                                        <button type="button" onClick={() => adjustSubOffset(-0.5)}>-0.5s</button>
                                                         <button type="button" onClick={() => adjustSubOffset(-0.1)}>-0.1s</button>
                                                         <button type="button" onClick={() => adjustSubOffset(null)}>0s</button>
                                                         <button type="button" onClick={() => adjustSubOffset(0.1)}>+0.1s</button>
-                                                        <button type="button" onClick={() => adjustSubOffset(0.5)}>+0.5s</button>
                                                         <button type="button" onClick={() => adjustSubOffset(1)}>+1s</button>
+                                                        <button type="button" onClick={() => adjustSubOffset(5)}>+5s</button>
                                                     </div>
                                                     <div className="native-sub-fps-row">
                                                         {[

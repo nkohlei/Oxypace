@@ -2196,6 +2196,14 @@ video.watch-party-native-video::-webkit-media-text-track-display {
     gap: 4px;
 }
 
+.native-sub-sync-slider {
+    width: 100%;
+    height: 4px;
+    accent-color: #cbd5e1;
+    cursor: pointer;
+    margin: 2px 0;
+}
+
 .native-sub-sync-btns button,
 .native-sub-fps-row button {
     flex: 1 1 auto;
