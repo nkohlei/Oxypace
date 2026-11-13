@@ -232,30 +232,6 @@ const normalizeSubtitleObj = (sub) => {
     return copy;
 };
 
-const sanitizeAlternativeGroups = (groups) => {
-    if (!Array.isArray(groups)) return [];
-    return groups.slice(0, 8).map((g, gIdx) => {
-        if (!g || typeof g !== 'object') return null;
-        const rawItems = Array.isArray(g.items) ? g.items.slice(0, 16) : [];
-        const items = rawItems
-            .filter(it => it && typeof it === 'object' && typeof it.id === 'string' && typeof it.sourceToken === 'string')
-            .map((it, iIdx) => ({
-                id: clampString(it.id, 64),
-                label: clampString(it.label || `Alternatif ${iIdx + 1}`, 48),
-                ...(it.audioType ? { audioType: clampString(it.audioType, 40) } : {}),
-                sourceToken: clampString(it.sourceToken, 2048),
-                isResolved: Boolean(it.isResolved)
-            }));
-        if (items.length === 0) return null;
-        return {
-            groupId: clampString(g.groupId || `grp_${gIdx + 1}`, 48),
-            // Neutralize label in shared broadcast so non-admins in the room never inspect source websites
-            groupLabel: `Kaynak ${gIdx + 1}`,
-            items
-        };
-    }).filter(Boolean);
-};
-
 const normalizeWatchPartyState = (wp, computeLive = true) => {
     if (!wp || typeof wp !== 'object') return null;
     const next = { ...wp };
@@ -264,9 +240,6 @@ const normalizeWatchPartyState = (wp, computeLive = true) => {
     }
     if (Array.isArray(next.subtitles)) {
         next.subtitles = next.subtitles.map(normalizeSubtitleObj);
-    }
-    if (Array.isArray(next.externalSubtitles)) {
-        next.externalSubtitles = next.externalSubtitles.map(normalizeSubtitleObj);
     }
     if (Array.isArray(next.sharedSubtitles)) {
         next.sharedSubtitles = next.sharedSubtitles.map(normalizeSubtitleObj);
@@ -1112,23 +1085,13 @@ export const initializeVoiceHandler = (io) => {
         // ─── Watch Party (YouTube / Stream Sync) ───
         socket.on('voice:watch-start', async (payload) => {
             await settle();
-            const { roomName, url, isLive, subtitles, externalSubtitles, title, alternativeGroups, activeAlternativeId, audioType, movieMeta } = payload || {};
+            const { roomName, url, isLive, subtitles, title } = payload || {};
             if (!inRoom(roomName) || !limits.watch()) return;
             if (typeof url !== 'string' || !url.trim() || url.length > MAX_URL_LENGTH) return;
 
             const cleanSubtitles = Array.isArray(subtitles)
                 ? subtitles.slice(0, MAX_SHARED_SUBTITLES).filter((s) => s && typeof s === 'object')
                 : [];
-            const cleanExtSubtitles = Array.isArray(externalSubtitles)
-                ? externalSubtitles.slice(0, 15).filter((s) => s && typeof s === 'object')
-                : [];
-            const cleanAlternativeGroups = sanitizeAlternativeGroups(alternativeGroups);
-            const cleanMovieMeta = movieMeta && typeof movieMeta === 'object'
-                ? {
-                    imdbId: clampString(movieMeta.imdbId || '', 24),
-                    year: clampString(movieMeta.year || '', 8),
-                }
-                : null;
 
             const now = Date.now();
             const watchPartyState = normalizeWatchPartyState({
@@ -1140,11 +1103,6 @@ export const initializeVoiceHandler = (io) => {
                 serverTimestamp: now,
                 isLive: !!isLive,
                 subtitles: cleanSubtitles,
-                externalSubtitles: cleanExtSubtitles,
-                alternativeGroups: cleanAlternativeGroups,
-                activeAlternativeId: clampString(activeAlternativeId || '', 64),
-                audioType: clampString(audioType || '', 40),
-                movieMeta: cleanMovieMeta,
                 title: clampString(title, MAX_TITLE_LENGTH),
                 senderId: myId()
             }, false);
@@ -1165,36 +1123,6 @@ export const initializeVoiceHandler = (io) => {
                 portal: parsed?.portalId,
                 details: { roomName, url: url.trim(), title: clampString(title, MAX_TITLE_LENGTH), isLive: !!isLive }
             });
-        });
-
-        socket.on('voice:watch-switch', async (payload) => {
-            await settle();
-            const { roomName, url, activeAlternativeId, audioType, subtitles, preserveTime } = payload || {};
-            if (!inRoom(roomName) || !limits.watch()) return;
-            if (typeof url !== 'string' || !url.trim() || url.length > MAX_URL_LENGTH) return;
-
-            const updated = await mutateWatchParty(roomName, (wp) => {
-                const now = Date.now();
-                wp.url = toAbsoluteProxyUrl(url.trim());
-                if (typeof activeAlternativeId === 'string') {
-                    wp.activeAlternativeId = clampString(activeAlternativeId, 64);
-                }
-                if (typeof audioType === 'string') {
-                    wp.audioType = clampString(audioType, 40);
-                }
-                if (Array.isArray(subtitles) && subtitles.length > 0) {
-                    wp.subtitles = subtitles.slice(0, MAX_SHARED_SUBTITLES).filter((s) => s && typeof s === 'object').map(normalizeSubtitleObj);
-                }
-                if (typeof preserveTime === 'number' && Number.isFinite(preserveTime) && preserveTime >= 0) {
-                    wp.currentTime = preserveTime;
-                }
-                wp.lastUpdated = now;
-                wp.serverTimestamp = now;
-                wp.senderId = myId();
-            });
-            if (updated) {
-                io.to(`voice:${roomName}`).emit('voice:watch-state', normalizeWatchPartyState(updated, true));
-            }
         });
 
         const registerPlaybackEvent = (eventName, apply) => {

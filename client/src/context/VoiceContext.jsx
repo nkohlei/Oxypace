@@ -2913,15 +2913,8 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, safeEmit]);
 
-    const startWatchParty = useCallback(async (url, isLive = false, subtitles = [], title = '', watchMeta = null) => {
+    const startWatchParty = useCallback(async (url, isLive = false, subtitles = [], title = '') => {
         if (activeRoom && url) {
-            const extraPayload = watchMeta && typeof watchMeta === 'object' ? {
-                alternativeGroups: Array.isArray(watchMeta.alternativeGroups) ? watchMeta.alternativeGroups : [],
-                activeAlternativeId: watchMeta.activeAlternativeId || '',
-                audioType: watchMeta.audioType || '',
-                externalSubtitles: Array.isArray(watchMeta.externalSubtitles) ? watchMeta.externalSubtitles : [],
-                movieMeta: watchMeta.movieMeta || null,
-            } : {};
             try {
                 console.log(`[WatchParty] Requesting stream validation for: ${url} (isLiveHint: ${isLive})`);
                 const response = await axios.post('/api/media/validate-stream', { 
@@ -2935,7 +2928,7 @@ export const VoiceProvider = ({ children }) => {
                     streamUrl = getImageUrl(streamUrl);
                 }
                 console.log(`[WatchParty] URL validated by server. Final Stream: ${streamUrl}, isLive: ${validatedLive}`);
-                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url: streamUrl, isLive: validatedLive, subtitles, title, ...extraPayload });
+                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url: streamUrl, isLive: validatedLive, subtitles, title });
             } catch (err) {
                 if (err.response?.status === 403 || err.response?.data?.isForbidden) {
                     const msg = err.response?.data?.message || 'Gizli bir portalda paylaşılan video izlenemez.';
@@ -2946,28 +2939,10 @@ export const VoiceProvider = ({ children }) => {
                 const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
                 const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
                 const detectedLive = !isStaticVideo && isLive === true;
-                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive, subtitles, title, ...extraPayload });
+                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive, subtitles, title });
             }
         }
     }, [activeRoom, safeEmit]);
-
-    const switchWatchPartyAlternative = useCallback(({ url, activeAlternativeId, audioType, subtitles, preserveTime }) => {
-        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
-        if (roomName && url) {
-            let cleanUrl = url;
-            if (!cleanUrl.startsWith('http') && !cleanUrl.startsWith('blob:') && !cleanUrl.startsWith('/api/proxy')) {
-                cleanUrl = getImageUrl(cleanUrl);
-            }
-            safeEmit('voice:watch-switch', {
-                roomName,
-                url: cleanUrl,
-                activeAlternativeId: activeAlternativeId || '',
-                ...(typeof audioType === 'string' ? { audioType } : {}),
-                subtitles: Array.isArray(subtitles) ? subtitles : undefined,
-                preserveTime: typeof preserveTime === 'number' ? preserveTime : undefined,
-            });
-        }
-    }, [activeRoom, watchParty, safeEmit]);
 
     const stopWatchParty = useCallback(() => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
@@ -3232,7 +3207,6 @@ export const VoiceProvider = ({ children }) => {
         nativeAudioRoute,
         watchParty,
         startWatchParty,
-        switchWatchPartyAlternative,
         stopWatchParty,
         watchStopVoteStatus,
         sendWatchStopVote,

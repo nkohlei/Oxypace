@@ -376,20 +376,10 @@ app.use('/api/preview', previewRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/blog', blogRoutes);
 
-import { spawn, execSync } from 'child_process';
+import { exec } from 'child_process';
 import crypto from 'crypto';
 
-const APP_COMMIT_SHA = (() => {
-    try {
-        return execSync('git rev-parse --short HEAD', {
-            cwd: path.dirname(fileURLToPath(import.meta.url)),
-            encoding: 'utf8',
-            timeout: 2000,
-        }).trim();
-    } catch {
-        return 'unknown';
-    }
-})();
+let isDeploying = false;
 
 // GitHub Deploy Webhook
 app.post('/api/webhook/deploy', express.json(), (req, res) => {
@@ -418,35 +408,25 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     console.log('🚀 [AutoDeploy] GitHub push event received! Updating backend...');
     res.status(200).json({ message: 'Deploy triggered successfully' });
 
-    // Run detached + file-locked so PM2 cluster reload cannot kill its own updater
-    // or collide across concurrent webhooks / cluster workers.
+    if (isDeploying) {
+        console.log('⏳ [AutoDeploy] Another deployment is already in progress, skipping duplicate.');
+        return;
+    }
+
+    isDeploying = true;
+    // Arka planda git fetch + reset ve pm2 reload çalıştır
     setTimeout(() => {
-        const deployScript = [
-            'exec 9>/tmp/oxypace-deploy.lock || exit 0;',
-            'flock -w 60 9 || exit 0;',
-            'sleep 1;',
-            'OLD_HEAD=$(git rev-parse HEAD);',
-            'git fetch --depth=1 origin main && git reset --hard origin/main && git gc --prune=now --quiet &&',
-            'if ! git diff --quiet "$OLD_HEAD" HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi &&',
-            'if [ -f stream-resolver/package.json ] && { [ ! -d stream-resolver/node_modules ] || ! git diff --quiet "$OLD_HEAD" HEAD -- stream-resolver/package.json; }; then PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 NODE_OPTIONS="--max-old-space-size=256" npm install --prefix stream-resolver --omit=dev --no-audit --no-fund; fi &&',
-            'pm2 restart all --update-env',
-        ].join(' ');
-        const cleanEnv = { ...process.env };
-        for (const pmKey of ['NODE_APP_INSTANCE', 'pm_id', 'unique_id', 'axm_options', 'pm_uptime', 'unstable_restarts', 'status', 'exec_mode']) {
-            delete cleanEnv[pmKey];
-        }
-        try {
-            const child = spawn('bash', ['-c', deployScript], {
-                cwd: '/home/ubuntu/app',
-                env: cleanEnv,
-                detached: true,
-                stdio: 'ignore',
-            });
-            child.unref();
-        } catch (err) {
-            console.error('❌ [AutoDeploy] Spawn Error:', err.message);
-        }
-    }, 300);
+        const deployCmd = 'OLD_HEAD=$(git rev-parse HEAD) && git fetch --depth=1 origin main && git reset --hard origin/main && git gc --prune=now --quiet && if ! git diff --quiet $OLD_HEAD HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi && (pm2 reload oxypace-backend || pm2 restart all)';
+        exec(deployCmd, { cwd: '/home/ubuntu/app', env: process.env }, (err, stdout, stderr) => {
+            isDeploying = false;
+            if (err) {
+                console.error('❌ [AutoDeploy] Execution Error:', err.message);
+                console.error('❌ [AutoDeploy] Stderr:', stderr);
+                return;
+            }
+            console.log('✅ [AutoDeploy] Output:', stdout);
+        });
+    }, 1000);
 });
 
 // Loader.io Verification
@@ -643,8 +623,6 @@ app.get('/api/health', (req, res) => {
         status: 'ok',
         message: 'GlobalMessage API is running',
         version: '2.6 - Sitemap Integrated',
-        commit: APP_COMMIT_SHA,
-        pid: process.pid,
         timestamp: new Date().toISOString(),
     });
 });
@@ -876,31 +854,5 @@ httpServer.listen(PORT, async () => {
             });
         }
     });
-
-// Graceful shutdown so PM2 cluster reloads replace all workers cleanly without split-brain hangs
-let isShuttingDown = false;
-function handleGracefulShutdown(signal) {
-    if (isShuttingDown) return;
-    isShuttingDown = true;
-    console.log(`🛑 ${signal} received, closing HTTP/Socket servers cleanly...`);
-    const forceExit = setTimeout(() => {
-        try { httpServer.closeAllConnections?.(); } catch (_) {}
-        process.exit(0);
-    }, 2500);
-    forceExit.unref?.();
-    try { io?.close?.(); } catch (_) {}
-    try {
-        httpServer.close(() => {
-            clearTimeout(forceExit);
-            process.exit(0);
-        });
-        httpServer.closeIdleConnections?.();
-    } catch (_) {
-        clearTimeout(forceExit);
-        process.exit(0);
-    }
-}
-process.once('SIGINT', () => handleGracefulShutdown('SIGINT'));
-process.once('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
 
 export default app;

@@ -1,16 +1,11 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { validateSsrfUrl, safeFetch } from '../utils/security.js';
-import { optionalProtect, protect } from '../middleware/auth.js';
 import { Readable } from 'stream';
 import { createRequire } from 'module';
-import crypto from 'crypto';
-import zlib from 'zlib';
 import vm from 'vm';
-import { execFile, execFileSync, spawn } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
-import fs from 'fs';
-import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -20,112 +15,12 @@ const CURL_BIN = process.platform === 'win32' ? 'curl.exe' : 'curl';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let cachedTlsPythonBin = null;
-let cachedTlsPythonChecked = false;
-function resolveTlsPythonBin() {
-  if (cachedTlsPythonChecked) return cachedTlsPythonBin;
-  cachedTlsPythonChecked = true;
-  const candidates = [];
-  if (process.env.TLS_PYTHON_BIN) candidates.push(process.env.TLS_PYTHON_BIN);
-  if (process.platform === 'win32') {
-    candidates.push(
-      path.join(__dirname, '../stream-resolver/venv/Scripts/python.exe'),
-      path.join(__dirname, '../venv/Scripts/python.exe'),
-      'python',
-      'python3'
-    );
-  } else {
-    candidates.push(
-      path.join(__dirname, '../stream-resolver/venv/bin/python'),
-      path.join(__dirname, '../stream-resolver/.venv/bin/python'),
-      path.join(__dirname, '../venv/bin/python'),
-      path.join(__dirname, '../.venv/bin/python'),
-      '/home/ubuntu/venv/bin/python',
-      '/root/venv/bin/python',
-      '/opt/venv/bin/python',
-      'python3',
-      'python'
-    );
-  }
-  for (const bin of candidates) {
-    if (!bin) continue;
-    if (bin.includes('/') || bin.includes('\\')) {
-      try {
-        if (!fs.existsSync(bin)) continue;
-      } catch {
-        continue;
-      }
-    }
-    try {
-      execFileSync(bin, ['-c', 'import curl_cffi'], { timeout: 2500, stdio: 'ignore' });
-      cachedTlsPythonBin = bin;
-      return cachedTlsPythonBin;
-    } catch {
-      // Binary missing or curl_cffi not installed here
-    }
-  }
-  cachedTlsPythonBin = '';
-  return '';
-}
-
-let cachedTorProbe = { checkedAt: 0, open: false };
-async function isTorReachable() {
-  const now = Date.now();
-  if (now - cachedTorProbe.checkedAt < 30000) return cachedTorProbe.open;
-  const open = await new Promise((resolve) => {
-    const sock = new net.Socket();
-    let settled = false;
-    const done = (val) => {
-      if (settled) return;
-      settled = true;
-      try { sock.destroy(); } catch {}
-      resolve(val);
-    };
-    sock.setTimeout(350);
-    sock.once('connect', () => done(true));
-    sock.once('timeout', () => done(false));
-    sock.once('error', () => done(false));
-    sock.connect(9050, '127.0.0.1');
-  });
-  cachedTorProbe = { checkedAt: now, open };
-  return open;
-}
-
-function buildEnvProxyUrl() {
-  let raw = (process.env.PROXY_SERVER || '').trim();
-  if (!raw) return '';
-  if (!/^[a-z0-9]+:\/\//i.test(raw)) raw = `http://${raw}`;
-  const username = (process.env.PROXY_USERNAME || '').trim();
-  const password = (process.env.PROXY_PASSWORD || '').trim();
-  try {
-    const parsed = new URL(raw);
-    if (username && !parsed.username) {
-      parsed.username = username;
-      if (password) parsed.password = password;
-    }
-    return parsed.href;
-  } catch {
-    return raw;
-  }
-}
-
-function is451TakedownHtml(text) {
-  if (!text || typeof text !== 'string') return false;
-  const low = text.toLowerCase();
-  return low.includes('451 - yasal nedenlerle') || low.includes('yasal nedenlerle erisime kapali');
-}
-
 const require = createRequire(import.meta.url);
 let fastResolve = null;
-let resolveSingleEmbed = null;
-let collectPageEmbedCandidates = null;
 let inProcessMovieSearch = null;
-let inProcessPlaywrightResolve = null;
 try {
   const scraper = require('../stream-resolver/services/fastScraper.js');
   fastResolve = scraper.fastResolve;
-  resolveSingleEmbed = scraper.resolveSingleEmbed;
-  collectPageEmbedCandidates = scraper.collectPageEmbedCandidates;
 } catch (e) {
   console.warn('[HLSProxy] fastScraper import warning:', e.message);
 }
@@ -135,89 +30,11 @@ try {
 } catch (e) {
   console.warn('[HLSProxy] movieSearchService import warning:', e.message);
 }
-try {
-  const pwResolver = require('../stream-resolver/services/playwrightResolver.js');
-  inProcessPlaywrightResolve = pwResolver.resolveStreamUrl;
-} catch (e) {
-  console.warn('[HLSProxy] playwrightResolver import warning:', e.message);
-}
-
-// Extracts safe, non-site-leaking audio/language classification from internal labels
-function extractAudioTypeTag(rawLabel = '', url = '') {
-  const text = `${rawLabel || ''} ${url || ''}`.toLowerCase();
-  const hasDual = /\bdual\b|tr[-_\s]?dual|tr[-_\s]?en/.test(text);
-  const hasDub = /dublaj|\btrdub\b/.test(text);
-  const hasSub = /altyaz[ıi]|\bsub\b/.test(text);
-  if (hasDual || (hasDub && hasSub)) return 'Dual (Dublaj & Altyazı)';
-  if (hasDub) return 'Türkçe Dublaj';
-  if (hasSub) return 'Türkçe Altyazı';
-  return '';
-}
-
-// AES-256-GCM sealing so regular users never see external source domains or raw scraping URLs
-const SEAL_KEY = crypto
-  .createHash('sha256')
-  .update(String(process.env.JWT_SECRET || process.env.MEDIA_SEAL_KEY || 'oxypace-media-source-seal-v2'))
-  .digest();
-
-function sealSourcePayload(payload) {
-  try {
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', SEAL_KEY, iv);
-    const json = JSON.stringify(payload);
-    const enc = Buffer.concat([cipher.update(json, 'utf8'), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return Buffer.concat([iv, tag, enc]).toString('base64url');
-  } catch {
-    return '';
-  }
-}
-
-function unsealSourcePayload(token) {
-  if (!token || typeof token !== 'string') return null;
-  try {
-    const raw = Buffer.from(token, 'base64url');
-    if (raw.length < 29) return null;
-    const iv = raw.subarray(0, 12);
-    const tag = raw.subarray(12, 28);
-    const enc = raw.subarray(28);
-    const decipher = crypto.createDecipheriv('aes-256-gcm', SEAL_KEY, iv);
-    decipher.setAuthTag(tag);
-    const dec = Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
-    return JSON.parse(dec);
-  } catch {
-    return null;
-  }
-}
-
-function isAdminOrTouristUser(req) {
-  return Boolean(req?.user?.isAdmin || req?.user?.isTouristAdmin);
-}
-
-const PROVIDER_DISPLAY_NAMES = {
-  hdfilmcehennemi: 'HDFilmCehennemi',
-  fullhdfilmizlesene: 'FullHDFilmİzlesene',
-  filmmakinesi: 'FilmMakinesi',
-  filmdozu: 'FilmDozu',
-  filmizyon: 'Filmİzyon',
-  roketdizi: 'RoketDizi',
-};
-
-function inferProviderFromUrl(url = '') {
-  const lower = String(url).toLowerCase();
-  if (lower.includes('hdfilmcehennemi')) return 'hdfilmcehennemi';
-  if (lower.includes('fullhdfilmizlesene')) return 'fullhdfilmizlesene';
-  if (lower.includes('filmmakinesi')) return 'filmmakinesi';
-  if (lower.includes('filmdozu')) return 'filmdozu';
-  if (lower.includes('filmizyon') || lower.includes('vixolity')) return 'filmizyon';
-  if (lower.includes('roketdizi') || lower.includes('pichive')) return 'roketdizi';
-  return 'external';
-}
 
 // Track exhausted ScraperAPI keys to avoid waiting or failing on dead quotas
 const exhaustedScraperKeys = new Set();
 function getValidScraperApiKey() {
-  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || process.env.SCRAPER_API_KEY || '')
+  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || '')
     .split(',')
     .map(k => k.trim())
     .filter(Boolean);
@@ -225,62 +42,6 @@ function getValidScraperApiKey() {
     if (!exhaustedScraperKeys.has(k)) return k;
   }
   return null;
-}
-
-async function fetchViaScraperApi(url, { timeoutMs = 7500, headers = {}, method = 'GET', body = null, keepHeaders = false } = {}) {
-  if (!validateSsrfUrl(url).safe) return '';
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const apiKey = getValidScraperApiKey();
-    if (!apiKey) return '';
-    try {
-      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}${keepHeaders ? '&keep_headers=true' : ''}&url=${encodeURIComponent(url)}`;
-      const res = await fetch(proxyUrl, {
-        method,
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36', ...headers },
-        ...(body ? { body } : {}),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      const text = await res.text();
-      if (res.status === 403 || text.includes('exhausted') || text.includes('You have reached your')) {
-        exhaustedScraperKeys.add(apiKey);
-        continue;
-      }
-      if (res.ok && !isBlockedOrChallenge(text)) {
-        return text;
-      }
-      return '';
-    } catch {
-      return '';
-    }
-  }
-  return '';
-}
-
-async function fetchHtmlRobust(url, { fetchHeaders = {}, curlHeaders = [], timeoutSec = 4, scraperTimeoutMs = 6000, fastSearch = false } = {}) {
-  if (!validateSsrfUrl(url).safe) return '';
-  const effectiveFetchMs = fastSearch ? Math.min(timeoutSec * 1000, 2800) : timeoutSec * 1000;
-  // 1. Direct fast fetch
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        ...fetchHeaders,
-      },
-      signal: AbortSignal.timeout(effectiveFetchMs),
-    });
-    if (res.ok) {
-      const text = await res.text();
-      if (!isBlockedOrChallenge(text)) return text;
-    }
-  } catch {}
-
-  // 2. Direct Curl -> Direct-first Python TLS Impersonator -> Tor fallback
-  const curlRes = await fetchWithCurl(url, curlHeaders, fastSearch ? Math.min(timeoutSec, 4) : timeoutSec);
-  if (curlRes) return curlRes;
-
-  // 3. ScraperAPI fallback (only if env key is configured)
-  return await fetchViaScraperApi(url, { timeoutMs: scraperTimeoutMs, headers: fetchHeaders, keepHeaders: Object.keys(fetchHeaders).length > 0 });
 }
 
 // Decode HTML entities (e.g. &ccedil;, &uuml;, &ouml;, &amp;)
@@ -307,16 +68,11 @@ function decodeHtmlEntities(str) {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
 }
 
-// Python curl_cffi Chrome TLS impersonator (Proxy/Tor/Direct inside script)
-function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = '', extraHeaders = {}, { noTor = false, timeoutMs = 9500 } = {}) {
+// Python curl_cffi TLS impersonator (available on server)
+function fetchWithTlsImpersonator(url, referer = '') {
   return new Promise((resolve) => {
-    const bin = resolveTlsPythonBin();
-    if (!bin) return resolve('');
     const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
-    const hdrJson = extraHeaders && Object.keys(extraHeaders).length > 0 ? JSON.stringify(extraHeaders) : '';
-    const args = [scriptPath, url, referer || '', method || 'GET', postData || '', hdrJson];
-    if (noTor) args.push('no_tor');
-    execFile(bin, args, { timeout: timeoutMs, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+    execFile('python3', [scriptPath, url, referer], { timeout: 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
       if (err || !stdout || stdout.length === 0) {
         return resolve('');
       }
@@ -327,15 +83,6 @@ function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = 
 
 function isBlockedOrChallenge(text) {
   if (!text || typeof text !== 'string') return true;
-  if (is451TakedownHtml(text)) return true;
-  const trimmed = text.trimStart();
-  if (trimmed.startsWith('#EXTM3U')) return false;
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    try {
-      JSON.parse(trimmed);
-      return false;
-    } catch {}
-  }
   if (text.length < 300) return true;
   // Eğer sayfa zengin içerikliyse ve film blokları içeriyorsa asla engelli değildir
   if (text.length > 3000 && (text.includes('class="film') || text.includes('film-title') || text.includes('poster') || text.includes('<title>'))) {
@@ -352,88 +99,75 @@ function isBlockedOrChallenge(text) {
   if (lower.includes('<title>404 not found</title>') && lower.includes('nginx')) return true;
   if (lower.includes('error code: 1005') || lower.includes('error code: 444') || lower.includes('error code: 403')) return true;
   if (lower.includes('403 forbidden') && text.length < 2000) return true;
-  if (lower.includes('cf-browser-verification') || text.includes('Oynatıcı durduruldu')) return true;
+  if (lower.includes('cf-browser-verification')) return true;
   return false;
 }
 
-// Env Proxy -> Direct curl -> Python TLS Impersonator -> Tor Curl fallback
-async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
+// Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
+async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   // SSRF / option-injection guard: only public http(s) URLs may ever reach the curl binary
   if (!validateSsrfUrl(url).safe) return '';
-  const envProxyUrl = buildEnvProxyUrl();
-  const torOpen = await isTorReachable();
-  const extraHdrObj = {};
-  let ref = '';
-  for (const h of headers) {
-    const idx = String(h).indexOf(':');
-    if (idx > 0) {
-      const k = h.slice(0, idx).trim();
-      const v = h.slice(idx + 1).trim();
-      if (k.toLowerCase() === 'referer') ref = v;
-      else extraHdrObj[k] = v;
-    }
+  // 1. For HDFilmCehennemi, direct curl gets 403 on Oracle Cloud datacenter IP.
+  // Use Python TLS Impersonator first (Chrome 124 TLS fingerprint).
+  if (url.includes('hdfilmcehennemi')) {
+    try {
+      const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || 'https://www.hdfilmcehennemi.nl/';
+      const tlsHtml = await fetchWithTlsImpersonator(url, ref);
+      if (!isBlockedOrChallenge(tlsHtml)) {
+        return tlsHtml;
+      }
+    } catch (e) {}
   }
 
-  const runCurlWithProxy = async (proxyMode, maxTimeSec) => {
+  // 2. Direct curl execution
+  try {
     const args = [
       '-s',
       '-L',
-      '--max-time', String(maxTimeSec),
+      '--max-time', String(timeoutSec),
       '--proto', '=http,https',
       '--proto-redir', '=http,https',
       '--max-redirs', '5',
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
       ...headers.flatMap(h => ['-H', h]),
+      url
     ];
-    if (proxyMode === 'env' && envProxyUrl) args.push('-x', envProxyUrl);
-    if (proxyMode === 'tor') args.push('--socks5-hostname', '127.0.0.1:9050');
-    args.push(url);
     const { stdout } = await execFileAsync(CURL_BIN, args);
-    return !isBlockedOrChallenge(stdout) ? stdout : '';
-  };
-
-  if (envProxyUrl) {
-    try {
-      const pxHtml = await runCurlWithProxy('env', Math.min(timeoutSec + 2, 7));
-      if (pxHtml) return pxHtml;
-    } catch {}
-  }
-
-  // 1. For HDFilmCehennemi, try TLS Impersonator (Proxy/Tor first inside Python)
-  if (url.includes('hdfilmcehennemi')) {
-    try {
-      const originRef = (() => { try { return new URL(url).origin + '/'; } catch { return 'https://www.hdfilmcehennemi.nl/'; } })();
-      const tlsHtml = await fetchWithTlsImpersonator(url, ref || originRef, 'GET', '', extraHdrObj, { timeoutMs: 8000 });
-      if (!isBlockedOrChallenge(tlsHtml)) {
-        return tlsHtml;
-      }
-    } catch (e) {}
-  }
-
-  // 2. Direct curl execution (fast, zero Tor overhead)
-  try {
-    const directOut = await runCurlWithProxy('direct', Math.min(timeoutSec, 4));
-    if (directOut) return directOut;
+    if (!isBlockedOrChallenge(stdout)) {
+      return stdout;
+    }
   } catch (e) {}
 
-  // 3. Python TLS Chrome Impersonator
-  if (!url.includes('hdfilmcehennemi')) {
-    try {
-      const tlsHtml = await fetchWithTlsImpersonator(url, ref, 'GET', '', extraHdrObj, { timeoutMs: 8500 });
-      if (!isBlockedOrChallenge(tlsHtml)) {
-        return tlsHtml;
-      }
-    } catch (e) {}
-  }
+  // 3. Try via Tor SOCKS5 if active (port 9050 on Linux server)
+  try {
+    const argsTor = [
+      '-s',
+      '-L',
+      '--socks5-hostname', '127.0.0.1:9050',
+      '--max-time', String(timeoutSec + 2),
+      '--proto', '=http,https',
+      '--proto-redir', '=http,https',
+      '--max-redirs', '5',
+      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+      ...headers.flatMap(h => ['-H', h]),
+      url
+    ];
+    const { stdout } = await execFileAsync(CURL_BIN, argsTor);
+    if (!isBlockedOrChallenge(stdout)) {
+      return stdout;
+    }
+  } catch (e) {}
 
-  // 4. Emergency Tor SOCKS5 curl fallback (only if Tor daemon is reachable)
-  if (torOpen) {
-    try {
-      const torOut = await runCurlWithProxy('tor', Math.min(timeoutSec + 2, 6));
-      if (torOut) return torOut;
-    } catch (e) {}
-  }
+  // 4. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
+  try {
+    const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || '';
+    const tlsHtml = await fetchWithTlsImpersonator(url, ref);
+    if (!isBlockedOrChallenge(tlsHtml)) {
+      return tlsHtml;
+    }
+  } catch (e) {}
 
   return '';
 }
@@ -441,9 +175,7 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
 // Direct curl fetch for binary data (images/posters)
 async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
   if (!validateSsrfUrl(url).safe) return null;
-  const envProxyUrl = buildEnvProxyUrl();
-  const torOpen = await isTorReachable();
-  const runCurl = (proxyMode = 'direct') => new Promise((resolve, reject) => {
+  const runCurl = (useTor = false) => new Promise((resolve, reject) => {
     const args = [
       '-s',
       '-L',
@@ -454,8 +186,7 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
       '--max-filesize', String(25 * 1024 * 1024),
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     ];
-    if (proxyMode === 'env' && envProxyUrl) args.push('-x', envProxyUrl);
-    if (proxyMode === 'tor') args.push('--socks5-hostname', '127.0.0.1:9050');
+    if (useTor) args.push('--socks5-hostname', '127.0.0.1:9050');
     if (referer) args.push('-H', `Referer: ${referer}`);
     args.push(url);
 
@@ -472,30 +203,19 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
     });
   });
 
-  if (envProxyUrl) {
-    try {
-      const pxBuf = await runCurl('env');
-      if (pxBuf && pxBuf.length > 0 && !isBlockedOrChallenge(pxBuf.toString('utf8', 0, 500))) {
-        return pxBuf;
-      }
-    } catch {}
-  }
-
   try {
-    const directBuf = await runCurl('direct');
+    const directBuf = await runCurl(false);
     if (directBuf && directBuf.length > 0 && !isBlockedOrChallenge(directBuf.toString('utf8', 0, 500))) {
       return directBuf;
     }
   } catch (directErr) {}
 
-  if (torOpen) {
-    try {
-      const torBuf = await runCurl('tor');
-      if (torBuf && torBuf.length > 0 && !isBlockedOrChallenge(torBuf.toString('utf8', 0, 500))) {
-        return torBuf;
-      }
-    } catch (torErr) {}
-  }
+  try {
+    const torBuf = await runCurl(true);
+    if (torBuf && torBuf.length > 0 && !isBlockedOrChallenge(torBuf.toString('utf8', 0, 500))) {
+      return torBuf;
+    }
+  } catch (torErr) {}
 
   return null;
 }
@@ -720,36 +440,21 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
           originHeader = new URL(referer).origin;
         } catch {}
       } else {
-        if (targetObj.hostname.includes('vixolity')) {
-          originHeader = 'https://pl.vixolity.com';
-          refererHeader = 'https://pl.vixolity.com/';
-        } else if (targetObj.hostname.includes('playmix')) {
+        if (targetObj.hostname.includes('playmix')) {
           originHeader = 'https://playmix.uno';
           refererHeader = 'https://playmix.uno/';
-        } else if (targetObj.hostname.includes('closeload') || targetObj.hostname.includes('filmmakinesi')) {
-          originHeader = 'https://closeload.filmmakinesi.to';
-          refererHeader = 'https://closeload.filmmakinesi.to/';
-        } else if (targetObj.hostname.includes('imagecdn') || targetObj.hostname.includes('cdnimgs') || targetObj.hostname.includes('rapidvid')) {
+        } else if (targetObj.hostname.includes('imagecdn') || targetObj.hostname.includes('rapidvid')) {
           originHeader = 'https://rapidvid.org';
           refererHeader = 'https://rapidvid.org/';
-        } else if (targetObj.hostname.includes('rapidrame')) {
-          originHeader = 'https://www.hdfilmcehennemi.nl';
-          refererHeader = 'https://www.hdfilmcehennemi.nl/';
-        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('cyou')) {
+        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop') || targetObj.hostname.includes('cyou')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
         } else if (targetObj.hostname.includes('hdfilmcehennemi')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
-        } else if (targetObj.hostname.includes('vidmoly') || targetObj.hostname.includes('vmpx') || targetObj.hostname.includes('vmget')) {
-          originHeader = 'https://vidmoly.to';
-          refererHeader = 'https://vidmoly.to/';
-        } else if (targetObj.hostname.includes('okcdn') || targetObj.hostname.includes('mycdn') || targetObj.hostname.includes('vkuser')) {
-          originHeader = 'https://ok.ru';
-          refererHeader = 'https://ok.ru/';
-        } else if (targetObj.hostname.includes('uptostream')) {
-          originHeader = 'https://uptostream.com';
-          refererHeader = 'https://uptostream.com/';
+        } else if (targetObj.hostname.includes('closeload') || targetObj.hostname.includes('filmmakinesi')) {
+          originHeader = 'https://closeload.filmmakinesi.to';
+          refererHeader = 'https://closeload.filmmakinesi.to/';
         } else if (targetObj.hostname.includes('bbstream')) {
           originHeader = 'https://bbstream.org';
           refererHeader = 'https://bbstream.org/';
@@ -799,14 +504,6 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       lowerUrl.includes('/vtt/') || 
       lowerUrl.includes('/subtitles/');
 
-    const isMediaChunk = 
-      lowerUrl.includes('.ts') || 
-      lowerUrl.includes('.m4s') || 
-      lowerUrl.endsWith('.mp4') || 
-      lowerUrl.includes('.aac') || 
-      lowerUrl.includes('/segment') ||
-      lowerUrl.includes('/fragment');
-
     // If initial fetch gives 403 or 404, try curl directly for images/subtitles or cycle through fallback referers
     if (!response.ok && (response.status === 403 || response.status === 404)) {
       if (isPosterOrImage || isSubtitleFile) {
@@ -816,9 +513,6 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
             if (targetUrl.includes('hdfilmcehennemi')) posterReferer = 'https://www.hdfilmcehennemi.nl/';
             else if (targetUrl.includes('fullhdfilmizlesene')) posterReferer = 'https://www.fullhdfilmizlesene.now/';
             else if (targetUrl.includes('filmmakinesi')) posterReferer = 'https://filmmakinesi.to/';
-            else if (targetUrl.includes('filmdozu')) posterReferer = 'https://filmdozu.com/';
-            else if (targetUrl.includes('filmizyon')) posterReferer = 'https://www.filmizyon.net/';
-            else if (targetUrl.includes('roketdizi') || targetUrl.includes('macellan')) posterReferer = 'https://roketdizi.life/';
           }
           const buf = await fetchBinaryWithCurl(targetUrl, posterReferer, 8);
           if (buf && buf.length > 10) {
@@ -868,15 +562,12 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
         try { targetOrigin = new URL(targetUrl).origin; } catch {}
 
         const fallbackReferers = [
-          'https://pl.vixolity.com/',
           'https://playmix.uno/',
           'https://hdfilmcehennemi.mobi/',
-          'https://www.hdfilmcehennemi.nl/',
           'https://rapidvid.org/',
           'https://closeload.filmmakinesi.to/',
           'https://rapidvid.net/',
           'https://vidmoly.to/',
-          'https://ok.ru/',
           targetOrigin ? `${targetOrigin}/` : '',
           '',
         ];
@@ -918,43 +609,6 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       }
     }
 
-    // Manifest / non-media endpoints blocked by datacenter IP or JA3 (e.g. ha.vixolity.com returning 403)
-    if (!response.ok && !isPosterOrImage && !isMediaChunk) {
-      try {
-        const curlHeaders = [];
-        if (refererHeader) curlHeaders.push(`Referer: ${refererHeader}`);
-        if (originHeader) curlHeaders.push(`Origin: ${originHeader}`);
-        const curlBody = await fetchWithCurl(targetUrl, curlHeaders, 8);
-        if (curlBody) {
-          const trimmed = curlBody.trimStart();
-          const lowerHead = trimmed.slice(0, 64).toLowerCase();
-          const isHtmlError = lowerHead.startsWith('<!doctype') || lowerHead.startsWith('<html');
-          if (trimmed.startsWith('#EXTM3U') || (!isHtmlError && !isBlockedOrChallenge(curlBody))) {
-            const resolvedCt = trimmed.startsWith('#EXTM3U')
-              ? 'application/x-mpegURL'
-              : (isSubtitleFile ? 'text/vtt; charset=utf-8' : 'text/plain; charset=utf-8');
-            const bodyBuf = Buffer.from(curlBody, 'utf8');
-            response = {
-              ok: true,
-              status: 200,
-              statusText: 'OK',
-              body: null,
-              headers: {
-                get: (k) => {
-                  const lk = String(k || '').toLowerCase();
-                  if (lk === 'content-type') return resolvedCt;
-                  if (lk === 'content-length') return String(bodyBuf.byteLength);
-                  return null;
-                },
-              },
-              arrayBuffer: async () => bodyBuf.buffer.slice(bodyBuf.byteOffset, bodyBuf.byteOffset + bodyBuf.byteLength),
-              text: async () => curlBody,
-            };
-          }
-        }
-      } catch {}
-    }
-
     if (!response.ok) {
       if (isPosterOrImage) {
         const TRANSPARENT_1PX_WEBP = Buffer.from('UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AA/v3V84AAA', 'base64');
@@ -966,6 +620,14 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
 
       // If a binary media chunk (MPEG-TS, m4s, mp4, aac, etc.) failed with 403 or 401 on the server (e.g. geo-restricted or CloudFront blocked),
       // redirect the client with 302 Found so the client browser downloads it directly using their local residential IP!
+      const isMediaChunk = 
+        lowerUrl.includes('.ts') || 
+        lowerUrl.includes('.m4s') || 
+        lowerUrl.endsWith('.mp4') || 
+        lowerUrl.includes('.aac') || 
+        lowerUrl.includes('/segment') ||
+        lowerUrl.includes('/fragment');
+
       if (isMediaChunk && (response.status === 403 || response.status === 401)) {
         console.warn(`[HLSProxy] Upstream ${response.status} for media chunk ${targetUrl}. Redirecting client directly via 302...`);
         const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin) || '*';
@@ -1111,12 +773,7 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
           contentType = 'video/mp2t';
         }
       } else if (lowerUrl.endsWith('.vtt') || lowerUrl.includes('/vtt/')) {
-        contentType = 'text/vtt; charset=utf-8';
-      } else if (lowerUrl.includes('.srt') || isSubtitleFile) {
-        const rawBuf = Buffer.from(responseBody);
-        const vttBuf = convertSrtBufferToVtt(rawBuf);
-        responseBody = vttBuf.buffer.slice(vttBuf.byteOffset, vttBuf.byteOffset + vttBuf.byteLength);
-        contentType = 'text/vtt; charset=utf-8';
+        contentType = 'text/vtt';
       }
     }
 
@@ -1289,37 +946,22 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.includes('hdfilmcehennemi')) return null;
   const start = Date.now();
 
-  const envProxyUrl = buildEnvProxyUrl();
-  const torOpen = await isTorReachable();
-  const isValidHdfResp = (t) => Boolean(t && t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required') && !is451TakedownHtml(t));
-
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
-    // 0. Env Proxy priority (residential/Turkey/datacenter bypass)
-    if (envProxyUrl) {
-      try {
-        const { stdout } = await execFileAsync(CURL_BIN, [
-          '-s', '-L', '-x', envProxyUrl, '--max-time', String(timeoutSec + 2),
-          '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          ...headers.flatMap(h => ['-H', h]),
-          url,
-        ]);
-        if (isValidHdfResp(stdout)) return stdout;
-      } catch {}
-    }
-
-    // 1. Tor SOCKS5 priority on Linux server when reachable (bypasses Datacenter ASN Cloudflare Error 1005 & GEO 451)
-    if (process.platform === 'linux' && torOpen) {
+    // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
+    if (process.platform === 'linux') {
       try {
         const argsTor = [
           '-s', '-L',
           '--socks5-hostname', '127.0.0.1:9050',
-          '--max-time', String(timeoutSec + 1),
+          '--max-time', String(timeoutSec),
           '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           ...headers.flatMap(h => ['-H', h]),
           url
         ];
-        const { stdout } = await execFileAsync(CURL_BIN, argsTor);
-        if (isValidHdfResp(stdout)) return stdout;
+        const { stdout } = await execFileAsync('curl', argsTor);
+        if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+          return stdout;
+        }
       } catch (e) {}
     }
 
@@ -1336,7 +978,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
       if (res.ok) {
         const t = await res.text();
-        if (isValidHdfResp(t)) return t;
+        if (t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required')) return t;
       }
     } catch (e) {}
 
@@ -1350,30 +992,20 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         url
       ];
       const { stdout } = await execFileAsync(CURL_BIN, args);
-      if (isValidHdfResp(stdout)) return stdout;
+      if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+        return stdout;
+      }
     } catch (e) {}
 
     return '';
   };
 
   try {
-    let activeTarget = targetUrl;
-    let activeOrigin = (() => { try { return new URL(activeTarget).origin; } catch { return 'https://www.hdfilmcehennemi.nl'; } })();
-    let text = await fetchWithTorOrDirect(activeTarget, [
-      `Referer: ${activeOrigin}/`,
+    let text = await fetchWithTorOrDirect(targetUrl, [
+      'Referer: https://www.hdfilmcehennemi.nl/',
       'x-requested-with: fetch',
       'Accept: application/json, text/plain, */*'
     ], 6);
-
-    if (!text && /hdfilmcehennemi\.nl/i.test(activeTarget)) {
-      activeTarget = activeTarget.replace(/hdfilmcehennemi\.nl/i, 'hdfilmcehennemi.com');
-      activeOrigin = 'https://www.hdfilmcehennemi.com';
-      text = await fetchWithTorOrDirect(activeTarget, [
-        `Referer: ${activeOrigin}/`,
-        'x-requested-with: fetch',
-        'Accept: application/json, text/plain, */*'
-      ], 6);
-    }
 
     if (!text) return null;
     let html = text;
@@ -1493,1247 +1125,226 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   return null;
 }
 
-function normalizeProxyHeadersForStream(streamUrl = '', rawHeaders = {}) {
-  let streamHeaders = { ...(rawHeaders || {}) };
-  const lower = String(streamUrl).toLowerCase();
-  if (lower.includes('playmix') && (!streamHeaders.referer || !streamHeaders.referer.includes('playmix.uno'))) {
-    streamHeaders = { ...streamHeaders, referer: 'https://playmix.uno/', origin: 'https://playmix.uno' };
-  } else if ((lower.includes('imagecdn') || lower.includes('cdnimgs')) && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
-    streamHeaders = { ...streamHeaders, referer: 'https://rapidvid.org/', origin: 'https://rapidvid.org' };
-  } else if ((lower.includes('cdnimages') || lower.includes('cyou')) && !lower.includes('vixolity') && (!streamHeaders.referer || !streamHeaders.referer.includes('hdfilmcehennemi'))) {
-    streamHeaders = { ...streamHeaders, referer: 'https://hdfilmcehennemi.mobi/', origin: 'https://hdfilmcehennemi.mobi' };
-  } else if (lower.includes('vixolity')) {
-    streamHeaders = { ...streamHeaders, referer: 'https://pl.vixolity.com/', origin: 'https://pl.vixolity.com' };
-  } else if (lower.includes('vmpx') || lower.includes('vmget') || lower.includes('vidmoly')) {
-    streamHeaders = { ...streamHeaders, referer: 'https://vidmoly.to/', origin: 'https://vidmoly.to' };
-  } else if (lower.includes('okcdn') || lower.includes('mycdn') || lower.includes('vkuser')) {
-    streamHeaders = { ...streamHeaders, referer: 'https://ok.ru/', origin: 'https://ok.ru' };
+// POST /api/resolve-stream (Stream Resolver Microservice Bridge & In-Process Resolver)
+router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
+  const { url, timeout } = req.body || {};
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL parametresi.' });
   }
-  return streamHeaders;
-}
 
-function buildPlayableProxyUrl(resolveBaseOrigin, targetUrl, streamHeaders = {}) {
-  return `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
-}
-
-async function probeStreamCandidate(streamUrl, streamHeaders = {}) {
-  const t0 = Date.now();
-  try {
-    if (!streamUrl || !validateSsrfUrl(streamUrl).safe) {
-      return { ok: false, latencyMs: 99999, maxHeight: 0, score: -99999 };
-    }
-    const lower = streamUrl.toLowerCase();
-    if (lower.includes('filmakinesimp4') || lower.includes('blank.mp4')) {
-      return { ok: false, latencyMs: 99999, maxHeight: 0, score: -99999 };
-    }
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    };
-    if (streamHeaders.referer) headers['Referer'] = streamHeaders.referer;
-    if (streamHeaders.origin) headers['Origin'] = streamHeaders.origin;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4500);
-    let res;
-    try {
-      res = await safeFetch(streamUrl, { headers, method: 'GET', cache: 'no-store', signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!res.ok) {
-      return { ok: false, latencyMs: Date.now() - t0, maxHeight: 0, score: -50000 };
-    }
-
-    const latencyMs = Date.now() - t0;
-    let maxHeight = 0;
-    let hasMultiAudio = false;
-    if (!lower.endsWith('.mp4')) {
-      const text = await res.text().catch(() => '');
-      if (!text.includes('#EXTM3U')) {
-        return { ok: false, latencyMs, maxHeight: 0, score: -50000 };
-      }
-      const resMatches = [...text.matchAll(/RESOLUTION=\d+x(\d+)/gi)];
-      for (const m of resMatches) {
-        const h = parseInt(m[1], 10) || 0;
-        if (h > maxHeight) maxHeight = h;
-      }
-      hasMultiAudio = /#EXT-X-MEDIA:[^\n]*TYPE=AUDIO/i.test(text);
-    }
-
-    const qualityPoints =
-      maxHeight >= 1080 ? 3000 :
-      maxHeight >= 720 ? 2200 :
-      maxHeight >= 480 ? 1400 :
-      maxHeight > 0 ? 1000 :
-      1600; // Single variant or direct MP4
-    const audioBonus = hasMultiAudio ? 250 : 0;
-    const score = qualityPoints + audioBonus - Math.min(latencyMs, 4000);
-    return { ok: true, latencyMs, maxHeight, hasMultiAudio, score };
-  } catch {
-    return { ok: false, latencyMs: Date.now() - t0, maxHeight: 0, score: -99999 };
+  const resolveStreamSsrf = validateSsrfUrl(url.trim());
+  if (!resolveStreamSsrf.safe) {
+    console.warn(`[SSRF Block] /api/resolve-stream rejected: ${url} — ${resolveStreamSsrf.reason}`);
+    return res.status(400).json({ success: false, error: 'Geçersiz veya izin verilmeyen URL.' });
   }
-}
 
-// Shared Playwright/microservice fallback (preserves referer and retries parent moviePageUrl when direct embed fails)
-async function resolveTargetWithPlaywrightFallback(targetInfo, timeoutBudgetMs = 9500) {
-  const url = targetInfo?.url || '';
-  const moviePageUrl = targetInfo?.moviePageUrl || '';
-  const referer = targetInfo?.referer || moviePageUrl || '';
-  const totalCapMs = Math.max(4500, Math.min(timeoutBudgetMs || 9500, 10500));
-  const isPlayableCandidate = (sUrl) =>
-    Boolean(sUrl && typeof sUrl === 'string' && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4'));
-
-  const callMicro = async (baseUrl, targetUrl, capMs) => {
-    const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), capMs);
-    try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (apiKey) headers['x-api-key'] = apiKey;
-      const microResponse = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ url: targetUrl, timeout: capMs }),
-        signal: controller.signal,
-      });
-      const data = await microResponse.json().catch(() => null);
-      const payload = data?.data || data;
-      if (microResponse.ok && isPlayableCandidate(payload?.streamUrl)) {
-        return {
-          streamUrl: payload.streamUrl,
-          headers: payload.headers || {},
-          subtitles: payload.subtitles || [],
-          pageTitle: payload.pageTitle || '',
-        };
-      }
-    } catch {} finally {
-      clearTimeout(timer);
-    }
-    return null;
-  };
-
-  const trySingleUrl = async (candidateUrl, candidateReferer, capMs) => {
-    if (!candidateUrl || !validateSsrfUrl(candidateUrl).safe) return null;
-    if (process.env.STREAM_RESOLVER_API_URL) {
-      const r = await callMicro(process.env.STREAM_RESOLVER_API_URL, candidateUrl, capMs);
-      if (r) return r;
-    } else if (!process.env.BLOG_ORIGIN) {
-      // Probe standalone stream-resolver daemon on 127.0.0.1:3001 only when BLOG_ORIGIN isn't occupying 3001
-      try {
-        const healthRes = await fetch('http://127.0.0.1:3001/health', { signal: AbortSignal.timeout(350) });
-        if (healthRes.ok) {
-          const r = await callMicro('http://127.0.0.1:3001', candidateUrl, capMs);
-          if (r) return r;
-        }
-      } catch {}
-    }
-    if (!inProcessPlaywrightResolve) return null;
-    let pwTimer = null;
-    try {
-      const pwRes = await Promise.race([
-        inProcessPlaywrightResolve(candidateUrl, { timeout: capMs, referer: candidateReferer }),
-        new Promise((resolve) => { pwTimer = setTimeout(() => resolve(null), capMs); }),
-      ]);
-      if (pwRes && isPlayableCandidate(pwRes.streamUrl)) {
-        return {
-          streamUrl: pwRes.streamUrl,
-          headers: pwRes.headers || {},
-          subtitles: pwRes.subtitles || [],
-          pageTitle: pwRes.pageTitle || '',
-        };
-      }
-    } catch {} finally {
-      if (pwTimer) clearTimeout(pwTimer);
-    }
-    return null;
-  };
-
-  const hasParentFallback = Boolean(moviePageUrl && moviePageUrl !== url);
-  const firstCapMs = hasParentFallback ? Math.min(totalCapMs, 5500) : totalCapMs;
-  const directRes = await trySingleUrl(url, referer, firstCapMs);
-  if (directRes) return directRes;
-  if (hasParentFallback) {
-    return await trySingleUrl(moviePageUrl, '', Math.max(5500, totalCapMs));
-  }
-  return null;
-}
-
-// POST /api/resolve-stream (Multi-source fast resolver, quality/latency picker & grouped alternatives)
-router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
-  const { url, sourceToken, sourceTokens, sources, title, year, imdbId, timeout } = req.body || {};
-  const isPrivileged = isAdminOrTouristUser(req);
+  const trimmedUrl = url.trim();
+  const lower = trimmedUrl.toLowerCase();
   const resolveBaseOrigin = getProxyBaseOrigin(req);
+
+  // Instant fast-path for direct stream URLs (.m3u8, master.txt, .mp4)
+  if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
+    const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
+    return res.status(200).json({
+      success: true,
+      status: 'success',
+      streamUrl: trimmedUrl,
+      playableStreamUrl,
+      type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
+      headers: {},
+      pageTitle: 'Doğrudan Akış Kaynağı',
+      cached: false,
+      resolvedIn: 1,
+    });
+  }
+
   const startTime = Date.now();
   const fetchTimeout = Math.min(parseInt(timeout, 10) || 20000, 21000);
 
-  // 1. Single-alternative lazy resolution via sourceToken
-  if (sourceToken && typeof sourceToken === 'string') {
-    const unsealed = unsealSourcePayload(sourceToken);
-    if (!unsealed || (!unsealed.url && !unsealed.directStreamUrl)) {
-      return res.status(400).json({ success: false, error: 'Geçersiz veya süresi dolmuş alternatif anahtarı.' });
-    }
+  // 0. Instant Standalone Direct Resolver for HDFilmCehennemi (Pure Node.js fetch & VM sandbox, 0 dependencies)
+  if (trimmedUrl.includes('hdfilmcehennemi')) {
     try {
-      let chosenStream = unsealed.directStreamUrl || '';
-      let streamHeaders = unsealed.headers || {};
-      let subtitles = Array.isArray(unsealed.subtitles) ? unsealed.subtitles : [];
-      let pageTitle = unsealed.title || title || 'Film Akışı';
-
-      if (!chosenStream && unsealed.url) {
-        if (!validateSsrfUrl(unsealed.url).safe) {
-          return res.status(400).json({ success: false, error: 'Geçersiz veya izin verilmeyen URL.' });
-        }
-        const embedReferer = unsealed.moviePageUrl || unsealed.referer || unsealed.url;
-        if (resolveSingleEmbed && !unsealed.isMoviePage) {
-          let singleTimer = null;
-          const singleRes = await Promise.race([
-            resolveSingleEmbed(unsealed.url, embedReferer, unsealed.title || ''),
-            new Promise((resolve) => { singleTimer = setTimeout(() => resolve(null), 7500); }),
-          ]).catch(() => null);
-          if (singleTimer) clearTimeout(singleTimer);
-          if (singleRes?.streamUrl) {
-            chosenStream = singleRes.streamUrl;
-            streamHeaders = singleRes.headers || streamHeaders;
-            if (Array.isArray(singleRes.subtitles) && singleRes.subtitles.length > 0) {
-              subtitles = singleRes.subtitles;
-            }
-          }
-        }
-        if (!chosenStream && fastResolve) {
-          // Avoid repeating full embed scrape for long durations when resolveSingleEmbed already ran on this embed URL
-          const frCapMs = unsealed.isMoviePage ? 9500 : 4000;
-          let frTimer = null;
-          const fr = await Promise.race([
-            fastResolve(unsealed.url, { timeout: frCapMs, collectAlternatives: false }),
-            new Promise((resolve) => { frTimer = setTimeout(() => resolve(null), frCapMs); }),
-          ]).catch(() => null);
-          if (frTimer) clearTimeout(frTimer);
-          if (fr?.streamUrl) {
-            chosenStream = fr.streamUrl;
-            streamHeaders = fr.headers || streamHeaders;
-            pageTitle = fr.pageTitle || pageTitle;
-            if (Array.isArray(fr.subtitles) && fr.subtitles.length > 0) {
-              subtitles = fr.subtitles;
-            }
-          }
-        }
-        if (!chosenStream && unsealed.url.includes('hdfilmcehennemi')) {
-          const dr = await directResolveHDFilmCehennemi(unsealed.url);
-          if (dr?.streamUrl) {
-            chosenStream = dr.streamUrl;
-            streamHeaders = dr.headers || streamHeaders;
-            pageTitle = dr.pageTitle || pageTitle;
-            if (Array.isArray(dr.subtitles)) subtitles = dr.subtitles;
-          }
-        }
-        if (!chosenStream) {
-          const pwFallback = await resolveTargetWithPlaywrightFallback({
-            url: unsealed.url,
-            referer: embedReferer,
-            moviePageUrl: unsealed.moviePageUrl || '',
-          }, 9500);
-          if (pwFallback?.streamUrl) {
-            chosenStream = pwFallback.streamUrl;
-            streamHeaders = pwFallback.headers || streamHeaders;
-            pageTitle = pwFallback.pageTitle || pageTitle;
-            if (Array.isArray(pwFallback.subtitles) && pwFallback.subtitles.length > 0) {
-              subtitles = pwFallback.subtitles;
-            }
-          }
-        }
+      const directResult = await directResolveHDFilmCehennemi(trimmedUrl);
+      if (directResult && directResult.streamUrl) {
+        const streamHeaders = directResult.headers || {};
+        const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(directResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+        const proxiedSubtitles = (directResult.subtitles || []).map(sub => ({
+          ...sub,
+          playableUrl: `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(sub.file)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`,
+        }));
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          streamUrl: directResult.streamUrl,
+          playableStreamUrl,
+          type: 'm3u8',
+          headers: streamHeaders,
+          pageTitle: directResult.pageTitle || 'Film Akışı',
+          subtitles: proxiedSubtitles,
+          cached: false,
+          resolvedIn: Date.now() - startTime,
+        });
       }
+    } catch (directErr) {
+      console.warn('[HLSProxy] directResolveHDFilmCehennemi warning:', directErr.message);
+    }
+  }
 
-      if (!chosenStream || chosenStream.includes('filmakinesimp4') || chosenStream.includes('blank.mp4')) {
-        return res.status(404).json({ success: false, error: 'Bu alternatif kaynakta aktif video akışı bulunamadı.' });
+  // 1. Primary: In-Process Fast Scraper (HDFilmCehennemi, FilmMakinesi, FullHDFilmİzlesene in 1-3s)
+  if (fastResolve) {
+    try {
+      const fastResult = await fastResolve(trimmedUrl, { timeout: Math.min(fetchTimeout, 15000) });
+      if (fastResult && fastResult.isTakedown) {
+        return res.status(451).json({
+          success: false,
+          error: fastResult.error || 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.',
+          code: 'LEGAL_TAKEDOWN',
+        });
       }
+      if (
+        fastResult &&
+        fastResult.streamUrl &&
+        !fastResult.streamUrl.includes('filmakinesimp4') &&
+        !fastResult.streamUrl.includes('blank.mp4')
+      ) {
+        let streamHeaders = fastResult.headers || {};
+        if (fastResult.streamUrl.includes('playmix') && (!streamHeaders.referer || !streamHeaders.referer.includes('playmix.uno'))) {
+          streamHeaders = { ...streamHeaders, referer: 'https://playmix.uno/', origin: 'https://playmix.uno' };
+        } else if (fastResult.streamUrl.includes('imagecdn') && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
+          streamHeaders = { ...streamHeaders, referer: 'https://rapidvid.org/', origin: 'https://rapidvid.org' };
+        } else if ((fastResult.streamUrl.includes('cdnimages') || fastResult.streamUrl.includes('shop') || fastResult.streamUrl.includes('cyou')) && (!streamHeaders.referer || !streamHeaders.referer.includes('hdfilmcehennemi'))) {
+          streamHeaders = { ...streamHeaders, referer: 'https://hdfilmcehennemi.mobi/', origin: 'https://hdfilmcehennemi.mobi' };
+        }
+        const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(fastResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
 
-      streamHeaders = normalizeProxyHeadersForStream(chosenStream, streamHeaders);
-      const playableStreamUrl = buildPlayableProxyUrl(resolveBaseOrigin, chosenStream, streamHeaders);
-      const proxiedSubtitles = (subtitles || []).map(sub => ({
-        ...sub,
-        playableUrl: sub.playableUrl || buildPlayableProxyUrl(resolveBaseOrigin, sub.file, streamHeaders),
-      }));
-      const audioType = unsealed.audioType || extractAudioTypeTag(unsealed.label || '', chosenStream);
-
-      return res.status(200).json({
-        success: true,
-        status: 'success',
-        streamUrl: isPrivileged ? chosenStream : undefined,
-        playableStreamUrl,
-        type: chosenStream.toLowerCase().endsWith('.mp4') ? 'mp4' : 'm3u8',
-        headers: isPrivileged ? streamHeaders : {},
-        pageTitle,
-        ...(audioType ? { audioType } : {}),
-        subtitles: proxiedSubtitles,
-        resolvedIn: Date.now() - startTime,
-      });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message || 'Alternatif çözümlenemedi.' });
-    }
-  }
-
-  // 2. Collect multi-site or single-URL targets
-  const targets = [];
-  const seenUrls = new Set();
-  const addTarget = (targetUrl, meta = {}) => {
-    if (!targetUrl || typeof targetUrl !== 'string') return;
-    const cleanUrl = targetUrl.trim();
-    if (!validateSsrfUrl(cleanUrl).safe || seenUrls.has(cleanUrl)) return;
-    seenUrls.add(cleanUrl);
-    const pk = meta.providerKey || inferProviderFromUrl(cleanUrl);
-    targets.push({
-      url: cleanUrl,
-      providerKey: pk,
-      provider: PROVIDER_DISPLAY_NAMES[pk] || meta.provider || 'Kaynak',
-      title: meta.title || title || '',
-      year: meta.year || year || '',
-      imdbId: meta.imdbId || imdbId || '',
-      moviePageUrl: meta.moviePageUrl || '',
-      referer: meta.referer || '',
-    });
-  };
-
-  if (Array.isArray(sourceTokens)) {
-    for (const tok of sourceTokens) {
-      const u = unsealSourcePayload(tok);
-      if (u?.url) addTarget(u.url, u);
-    }
-  }
-  if (Array.isArray(sources)) {
-    for (const s of sources) {
-      if (typeof s === 'string') {
-        addTarget(s, { title, year, imdbId });
-      } else if (s?.sourceToken) {
-        const u = unsealSourcePayload(s.sourceToken);
-        if (u?.url) addTarget(u.url, u);
-      } else if (s?.url) {
-        addTarget(s.url, s);
-      }
-    }
-  }
-  if (url && typeof url === 'string') {
-    addTarget(url, { title, year, imdbId });
-  }
-
-  if (targets.length === 0) {
-    return res.status(400).json({ success: false, error: 'Geçersiz veya eksik URL/kaynak parametresi.' });
-  }
-
-  // Instant fast-path for direct .m3u8 / .mp4 stream URLs
-  if (targets.length === 1) {
-    const trimmedUrl = targets[0].url;
-    const lower = trimmedUrl.toLowerCase();
-    if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
-      const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(trimmedUrl)}`;
-      return res.status(200).json({
-        success: true,
-        status: 'success',
-        streamUrl: isPrivileged ? trimmedUrl : undefined,
-        playableStreamUrl,
-        type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
-        headers: {},
-        pageTitle: title || 'Doğrudan Akış Kaynağı',
-        alternativeGroups: [],
-        externalSubtitles: [],
-        cached: false,
-        resolvedIn: 1,
-      });
-    }
-  }
-
-  // 3. Kick off ready Turkish subtitles search in parallel (soft 4.5s race cap so playback isn't delayed)
-  const effectiveTitle = targets.find(t => t.title)?.title || title || '';
-  const effectiveImdb = targets.find(t => t.imdbId)?.imdbId || imdbId || '';
-  const effectiveYear = targets.find(t => t.year)?.year || year || '';
-  const subtitleSearchPromise = (effectiveTitle || effectiveImdb)
-    ? Promise.race([
-        searchTurkishSubtitles({ title: effectiveTitle, imdbId: effectiveImdb, year: effectiveYear }),
-        new Promise(resolve => setTimeout(() => resolve([]), 4500)),
-      ]).catch(() => [])
-    : Promise.resolve([]);
-
-  // 4. Race resolution across ALL source websites concurrently
-  const perSourcePromises = targets.map(async (src) => {
-    const t0 = Date.now();
-    let resolved = null;
-    if (fastResolve) {
-      const frBudgetMs = Math.min(fetchTimeout, 10500);
-      let frTimer = null;
-      try {
-        resolved = await Promise.race([
-          fastResolve(src.url, { timeout: frBudgetMs, collectAlternatives: true }),
-          new Promise((resolve) => { frTimer = setTimeout(() => resolve(null), frBudgetMs); }),
-        ]);
-      } catch {} finally {
-        if (frTimer) clearTimeout(frTimer);
-      }
-    }
-    // Backup direct HDF resolver if fastResolve returned nothing for HDFilmCehennemi
-    if ((!resolved || !resolved.streamUrl) && src.url.includes('hdfilmcehennemi')) {
-      try {
-        const directRes = await directResolveHDFilmCehennemi(src.url);
-        if (directRes?.streamUrl) {
-          resolved = {
-            ...directRes,
-            alternatives: [{
-              label: 'Ana Oynatıcı',
-              embedUrl: src.url,
-              streamUrl: directRes.streamUrl,
-              headers: directRes.headers || {},
-              subtitles: directRes.subtitles || [],
-            }],
+        const proxiedSubtitles = (fastResult.subtitles || []).map(sub => {
+          const subFile = sub.file;
+          const playableUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(subFile)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+          return {
+            ...sub,
+            playableUrl,
           };
-        }
-      } catch {}
-    }
-    return { src, resolved, elapsedMs: Date.now() - t0 };
-  });
+        });
 
-  const [resolvedSources, externalSubtitles] = await Promise.all([
-    Promise.all(perSourcePromises),
-    subtitleSearchPromise,
-  ]);
-
-  // 5. Collect playable stream candidates to probe speed & resolution, plus per-site alternatives
-  const streamCandidates = [];
-  const siteGroupsRaw = [];
-  let takedownError = null;
-  let resolvedPageTitle = effectiveTitle || 'Film Akışı';
-
-  for (const { src, resolved } of resolvedSources) {
-    if (!resolved) continue;
-    if (resolved.isTakedown) {
-      takedownError = takedownError || resolved.error;
-      continue;
-    }
-    if (resolved.pageTitle && (!resolvedPageTitle || resolvedPageTitle === 'Film Akışı')) {
-      resolvedPageTitle = resolved.pageTitle;
-    }
-
-    const groupItems = [];
-    const seenAltKeys = new Set();
-
-    const siteGroupIndex = siteGroupsRaw.length + 1;
-
-    const pushAlt = (alt) => {
-      const sUrl = alt.streamUrl || '';
-      const eUrl = alt.embedUrl || src.url;
-      if (sUrl && (sUrl.includes('filmakinesimp4') || sUrl.includes('blank.mp4'))) return;
-      const rawAltLabel = alt.candidateLabel || alt.label || '';
-      const audioType = alt.audioType || extractAudioTypeTag(rawAltLabel, sUrl || eUrl);
-      // Avoid duplicate stream entries; for pichive keep distinct audio tracks separate
-      const dedupKey = sUrl
-        ? (sUrl.includes('pichive') && audioType ? `${audioType}::${sUrl.split('?')[0]}` : sUrl)
-        : eUrl;
-      if (!dedupKey || seenAltKeys.has(dedupKey)) return;
-      seenAltKeys.add(dedupKey);
-
-      const altId = `alt_${siteGroupIndex}_${groupItems.length + 1}`;
-      const normHeaders = sUrl ? normalizeProxyHeadersForStream(sUrl, alt.headers || resolved.headers || {}) : (alt.headers || {});
-      const token = sealSourcePayload({
-        url: eUrl,
-        moviePageUrl: src.url,
-        directStreamUrl: sUrl || '',
-        providerKey: src.providerKey,
-        headers: normHeaders,
-        referer: src.url || eUrl,
-        subtitles: alt.subtitles || resolved.subtitles || [],
-        title: resolvedPageTitle,
-        audioType,
-        isMoviePage: !alt.embedUrl,
-      });
-
-      const safeAudioSuffix = audioType ? ` · ${audioType}` : '';
-      const itemObj = {
-        id: altId,
-        label: `Alternatif ${groupItems.length + 1}${safeAudioSuffix}`,
-        ...(audioType ? { audioType } : {}),
-        sourceToken: token,
-        isResolved: Boolean(sUrl),
-        ...(isPrivileged ? { providerKey: src.providerKey, detailLabel: rawAltLabel } : {}),
-      };
-      groupItems.push(itemObj);
-
-      if (sUrl) {
-        streamCandidates.push({
-          altId,
-          providerKey: src.providerKey,
-          streamUrl: sUrl,
-          headers: normHeaders,
-          subtitles: alt.subtitles || resolved.subtitles || [],
-          pageTitle: resolved.pageTitle || resolvedPageTitle,
-          audioType,
-          label: rawAltLabel,
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          streamUrl: fastResult.streamUrl,
+          playableStreamUrl,
+          type: fastResult.type || 'm3u8',
+          headers: streamHeaders,
+          pageTitle: fastResult.pageTitle || '',
+          subtitles: proxiedSubtitles,
+          cached: false,
+          resolvedIn: Date.now() - startTime,
         });
       }
-    };
-
-    // Process resolved alternatives FIRST so audio/player labels (Dublaj/Altyazı/Dual) aren't shadowed by generic "Birincil Akış"
-    if (Array.isArray(resolved.alternatives)) {
-      for (const alt of resolved.alternatives) {
-        pushAlt(alt);
-      }
-    }
-    if (resolved.streamUrl) {
-      pushAlt({
-        label: resolved.candidateLabel || 'Birincil Akış',
-        embedUrl: resolved.embedUrl || src.url,
-        streamUrl: resolved.streamUrl,
-        headers: resolved.headers || {},
-        subtitles: resolved.subtitles || [],
-      });
-    }
-    // Include remaining page embed candidates as lazy switchable alternatives (up to 6 total per site)
-    if (Array.isArray(resolved.candidateEmbeds)) {
-      const existingEmbeds = new Set((resolved.alternatives || []).map(a => a.embedUrl).filter(Boolean));
-      for (const cand of resolved.candidateEmbeds) {
-        if (groupItems.length >= 6) break;
-        if (!cand?.url || existingEmbeds.has(cand.url)) continue;
-        existingEmbeds.add(cand.url);
-        pushAlt({
-          label: cand.label || '',
-          embedUrl: cand.url,
-          streamUrl: '',
-        });
-      }
-    }
-
-    if (groupItems.length > 0) {
-      siteGroupsRaw.push({
-        providerKey: src.providerKey,
-        providerName: src.provider || PROVIDER_DISPLAY_NAMES[src.providerKey] || 'Kaynak',
-        items: groupItems,
-      });
+    } catch (fastErr) {
+      console.warn('[HLSProxy] In-process fastResolve warning:', fastErr.message);
     }
   }
 
-  // Fallback when no playable stream was extracted (even if unresolved candidateEmbeds existed in siteGroupsRaw)
-  if (streamCandidates.length === 0 && targets.length > 0 && !takedownError) {
-    const pushFallbackResult = (sUrl, headersObj, subs, pageTitleStr, targetObj) => {
-      const sh = normalizeProxyHeadersForStream(sUrl, headersObj || {});
-      const altId = `alt_${targetObj.providerKey}_pw_1`;
-      const audioType = extractAudioTypeTag(pageTitleStr, sUrl);
-      streamCandidates.push({
-        altId,
-        providerKey: targetObj.providerKey,
-        streamUrl: sUrl,
-        headers: sh,
-        subtitles: subs || [],
-        pageTitle: pageTitleStr || resolvedPageTitle,
-        audioType,
-      });
-      const resolvedItem = {
-        id: altId,
-        label: `Alternatif 1${audioType ? ` · ${audioType}` : ''}`,
-        ...(audioType ? { audioType } : {}),
-        sourceToken: sealSourcePayload({
-          url: targetObj.url,
-          moviePageUrl: targetObj.moviePageUrl || targetObj.url,
-          directStreamUrl: sUrl,
-          providerKey: targetObj.providerKey,
-          headers: sh,
-          audioType,
-        }),
-        isResolved: true,
-      };
-      const existingGrp = siteGroupsRaw.find(g => g.providerKey === targetObj.providerKey);
-      if (existingGrp) {
-        existingGrp.items = [resolvedItem, ...(existingGrp.items || []).filter(it => !it.isResolved)].slice(0, 6);
-      } else {
-        siteGroupsRaw.push({
-          providerKey: targetObj.providerKey,
-          providerName: targetObj.provider,
-          items: [resolvedItem],
-        });
-      }
-    };
+  // 2. Secondary: External Stream Resolver Microservice (Playwright Stealth fallback)
+  const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
+  const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
 
-    const pwCapMs = Math.min(fetchTimeout, 9500);
-    for (const fallbackTarget of targets.slice(0, 2)) {
-      const fallbackRes = await resolveTargetWithPlaywrightFallback(fallbackTarget, pwCapMs);
-      if (fallbackRes?.streamUrl) {
-        pushFallbackResult(
-          fallbackRes.streamUrl,
-          fallbackRes.headers,
-          fallbackRes.subtitles,
-          fallbackRes.pageTitle,
-          fallbackTarget
-        );
-        break;
-      }
-    }
-  }
-
-  if (streamCandidates.length === 0) {
-    const adminDiagnostics = isPrivileged
-      ? {
-          capabilities: {
-            tlsPythonReady: Boolean(resolveTlsPythonBin()),
-            torReachable: await isTorReachable(),
-            proxyConfigured: Boolean(buildEnvProxyUrl()),
-            playwrightReady: Boolean(inProcessPlaywrightResolve),
-          },
-          perTarget: resolvedSources.map(({ src, resolved, elapsedMs }) => ({
-            providerKey: src.providerKey,
-            elapsedMs: elapsedMs || 0,
-            status: resolved?.isTakedown
-              ? 'takedown_451'
-              : (resolved?.streamUrl ? 'resolved_filtered' : (resolved ? 'alts_no_stream' : 'empty')),
-          })),
-        }
-      : undefined;
-
-    if (takedownError) {
-      return res.status(451).json({
-        success: false,
-        error: takedownError,
-        code: 'LEGAL_TAKEDOWN',
-        ...(adminDiagnostics ? { diagnostics: adminDiagnostics } : {}),
-      });
-    }
-    return res.status(404).json({
-      success: false,
-      error: 'Film akışı şu anda hiçbir kaynakta çözümlenemedi. Lütfen başka bir film veya tekrar denemeyi seçin.',
-      code: 'STREAM_NOT_FOUND',
-      ...(adminDiagnostics ? { diagnostics: adminDiagnostics } : {}),
-    });
-  }
-
-  // 6. Probe top stream candidates concurrently across all providers to pick the fastest + highest quality stream
-  const candidatesToProbe = streamCandidates.slice(0, 10);
-  const probeResults = await Promise.all(
-    candidatesToProbe.map(async (c) => {
-      const probe = await probeStreamCandidate(c.streamUrl, c.headers);
-      return { candidate: c, probe };
-    })
-  );
-
-  probeResults.sort((a, b) => b.probe.score - a.probe.score);
-  const bestPick = probeResults.find(r => r.probe.ok) || probeResults[0];
-  const winner = bestPick.candidate;
-
-  const playableStreamUrl = buildPlayableProxyUrl(resolveBaseOrigin, winner.streamUrl, winner.headers);
-  const proxiedPageSubtitles = (winner.subtitles || []).map(sub => ({
-    ...sub,
-    playableUrl: sub.playableUrl || buildPlayableProxyUrl(resolveBaseOrigin, sub.file, winner.headers),
-  }));
-
-  // Redact group labels for regular users; reveal source site names to admins & tourist admins
-  const alternativeGroups = siteGroupsRaw.map((grp, grpIdx) => ({
-    groupId: `grp_${grpIdx + 1}`,
-    groupLabel: isPrivileged ? grp.providerName : `Kaynak ${grpIdx + 1}`,
-    ...(isPrivileged ? { providerKey: grp.providerKey } : {}),
-    items: grp.items,
-  }));
-
-  return res.status(200).json({
-    success: true,
-    status: 'success',
-    streamUrl: isPrivileged ? winner.streamUrl : undefined,
-    playableStreamUrl,
-    type: winner.streamUrl.toLowerCase().endsWith('.mp4') ? 'mp4' : 'm3u8',
-    headers: isPrivileged ? winner.headers : {},
-    pageTitle: winner.pageTitle || resolvedPageTitle,
-    ...(winner.audioType ? { audioType: winner.audioType } : {}),
-    subtitles: proxiedPageSubtitles,
-    externalSubtitles: externalSubtitles || [],
-    alternativeGroups,
-    activeAlternativeId: winner.altId,
-    bestQualityHeight: bestPick.probe?.maxHeight || 0,
-    cached: false,
-    resolvedIn: Date.now() - startTime,
-  });
-});
-
-// ─── Turkish Subtitle Engine (Stremio Cinemeta/OpenSubtitles v3 + turkcealtyazi.org) ───
-const subtitleResultCache = new Map();
-const subtitleFileCache = new Map();
-const SUBTITLE_CACHE_TTL_MS = 30 * 60 * 1000;
-
-function decodeSubtitleText(buf) {
-  if (!buf || !buf.length) return '';
-  // Strip UTF-8 BOM if present
-  const hasUtf8Bom = buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf;
-  const slice = hasUtf8Bom ? buf.subarray(3) : buf;
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(slice);
-  } catch {
-    try {
-      return new TextDecoder('windows-1254').decode(slice);
-    } catch {
-      return slice.toString('latin1');
-    }
-  }
-}
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), fetchTimeout + 1000);
 
-function convertSrtBufferToVtt(buf) {
-  let text = decodeSubtitleText(buf);
-  if (!text) return Buffer.from('WEBVTT\n\n', 'utf8');
-  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\uFEFF/, '');
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
 
-  const normalizeVttTs = (rawTs) => {
-    const clean = String(rawTs || '').trim();
-    const m = clean.match(/^(?:(\d{1,3}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/);
-    if (!m) return null;
-    const h = String(m[1] ? parseInt(m[1], 10) : 0).padStart(2, '0');
-    const mm = String(parseInt(m[2], 10)).padStart(2, '0');
-    const ss = String(parseInt(m[3], 10)).padStart(2, '0');
-    const ms = String(m[4]).padEnd(3, '0').slice(0, 3);
-    const totalSec = parseInt(h, 10) * 3600 + parseInt(mm, 10) * 60 + parseInt(ss, 10) + parseInt(ms, 10) / 1000;
-    return { formatted: `${h}:${mm}:${ss}.${ms}`, totalSec };
-  };
-
-  if (/^\s*WEBVTT/i.test(text)) {
-    // Normalize any comma-milliseconds or 2-digit ms even inside WebVTT files
-    const fixed = text.replace(
-      /(\d{1,3}:\d{2}(?::\d{2})?)[,.](\d{1,3})/g,
-      (_m, hms, ms) => `${hms}.${String(ms).padEnd(3, '0').slice(0, 3)}`
-    );
-    return Buffer.from(fixed, 'utf8');
-  }
-
-  const blocks = text.split(/\n{2,}/);
-  const parsedCues = [];
-  for (const block of blocks) {
-    const lines = block.split('\n').map(l => l.trimEnd()).filter(Boolean);
-    if (lines.length === 0) continue;
-    let startIdx = 0;
-    if (/^\d+$/.test(lines[0].trim()) && lines.length > 1 && lines[1].includes('-->')) {
-      startIdx = 1;
-    }
-    const tsLine = lines[startIdx];
-    if (!tsLine || !tsLine.includes('-->')) continue;
-    const arrowParts = tsLine.split(/\s*-->\s*/);
-    if (arrowParts.length < 2) continue;
-    const startObj = normalizeVttTs(arrowParts[0]);
-    const endTokens = arrowParts[1].trim().split(/\s+/);
-    const endObj = normalizeVttTs(endTokens[0]);
-    if (!startObj || !endObj || endObj.totalSec <= startObj.totalSec) continue;
-    const cueSettings = endTokens.slice(1).join(' ');
-    const header = `${startObj.formatted} --> ${endObj.formatted}${cueSettings ? ` ${cueSettings}` : ''}`;
-    const body = lines.slice(startIdx + 1).join('\n');
-    if (body) {
-      parsedCues.push({ startSec: startObj.totalSec, text: `${header}\n${body}` });
-    }
-  }
-  parsedCues.sort((a, b) => a.startSec - b.startSec);
-  return Buffer.from(`WEBVTT\n\n${parsedCues.map(c => c.text).join('\n\n')}\n`, 'utf8');
-}
-
-function extractBestSubFromZipBuffer(zipBuf) {
-  if (!zipBuf || zipBuf.length < 22) return null;
-  // Locate End of Central Directory (0x06054b50) from end
-  let eocdOffset = -1;
-  const minOffset = Math.max(0, zipBuf.length - 65557);
-  for (let i = zipBuf.length - 22; i >= minOffset; i--) {
-    if (zipBuf.readUInt32LE(i) === 0x06054b50) {
-      eocdOffset = i;
-      break;
-    }
-  }
-  const entries = [];
-  if (eocdOffset !== -1) {
-    const cdSize = zipBuf.readUInt32LE(eocdOffset + 12);
-    const cdOffset = zipBuf.readUInt32LE(eocdOffset + 16);
-    let pos = cdOffset;
-    const cdEnd = Math.min(zipBuf.length, cdOffset + cdSize);
-    while (pos + 46 <= cdEnd && zipBuf.readUInt32LE(pos) === 0x02014b50) {
-      const method = zipBuf.readUInt16LE(pos + 10);
-      const compSize = zipBuf.readUInt32LE(pos + 20);
-      const nameLen = zipBuf.readUInt16LE(pos + 28);
-      const extraLen = zipBuf.readUInt16LE(pos + 30);
-      const commentLen = zipBuf.readUInt16LE(pos + 32);
-      const localOffset = zipBuf.readUInt32LE(pos + 42);
-      const fileName = zipBuf.subarray(pos + 46, pos + 46 + nameLen).toString('utf8');
-      pos += 46 + nameLen + extraLen + commentLen;
-
-      if (!fileName || fileName.endsWith('/') || fileName.includes('__MACOSX')) continue;
-      if (localOffset + 30 > zipBuf.length || zipBuf.readUInt32LE(localOffset) !== 0x04034b50) continue;
-      const lNameLen = zipBuf.readUInt16LE(localOffset + 26);
-      const lExtraLen = zipBuf.readUInt16LE(localOffset + 28);
-      const dataStart = localOffset + 30 + lNameLen + lExtraLen;
-      const compSlice = zipBuf.subarray(dataStart, dataStart + compSize);
-      entries.push({ fileName, method, compSlice });
-    }
-  }
-  // Rank entries: prefer full non-sample/non-trailer .vtt/.srt (including .srt.txt / .vtt.txt) over split parts or samples
-  const isSubCandidate = (name) => /\.(srt|vtt|ass|sub|txt)$/i.test(name);
-  const nonSample = entries.filter(e =>
-    isSubCandidate(e.fileName) &&
-    !/\b(sample|trailer|teaser|fragman|readme|nfo)\b/i.test(e.fileName)
-  );
-  const pool = nonSample.length > 0 ? nonSample : entries.filter(e => isSubCandidate(e.fileName));
-  const scoreZipEntry = (name) => {
-    const lower = String(name || '').toLowerCase();
-    let pts = 2;
-    if (lower.endsWith('.vtt') || lower.endsWith('.vtt.txt')) pts = 30;
-    else if (lower.endsWith('.srt') || lower.endsWith('.srt.txt')) pts = 25;
-    else if (lower.endsWith('.ass') || lower.endsWith('.sub')) pts = 12;
-    else if (lower.endsWith('.txt')) pts = 4;
-    if (/\b(cd\s*2|part\s*2|disc\s*2)\b|[-_. ]cd2\b/i.test(lower)) pts -= 15;
-    if (/\b(cd\s*3|part\s*3|disc\s*3)\b|[-_. ]cd3\b/i.test(lower)) pts -= 18;
-    if (/\b(sample|trailer|teaser|fragman|readme|nfo)\b/i.test(lower)) pts -= 100;
-    return pts;
-  };
-  const scored = pool.sort((a, b) => scoreZipEntry(b.fileName) - scoreZipEntry(a.fileName));
-  for (const entry of scored) {
-    try {
-      const data = entry.method === 8 ? zlib.inflateRawSync(entry.compSlice) : entry.method === 0 ? entry.compSlice : null;
-      if (!data || data.length <= 20) continue;
-      const lower = entry.fileName.toLowerCase();
-      if (lower.endsWith('.txt') && !lower.endsWith('.srt.txt') && !lower.endsWith('.vtt.txt')) {
-        // Require actual subtitle timestamps for plain .txt entries so readme text files are skipped
-        if (!data.subarray(0, 4096).toString('utf8').includes('-->')) continue;
-      }
-      return data;
-    } catch { /* try next */ }
-  }
-  return null;
-}
-
-function cleanMovieTitleForSubtitleSearch(rawTitle = '') {
-  return String(rawTitle)
-    .replace(/\(\d{4}\)/g, ' ')
-    .replace(/\b(19|20)\d{2}\b/g, ' ')
-    .replace(/\b(türkçe|turkce|dublaj|altyazılı|altyazili|altyazı|altyazi|dual|full\s*hd|1080p|720p|4k|uhd|izle|film|filmi|hd)\b/gi, ' ')
-    .replace(/[|/\\–—]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\s+1$/, '')
-    .trim();
-}
-
-async function resolveImdbViaCinemeta(title, year) {
-  const cleaned = cleanMovieTitleForSubtitleSearch(title);
-  if (!cleaned || cleaned.length < 2) return null;
-  for (const kind of ['movie', 'series']) {
-    try {
-      const res = await fetch(`https://v3-cinemeta.strem.io/catalog/${kind}/top/search=${encodeURIComponent(cleaned)}.json`, {
-        signal: AbortSignal.timeout(4500),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const metas = Array.isArray(data?.metas) ? data.metas : [];
-      if (metas.length === 0) continue;
-      const normClean = cleaned.toLowerCase();
-      let best = metas[0];
-      let bestScore = -1;
-      for (const m of metas.slice(0, 8)) {
-        let score = 0;
-        const mName = String(m.name || '').toLowerCase();
-        if (mName === normClean) score += 10;
-        else if (mName.includes(normClean) || normClean.includes(mName)) score += 5;
-        if (year && m.releaseInfo && String(m.releaseInfo).includes(String(year))) score += 6;
-        if (score > bestScore) {
-          bestScore = score;
-          best = m;
-        }
-      }
-      if (best?.imdb_id && /^tt\d+$/.test(best.imdb_id)) return best.imdb_id;
-      if (best?.id && /^tt\d+$/.test(best.id)) return best.id;
-    } catch { /* try next */ }
-  }
-  return null;
-}
-
-function parseSubtitleReleaseMeta(rawText = '', explicitFps = 0) {
-  const txt = String(rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  let fps = Number(explicitFps) || 0;
-  let fpsLabel = fps > 0 ? `${fps} fps` : '';
-  if (!fps) {
-    const fpsMatch = txt.match(/\b(23[.,]976|23[.,]98|24(?:[.,]000)?|25(?:[.,]000)?|29[.,]97|30(?:[.,]000)?)\s*(?:fps)?\b/i);
-    if (fpsMatch) {
-      const num = parseFloat(fpsMatch[1].replace(',', '.'));
-      if (num >= 23 && num <= 60) {
-        fps = num === 23.98 ? 23.976 : num;
-        fpsLabel = `${fps} fps`;
-      }
-    }
-  } else if (fps === 23.98) {
-    fps = 23.976;
-    fpsLabel = '23.976 fps';
-  }
-  const relMatch = txt.match(/\b(WEB[-\s.]?DL|WEBRip|Blu[-\s.]?Ray|BRRip|BDRip|HDTV|HDRip|DVDRip|REMUX|IMAX|Extended|Director'?s\.?Cut|Theatrical|CAM|HDCAM|TS|DVDScr)\b/i);
-  const releaseTag = relMatch ? relMatch[1].replace(/\s+/g, '') : '';
-  let score = 0;
-  if (/web[-\s.]?dl|blu[-\s.]?ray|webrip|bdrip|brrip|remux/i.test(txt)) score += 12;
-  if (/hdtv|hdrip|dvdrip/i.test(txt)) score += 6;
-  if (fps === 23.976 || fps === 24) score += 6;
-  else if (fps === 25) score += 2;
-  if (/\b(cam|ts|hdcam|telesync|dvdscr|screener|workprint)\b/i.test(txt)) score -= 35;
-  if (/\b(cd\s*[123]|disc\s*[123]|2cd)\b/i.test(txt)) score -= 40;
-  if (/\b(extended|director|uncut|unrated|imax)\b/i.test(txt)) score -= 4;
-  return { fps, fpsLabel, releaseTag, score };
-}
-
-async function searchOpenSubtitlesStremio(imdbId, cleanTitle, year) {
-  const id = imdbId && /^tt\d+$/i.test(imdbId) ? imdbId : await resolveImdbViaCinemeta(cleanTitle, year);
-  if (!id) return [];
-  try {
-    const res = await fetch(`https://opensubtitles-v3.strem.io/subtitles/movie/${encodeURIComponent(id)}.json`, {
-      signal: AbortSignal.timeout(5500),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const subs = Array.isArray(data?.subtitles) ? data.subtitles : [];
-    const trSubs = subs.filter(s => s && s.url && (s.lang === 'tur' || s.lang === 'tr' || String(s.SubLanguageID || '').toLowerCase() === 'tur'));
-    const mapped = [];
-    trSubs.forEach((s, idx) => {
-      const metaFields = [
-        s.subtitleFileName,
-        s.movieReleaseName,
-        s.releaseFormat,
-        s.releaseOther,
-        s.release,
-        s.SubFileName,
-        s.filename,
-      ].filter(Boolean).join(' ');
-      // Exclude teaser/trailer/sample/promo subtitles that never match full feature runtime
-      if (/\b(teaser|trailer|fragman|sample|preview)\b/i.test(metaFields)) return;
-      const explicitFps = Number(s.fpsMilli) > 15000 ? Number((Number(s.fpsMilli) / 1000).toFixed(3)) : 0;
-      const meta = parseSubtitleReleaseMeta(metaFields, explicitFps);
-      const downloads = Number(s.downloadCount || s.downloads || 0);
-      const dlBonus = downloads > 0 ? Math.log10(downloads + 1) * 4 : 0;
-      mapped.push({
-        id: `os_${idx}_${s.id || idx}`,
-        fps: meta.fps,
-        fpsHint: meta.fpsLabel,
-        releaseTag: meta.releaseTag,
-        score: meta.score + dlBonus + Math.max(0, 4 - idx * 0.2),
-        lang: 'tr',
-        kind: 'subtitles',
-        playableUrl: `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}`,
-        external: true,
-      });
-    });
-    return mapped;
-  } catch {
-    return [];
-  }
-}
-
-async function searchTurkceAltyaziOrg(cleanTitle, year) {
-  if (!cleanTitle || cleanTitle.length < 2) return [];
-  try {
-    const findUrl = `https://turkcealtyazi.org/find.php?cat=sub&find=${encodeURIComponent(cleanTitle)}`;
-    const findRes = await fetch(findUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-      },
-      signal: AbortSignal.timeout(5500),
-    });
-    if (!findRes.ok) return [];
-    const findBuf = Buffer.from(await findRes.arrayBuffer());
-    const findHtml = decodeSubtitleText(findBuf);
-
-    const movMatches = [...findHtml.matchAll(/href="(\/mov\/\d+\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi)];
-    let targetMovPath = null;
-    if (findRes.url && findRes.url.includes('/mov/')) {
-      targetMovPath = new URL(findRes.url).pathname;
-    } else if (movMatches.length > 0) {
-      const normClean = cleanTitle.toLowerCase();
-      let bestScore = -1;
-      for (const m of movMatches.slice(0, 14)) {
-        const text = m[2].replace(/<[^>]+>/g, '').trim().toLowerCase();
-        const around = findHtml.slice(Math.max(0, m.index - 100), Math.min(findHtml.length, m.index + 300));
-        let score = 0;
-        if (text === normClean) score += 10;
-        else if (text.includes(normClean)) score += 6;
-        if (year && (m[0].includes(String(year)) || around.includes(String(year)))) score += 8;
-        if (score > bestScore) {
-          bestScore = score;
-          targetMovPath = m[1];
-        }
-      }
-      if (!targetMovPath) targetMovPath = movMatches[0][1];
-    }
-    if (!targetMovPath) return [];
-
-    const movUrl = `https://turkcealtyazi.org${targetMovPath.startsWith('/') ? '' : '/'}${targetMovPath}`;
-    const movRes = await fetch(movUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': findUrl,
-      },
-      signal: AbortSignal.timeout(5500),
-    });
-    if (!movRes.ok) return [];
-    const movHtml = decodeSubtitleText(Buffer.from(await movRes.arrayBuffer()));
-
-    const rawMatches = [...movHtml.matchAll(/href="(\/sub\/(\d+)\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi)];
-    const subRows = [];
-    const seenSub = new Set();
-    for (let i = 0; i < rawMatches.length; i++) {
-      const m = rawMatches[i];
-      const subPath = m[1];
-      const subId = m[2];
-      if (seenSub.has(subId)) continue;
-
-      // Capture exact <div class="altsonsez..."> row container so <div class="alcd">, <div class="alfps">,
-      // <div class="alindirme">, and <div class="ripdiv"> are all included without spilling into adjacent rows.
-      const rowOpenIdx = movHtml.lastIndexOf('class="altsonsez', m.index);
-      const start = (rowOpenIdx !== -1 && m.index - rowOpenIdx < 400)
-        ? Math.max(0, rowOpenIdx - 12)
-        : Math.max(0, m.index - 220);
-      const nextRowIdx = movHtml.indexOf('class="altsonsez', m.index + m[0].length);
-      const nextSubIdx = i + 1 < rawMatches.length ? rawMatches[i + 1].index - 120 : movHtml.length;
-      const rawEnd = Math.min(
-        movHtml.length,
-        nextRowIdx !== -1 ? Math.max(m.index + 200, nextRowIdx - 12) : nextSubIdx,
-        start + 2600
-      );
-      const rowBlock = movHtml.slice(start, Math.max(start + 200, rawEnd));
-
-      const hasTrFlag = /class="[^"]*\bflagtr\b/i.test(rowBlock) || /\bflag-tr\b/i.test(rowBlock) || /alt="tr"/i.test(rowBlock) || /Türkçe/i.test(rowBlock);
-      const hasEnFlag = /class="[^"]*\bflagen\b/i.test(rowBlock) || /\bflag-en\b/i.test(rowBlock) || /alt="en"/i.test(rowBlock) || /İngilizce/i.test(rowBlock);
-      if (hasEnFlag && !hasTrFlag) continue;
-      seenSub.add(subId);
-
-      const stripHtml = (s = '') => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      const cdRaw = stripHtml(rowBlock.match(/class="alcd"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
-      const cdCount = parseInt(cdRaw, 10) || 1;
-
-      const fpsRaw = stripHtml(rowBlock.match(/class="alfps"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
-      let rowFps = 0;
-      const fpsNum = parseFloat(fpsRaw.replace(',', '.'));
-      if (Number.isFinite(fpsNum) && fpsNum >= 23 && fpsNum <= 60) {
-        rowFps = fpsNum === 23.98 ? 23.976 : fpsNum;
-      }
-
-      const dlRaw = stripHtml(rowBlock.match(/class="alindirme"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
-      const downloads = parseInt(dlRaw.replace(/[^\d]/g, ''), 10) || 0;
-
-      const ripRaw = stripHtml(rowBlock.match(/class="ripdiv"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
-      const surumRaw = stripHtml(rowBlock.match(/class="altsonucsurum"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
-      const anchorText = stripHtml(m[3] || '');
-      const cleanRelText = [surumRaw, ripRaw, anchorText].filter(Boolean).join(' ');
-
-      if (/\b(teaser|trailer|fragman|sample|preview)\b/i.test(cleanRelText)) continue;
-
-      const meta = parseSubtitleReleaseMeta(cleanRelText, rowFps);
-      const cdPenalty = cdCount > 1 ? -100 : 0;
-      const dlBonus = downloads > 0 ? Math.log10(downloads + 1) * 5 : 0;
-      const fullSubUrl = `https://turkcealtyazi.org${subPath}`;
-      subRows.push({
-        id: `ta_${subId}`,
-        cdCount,
-        downloads,
-        fps: meta.fps,
-        fpsHint: meta.fpsLabel,
-        releaseTag: meta.releaseTag,
-        score: meta.score + dlBonus + cdPenalty + 4,
-        lang: 'tr',
-        kind: 'subtitles',
-        playableUrl: `/api/subtitles/ta?subUrl=${encodeURIComponent(fullSubUrl)}`,
-        external: true,
-      });
-      if (subRows.length >= 60) break;
-    }
-
-    const singleCdRows = subRows.filter(r => r.cdCount === 1);
-    const preferred = singleCdRows.length > 0 ? singleCdRows : subRows;
-    preferred.sort((a, b) => (b.score || 0) - (a.score || 0));
-    return preferred.slice(0, 12);
-  } catch {
-    return [];
-  }
-}
-
-async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {}) {
-  const cleanTitle = cleanMovieTitleForSubtitleSearch(title);
-  if (!cleanTitle && !imdbId) return [];
-  const cacheKey = `${imdbId || ''}|${cleanTitle.toLowerCase()}|${year || ''}`;
-  const cached = subtitleResultCache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
-    return cached.items;
-  }
-
-  const withSoftCap = (promise, ms) => Promise.race([
-    promise.catch(() => []),
-    new Promise(resolve => setTimeout(() => resolve([]), ms)),
-  ]);
-
-  const [osRes, taRes] = await Promise.allSettled([
-    withSoftCap(searchOpenSubtitlesStremio(imdbId, cleanTitle, year), 3500),
-    withSoftCap(searchTurkceAltyaziOrg(cleanTitle, year), 3500),
-  ]);
-
-  const combined = [];
-  if (taRes.status === 'fulfilled' && Array.isArray(taRes.value)) combined.push(...taRes.value);
-  if (osRes.status === 'fulfilled' && Array.isArray(osRes.value)) combined.push(...osRes.value);
-
-  combined.sort((a, b) => (b.score || 0) - (a.score || 0));
-
-  // Deduplicate by playableUrl and build clean readable labels with release/FPS tags
-  const deduped = [];
-  const seen = new Set();
-  for (const item of combined) {
-    if (!item?.playableUrl || seen.has(item.playableUrl)) continue;
-    seen.add(item.playableUrl);
-    const hints = [item.releaseTag, item.fpsHint].filter(Boolean);
-    const suffix = hints.length > 0 ? ` (${hints.join(' • ')})` : '';
-    deduped.push({
-      id: item.id,
-      label: `TR Altyazı ${deduped.length + 1}${suffix}`,
-      fps: item.fps || 0,
-      lang: 'tr',
-      kind: 'subtitles',
-      playableUrl: item.playableUrl,
-      external: true,
-    });
-    if (deduped.length >= 12) break;
-  }
-
-  if (deduped.length > 0) {
-    subtitleResultCache.set(cacheKey, { ts: Date.now(), items: deduped });
-  }
-  return deduped;
-}
-
-// GET /api/subtitles/search?title=...&imdbId=...&year=...
-router.get(['/subtitles/search', '/api/subtitles/search'], async (req, res) => {
-  try {
-    const { title = '', imdbId = '', year = '' } = req.query || {};
-    if (!title && !imdbId) {
-      return res.status(400).json({ success: false, error: 'title veya imdbId gereklidir.', subtitles: [] });
-    }
-    const subtitles = await searchTurkishSubtitles({ title: String(title), imdbId: String(imdbId), year: String(year) });
-    return res.status(200).json({ success: true, subtitles, count: subtitles.length });
-  } catch (err) {
-    return res.status(200).json({ success: false, subtitles: [], count: 0, error: err.message });
-  }
-});
-
-// GET /api/subtitles/vtt?url=<encoded_srt_or_vtt_or_zip_url>
-router.get(['/subtitles/vtt', '/api/subtitles/vtt'], async (req, res) => {
-  try {
-    const targetUrl = String(req.query?.url || '').trim();
-    const ssrf = validateSsrfUrl(targetUrl);
-    if (!targetUrl || !ssrf.safe) {
-      return res.status(400).json({ error: 'Geçersiz altyazı URL.' });
-    }
-    const cached = subtitleFileCache.get(`vtt:${targetUrl}`);
-    if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
-      res.set({
-        'Content-Type': 'text/vtt; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=1800',
-      });
-      return res.status(200).send(cached.buf);
-    }
-
-    const upstream = await safeFetch(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      },
-    });
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({ error: 'Altyazı indirilemedi.' });
-    }
-    let rawBuf = Buffer.from(await upstream.arrayBuffer());
-    // Check if zip (PK\x03\x04)
-    if (rawBuf.length >= 4 && rawBuf[0] === 0x50 && rawBuf[1] === 0x4b && rawBuf[2] === 0x03 && rawBuf[3] === 0x04) {
-      const extracted = extractBestSubFromZipBuffer(rawBuf);
-      if (!extracted) return res.status(404).json({ error: 'ZIP içerisinden geçerli altyazı çıkmadı.' });
-      rawBuf = extracted;
-    }
-    const rawHead = rawBuf.subarray(0, 128).toString('utf8').trimStart().toLowerCase();
-    if (rawHead.startsWith('<!doctype') || rawHead.startsWith('<html') || rawBuf.length < 30) {
-      return res.status(404).json({ error: 'Geçerli altyazı içeriği alınamadı.' });
-    }
-    const vttBuf = convertSrtBufferToVtt(rawBuf);
-    subtitleFileCache.set(`vtt:${targetUrl}`, { ts: Date.now(), buf: vttBuf });
-    res.set({
-      'Content-Type': 'text/vtt; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'public, max-age=1800',
-    });
-    return res.status(200).send(vttBuf);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/subtitles/ta?subUrl=<turkcealtyazi_sub_detail_url>
-router.get(['/subtitles/ta', '/api/subtitles/ta'], async (req, res) => {
-  try {
-    const subUrl = String(req.query?.subUrl || '').trim();
-    if (!subUrl.startsWith('https://turkcealtyazi.org/sub/') || !validateSsrfUrl(subUrl).safe) {
-      return res.status(400).json({ error: 'Geçersiz TürkçeAltyazı adresi.' });
-    }
-    const cached = subtitleFileCache.get(`ta:${subUrl}`);
-    if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
-      res.set({
-        'Content-Type': 'text/vtt; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=1800',
-      });
-      return res.status(200).send(cached.buf);
-    }
-
-    const detailRes = await safeFetch(subUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://turkcealtyazi.org/',
-      },
-    });
-    if (!detailRes.ok) return res.status(detailRes.status).json({ error: 'Altyazı detay sayfası açılamadı.' });
-    const detailHtml = decodeSubtitleText(Buffer.from(await detailRes.arrayBuffer()));
-
-    const idid = detailHtml.match(/name=["']idid["'][^>]+value=["']([^"']+)["']/i)?.[1] || '';
-    const altid = detailHtml.match(/name=["']altid["'][^>]+value=["']([^"']+)["']/i)?.[1] || '';
-    const sidid = detailHtml.match(/name=["']sidid["'][^>]+value=["']([^"']+)["']/i)?.[1] || '';
-    if (!idid || !altid) {
-      return res.status(404).json({ error: 'İndirme parametreleri bulunamadı.' });
-    }
-
-    const formBody = new URLSearchParams({ idid, altid, sidid }).toString();
-    const dlRes = await safeFetch('https://turkcealtyazi.org/ind', {
+    const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
       method: 'POST',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': subUrl,
-        'Origin': 'https://turkcealtyazi.org',
-      },
-      body: formBody,
+      headers,
+      body: JSON.stringify({ url: url.trim(), timeout: fetchTimeout }),
+      signal: controller.signal,
     });
-    if (!dlRes.ok) return res.status(dlRes.status).json({ error: 'Altyazı dosyası indirilemedi.' });
-    let fileBuf = Buffer.from(await dlRes.arrayBuffer());
-    if (fileBuf.length >= 4 && fileBuf[0] === 0x50 && fileBuf[1] === 0x4b && fileBuf[2] === 0x03 && fileBuf[3] === 0x04) {
-      const extracted = extractBestSubFromZipBuffer(fileBuf);
-      if (!extracted) return res.status(404).json({ error: 'ZIP arşivinde uygun altyazı bulunamadı.' });
-      fileBuf = extracted;
+    clearTimeout(timer);
+
+    const data = await microResponse.json().catch(() => null);
+
+    if (!microResponse.ok || !data || (!data.success && data.status !== 'success')) {
+      let errMsg = data?.error?.message || data?.error || 'Stream çözülemedi veya kaynak bulunamadı.';
+      if (trimmedUrl.includes('fullhdfilmizlesene')) {
+        errMsg = 'Bu film FullHDFilmİzlesene üzerinde harici bot korumalı bir oynatıcıda (VidMoxy vb.) barındırılıyor. Lütfen arama listesindeki HDFilmCehennemi alternatifini seçerek açmayı deneyin.';
+      } else if (trimmedUrl.includes('filmmakinesi')) {
+        errMsg = 'FilmMakinesi şu anda Cloudflare veri merkezi engeli (Error 1005) uyguladığı için yayın çözümlenemedi. Lütfen HDFilmCehennemi veya FullHDFilmİzlesene alternatifini seçin.';
+      }
+      return res.status(microResponse.status || 500).json({
+        success: false,
+        error: errMsg,
+        code: data?.code || 'STREAM_NOT_FOUND',
+      });
     }
-    const rawHead = fileBuf.subarray(0, 128).toString('utf8').trimStart().toLowerCase();
-    if (rawHead.startsWith('<!doctype') || rawHead.startsWith('<html') || fileBuf.length < 30) {
-      return res.status(404).json({ error: 'Geçerli altyazı içeriği alınamadı.' });
+
+    const payload = data.data || data;
+    const streamUrl = payload.streamUrl || data.streamUrl;
+    let streamHeaders = payload.headers || data.headers || {};
+    const pageTitle = payload.pageTitle || data.pageTitle || '';
+    const type = payload.type || data.type || 'm3u8';
+    const resolvedIn = payload.resolvedIn || data.resolvedIn || (Date.now() - startTime);
+
+    if (streamUrl && (streamUrl.includes('filmakinesimp4') || streamUrl.includes('blank.mp4'))) {
+      return res.status(404).json({
+        success: false,
+        error: 'Bu sayfada geçerli bir video akışı tespit edilemedi. Lütfen alternatif bir oynatıcı bağlantısı veya embed linki deneyin.',
+        code: 'INVALID_STREAM',
+      });
     }
-    const vttBuf = convertSrtBufferToVtt(fileBuf);
-    subtitleFileCache.set(`ta:${subUrl}`, { ts: Date.now(), buf: vttBuf });
-    res.set({
-      'Content-Type': 'text/vtt; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'public, max-age=1800',
+
+    if (streamUrl && streamUrl.includes('playmix') && (!streamHeaders.referer || streamHeaders.referer.includes('hdfilmcehennemi.nl') || !streamHeaders.referer.includes('playmix.uno'))) {
+      streamHeaders = {
+        ...streamHeaders,
+        referer: 'https://playmix.uno/',
+        origin: 'https://playmix.uno'
+      };
+    } else if (streamUrl && streamUrl.includes('imagecdn') && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
+      streamHeaders = {
+        ...streamHeaders,
+        referer: 'https://rapidvid.org/',
+        origin: 'https://rapidvid.org'
+      };
+    }
+
+    const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
+
+    return res.status(200).json({
+      success: true,
+      status: 'success',
+      streamUrl,
+      playableStreamUrl,
+      type,
+      headers: streamHeaders,
+      pageTitle,
+      subtitles: payload.subtitles || data.subtitles || [],
+      cached: Boolean(data.cached),
+      resolvedIn,
     });
-    return res.status(200).send(vttBuf);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const isTimeout = err.name === 'AbortError' || err.message?.toLowerCase().includes('timeout');
+    return res.status(isTimeout ? 408 : 500).json({
+      success: false,
+      error: isTimeout ? 'Çözümleyici mikroservisi zaman aşımına uğradı.' : `Mikroservis bağlantı hatası: ${err.message}`,
+      code: isTimeout ? 'TIMEOUT' : 'RESOLVER_UNAVAILABLE',
+    });
   }
 });
 
 // POST /api/detect-subtitles
-// Auto-detects subtitles from active stream, target page, or external Turkish subtitle repositories
-router.post(['/detect-subtitles', '/api/detect-subtitles'], resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
+// Auto-detects subtitles from active stream or target page if subtitles were not originally attached
+router.post('/detect-subtitles', resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
   try {
-    const { streamUrl, pageUrl, sourceToken, title, imdbId, year } = req.body || {};
-    const unsealed = sourceToken ? unsealSourcePayload(sourceToken) : null;
-    const resolvedPageUrl = (unsealed && unsealed.url) ? unsealed.url : pageUrl;
-    if (!streamUrl && !resolvedPageUrl && !title && !imdbId) {
-      return res.status(400).json({ success: false, error: 'streamUrl, pageUrl veya title gereklidir.' });
+    const { streamUrl, pageUrl, title } = req.body || {};
+    if (!streamUrl && !pageUrl) {
+      return res.status(400).json({ success: false, error: 'streamUrl veya pageUrl gereklidir.' });
     }
 
-    // SSRF protection: absolute URLs must be public http(s) addresses.
-    for (const candidate of [streamUrl, resolvedPageUrl]) {
+    // SSRF protection: absolute URLs must be public http(s) addresses. Relative values (e.g. the
+    // `/api/proxy?url=...` playable URL or an uploaded media key) are legitimate client inputs and can
+    // never be used as a fetch target on their own; the curl helpers re-validate at the point of use.
+    for (const candidate of [streamUrl, pageUrl]) {
       if (!candidate) continue;
       if (typeof candidate !== 'string') {
         return res.status(400).json({ success: false, error: 'Geçersiz URL.' });
@@ -2749,49 +1360,45 @@ router.post(['/detect-subtitles', '/api/detect-subtitles'], resolverLimiter, (re
     const subtitles = [];
     const seen = new Set();
 
-    const addSub = (file, label, kind = 'subtitles', directPlayable = null) => {
-      const key = directPlayable || file;
-      if (!key || seen.has(key)) return;
-      seen.add(key);
-      const playableUrl = directPlayable || `/api/proxy?url=${encodeURIComponent(file)}`;
-      subtitles.push({ file: directPlayable ? undefined : file, playableUrl, label, kind });
+    const addSub = (file, label, kind = 'subtitles') => {
+      if (!file || seen.has(file)) return;
+      seen.add(file);
+      const playableUrl = `/api/proxy?url=${encodeURIComponent(file)}`;
+      subtitles.push({ file, playableUrl, label, kind });
     };
 
-    // 1. Detect embed ID in stream URL
+    // 1. Detect embed ID in stream URL e.g. -IYxdhPkkxn2.mp4 or -fgvP8tldQUR.mp4
     const embedMatch = rawUrl.match(/-([a-zA-Z0-9_-]{8,16})\.mp4/i) || rawUrl.match(/\/embed\/([a-zA-Z0-9_-]{8,16})/i);
     if (embedMatch && embedMatch[1]) {
       const embedId = embedMatch[1];
       const embedUrl = `https://hdfilmcehennemi.mobi/video/embed/${embedId}/`;
       try {
-        const html = await fetchWithCurl(embedUrl, ['Referer: https://www.hdfilmcehennemi.nl/'], 6);
+        const html = await fetchWithCurl(embedUrl, ['Referer: https://www.hdfilmcehennemi.nl/'], 8);
         if (html && html.length > 200) {
           const { extractSubtitles } = require('../stream-resolver/services/fastScraper');
           if (extractSubtitles) {
             const found = extractSubtitles(html, 'https://hdfilmcehennemi.mobi/');
-            for (const s of found) addSub(s.file, s.label, s.kind);
+            for (const s of found) {
+              addSub(s.file, s.label, s.kind);
+            }
           }
         }
-      } catch {}
+      } catch (e) {}
     }
 
-    // 2. If resolvedPageUrl is available and subtitles are still empty, inspect page
-    if (subtitles.length === 0 && resolvedPageUrl && resolvedPageUrl.startsWith('http') && fastResolve) {
+    // 2. If pageUrl is available and subtitles are still empty, inspect pageUrl
+    if (subtitles.length === 0 && pageUrl && pageUrl.startsWith('http')) {
       try {
-        const resolved = await fastResolve(resolvedPageUrl, { timeout: 8000 });
-        if (resolved && Array.isArray(resolved.subtitles)) {
-          for (const s of resolved.subtitles) addSub(s.file, s.label, s.kind);
+        const { fastResolve } = require('../stream-resolver/services/fastScraper');
+        if (fastResolve) {
+          const resolved = await fastResolve(pageUrl, { timeout: 8000 });
+          if (resolved && resolved.subtitles && resolved.subtitles.length > 0) {
+            for (const s of resolved.subtitles) {
+              addSub(s.file, s.label, s.kind);
+            }
+          }
         }
-      } catch {}
-    }
-
-    // 3. Always enrich with ready Turkish subtitles from subtitle sites when title or imdbId is provided
-    if (title || imdbId) {
-      try {
-        const trSubs = await searchTurkishSubtitles({ title: title || '', imdbId: imdbId || '', year: year || '' });
-        for (const s of trSubs) {
-          addSub(null, s.label, s.kind, s.playableUrl);
-        }
-      } catch {}
+      } catch (e) {}
     }
 
     return res.status(200).json({
@@ -2804,888 +1411,454 @@ router.post(['/detect-subtitles', '/api/detect-subtitles'], resolverLimiter, (re
   }
 });
 
-// POST /api/alternative-labels (Strictly admin / touristAdmin only — unseals provider labels for room watch party)
-router.post(['/alternative-labels', '/api/alternative-labels'], protect, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
-  if (!isAdminOrTouristUser(req)) {
-    return res.status(403).json({ success: false, error: 'Bu bilgiye yalnızca yetkililer erişebilir.' });
-  }
-  const { groups } = req.body || {};
-  if (!Array.isArray(groups)) {
-    return res.status(200).json({ success: true, labels: {} });
-  }
-  const labels = {};
-  for (const grp of groups.slice(0, 12)) {
-    if (!grp || !Array.isArray(grp.items)) continue;
-    for (const item of grp.items.slice(0, 16)) {
-      if (!item?.sourceToken) continue;
-      const unsealed = unsealSourcePayload(item.sourceToken);
-      if (unsealed?.providerKey && grp.groupId && !labels[grp.groupId]) {
-        labels[grp.groupId] = PROVIDER_DISPLAY_NAMES[unsealed.providerKey] || unsealed.providerKey;
-      }
-    }
-  }
-  return res.status(200).json({ success: true, labels });
-});
-
 // In-process search cache (30 minutes TTL)
 const inProcessSearchCache = new Map();
 const SEARCH_CACHE_TTL = 30 * 60 * 1000;
 
 /**
- * FullHDFilmİzlesene doğrudan arama (.now ve .nl mirror desteği)
+ * FullHDFilmİzlesene doğrudan arama (Önce Doğrudan Curl, sonra ScraperAPI fallback)
  */
 async function searchFullHDFilm(query) {
-  const parseFhfHtml = (html, baseOrigin) => {
+  // 1. Python TLS Chrome 124 + Tor ile Doğrudan Hızlı Arama
+  try {
+    const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
+    let html = await fetchWithTlsImpersonator(targetUrl, 'https://www.fullhdfilmizlesene.now/');
+    if (!html || isBlockedOrChallenge(html)) {
+      html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
+    }
+    
     const results = [];
     const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
     let match;
     while ((match = filmBlockRegex.exec(html)) !== null) {
       const block = match[1];
-      const linkMatch = block.match(/href="(https?:\/\/(?:www\.)?fullhdfilmizlesene\.[^"]+\/film\/[^"]+|\/film\/[^"]+)"/i);
+      const linkMatch = block.match(/href="(https:\/\/www\.fullhdfilmizlesene\.now\/film\/[^"]+)"/i);
       const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
-      const yearMatch = block.match(/<span class="film-yil">(\d{4})<\/span>/i) || block.match(/\b(19\d{2}|20\d{2})\b/);
-      const posterMatch = block.match(/srcset="(https?:\/\/[^"\s]+\/poster\/[^\s"]+)/i) ||
-                          block.match(/data-src="([^"]+)"/i) ||
+      const posterMatch = block.match(/srcset="(https:\/\/img\.fullhdfilmizlesene\.now\/poster\/[^\s"]+)/i) || 
+                          block.match(/data-src="([^"]+)"/i) || 
                           block.match(/src="([^"]+)"/i);
+      
       if (linkMatch && titleMatch) {
-        let fullUrl = linkMatch[1];
-        if (!fullUrl.startsWith('http')) {
-          fullUrl = `${baseOrigin}${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`;
-        }
         let poster = posterMatch ? posterMatch[1] : null;
         if (poster && poster.startsWith('data:')) poster = null;
-        if (poster && !poster.startsWith('http')) {
-          poster = `${baseOrigin}${poster.startsWith('/') ? '' : '/'}${poster}`;
-        }
         results.push({
           provider: 'FullHDFilmİzlesene',
           providerKey: 'fullhdfilmizlesene',
           title: decodeHtmlEntities(titleMatch[1].trim()),
-          year: yearMatch ? yearMatch[1] : '',
-          url: fullUrl,
-          poster,
+          url: linkMatch[1],
+          poster: poster,
         });
       }
     }
-    return results;
-  };
-
-  for (const base of ['https://www.fullhdfilmizlesene.now', 'https://www.fullhdfilmizlesene.nl']) {
-    try {
-      const targetUrl = `${base}/arama/${encodeURIComponent(query)}`;
-      const html = await fetchHtmlRobust(targetUrl, {
-        fetchHeaders: { Referer: `${base}/`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
-        curlHeaders: [`Referer: ${base}/`, 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
-        timeoutSec: 4,
-        fastSearch: true,
-      });
-      if (html && !isBlockedOrChallenge(html)) {
-        return parseFhfHtml(html, base).slice(0, 10);
-      }
-    } catch {}
+    if (results.length > 0) return results;
+  } catch (err) {
+    // continue to fallback
   }
+
+  // 2. ScraperAPI Fallback (Sadece geçerli, kotası bitmemiş anahtar varsa)
+  const apiKey = getValidScraperApiKey();
+  if (apiKey) {
+    try {
+      const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+      if (res.status === 403) {
+        exhaustedScraperKeys.add(apiKey);
+        return [];
+      }
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results = [];
+      const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
+      let match;
+      while ((match = filmBlockRegex.exec(html)) !== null) {
+        const block = match[1];
+        const linkMatch = block.match(/href="(https:\/\/www\.fullhdfilmizlesene\.now\/film\/[^"]+)"/i);
+        const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
+        const posterMatch = block.match(/srcset="(https:\/\/img\.fullhdfilmizlesene\.now\/poster\/[^\s"]+)/i) || 
+                            block.match(/data-src="([^"]+)"/i) || 
+                            block.match(/src="([^"]+)"/i);
+        if (linkMatch && titleMatch) {
+          let poster = posterMatch ? posterMatch[1] : null;
+          if (poster && poster.startsWith('data:')) poster = null;
+          results.push({
+            provider: 'FullHDFilmİzlesene',
+            providerKey: 'fullhdfilmizlesene',
+            title: decodeHtmlEntities(titleMatch[1].trim()),
+            url: linkMatch[1],
+            poster: poster,
+          });
+        }
+      }
+      return results;
+    } catch (e) {
+      return [];
+    }
+  }
+
   return [];
 }
 
 /**
- * HDFilmCehennemi hızlı arama (concurrent direct/TLS AJAX + HTML /?s= fallback)
+ * HDFilmCehennemi doğrudan arama (Önce Doğrudan Curl Ajax, sonra DuckDuckGo/ScraperAPI fallback)
  */
 async function searchHDFilmCehennemi(query) {
-  const bases = ['https://www.hdfilmcehennemi.nl', 'https://www.hdfilmcehennemi.com'];
-  const parseHdfJsonItems = (jsonRaw, activeBase) => {
-    const json = JSON.parse(jsonRaw);
+  // 1. Direct Node fetch with AJAX headers (ultra-fast, ~500ms, zero external dependencies)
+  try {
+    const targetUrl = `https://www.hdfilmcehennemi.nl/search/?q=${encodeURIComponent(query)}`;
+    let raw = '';
+    try {
+      const fRes = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://www.hdfilmcehennemi.nl/',
+          'x-requested-with': 'fetch',
+          'Accept': 'application/json, text/plain, */*',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (fRes.ok) {
+        raw = await fRes.text();
+      }
+    } catch {}
+
+    // Fallback to Python TLS Impersonator or curl if direct fetch fails
+    if (!raw || !raw.startsWith('{')) {
+      raw = await fetchWithTlsImpersonator(targetUrl, 'https://www.hdfilmcehennemi.nl/');
+    }
+    if (!raw || !raw.startsWith('{')) {
+      raw = await fetchWithCurl(targetUrl, [
+        'Referer: https://www.hdfilmcehennemi.nl/',
+        'x-requested-with: fetch',
+        'Accept: application/json, text/plain, */*'
+      ], 6);
+    }
+
+    const json = JSON.parse(raw);
     const results = [];
     if (json && Array.isArray(json.results)) {
       for (const itemHtml of json.results) {
         const urlMatch = itemHtml.match(/href="([^"]+)"/);
         const titleMatch = itemHtml.match(/<h4 class="title">([^<]+)<\/h4>/i) || itemHtml.match(/alt="([^"]+)"/);
-        const yearMatch = itemHtml.match(/class="year"[^>]*>(\d{4})</i) || itemHtml.match(/\b(19\d{2}|20\d{2})\b/);
-        const posterMatch = itemHtml.match(/data-src="([^"]+)"/i) || itemHtml.match(/src="([^"]+)"/i);
+        const posterMatch = itemHtml.match(/src="([^"]+)"/);
         if (urlMatch && urlMatch[1]) {
           const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
           let finalUrl = urlMatch[1].trim();
           if (!finalUrl.startsWith('http')) {
-            finalUrl = `${activeBase}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
+            finalUrl = `https://www.hdfilmcehennemi.nl${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
           }
           let finalPoster = posterMatch ? posterMatch[1].trim() : null;
-          if (finalPoster && finalPoster.startsWith('data:')) finalPoster = null;
           if (finalPoster && !finalPoster.startsWith('http')) {
-            finalPoster = `${activeBase}${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
+            finalPoster = `https://www.hdfilmcehennemi.nl${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
           }
           results.push({
             provider: 'HDFilmCehennemi',
             providerKey: 'hdfilmcehennemi',
             title: decodeHtmlEntities(rawTitle),
-            year: yearMatch ? yearMatch[1] : '',
             url: finalUrl,
             poster: finalPoster,
           });
         }
       }
     }
-    return results.slice(0, 10);
-  };
+    if (results.length > 0) return results.slice(0, 8);
+  } catch (err) {
+    // continue to fallback
+  }
 
-  try {
-    const tryAjaxForBase = async (activeBase) => {
-      const targetUrl = `${activeBase}/search/?q=${encodeURIComponent(query)}`;
-      const reqHeaders = {
-        'Referer': `${activeBase}/`,
-        'Origin': activeBase,
-        'x-requested-with': 'fetch',
-        'Accept': 'application/json, text/plain, */*',
-      };
-      const tryFetch = async () => {
-        const fRes = await fetch(targetUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-            ...reqHeaders,
-          },
-          signal: AbortSignal.timeout(3000),
-        });
-        if (!fRes.ok) throw new Error(`HTTP ${fRes.status}`);
-        const txt = await fRes.text();
-        if (!txt || !txt.trim().startsWith('{')) throw new Error('Not JSON');
-        return { txt, activeBase };
-      };
-      const tryTls = async () => {
-        const txt = await fetchWithTlsImpersonator(targetUrl, `${activeBase}/`, 'GET', '', reqHeaders, { timeoutMs: 7000 });
-        if (!txt || !txt.trim().startsWith('{')) throw new Error('TLS Not JSON');
-        return { txt, activeBase };
-      };
-      return await Promise.any([tryFetch(), tryTls()]);
-    };
-
-    let matched = null;
+  // 2. DuckDuckGo + ScraperAPI Fallback (Sadece geçerli anahtar varsa)
+  const apiKey = getValidScraperApiKey();
+  if (apiKey) {
     try {
-      matched = await Promise.any(bases.map((b) => tryAjaxForBase(b)));
-    } catch {}
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:hdfilmcehennemi.nl ' + query)}`;
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
+      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+      if (res.status === 403) {
+        exhaustedScraperKeys.add(apiKey);
+        return [];
+      }
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results = [];
+      const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      for (const m of matches) {
+        const rawHref = m[1];
+        const titleHtml = m[2];
+        let actualUrl = rawHref;
+        const uddgMatch = rawHref.match(/uddg=([^&]+)/);
+        if (uddgMatch) {
+          actualUrl = decodeURIComponent(uddgMatch[1]);
+        }
+        const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/hdfilmcehennemi/i, '').replace(/[-–|]/g, ' ').trim();
+        if (actualUrl.includes('hdfilmcehennemi.nl') && !actualUrl.endsWith('.nl/') && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+          let poster = null;
+          try {
+            const parsed = new URL(actualUrl);
+            const slug = parsed.pathname.replace(/\/+$/, '').split('/').pop();
+            if (slug) {
+              const cleanSlug = slug.replace(/-hdf.*$/i, '');
+              poster = `https://www.hdfilmcehennemi.nl/images/thumb/poster/${cleanSlug}.webp`;
+            }
+          } catch {}
 
-    if (!matched?.txt || !matched.txt.trim().startsWith('{')) {
-      const scUrl = `${bases[0]}/search/?q=${encodeURIComponent(query)}`;
-      const scTxt = await fetchViaScraperApi(scUrl, {
-        timeoutMs: 5000,
-        headers: { Referer: `${bases[0]}/`, Origin: bases[0], 'x-requested-with': 'fetch', Accept: 'application/json, text/plain, */*' },
-        keepHeaders: true,
-      });
-      if (scTxt && scTxt.trim().startsWith('{')) matched = { txt: scTxt, activeBase: bases[0] };
-    }
-
-    if (matched?.txt && matched.txt.trim().startsWith('{')) {
-      const parsed = parseHdfJsonItems(matched.txt, matched.activeBase);
-      if (parsed.length > 0) return parsed;
+          results.push({
+            provider: 'HDFilmCehennemi',
+            providerKey: 'hdfilmcehennemi',
+            title: decodeHtmlEntities(title),
+            url: actualUrl,
+            poster: poster,
+          });
+        }
+      }
+      return results.slice(0, 8);
+    } catch (e) {
       return [];
     }
-  } catch {}
-
-  // Fallback to HTML /?s= across .nl and .com mirrors when AJAX endpoint couldn't return JSON
-  for (const activeBase of bases) {
-    try {
-      const htmlUrl = `${activeBase}/?s=${encodeURIComponent(query)}`;
-      const html = await fetchHtmlRobust(htmlUrl, {
-        fetchHeaders: { Referer: `${activeBase}/` },
-        curlHeaders: [`Referer: ${activeBase}/`],
-        timeoutSec: 4,
-        fastSearch: true,
-      });
-      if (html) {
-        const results = [];
-        const cardRegex = /<a[^>]+class="poster"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-        let m;
-        while ((m = cardRegex.exec(html)) !== null) {
-          const href = m[1];
-          const inner = m[2];
-          const title = inner.match(/class="title"[^>]*>([^<]+)</i)?.[1] || inner.match(/alt="([^"]+)"/i)?.[1];
-          const poster = inner.match(/data-src="([^"]+)"/i)?.[1] || inner.match(/src="([^"]+)"/i)?.[1] || null;
-          if (href && title) {
-            results.push({
-              provider: 'HDFilmCehennemi',
-              providerKey: 'hdfilmcehennemi',
-              title: decodeHtmlEntities(title.trim()),
-              year: inner.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '',
-              url: href.startsWith('http') ? href : `${activeBase}${href.startsWith('/') ? '' : '/'}${href}`,
-              poster,
-            });
-          }
-        }
-        if (results.length > 0) return results.slice(0, 10);
-      }
-    } catch {}
   }
 
   return [];
 }
 
 /**
- * FilmMakinesi doğrudan hızlı arama
+ * FilmMakinesi doğrudan arama (Önce Doğrudan Curl, sonra DDG/ScraperAPI fallback)
  */
 async function searchFilmMakinesi(query) {
+  // 1. Doğrudan Curl (filmmakinesi.to/arama/?s=, afiş ve başlıklarla 200ms)
   try {
-    const base = 'https://filmmakinesi.to';
-    const targetUrl = `${base}/arama/?s=${encodeURIComponent(query)}`;
-    const html = await fetchHtmlRobust(targetUrl, {
-      fetchHeaders: { Referer: `${base}/`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
-      curlHeaders: [`Referer: ${base}/`, 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
-      timeoutSec: 4,
-      fastSearch: true,
-    });
+    const targetUrl = `https://filmmakinesi.to/arama/?s=${encodeURIComponent(query)}`;
+    const html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
     const results = [];
-    const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"([\s\S]*?)<\/a>/gi;
+    const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"/gi;
     let match;
     while ((match = itemRegex.exec(html)) !== null) {
       const href = match[1];
       const title = match[2];
-      const inner = match[3] || '';
-      const poster = inner.match(/data-src="([^"]+)"/i)?.[1] || inner.match(/src="([^"]+)"/i)?.[1] || '';
-      const year = inner.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '';
-      const fullUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
-      const fullPoster = poster ? (poster.startsWith('http') ? poster : `${base}${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
+      const poster = match[3];
+      const fullUrl = href.startsWith('http') ? href : `https://filmmakinesi.to${href.startsWith('/') ? '' : '/'}${href}`;
+      const fullPoster = poster.startsWith('http') ? poster : `https://filmmakinesi.to${poster.startsWith('/') ? '' : '/'}${poster}`;
       results.push({
         provider: 'FilmMakinesi',
         providerKey: 'filmmakinesi',
         title: decodeHtmlEntities(title.trim()),
-        year,
         url: fullUrl,
         poster: fullPoster,
       });
     }
-    if (results.length > 0) return results.slice(0, 10);
-  } catch {}
+    if (results.length > 0) return results.slice(0, 8);
+  } catch (err) {
+    // continue to fallback
+  }
+
+  // 2. DuckDuckGo + ScraperAPI Fallback (Sadece geçerli anahtar varsa)
+  const apiKey = getValidScraperApiKey();
+  if (apiKey) {
+    try {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:filmmakinesi.to ' + query + ' izle')}`;
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
+      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+      if (res.status === 403) {
+        exhaustedScraperKeys.add(apiKey);
+        return [];
+      }
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results = [];
+      const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      for (const m of matches) {
+        const rawHref = m[1];
+        const titleHtml = m[2];
+        let actualUrl = rawHref;
+        const uddgMatch = rawHref.match(/uddg=([^&]+)/);
+        if (uddgMatch) {
+          actualUrl = decodeURIComponent(uddgMatch[1]);
+        }
+        const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/filmmakinesi/i, '').replace(/[-–|]/g, ' ').trim();
+        if (actualUrl.includes('filmmakinesi.to') && (actualUrl.includes('/film/') || !actualUrl.endsWith('.to/')) && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
+          results.push({
+            provider: 'FilmMakinesi',
+            providerKey: 'filmmakinesi',
+            title: decodeHtmlEntities(title),
+            url: actualUrl,
+            poster: null,
+          });
+        }
+      }
+      return results.slice(0, 6);
+    } catch (e) {
+      return [];
+    }
+  }
+
   return [];
 }
 
-/**
- * FilmDozu arama (https://filmdozu.com/ara?q=...)
- */
-async function searchFilmDozu(query) {
-  try {
-    const base = 'https://filmdozu.com';
-    const targetUrl = `${base}/ara?q=${encodeURIComponent(query)}`;
-    const html = await fetchHtmlRobust(targetUrl, {
-      fetchHeaders: { Referer: `${base}/` },
-      curlHeaders: [`Referer: ${base}/`],
-      timeoutSec: 4,
-      fastSearch: true,
-    });
-    const results = [];
-    const articleRegex = /<article[^>]*class="[^"]*card[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
-    let m;
-    while ((m = articleRegex.exec(html)) !== null) {
-      const block = m[1];
-      const href = block.match(/<a[^>]+href="([^"]+)"/i)?.[1];
-      const title = block.match(/<h3[^>]*class="[^"]*card-title[^"]*"[^>]*>([\s\S]*?)<\/h3>/i)?.[1]?.replace(/<[^>]+>/g, '').trim()
-                 || block.match(/alt="([^"]+)"/i)?.[1]?.trim();
-      const poster = block.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i)?.[1] || null;
-      const year = block.match(/<span[^>]*>\s*((?:19|20)\d{2})\s*<\/span>/i)?.[1]
-                || block.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '';
-      if (href && title) {
-        const fullUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
-        const fullPoster = poster ? (poster.startsWith('http') ? poster : `${base}${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
-        results.push({
-          provider: 'FilmDozu',
-          providerKey: 'filmdozu',
-          title: decodeHtmlEntities(title),
-          year,
-          url: fullUrl,
-          poster: fullPoster,
-        });
-      }
-    }
-    return results.slice(0, 10);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Filmİzyon arama (https://www.filmizyon.net/?s=...)
- */
-async function searchFilmIzyon(query) {
-  try {
-    const base = 'https://www.filmizyon.net';
-    const targetUrl = `${base}/?s=${encodeURIComponent(query)}`;
-    const html = await fetchHtmlRobust(targetUrl, {
-      fetchHeaders: { Referer: `${base}/` },
-      curlHeaders: [`Referer: ${base}/`],
-      timeoutSec: 4,
-      fastSearch: true,
-    });
-    const results = [];
-    const cardRegex = /<article[^>]*class="[^"]*fz-poster-card[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
-    let m;
-    while ((m = cardRegex.exec(html)) !== null) {
-      const block = m[1];
-      const linkMatch = block.match(/<a[^>]*class="[^"]*fz-poster-card__link[^"]*"[^>]+href="([^"]+)"([^>]*)>/i)
-                     || block.match(/<a[^>]+href="([^"]+)"([^>]*)>/i);
-      if (!linkMatch) continue;
-      const href = linkMatch[1];
-      const attrs = linkMatch[2] || '';
-      const aria = attrs.match(/aria-label="([^"]+)"/i)?.[1] || '';
-      const heading = block.match(/<h[234][^>]*>([\s\S]*?)<\/h[234]>/i)?.[1]?.replace(/<[^>]+>/g, '').trim()
-                   || block.match(/alt="([^"]+)"/i)?.[1]?.trim()
-                   || aria.replace(/\s+(?:19|20)\d{2}(?:\s+\d+(?:\.\d+)?)?$/, '').trim();
-      const year = block.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || aria.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '';
-      const poster = block.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i)?.[1] || null;
-      if (href && heading) {
-        const fullUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
-        const fullPoster = poster ? (poster.startsWith('http') ? poster : `${base}${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
-        results.push({
-          provider: 'Filmİzyon',
-          providerKey: 'filmizyon',
-          title: decodeHtmlEntities(heading),
-          year,
-          url: fullUrl,
-          poster: fullPoster,
-        });
-      }
-    }
-    return results.slice(0, 10);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * RoketDizi hızlı arama (POST https://roketdizi.life/api/mj — fetch / curl / direct-first TLS)
- */
-async function searchRoketDizi(query) {
-  const apiEndpoint = 'https://roketdizi.life/api/mj';
-  const parseRoketJson = (rawText) => {
-    try {
-      const data = JSON.parse(rawText);
-      if (data && typeof data === 'object' && Array.isArray(data.result)) {
-        return { valid: true, items: data.result };
-      }
-      return { valid: false, items: [] };
-    } catch {
-      return { valid: false, items: [] };
-    }
-  };
-
-  const postSearchAction = async (action) => {
-    const payload = JSON.stringify({ action, params: [query] });
-    const reqHdrs = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, */*',
-      'Referer': 'https://roketdizi.life/',
-      'Origin': 'https://roketdizi.life',
-    };
-
-    // 1. Direct fast fetch POST
-    try {
-      const res = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-          ...reqHdrs,
-        },
-        body: payload,
-        signal: AbortSignal.timeout(2800),
-      });
-      if (res.ok) {
-        const p = parseRoketJson(await res.text());
-        if (p.valid) return p;
-      }
-    } catch {}
-
-    const envProxyUrl = buildEnvProxyUrl();
-    const torOpen = await isTorReachable();
-    const runCurlPost = async (proxyMode) => {
-      const args = [
-        '-s', '-L', '--max-time', proxyMode === 'direct' ? '3' : '6',
-        '-X', 'POST',
-        '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        '-H', 'Content-Type: application/json',
-        '-H', 'Accept: application/json, */*',
-        '-H', 'Referer: https://roketdizi.life/',
-        '-H', 'Origin: https://roketdizi.life',
-        '-d', payload,
-      ];
-      if (proxyMode === 'env' && envProxyUrl) args.push('-x', envProxyUrl);
-      if (proxyMode === 'tor') args.push('--socks5-hostname', '127.0.0.1:9050');
-      args.push(apiEndpoint);
-      const { stdout } = await execFileAsync(CURL_BIN, args);
-      return parseRoketJson(stdout);
-    };
-
-    // 1.5. Env Proxy POST (if configured)
-    if (envProxyUrl) {
-      try {
-        const p = await runCurlPost('env');
-        if (p.valid) return p;
-      } catch {}
-    }
-
-    // 2. Direct Curl POST (fast)
-    try {
-      const p = await runCurlPost('direct');
-      if (p.valid) return p;
-    } catch {}
-
-    // 3. Python TLS Chrome Impersonator POST (Proxy/Direct/Tor inside Python)
-    try {
-      const tlsOut = await fetchWithTlsImpersonator(apiEndpoint, 'https://roketdizi.life/', 'POST', payload, reqHdrs, { timeoutMs: 7500 });
-      const p = parseRoketJson(tlsOut);
-      if (p.valid) return p;
-    } catch {}
-
-    // 3.5. Tor Curl POST fallback if Tor daemon is reachable
-    if (torOpen) {
-      try {
-        const p = await runCurlPost('tor');
-        if (p.valid) return p;
-      } catch {}
-    }
-
-    // 4. ScraperAPI POST fallback if configured
-    const scOut = await fetchViaScraperApi(apiEndpoint, {
-      method: 'POST',
-      headers: reqHdrs,
-      body: payload,
-      keepHeaders: true,
-      timeoutMs: 5500,
-    });
-    if (scOut) {
-      const p = parseRoketJson(scOut);
-      if (p.valid) return p;
-    }
-
-    return { valid: false, items: [] };
-  };
-
-  try {
-    let resp = await postSearchAction('searchContent');
-    if (resp.valid && resp.items.length === 0) {
-      resp = await postSearchAction('searchContentFullText');
-    }
-    if (!resp.valid || resp.items.length === 0) return [];
-
-    const results = [];
-    for (const item of resp.items.slice(0, 10)) {
-      const slug = item.used_slug;
-      const name = item.object_name || item.object_alternative_name;
-      if (!slug || !name) continue;
-      const isSeries = String(item.used_type || '').toUpperCase() === 'SERIES';
-      const cleanSlug = String(slug).replace(/^\/+|\/+$/g, '');
-      let pagePath = cleanSlug;
-      if (isSeries) {
-        if (!cleanSlug.startsWith('dizi/')) pagePath = `dizi/${cleanSlug}`;
-      } else {
-        if (!cleanSlug.startsWith('film/')) pagePath = `film/${cleanSlug}`;
-        if (!pagePath.endsWith('/izle') && pagePath !== 'izle') pagePath = `${pagePath}/izle`;
-      }
-      const pageUrl = `https://roketdizi.life/${pagePath}`;
-      let poster = item.object_poster_url || null;
-      if (poster && !poster.startsWith('http')) {
-        poster = `https://roketdizi.life${poster.startsWith('/') ? '' : '/'}${poster}`;
-      }
-      const altName = item.object_alternative_name && item.object_alternative_name !== name
-        ? `${name} / ${item.object_alternative_name}`
-        : name;
-      results.push({
-        provider: 'RoketDizi',
-        providerKey: 'roketdizi',
-        title: decodeHtmlEntities(name),
-        altTitle: decodeHtmlEntities(altName),
-        year: item.object_release_year ? String(item.object_release_year).slice(0, 4) : '',
-        imdbId: item.object_related_imdb_id || '',
-        url: pageUrl,
-        poster,
-        mediaType: isSeries ? 'series' : 'movie',
-      });
-    }
-    return results;
-  } catch {
-    return [];
-  }
-}
-
-// Film başlıklarını çapraz site birleştirmesi için normalize eder (devam filmlerini korur!)
-function normalizeMovieTitleKey(title = '') {
-  if (!title) return '';
-  let str = String(title)
-    .replace(/İ/g, 'i')
-    .replace(/I/g, 'i')
-    .replace(/ı/g, 'i')
-    .toLowerCase();
-  const removeWords = [
-    'türkçe dublaj', 'turkce dublaj', 'türkçe altyazı', 'turkce altyazi',
-    'altyazılı', 'altyazili', 'dublaj', 'dual', 'tr-en', 'full hd', '1080p',
-    '720p', '4k', 'uhd', 'hd', 'izle', 'filmi', 'film'
-  ];
-  str = str.replace(/\((?:19|20)\d{2}\)/g, ' ');
-  str = str.replace(/[()[\]{}_,.:;!?\\|\-–—+&]/g, ' ');
-  for (const w of removeWords) {
-    const reg = new RegExp('(^|\\s+)' + w + '(\\s+|$)', 'gi');
-    while (reg.test(str)) {
-      str = str.replace(reg, ' ');
-    }
-  }
-  str = str
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[ıİ]/g, 'i')
-    .replace(/ş/g, 's')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c');
-  return str.replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
-}
-
-function addDerivedTitleAliases(aliasSet, norm) {
-  if (!norm || norm.length < 2) return;
-  aliasSet.add(norm);
-  // Strip leading English articles ("the matrix" -> "matrix")
-  const noArticle = norm.replace(/^(?:the|a|an)\s+/, '').trim();
-  if (noArticle && noArticle.length >= 2) aliasSet.add(noArticle);
-  // Normalize trailing sequel " 1" vs plain title ("matrix 1" <-> "matrix", year guard protects against unrelated films)
-  for (const base of [norm, noArticle]) {
-    if (!base) continue;
-    const withoutOne = base.replace(/\s+1$/, '').trim();
-    if (withoutOne && withoutOne.length >= 2) aliasSet.add(withoutOne);
-    // Normalize Part II / III / IV <-> 2 / 3 / 4
-    const romanNorm = base
-      .replace(/\bpart\s+(?:ii|2)\b/g, '2')
-      .replace(/\bpart\s+(?:iii|3)\b/g, '3')
-      .replace(/\bpart\s+(?:iv|4)\b/g, '4')
-      .replace(/\bpart\s+i\b/g, '1')
-      .replace(/\bii\b/g, '2')
-      .replace(/\biii\b/g, '3')
-      .replace(/\biv\b/g, '4')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (romanNorm && romanNorm.length >= 2) aliasSet.add(romanNorm);
-  }
-}
-
-function extractTitleAliases(item) {
-  const aliases = new Set();
-  const rawParts = [item.title, item.altTitle]
-    .filter(Boolean)
-    .flatMap(t => String(t).split(/\s*[|/]\s*|\s+[-–]\s+/));
-  for (const p of rawParts) {
-    addDerivedTitleAliases(aliases, normalizeMovieTitleKey(p));
-  }
-  addDerivedTitleAliases(aliases, normalizeMovieTitleKey(item.title));
-  return Array.from(aliases);
-}
-
-function canMergeGroupsOrItems(aImdb, aYear, aAliasSet, bImdb, bYear, bAliases) {
-  if (aImdb && bImdb) {
-    return aImdb === bImdb;
-  }
-  if (aYear && bYear && Math.abs(Number(aYear) - Number(bYear)) > 1) {
-    return false;
-  }
-  for (const a of bAliases) {
-    if (aAliasSet.has(a)) return true;
-  }
-  return false;
-}
-
-function mergeGroupInto(target, donor) {
-  for (const a of donor.aliasSet) target.aliasSet.add(a);
-  if (!target.poster && donor.poster) target.poster = donor.poster;
-  if (!target.year && donor.year) target.year = donor.year;
-  if (!target.imdbId && donor.imdbId) target.imdbId = donor.imdbId;
-  if (donor.title && donor.title.length > 1 && donor.title.length < target.title.length && !/[|/]\s/.test(donor.title)) {
-    target.title = donor.title;
-  }
-  for (const src of donor.sources) {
-    if (!target.sources.some(s => s.url === src.url)) {
-      target.sources.push(src);
-    }
-  }
-}
-
-// Çapraz site birleştirme: aynı filmi (tüm sitelerden gelen kaynaklarıyla) tek orijinal kartta toplar, benzer/devam filmlerini ayrı bırakır
-function deduplicateMovieResults(movies) {
-  const groups = [];
-
-  for (const item of movies) {
-    if (!item?.url) continue;
-    const aliases = extractTitleAliases(item);
-    if (aliases.length === 0) continue;
-    const itemYear = String(item.year || item.title?.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '');
-    const itemImdb = item.imdbId || '';
-
-    let matchedGroup = null;
-    for (const g of groups) {
-      if (canMergeGroupsOrItems(g.imdbId, g.year, g.aliasSet, itemImdb, itemYear, aliases)) {
-        matchedGroup = g;
-        break;
-      }
-    }
-
-    const cleanDisplayTitle = decodeHtmlEntities(String(item.title || ''))
-      .replace(/\b(?:türkçe\s*dublaj|türkçe\s*altyazı|altyazılı|dublajlı|full\s*hd|1080p|720p|4k|izle)\b/gi, '')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\s*[-–|\/]\s*$/, '')
-      .trim() || item.title;
-
-    const sourceEntry = {
-      providerKey: item.providerKey || inferProviderFromUrl(item.url),
-      provider: item.provider || PROVIDER_DISPLAY_NAMES[item.providerKey] || 'Harici',
-      url: item.url,
-      title: item.title,
-      year: itemYear,
-      imdbId: itemImdb,
-    };
-
-    if (!matchedGroup) {
-      groups.push({
-        id: `mov_${groups.length + 1}`,
-        title: cleanDisplayTitle,
-        year: itemYear,
-        imdbId: itemImdb,
-        poster: item.poster || null,
-        aliasSet: new Set(aliases),
-        sources: [sourceEntry],
-      });
-    } else {
-      for (const a of aliases) matchedGroup.aliasSet.add(a);
-      if (!matchedGroup.poster && item.poster) matchedGroup.poster = item.poster;
-      if (!matchedGroup.year && itemYear) matchedGroup.year = itemYear;
-      if (!matchedGroup.imdbId && itemImdb) matchedGroup.imdbId = itemImdb;
-      if (cleanDisplayTitle.length > 1 && cleanDisplayTitle.length < matchedGroup.title.length && !/[|/]\s/.test(cleanDisplayTitle)) {
-        matchedGroup.title = cleanDisplayTitle;
-      }
-      const existsSameSiteUrl = matchedGroup.sources.some(s => s.url === sourceEntry.url);
-      if (!existsSameSiteUrl) {
-        matchedGroup.sources.push(sourceEntry);
-      }
-    }
-  }
-
-  // Transitive union pass: bridges groups connected later via bilingual "TR / EN" titles
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (let i = 0; i < groups.length; i++) {
-      if (!groups[i]) continue;
-      for (let j = i + 1; j < groups.length; j++) {
-        if (!groups[j]) continue;
-        if (canMergeGroupsOrItems(
-          groups[i].imdbId,
-          groups[i].year,
-          groups[i].aliasSet,
-          groups[j].imdbId,
-          groups[j].year,
-          groups[j].aliasSet
-        )) {
-          mergeGroupInto(groups[i], groups[j]);
-          groups[j] = null;
-          changed = true;
-        }
-      }
-    }
-  }
-
-  return groups
-    .filter(Boolean)
-    .sort((a, b) => b.sources.length - a.sources.length)
-    .map((g, idx) => ({
-      id: `mov_${idx + 1}`,
-      title: g.title,
-      year: g.year,
-      imdbId: g.imdbId,
-      poster: g.poster,
-      sources: g.sources,
-    }));
-}
-
-function formatSearchResponseForUser(unifiedGroups, isPrivileged) {
-  return unifiedGroups.map((g) => {
-    const sourceTokens = g.sources.map(s => sealSourcePayload({
-      url: s.url,
-      providerKey: s.providerKey,
-      title: s.title || g.title,
-      year: s.year || g.year,
-      imdbId: s.imdbId || g.imdbId,
-    })).filter(Boolean);
-
-    const uniqueProviders = [...new Set(g.sources.map(s => s.provider || PROVIDER_DISPLAY_NAMES[s.providerKey] || 'Kaynak'))];
-
-    if (isPrivileged) {
-      return {
-        id: g.id,
-        title: g.title,
-        year: g.year,
-        imdbId: g.imdbId,
-        poster: g.poster,
-        sourceTokens,
-        sourceCount: g.sources.length,
-        url: g.sources[0]?.url,
-        provider: uniqueProviders.join(' + '),
-        providerKey: g.sources[0]?.providerKey,
-        providers: uniqueProviders,
-        sources: g.sources.map((s, idx) => ({
-          ...s,
-          sourceToken: sourceTokens[idx],
-        })),
-      };
-    }
-
-    // Normal kullanıcı: kaynak site adı, logosu veya URL'i KESİNLİKLE dönülmez
-    return {
-      id: g.id,
-      title: g.title,
-      year: g.year,
-      imdbId: g.imdbId,
-      poster: g.poster,
-      sourceTokens,
-      sourceCount: sourceTokens.length,
-    };
-  });
-}
-
-const inFlightMovieSearches = new Map();
-
-function withSearchTimeout(promise, ms, fallback = []) {
-  return Promise.race([
-    promise.catch(() => fallback),
-    new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
-  ]);
-}
-
 // GET/POST /api/search-movies and /search-movies
-router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req, res) => {
+router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
   const query = req.query.q || req.body?.query || req.body?.q || '';
   if (!query || typeof query !== 'string' || query.trim().length < 2) {
     return res.status(400).json({ success: false, error: 'Arama terimi en az 2 karakter olmalıdır.', results: [] });
   }
 
   const trimmedQuery = query.trim();
-  const cacheKey = `unified_v4:${trimmedQuery.toLowerCase()}`;
-  const isPrivileged = isAdminOrTouristUser(req);
-  const searchStart = Date.now();
+  const cacheKey = trimmedQuery.toLowerCase();
 
-  // 1. Önbellek kontrolü (yetkiye göre dinamik maskelenmiş yanıt üret)
+  // 1. Önbellek kontrolü
   const cached = inProcessSearchCache.get(cacheKey);
-  const effectiveCacheTtl = cached?.ttlMs || SEARCH_CACHE_TTL;
-  if (cached && Date.now() - cached.timestamp < effectiveCacheTtl) {
-    const formatted = formatSearchResponseForUser(cached.results, isPrivileged);
+  if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
     return res.status(200).json({
       success: true,
       query: trimmedQuery,
-      count: formatted.length,
-      results: formatted,
-      showSources: isPrivileged,
+      count: cached.results.length,
+      results: cached.results,
       cached: true,
-      searchMs: Date.now() - searchStart,
-      ...(isPrivileged && cached.diagnostics ? { diagnostics: cached.diagnostics } : {}),
     });
   }
 
-  // 2. Eşzamanlı 6 kaynak arama (Tor/TLS şansı korunarak sıkı zaman bütçesi + aynı sorgu tekilleştirme)
-  let sharedTask = inFlightMovieSearches.get(cacheKey);
-  if (!sharedTask) {
-    sharedTask = (async () => {
-      const capabilities = {
-        tlsPythonReady: Boolean(resolveTlsPythonBin()),
-        torReachable: await isTorReachable(),
-        proxyConfigured: Boolean(buildEnvProxyUrl()),
-        playwrightReady: Boolean(inProcessMovieSearch),
-      };
-      const providerStats = {};
-      const runTimedProvider = async (providerKey, promiseFn, budgetMs) => {
-        const t0 = Date.now();
-        let timedOut = false;
-        let timer = null;
-        try {
-          const items = await Promise.race([
-            promiseFn(),
-            new Promise((resolve) => {
-              timer = setTimeout(() => {
-                timedOut = true;
-                resolve([]);
-              }, budgetMs);
-            }),
-          ]);
-          const list = Array.isArray(items) ? items : [];
-          providerStats[providerKey] = {
-            count: list.length,
-            ms: Date.now() - t0,
-            status: timedOut ? 'timeout' : (list.length > 0 ? 'ok' : 'empty'),
-          };
-          return list;
-        } catch (err) {
-          providerStats[providerKey] = {
-            count: 0,
-            ms: Date.now() - t0,
-            status: 'error',
-          };
-          return [];
-        } finally {
-          if (timer) clearTimeout(timer);
-        }
-      };
+// Film başlıklarını tekilleştirmek için normalize eden fonksiyon
+function normalizeMovieTitleForDedup(title) {
+  if (!title) return '';
+  let str = title.toLowerCase();
+  const removeWords = [
+    'türkçe dublaj', 'turkce dublaj', 'türkçe altyazı', 'turkce altyazi',
+    'altyazılı', 'altyazili', 'dublaj', 'dual', 'tr-en', 'full hd', '1080p',
+    '720p', '4k', 'uhd', 'hd', 'izle', 'filmi', 'film'
+  ];
+  str = str.replace(/[()[\]{}_,.:;!?\\/|\-–—+&]/g, ' ');
+  for (const w of removeWords) {
+    const reg = new RegExp('(^|\\s+)' + w + '(\\s+|$)', 'gi');
+    while (reg.test(str)) {
+      str = str.replace(reg, ' ');
+    }
+  }
+  return str.replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+}
 
-      try {
-        const settled = await Promise.allSettled([
-          runTimedProvider('fullhdfilmizlesene', () => searchFullHDFilm(trimmedQuery), 7200),
-          runTimedProvider('hdfilmcehennemi', () => searchHDFilmCehennemi(trimmedQuery), 7500),
-          runTimedProvider('filmmakinesi', () => searchFilmMakinesi(trimmedQuery), 7200),
-          runTimedProvider('filmdozu', () => searchFilmDozu(trimmedQuery), 5500),
-          runTimedProvider('filmizyon', () => searchFilmIzyon(trimmedQuery), 5500),
-          runTimedProvider('roketdizi', () => searchRoketDizi(trimmedQuery), 7200),
-        ]);
+// Her film sağlayıcısı (site) için aynı filmden sadece 1 sonuç bırakır
+function deduplicateMovieResults(movies) {
+  const map = new Map();
 
-        const combined = [];
-        for (const s of settled) {
-          if (s.status === 'fulfilled' && Array.isArray(s.value)) {
-            combined.push(...s.value);
-          }
-        }
+  for (const item of movies) {
+    if (!item.url) continue;
+    const norm = normalizeMovieTitleForDedup(item.title);
+    const provider = item.providerKey || item.provider || 'default';
+    const key = `${provider}:${norm || item.title.trim().toLowerCase()}`;
 
-        const diagnostics = { capabilities, providers: providerStats };
-
-        if (combined.length > 0) {
-          const unifiedResults = deduplicateMovieResults(combined);
-          const providerCount = new Set(combined.map(r => r.providerKey)).size;
-          const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : (providerCount >= 2 ? 90 * 1000 : 15 * 1000);
-          inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unifiedResults, diagnostics });
-          return { results: unifiedResults, providerCount, diagnostics };
-        }
-      } catch (fastSearchErr) {
-        console.warn('[HLSProxy] Fast search error:', fastSearchErr.message);
+    if (!map.has(key)) {
+      map.set(key, { ...item });
+    } else {
+      const existing = map.get(key);
+      const isNewDual = /dublaj|dual/i.test(item.title);
+      const isExistingDual = /dublaj|dual/i.test(existing.title);
+      if (!isExistingDual && isNewDual) {
+        existing.url = item.url;
+        existing.title = item.title;
       }
-
-      // 3. Playwright tabanlı dahili arama fallback (sadece 6 HTTP aramanın tamamı boş döndüğünde)
-      if (inProcessMovieSearch) {
-        try {
-          const rawResults = await withSearchTimeout(inProcessMovieSearch(trimmedQuery), 9000, []);
-          if (rawResults && rawResults.length > 0) {
-            const unified = deduplicateMovieResults(rawResults);
-            const providerCount = new Set(rawResults.map(r => r.providerKey)).size;
-            const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : (providerCount >= 2 ? 90 * 1000 : 15 * 1000);
-            const diagnostics = { capabilities, providers: providerStats, playwrightFallbackUsed: true };
-            inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unified, diagnostics });
-            return { results: unified, providerCount, diagnostics };
-          }
-        } catch (err) {
-          console.warn('[HLSProxy] In-process movie search error:', err.message);
-        }
+      if (!existing.poster && item.poster) {
+        existing.poster = item.poster;
       }
-
-      return { results: [], providerCount: 0, diagnostics: { capabilities, providers: providerStats } };
-    })().finally(() => {
-      inFlightMovieSearches.delete(cacheKey);
-    });
-    inFlightMovieSearches.set(cacheKey, sharedTask);
+    }
   }
 
-  const outcome = await sharedTask;
-  const formatted = formatSearchResponseForUser(outcome.results || [], isPrivileged);
+  return Array.from(map.values());
+}
+
+  // 2. Hızlı Dahili Çoklu Arama (FullHDFilmİzlesene + HDFilmCehennemi + FilmMakinesi)
+  try {
+    const [fhfSettled, hdfSettled, fmSettled] = await Promise.allSettled([
+      searchFullHDFilm(trimmedQuery),
+      searchHDFilmCehennemi(trimmedQuery),
+      searchFilmMakinesi(trimmedQuery),
+    ]);
+
+    const combined = [];
+    if (fhfSettled.status === 'fulfilled' && Array.isArray(fhfSettled.value)) {
+      combined.push(...fhfSettled.value);
+    }
+    if (hdfSettled.status === 'fulfilled' && Array.isArray(hdfSettled.value)) {
+      combined.push(...hdfSettled.value);
+    }
+    if (fmSettled.status === 'fulfilled' && Array.isArray(fmSettled.value)) {
+      combined.push(...fmSettled.value);
+    }
+
+    if (combined.length > 0) {
+      // Afiş eşleştirme: Eğer FilmMakinesi veya HDFilmCehennemi için afiş yoksa, aynı aramadaki FullHDFilmİzlesene afişini paylaş
+      const posterCandidate = combined.find(m => m.poster)?.poster || null;
+      if (posterCandidate) {
+        for (const item of combined) {
+          if (!item.poster) {
+            item.poster = posterCandidate;
+          }
+        }
+      }
+
+      // Tekilleştir: Her film sitesi için aynı filmden sadece 1 sonuç listelenir (Dublaj/Altyazı birleşik)
+      const uniqueResults = deduplicateMovieResults(combined);
+
+      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: uniqueResults });
+      return res.status(200).json({
+        success: true,
+        query: trimmedQuery,
+        count: uniqueResults.length,
+        results: uniqueResults,
+      });
+    }
+  } catch (fastSearchErr) {
+    console.warn('[HLSProxy] Fast search error:', fastSearchErr.message);
+  }
+
+  // 3. Playwright tabanlı dahili arama (varsa)
+  if (inProcessMovieSearch) {
+    try {
+      const results = await inProcessMovieSearch(trimmedQuery);
+      if (results && results.length > 0) {
+        inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results });
+        return res.status(200).json({
+          success: true,
+          query: trimmedQuery,
+          count: results.length,
+          results
+        });
+      }
+    } catch (err) {
+      console.warn('[HLSProxy] In-process movie search error:', err.message);
+    }
+  }
+
+  // 4. Mikroservis köprüsü (Stream Resolver Microservice)
+  const rawResolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
+  const cleanResolverUrl = rawResolverUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
+
+    const microResponse = await fetch(`${cleanResolverUrl}/api/search-movies?q=${encodeURIComponent(trimmedQuery)}`, {
+      method: 'GET',
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    const data = await microResponse.json().catch(() => null);
+    if (microResponse.ok && data && Array.isArray(data.results) && data.results.length > 0) {
+      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: data.results });
+      return res.status(200).json(data);
+    }
+  } catch (err) {
+    console.warn('[HLSProxy] Microservice movie search error:', err.message);
+  }
+
+  // Hiçbir sonuç bulunamazsa da 404 DEĞİL, 200 ile boş dizi döner (UI bozulmaz)
   return res.status(200).json({
     success: true,
     query: trimmedQuery,
-    count: formatted.length,
-    results: formatted,
-    providerCount: outcome.providerCount || 0,
-    showSources: isPrivileged,
-    searchMs: Date.now() - searchStart,
-    ...(isPrivileged && outcome.diagnostics ? { diagnostics: outcome.diagnostics } : {}),
+    count: 0,
+    results: []
   });
 });
 
