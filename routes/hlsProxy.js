@@ -191,20 +191,36 @@ function decodeHtmlEntities(str) {
 }
 
 // Python curl_cffi TLS impersonator (available on server)
-function fetchWithTlsImpersonator(url, referer = '') {
+function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = '') {
   return new Promise((resolve) => {
     const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
-    execFile('python3', [scriptPath, url, referer], { timeout: 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
-      if (err || !stdout || stdout.length === 0) {
-        return resolve('');
-      }
-      resolve(stdout);
-    });
+    const args = [scriptPath, url, referer || '', method || 'GET'];
+    if (postData) args.push(postData);
+    const run = (bin) => {
+      execFile(bin, args, { timeout: 14000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+        if (err && err.code === 'ENOENT' && bin === 'python3') {
+          return run('python');
+        }
+        if (err || !stdout || stdout.length === 0) {
+          return resolve('');
+        }
+        resolve(stdout);
+      });
+    };
+    run('python3');
   });
 }
 
 function isBlockedOrChallenge(text) {
   if (!text || typeof text !== 'string') return true;
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith('#EXTM3U')) return false;
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      JSON.parse(trimmed);
+      return false;
+    } catch {}
+  }
   if (text.length < 300) return true;
   // Eğer sayfa zengin içerikliyse ve film blokları içeriyorsa asla engelli değildir
   if (text.length > 3000 && (text.includes('class="film') || text.includes('film-title') || text.includes('poster') || text.includes('<title>'))) {
@@ -233,7 +249,8 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   // Use Python TLS Impersonator first (Chrome 124 TLS fingerprint).
   if (url.includes('hdfilmcehennemi')) {
     try {
-      const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || 'https://www.hdfilmcehennemi.nl/';
+      const refHdr = headers.find(h => h.toLowerCase().startsWith('referer:')) || '';
+      const ref = refHdr ? refHdr.replace(/^referer:\s*/i, '').trim() : 'https://www.hdfilmcehennemi.nl/';
       const tlsHtml = await fetchWithTlsImpersonator(url, ref);
       if (!isBlockedOrChallenge(tlsHtml)) {
         return tlsHtml;
@@ -284,7 +301,8 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
 
   // 4. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
   try {
-    const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || '';
+    const refHdr = headers.find(h => h.toLowerCase().startsWith('referer:')) || '';
+    const ref = refHdr ? refHdr.replace(/^referer:\s*/i, '').trim() : '';
     const tlsHtml = await fetchWithTlsImpersonator(url, ref);
     if (!isBlockedOrChallenge(tlsHtml)) {
       return tlsHtml;
@@ -641,6 +659,14 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       lowerUrl.includes('/vtt/') || 
       lowerUrl.includes('/subtitles/');
 
+    const isMediaChunk = 
+      lowerUrl.includes('.ts') || 
+      lowerUrl.includes('.m4s') || 
+      lowerUrl.endsWith('.mp4') || 
+      lowerUrl.includes('.aac') || 
+      lowerUrl.includes('/segment') ||
+      lowerUrl.includes('/fragment');
+
     // If initial fetch gives 403 or 404, try curl directly for images/subtitles or cycle through fallback referers
     if (!response.ok && (response.status === 403 || response.status === 404)) {
       if (isPosterOrImage || isSubtitleFile) {
@@ -752,6 +778,43 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
       }
     }
 
+    // Manifest / non-media endpoints blocked by datacenter IP or JA3 (e.g. ha.vixolity.com returning 403)
+    if (!response.ok && !isPosterOrImage && !isMediaChunk) {
+      try {
+        const curlHeaders = [];
+        if (refererHeader) curlHeaders.push(`Referer: ${refererHeader}`);
+        if (originHeader) curlHeaders.push(`Origin: ${originHeader}`);
+        const curlBody = await fetchWithCurl(targetUrl, curlHeaders, 8);
+        if (curlBody) {
+          const trimmed = curlBody.trimStart();
+          const lowerHead = trimmed.slice(0, 64).toLowerCase();
+          const isHtmlError = lowerHead.startsWith('<!doctype') || lowerHead.startsWith('<html');
+          if (trimmed.startsWith('#EXTM3U') || (!isHtmlError && !isBlockedOrChallenge(curlBody))) {
+            const resolvedCt = trimmed.startsWith('#EXTM3U')
+              ? 'application/x-mpegURL'
+              : (isSubtitleFile ? 'text/vtt; charset=utf-8' : 'text/plain; charset=utf-8');
+            const bodyBuf = Buffer.from(curlBody, 'utf8');
+            response = {
+              ok: true,
+              status: 200,
+              statusText: 'OK',
+              body: null,
+              headers: {
+                get: (k) => {
+                  const lk = String(k || '').toLowerCase();
+                  if (lk === 'content-type') return resolvedCt;
+                  if (lk === 'content-length') return String(bodyBuf.byteLength);
+                  return null;
+                },
+              },
+              arrayBuffer: async () => bodyBuf.buffer.slice(bodyBuf.byteOffset, bodyBuf.byteOffset + bodyBuf.byteLength),
+              text: async () => curlBody,
+            };
+          }
+        }
+      } catch {}
+    }
+
     if (!response.ok) {
       if (isPosterOrImage) {
         const TRANSPARENT_1PX_WEBP = Buffer.from('UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AA/v3V84AAA', 'base64');
@@ -763,14 +826,6 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
 
       // If a binary media chunk (MPEG-TS, m4s, mp4, aac, etc.) failed with 403 or 401 on the server (e.g. geo-restricted or CloudFront blocked),
       // redirect the client with 302 Found so the client browser downloads it directly using their local residential IP!
-      const isMediaChunk = 
-        lowerUrl.includes('.ts') || 
-        lowerUrl.includes('.m4s') || 
-        lowerUrl.endsWith('.mp4') || 
-        lowerUrl.includes('.aac') || 
-        lowerUrl.includes('/segment') ||
-        lowerUrl.includes('/fragment');
-
       if (isMediaChunk && (response.status === 403 || response.status === 401)) {
         console.warn(`[HLSProxy] Upstream ${response.status} for media chunk ${targetUrl}. Redirecting client directly via 302...`);
         const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin) || '*';
@@ -1864,18 +1919,36 @@ function extractBestSubFromZipBuffer(zipBuf) {
       entries.push({ fileName, method, compSlice });
     }
   }
-  // Rank entries: prefer .vtt or .srt, skip readme/txt
-  const scored = entries
-    .filter(e => /\.(srt|vtt|ass|sub)$/i.test(e.fileName))
-    .sort((a, b) => {
-      const sA = a.fileName.toLowerCase().endsWith('.srt') ? 2 : a.fileName.toLowerCase().endsWith('.vtt') ? 3 : 1;
-      const sB = b.fileName.toLowerCase().endsWith('.srt') ? 2 : b.fileName.toLowerCase().endsWith('.vtt') ? 3 : 1;
-      return sB - sA;
-    });
+  // Rank entries: prefer full non-sample/non-trailer .vtt/.srt (including .srt.txt / .vtt.txt) over split parts or samples
+  const isSubCandidate = (name) => /\.(srt|vtt|ass|sub|txt)$/i.test(name);
+  const nonSample = entries.filter(e =>
+    isSubCandidate(e.fileName) &&
+    !/\b(sample|trailer|teaser|fragman|readme|nfo)\b/i.test(e.fileName)
+  );
+  const pool = nonSample.length > 0 ? nonSample : entries.filter(e => isSubCandidate(e.fileName));
+  const scoreZipEntry = (name) => {
+    const lower = String(name || '').toLowerCase();
+    let pts = 2;
+    if (lower.endsWith('.vtt') || lower.endsWith('.vtt.txt')) pts = 30;
+    else if (lower.endsWith('.srt') || lower.endsWith('.srt.txt')) pts = 25;
+    else if (lower.endsWith('.ass') || lower.endsWith('.sub')) pts = 12;
+    else if (lower.endsWith('.txt')) pts = 4;
+    if (/\b(cd\s*2|part\s*2|disc\s*2)\b|[-_. ]cd2\b/i.test(lower)) pts -= 15;
+    if (/\b(cd\s*3|part\s*3|disc\s*3)\b|[-_. ]cd3\b/i.test(lower)) pts -= 18;
+    if (/\b(sample|trailer|teaser|fragman|readme|nfo)\b/i.test(lower)) pts -= 100;
+    return pts;
+  };
+  const scored = pool.sort((a, b) => scoreZipEntry(b.fileName) - scoreZipEntry(a.fileName));
   for (const entry of scored) {
     try {
       const data = entry.method === 8 ? zlib.inflateRawSync(entry.compSlice) : entry.method === 0 ? entry.compSlice : null;
-      if (data && data.length > 20) return data;
+      if (!data || data.length <= 20) continue;
+      const lower = entry.fileName.toLowerCase();
+      if (lower.endsWith('.txt') && !lower.endsWith('.srt.txt') && !lower.endsWith('.vtt.txt')) {
+        // Require actual subtitle timestamps for plain .txt entries so readme text files are skipped
+        if (!data.subarray(0, 4096).toString('utf8').includes('-->')) continue;
+      }
+      return data;
     } catch { /* try next */ }
   }
   return null;
@@ -1925,27 +1998,33 @@ async function resolveImdbViaCinemeta(title, year) {
   return null;
 }
 
-function parseSubtitleReleaseMeta(rawText = '') {
-  const txt = String(rawText || '');
-  const fpsMatch = txt.match(/\b(23[.,]976|23[.,]98|24(?:[.,]000)?|25(?:[.,]000)?|29[.,]97|30(?:[.,]000)?)\s*(?:fps)?/i);
-  let fps = 0;
-  let fpsLabel = '';
-  if (fpsMatch) {
-    const num = parseFloat(fpsMatch[1].replace(',', '.'));
-    if (num >= 23 && num <= 60) {
-      fps = num === 23.98 ? 23.976 : num;
-      fpsLabel = `${fps} fps`;
+function parseSubtitleReleaseMeta(rawText = '', explicitFps = 0) {
+  const txt = String(rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  let fps = Number(explicitFps) || 0;
+  let fpsLabel = fps > 0 ? `${fps} fps` : '';
+  if (!fps) {
+    const fpsMatch = txt.match(/\b(23[.,]976|23[.,]98|24(?:[.,]000)?|25(?:[.,]000)?|29[.,]97|30(?:[.,]000)?)\s*(?:fps)?\b/i);
+    if (fpsMatch) {
+      const num = parseFloat(fpsMatch[1].replace(',', '.'));
+      if (num >= 23 && num <= 60) {
+        fps = num === 23.98 ? 23.976 : num;
+        fpsLabel = `${fps} fps`;
+      }
     }
+  } else if (fps === 23.98) {
+    fps = 23.976;
+    fpsLabel = '23.976 fps';
   }
-  const relMatch = txt.match(/\b(WEB[-\s.]?DL|WEBRip|Blu[-\s.]?Ray|BRRip|BDRip|HDTV|HDRip|DVDRip|REMUX|IMAX|Extended|Director'?s\.?Cut|Theatrical|CAM|TS)\b/i);
+  const relMatch = txt.match(/\b(WEB[-\s.]?DL|WEBRip|Blu[-\s.]?Ray|BRRip|BDRip|HDTV|HDRip|DVDRip|REMUX|IMAX|Extended|Director'?s\.?Cut|Theatrical|CAM|HDCAM|TS|DVDScr)\b/i);
   const releaseTag = relMatch ? relMatch[1].replace(/\s+/g, '') : '';
   let score = 0;
-  if (/web[-\s.]?dl|blu[-\s.]?ray|webrip|bdrip|brrip|remux/i.test(txt)) score += 10;
-  if (/hdtv|hdrip/i.test(txt)) score += 6;
-  if (fps === 23.976 || fps === 24) score += 5;
+  if (/web[-\s.]?dl|blu[-\s.]?ray|webrip|bdrip|brrip|remux/i.test(txt)) score += 12;
+  if (/hdtv|hdrip|dvdrip/i.test(txt)) score += 6;
+  if (fps === 23.976 || fps === 24) score += 6;
   else if (fps === 25) score += 2;
-  if (/\b(cam|ts|hdcam|telesync)\b/i.test(txt)) score -= 12;
-  if (/\b(extended|director|uncut)\b/i.test(txt)) score -= 2; // slightly lower than theatrical default unless chosen
+  if (/\b(cam|ts|hdcam|telesync|dvdscr|screener|workprint)\b/i.test(txt)) score -= 35;
+  if (/\b(cd\s*[123]|disc\s*[123]|2cd)\b/i.test(txt)) score -= 40;
+  if (/\b(extended|director|uncut|unrated|imax)\b/i.test(txt)) score -= 4;
   return { fps, fpsLabel, releaseTag, score };
 }
 
@@ -1960,21 +2039,36 @@ async function searchOpenSubtitlesStremio(imdbId, cleanTitle, year) {
     const data = await res.json();
     const subs = Array.isArray(data?.subtitles) ? data.subtitles : [];
     const trSubs = subs.filter(s => s && s.url && (s.lang === 'tur' || s.lang === 'tr' || String(s.SubLanguageID || '').toLowerCase() === 'tur'));
-    return trSubs.map((s, idx) => {
-      const metaText = [s.release, s.SubFileName, s.filename, s.url].filter(Boolean).join(' ');
-      const meta = parseSubtitleReleaseMeta(metaText);
-      return {
+    const mapped = [];
+    trSubs.forEach((s, idx) => {
+      const metaFields = [
+        s.subtitleFileName,
+        s.movieReleaseName,
+        s.releaseFormat,
+        s.releaseOther,
+        s.release,
+        s.SubFileName,
+        s.filename,
+      ].filter(Boolean).join(' ');
+      // Exclude teaser/trailer/sample/promo subtitles that never match full feature runtime
+      if (/\b(teaser|trailer|fragman|sample|preview)\b/i.test(metaFields)) return;
+      const explicitFps = Number(s.fpsMilli) > 15000 ? Number((Number(s.fpsMilli) / 1000).toFixed(3)) : 0;
+      const meta = parseSubtitleReleaseMeta(metaFields, explicitFps);
+      const downloads = Number(s.downloadCount || s.downloads || 0);
+      const dlBonus = downloads > 0 ? Math.log10(downloads + 1) * 4 : 0;
+      mapped.push({
         id: `os_${idx}_${s.id || idx}`,
         fps: meta.fps,
         fpsHint: meta.fpsLabel,
         releaseTag: meta.releaseTag,
-        score: meta.score + Math.max(0, 4 - idx * 0.2),
+        score: meta.score + dlBonus + Math.max(0, 4 - idx * 0.2),
         lang: 'tr',
         kind: 'subtitles',
         playableUrl: `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}`,
         external: true,
-      };
+      });
     });
+    return mapped;
   } catch {
     return [];
   }
@@ -2029,39 +2123,80 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
     if (!movRes.ok) return [];
     const movHtml = decodeSubtitleText(Buffer.from(await movRes.arrayBuffer()));
 
+    const rawMatches = [...movHtml.matchAll(/href="(\/sub\/(\d+)\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi)];
     const subRows = [];
     const seenSub = new Set();
-    const rowRegex = /href="(\/sub\/(\d+)\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let m;
-    while ((m = rowRegex.exec(movHtml)) !== null) {
+    for (let i = 0; i < rawMatches.length; i++) {
+      const m = rawMatches[i];
       const subPath = m[1];
       const subId = m[2];
       if (seenSub.has(subId)) continue;
-      const start = Math.max(0, m.index - 250);
-      const end = Math.min(movHtml.length, m.index + 650);
-      const snippet = movHtml.slice(start, end);
-      const isEngOnly = /flag-en|İngilizce|alt="en"/i.test(snippet) && !/flag-tr|Türkçe|alt="tr"/i.test(snippet);
-      if (isEngOnly) continue;
+
+      // Capture exact <div class="altsonsez..."> row container so <div class="alcd">, <div class="alfps">,
+      // <div class="alindirme">, and <div class="ripdiv"> are all included without spilling into adjacent rows.
+      const rowOpenIdx = movHtml.lastIndexOf('class="altsonsez', m.index);
+      const start = (rowOpenIdx !== -1 && m.index - rowOpenIdx < 400)
+        ? Math.max(0, rowOpenIdx - 12)
+        : Math.max(0, m.index - 220);
+      const nextRowIdx = movHtml.indexOf('class="altsonsez', m.index + m[0].length);
+      const nextSubIdx = i + 1 < rawMatches.length ? rawMatches[i + 1].index - 120 : movHtml.length;
+      const rawEnd = Math.min(
+        movHtml.length,
+        nextRowIdx !== -1 ? Math.max(m.index + 200, nextRowIdx - 12) : nextSubIdx,
+        start + 2600
+      );
+      const rowBlock = movHtml.slice(start, Math.max(start + 200, rawEnd));
+
+      const hasTrFlag = /class="[^"]*\bflagtr\b/i.test(rowBlock) || /\bflag-tr\b/i.test(rowBlock) || /alt="tr"/i.test(rowBlock) || /Türkçe/i.test(rowBlock);
+      const hasEnFlag = /class="[^"]*\bflagen\b/i.test(rowBlock) || /\bflag-en\b/i.test(rowBlock) || /alt="en"/i.test(rowBlock) || /İngilizce/i.test(rowBlock);
+      if (hasEnFlag && !hasTrFlag) continue;
       seenSub.add(subId);
 
-      const releaseMatch = snippet.match(/class="altsonucsurum"[^>]*>([^<]+)</i);
-      const relStr = (releaseMatch ? releaseMatch[1] : m[3].replace(/<[^>]+>/g, '')).trim();
-      const meta = parseSubtitleReleaseMeta(`${snippet} ${relStr}`);
+      const stripHtml = (s = '') => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const cdRaw = stripHtml(rowBlock.match(/class="alcd"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+      const cdCount = parseInt(cdRaw, 10) || 1;
+
+      const fpsRaw = stripHtml(rowBlock.match(/class="alfps"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+      let rowFps = 0;
+      const fpsNum = parseFloat(fpsRaw.replace(',', '.'));
+      if (Number.isFinite(fpsNum) && fpsNum >= 23 && fpsNum <= 60) {
+        rowFps = fpsNum === 23.98 ? 23.976 : fpsNum;
+      }
+
+      const dlRaw = stripHtml(rowBlock.match(/class="alindirme"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+      const downloads = parseInt(dlRaw.replace(/[^\d]/g, ''), 10) || 0;
+
+      const ripRaw = stripHtml(rowBlock.match(/class="ripdiv"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+      const surumRaw = stripHtml(rowBlock.match(/class="altsonucsurum"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+      const anchorText = stripHtml(m[3] || '');
+      const cleanRelText = [surumRaw, ripRaw, anchorText].filter(Boolean).join(' ');
+
+      if (/\b(teaser|trailer|fragman|sample|preview)\b/i.test(cleanRelText)) continue;
+
+      const meta = parseSubtitleReleaseMeta(cleanRelText, rowFps);
+      const cdPenalty = cdCount > 1 ? -100 : 0;
+      const dlBonus = downloads > 0 ? Math.log10(downloads + 1) * 5 : 0;
       const fullSubUrl = `https://turkcealtyazi.org${subPath}`;
       subRows.push({
         id: `ta_${subId}`,
+        cdCount,
+        downloads,
         fps: meta.fps,
         fpsHint: meta.fpsLabel,
         releaseTag: meta.releaseTag,
-        score: meta.score + 3, // TurkceAltyazi rows have verified FPS/release hints
+        score: meta.score + dlBonus + cdPenalty + 4,
         lang: 'tr',
         kind: 'subtitles',
         playableUrl: `/api/subtitles/ta?subUrl=${encodeURIComponent(fullSubUrl)}`,
         external: true,
       });
-      if (subRows.length >= 10) break;
+      if (subRows.length >= 60) break;
     }
-    return subRows;
+
+    const singleCdRows = subRows.filter(r => r.cdCount === 1);
+    const preferred = singleCdRows.length > 0 ? singleCdRows : subRows;
+    preferred.sort((a, b) => (b.score || 0) - (a.score || 0));
+    return preferred.slice(0, 12);
   } catch {
     return [];
   }
@@ -2165,6 +2300,10 @@ router.get(['/subtitles/vtt', '/api/subtitles/vtt'], async (req, res) => {
       if (!extracted) return res.status(404).json({ error: 'ZIP içerisinden geçerli altyazı çıkmadı.' });
       rawBuf = extracted;
     }
+    const rawHead = rawBuf.subarray(0, 128).toString('utf8').trimStart().toLowerCase();
+    if (rawHead.startsWith('<!doctype') || rawHead.startsWith('<html') || rawBuf.length < 30) {
+      return res.status(404).json({ error: 'Geçerli altyazı içeriği alınamadı.' });
+    }
     const vttBuf = convertSrtBufferToVtt(rawBuf);
     subtitleFileCache.set(`vtt:${targetUrl}`, { ts: Date.now(), buf: vttBuf });
     res.set({
@@ -2228,6 +2367,10 @@ router.get(['/subtitles/ta', '/api/subtitles/ta'], async (req, res) => {
       const extracted = extractBestSubFromZipBuffer(fileBuf);
       if (!extracted) return res.status(404).json({ error: 'ZIP arşivinde uygun altyazı bulunamadı.' });
       fileBuf = extracted;
+    }
+    const rawHead = fileBuf.subarray(0, 128).toString('utf8').trimStart().toLowerCase();
+    if (rawHead.startsWith('<!doctype') || rawHead.startsWith('<html') || fileBuf.length < 30) {
+      return res.status(404).json({ error: 'Geçerli altyazı içeriği alınamadı.' });
     }
     const vttBuf = convertSrtBufferToVtt(fileBuf);
     subtitleFileCache.set(`ta:${subUrl}`, { ts: Date.now(), buf: vttBuf });
@@ -2434,7 +2577,10 @@ async function searchHDFilmCehennemi(query) {
       } catch {}
 
       if (!raw || !raw.trim().startsWith('{')) {
-        raw = await fetchWithCurl(targetUrl, curlHeaders, 5);
+        raw = await fetchWithCurl(targetUrl, curlHeaders, 6);
+      }
+      if (!raw || !raw.trim().startsWith('{')) {
+        raw = await fetchWithTlsImpersonator(targetUrl, `${base}/`);
       }
       if (!raw || !raw.trim().startsWith('{')) {
         raw = await fetchViaScraperApi(targetUrl, { timeoutMs: 7000, headers: reqHeaders, keepHeaders: true });
@@ -2476,10 +2622,10 @@ async function searchHDFilmCehennemi(query) {
     } catch {}
   }
 
-  // Fallback to HTML /arama/?s=
+  // Fallback to HTML /?s=
   try {
     const base = 'https://www.hdfilmcehennemi.nl';
-    const htmlUrl = `${base}/arama/?s=${encodeURIComponent(query)}`;
+    const htmlUrl = `${base}/?s=${encodeURIComponent(query)}`;
     const html = await fetchHtmlRobust(htmlUrl, {
       fetchHeaders: { Referer: `${base}/` },
       curlHeaders: [`Referer: ${base}/`],
@@ -2693,6 +2839,14 @@ async function searchRoketDizi(query) {
             if (items.length > 0) break;
           } catch {}
         }
+      }
+
+      // 2b. Python TLS Chrome 124 Impersonator POST fallback
+      if (items.length === 0) {
+        try {
+          const tlsOut = await fetchWithTlsImpersonator(apiEndpoint, 'https://roketdizi.life/', 'POST', payload);
+          items = parseRoketJson(tlsOut);
+        } catch {}
       }
 
       // 3. ScraperAPI POST fallback
@@ -3007,7 +3161,8 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
 
   // 1. Önbellek kontrolü (yetkiye göre dinamik maskelenmiş yanıt üret)
   const cached = inProcessSearchCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+  const effectiveCacheTtl = cached?.ttlMs || SEARCH_CACHE_TTL;
+  if (cached && Date.now() - cached.timestamp < effectiveCacheTtl) {
     const formatted = formatSearchResponseForUser(cached.results, isPrivileged);
     return res.status(200).json({
       success: true,
@@ -3039,8 +3194,10 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
 
     if (combined.length > 0) {
       const unifiedResults = deduplicateMovieResults(combined);
-      // Aynı arama içinde afişi eksik kart varsa yalnızca aynı normalize başlıklı diğer kartlardan al
-      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: unifiedResults });
+      const providerCount = new Set(combined.map(r => r.providerKey)).size;
+      const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : 90 * 1000;
+      // Kısmi site kesintilerinde önbelleği 30 dk kilitlemek yerine 90 sn sonra yeniden dene
+      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unifiedResults });
       const formatted = formatSearchResponseForUser(unifiedResults, isPrivileged);
       return res.status(200).json({
         success: true,
@@ -3060,7 +3217,9 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
       const rawResults = await inProcessMovieSearch(trimmedQuery);
       if (rawResults && rawResults.length > 0) {
         const unified = deduplicateMovieResults(rawResults);
-        inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), results: unified });
+        const providerCount = new Set(rawResults.map(r => r.providerKey)).size;
+        const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : 90 * 1000;
+        inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unified });
         const formatted = formatSearchResponseForUser(unified, isPrivileged);
         return res.status(200).json({
           success: true,

@@ -180,7 +180,20 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         timeout: 20000,
       };
 
-      const response = await axios.post('/api/resolve-stream', payload, { timeout: 25000 });
+      let response;
+      try {
+        response = await axios.post('/api/resolve-stream', payload, { timeout: 25000 });
+      } catch (firstErr) {
+        // Retry once if a stale cluster worker rejected sourceTokens (400) or if we have a fallback url
+        if (firstErr.response?.status === 400 && hasTokens) {
+          const fallbackPayload = trimmedUrl
+            ? { ...payload, url: trimmedUrl }
+            : payload;
+          response = await axios.post('/api/resolve-stream', fallbackPayload, { timeout: 25000 });
+        } else {
+          throw firstErr;
+        }
+      }
       clearInterval(timerRef.current);
 
       if (response.data && response.data.success && response.data.playableStreamUrl) {

@@ -59,8 +59,13 @@ const loadDash = () => {
   });
 };
 
-const isHls = (url) => {
-  if (!url) return false;
+const isProxyOrInternalMediaUrl = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('/api/proxy') || url.includes('/api/media/');
+};
+
+const isDirectVideoFile = (url) => {
+  if (!url || typeof url !== 'string') return false;
   let target = url;
   if (url.includes('/api/proxy') && url.includes('url=')) {
     try {
@@ -69,14 +74,33 @@ const isHls = (url) => {
     } catch {}
   }
   const cleanUrl = target.split('?')[0].split('#')[0].toLowerCase();
-  if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
-    return false;
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.m4v') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.mkv') ||
+    cleanUrl.endsWith('.ogg')
+  );
+};
+
+const isHls = (url) => {
+  if (!url) return false;
+  if (isDirectVideoFile(url)) return false;
+  let target = url;
+  if (url.includes('/api/proxy') && url.includes('url=')) {
+    try {
+      const parsed = new URL(url, 'https://dummy.com');
+      target = parsed.searchParams.get('url') || url;
+    } catch {}
   }
+  const cleanUrl = target.split('?')[0].split('#')[0].toLowerCase();
   return cleanUrl.endsWith('.m3u8') || target.includes('.m3u8') || target.includes('/hls/') || target.includes('.txt') || target.includes('master.txt') || url.includes('/api/proxy');
 };
 
 const isDash = (url) => {
   if (!url) return false;
+  if (isDirectVideoFile(url)) return false;
   let target = url;
   if (url.includes('/api/proxy') && url.includes('url=')) {
     try {
@@ -85,14 +109,16 @@ const isDash = (url) => {
     } catch {}
   }
   const cleanUrl = target.split('?')[0].split('#')[0].toLowerCase();
-  if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
-    return false;
-  }
   return cleanUrl.endsWith('.mpd') || target.includes('.mpd') || target.includes('/dash/');
 };
 
 const isLiveStream = (url) => {
   return isHls(url) || isDash(url);
+};
+
+const isProxiedMovieStream = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('/api/proxy');
 };
 
 const isPlayableExternalUrl = (url) => {
@@ -111,7 +137,8 @@ const isInternalApiUrl = (url) => {
   try {
     const parsed = new URL(trimmed, 'https://oxypace.com.tr');
     const host = parsed.hostname.toLowerCase();
-    if (host === 'api.oxypace.com.tr' && !parsed.pathname.includes('/api/proxy') && !parsed.pathname.includes('/api/media')) {
+    // api.oxypace.com.tr enforces frame-ancestors 'self' / X-Frame-Options: DENY; never frame it
+    if (host === 'api.oxypace.com.tr' || parsed.pathname.startsWith('/api/')) {
       return true;
     }
   } catch {}
@@ -119,7 +146,7 @@ const isInternalApiUrl = (url) => {
 };
 
 const isIframePlatform = (url) => {
-  if (!url || isInternalApiUrl(url)) return false;
+  if (!url || isInternalApiUrl(url) || isProxyOrInternalMediaUrl(url) || isDirectVideoFile(url)) return false;
   const lower = url.toLowerCase();
   return [
     'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com', 
@@ -207,7 +234,7 @@ const getEmbedUrl = (url) => {
 };
 
 const isPlatformUrl = (url) => {
-  if (!url) return false;
+  if (!url || isInternalApiUrl(url) || isProxyOrInternalMediaUrl(url) || isDirectVideoFile(url)) return false;
   const lowerUrl = url.toLowerCase();
   return [
     'youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv',
@@ -1234,7 +1261,7 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
+    const isStream = (isLiveStream(watchParty?.url) || isProxiedMovieStream(watchParty?.url)) && !isPlatformUrl(watchParty?.url);
     const isLive = !!watchParty?.isLive;
     const isNativeVOD = isStream && !isLive;
 
@@ -1324,8 +1351,8 @@ const WatchPartyPlayer = () => {
             rawUrl.includes('rapidvid');
         const needsNormalizedProxy = useProxy || isKnownCorsRestricted || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/');
         const streamUrl = needsNormalizedProxy ? getProxiedUrl(rawUrl) : rawUrl;
-        const urlIsHls = isHls(rawUrl) || watchParty.isLive;
-        const urlIsDash = isDash(rawUrl);
+        const urlIsHls = !isDirectVideoFile(rawUrl) && (isHls(rawUrl) || watchParty.isLive);
+        const urlIsDash = !isDirectVideoFile(rawUrl) && isDash(rawUrl);
 
         const getLiveExpectedTime = () => {
             const base = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
@@ -1380,7 +1407,7 @@ const WatchPartyPlayer = () => {
 
         const initPlayer = async () => {
             try {
-                if (urlIsHls || !urlIsDash) {
+                if (urlIsHls) {
                     const Hls = await loadHls();
                     const canUseHlsJs = Hls && Hls.isSupported();
 
@@ -1571,6 +1598,17 @@ const WatchPartyPlayer = () => {
                             triggerReconnect();
                         }
                     });
+                } else {
+                    // Direct progressive video stream (e.g. proxied .mp4 / .webm) with full native VOD controls
+                    video.src = streamUrl;
+                    video.onerror = (e) => {
+                        console.error("Progressive stream playback error:", e);
+                        if (!useProxy) {
+                            setUseProxy(true);
+                        } else {
+                            triggerReconnect();
+                        }
+                    };
                 }
             } catch (err) {
                 console.error("Streaming setup error:", err);
@@ -2081,7 +2119,10 @@ const WatchPartyPlayer = () => {
                         ? getProxiedUrl(rawSubUrl)
                         : rawSubUrl;
                     const res = await fetch(targetUrl);
-                    vttContent = await res.text();
+                    if (res.ok) {
+                        const text = await res.text();
+                        if (text && !/^\s*[{<]/.test(text)) vttContent = text;
+                    }
                 }
             } else if (option.type === 'repo') {
                 const sub = externalRepoSubtitles[option.index];
@@ -2091,7 +2132,10 @@ const WatchPartyPlayer = () => {
                         ? getProxiedUrl(rawSubUrl)
                         : rawSubUrl;
                     const res = await fetch(targetUrl);
-                    vttContent = await res.text();
+                    if (res.ok) {
+                        const text = await res.text();
+                        if (text && !/^\s*[{<]/.test(text)) vttContent = text;
+                    }
                 }
             }
             if (seq !== subtitleLoadSeqRef.current) return;
@@ -2300,6 +2344,10 @@ const WatchPartyPlayer = () => {
     };
 
     const handleSelectSubtitleTrack = (option) => {
+        subTimeOffsetRef.current = 0;
+        setSubTimeOffsetSec(0);
+        subFpsRateRef.current = 1;
+        setSubFpsMode('1');
         loadSubtitleTrackText(option);
         if (option.type === 'off') {
             userDisabledSubtitlesRef.current = true;

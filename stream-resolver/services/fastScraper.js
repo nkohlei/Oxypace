@@ -452,15 +452,23 @@ function isChallengeOrDeadHtml(text) {
 /**
  * Fetches HTML using native Python curl_cffi Chrome TLS impersonation (Bypasses Cloudflare ASN 444/403 blocks)
  */
-function fetchWithTlsImpersonation(targetUrl, referer = '') {
+function fetchWithTlsImpersonation(targetUrl, referer = '', method = 'GET', postData = '') {
   return new Promise((resolve) => {
     const scriptPath = path.join(__dirname, 'tlsFetcher.py');
-    execFile('python3', [scriptPath, targetUrl, referer], { timeout: 10000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
-      if (err || !stdout || stdout.length === 0) {
-        return resolve('');
-      }
-      resolve(stdout);
-    });
+    const args = [scriptPath, targetUrl, referer, method];
+    if (postData) args.push(postData);
+    const tryBin = (bin) => {
+      execFile(bin, args, { timeout: 10000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+        if (err && err.code === 'ENOENT' && bin === 'python3') {
+          return tryBin('python');
+        }
+        if (err || !stdout || stdout.length === 0) {
+          return resolve('');
+        }
+        resolve(stdout);
+      });
+    };
+    tryBin(process.env.TLS_PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3'));
   });
 }
 

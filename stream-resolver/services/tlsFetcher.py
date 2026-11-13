@@ -1,8 +1,21 @@
 import sys
-import json
+import re
 from curl_cffi import requests
 
+def is_challenge(text):
+    if not text or len(text) < 40:
+        return True
+    lower = text.lower()
+    return (
+        '<title>just a moment...</title>' in lower
+        or '<title>attention required! | cloudflare</title>' in lower
+        or 'cf-browser-verification' in lower
+        or 'error code: 1005' in lower
+        or 'error code: 444' in lower
+    )
+
 def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None):
+    is_hdf_ajax = bool(re.search(r'hdfilmcehennemi\.[^/]+/(?:search/|video/\d+)', url, re.I))
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -12,41 +25,35 @@ def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None):
         headers['Referer'] = referer
     if '?do=' in url or 'getVideo' in url:
         headers['X-Requested-With'] = 'XMLHttpRequest'
-    elif 'hdfilmcehennemi' in url:
+    elif is_hdf_ajax:
         headers['x-requested-with'] = 'fetch'
         headers['Accept'] = 'application/json, text/plain, */*'
         if not headers.get('Referer'):
             headers['Referer'] = 'https://www.hdfilmcehennemi.nl/'
+    elif method.upper() == 'POST' and data:
+        headers['Content-Type'] = 'application/json'
 
-    proxies = None
-    if use_proxy:
-        proxies = {
-            'http': 'socks5h://127.0.0.1:9050',
-            'https': 'socks5h://127.0.0.1:9050'
-        }
+    proxies = {
+        'http': 'socks5h://127.0.0.1:9050',
+        'https': 'socks5h://127.0.0.1:9050'
+    } if use_proxy else None
 
-    # 1. Tor + TLS Impersonation
-    if use_proxy:
+    attempts = ([proxies] if use_proxy else []) + [None]
+    for px in attempts:
         try:
-            if method == "POST" or '?do=' in url:
-                r = requests.post(url, impersonate="chrome124", headers=headers, data=data, proxies=proxies, timeout=12)
+            kwargs = {'impersonate': 'chrome124', 'headers': headers, 'timeout': 11}
+            if px:
+                kwargs['proxies'] = px
+            if method.upper() == 'POST' or '?do=' in url:
+                if data is not None:
+                    kwargs['data'] = data
+                r = requests.post(url, **kwargs)
             else:
-                r = requests.get(url, impersonate="chrome124", headers=headers, proxies=proxies, timeout=12)
-            if r.status_code == 200 and len(r.text) > 0:
+                r = requests.get(url, **kwargs)
+            if r.status_code == 200 and not is_challenge(r.text):
                 return r.text
         except Exception:
             pass
-
-    # 2. Direct TLS Impersonation (No Proxy)
-    try:
-        if method == "POST" or '?do=' in url:
-            r = requests.post(url, impersonate="chrome124", headers=headers, data=data, timeout=10)
-        else:
-            r = requests.get(url, impersonate="chrome124", headers=headers, timeout=10)
-        if r.status_code == 200 and len(r.text) > 0:
-            return r.text
-    except Exception:
-        pass
 
     return ""
 
@@ -57,6 +64,7 @@ if __name__ == "__main__":
 
     target = sys.argv[1]
     ref = sys.argv[2] if len(sys.argv) > 2 else ""
-    method = sys.argv[3] if len(sys.argv) > 3 else ("POST" if "?do=" in target else "GET")
-    content = fetch_url(target, ref, method=method)
+    method = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] else ("POST" if "?do=" in target else "GET")
+    post_data = sys.argv[4] if len(sys.argv) > 4 else None
+    content = fetch_url(target, ref, method=method, data=post_data)
     sys.stdout.write(content)
