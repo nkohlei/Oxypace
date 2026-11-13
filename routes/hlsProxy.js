@@ -4,8 +4,9 @@ import { validateSsrfUrl, safeFetch } from '../utils/security.js';
 import { Readable } from 'stream';
 import { createRequire } from 'module';
 import vm from 'vm';
-import { execFile, spawn } from 'child_process';
+import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify } from 'util';
+import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -68,11 +69,78 @@ function decodeHtmlEntities(str) {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
 }
 
+let cachedTlsPythonBin = undefined;
+function resolveTlsPythonBin() {
+  if (cachedTlsPythonBin !== undefined) return cachedTlsPythonBin;
+  const candidates = [
+    process.env.TLS_PYTHON_BIN,
+    path.join(__dirname, '../stream-resolver/venv/bin/python'),
+    path.join(__dirname, '../venv/bin/python'),
+    '/home/ubuntu/venv/bin/python',
+    'python3',
+    'python',
+  ].filter(Boolean);
+  for (const bin of candidates) {
+    try {
+      execFileSync(bin, ['-c', 'import curl_cffi'], { timeout: 2500, stdio: 'ignore' });
+      cachedTlsPythonBin = bin;
+      return bin;
+    } catch {}
+  }
+  cachedTlsPythonBin = null;
+  return null;
+}
+
+function buildEnvProxyUrl() {
+  const raw = String(process.env.PROXY_SERVER || '').trim();
+  if (!raw) return '';
+  try {
+    const withScheme = raw.includes('://') ? raw : `http://${raw}`;
+    const u = new URL(withScheme);
+    const user = String(process.env.PROXY_USERNAME || '').trim();
+    const pass = String(process.env.PROXY_PASSWORD || '').trim();
+    if (user && !u.username) {
+      u.username = user;
+      if (pass) u.password = pass;
+    }
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
+let cachedTorReachable = null;
+let cachedTorCheckedAt = 0;
+function isTorReachable() {
+  if (Date.now() - cachedTorCheckedAt < 30000 && cachedTorReachable !== null) {
+    return Promise.resolve(cachedTorReachable);
+  }
+  return new Promise((resolve) => {
+    const sock = new net.Socket();
+    let settled = false;
+    const done = (ok) => {
+      if (settled) return;
+      settled = true;
+      cachedTorReachable = ok;
+      cachedTorCheckedAt = Date.now();
+      try { sock.destroy(); } catch {}
+      resolve(ok);
+    };
+    sock.setTimeout(250);
+    sock.once('connect', () => done(true));
+    sock.once('timeout', () => done(false));
+    sock.once('error', () => done(false));
+    try { sock.connect(9050, '127.0.0.1'); } catch { done(false); }
+  });
+}
+
 // Python curl_cffi TLS impersonator (available on server)
 function fetchWithTlsImpersonator(url, referer = '') {
   return new Promise((resolve) => {
+    const pyBin = resolveTlsPythonBin();
+    if (!pyBin) return resolve('');
     const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
-    execFile('python3', [scriptPath, url, referer], { timeout: 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+    execFile(pyBin, [scriptPath, url, referer], { timeout: 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
       if (err || !stdout || stdout.length === 0) {
         return resolve('');
       }
@@ -119,6 +187,28 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
     } catch (e) {}
   }
 
+  // 1b. Configured PROXY_SERVER via curl (if set in .env)
+  const envProxy = buildEnvProxyUrl();
+  if (envProxy) {
+    try {
+      const argsProxy = [
+        '-s', '-L', '-x', envProxy,
+        '--max-time', String(timeoutSec + 2),
+        '--proto', '=http,https',
+        '--proto-redir', '=http,https',
+        '--max-redirs', '5',
+        '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        ...headers.flatMap(h => ['-H', h]),
+        url
+      ];
+      const { stdout } = await execFileAsync(CURL_BIN, argsProxy);
+      if (!isBlockedOrChallenge(stdout)) {
+        return stdout;
+      }
+    } catch (e) {}
+  }
+
   // 2. Direct curl execution
   try {
     const args = [
@@ -140,25 +230,27 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   } catch (e) {}
 
   // 3. Try via Tor SOCKS5 if active (port 9050 on Linux server)
-  try {
-    const argsTor = [
-      '-s',
-      '-L',
-      '--socks5-hostname', '127.0.0.1:9050',
-      '--max-time', String(timeoutSec + 2),
-      '--proto', '=http,https',
-      '--proto-redir', '=http,https',
-      '--max-redirs', '5',
-      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      ...headers.flatMap(h => ['-H', h]),
-      url
-    ];
-    const { stdout } = await execFileAsync(CURL_BIN, argsTor);
-    if (!isBlockedOrChallenge(stdout)) {
-      return stdout;
-    }
-  } catch (e) {}
+  if (await isTorReachable()) {
+    try {
+      const argsTor = [
+        '-s',
+        '-L',
+        '--socks5-hostname', '127.0.0.1:9050',
+        '--max-time', String(timeoutSec + 2),
+        '--proto', '=http,https',
+        '--proto-redir', '=http,https',
+        '--max-redirs', '5',
+        '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        ...headers.flatMap(h => ['-H', h]),
+        url
+      ];
+      const { stdout } = await execFileAsync(CURL_BIN, argsTor);
+      if (!isBlockedOrChallenge(stdout)) {
+        return stdout;
+      }
+    } catch (e) {}
+  }
 
   // 4. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
   try {
@@ -947,8 +1039,26 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   const start = Date.now();
 
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
+    // 0. Configured PROXY_SERVER (residential/TR proxy if set in .env)
+    const envProxy = buildEnvProxyUrl();
+    if (envProxy) {
+      try {
+        const argsProxy = [
+          '-s', '-L', '-x', envProxy,
+          '--max-time', String(timeoutSec + 2),
+          '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          ...headers.flatMap(h => ['-H', h]),
+          url
+        ];
+        const { stdout } = await execFileAsync(CURL_BIN, argsProxy);
+        if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+          return stdout;
+        }
+      } catch (e) {}
+    }
+
     // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
-    if (process.platform === 'linux') {
+    if (process.platform === 'linux' && await isTorReachable()) {
       try {
         const argsTor = [
           '-s', '-L',
