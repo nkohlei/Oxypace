@@ -429,12 +429,16 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
             'git fetch --depth=1 origin main && git reset --hard origin/main && git gc --prune=now --quiet &&',
             'if ! git diff --quiet "$OLD_HEAD" HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi &&',
             'if [ -f stream-resolver/package.json ] && { [ ! -d stream-resolver/node_modules ] || ! git diff --quiet "$OLD_HEAD" HEAD -- stream-resolver/package.json; }; then PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 NODE_OPTIONS="--max-old-space-size=256" npm install --prefix stream-resolver --omit=dev --no-audit --no-fund; fi &&',
-            '(timeout 35 pm2 reload all --update-env || pm2 restart all --update-env)',
+            'pm2 restart all --update-env',
         ].join(' ');
+        const cleanEnv = { ...process.env };
+        for (const pmKey of ['NODE_APP_INSTANCE', 'pm_id', 'unique_id', 'axm_options', 'pm_uptime', 'unstable_restarts', 'status', 'exec_mode']) {
+            delete cleanEnv[pmKey];
+        }
         try {
             const child = spawn('bash', ['-c', deployScript], {
                 cwd: '/home/ubuntu/app',
-                env: process.env,
+                env: cleanEnv,
                 detached: true,
                 stdio: 'ignore',
             });

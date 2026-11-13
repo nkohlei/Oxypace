@@ -128,7 +128,7 @@ const DEFAULT_USER_AGENT =
  * @returns {Promise<StreamResult | null>}
  */
 async function resolveStreamUrl(targetUrl, options = {}) {
-  const { timeout = 30000 } = options;
+  const { timeout = 30000, referer = '' } = options;
 
   return await browserPool.acquire(async (browser) => {
     let context = null;
@@ -389,14 +389,27 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       });
     }
 
+    const waitUntilFoundOr = async (pg, maxMs) => {
+      const end = Date.now() + maxMs;
+      while (!foundStream && Date.now() < end) {
+        const step = Math.min(150, end - Date.now());
+        if (step <= 0) break;
+        await pg.waitForTimeout(step);
+      }
+    };
+
     // ── Ana Sayfa ──────────────────────────────────────────────────────────────
 
     const page = await context.newPage();
     attachListeners(page, 'MAIN');
 
     logger.debug(`[Playwright] Navigating → ${targetUrl}`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout });
-    await page.waitForTimeout(3000);
+    const mainGotoOpts = { waitUntil: 'domcontentloaded', timeout };
+    if (referer && /^https?:\/\//i.test(referer) && referer !== targetUrl) {
+      mainGotoOpts.referer = referer;
+    }
+    await page.goto(targetUrl, mainGotoOpts);
+    await waitUntilFoundOr(page, 3000);
 
     const pageTitle = await page.title().catch(() => '');
     logger.debug(`[Playwright] Başlık: "${pageTitle}"`);
@@ -413,7 +426,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     const clicked = await tryClickPlayButton(page, PLAY_SELECTORS);
     if (clicked) {
       logger.debug(`[Playwright] Play tıklandı — 6s bekleniyor...`);
-      await page.waitForTimeout(6000);
+      await waitUntilFoundOr(page, 6000);
       if (foundStream) return { ...foundStream, pageTitle };
       await checkVideoSrcFromDOM(page, checkAndSaveStream);
       if (foundStream) return { ...foundStream, pageTitle };
@@ -466,7 +479,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
       logger.debug(`[Playwright] iFrame taranıyor: ${frameUrl}`);
 
       await tryClickPlayButton(frame, PLAY_SELECTORS);
-      await page.waitForTimeout(4000);
+      await waitUntilFoundOr(page, 4000);
       if (foundStream) return { ...foundStream, pageTitle };
 
       await checkVideoSrcFromDOM(frame, checkAndSaveStream);
@@ -486,10 +499,10 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         await embedPage.goto(embedUrl, {
           waitUntil: 'domcontentloaded',
           timeout: Math.min(timeout, 25000),
-          headers: { Referer: targetUrl },
+          referer: targetUrl,
         });
 
-        await embedPage.waitForTimeout(3000);
+        await waitUntilFoundOr(embedPage, 3000);
         if (foundStream) { await embedPage.close().catch(() => {}); break; }
         await checkVideoSrcFromDOM(embedPage, checkAndSaveStream);
         if (foundStream) { await embedPage.close().catch(() => {}); break; }
@@ -497,7 +510,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
         const embedClicked = await tryClickPlayButton(embedPage, PLAY_SELECTORS);
         if (embedClicked) {
           logger.debug(`[Playwright] Embed play tıklandı — 6s bekleniyor...`);
-          await embedPage.waitForTimeout(6000);
+          await waitUntilFoundOr(embedPage, 6000);
           if (foundStream) { await embedPage.close().catch(() => {}); break; }
           await checkVideoSrcFromDOM(embedPage, checkAndSaveStream);
           if (foundStream) { await embedPage.close().catch(() => {}); break; }
@@ -511,7 +524,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
           logger.debug(`[Playwright] Embed iFrame: ${efUrl}`);
           checkAndSaveStream(efUrl, {}, efUrl);
           await tryClickPlayButton(ef, PLAY_SELECTORS);
-          await embedPage.waitForTimeout(2000);
+          await waitUntilFoundOr(embedPage, 2000);
           if (foundStream) break;
         }
 
@@ -527,7 +540,7 @@ async function resolveStreamUrl(targetUrl, options = {}) {
     // ── Son Bekleme ────────────────────────────────────────────────────────────
 
     logger.debug(`[Playwright] Son bekleme (5s)...`);
-    await page.waitForTimeout(5000);
+    await waitUntilFoundOr(page, 5000);
     if (foundStream) return { ...foundStream, pageTitle };
 
     logger.warn(`[Playwright] Stream bulunamadı: ${targetUrl}`);

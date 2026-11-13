@@ -1574,6 +1574,90 @@ async function probeStreamCandidate(streamUrl, streamHeaders = {}) {
   }
 }
 
+// Shared Playwright/microservice fallback (preserves referer and retries parent moviePageUrl when direct embed fails)
+async function resolveTargetWithPlaywrightFallback(targetInfo, timeoutBudgetMs = 9500) {
+  const url = targetInfo?.url || '';
+  const moviePageUrl = targetInfo?.moviePageUrl || '';
+  const referer = targetInfo?.referer || moviePageUrl || '';
+  const totalCapMs = Math.max(4500, Math.min(timeoutBudgetMs || 9500, 10500));
+  const isPlayableCandidate = (sUrl) =>
+    Boolean(sUrl && typeof sUrl === 'string' && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4'));
+
+  const callMicro = async (baseUrl, targetUrl, capMs) => {
+    const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), capMs);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['x-api-key'] = apiKey;
+      const microResponse = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ url: targetUrl, timeout: capMs }),
+        signal: controller.signal,
+      });
+      const data = await microResponse.json().catch(() => null);
+      const payload = data?.data || data;
+      if (microResponse.ok && isPlayableCandidate(payload?.streamUrl)) {
+        return {
+          streamUrl: payload.streamUrl,
+          headers: payload.headers || {},
+          subtitles: payload.subtitles || [],
+          pageTitle: payload.pageTitle || '',
+        };
+      }
+    } catch {} finally {
+      clearTimeout(timer);
+    }
+    return null;
+  };
+
+  const trySingleUrl = async (candidateUrl, candidateReferer, capMs) => {
+    if (!candidateUrl || !validateSsrfUrl(candidateUrl).safe) return null;
+    if (process.env.STREAM_RESOLVER_API_URL) {
+      const r = await callMicro(process.env.STREAM_RESOLVER_API_URL, candidateUrl, capMs);
+      if (r) return r;
+    } else if (!process.env.BLOG_ORIGIN) {
+      // Probe standalone stream-resolver daemon on 127.0.0.1:3001 only when BLOG_ORIGIN isn't occupying 3001
+      try {
+        const healthRes = await fetch('http://127.0.0.1:3001/health', { signal: AbortSignal.timeout(350) });
+        if (healthRes.ok) {
+          const r = await callMicro('http://127.0.0.1:3001', candidateUrl, capMs);
+          if (r) return r;
+        }
+      } catch {}
+    }
+    if (!inProcessPlaywrightResolve) return null;
+    let pwTimer = null;
+    try {
+      const pwRes = await Promise.race([
+        inProcessPlaywrightResolve(candidateUrl, { timeout: capMs, referer: candidateReferer }),
+        new Promise((resolve) => { pwTimer = setTimeout(() => resolve(null), capMs); }),
+      ]);
+      if (pwRes && isPlayableCandidate(pwRes.streamUrl)) {
+        return {
+          streamUrl: pwRes.streamUrl,
+          headers: pwRes.headers || {},
+          subtitles: pwRes.subtitles || [],
+          pageTitle: pwRes.pageTitle || '',
+        };
+      }
+    } catch {} finally {
+      if (pwTimer) clearTimeout(pwTimer);
+    }
+    return null;
+  };
+
+  const hasParentFallback = Boolean(moviePageUrl && moviePageUrl !== url);
+  const firstCapMs = hasParentFallback ? Math.min(totalCapMs, 5500) : totalCapMs;
+  const directRes = await trySingleUrl(url, referer, firstCapMs);
+  if (directRes) return directRes;
+  if (hasParentFallback) {
+    return await trySingleUrl(moviePageUrl, '', Math.max(5500, totalCapMs));
+  }
+  return null;
+}
+
 // POST /api/resolve-stream (Multi-source fast resolver, quality/latency picker & grouped alternatives)
 router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
   const { url, sourceToken, sourceTokens, sources, title, year, imdbId, timeout } = req.body || {};
@@ -1598,9 +1682,14 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         if (!validateSsrfUrl(unsealed.url).safe) {
           return res.status(400).json({ success: false, error: 'Geçersiz veya izin verilmeyen URL.' });
         }
+        const embedReferer = unsealed.moviePageUrl || unsealed.referer || unsealed.url;
         if (resolveSingleEmbed && !unsealed.isMoviePage) {
-          const embedReferer = unsealed.moviePageUrl || unsealed.referer || unsealed.url;
-          const singleRes = await resolveSingleEmbed(unsealed.url, embedReferer, unsealed.title || '');
+          let singleTimer = null;
+          const singleRes = await Promise.race([
+            resolveSingleEmbed(unsealed.url, embedReferer, unsealed.title || ''),
+            new Promise((resolve) => { singleTimer = setTimeout(() => resolve(null), 7500); }),
+          ]).catch(() => null);
+          if (singleTimer) clearTimeout(singleTimer);
           if (singleRes?.streamUrl) {
             chosenStream = singleRes.streamUrl;
             streamHeaders = singleRes.headers || streamHeaders;
@@ -1610,7 +1699,14 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
           }
         }
         if (!chosenStream && fastResolve) {
-          const fr = await fastResolve(unsealed.url, { timeout: 14000, collectAlternatives: false });
+          // Avoid repeating full embed scrape for long durations when resolveSingleEmbed already ran on this embed URL
+          const frCapMs = unsealed.isMoviePage ? 9500 : 4000;
+          let frTimer = null;
+          const fr = await Promise.race([
+            fastResolve(unsealed.url, { timeout: frCapMs, collectAlternatives: false }),
+            new Promise((resolve) => { frTimer = setTimeout(() => resolve(null), frCapMs); }),
+          ]).catch(() => null);
+          if (frTimer) clearTimeout(frTimer);
           if (fr?.streamUrl) {
             chosenStream = fr.streamUrl;
             streamHeaders = fr.headers || streamHeaders;
@@ -1627,6 +1723,21 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
             streamHeaders = dr.headers || streamHeaders;
             pageTitle = dr.pageTitle || pageTitle;
             if (Array.isArray(dr.subtitles)) subtitles = dr.subtitles;
+          }
+        }
+        if (!chosenStream) {
+          const pwFallback = await resolveTargetWithPlaywrightFallback({
+            url: unsealed.url,
+            referer: embedReferer,
+            moviePageUrl: unsealed.moviePageUrl || '',
+          }, 9500);
+          if (pwFallback?.streamUrl) {
+            chosenStream = pwFallback.streamUrl;
+            streamHeaders = pwFallback.headers || streamHeaders;
+            pageTitle = pwFallback.pageTitle || pageTitle;
+            if (Array.isArray(pwFallback.subtitles) && pwFallback.subtitles.length > 0) {
+              subtitles = pwFallback.subtitles;
+            }
           }
         }
       }
@@ -1676,6 +1787,8 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
       title: meta.title || title || '',
       year: meta.year || year || '',
       imdbId: meta.imdbId || imdbId || '',
+      moviePageUrl: meta.moviePageUrl || '',
+      referer: meta.referer || '',
     });
   };
 
@@ -1743,9 +1856,16 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     const t0 = Date.now();
     let resolved = null;
     if (fastResolve) {
+      const frBudgetMs = Math.min(fetchTimeout, 10500);
+      let frTimer = null;
       try {
-        resolved = await fastResolve(src.url, { timeout: Math.min(fetchTimeout, 13000), collectAlternatives: true });
-      } catch {}
+        resolved = await Promise.race([
+          fastResolve(src.url, { timeout: frBudgetMs, collectAlternatives: true }),
+          new Promise((resolve) => { frTimer = setTimeout(() => resolve(null), frBudgetMs); }),
+        ]);
+      } catch {} finally {
+        if (frTimer) clearTimeout(frTimer);
+      }
     }
     // Backup direct HDF resolver if fastResolve returned nothing for HDFilmCehennemi
     if ((!resolved || !resolved.streamUrl) && src.url.includes('hdfilmcehennemi')) {
@@ -1907,7 +2027,7 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         ...(audioType ? { audioType } : {}),
         sourceToken: sealSourcePayload({
           url: targetObj.url,
-          moviePageUrl: targetObj.url,
+          moviePageUrl: targetObj.moviePageUrl || targetObj.url,
           directStreamUrl: sUrl,
           providerKey: targetObj.providerKey,
           headers: sh,
@@ -1927,67 +2047,18 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
       }
     };
 
-    const callResolverMicroservice = async (baseUrl, fallbackTarget) => {
-      const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), Math.min(fetchTimeout, 9500));
-      try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (apiKey) headers['x-api-key'] = apiKey;
-        const microResponse = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ url: fallbackTarget.url, timeout: Math.min(fetchTimeout, 9500) }),
-          signal: controller.signal,
-        });
-        const data = await microResponse.json().catch(() => null);
-        const payload = data?.data || data;
-        const sUrl = payload?.streamUrl;
-        if (microResponse.ok && sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
-          pushFallbackResult(sUrl, payload.headers, payload.subtitles, payload.pageTitle, fallbackTarget);
-          return true;
-        }
-      } catch {} finally {
-        clearTimeout(timer);
-      }
-      return false;
-    };
-
-    let microSucceeded = false;
-    if (process.env.STREAM_RESOLVER_API_URL) {
-      microSucceeded = await callResolverMicroservice(process.env.STREAM_RESOLVER_API_URL, targets[0]);
-    } else if (!process.env.BLOG_ORIGIN) {
-      // Probe local standalone stream-resolver daemon on 127.0.0.1:3001 (only when BLOG_ORIGIN isn't occupying 3001)
-      try {
-        const healthRes = await fetch('http://127.0.0.1:3001/health', { signal: AbortSignal.timeout(350) });
-        if (healthRes.ok) {
-          for (const fallbackTarget of targets.slice(0, 2)) {
-            if (await callResolverMicroservice('http://127.0.0.1:3001', fallbackTarget)) {
-              microSucceeded = true;
-              break;
-            }
-          }
-        }
-      } catch {}
-    }
-
-    if (!microSucceeded && inProcessPlaywrightResolve) {
-      const pwCapMs = Math.min(fetchTimeout, 9500);
-      for (const fallbackTarget of targets.slice(0, 2)) {
-        let pwTimer = null;
-        try {
-          const pwRes = await Promise.race([
-            inProcessPlaywrightResolve(fallbackTarget.url, { timeout: pwCapMs }),
-            new Promise((resolve) => { pwTimer = setTimeout(() => resolve(null), pwCapMs); }),
-          ]);
-          const sUrl = pwRes?.streamUrl;
-          if (sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
-            pushFallbackResult(sUrl, pwRes.headers, pwRes.subtitles, pwRes.pageTitle, fallbackTarget);
-            break;
-          }
-        } catch {} finally {
-          if (pwTimer) clearTimeout(pwTimer);
-        }
+    const pwCapMs = Math.min(fetchTimeout, 9500);
+    for (const fallbackTarget of targets.slice(0, 2)) {
+      const fallbackRes = await resolveTargetWithPlaywrightFallback(fallbackTarget, pwCapMs);
+      if (fallbackRes?.streamUrl) {
+        pushFallbackResult(
+          fallbackRes.streamUrl,
+          fallbackRes.headers,
+          fallbackRes.subtitles,
+          fallbackRes.pageTitle,
+          fallbackTarget
+        );
+        break;
       }
     }
   }
