@@ -2353,10 +2353,43 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
   return [];
 }
 
-async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {}) {
+async function inspectSubtitleSpanSec(rawSubUrl) {
+  if (!rawSubUrl) return null;
+  try {
+    let vttBuf = subtitleFileCache.get(`vtt:${rawSubUrl}`)?.buf || null;
+    if (!vttBuf) {
+      const ssrf = validateSsrfUrl(rawSubUrl);
+      if (!ssrf.safe) return null;
+      const upstream = await safeFetch(rawSubUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(2500),
+      });
+      if (!upstream.ok) return null;
+      let rawBuf = Buffer.from(await upstream.arrayBuffer());
+      if (rawBuf.length >= 4 && rawBuf[0] === 0x50 && rawBuf[1] === 0x4b && rawBuf[2] === 0x03 && rawBuf[3] === 0x04) {
+        const extracted = extractBestSubFromZipBuffer(rawBuf);
+        if (!extracted) return null;
+        rawBuf = extracted;
+      }
+      if (rawBuf.length < 30) return null;
+      vttBuf = convertSrtBufferToVtt(rawBuf);
+      subtitleFileCache.set(`vtt:${rawSubUrl}`, { ts: Date.now(), buf: vttBuf });
+    }
+    const text = vttBuf.toString('utf8');
+    const matches = [...text.matchAll(/(\d{2,3}):(\d{2}):(\d{2})\.\d{3}\s*-->/g)];
+    if (matches.length < 5) return null;
+    const last = matches[matches.length - 1];
+    return parseInt(last[1], 10) * 3600 + parseInt(last[2], 10) * 60 + parseInt(last[3], 10);
+  } catch {
+    return null;
+  }
+}
+
+async function searchTurkishSubtitles({ title = '', imdbId = '', year = '', duration = 0 } = {}) {
   const cleanTitle = cleanMovieTitleForSubtitleSearch(title);
   if (!cleanTitle && !imdbId) return [];
-  const cacheKey = `${imdbId || ''}|${cleanTitle.toLowerCase()}|${year || ''}`;
+  const durBucket = duration > 300 ? Math.round(duration / 60) : 0;
+  const cacheKey = `${imdbId || ''}|${cleanTitle.toLowerCase()}|${year || ''}|${durBucket}`;
   const cached = subtitleResultCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < SUBTITLE_CACHE_TTL_MS) {
     return cached.items;
@@ -2378,17 +2411,41 @@ async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {
 
   combined.sort((a, b) => (b.score || 0) - (a.score || 0));
 
+  // If video duration is known (> 5 min), verify top 6 candidates' actual runtime span
+  // so 2-CD splits, trailers, or wrong-cut subtitles are filtered out and closest-duration wins
+  if (duration > 300 && combined.length > 0) {
+    await Promise.allSettled(combined.slice(0, 6).map(async (item) => {
+      if (!item?.playableUrl?.startsWith('/api/subtitles/vtt?url=')) return;
+      const rawUrl = decodeURIComponent(item.playableUrl.replace('/api/subtitles/vtt?url=', ''));
+      const spanSec = await inspectSubtitleSpanSec(rawUrl);
+      if (spanSec && spanSec > 60) {
+        item.spanSec = spanSec;
+        const ratio = spanSec / duration;
+        if (ratio < 0.65 || ratio > 1.20) {
+          item.score = (item.score || 0) - 200;
+        } else {
+          const diffPct = Math.abs(1 - ratio);
+          item.score = (item.score || 0) + Math.max(0, Math.round(35 - diffPct * 250));
+        }
+      }
+    }));
+    combined.sort((a, b) => (b.score || 0) - (a.score || 0));
+  }
+
   const deduped = [];
   const seen = new Set();
   for (const item of combined) {
     if (!item?.playableUrl || seen.has(item.playableUrl)) continue;
+    if (duration > 300 && item.score <= -100) continue;
     seen.add(item.playableUrl);
-    const hints = [item.releaseTag, item.fpsHint].filter(Boolean);
+    const durTag = item.spanSec ? `${Math.round(item.spanSec / 60)}dk` : '';
+    const hints = [item.releaseTag, item.fpsHint, durTag].filter(Boolean);
     const suffix = hints.length > 0 ? ` (${hints.join(' • ')})` : '';
     deduped.push({
       id: item.id,
       label: `Hazır TR ${deduped.length + 1}${suffix}`,
       fps: item.fps || 0,
+      spanSec: item.spanSec || 0,
       lang: 'tr',
       kind: 'subtitles',
       playableUrl: item.playableUrl,
@@ -2403,14 +2460,15 @@ async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {
   return deduped;
 }
 
-// GET /api/subtitles/search?title=...&imdbId=...&year=...
+// GET /api/subtitles/search?title=...&imdbId=...&year=...&duration=...
 router.get('/subtitles/search', resolverLimiter, async (req, res) => {
   try {
-    const { title = '', imdbId = '', year = '' } = req.query || {};
+    const { title = '', imdbId = '', year = '', duration = '0' } = req.query || {};
     if (!title && !imdbId) {
       return res.status(400).json({ success: false, error: 'title veya imdbId gereklidir.', subtitles: [] });
     }
-    const subtitles = await searchTurkishSubtitles({ title: String(title), imdbId: String(imdbId), year: String(year) });
+    const durSec = Math.max(0, parseInt(String(duration || '0'), 10) || 0);
+    const subtitles = await searchTurkishSubtitles({ title: String(title), imdbId: String(imdbId), year: String(year), duration: durSec });
     return res.status(200).json({ success: true, subtitles, count: subtitles.length });
   } catch (err) {
     return res.status(200).json({ success: false, subtitles: [], count: 0, error: err.message });

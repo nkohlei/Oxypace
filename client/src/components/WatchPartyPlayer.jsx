@@ -977,7 +977,9 @@ const WatchPartyPlayer = () => {
         setIsSearchingReadySubs(true);
         try {
             const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
-            const res = await fetch(`${apiBase}/api/subtitles/search?title=${encodeURIComponent(titleToSearch.trim())}`);
+            const vidDur = Math.round(videoRef.current?.duration || 0);
+            const durParam = vidDur > 300 ? `&duration=${vidDur}` : '';
+            const res = await fetch(`${apiBase}/api/subtitles/search?title=${encodeURIComponent(titleToSearch.trim())}${durParam}`);
             const data = await res.json().catch(() => null);
             if (data?.success && Array.isArray(data.subtitles)) {
                 setReadySubtitles(data.subtitles);
