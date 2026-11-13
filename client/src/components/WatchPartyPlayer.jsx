@@ -104,8 +104,22 @@ const isPlayableExternalUrl = (url) => {
   return true;
 };
 
+const isInternalApiUrl = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed, 'https://oxypace.com.tr');
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'api.oxypace.com.tr' && !parsed.pathname.includes('/api/proxy') && !parsed.pathname.includes('/api/media')) {
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
 const isIframePlatform = (url) => {
-  if (!url) return false;
+  if (!url || isInternalApiUrl(url)) return false;
   const lower = url.toLowerCase();
   return [
     'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com', 
@@ -520,6 +534,8 @@ const WatchPartyPlayer = () => {
     const parsedCuesRef = useRef([]);
     const [subTimeOffsetSec, setSubTimeOffsetSec] = useState(0);
     const subTimeOffsetRef = useRef(0);
+    const [subFpsMode, setSubFpsMode] = useState('1'); // '1' | '25to23' | '23to25'
+    const subFpsRateRef = useRef(1);
     const subtitleLoadSeqRef = useRef(0);
     const [subSyncNotice, setSubSyncNotice] = useState(null);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
@@ -1260,6 +1276,8 @@ const WatchPartyPlayer = () => {
         subtitleLoadSeqRef.current += 1;
         subTimeOffsetRef.current = 0;
         setSubTimeOffsetSec(0);
+        subFpsRateRef.current = 1;
+        setSubFpsMode('1');
         activeCueTextRef.current = '';
         setActiveCueText('');
         setIsSubMenuOpen(false);
@@ -1769,7 +1787,8 @@ const WatchPartyPlayer = () => {
 
         const rawCur = video.currentTime || 0;
         const offset = subTimeOffsetRef.current || 0;
-        const cur = Math.max(0, rawCur - offset);
+        const fpsRate = subFpsRateRef.current || 1;
+        const cur = Math.max(0, rawCur * fpsRate - offset);
 
         // 1. Check parsed cues first (external / repo / custom SRT & VTT)
         const cues = parsedCuesRef.current;
@@ -1808,7 +1827,7 @@ const WatchPartyPlayer = () => {
             return;
         }
 
-        // 2. Native textTracks fallback (HLS embedded WebVTT tracks), with offset support via tt.cues
+        // 2. Native textTracks fallback (HLS embedded WebVTT tracks), with offset & FPS support via tt.cues
         if (video.textTracks && video.textTracks.length > 0) {
             let foundText = '';
             for (let i = 0; i < video.textTracks.length; i++) {
@@ -1817,7 +1836,7 @@ const WatchPartyPlayer = () => {
                     tt.mode = 'hidden';
                 }
                 if (tt.mode !== 'hidden') continue;
-                if (offset !== 0 && tt.cues && tt.cues.length > 0) {
+                if ((offset !== 0 || fpsRate !== 1) && tt.cues && tt.cues.length > 0) {
                     const matched = [];
                     for (let j = 0; j < tt.cues.length; j++) {
                         const cue = tt.cues[j];
@@ -1844,9 +1863,20 @@ const WatchPartyPlayer = () => {
     const adjustSubTimeOffset = useCallback((deltaSec, reset = false) => {
         const nextOffset = reset
             ? 0
-            : Math.max(-300, Math.min(300, Math.round(((subTimeOffsetRef.current || 0) + deltaSec) * 10) / 10));
+            : Math.max(-1800, Math.min(1800, Math.round(((subTimeOffsetRef.current || 0) + deltaSec) * 10) / 10));
         subTimeOffsetRef.current = nextOffset;
         setSubTimeOffsetSec(nextOffset);
+        if (reset) {
+            subFpsRateRef.current = 1;
+            setSubFpsMode('1');
+        }
+        syncCurrentSubtitleCue();
+    }, [syncCurrentSubtitleCue]);
+
+    const changeSubFpsMode = useCallback((mode) => {
+        const ratio = mode === '25to23' ? (23.976 / 25) : mode === '23to25' ? (25 / 23.976) : 1;
+        subFpsRateRef.current = ratio;
+        setSubFpsMode(mode);
         syncCurrentSubtitleCue();
     }, [syncCurrentSubtitleCue]);
 
@@ -3143,6 +3173,17 @@ const WatchPartyPlayer = () => {
                                                 <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(0.5)}>+0.5s</button>
                                                 <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(2)}>+2s</button>
                                             </div>
+                                            <div className="native-sub-offset-controls jump">
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-30)}>-30s</button>
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-10)}>-10s</button>
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(10)}>+10s</button>
+                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(30)}>+30s</button>
+                                            </div>
+                                            <div className="native-sub-fps-controls" title="Altyazı giderek kayıyorsa FPS hızını eşitleyin">
+                                                <button type="button" className={`native-sub-fps-btn ${subFpsMode === '1' ? 'active' : ''}`} onClick={() => changeSubFpsMode('1')}>1x FPS</button>
+                                                <button type="button" className={`native-sub-fps-btn ${subFpsMode === '25to23' ? 'active' : ''}`} onClick={() => changeSubFpsMode('25to23')}>25→23.9</button>
+                                                <button type="button" className={`native-sub-fps-btn ${subFpsMode === '23to25' ? 'active' : ''}`} onClick={() => changeSubFpsMode('23to25')}>23.9→25</button>
+                                            </div>
                                         </div>
                                     )}
 
@@ -3698,7 +3739,12 @@ const WatchPartyPlayer = () => {
                  )}
 
                   {(!isLive && !isStream) && (
-                      isIframePlatform(watchParty?.url) ? (
+                      isInternalApiUrl(watchParty?.url) ? (
+                         <div className="watch-party-error-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '24px', textAlign: 'center', color: '#e4e4e7', gap: '8px' }}>
+                             <AlertCircle size={28} />
+                             <span>Geçersiz veya eksik medya akış adresi nedeniyle oynatıcı başlatılamadı.</span>
+                         </div>
+                      ) : isIframePlatform(watchParty?.url) ? (
                          <iframe
                              src={getEmbedUrl(watchParty.url)}
                              width="100%"

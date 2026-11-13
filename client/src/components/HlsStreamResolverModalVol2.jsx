@@ -184,9 +184,14 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       clearInterval(timerRef.current);
 
       if (response.data && response.data.success && response.data.playableStreamUrl) {
+        const formattedPlayable = formatPlayableUrl(response.data.playableStreamUrl);
+        if (!formattedPlayable || (!formattedPlayable.includes('/api/proxy') && !/\.(m3u8|mp4|mpd)(\?|$)/i.test(formattedPlayable))) {
+          setErrorMsg('Geçerli video akış bağlantısı üretilemedi. Lütfen başka bir film veya kaynak deneyin.');
+          return;
+        }
         const resData = {
           ...response.data,
-          playableStreamUrl: formatPlayableUrl(response.data.playableStreamUrl),
+          playableStreamUrl: formattedPlayable,
           pageTitle: movieMeta?.title || response.data.pageTitle || 'Film Akışı',
         };
         setResolvedData(resData);

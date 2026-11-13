@@ -101,7 +101,7 @@ function inferProviderFromUrl(url = '') {
 // Track exhausted ScraperAPI keys to avoid waiting or failing on dead quotas
 const exhaustedScraperKeys = new Set();
 function getValidScraperApiKey() {
-  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || '')
+  const envKeys = (process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || process.env.SCRAPER_API_KEY || '')
     .split(',')
     .map(k => k.trim())
     .filter(Boolean);
@@ -109,6 +109,61 @@ function getValidScraperApiKey() {
     if (!exhaustedScraperKeys.has(k)) return k;
   }
   return null;
+}
+
+async function fetchViaScraperApi(url, { timeoutMs = 7500, headers = {}, method = 'GET', body = null, keepHeaders = false } = {}) {
+  if (!validateSsrfUrl(url).safe) return '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const apiKey = getValidScraperApiKey();
+    if (!apiKey) return '';
+    try {
+      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}${keepHeaders ? '&keep_headers=true' : ''}&url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl, {
+        method,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36', ...headers },
+        ...(body ? { body } : {}),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const text = await res.text();
+      if (res.status === 403 || text.includes('exhausted') || text.includes('You have reached your')) {
+        exhaustedScraperKeys.add(apiKey);
+        continue;
+      }
+      if (res.ok && !isBlockedOrChallenge(text)) {
+        return text;
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+async function fetchHtmlRobust(url, { fetchHeaders = {}, curlHeaders = [], timeoutSec = 5, scraperTimeoutMs = 7000 } = {}) {
+  if (!validateSsrfUrl(url).safe) return '';
+  // 1. Direct fast fetch
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        ...fetchHeaders,
+      },
+      signal: AbortSignal.timeout(timeoutSec * 1000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (!isBlockedOrChallenge(text)) return text;
+    }
+  } catch {}
+
+  // 2. Curl + Tor SOCKS5 + Python TLS Impersonator
+  const curlRes = await fetchWithCurl(url, curlHeaders, timeoutSec);
+  if (curlRes) return curlRes;
+
+  // 3. ScraperAPI fallback (crucial for datacenter IPs like Oracle Cloud)
+  return await fetchViaScraperApi(url, { timeoutMs: scraperTimeoutMs, headers: fetchHeaders, keepHeaders: Object.keys(fetchHeaders).length > 0 });
 }
 
 // Decode HTML entities (e.g. &ccedil;, &uuml;, &ouml;, &amp;)
@@ -516,19 +571,19 @@ router.get(['/proxy', '/proxy-hls'], proxyLimiter, async (req, res) => {
         } else if (targetObj.hostname.includes('closeload') || targetObj.hostname.includes('filmmakinesi')) {
           originHeader = 'https://closeload.filmmakinesi.to';
           refererHeader = 'https://closeload.filmmakinesi.to/';
-        } else if (targetObj.hostname.includes('imagecdn') || targetObj.hostname.includes('rapidvid')) {
+        } else if (targetObj.hostname.includes('imagecdn') || targetObj.hostname.includes('cdnimgs') || targetObj.hostname.includes('rapidvid')) {
           originHeader = 'https://rapidvid.org';
           refererHeader = 'https://rapidvid.org/';
         } else if (targetObj.hostname.includes('rapidrame')) {
           originHeader = 'https://www.hdfilmcehennemi.nl';
           refererHeader = 'https://www.hdfilmcehennemi.nl/';
-        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('shop') || targetObj.hostname.includes('cyou')) {
+        } else if (targetObj.hostname.includes('cdnimages') || targetObj.hostname.includes('cyou')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
         } else if (targetObj.hostname.includes('hdfilmcehennemi')) {
           originHeader = 'https://hdfilmcehennemi.mobi';
           refererHeader = 'https://hdfilmcehennemi.mobi/';
-        } else if (targetObj.hostname.includes('vidmoly') || targetObj.hostname.includes('vmpx')) {
+        } else if (targetObj.hostname.includes('vidmoly') || targetObj.hostname.includes('vmpx') || targetObj.hostname.includes('vmget')) {
           originHeader = 'https://vidmoly.to';
           refererHeader = 'https://vidmoly.to/';
         } else if (targetObj.hostname.includes('okcdn') || targetObj.hostname.includes('mycdn') || targetObj.hostname.includes('vkuser')) {
@@ -1223,13 +1278,13 @@ function normalizeProxyHeadersForStream(streamUrl = '', rawHeaders = {}) {
   const lower = String(streamUrl).toLowerCase();
   if (lower.includes('playmix') && (!streamHeaders.referer || !streamHeaders.referer.includes('playmix.uno'))) {
     streamHeaders = { ...streamHeaders, referer: 'https://playmix.uno/', origin: 'https://playmix.uno' };
-  } else if (lower.includes('imagecdn') && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
+  } else if ((lower.includes('imagecdn') || lower.includes('cdnimgs')) && (!streamHeaders.referer || !streamHeaders.referer.includes('rapidvid.org'))) {
     streamHeaders = { ...streamHeaders, referer: 'https://rapidvid.org/', origin: 'https://rapidvid.org' };
-  } else if ((lower.includes('cdnimages') || lower.includes('shop') || lower.includes('cyou')) && !lower.includes('vixolity') && (!streamHeaders.referer || !streamHeaders.referer.includes('hdfilmcehennemi'))) {
+  } else if ((lower.includes('cdnimages') || lower.includes('cyou')) && !lower.includes('vixolity') && (!streamHeaders.referer || !streamHeaders.referer.includes('hdfilmcehennemi'))) {
     streamHeaders = { ...streamHeaders, referer: 'https://hdfilmcehennemi.mobi/', origin: 'https://hdfilmcehennemi.mobi' };
   } else if (lower.includes('vixolity')) {
     streamHeaders = { ...streamHeaders, referer: 'https://pl.vixolity.com/', origin: 'https://pl.vixolity.com' };
-  } else if (lower.includes('vmpx') || lower.includes('vidmoly')) {
+  } else if (lower.includes('vmpx') || lower.includes('vmget') || lower.includes('vidmoly')) {
     streamHeaders = { ...streamHeaders, referer: 'https://vidmoly.to/', origin: 'https://vidmoly.to' };
   } else if (lower.includes('okcdn') || lower.includes('mycdn') || lower.includes('vkuser')) {
     streamHeaders = { ...streamHeaders, referer: 'https://ok.ru/', origin: 'https://ok.ru' };
@@ -1259,8 +1314,12 @@ async function probeStreamCandidate(streamUrl, streamHeaders = {}) {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4500);
-    const res = await safeFetch(streamUrl, { headers, method: 'GET', cache: 'no-store' });
-    clearTimeout(timer);
+    let res;
+    try {
+      res = await safeFetch(streamUrl, { headers, method: 'GET', cache: 'no-store', signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) {
       return { ok: false, latencyMs: Date.now() - t0, maxHeight: 0, score: -50000 };
     }
@@ -1565,6 +1624,20 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         pushAlt(alt);
       }
     }
+    // Include remaining page embed candidates as lazy switchable alternatives (up to 6 total per site)
+    if (Array.isArray(resolved.candidateEmbeds)) {
+      const existingEmbeds = new Set((resolved.alternatives || []).map(a => a.embedUrl).filter(Boolean));
+      for (const cand of resolved.candidateEmbeds) {
+        if (groupItems.length >= 6) break;
+        if (!cand?.url || existingEmbeds.has(cand.url)) continue;
+        existingEmbeds.add(cand.url);
+        pushAlt({
+          label: cand.label || '',
+          embedUrl: cand.url,
+          streamUrl: '',
+        });
+      }
+    }
 
     if (groupItems.length > 0) {
       siteGroupsRaw.push({
@@ -1852,6 +1925,30 @@ async function resolveImdbViaCinemeta(title, year) {
   return null;
 }
 
+function parseSubtitleReleaseMeta(rawText = '') {
+  const txt = String(rawText || '');
+  const fpsMatch = txt.match(/\b(23[.,]976|23[.,]98|24(?:[.,]000)?|25(?:[.,]000)?|29[.,]97|30(?:[.,]000)?)\s*(?:fps)?/i);
+  let fps = 0;
+  let fpsLabel = '';
+  if (fpsMatch) {
+    const num = parseFloat(fpsMatch[1].replace(',', '.'));
+    if (num >= 23 && num <= 60) {
+      fps = num === 23.98 ? 23.976 : num;
+      fpsLabel = `${fps} fps`;
+    }
+  }
+  const relMatch = txt.match(/\b(WEB[-\s.]?DL|WEBRip|Blu[-\s.]?Ray|BRRip|BDRip|HDTV|HDRip|DVDRip|REMUX|IMAX|Extended|Director'?s\.?Cut|Theatrical|CAM|TS)\b/i);
+  const releaseTag = relMatch ? relMatch[1].replace(/\s+/g, '') : '';
+  let score = 0;
+  if (/web[-\s.]?dl|blu[-\s.]?ray|webrip|bdrip|brrip|remux/i.test(txt)) score += 10;
+  if (/hdtv|hdrip/i.test(txt)) score += 6;
+  if (fps === 23.976 || fps === 24) score += 5;
+  else if (fps === 25) score += 2;
+  if (/\b(cam|ts|hdcam|telesync)\b/i.test(txt)) score -= 12;
+  if (/\b(extended|director|uncut)\b/i.test(txt)) score -= 2; // slightly lower than theatrical default unless chosen
+  return { fps, fpsLabel, releaseTag, score };
+}
+
 async function searchOpenSubtitlesStremio(imdbId, cleanTitle, year) {
   const id = imdbId && /^tt\d+$/i.test(imdbId) ? imdbId : await resolveImdbViaCinemeta(cleanTitle, year);
   if (!id) return [];
@@ -1863,14 +1960,21 @@ async function searchOpenSubtitlesStremio(imdbId, cleanTitle, year) {
     const data = await res.json();
     const subs = Array.isArray(data?.subtitles) ? data.subtitles : [];
     const trSubs = subs.filter(s => s && s.url && (s.lang === 'tur' || s.lang === 'tr' || String(s.SubLanguageID || '').toLowerCase() === 'tur'));
-    return trSubs.slice(0, 8).map((s, idx) => ({
-      id: `os_${idx}_${s.id || idx}`,
-      label: `Türkçe Altyazı #${idx + 1}`,
-      lang: 'tr',
-      kind: 'subtitles',
-      playableUrl: `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}`,
-      external: true,
-    }));
+    return trSubs.map((s, idx) => {
+      const metaText = [s.release, s.SubFileName, s.filename, s.url].filter(Boolean).join(' ');
+      const meta = parseSubtitleReleaseMeta(metaText);
+      return {
+        id: `os_${idx}_${s.id || idx}`,
+        fps: meta.fps,
+        fpsHint: meta.fpsLabel,
+        releaseTag: meta.releaseTag,
+        score: meta.score + Math.max(0, 4 - idx * 0.2),
+        lang: 'tr',
+        kind: 'subtitles',
+        playableUrl: `/api/subtitles/vtt?url=${encodeURIComponent(s.url)}`,
+        external: true,
+      };
+    });
   } catch {
     return [];
   }
@@ -1891,7 +1995,6 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
     const findBuf = Buffer.from(await findRes.arrayBuffer());
     const findHtml = decodeSubtitleText(findBuf);
 
-    // Collect /mov/<id>/...html links or direct redirect
     const movMatches = [...findHtml.matchAll(/href="(\/mov\/\d+\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi)];
     let targetMovPath = null;
     if (findRes.url && findRes.url.includes('/mov/')) {
@@ -1899,11 +2002,13 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
     } else if (movMatches.length > 0) {
       const normClean = cleanTitle.toLowerCase();
       let bestScore = -1;
-      for (const m of movMatches.slice(0, 12)) {
+      for (const m of movMatches.slice(0, 14)) {
         const text = m[2].replace(/<[^>]+>/g, '').trim().toLowerCase();
+        const around = findHtml.slice(Math.max(0, m.index - 100), Math.min(findHtml.length, m.index + 300));
         let score = 0;
-        if (text.includes(normClean)) score += 6;
-        if (year && m[0].includes(String(year))) score += 4;
+        if (text === normClean) score += 10;
+        else if (text.includes(normClean)) score += 6;
+        if (year && (m[0].includes(String(year)) || around.includes(String(year)))) score += 8;
         if (score > bestScore) {
           bestScore = score;
           targetMovPath = m[1];
@@ -1924,7 +2029,6 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
     if (!movRes.ok) return [];
     const movHtml = decodeSubtitleText(Buffer.from(await movRes.arrayBuffer()));
 
-    // Parse subtitle rows matching /sub/<id>/...html
     const subRows = [];
     const seenSub = new Set();
     const rowRegex = /href="(\/sub\/(\d+)\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
@@ -1933,29 +2037,29 @@ async function searchTurkceAltyaziOrg(cleanTitle, year) {
       const subPath = m[1];
       const subId = m[2];
       if (seenSub.has(subId)) continue;
-      // Look at surrounding snippet (~400 chars around link) for Turkish language flag / release tag
       const start = Math.max(0, m.index - 250);
-      const end = Math.min(movHtml.length, m.index + 600);
+      const end = Math.min(movHtml.length, m.index + 650);
       const snippet = movHtml.slice(start, end);
       const isEngOnly = /flag-en|İngilizce|alt="en"/i.test(snippet) && !/flag-tr|Türkçe|alt="tr"/i.test(snippet);
       if (isEngOnly) continue;
       seenSub.add(subId);
 
-      const fpsMatch = snippet.match(/(\d{2}(?:\.\d{3})?)\s*fps/i);
-      const releaseMatch = snippet.match(/class="altsonucsurum"[^>]*>([^<]+)</i) || m[3].replace(/<[^>]+>/g, '');
-      const fpsText = fpsMatch ? ` (${fpsMatch[1]} fps)` : '';
+      const releaseMatch = snippet.match(/class="altsonucsurum"[^>]*>([^<]+)</i);
+      const relStr = (releaseMatch ? releaseMatch[1] : m[3].replace(/<[^>]+>/g, '')).trim();
+      const meta = parseSubtitleReleaseMeta(`${snippet} ${relStr}`);
       const fullSubUrl = `https://turkcealtyazi.org${subPath}`;
       subRows.push({
         id: `ta_${subId}`,
-        label: `TR Altyazı TA-${subRows.length + 1}${fpsText}`,
-        fpsHint: fpsText.trim(),
+        fps: meta.fps,
+        fpsHint: meta.fpsLabel,
+        releaseTag: meta.releaseTag,
+        score: meta.score + 3, // TurkceAltyazi rows have verified FPS/release hints
         lang: 'tr',
         kind: 'subtitles',
         playableUrl: `/api/subtitles/ta?subUrl=${encodeURIComponent(fullSubUrl)}`,
         external: true,
-        releaseHint: typeof releaseMatch === 'string' ? releaseMatch.trim().slice(0, 40) : '',
       });
-      if (subRows.length >= 6) break;
+      if (subRows.length >= 10) break;
     }
     return subRows;
   } catch {
@@ -1978,29 +2082,34 @@ async function searchTurkishSubtitles({ title = '', imdbId = '', year = '' } = {
   ]);
 
   const [osRes, taRes] = await Promise.allSettled([
-    withSoftCap(searchOpenSubtitlesStremio(imdbId, cleanTitle, year), 3200),
-    withSoftCap(searchTurkceAltyaziOrg(cleanTitle, year), 3200),
+    withSoftCap(searchOpenSubtitlesStremio(imdbId, cleanTitle, year), 3500),
+    withSoftCap(searchTurkceAltyaziOrg(cleanTitle, year), 3500),
   ]);
 
   const combined = [];
-  if (osRes.status === 'fulfilled' && Array.isArray(osRes.value)) combined.push(...osRes.value);
   if (taRes.status === 'fulfilled' && Array.isArray(taRes.value)) combined.push(...taRes.value);
+  if (osRes.status === 'fulfilled' && Array.isArray(osRes.value)) combined.push(...osRes.value);
 
-  // Deduplicate by playableUrl and keep clean neutral labels (with optional fps hint for timing matching)
+  combined.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  // Deduplicate by playableUrl and build clean readable labels with release/FPS tags
   const deduped = [];
   const seen = new Set();
   for (const item of combined) {
     if (!item?.playableUrl || seen.has(item.playableUrl)) continue;
     seen.add(item.playableUrl);
-    const fpsSuffix = item.fpsHint ? ` ${item.fpsHint}` : '';
+    const hints = [item.releaseTag, item.fpsHint].filter(Boolean);
+    const suffix = hints.length > 0 ? ` (${hints.join(' • ')})` : '';
     deduped.push({
       id: item.id,
-      label: `TR Altyazı ${deduped.length + 1}${fpsSuffix}`,
+      label: `TR Altyazı ${deduped.length + 1}${suffix}`,
+      fps: item.fps || 0,
       lang: 'tr',
       kind: 'subtitles',
       playableUrl: item.playableUrl,
       external: true,
     });
+    if (deduped.length >= 12) break;
   }
 
   if (deduped.length > 0) {
@@ -2244,24 +2353,27 @@ const inProcessSearchCache = new Map();
 const SEARCH_CACHE_TTL = 30 * 60 * 1000;
 
 /**
- * FullHDFilmİzlesene doğrudan arama
+ * FullHDFilmİzlesene doğrudan arama (.now ve .nl mirror desteği)
  */
 async function searchFullHDFilm(query) {
-  const parseFhfHtml = (html) => {
+  const parseFhfHtml = (html, baseOrigin) => {
     const results = [];
     const filmBlockRegex = /<li[^>]*class="film"[^>]*>([\s\S]*?)<\/li>/gi;
     let match;
     while ((match = filmBlockRegex.exec(html)) !== null) {
       const block = match[1];
-      const linkMatch = block.match(/href="(https:\/\/www\.fullhdfilmizlesene\.now\/film\/[^"]+)"/i);
+      const linkMatch = block.match(/href="(https?:\/\/(?:www\.)?fullhdfilmizlesene\.[^"]+\/film\/[^"]+)"/i);
       const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
       const yearMatch = block.match(/<span class="film-yil">(\d{4})<\/span>/i) || block.match(/\b(19\d{2}|20\d{2})\b/);
-      const posterMatch = block.match(/srcset="(https:\/\/img\.fullhdfilmizlesene\.now\/poster\/[^\s"]+)/i) ||
+      const posterMatch = block.match(/srcset="(https?:\/\/[^"\s]+\/poster\/[^\s"]+)/i) ||
                           block.match(/data-src="([^"]+)"/i) ||
                           block.match(/src="([^"]+)"/i);
       if (linkMatch && titleMatch) {
         let poster = posterMatch ? posterMatch[1] : null;
         if (poster && poster.startsWith('data:')) poster = null;
+        if (poster && !poster.startsWith('http')) {
+          poster = `${baseOrigin}${poster.startsWith('/') ? '' : '/'}${poster}`;
+        }
         results.push({
           provider: 'FullHDFilmİzlesene',
           providerKey: 'fullhdfilmizlesene',
@@ -2275,58 +2387,57 @@ async function searchFullHDFilm(query) {
     return results;
   };
 
-  try {
-    const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
-    let html = await fetchWithTlsImpersonator(targetUrl, 'https://www.fullhdfilmizlesene.now/');
-    if (!html || isBlockedOrChallenge(html)) {
-      html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
-    }
-    const results = parseFhfHtml(html || '');
-    if (results.length > 0) return results.slice(0, 10);
-  } catch {}
-
-  const apiKey = getValidScraperApiKey();
-  if (apiKey) {
+  for (const base of ['https://www.fullhdfilmizlesene.now', 'https://www.fullhdfilmizlesene.nl']) {
     try {
-      const targetUrl = `https://www.fullhdfilmizlesene.now/arama/${encodeURIComponent(query)}`;
-      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
-      if (res.status === 403) { exhaustedScraperKeys.add(apiKey); return []; }
-      if (!res.ok) return [];
-      return parseFhfHtml(await res.text()).slice(0, 10);
-    } catch { return []; }
+      const targetUrl = `${base}/arama/${encodeURIComponent(query)}`;
+      const html = await fetchHtmlRobust(targetUrl, {
+        fetchHeaders: { Referer: `${base}/`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+        curlHeaders: [`Referer: ${base}/`, 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
+        timeoutSec: 5,
+      });
+      const results = parseFhfHtml(html || '', base);
+      if (results.length > 0) return results.slice(0, 10);
+    } catch {}
   }
   return [];
 }
 
 /**
- * HDFilmCehennemi doğrudan arama (AJAX JSON + HTML fallback)
+ * HDFilmCehennemi doğrudan arama (AJAX JSON + HTML + ScraperAPI/TLS fallback)
  */
 async function searchHDFilmCehennemi(query) {
   const tryDomains = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.nl'];
   for (const base of tryDomains) {
     try {
       const targetUrl = `${base}/search/?q=${encodeURIComponent(query)}`;
+      const reqHeaders = {
+        'Referer': `${base}/`,
+        'x-requested-with': 'fetch',
+        'Accept': 'application/json, text/plain, */*',
+      };
+      const curlHeaders = [
+        `Referer: ${base}/`,
+        'x-requested-with: fetch',
+        'Accept: application/json, text/plain, */*',
+      ];
+
       let raw = '';
       try {
         const fRes = await fetch(targetUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': `${base}/`,
-            'x-requested-with': 'fetch',
-            'Accept': 'application/json, text/plain, */*',
+            ...reqHeaders,
           },
-          signal: AbortSignal.timeout(5500),
+          signal: AbortSignal.timeout(5000),
         });
         if (fRes.ok) raw = await fRes.text();
       } catch {}
 
       if (!raw || !raw.trim().startsWith('{')) {
-        raw = await fetchWithCurl(targetUrl, [
-          `Referer: ${base}/`,
-          'x-requested-with: fetch',
-          'Accept: application/json, text/plain, */*'
-        ], 5);
+        raw = await fetchWithCurl(targetUrl, curlHeaders, 5);
+      }
+      if (!raw || !raw.trim().startsWith('{')) {
+        raw = await fetchViaScraperApi(targetUrl, { timeoutMs: 7000, headers: reqHeaders, keepHeaders: true });
       }
 
       if (raw && raw.trim().startsWith('{')) {
@@ -2365,11 +2476,16 @@ async function searchHDFilmCehennemi(query) {
     } catch {}
   }
 
-  // Fallback to HTML /arama/?s= if AJAX endpoint returned empty
+  // Fallback to HTML /arama/?s=
   try {
-    const htmlUrl = `https://www.hdfilmcehennemi.nl/arama/?s=${encodeURIComponent(query)}`;
-    const html = await fetchWithCurl(htmlUrl, ['Referer: https://www.hdfilmcehennemi.nl/'], 5);
-    if (html && !isBlockedOrChallenge(html)) {
+    const base = 'https://www.hdfilmcehennemi.nl';
+    const htmlUrl = `${base}/arama/?s=${encodeURIComponent(query)}`;
+    const html = await fetchHtmlRobust(htmlUrl, {
+      fetchHeaders: { Referer: `${base}/` },
+      curlHeaders: [`Referer: ${base}/`],
+      timeoutSec: 5,
+    });
+    if (html) {
       const results = [];
       const cardRegex = /<a[^>]+class="poster"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
       let m;
@@ -2384,7 +2500,7 @@ async function searchHDFilmCehennemi(query) {
             providerKey: 'hdfilmcehennemi',
             title: decodeHtmlEntities(title.trim()),
             year: inner.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '',
-            url: href.startsWith('http') ? href : `https://www.hdfilmcehennemi.nl${href.startsWith('/') ? '' : '/'}${href}`,
+            url: href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`,
             poster,
           });
         }
@@ -2401,21 +2517,13 @@ async function searchHDFilmCehennemi(query) {
  */
 async function searchFilmMakinesi(query) {
   try {
-    const targetUrl = `https://filmmakinesi.to/arama/?s=${encodeURIComponent(query)}`;
-    let html = '';
-    try {
-      const fRes = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-        signal: AbortSignal.timeout(5500),
-      });
-      if (fRes.ok) html = await fRes.text();
-    } catch {}
-    if (!html || isBlockedOrChallenge(html)) {
-      html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
-    }
+    const base = 'https://filmmakinesi.to';
+    const targetUrl = `${base}/arama/?s=${encodeURIComponent(query)}`;
+    const html = await fetchHtmlRobust(targetUrl, {
+      fetchHeaders: { Referer: `${base}/`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+      curlHeaders: [`Referer: ${base}/`, 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
+      timeoutSec: 5,
+    });
     const results = [];
     const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"([\s\S]*?)<\/a>/gi;
     let match;
@@ -2425,8 +2533,8 @@ async function searchFilmMakinesi(query) {
       const inner = match[3] || '';
       const poster = inner.match(/data-src="([^"]+)"/i)?.[1] || inner.match(/src="([^"]+)"/i)?.[1] || '';
       const year = inner.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '';
-      const fullUrl = href.startsWith('http') ? href : `https://filmmakinesi.to${href.startsWith('/') ? '' : '/'}${href}`;
-      const fullPoster = poster ? (poster.startsWith('http') ? poster : `https://filmmakinesi.to${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
+      const fullUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
+      const fullPoster = poster ? (poster.startsWith('http') ? poster : `${base}${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
       results.push({
         provider: 'FilmMakinesi',
         providerKey: 'filmmakinesi',
@@ -2446,21 +2554,13 @@ async function searchFilmMakinesi(query) {
  */
 async function searchFilmDozu(query) {
   try {
-    const targetUrl = `https://filmdozu.com/ara?q=${encodeURIComponent(query)}`;
-    let html = '';
-    try {
-      const fRes = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://filmdozu.com/',
-        },
-        signal: AbortSignal.timeout(5500),
-      });
-      if (fRes.ok) html = await fRes.text();
-    } catch {}
-    if (!html || isBlockedOrChallenge(html)) {
-      html = await fetchWithCurl(targetUrl, ['Referer: https://filmdozu.com/'], 5);
-    }
+    const base = 'https://filmdozu.com';
+    const targetUrl = `${base}/ara?q=${encodeURIComponent(query)}`;
+    const html = await fetchHtmlRobust(targetUrl, {
+      fetchHeaders: { Referer: `${base}/` },
+      curlHeaders: [`Referer: ${base}/`],
+      timeoutSec: 5,
+    });
     const results = [];
     const articleRegex = /<article[^>]*class="[^"]*card[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
     let m;
@@ -2473,8 +2573,8 @@ async function searchFilmDozu(query) {
       const year = block.match(/<span[^>]*>\s*((?:19|20)\d{2})\s*<\/span>/i)?.[1]
                 || block.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '';
       if (href && title) {
-        const fullUrl = href.startsWith('http') ? href : `https://filmdozu.com${href.startsWith('/') ? '' : '/'}${href}`;
-        const fullPoster = poster ? (poster.startsWith('http') ? poster : `https://filmdozu.com${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
+        const fullUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
+        const fullPoster = poster ? (poster.startsWith('http') ? poster : `${base}${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
         results.push({
           provider: 'FilmDozu',
           providerKey: 'filmdozu',
@@ -2496,21 +2596,13 @@ async function searchFilmDozu(query) {
  */
 async function searchFilmIzyon(query) {
   try {
-    const targetUrl = `https://www.filmizyon.net/?s=${encodeURIComponent(query)}`;
-    let html = '';
-    try {
-      const fRes = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://www.filmizyon.net/',
-        },
-        signal: AbortSignal.timeout(5500),
-      });
-      if (fRes.ok) html = await fRes.text();
-    } catch {}
-    if (!html || isBlockedOrChallenge(html)) {
-      html = await fetchWithCurl(targetUrl, ['Referer: https://www.filmizyon.net/'], 5);
-    }
+    const base = 'https://www.filmizyon.net';
+    const targetUrl = `${base}/?s=${encodeURIComponent(query)}`;
+    const html = await fetchHtmlRobust(targetUrl, {
+      fetchHeaders: { Referer: `${base}/` },
+      curlHeaders: [`Referer: ${base}/`],
+      timeoutSec: 5,
+    });
     const results = [];
     const cardRegex = /<article[^>]*class="[^"]*fz-poster-card[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
     let m;
@@ -2528,8 +2620,8 @@ async function searchFilmIzyon(query) {
       const year = block.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || aria.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '';
       const poster = block.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i)?.[1] || null;
       if (href && heading) {
-        const fullUrl = href.startsWith('http') ? href : `https://www.filmizyon.net${href.startsWith('/') ? '' : '/'}${href}`;
-        const fullPoster = poster ? (poster.startsWith('http') ? poster : `https://www.filmizyon.net${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
+        const fullUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
+        const fullPoster = poster ? (poster.startsWith('http') ? poster : `${base}${poster.startsWith('/') ? '' : '/'}${poster}`) : null;
         results.push({
           provider: 'Filmİzyon',
           providerKey: 'filmizyon',
@@ -2547,25 +2639,78 @@ async function searchFilmIzyon(query) {
 }
 
 /**
- * RoketDizi arama (POST https://roketdizi.life/api/mj)
+ * RoketDizi arama (POST https://roketdizi.life/api/mj — fetch + curl + Tor + ScraperAPI POST fallback)
  */
 async function searchRoketDizi(query) {
+  const apiEndpoint = 'https://roketdizi.life/api/mj';
+  const parseRoketJson = (rawText) => {
+    try {
+      const data = JSON.parse(rawText);
+      return Array.isArray(data?.result) ? data.result : [];
+    } catch {
+      return [];
+    }
+  };
+
   try {
     for (const action of ['searchContent', 'searchContentFullText']) {
-      const res = await fetch('https://roketdizi.life/api/mj', {
-        method: 'POST',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Content-Type': 'application/json',
-          'Referer': 'https://roketdizi.life/',
-          'Origin': 'https://roketdizi.life',
-        },
-        body: JSON.stringify({ action, params: [query] }),
-        signal: AbortSignal.timeout(5500),
-      });
-      if (!res.ok) continue;
-      const data = await res.json().catch(() => null);
-      const items = Array.isArray(data?.result) ? data.result : [];
+      const payload = JSON.stringify({ action, params: [query] });
+      let items = [];
+
+      // 1. Direct fetch POST
+      try {
+        const res = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Content-Type': 'application/json',
+            'Referer': 'https://roketdizi.life/',
+            'Origin': 'https://roketdizi.life',
+          },
+          body: payload,
+          signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) items = parseRoketJson(await res.text());
+      } catch {}
+
+      // 2. Curl / Tor SOCKS5 POST fallback (Oracle Cloud WAF guard)
+      if (items.length === 0) {
+        for (const useTor of [false, true]) {
+          try {
+            const args = [
+              '-s', '-L', '--max-time', '6',
+              ...(useTor ? ['--socks5-hostname', '127.0.0.1:9050'] : []),
+              '-X', 'POST',
+              '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              '-H', 'Content-Type: application/json',
+              '-H', 'Referer: https://roketdizi.life/',
+              '-H', 'Origin: https://roketdizi.life',
+              '-d', payload,
+              apiEndpoint,
+            ];
+            const { stdout } = await execFileAsync(CURL_BIN, args);
+            items = parseRoketJson(stdout);
+            if (items.length > 0) break;
+          } catch {}
+        }
+      }
+
+      // 3. ScraperAPI POST fallback
+      if (items.length === 0) {
+        const scOut = await fetchViaScraperApi(apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Referer': 'https://roketdizi.life/',
+            'Origin': 'https://roketdizi.life',
+          },
+          body: payload,
+          keepHeaders: true,
+          timeoutMs: 7000,
+        });
+        if (scOut) items = parseRoketJson(scOut);
+      }
+
       if (items.length === 0) continue;
 
       const results = [];
@@ -2580,7 +2725,7 @@ async function searchRoketDizi(query) {
           if (!cleanSlug.startsWith('dizi/')) pagePath = `dizi/${cleanSlug}`;
         } else {
           if (!cleanSlug.startsWith('film/')) pagePath = `film/${cleanSlug}`;
-          if (!pagePath.endsWith('/izle')) pagePath = `${pagePath}/izle`;
+          if (!pagePath.endsWith('/izle') && pagePath !== 'izle') pagePath = `${pagePath}/izle`;
         }
         const pageUrl = `https://roketdizi.life/${pagePath}`;
         let poster = item.object_poster_url || null;

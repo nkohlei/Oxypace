@@ -422,13 +422,40 @@ const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const path = require('path');
 
+const exhaustedScraperKeys = new Set();
+function getValidScraperApiKey() {
+  const raw = process.env.SCRAPERAPI_KEYS || process.env.SCRAPERAPI_KEY || process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
+  const keys = String(raw).split(',').map(k => k.trim()).filter(Boolean);
+  for (const k of keys) {
+    if (!exhaustedScraperKeys.has(k)) return k;
+  }
+  return null;
+}
+
+function isChallengeOrDeadHtml(text) {
+  if (!text || typeof text !== 'string' || text.length < 80) return true;
+  if (
+    text.includes('error code: 1005') ||
+    text.includes('error code: 444') ||
+    text.includes('Attention Required! | Cloudflare') ||
+    text.includes('<title>Just a moment...</title>') ||
+    text.includes('Bir bakım çalışması mevcut')
+  ) {
+    return true;
+  }
+  if ((text.includes('Access denied') || text.includes('403 Forbidden')) && text.length < 3000) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Fetches HTML using native Python curl_cffi Chrome TLS impersonation (Bypasses Cloudflare ASN 444/403 blocks)
  */
 function fetchWithTlsImpersonation(targetUrl, referer = '') {
   return new Promise((resolve) => {
     const scriptPath = path.join(__dirname, 'tlsFetcher.py');
-    execFile('python3', [scriptPath, targetUrl, referer], { timeout: 15000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+    execFile('python3', [scriptPath, targetUrl, referer], { timeout: 10000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
       if (err || !stdout || stdout.length === 0) {
         return resolve('');
       }
@@ -438,10 +465,9 @@ function fetchWithTlsImpersonation(targetUrl, referer = '') {
 }
 
 /**
- * Fetches HTML directly, via TLS Impersonator, or via ScraperAPI if Cloudflare blocked
+ * Fetches HTML directly, via curl/Tor/TLS Impersonator, or via ScraperAPI if Cloudflare/datacenter blocked
  */
 async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
-  const apiKey = process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
   const isHdf = targetUrl.includes('hdfilmcehennemi');
   const isHdfAjax = /hdfilmcehennemi\.[^/]+\/(?:search\/|video\/\d+)/i.test(targetUrl);
   const effectiveReferer = referer || (isHdf ? 'https://www.hdfilmcehennemi.nl/' : '');
@@ -474,12 +500,12 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     return text;
   };
 
-  // 1. Doğrudan İstek Denemesi (En hızlı — ~200-500ms, sıfır ek process maliyeti)
+  // 1. Doğrudan İstek Denemesi
   try {
-    const res = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(7000) });
+    const res = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(4500) });
     if (res.ok) {
       const text = await res.text();
-      if (text && text.length > 80 && !text.includes('error code: 1005') && !text.includes('Attention Required! | Cloudflare') && !text.includes('Access denied') && !text.includes('403 Forbidden')) {
+      if (!isChallengeOrDeadHtml(text)) {
         return parseJsonIfAny(text);
       }
     }
@@ -487,34 +513,37 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     // Fallback
   }
 
-  // 1.5. Doğrudan Curl İsteği (Cloudflare TLS fingerprinting atlatır)
-  try {
-    const curlBin = process.platform === 'win32' ? 'curl.exe' : 'curl';
-    const curlArgs = [
-      '-s', '-L', '--max-time', '8',
+  // 1.5. Doğrudan Curl İsteği (+ Tor SOCKS5 fallback)
+  const curlBin = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const buildCurlArgs = (useTor) => {
+    const args = [
+      '-s', '-L', '--max-time', useTor ? '6' : '5',
+      ...(useTor ? ['--socks5-hostname', '127.0.0.1:9050'] : []),
       '-A', headers['User-Agent'],
       '-H', `Accept: ${headers['Accept']}`,
       '-H', `Accept-Language: ${headers['Accept-Language']}`,
     ];
-    if (effectiveReferer) curlArgs.push('-H', `Referer: ${effectiveReferer}`);
-    if (isHdfAjax) {
-      curlArgs.push('-H', 'x-requested-with: fetch');
-    }
-    curlArgs.push(targetUrl);
-    const { stdout } = await execFileAsync(curlBin, curlArgs);
-    if (stdout && stdout.length > 80 && !stdout.includes('Attention Required! | Cloudflare') && !stdout.includes('error code: 1005') && !stdout.includes('403 Forbidden')) {
-      const parsedBody = parseJsonIfAny(stdout);
-      logger.info(`[FastScraper] ⚡ Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
-      return parsedBody;
-    }
-  } catch (curlErr) {
-    // continue
+    if (effectiveReferer) args.push('-H', `Referer: ${effectiveReferer}`);
+    if (isHdfAjax) args.push('-H', 'x-requested-with: fetch');
+    args.push(targetUrl);
+    return args;
+  };
+
+  for (const useTor of [false, true]) {
+    try {
+      const { stdout } = await execFileAsync(curlBin, buildCurlArgs(useTor));
+      if (!isChallengeOrDeadHtml(stdout)) {
+        const parsedBody = parseJsonIfAny(stdout);
+        logger.info(`[FastScraper] ⚡ ${useTor ? 'Tor ' : ''}Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
+        return parsedBody;
+      }
+    } catch {}
   }
 
-  // 2. Python TLS Chrome Impersonation (sadece local/yüklü ortamlar için fallback)
+  // 2. Python TLS Chrome Impersonation
   try {
     const tlsHtml = await fetchWithTlsImpersonation(targetUrl, effectiveReferer);
-    if (tlsHtml && tlsHtml.length > 80 && !tlsHtml.includes('error code: 1005') && !tlsHtml.includes('Attention Required! | Cloudflare')) {
+    if (!isChallengeOrDeadHtml(tlsHtml)) {
       const parsedBody = parseJsonIfAny(tlsHtml);
       logger.info(`[FastScraper] 🛡️ TLS Impersonation ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
       return parsedBody;
@@ -523,19 +552,25 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
   }
 
-  // 3. ScraperAPI Standart Bypass
-  if (apiKey) {
+  // 3. ScraperAPI Standart Fallback (rotates across key pool on 403/exhausted)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const apiKey = getValidScraperApiKey();
+    if (!apiKey) break;
     try {
       const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(proxyUrl, { headers, signal: AbortSignal.timeout(10000) });
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.length > 200 && !text.includes('Request failed. You will not be charged') && !text.includes('exhausted')) {
-          return parseJsonIfAny(text);
-        }
+      const res = await fetch(proxyUrl, { headers, signal: AbortSignal.timeout(8000) });
+      const text = await res.text();
+      if (res.status === 403 || text.includes('exhausted') || text.includes('You have reached your')) {
+        exhaustedScraperKeys.add(apiKey);
+        continue;
       }
+      if (res.ok && !isChallengeOrDeadHtml(text) && !text.includes('Request failed. You will not be charged')) {
+        return parseJsonIfAny(text);
+      }
+      break;
     } catch (err) {
       logger.warn(`[FastScraper] Standard proxy fetch failed: ${err.message}`);
+      break;
     }
   }
 
@@ -557,13 +592,13 @@ function determineRefererAndOrigin(streamUrl, embedUrl, targetUrl) {
     referer = 'https://playmix.uno/';
   } else if (s.includes('closeload') || e.includes('closeload') || t.includes('filmmakinesi')) {
     referer = 'https://closeload.filmmakinesi.to/';
-  } else if (s.includes('imagecdn') || s.includes('rapidvid') || e.includes('rapidvid') || t.includes('fullhdfilmizlesene')) {
+  } else if (s.includes('imagecdn') || s.includes('cdnimgs') || s.includes('rapidvid') || e.includes('rapidvid') || t.includes('fullhdfilmizlesene')) {
     referer = 'https://rapidvid.org/';
-  } else if (s.includes('cdnimages') || s.includes('shop') || e.includes('rplayer') || t.includes('hdfilmcehennemi')) {
+  } else if (s.includes('cdnimages') || s.includes('cyou') || e.includes('rplayer') || t.includes('hdfilmcehennemi')) {
     referer = e.includes('rplayer') ? 'https://www.hdfilmcehennemi.nl/' : 'https://hdfilmcehennemi.mobi/';
   } else if (e.includes('hdfilmcehennemi') || e.includes('rapidrame')) {
     referer = 'https://hdfilmcehennemi.mobi/';
-  } else if (s.includes('vidmoly') || e.includes('vidmoly')) {
+  } else if (s.includes('vidmoly') || s.includes('vmget') || s.includes('vmpx') || e.includes('vidmoly')) {
     referer = 'https://vidmoly.to/';
   } else if (s.includes('okcdn') || s.includes('mycdn.me') || s.includes('vkuser') || e.includes('ok.ru')) {
     referer = 'https://ok.ru/';
@@ -898,9 +933,12 @@ async function collectPageEmbedCandidates(targetUrl, html) {
     }
   }
 
-  // 3. FilmMakinesi: <a data-video_url="...">Label</a>
+  // 3. FilmMakinesi: <a data-video_url="...">Label</a> + data-href/part tabs
   if (targetUrl.includes('filmmakinesi')) {
-    const fmBtns = [...html.matchAll(/<a[^>]+data-video_url=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+    const fmBtns = [
+      ...html.matchAll(/<a[^>]+data-video_url=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi),
+      ...html.matchAll(/<(?:a|li|button)[^>]+data-href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/(?:a|li|button)>/gi),
+    ];
     for (const [, vUrl, rawLbl] of fmBtns) {
       pushCandidate(vUrl, rawLbl.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
     }
@@ -932,7 +970,7 @@ async function collectPageEmbedCandidates(targetUrl, html) {
     if (sourcesM) {
       try {
         const srcList = JSON.parse(sourcesM[1]);
-        const otherTabs = srcList.filter(s => s && s.href && !s.on).slice(0, 4);
+        const otherTabs = srcList.filter(s => s && s.href && !s.on).slice(0, 6);
         const tabResults = await Promise.allSettled(
           otherTabs.map(async (tab) => {
             const tabUrl = tab.href.startsWith('http') ? tab.href : new URL(tab.href, 'https://roketdizi.life').href;
@@ -1098,110 +1136,122 @@ async function resolveSingleEmbed(initialEmbedUrl, targetUrl, pageTitle = '') {
  * @param {{ timeout?: number, collectAlternatives?: boolean }} [options]
  */
 async function fastResolve(targetUrl, options = {}) {
-  try {
-    logger.info(`[FastScraper] 🚀 Sayfa taranıyor: ${targetUrl}`);
-    let mainReferer = '';
-    if (targetUrl.includes('hdfilmcehennemi.mobi')) {
-      mainReferer = 'https://www.hdfilmcehennemi.nl/';
-    } else if (targetUrl.includes('closeload')) {
-      mainReferer = 'https://closeload.filmmakinesi.to/';
-    } else if (targetUrl.includes('rapidvid')) {
-      mainReferer = 'https://rapidvid.net/';
-    } else if (targetUrl.includes('vixolity')) {
-      mainReferer = 'https://www.filmizyon.net/';
-    }
+  const timeoutMs = Number(options.timeout) > 1000 ? Number(options.timeout) : 14000;
+  let timer = null;
+  const timeoutPromise = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
 
-    const html = await fetchHtmlWithBypass(targetUrl, mainReferer);
-    if (!html) return null;
-
-    if (html.includes('451 - Yasal Nedenlerle') || html.includes('Yasal Nedenlerle Erisime Kapali')) {
-      logger.warn(`[FastScraper] ⛔ Telif takedown: ${targetUrl}`);
-      return { error: 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.', isTakedown: true };
-    }
-
-    // Series index auto-navigation (/dizi/)
-    if (targetUrl.includes('/dizi/') && !targetUrl.includes('/bolum-')) {
-      const epMatch = html.match(/href="([^"]*\/dizi\/[^"]+\/sezon-\d+\/bolum-\d+\/?)"/i) || html.match(/href="([^"]*(?:sezon-1\/bolum-1|bolum-1)[^"]*)"/i);
-      if (epMatch && epMatch[1]) {
-        const epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], targetUrl).href;
-        logger.info(`[FastScraper] 📺 Dizi sayfası tespit edildi, 1. bölüme yönlendiriliyor: ${epUrl}`);
-        return await fastResolve(epUrl, options);
+  const runResolve = async () => {
+    try {
+      logger.info(`[FastScraper] 🚀 Sayfa taranıyor: ${targetUrl}`);
+      let mainReferer = '';
+      if (targetUrl.includes('hdfilmcehennemi.mobi')) {
+        mainReferer = 'https://www.hdfilmcehennemi.nl/';
+      } else if (targetUrl.includes('closeload')) {
+        mainReferer = 'https://closeload.filmmakinesi.to/';
+      } else if (targetUrl.includes('rapidvid')) {
+        mainReferer = 'https://rapidvid.org/';
+      } else if (targetUrl.includes('vixolity')) {
+        mainReferer = 'https://www.filmizyon.net/';
       }
-    }
 
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
+      const html = await fetchHtmlWithBypass(targetUrl, mainReferer);
+      if (!html) return null;
 
-    // Fast path if targetUrl itself IS an embed URL
-    if (targetUrl.includes('vixolity.com') || targetUrl.includes('ok.ru/videoembed') || targetUrl.includes('/video/embed/') || targetUrl.includes('/rplayer/') || targetUrl.includes('vidmoly')) {
-      const directEmbedRes = await resolveSingleEmbed(targetUrl, mainReferer || targetUrl, pageTitle);
-      if (directEmbedRes) return directEmbedRes;
-    }
+      if (html.includes('451 - Yasal Nedenlerle') || html.includes('Yasal Nedenlerle Erisime Kapali')) {
+        logger.warn(`[FastScraper] ⛔ Telif takedown: ${targetUrl}`);
+        return { error: 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.', isTakedown: true };
+      }
 
-    const decodedFromMain = decodeDynamicObfuscation(html, targetUrl) || decodeDcFunction(html);
-    if (decodedFromMain && !options.collectAlternatives) {
-      return buildResult(decodedFromMain, '', targetUrl, 'm3u8', pageTitle, html);
-    }
-
-    for (const pattern of FAST_STREAM_PATTERNS) {
-      const match = html.match(pattern);
-      if (match && match[1] && !options.collectAlternatives) {
-        const streamUrl = match[1].replace(/\\/g, '');
-        const lowerStream = streamUrl.toLowerCase();
-        const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
-        const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
-        if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
-          return buildResult(streamUrl, '', targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, html);
+      // Series index auto-navigation (/dizi/)
+      if (targetUrl.includes('/dizi/') && !targetUrl.includes('/bolum-')) {
+        const epMatch = html.match(/href="([^"]*\/dizi\/[^"]+\/sezon-\d+\/bolum-\d+\/?)"/i) || html.match(/href="([^"]*(?:sezon-1\/bolum-1|bolum-1)[^"]*)"/i);
+        if (epMatch && epMatch[1]) {
+          const epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], targetUrl).href;
+          logger.info(`[FastScraper] 📺 Dizi sayfası tespit edildi, 1. bölüme yönlendiriliyor: ${epUrl}`);
+          return await fastResolve(epUrl, { ...options, timeout: Math.max(4000, timeoutMs - 2000) });
         }
       }
-    }
 
-    const candidates = await collectPageEmbedCandidates(targetUrl, html);
-    logger.info(`[FastScraper] Bulunan embed aday sayısı: ${candidates.length} (${targetUrl})`);
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-    if (options.collectAlternatives) {
-      // Resolve up to 6 candidates concurrently so we have both instant stream and ready alternatives
-      const resolvedList = await Promise.allSettled(
-        candidates.slice(0, 6).map(async (cand, idx) => {
-          const r = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
-          return r ? { ...r, candidateLabel: cand.label || `Alternatif ${idx + 1}`, embedUrl: cand.url } : null;
-        })
-      );
-      const working = resolvedList
-        .filter(r => r.status === 'fulfilled' && r.value && r.value.streamUrl)
-        .map(r => r.value);
-
-      if (working.length > 0) {
-        return {
-          ...working[0],
-          alternatives: working,
-          candidateEmbeds: candidates,
-        };
+      // Fast path if targetUrl itself IS an embed URL
+      if (targetUrl.includes('vixolity.com') || targetUrl.includes('ok.ru/videoembed') || targetUrl.includes('/video/embed/') || targetUrl.includes('/rplayer/') || targetUrl.includes('vidmoly')) {
+        const directEmbedRes = await resolveSingleEmbed(targetUrl, mainReferer || targetUrl, pageTitle);
+        if (directEmbedRes) return directEmbedRes;
       }
-      if (candidates.length > 0) {
-        return {
-          streamUrl: null,
-          pageTitle,
-          alternatives: [],
-          candidateEmbeds: candidates,
-        };
+
+      const decodedFromMain = decodeDynamicObfuscation(html, targetUrl) || decodeDcFunction(html);
+      if (decodedFromMain && !options.collectAlternatives) {
+        return buildResult(decodedFromMain, '', targetUrl, 'm3u8', pageTitle, html);
       }
+
+      for (const pattern of FAST_STREAM_PATTERNS) {
+        const match = html.match(pattern);
+        if (match && match[1] && !options.collectAlternatives) {
+          const streamUrl = match[1].replace(/\\/g, '');
+          const lowerStream = streamUrl.toLowerCase();
+          const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
+          const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
+          if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
+            return buildResult(streamUrl, '', targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, html);
+          }
+        }
+      }
+
+      const candidates = await collectPageEmbedCandidates(targetUrl, html);
+      logger.info(`[FastScraper] Bulunan embed aday sayısı: ${candidates.length} (${targetUrl})`);
+
+      if (options.collectAlternatives) {
+        const resolvedList = await Promise.allSettled(
+          candidates.slice(0, 8).map(async (cand, idx) => {
+            const r = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
+            return r ? { ...r, candidateLabel: cand.label || `Alternatif ${idx + 1}`, embedUrl: cand.url } : null;
+          })
+        );
+        const working = resolvedList
+          .filter(r => r.status === 'fulfilled' && r.value && r.value.streamUrl)
+          .map(r => r.value);
+
+        if (working.length > 0) {
+          return {
+            ...working[0],
+            alternatives: working,
+            candidateEmbeds: candidates,
+          };
+        }
+        if (candidates.length > 0) {
+          return {
+            streamUrl: null,
+            pageTitle,
+            alternatives: [],
+            candidateEmbeds: candidates,
+          };
+        }
+        return null;
+      }
+
+      for (const cand of candidates) {
+        const resolved = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
+        if (resolved) {
+          resolved.candidateEmbeds = candidates;
+          return resolved;
+        }
+      }
+
+      return null;
+    } catch (err) {
+      logger.error(`[FastScraper] Hata: ${err.message}`);
       return null;
     }
+  };
 
-    // Standard mode: return first working embed
-    for (const cand of candidates) {
-      const resolved = await resolveSingleEmbed(cand.url, targetUrl, pageTitle);
-      if (resolved) {
-        resolved.candidateEmbeds = candidates;
-        return resolved;
-      }
-    }
-
-    return null;
-  } catch (err) {
-    logger.error(`[FastScraper] Hata: ${err.message}`);
-    return null;
+  try {
+    return await Promise.race([runResolve(), timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
