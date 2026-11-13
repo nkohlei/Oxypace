@@ -157,6 +157,9 @@ function isBlockedOrChallenge(text) {
     const lower = text.toLowerCase();
     if (!lower.includes('<title>just a moment...</title>') && 
         !lower.includes('<title>attention required! | cloudflare</title>') && 
+        !lower.includes('<title>access denied') &&
+        !lower.includes('used cloudflare to restrict access') &&
+        !lower.includes('yasal nedenlerle') &&
         !(lower.includes('<title>404 not found</title>') && lower.includes('nginx'))) {
       return false;
     }
@@ -164,6 +167,8 @@ function isBlockedOrChallenge(text) {
   const lower = text.toLowerCase();
   if (lower.includes('<title>just a moment...</title>')) return true;
   if (lower.includes('<title>attention required! | cloudflare</title>')) return true;
+  if (lower.includes('<title>access denied') || lower.includes('used cloudflare to restrict access')) return true;
+  if (lower.includes('451 - yasal') || lower.includes('yasal nedenlerle')) return true;
   if (lower.includes('<title>404 not found</title>') && lower.includes('nginx')) return true;
   if (lower.includes('error code: 1005') || lower.includes('error code: 444') || lower.includes('error code: 403')) return true;
   if (lower.includes('403 forbidden') && text.length < 2000) return true;
@@ -1038,6 +1043,8 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.includes('hdfilmcehennemi')) return null;
   const start = Date.now();
 
+  const isValidHdfResponse = (t) => Boolean(t && t.length > 500 && !isBlockedOrChallenge(t));
+
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
     // 0. Configured PROXY_SERVER (residential/TR proxy if set in .env)
     const envProxy = buildEnvProxyUrl();
@@ -1051,7 +1058,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
           url
         ];
         const { stdout } = await execFileAsync(CURL_BIN, argsProxy);
-        if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+        if (isValidHdfResponse(stdout)) {
           return stdout;
         }
       } catch (e) {}
@@ -1069,7 +1076,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
           url
         ];
         const { stdout } = await execFileAsync('curl', argsTor);
-        if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+        if (isValidHdfResponse(stdout)) {
           return stdout;
         }
       } catch (e) {}
@@ -1088,7 +1095,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
       if (res.ok) {
         const t = await res.text();
-        if (t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required')) return t;
+        if (isValidHdfResponse(t)) return t;
       }
     } catch (e) {}
 
@@ -1102,7 +1109,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         url
       ];
       const { stdout } = await execFileAsync(CURL_BIN, args);
-      if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
+      if (isValidHdfResponse(stdout)) {
         return stdout;
       }
     } catch (e) {}
@@ -1125,7 +1132,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
           exhaustedScraperKeys.add(apiKey);
         } else if (res.ok) {
           const t = await res.text();
-          if (t && t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required')) return t;
+          if (isValidHdfResponse(t)) return t;
         }
       } catch (e) {}
     }
