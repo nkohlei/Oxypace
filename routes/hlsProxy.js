@@ -1886,11 +1886,11 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     }
   }
 
-  // Fallback for unresolved site links: in-process Playwright (or explicit remote STREAM_RESOLVER_API_URL — never port 3001 blog!)
-  if (siteGroupsRaw.length === 0 && targets.length > 0 && !takedownError) {
+  // Fallback when no playable stream was extracted (even if unresolved candidateEmbeds existed in siteGroupsRaw)
+  if (streamCandidates.length === 0 && targets.length > 0 && !takedownError) {
     const pushFallbackResult = (sUrl, headersObj, subs, pageTitleStr, targetObj) => {
       const sh = normalizeProxyHeadersForStream(sUrl, headersObj || {});
-      const altId = `alt_${targetObj.providerKey}_1`;
+      const altId = `alt_${targetObj.providerKey}_pw_1`;
       const audioType = extractAudioTypeTag(pageTitleStr, sUrl);
       streamCandidates.push({
         altId,
@@ -1901,24 +1901,30 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         pageTitle: pageTitleStr || resolvedPageTitle,
         audioType,
       });
-      siteGroupsRaw.push({
-        providerKey: targetObj.providerKey,
-        providerName: targetObj.provider,
-        items: [{
-          id: altId,
-          label: `Alternatif 1${audioType ? ` · ${audioType}` : ''}`,
-          ...(audioType ? { audioType } : {}),
-          sourceToken: sealSourcePayload({
-            url: targetObj.url,
-            moviePageUrl: targetObj.url,
-            directStreamUrl: sUrl,
-            providerKey: targetObj.providerKey,
-            headers: sh,
-            audioType,
-          }),
-          isResolved: true,
-        }],
-      });
+      const resolvedItem = {
+        id: altId,
+        label: `Alternatif 1${audioType ? ` · ${audioType}` : ''}`,
+        ...(audioType ? { audioType } : {}),
+        sourceToken: sealSourcePayload({
+          url: targetObj.url,
+          moviePageUrl: targetObj.url,
+          directStreamUrl: sUrl,
+          providerKey: targetObj.providerKey,
+          headers: sh,
+          audioType,
+        }),
+        isResolved: true,
+      };
+      const existingGrp = siteGroupsRaw.find(g => g.providerKey === targetObj.providerKey);
+      if (existingGrp) {
+        existingGrp.items = [resolvedItem, ...(existingGrp.items || []).filter(it => !it.isResolved)].slice(0, 6);
+      } else {
+        siteGroupsRaw.push({
+          providerKey: targetObj.providerKey,
+          providerName: targetObj.provider,
+          items: [resolvedItem],
+        });
+      }
     };
 
     const callResolverMicroservice = async (baseUrl, fallbackTarget) => {
@@ -1966,15 +1972,22 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     }
 
     if (!microSucceeded && inProcessPlaywrightResolve) {
+      const pwCapMs = Math.min(fetchTimeout, 9500);
       for (const fallbackTarget of targets.slice(0, 2)) {
+        let pwTimer = null;
         try {
-          const pwRes = await inProcessPlaywrightResolve(fallbackTarget.url, { timeout: Math.min(fetchTimeout, 9000) });
+          const pwRes = await Promise.race([
+            inProcessPlaywrightResolve(fallbackTarget.url, { timeout: pwCapMs }),
+            new Promise((resolve) => { pwTimer = setTimeout(() => resolve(null), pwCapMs); }),
+          ]);
           const sUrl = pwRes?.streamUrl;
           if (sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
             pushFallbackResult(sUrl, pwRes.headers, pwRes.subtitles, pwRes.pageTitle, fallbackTarget);
             break;
           }
-        } catch {}
+        } catch {} finally {
+          if (pwTimer) clearTimeout(pwTimer);
+        }
       }
     }
   }
