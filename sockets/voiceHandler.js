@@ -242,6 +242,7 @@ const sanitizeAlternativeGroups = (groups) => {
             .map((it, iIdx) => ({
                 id: clampString(it.id, 64),
                 label: clampString(it.label || `Alternatif ${iIdx + 1}`, 48),
+                ...(it.audioType ? { audioType: clampString(it.audioType, 40) } : {}),
                 sourceToken: clampString(it.sourceToken, 2048),
                 isResolved: Boolean(it.isResolved)
             }));
@@ -1111,7 +1112,7 @@ export const initializeVoiceHandler = (io) => {
         // ─── Watch Party (YouTube / Stream Sync) ───
         socket.on('voice:watch-start', async (payload) => {
             await settle();
-            const { roomName, url, isLive, subtitles, externalSubtitles, title, alternativeGroups, activeAlternativeId, movieMeta } = payload || {};
+            const { roomName, url, isLive, subtitles, externalSubtitles, title, alternativeGroups, activeAlternativeId, audioType, movieMeta } = payload || {};
             if (!inRoom(roomName) || !limits.watch()) return;
             if (typeof url !== 'string' || !url.trim() || url.length > MAX_URL_LENGTH) return;
 
@@ -1142,6 +1143,7 @@ export const initializeVoiceHandler = (io) => {
                 externalSubtitles: cleanExtSubtitles,
                 alternativeGroups: cleanAlternativeGroups,
                 activeAlternativeId: clampString(activeAlternativeId || '', 64),
+                audioType: clampString(audioType || '', 40),
                 movieMeta: cleanMovieMeta,
                 title: clampString(title, MAX_TITLE_LENGTH),
                 senderId: myId()
@@ -1167,7 +1169,7 @@ export const initializeVoiceHandler = (io) => {
 
         socket.on('voice:watch-switch', async (payload) => {
             await settle();
-            const { roomName, url, activeAlternativeId, subtitles, preserveTime } = payload || {};
+            const { roomName, url, activeAlternativeId, audioType, subtitles, preserveTime } = payload || {};
             if (!inRoom(roomName) || !limits.watch()) return;
             if (typeof url !== 'string' || !url.trim() || url.length > MAX_URL_LENGTH) return;
 
@@ -1176,6 +1178,9 @@ export const initializeVoiceHandler = (io) => {
                 wp.url = toAbsoluteProxyUrl(url.trim());
                 if (typeof activeAlternativeId === 'string') {
                     wp.activeAlternativeId = clampString(activeAlternativeId, 64);
+                }
+                if (typeof audioType === 'string') {
+                    wp.audioType = clampString(audioType, 40);
                 }
                 if (Array.isArray(subtitles) && subtitles.length > 0) {
                     wp.subtitles = subtitles.slice(0, MAX_SHARED_SUBTITLES).filter((s) => s && typeof s === 'object').map(normalizeSubtitleObj);

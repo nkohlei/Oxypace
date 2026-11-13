@@ -118,6 +118,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
   const buildWatchMeta = (resData, movieMeta) => ({
     alternativeGroups: Array.isArray(resData?.alternativeGroups) ? resData.alternativeGroups : [],
     activeAlternativeId: resData?.activeAlternativeId || '',
+    audioType: resData?.audioType || '',
     externalSubtitles: Array.isArray(resData?.externalSubtitles) ? resData.externalSubtitles : [],
     movieMeta: {
       imdbId: movieMeta?.imdbId || '',
@@ -184,11 +185,17 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       try {
         response = await axios.post('/api/resolve-stream', payload, { timeout: 25000 });
       } catch (firstErr) {
-        // Retry once if a stale cluster worker rejected sourceTokens (400) or if we have a fallback url
-        if (firstErr.response?.status === 400 && hasTokens) {
-          const fallbackPayload = trimmedUrl
-            ? { ...payload, url: trimmedUrl }
-            : payload;
+        // Retry without stale sourceTokens only when a direct fallback url or privileged sources list exists
+        const hasFallbackTarget = Boolean(trimmedUrl) || (isPrivileged && Array.isArray(movieMeta?.sources) && movieMeta.sources.length > 0);
+        if (firstErr.response?.status === 400 && hasTokens && hasFallbackTarget) {
+          const fallbackPayload = {
+            ...(trimmedUrl ? { url: trimmedUrl } : {}),
+            ...(isPrivileged && Array.isArray(movieMeta?.sources) ? { sources: movieMeta.sources } : {}),
+            title: movieMeta?.title || '',
+            year: movieMeta?.year || '',
+            imdbId: movieMeta?.imdbId || '',
+            timeout: 20000,
+          };
           response = await axios.post('/api/resolve-stream', fallbackPayload, { timeout: 25000 });
         } else {
           throw firstErr;

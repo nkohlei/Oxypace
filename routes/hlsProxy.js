@@ -23,6 +23,7 @@ let fastResolve = null;
 let resolveSingleEmbed = null;
 let collectPageEmbedCandidates = null;
 let inProcessMovieSearch = null;
+let inProcessPlaywrightResolve = null;
 try {
   const scraper = require('../stream-resolver/services/fastScraper.js');
   fastResolve = scraper.fastResolve;
@@ -36,6 +37,24 @@ try {
   inProcessMovieSearch = searchSvc.searchMovies;
 } catch (e) {
   console.warn('[HLSProxy] movieSearchService import warning:', e.message);
+}
+try {
+  const pwResolver = require('../stream-resolver/services/playwrightResolver.js');
+  inProcessPlaywrightResolve = pwResolver.resolveStreamUrl;
+} catch (e) {
+  console.warn('[HLSProxy] playwrightResolver import warning:', e.message);
+}
+
+// Extracts safe, non-site-leaking audio/language classification from internal labels
+function extractAudioTypeTag(rawLabel = '', url = '') {
+  const text = `${rawLabel || ''} ${url || ''}`.toLowerCase();
+  const hasDual = /\bdual\b|tr[-_\s]?dual|tr[-_\s]?en/.test(text);
+  const hasDub = /dublaj|\btrdub\b/.test(text);
+  const hasSub = /altyaz[ıi]|\bsub\b/.test(text);
+  if (hasDual || (hasDub && hasSub)) return 'Dual (Dublaj & Altyazı)';
+  if (hasDub) return 'Türkçe Dublaj';
+  if (hasSub) return 'Türkçe Altyazı';
+  return '';
 }
 
 // AES-256-GCM sealing so regular users never see external source domains or raw scraping URLs
@@ -140,17 +159,18 @@ async function fetchViaScraperApi(url, { timeoutMs = 7500, headers = {}, method 
   return '';
 }
 
-async function fetchHtmlRobust(url, { fetchHeaders = {}, curlHeaders = [], timeoutSec = 5, scraperTimeoutMs = 7000 } = {}) {
+async function fetchHtmlRobust(url, { fetchHeaders = {}, curlHeaders = [], timeoutSec = 4, scraperTimeoutMs = 6000, fastSearch = false } = {}) {
   if (!validateSsrfUrl(url).safe) return '';
+  const effectiveFetchMs = fastSearch ? Math.min(timeoutSec * 1000, 2800) : timeoutSec * 1000;
   // 1. Direct fast fetch
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
         ...fetchHeaders,
       },
-      signal: AbortSignal.timeout(timeoutSec * 1000),
+      signal: AbortSignal.timeout(effectiveFetchMs),
     });
     if (res.ok) {
       const text = await res.text();
@@ -158,11 +178,11 @@ async function fetchHtmlRobust(url, { fetchHeaders = {}, curlHeaders = [], timeo
     }
   } catch {}
 
-  // 2. Curl + Tor SOCKS5 + Python TLS Impersonator
-  const curlRes = await fetchWithCurl(url, curlHeaders, timeoutSec);
+  // 2. Direct Curl -> Direct-first Python TLS Impersonator -> Tor fallback
+  const curlRes = await fetchWithCurl(url, curlHeaders, fastSearch ? Math.min(timeoutSec, 4) : timeoutSec);
   if (curlRes) return curlRes;
 
-  // 3. ScraperAPI fallback (crucial for datacenter IPs like Oracle Cloud)
+  // 3. ScraperAPI fallback (only if env key is configured)
   return await fetchViaScraperApi(url, { timeoutMs: scraperTimeoutMs, headers: fetchHeaders, keepHeaders: Object.keys(fetchHeaders).length > 0 });
 }
 
@@ -190,14 +210,15 @@ function decodeHtmlEntities(str) {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
 }
 
-// Python curl_cffi TLS impersonator (available on server)
-function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = '') {
+// Python curl_cffi Chrome 124 TLS impersonator (direct first, Tor fallback inside script)
+function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = '', extraHeaders = {}, { noTor = false, timeoutMs = 9500 } = {}) {
   return new Promise((resolve) => {
     const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
-    const args = [scriptPath, url, referer || '', method || 'GET'];
-    if (postData) args.push(postData);
+    const hdrJson = extraHeaders && Object.keys(extraHeaders).length > 0 ? JSON.stringify(extraHeaders) : '';
+    const args = [scriptPath, url, referer || '', method || 'GET', postData || '', hdrJson];
+    if (noTor) args.push('no_tor');
     const run = (bin) => {
-      execFile(bin, args, { timeout: 14000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+      execFile(bin, args, { timeout: timeoutMs, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
         if (err && err.code === 'ENOENT' && bin === 'python3') {
           return run('python');
         }
@@ -207,7 +228,7 @@ function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = 
         resolve(stdout);
       });
     };
-    run('python3');
+    run(process.env.TLS_PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3'));
   });
 }
 
@@ -241,29 +262,38 @@ function isBlockedOrChallenge(text) {
   return false;
 }
 
-// Direct curl fetch for text/html (bypasses Cloudflare JA3/JA4 TLS fingerprinting)
-async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
+// Direct curl -> Direct-first Python TLS Impersonator -> Tor Curl fallback
+async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
   // SSRF / option-injection guard: only public http(s) URLs may ever reach the curl binary
   if (!validateSsrfUrl(url).safe) return '';
-  // 1. For HDFilmCehennemi, direct curl gets 403 on Oracle Cloud datacenter IP.
-  // Use Python TLS Impersonator first (Chrome 124 TLS fingerprint).
+  const extraHdrObj = {};
+  let ref = '';
+  for (const h of headers) {
+    const idx = String(h).indexOf(':');
+    if (idx > 0) {
+      const k = h.slice(0, idx).trim();
+      const v = h.slice(idx + 1).trim();
+      if (k.toLowerCase() === 'referer') ref = v;
+      else extraHdrObj[k] = v;
+    }
+  }
+
+  // 1. For HDFilmCehennemi, try direct-first Chrome 124 TLS Impersonator first
   if (url.includes('hdfilmcehennemi')) {
     try {
-      const refHdr = headers.find(h => h.toLowerCase().startsWith('referer:')) || '';
-      const ref = refHdr ? refHdr.replace(/^referer:\s*/i, '').trim() : 'https://www.hdfilmcehennemi.nl/';
-      const tlsHtml = await fetchWithTlsImpersonator(url, ref);
+      const tlsHtml = await fetchWithTlsImpersonator(url, ref || 'https://www.hdfilmcehennemi.nl/', 'GET', '', extraHdrObj, { timeoutMs: 8000 });
       if (!isBlockedOrChallenge(tlsHtml)) {
         return tlsHtml;
       }
     } catch (e) {}
   }
 
-  // 2. Direct curl execution
+  // 2. Direct curl execution (fast, zero Tor overhead)
   try {
     const args = [
       '-s',
       '-L',
-      '--max-time', String(timeoutSec),
+      '--max-time', String(Math.min(timeoutSec, 4)),
       '--proto', '=http,https',
       '--proto-redir', '=http,https',
       '--max-redirs', '5',
@@ -278,13 +308,23 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
     }
   } catch (e) {}
 
-  // 3. Try via Tor SOCKS5 if active (port 9050 on Linux server)
+  // 3. Python TLS Chrome 124 Impersonator (direct first, Tor fallback inside Python)
+  if (!url.includes('hdfilmcehennemi')) {
+    try {
+      const tlsHtml = await fetchWithTlsImpersonator(url, ref, 'GET', '', extraHdrObj, { timeoutMs: 8500 });
+      if (!isBlockedOrChallenge(tlsHtml)) {
+        return tlsHtml;
+      }
+    } catch (e) {}
+  }
+
+  // 4. Emergency Tor SOCKS5 curl fallback if Python TLS was unavailable
   try {
     const argsTor = [
       '-s',
       '-L',
       '--socks5-hostname', '127.0.0.1:9050',
-      '--max-time', String(timeoutSec + 2),
+      '--max-time', String(Math.min(timeoutSec + 1, 6)),
       '--proto', '=http,https',
       '--proto-redir', '=http,https',
       '--max-redirs', '5',
@@ -296,16 +336,6 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
     const { stdout } = await execFileAsync(CURL_BIN, argsTor);
     if (!isBlockedOrChallenge(stdout)) {
       return stdout;
-    }
-  } catch (e) {}
-
-  // 4. Fallback to Python TLS Chrome 124 Impersonator (bypasses ASN datacenter & JA3 blocks)
-  try {
-    const refHdr = headers.find(h => h.toLowerCase().startsWith('referer:')) || '';
-    const ref = refHdr ? refHdr.replace(/^referer:\s*/i, '').trim() : '';
-    const tlsHtml = await fetchWithTlsImpersonator(url, ref);
-    if (!isBlockedOrChallenge(tlsHtml)) {
-      return tlsHtml;
     }
   } catch (e) {}
 
@@ -1434,7 +1464,8 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
           return res.status(400).json({ success: false, error: 'Geçersiz veya izin verilmeyen URL.' });
         }
         if (resolveSingleEmbed && !unsealed.isMoviePage) {
-          const singleRes = await resolveSingleEmbed(unsealed.url, unsealed.referer || unsealed.url, { timeout: 12000 });
+          const embedReferer = unsealed.moviePageUrl || unsealed.referer || unsealed.url;
+          const singleRes = await resolveSingleEmbed(unsealed.url, embedReferer, unsealed.title || '');
           if (singleRes?.streamUrl) {
             chosenStream = singleRes.streamUrl;
             streamHeaders = singleRes.headers || streamHeaders;
@@ -1475,6 +1506,7 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         ...sub,
         playableUrl: sub.playableUrl || buildPlayableProxyUrl(resolveBaseOrigin, sub.file, streamHeaders),
       }));
+      const audioType = unsealed.audioType || extractAudioTypeTag(unsealed.label || '', chosenStream);
 
       return res.status(200).json({
         success: true,
@@ -1484,6 +1516,7 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         type: chosenStream.toLowerCase().endsWith('.mp4') ? 'mp4' : 'm3u8',
         headers: isPrivileged ? streamHeaders : {},
         pageTitle,
+        ...(audioType ? { audioType } : {}),
         subtitles: proxiedSubtitles,
         resolvedIn: Date.now() - startTime,
       });
@@ -1621,13 +1654,18 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     const groupItems = [];
     const seenAltKeys = new Set();
 
-  const siteGroupIndex = siteGroupsRaw.length + 1;
+    const siteGroupIndex = siteGroupsRaw.length + 1;
 
     const pushAlt = (alt) => {
       const sUrl = alt.streamUrl || '';
       const eUrl = alt.embedUrl || src.url;
       if (sUrl && (sUrl.includes('filmakinesimp4') || sUrl.includes('blank.mp4'))) return;
-      const dedupKey = sUrl || eUrl;
+      const rawAltLabel = alt.candidateLabel || alt.label || '';
+      const audioType = alt.audioType || extractAudioTypeTag(rawAltLabel, sUrl || eUrl);
+      // Avoid duplicate stream entries; for pichive keep distinct audio tracks separate
+      const dedupKey = sUrl
+        ? (sUrl.includes('pichive') && audioType ? `${audioType}::${sUrl.split('?')[0]}` : sUrl)
+        : eUrl;
       if (!dedupKey || seenAltKeys.has(dedupKey)) return;
       seenAltKeys.add(dedupKey);
 
@@ -1635,21 +1673,25 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
       const normHeaders = sUrl ? normalizeProxyHeadersForStream(sUrl, alt.headers || resolved.headers || {}) : (alt.headers || {});
       const token = sealSourcePayload({
         url: eUrl,
+        moviePageUrl: src.url,
         directStreamUrl: sUrl || '',
         providerKey: src.providerKey,
         headers: normHeaders,
-        referer: eUrl,
+        referer: src.url || eUrl,
         subtitles: alt.subtitles || resolved.subtitles || [],
         title: resolvedPageTitle,
+        audioType,
         isMoviePage: !alt.embedUrl,
       });
 
+      const safeAudioSuffix = audioType ? ` · ${audioType}` : '';
       const itemObj = {
         id: altId,
-        label: `Alternatif ${groupItems.length + 1}`,
+        label: `Alternatif ${groupItems.length + 1}${safeAudioSuffix}`,
+        ...(audioType ? { audioType } : {}),
         sourceToken: token,
         isResolved: Boolean(sUrl),
-        ...(isPrivileged ? { providerKey: src.providerKey, detailLabel: alt.label || '' } : {}),
+        ...(isPrivileged ? { providerKey: src.providerKey, detailLabel: rawAltLabel } : {}),
       };
       groupItems.push(itemObj);
 
@@ -1661,23 +1703,26 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
           headers: normHeaders,
           subtitles: alt.subtitles || resolved.subtitles || [],
           pageTitle: resolved.pageTitle || resolvedPageTitle,
+          audioType,
+          label: rawAltLabel,
         });
       }
     };
 
+    // Process resolved alternatives FIRST so audio/player labels (Dublaj/Altyazı/Dual) aren't shadowed by generic "Birincil Akış"
+    if (Array.isArray(resolved.alternatives)) {
+      for (const alt of resolved.alternatives) {
+        pushAlt(alt);
+      }
+    }
     if (resolved.streamUrl) {
       pushAlt({
-        label: 'Birincil Akış',
+        label: resolved.candidateLabel || 'Birincil Akış',
         embedUrl: resolved.embedUrl || src.url,
         streamUrl: resolved.streamUrl,
         headers: resolved.headers || {},
         subtitles: resolved.subtitles || [],
       });
-    }
-    if (Array.isArray(resolved.alternatives)) {
-      for (const alt of resolved.alternatives) {
-        pushAlt(alt);
-      }
     }
     // Include remaining page embed candidates as lazy switchable alternatives (up to 6 total per site)
     if (Array.isArray(resolved.candidateEmbeds)) {
@@ -1703,49 +1748,75 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     }
   }
 
-  // Fallback for unresolved site links (so user can still switch if a site wasn't pre-resolved cleanly)
-  if (siteGroupsRaw.length === 0 && targets.length > 0) {
-    // Secondary microservice fallback on primary URL if local fastResolve failed completely
-    const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
-    const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), Math.min(fetchTimeout, 10000));
-      const headers = { 'Content-Type': 'application/json' };
-      if (apiKey) headers['x-api-key'] = apiKey;
-      const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ url: targets[0].url, timeout: Math.min(fetchTimeout, 10000) }),
-        signal: controller.signal,
+  // Fallback for unresolved site links: in-process Playwright (or explicit remote STREAM_RESOLVER_API_URL — never port 3001 blog!)
+  if (siteGroupsRaw.length === 0 && targets.length > 0 && !takedownError) {
+    const pushFallbackResult = (sUrl, headersObj, subs, pageTitleStr, targetObj) => {
+      const sh = normalizeProxyHeadersForStream(sUrl, headersObj || {});
+      const altId = `alt_${targetObj.providerKey}_1`;
+      const audioType = extractAudioTypeTag(pageTitleStr, sUrl);
+      streamCandidates.push({
+        altId,
+        providerKey: targetObj.providerKey,
+        streamUrl: sUrl,
+        headers: sh,
+        subtitles: subs || [],
+        pageTitle: pageTitleStr || resolvedPageTitle,
+        audioType,
       });
-      clearTimeout(timer);
-      const data = await microResponse.json().catch(() => null);
-      const payload = data?.data || data;
-      const sUrl = payload?.streamUrl;
-      if (microResponse.ok && sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
-        const sh = normalizeProxyHeadersForStream(sUrl, payload.headers || {});
-        const altId = `alt_${targets[0].providerKey}_1`;
-        streamCandidates.push({
-          altId,
-          providerKey: targets[0].providerKey,
-          streamUrl: sUrl,
-          headers: sh,
-          subtitles: payload.subtitles || [],
-          pageTitle: payload.pageTitle || resolvedPageTitle,
+      siteGroupsRaw.push({
+        providerKey: targetObj.providerKey,
+        providerName: targetObj.provider,
+        items: [{
+          id: altId,
+          label: `Alternatif 1${audioType ? ` · ${audioType}` : ''}`,
+          ...(audioType ? { audioType } : {}),
+          sourceToken: sealSourcePayload({
+            url: targetObj.url,
+            moviePageUrl: targetObj.url,
+            directStreamUrl: sUrl,
+            providerKey: targetObj.providerKey,
+            headers: sh,
+            audioType,
+          }),
+          isResolved: true,
+        }],
+      });
+    };
+
+    if (process.env.STREAM_RESOLVER_API_URL) {
+      const resolverUrl = process.env.STREAM_RESOLVER_API_URL;
+      const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), Math.min(fetchTimeout, 9500));
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['x-api-key'] = apiKey;
+        const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ url: targets[0].url, timeout: Math.min(fetchTimeout, 9500) }),
+          signal: controller.signal,
         });
-        siteGroupsRaw.push({
-          providerKey: targets[0].providerKey,
-          providerName: targets[0].provider,
-          items: [{
-            id: altId,
-            label: 'Alternatif 1',
-            sourceToken: sealSourcePayload({ url: targets[0].url, directStreamUrl: sUrl, providerKey: targets[0].providerKey, headers: sh }),
-            isResolved: true,
-          }],
-        });
+        clearTimeout(timer);
+        const data = await microResponse.json().catch(() => null);
+        const payload = data?.data || data;
+        const sUrl = payload?.streamUrl;
+        if (microResponse.ok && sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
+          pushFallbackResult(sUrl, payload.headers, payload.subtitles, payload.pageTitle, targets[0]);
+        }
+      } catch {}
+    } else if (inProcessPlaywrightResolve) {
+      for (const fallbackTarget of targets.slice(0, 2)) {
+        try {
+          const pwRes = await inProcessPlaywrightResolve(fallbackTarget.url, { timeout: Math.min(fetchTimeout, 9000) });
+          const sUrl = pwRes?.streamUrl;
+          if (sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
+            pushFallbackResult(sUrl, pwRes.headers, pwRes.subtitles, pwRes.pageTitle, fallbackTarget);
+            break;
+          }
+        } catch {}
       }
-    } catch {}
+    }
   }
 
   if (streamCandidates.length === 0) {
@@ -1798,6 +1869,7 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
     type: winner.streamUrl.toLowerCase().endsWith('.mp4') ? 'mp4' : 'm3u8',
     headers: isPrivileged ? winner.headers : {},
     pageTitle: winner.pageTitle || resolvedPageTitle,
+    ...(winner.audioType ? { audioType: winner.audioType } : {}),
     subtitles: proxiedPageSubtitles,
     externalSubtitles: externalSubtitles || [],
     alternativeGroups,
@@ -2505,13 +2577,17 @@ async function searchFullHDFilm(query) {
     let match;
     while ((match = filmBlockRegex.exec(html)) !== null) {
       const block = match[1];
-      const linkMatch = block.match(/href="(https?:\/\/(?:www\.)?fullhdfilmizlesene\.[^"]+\/film\/[^"]+)"/i);
+      const linkMatch = block.match(/href="(https?:\/\/(?:www\.)?fullhdfilmizlesene\.[^"]+\/film\/[^"]+|\/film\/[^"]+)"/i);
       const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
       const yearMatch = block.match(/<span class="film-yil">(\d{4})<\/span>/i) || block.match(/\b(19\d{2}|20\d{2})\b/);
       const posterMatch = block.match(/srcset="(https?:\/\/[^"\s]+\/poster\/[^\s"]+)/i) ||
                           block.match(/data-src="([^"]+)"/i) ||
                           block.match(/src="([^"]+)"/i);
       if (linkMatch && titleMatch) {
+        let fullUrl = linkMatch[1];
+        if (!fullUrl.startsWith('http')) {
+          fullUrl = `${baseOrigin}${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`;
+        }
         let poster = posterMatch ? posterMatch[1] : null;
         if (poster && poster.startsWith('data:')) poster = null;
         if (poster && !poster.startsWith('http')) {
@@ -2522,7 +2598,7 @@ async function searchFullHDFilm(query) {
           providerKey: 'fullhdfilmizlesene',
           title: decodeHtmlEntities(titleMatch[1].trim()),
           year: yearMatch ? yearMatch[1] : '',
-          url: linkMatch[1],
+          url: fullUrl,
           poster,
         });
       }
@@ -2536,100 +2612,109 @@ async function searchFullHDFilm(query) {
       const html = await fetchHtmlRobust(targetUrl, {
         fetchHeaders: { Referer: `${base}/`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
         curlHeaders: [`Referer: ${base}/`, 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
-        timeoutSec: 5,
+        timeoutSec: 4,
+        fastSearch: true,
       });
-      const results = parseFhfHtml(html || '', base);
-      if (results.length > 0) return results.slice(0, 10);
+      if (html && !isBlockedOrChallenge(html)) {
+        return parseFhfHtml(html, base).slice(0, 10);
+      }
     } catch {}
   }
   return [];
 }
 
 /**
- * HDFilmCehennemi doğrudan arama (AJAX JSON + HTML + ScraperAPI/TLS fallback)
+ * HDFilmCehennemi hızlı arama (concurrent direct/TLS AJAX + HTML /?s= fallback)
  */
 async function searchHDFilmCehennemi(query) {
-  const tryDomains = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.nl'];
-  for (const base of tryDomains) {
-    try {
-      const targetUrl = `${base}/search/?q=${encodeURIComponent(query)}`;
-      const reqHeaders = {
-        'Referer': `${base}/`,
-        'x-requested-with': 'fetch',
-        'Accept': 'application/json, text/plain, */*',
-      };
-      const curlHeaders = [
-        `Referer: ${base}/`,
-        'x-requested-with: fetch',
-        'Accept: application/json, text/plain, */*',
-      ];
-
-      let raw = '';
-      try {
-        const fRes = await fetch(targetUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            ...reqHeaders,
-          },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (fRes.ok) raw = await fRes.text();
-      } catch {}
-
-      if (!raw || !raw.trim().startsWith('{')) {
-        raw = await fetchWithCurl(targetUrl, curlHeaders, 6);
-      }
-      if (!raw || !raw.trim().startsWith('{')) {
-        raw = await fetchWithTlsImpersonator(targetUrl, `${base}/`);
-      }
-      if (!raw || !raw.trim().startsWith('{')) {
-        raw = await fetchViaScraperApi(targetUrl, { timeoutMs: 7000, headers: reqHeaders, keepHeaders: true });
-      }
-
-      if (raw && raw.trim().startsWith('{')) {
-        const json = JSON.parse(raw);
-        const results = [];
-        if (json && Array.isArray(json.results)) {
-          for (const itemHtml of json.results) {
-            const urlMatch = itemHtml.match(/href="([^"]+)"/);
-            const titleMatch = itemHtml.match(/<h4 class="title">([^<]+)<\/h4>/i) || itemHtml.match(/alt="([^"]+)"/);
-            const yearMatch = itemHtml.match(/class="year"[^>]*>(\d{4})</i) || itemHtml.match(/\b(19\d{2}|20\d{2})\b/);
-            const posterMatch = itemHtml.match(/data-src="([^"]+)"/i) || itemHtml.match(/src="([^"]+)"/i);
-            if (urlMatch && urlMatch[1]) {
-              const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
-              let finalUrl = urlMatch[1].trim();
-              if (!finalUrl.startsWith('http')) {
-                finalUrl = `${base}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
-              }
-              let finalPoster = posterMatch ? posterMatch[1].trim() : null;
-              if (finalPoster && finalPoster.startsWith('data:')) finalPoster = null;
-              if (finalPoster && !finalPoster.startsWith('http')) {
-                finalPoster = `${base}${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
-              }
-              results.push({
-                provider: 'HDFilmCehennemi',
-                providerKey: 'hdfilmcehennemi',
-                title: decodeHtmlEntities(rawTitle),
-                year: yearMatch ? yearMatch[1] : '',
-                url: finalUrl,
-                poster: finalPoster,
-              });
-            }
+  const base = 'https://www.hdfilmcehennemi.nl';
+  const parseHdfJsonItems = (jsonRaw) => {
+    const json = JSON.parse(jsonRaw);
+    const results = [];
+    if (json && Array.isArray(json.results)) {
+      for (const itemHtml of json.results) {
+        const urlMatch = itemHtml.match(/href="([^"]+)"/);
+        const titleMatch = itemHtml.match(/<h4 class="title">([^<]+)<\/h4>/i) || itemHtml.match(/alt="([^"]+)"/);
+        const yearMatch = itemHtml.match(/class="year"[^>]*>(\d{4})</i) || itemHtml.match(/\b(19\d{2}|20\d{2})\b/);
+        const posterMatch = itemHtml.match(/data-src="([^"]+)"/i) || itemHtml.match(/src="([^"]+)"/i);
+        if (urlMatch && urlMatch[1]) {
+          const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
+          let finalUrl = urlMatch[1].trim();
+          if (!finalUrl.startsWith('http')) {
+            finalUrl = `${base}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
           }
+          let finalPoster = posterMatch ? posterMatch[1].trim() : null;
+          if (finalPoster && finalPoster.startsWith('data:')) finalPoster = null;
+          if (finalPoster && !finalPoster.startsWith('http')) {
+            finalPoster = `${base}${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
+          }
+          results.push({
+            provider: 'HDFilmCehennemi',
+            providerKey: 'hdfilmcehennemi',
+            title: decodeHtmlEntities(rawTitle),
+            year: yearMatch ? yearMatch[1] : '',
+            url: finalUrl,
+            poster: finalPoster,
+          });
         }
-        if (results.length > 0) return results.slice(0, 10);
       }
-    } catch {}
-  }
+    }
+    return results.slice(0, 10);
+  };
 
-  // Fallback to HTML /?s=
   try {
-    const base = 'https://www.hdfilmcehennemi.nl';
+    const targetUrl = `${base}/search/?q=${encodeURIComponent(query)}`;
+    const reqHeaders = {
+      'Referer': `${base}/`,
+      'Origin': base,
+      'x-requested-with': 'fetch',
+      'Accept': 'application/json, text/plain, */*',
+    };
+
+    const tryFetch = async () => {
+      const fRes = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+          ...reqHeaders,
+        },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!fRes.ok) throw new Error(`HTTP ${fRes.status}`);
+      const txt = await fRes.text();
+      if (!txt || !txt.trim().startsWith('{')) throw new Error('Not JSON');
+      return txt;
+    };
+
+    const tryTls = async () => {
+      const txt = await fetchWithTlsImpersonator(targetUrl, `${base}/`, 'GET', '', reqHeaders, { timeoutMs: 5500 });
+      if (!txt || !txt.trim().startsWith('{')) throw new Error('TLS Not JSON');
+      return txt;
+    };
+
+    let raw = '';
+    try {
+      raw = await Promise.any([tryFetch(), tryTls()]);
+    } catch {}
+
+    if (!raw || !raw.trim().startsWith('{')) {
+      raw = await fetchViaScraperApi(targetUrl, { timeoutMs: 5000, headers: reqHeaders, keepHeaders: true });
+    }
+
+    if (raw && raw.trim().startsWith('{')) {
+      const parsed = parseHdfJsonItems(raw);
+      if (parsed.length > 0) return parsed;
+      return [];
+    }
+  } catch {}
+
+  // Fallback to HTML /?s= only when AJAX endpoint couldn't return JSON at all
+  try {
     const htmlUrl = `${base}/?s=${encodeURIComponent(query)}`;
     const html = await fetchHtmlRobust(htmlUrl, {
       fetchHeaders: { Referer: `${base}/` },
       curlHeaders: [`Referer: ${base}/`],
-      timeoutSec: 5,
+      timeoutSec: 4,
+      fastSearch: true,
     });
     if (html) {
       const results = [];
@@ -2659,7 +2744,7 @@ async function searchHDFilmCehennemi(query) {
 }
 
 /**
- * FilmMakinesi doğrudan arama
+ * FilmMakinesi doğrudan hızlı arama
  */
 async function searchFilmMakinesi(query) {
   try {
@@ -2668,7 +2753,8 @@ async function searchFilmMakinesi(query) {
     const html = await fetchHtmlRobust(targetUrl, {
       fetchHeaders: { Referer: `${base}/`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
       curlHeaders: [`Referer: ${base}/`, 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
-      timeoutSec: 5,
+      timeoutSec: 4,
+      fastSearch: true,
     });
     const results = [];
     const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"([\s\S]*?)<\/a>/gi;
@@ -2705,7 +2791,8 @@ async function searchFilmDozu(query) {
     const html = await fetchHtmlRobust(targetUrl, {
       fetchHeaders: { Referer: `${base}/` },
       curlHeaders: [`Referer: ${base}/`],
-      timeoutSec: 5,
+      timeoutSec: 4,
+      fastSearch: true,
     });
     const results = [];
     const articleRegex = /<article[^>]*class="[^"]*card[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
@@ -2747,7 +2834,8 @@ async function searchFilmIzyon(query) {
     const html = await fetchHtmlRobust(targetUrl, {
       fetchHeaders: { Referer: `${base}/` },
       curlHeaders: [`Referer: ${base}/`],
-      timeoutSec: 5,
+      timeoutSec: 4,
+      fastSearch: true,
     });
     const results = [];
     const cardRegex = /<article[^>]*class="[^"]*fz-poster-card[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
@@ -2785,125 +2873,130 @@ async function searchFilmIzyon(query) {
 }
 
 /**
- * RoketDizi arama (POST https://roketdizi.life/api/mj — fetch + curl + Tor + ScraperAPI POST fallback)
+ * RoketDizi hızlı arama (POST https://roketdizi.life/api/mj — fetch / curl / direct-first TLS)
  */
 async function searchRoketDizi(query) {
   const apiEndpoint = 'https://roketdizi.life/api/mj';
   const parseRoketJson = (rawText) => {
     try {
       const data = JSON.parse(rawText);
-      return Array.isArray(data?.result) ? data.result : [];
+      if (data && typeof data === 'object' && Array.isArray(data.result)) {
+        return { valid: true, items: data.result };
+      }
+      return { valid: false, items: [] };
     } catch {
-      return [];
+      return { valid: false, items: [] };
     }
   };
 
-  try {
-    for (const action of ['searchContent', 'searchContentFullText']) {
-      const payload = JSON.stringify({ action, params: [query] });
-      let items = [];
+  const postSearchAction = async (action) => {
+    const payload = JSON.stringify({ action, params: [query] });
+    const reqHdrs = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, */*',
+      'Referer': 'https://roketdizi.life/',
+      'Origin': 'https://roketdizi.life',
+    };
 
-      // 1. Direct fetch POST
-      try {
-        const res = await fetch(apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Content-Type': 'application/json',
-            'Referer': 'https://roketdizi.life/',
-            'Origin': 'https://roketdizi.life',
-          },
-          body: payload,
-          signal: AbortSignal.timeout(5000),
-        });
-        if (res.ok) items = parseRoketJson(await res.text());
-      } catch {}
-
-      // 2. Curl / Tor SOCKS5 POST fallback (Oracle Cloud WAF guard)
-      if (items.length === 0) {
-        for (const useTor of [false, true]) {
-          try {
-            const args = [
-              '-s', '-L', '--max-time', '6',
-              ...(useTor ? ['--socks5-hostname', '127.0.0.1:9050'] : []),
-              '-X', 'POST',
-              '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-              '-H', 'Content-Type: application/json',
-              '-H', 'Referer: https://roketdizi.life/',
-              '-H', 'Origin: https://roketdizi.life',
-              '-d', payload,
-              apiEndpoint,
-            ];
-            const { stdout } = await execFileAsync(CURL_BIN, args);
-            items = parseRoketJson(stdout);
-            if (items.length > 0) break;
-          } catch {}
-        }
+    // 1. Direct fast fetch POST
+    try {
+      const res = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+          ...reqHdrs,
+        },
+        body: payload,
+        signal: AbortSignal.timeout(2800),
+      });
+      if (res.ok) {
+        const p = parseRoketJson(await res.text());
+        if (p.valid) return p;
       }
+    } catch {}
 
-      // 2b. Python TLS Chrome 124 Impersonator POST fallback
-      if (items.length === 0) {
-        try {
-          const tlsOut = await fetchWithTlsImpersonator(apiEndpoint, 'https://roketdizi.life/', 'POST', payload);
-          items = parseRoketJson(tlsOut);
-        } catch {}
-      }
+    // 2. Direct Curl POST (fast)
+    try {
+      const { stdout } = await execFileAsync(CURL_BIN, [
+        '-s', '-L', '--max-time', '3',
+        '-X', 'POST',
+        '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        '-H', 'Content-Type: application/json',
+        '-H', 'Accept: application/json, */*',
+        '-H', 'Referer: https://roketdizi.life/',
+        '-H', 'Origin: https://roketdizi.life',
+        '-d', payload,
+        apiEndpoint,
+      ]);
+      const p = parseRoketJson(stdout);
+      if (p.valid) return p;
+    } catch {}
 
-      // 3. ScraperAPI POST fallback
-      if (items.length === 0) {
-        const scOut = await fetchViaScraperApi(apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Referer': 'https://roketdizi.life/',
-            'Origin': 'https://roketdizi.life',
-          },
-          body: payload,
-          keepHeaders: true,
-          timeoutMs: 7000,
-        });
-        if (scOut) items = parseRoketJson(scOut);
-      }
+    // 3. Python TLS Chrome 124 Impersonator POST (direct first, Tor fallback inside Python)
+    try {
+      const tlsOut = await fetchWithTlsImpersonator(apiEndpoint, 'https://roketdizi.life/', 'POST', payload, reqHdrs, { timeoutMs: 6500 });
+      const p = parseRoketJson(tlsOut);
+      if (p.valid) return p;
+    } catch {}
 
-      if (items.length === 0) continue;
-
-      const results = [];
-      for (const item of items.slice(0, 10)) {
-        const slug = item.used_slug;
-        const name = item.object_name || item.object_alternative_name;
-        if (!slug || !name) continue;
-        const isSeries = String(item.used_type || '').toUpperCase() === 'SERIES';
-        const cleanSlug = String(slug).replace(/^\/+|\/+$/g, '');
-        let pagePath = cleanSlug;
-        if (isSeries) {
-          if (!cleanSlug.startsWith('dizi/')) pagePath = `dizi/${cleanSlug}`;
-        } else {
-          if (!cleanSlug.startsWith('film/')) pagePath = `film/${cleanSlug}`;
-          if (!pagePath.endsWith('/izle') && pagePath !== 'izle') pagePath = `${pagePath}/izle`;
-        }
-        const pageUrl = `https://roketdizi.life/${pagePath}`;
-        let poster = item.object_poster_url || null;
-        if (poster && !poster.startsWith('http')) {
-          poster = `https://roketdizi.life${poster.startsWith('/') ? '' : '/'}${poster}`;
-        }
-        const altName = item.object_alternative_name && item.object_alternative_name !== name
-          ? `${name} / ${item.object_alternative_name}`
-          : name;
-        results.push({
-          provider: 'RoketDizi',
-          providerKey: 'roketdizi',
-          title: decodeHtmlEntities(name),
-          altTitle: decodeHtmlEntities(altName),
-          year: item.object_release_year ? String(item.object_release_year).slice(0, 4) : '',
-          imdbId: item.object_related_imdb_id || '',
-          url: pageUrl,
-          poster,
-          mediaType: isSeries ? 'series' : 'movie',
-        });
-      }
-      if (results.length > 0) return results;
+    // 4. ScraperAPI POST fallback if configured
+    const scOut = await fetchViaScraperApi(apiEndpoint, {
+      method: 'POST',
+      headers: reqHdrs,
+      body: payload,
+      keepHeaders: true,
+      timeoutMs: 5500,
+    });
+    if (scOut) {
+      const p = parseRoketJson(scOut);
+      if (p.valid) return p;
     }
-    return [];
+
+    return { valid: false, items: [] };
+  };
+
+  try {
+    let resp = await postSearchAction('searchContent');
+    if (resp.valid && resp.items.length === 0) {
+      resp = await postSearchAction('searchContentFullText');
+    }
+    if (!resp.valid || resp.items.length === 0) return [];
+
+    const results = [];
+    for (const item of resp.items.slice(0, 10)) {
+      const slug = item.used_slug;
+      const name = item.object_name || item.object_alternative_name;
+      if (!slug || !name) continue;
+      const isSeries = String(item.used_type || '').toUpperCase() === 'SERIES';
+      const cleanSlug = String(slug).replace(/^\/+|\/+$/g, '');
+      let pagePath = cleanSlug;
+      if (isSeries) {
+        if (!cleanSlug.startsWith('dizi/')) pagePath = `dizi/${cleanSlug}`;
+      } else {
+        if (!cleanSlug.startsWith('film/')) pagePath = `film/${cleanSlug}`;
+        if (!pagePath.endsWith('/izle') && pagePath !== 'izle') pagePath = `${pagePath}/izle`;
+      }
+      const pageUrl = `https://roketdizi.life/${pagePath}`;
+      let poster = item.object_poster_url || null;
+      if (poster && !poster.startsWith('http')) {
+        poster = `https://roketdizi.life${poster.startsWith('/') ? '' : '/'}${poster}`;
+      }
+      const altName = item.object_alternative_name && item.object_alternative_name !== name
+        ? `${name} / ${item.object_alternative_name}`
+        : name;
+      results.push({
+        provider: 'RoketDizi',
+        providerKey: 'roketdizi',
+        title: decodeHtmlEntities(name),
+        altTitle: decodeHtmlEntities(altName),
+        year: item.object_release_year ? String(item.object_release_year).slice(0, 4) : '',
+        imdbId: item.object_related_imdb_id || '',
+        url: pageUrl,
+        poster,
+        mediaType: isSeries ? 'series' : 'movie',
+      });
+    }
+    return results;
   } catch {
     return [];
   }
@@ -3148,6 +3241,15 @@ function formatSearchResponseForUser(unifiedGroups, isPrivileged) {
   });
 }
 
+const inFlightMovieSearches = new Map();
+
+function withSearchTimeout(promise, ms, fallback = []) {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 // GET/POST /api/search-movies and /search-movies
 router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req, res) => {
   const query = req.query.q || req.body?.query || req.body?.q || '';
@@ -3156,8 +3258,9 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
   }
 
   const trimmedQuery = query.trim();
-  const cacheKey = `unified_v3:${trimmedQuery.toLowerCase()}`;
+  const cacheKey = `unified_v4:${trimmedQuery.toLowerCase()}`;
   const isPrivileged = isAdminOrTouristUser(req);
+  const searchStart = Date.now();
 
   // 1. Önbellek kontrolü (yetkiye göre dinamik maskelenmiş yanıt üret)
   const cached = inProcessSearchCache.get(cacheKey);
@@ -3171,75 +3274,75 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
       results: formatted,
       showSources: isPrivileged,
       cached: true,
+      searchMs: Date.now() - searchStart,
     });
   }
 
-  // 2. Eşzamanlı 6 kaynak arama (FullHDFilmİzlesene + HDFilmCehennemi + FilmMakinesi + FilmDozu + Filmİzyon + RoketDizi)
-  try {
-    const settled = await Promise.allSettled([
-      searchFullHDFilm(trimmedQuery),
-      searchHDFilmCehennemi(trimmedQuery),
-      searchFilmMakinesi(trimmedQuery),
-      searchFilmDozu(trimmedQuery),
-      searchFilmIzyon(trimmedQuery),
-      searchRoketDizi(trimmedQuery),
-    ]);
+  // 2. Eşzamanlı 6 kaynak arama (Jet hızında: her sağlayıcıya sıkı 5.8 sn bütçe + aynı sorgu tekilleştirme)
+  let sharedTask = inFlightMovieSearches.get(cacheKey);
+  if (!sharedTask) {
+    sharedTask = (async () => {
+      try {
+        const settled = await Promise.allSettled([
+          withSearchTimeout(searchFullHDFilm(trimmedQuery), 5800),
+          withSearchTimeout(searchHDFilmCehennemi(trimmedQuery), 5800),
+          withSearchTimeout(searchFilmMakinesi(trimmedQuery), 5800),
+          withSearchTimeout(searchFilmDozu(trimmedQuery), 5000),
+          withSearchTimeout(searchFilmIzyon(trimmedQuery), 5000),
+          withSearchTimeout(searchRoketDizi(trimmedQuery), 5800),
+        ]);
 
-    const combined = [];
-    for (const s of settled) {
-      if (s.status === 'fulfilled' && Array.isArray(s.value)) {
-        combined.push(...s.value);
+        const combined = [];
+        for (const s of settled) {
+          if (s.status === 'fulfilled' && Array.isArray(s.value)) {
+            combined.push(...s.value);
+          }
+        }
+
+        if (combined.length > 0) {
+          const unifiedResults = deduplicateMovieResults(combined);
+          const providerCount = new Set(combined.map(r => r.providerKey)).size;
+          const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : (providerCount >= 2 ? 90 * 1000 : 15 * 1000);
+          inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unifiedResults });
+          return { results: unifiedResults, providerCount };
+        }
+      } catch (fastSearchErr) {
+        console.warn('[HLSProxy] Fast search error:', fastSearchErr.message);
       }
-    }
 
-    if (combined.length > 0) {
-      const unifiedResults = deduplicateMovieResults(combined);
-      const providerCount = new Set(combined.map(r => r.providerKey)).size;
-      const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : 90 * 1000;
-      // Kısmi site kesintilerinde önbelleği 30 dk kilitlemek yerine 90 sn sonra yeniden dene
-      inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unifiedResults });
-      const formatted = formatSearchResponseForUser(unifiedResults, isPrivileged);
-      return res.status(200).json({
-        success: true,
-        query: trimmedQuery,
-        count: formatted.length,
-        results: formatted,
-        showSources: isPrivileged,
-      });
-    }
-  } catch (fastSearchErr) {
-    console.warn('[HLSProxy] Fast search error:', fastSearchErr.message);
+      // 3. Playwright tabanlı dahili arama fallback (sadece 6 HTTP aramanın tamamı boş döndüğünde)
+      if (inProcessMovieSearch) {
+        try {
+          const rawResults = await withSearchTimeout(inProcessMovieSearch(trimmedQuery), 9000, []);
+          if (rawResults && rawResults.length > 0) {
+            const unified = deduplicateMovieResults(rawResults);
+            const providerCount = new Set(rawResults.map(r => r.providerKey)).size;
+            const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : (providerCount >= 2 ? 90 * 1000 : 15 * 1000);
+            inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unified });
+            return { results: unified, providerCount };
+          }
+        } catch (err) {
+          console.warn('[HLSProxy] In-process movie search error:', err.message);
+        }
+      }
+
+      return { results: [], providerCount: 0 };
+    })().finally(() => {
+      inFlightMovieSearches.delete(cacheKey);
+    });
+    inFlightMovieSearches.set(cacheKey, sharedTask);
   }
 
-  // 3. Playwright tabanlı dahili arama fallback
-  if (inProcessMovieSearch) {
-    try {
-      const rawResults = await inProcessMovieSearch(trimmedQuery);
-      if (rawResults && rawResults.length > 0) {
-        const unified = deduplicateMovieResults(rawResults);
-        const providerCount = new Set(rawResults.map(r => r.providerKey)).size;
-        const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : 90 * 1000;
-        inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unified });
-        const formatted = formatSearchResponseForUser(unified, isPrivileged);
-        return res.status(200).json({
-          success: true,
-          query: trimmedQuery,
-          count: formatted.length,
-          results: formatted,
-          showSources: isPrivileged,
-        });
-      }
-    } catch (err) {
-      console.warn('[HLSProxy] In-process movie search error:', err.message);
-    }
-  }
-
+  const outcome = await sharedTask;
+  const formatted = formatSearchResponseForUser(outcome.results || [], isPrivileged);
   return res.status(200).json({
     success: true,
     query: trimmedQuery,
-    count: 0,
-    results: [],
+    count: formatted.length,
+    results: formatted,
+    providerCount: outcome.providerCount || 0,
     showSources: isPrivileged,
+    searchMs: Date.now() - searchStart,
   });
 });
 

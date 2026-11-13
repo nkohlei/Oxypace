@@ -2918,6 +2918,7 @@ export const VoiceProvider = ({ children }) => {
             const extraPayload = watchMeta && typeof watchMeta === 'object' ? {
                 alternativeGroups: Array.isArray(watchMeta.alternativeGroups) ? watchMeta.alternativeGroups : [],
                 activeAlternativeId: watchMeta.activeAlternativeId || '',
+                audioType: watchMeta.audioType || '',
                 externalSubtitles: Array.isArray(watchMeta.externalSubtitles) ? watchMeta.externalSubtitles : [],
                 movieMeta: watchMeta.movieMeta || null,
             } : {};
@@ -2950,7 +2951,7 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, safeEmit]);
 
-    const switchWatchPartyAlternative = useCallback(({ url, activeAlternativeId, subtitles, preserveTime }) => {
+    const switchWatchPartyAlternative = useCallback(({ url, activeAlternativeId, audioType, subtitles, preserveTime }) => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
         if (roomName && url) {
             let cleanUrl = url;
@@ -2961,6 +2962,7 @@ export const VoiceProvider = ({ children }) => {
                 roomName,
                 url: cleanUrl,
                 activeAlternativeId: activeAlternativeId || '',
+                ...(typeof audioType === 'string' ? { audioType } : {}),
                 subtitles: Array.isArray(subtitles) ? subtitles : undefined,
                 preserveTime: typeof preserveTime === 'number' ? preserveTime : undefined,
             });

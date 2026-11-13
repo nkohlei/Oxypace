@@ -985,8 +985,6 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         if (audioTracks.length > 0 && unifiedTab !== 'subs') {
             setUnifiedTab('audio');
-        } else if (audioTracks.length === 0 && unifiedTab === 'audio') {
-            setUnifiedTab('subs');
         }
     }, [audioTracks.length]);
 
@@ -1022,11 +1020,19 @@ const WatchPartyPlayer = () => {
         }
     }, [isAltMenuOpen, updateAltPopoverPos]);
 
-    // Resolve human site group labels ONLY for admin / touristAdmin
+    // Resolve human site group labels ONLY for admin / touristAdmin when not already populated
     useEffect(() => {
         const groups = watchParty?.alternativeGroups;
         if (!isPrivilegedUser || !Array.isArray(groups) || groups.length === 0) {
             setAdminGroupLabels({});
+            return;
+        }
+        if (groups.every(g => Boolean(g.providerKey && g.groupLabel))) {
+            const directLabels = {};
+            groups.forEach((g, idx) => {
+                directLabels[g.groupId || `grp_${idx + 1}`] = g.groupLabel;
+            });
+            setAdminGroupLabels(directLabels);
             return;
         }
         let cancelled = false;
@@ -1111,11 +1117,14 @@ const WatchPartyPlayer = () => {
                 switchWatchPartyAlternative({
                     url: nextPlayableUrl,
                     activeAlternativeId: altItem.id,
+                    audioType: data.audioType || altItem.audioType || '',
                     subtitles: Array.isArray(data.subtitles) ? data.subtitles : undefined,
                     preserveTime: curTime
                 });
             } else if (startWatchParty) {
-                startWatchParty(nextPlayableUrl, false, data.subtitles || [], watchParty?.title || '');
+                startWatchParty(nextPlayableUrl, false, data.subtitles || [], watchParty?.title || '', {
+                    audioType: data.audioType || altItem.audioType || ''
+                });
             }
             setIsAltMenuOpen(false);
         } catch {
@@ -1908,6 +1917,16 @@ const WatchPartyPlayer = () => {
             subFpsRateRef.current = 1;
             setSubFpsMode('1');
         }
+        syncCurrentSubtitleCue();
+    }, [syncCurrentSubtitleCue]);
+
+    const setExactSubTimeOffset = useCallback((rawSec) => {
+        const parsed = Number(rawSec);
+        const nextOffset = Number.isFinite(parsed)
+            ? Math.max(-1800, Math.min(1800, Math.round(parsed * 10) / 10))
+            : 0;
+        subTimeOffsetRef.current = nextOffset;
+        setSubTimeOffsetSec(nextOffset);
         syncCurrentSubtitleCue();
     }, [syncCurrentSubtitleCue]);
 
@@ -2979,7 +2998,7 @@ const WatchPartyPlayer = () => {
                         </div>
                     )}
 
-                    {/* Ses ve Altyazı Butonu & Minimal Floating Popover (Üst Bara Yerleştirildi) */}
+                    {/* Ses (Dublaj) ve Altyazı Butonu & Minimal Floating Popover (Üst Bara Yerleştirildi) */}
                     {isNativeVOD && (
                         <div className="watch-party-header-track-container" ref={unifiedMenuRef}>
                             <button 
@@ -2995,21 +3014,15 @@ const WatchPartyPlayer = () => {
                                     });
                                     triggerControlsTemporary();
                                 }}
-                                title="Ses ve Altyazı Seçenekleri"
-                                aria-label="Ses ve Altyazı Seçenekleri"
+                                title="Dublaj (Ses) ve Altyazı Seçenekleri"
+                                aria-label="Dublaj ve Altyazı Seçenekleri"
                             >
-                                {audioTracks.length > 0 ? (
-                                    <div className="native-unified-btn-icons">
-                                        <Headphones size={13} />
-                                        <span className="native-unified-icon-slash">/</span>
-                                        <Languages size={13} />
-                                    </div>
-                                ) : (
-                                    <div className="native-unified-btn-icons">
-                                        <Languages size={14} />
-                                        <span>Altyazı</span>
-                                    </div>
-                                )}
+                                <div className="native-unified-btn-icons">
+                                    <Headphones size={13} />
+                                    <span className="native-unified-icon-slash">/</span>
+                                    <Languages size={13} />
+                                    <span>Dublaj / Altyazı</span>
+                                </div>
                             </button>
                         </div>
                     )}
@@ -3051,16 +3064,14 @@ const WatchPartyPlayer = () => {
                     >
                         <div className="native-unified-popover-header">
                             <div className="native-unified-tabs">
-                                {audioTracks.length > 0 && (
-                                    <button
-                                        type="button"
-                                        className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
-                                        onClick={() => setUnifiedTab('audio')}
-                                    >
-                                        <Headphones size={12} />
-                                        <span>Ses</span>
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
+                                    onClick={() => setUnifiedTab('audio')}
+                                >
+                                    <Headphones size={12} />
+                                    <span>Dublaj / Ses</span>
+                                </button>
                                 <button
                                     type="button"
                                     className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
@@ -3081,28 +3092,106 @@ const WatchPartyPlayer = () => {
                         </div>
 
                         <div className="native-unified-popover-body custom-scrollbar">
-                            {unifiedTab === 'audio' && audioTracks.length > 0 && (
-                                <div className="native-track-dropdown-list">
-                                    {audioTracks.map((track, i) => {
-                                        const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
-                                        return (
-                                            <button
-                                                key={`pop-aud-${track.id}-${i}`}
-                                                className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                onClick={() => {
-                                                    handleSelectAudioTrack(track.id !== undefined ? track.id : i);
-                                                    setIsUnifiedMenuOpen(false);
-                                                }}
-                                            >
-                                                <span className="native-track-item-check">
-                                                    {isSelected ? <Check size={13} /> : null}
-                                                </span>
-                                                <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            {unifiedTab === 'audio' && (() => {
+                                const audioVariants = [];
+                                const groups = Array.isArray(watchParty?.alternativeGroups) ? watchParty.alternativeGroups : [];
+                                groups.forEach((grp, grpIdx) => {
+                                    const grpTitle = isPrivilegedUser
+                                        ? (adminGroupLabels[grp.groupId] || grp.groupLabel || `Kaynak ${grpIdx + 1}`)
+                                        : (grp.groupLabel || `Kaynak ${grpIdx + 1}`);
+                                    (grp.items || []).forEach((item, iIdx) => {
+                                        const rawLbl = String(item.audioType || item.detailLabel || item.label || '');
+                                        const hasTag = /dublaj|altyaz[ıi]|dual/i.test(rawLbl);
+                                        if (hasTag || watchParty?.activeAlternativeId === item.id) {
+                                            const modeName = item.audioType
+                                                || (/dual/i.test(rawLbl) ? 'Dual (Dublaj & Altyazı)'
+                                                : /dublaj/i.test(rawLbl) ? 'Türkçe Dublaj'
+                                                : /altyaz[ıi]/i.test(rawLbl) ? 'Türkçe Altyazı'
+                                                : (item.label || `Alternatif ${iIdx + 1}`));
+                                            audioVariants.push({ item, grpTitle, modeName });
+                                        }
+                                    });
+                                });
+
+                                return (
+                                    <div className="native-track-dropdown-list">
+                                        {audioTracks.length > 0 && (
+                                            <>
+                                                {audioVariants.length > 0 && (
+                                                    <div className="native-track-section-title">Akış Ses Kanalları</div>
+                                                )}
+                                                {audioTracks.map((track, i) => {
+                                                    const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                    return (
+                                                        <button
+                                                            key={`pop-aud-${track.id}-${i}`}
+                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                            onClick={() => {
+                                                                handleSelectAudioTrack(track.id !== undefined ? track.id : i);
+                                                                setIsUnifiedMenuOpen(false);
+                                                            }}
+                                                        >
+                                                            <span className="native-track-item-check">
+                                                                {isSelected ? <Check size={13} /> : null}
+                                                            </span>
+                                                            <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </>
+                                        )}
+
+                                        {audioVariants.length > 0 && (
+                                            <>
+                                                {audioTracks.length > 0 && (
+                                                    <div className="native-track-section-title">Dublaj / Dil Kaynakları</div>
+                                                )}
+                                                {audioVariants.map(({ item, grpTitle, modeName }, vIdx) => {
+                                                    const isSelected = watchParty?.activeAlternativeId === item.id;
+                                                    const isLoadingItem = switchingAltId === item.id;
+                                                    return (
+                                                        <button
+                                                            key={`pop-audio-var-${item.id || vIdx}`}
+                                                            type="button"
+                                                            disabled={Boolean(switchingAltId)}
+                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                            onClick={async () => {
+                                                                await handleSwitchAlternative(item);
+                                                                setIsUnifiedMenuOpen(false);
+                                                            }}
+                                                        >
+                                                            <span className="native-track-item-check">
+                                                                {isLoadingItem
+                                                                    ? <Loader2 size={13} className="spin" />
+                                                                    : (isSelected ? <Check size={13} /> : null)}
+                                                            </span>
+                                                            <span className="native-track-item-name">
+                                                                {modeName} ({grpTitle})
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </>
+                                        )}
+
+                                        {audioTracks.length === 0 && audioVariants.length === 0 && (
+                                            <>
+                                                <div className="native-track-dropdown-item active" style={{ cursor: 'default' }}>
+                                                    <span className="native-track-item-check">
+                                                        <Check size={13} />
+                                                    </span>
+                                                    <span className="native-track-item-name">
+                                                        {watchParty?.audioType || 'Varsayılan Ses Kanalı'}
+                                                    </span>
+                                                </div>
+                                                <div className="native-track-empty-note">
+                                                    Bu akışta gömülü dublaj kanalı yok; dublajlı sürüm için Alternatifler menüsünü deneyebilirsiniz.
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {unifiedTab === 'subs' && (
                                 <div className="native-track-dropdown-list">
@@ -3206,34 +3295,85 @@ const WatchPartyPlayer = () => {
                                         </div>
                                     )}
 
-                                    {activeSubtitleId !== 'off' && (
-                                        <div className="native-sub-offset-box">
-                                            <div className="native-sub-offset-header">
-                                                <span>Zamanlama (Senkron)</span>
-                                                <span className="native-sub-offset-val">
-                                                    {subTimeOffsetSec > 0 ? `+${subTimeOffsetSec.toFixed(1)}s` : `${subTimeOffsetSec.toFixed(1)}s`}
-                                                </span>
+                                    {activeSubtitleId !== 'off' && (() => {
+                                        const sliderBound = Math.abs(subTimeOffsetSec) > 15
+                                            ? (Math.abs(subTimeOffsetSec) > 45 ? 120 : 45)
+                                            : 15;
+                                        const clampedVal = Math.max(-sliderBound, Math.min(sliderBound, subTimeOffsetSec));
+                                        const pct = ((clampedVal + sliderBound) / (2 * sliderBound)) * 100;
+                                        return (
+                                            <div className="native-sub-offset-box">
+                                                <div className="native-sub-offset-header">
+                                                    <span>Zamanlama (Senkron)</span>
+                                                    <div className="native-sub-offset-header-right">
+                                                        <span className="native-sub-offset-val">
+                                                            {subTimeOffsetSec > 0 ? `+${subTimeOffsetSec.toFixed(1)}s` : `${subTimeOffsetSec.toFixed(1)}s`}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            className="native-sub-offset-reset-pill"
+                                                            onClick={() => adjustSubTimeOffset(0, true)}
+                                                            title="Zamanlamayı 0.0s olarak sıfırla"
+                                                        >
+                                                            Sıfırla
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="native-sub-offset-slider-row">
+                                                    <button
+                                                        type="button"
+                                                        className="native-sub-offset-nudge"
+                                                        onClick={() => adjustSubTimeOffset(-0.1)}
+                                                        title="-0.1 saniye"
+                                                    >
+                                                        -0.1
+                                                    </button>
+                                                    <div className="native-sub-offset-track-wrap">
+                                                        <span className="native-sub-offset-zero-mark" aria-hidden="true" />
+                                                        <input
+                                                            type="range"
+                                                            className="native-sub-offset-slider"
+                                                            min={-sliderBound}
+                                                            max={sliderBound}
+                                                            step={0.1}
+                                                            value={clampedVal}
+                                                            style={{ '--sub-pct': `${pct.toFixed(1)}%` }}
+                                                            onChange={(e) => setExactSubTimeOffset(e.target.value)}
+                                                            aria-label="Altyazı zamanlama ayarı (0.1 saniye adım)"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className="native-sub-offset-nudge"
+                                                        onClick={() => adjustSubTimeOffset(0.1)}
+                                                        title="+0.1 saniye"
+                                                    >
+                                                        +0.1
+                                                    </button>
+                                                </div>
+
+                                                <div className="native-sub-offset-scale">
+                                                    <span>-{sliderBound}s</span>
+                                                    <span>0.0s</span>
+                                                    <span>+{sliderBound}s</span>
+                                                </div>
+
+                                                <div className="native-sub-offset-controls compact">
+                                                    <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-10)}>-10s</button>
+                                                    <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-1)}>-1s</button>
+                                                    <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(1)}>+1s</button>
+                                                    <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(10)}>+10s</button>
+                                                </div>
+
+                                                <div className="native-sub-fps-controls" title="Altyazı giderek kayıyorsa FPS hızını eşitleyin">
+                                                    <button type="button" className={`native-sub-fps-btn ${subFpsMode === '1' ? 'active' : ''}`} onClick={() => changeSubFpsMode('1')}>1x FPS</button>
+                                                    <button type="button" className={`native-sub-fps-btn ${subFpsMode === '25to23' ? 'active' : ''}`} onClick={() => changeSubFpsMode('25to23')}>25→23.9</button>
+                                                    <button type="button" className={`native-sub-fps-btn ${subFpsMode === '23to25' ? 'active' : ''}`} onClick={() => changeSubFpsMode('23to25')}>23.9→25</button>
+                                                </div>
                                             </div>
-                                            <div className="native-sub-offset-controls">
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-2)}>-2s</button>
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-0.5)}>-0.5s</button>
-                                                <button type="button" className="native-sub-offset-btn reset" onClick={() => adjustSubTimeOffset(0, true)}>Sıfırla</button>
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(0.5)}>+0.5s</button>
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(2)}>+2s</button>
-                                            </div>
-                                            <div className="native-sub-offset-controls jump">
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-30)}>-30s</button>
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(-10)}>-10s</button>
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(10)}>+10s</button>
-                                                <button type="button" className="native-sub-offset-btn" onClick={() => adjustSubTimeOffset(30)}>+30s</button>
-                                            </div>
-                                            <div className="native-sub-fps-controls" title="Altyazı giderek kayıyorsa FPS hızını eşitleyin">
-                                                <button type="button" className={`native-sub-fps-btn ${subFpsMode === '1' ? 'active' : ''}`} onClick={() => changeSubFpsMode('1')}>1x FPS</button>
-                                                <button type="button" className={`native-sub-fps-btn ${subFpsMode === '25to23' ? 'active' : ''}`} onClick={() => changeSubFpsMode('25to23')}>25→23.9</button>
-                                                <button type="button" className={`native-sub-fps-btn ${subFpsMode === '23to25' ? 'active' : ''}`} onClick={() => changeSubFpsMode('23to25')}>23.9→25</button>
-                                            </div>
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
 
                                     <div className="native-track-divider" />
                                     <label 
@@ -3605,10 +3745,12 @@ const WatchPartyPlayer = () => {
                                                         return next;
                                                     });
                                                 }}
-                                                title="Ses ve Altyazı Seçenekleri"
+                                                title="Dublaj (Ses) ve Altyazı Seçenekleri"
                                             >
-                                                <Languages size={13} />
-                                                <span>Altyazı</span>
+                                                <Headphones size={12} />
+                                                <span className="native-unified-icon-slash">/</span>
+                                                <Languages size={12} />
+                                                <span>Dublaj / Altyazı</span>
                                             </button>
                                         )}
 
