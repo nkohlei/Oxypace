@@ -515,6 +515,7 @@ const WatchPartyPlayer = () => {
     const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
     const qualityMenuRef = useRef(null);
     const [readySubtitles, setReadySubtitles] = useState([]);
+    const [readySubQuery, setReadySubQuery] = useState('');
     const [isSearchingReadySubs, setIsSearchingReadySubs] = useState(false);
     const [subOffsetSec, setSubOffsetSec] = useState(0);
     const subOffsetSecRef = useRef(0);
@@ -999,6 +1000,7 @@ const WatchPartyPlayer = () => {
         setSubFpsMode('1:1');
         subFpsModeRef.current = '1:1';
         setAutoFpsNotice('');
+        setReadySubQuery(watchParty?.title || '');
         if (!watchParty?.url || !watchParty?.title) return;
         let cancelled = false;
         const timer = setTimeout(() => {
@@ -2889,45 +2891,55 @@ const WatchPartyPlayer = () => {
                                             })}
 
                                             {/* Hazır TR Altyazılar (OpenSubtitles / TurkceAltyazi) */}
-                                            {(readySubtitles.length > 0 || isSearchingReadySubs || watchParty?.title) && (
-                                                <>
-                                                    <div className="native-track-divider" />
-                                                    <div className="native-sub-section-header">
-                                                        <span>Hazır TR Altyazılar</span>
-                                                        {watchParty?.title && !isSearchingReadySubs && (
-                                                            <button
-                                                                type="button"
-                                                                className="native-sub-refresh-btn"
-                                                                onClick={() => fetchReadySubtitles(watchParty.title)}
-                                                            >
-                                                                Yenile
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    {isSearchingReadySubs && (
-                                                        <div className="native-track-empty-note">TR altyazı aranıyor...</div>
-                                                    )}
-                                                    {!isSearchingReadySubs && readySubtitles.map((sub, i) => {
-                                                        const isSelected = activeSubtitleId === `ready-${i}`;
-                                                        return (
-                                                            <button
-                                                                key={`pop-ready-sub-${sub.id || i}`}
-                                                                className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                                onClick={() => {
-                                                                    handleSelectSubtitleTrack({ type: 'ready', index: i });
-                                                                }}
-                                                            >
-                                                                <span className="native-track-item-check">
-                                                                    {isSelected ? <Check size={13} /> : null}
-                                                                </span>
-                                                                <span className="native-track-item-name">{sub.label}</span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                    {!isSearchingReadySubs && readySubtitles.length === 0 && (
-                                                        <div className="native-track-empty-note">Hazır TR altyazı bulunamadı</div>
-                                                    )}
-                                                </>
+                                            <div className="native-track-divider" />
+                                            <div className="native-sub-section-header">
+                                                <span>Hazır TR Altyazılar</span>
+                                            </div>
+                                            <div className="native-sub-search-row" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="text"
+                                                    value={readySubQuery}
+                                                    onChange={(e) => setReadySubQuery(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            fetchReadySubtitles(readySubQuery);
+                                                        }
+                                                    }}
+                                                    placeholder="Film adı yazıp arayın..."
+                                                />
+                                                <button
+                                                    type="button"
+                                                    disabled={isSearchingReadySubs || !readySubQuery.trim()}
+                                                    onClick={() => fetchReadySubtitles(readySubQuery)}
+                                                >
+                                                    {isSearchingReadySubs ? '...' : 'Ara'}
+                                                </button>
+                                            </div>
+                                            {isSearchingReadySubs && (
+                                                <div className="native-track-empty-note">TR altyazı aranıyor...</div>
+                                            )}
+                                            {!isSearchingReadySubs && readySubtitles.map((sub, i) => {
+                                                const isSelected = activeSubtitleId === `ready-${i}`;
+                                                return (
+                                                    <button
+                                                        key={`pop-ready-sub-${sub.id || i}`}
+                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            handleSelectSubtitleTrack({ type: 'ready', index: i });
+                                                        }}
+                                                    >
+                                                        <span className="native-track-item-check">
+                                                            {isSelected ? <Check size={13} /> : null}
+                                                        </span>
+                                                        <span className="native-track-item-name">{sub.label}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                            {!isSearchingReadySubs && readySubtitles.length === 0 && (
+                                                <div className="native-track-empty-note">
+                                                    {readySubQuery.trim() ? 'Hazır TR altyazı bulunamadı' : 'Aramak için film adı girin'}
+                                                </div>
                                             )}
 
                                             {/* Kayma Önleme: Zamanlama (+0.1s/-0.1s) & FPS Uyumu */}
