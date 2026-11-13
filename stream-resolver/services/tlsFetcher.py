@@ -1,12 +1,16 @@
 import sys
+import os
 import re
 import json
+import socket
+from urllib.parse import urlparse, urlunparse
 from curl_cffi import requests
 
 try:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 except Exception:
     pass
+
 
 def is_challenge(text):
     if not text or len(text) < 40:
@@ -20,12 +24,45 @@ def is_challenge(text):
         or 'error code: 444' in lower
     )
 
+
 def is_takedown(text):
     if not text:
         return False
-    return '451 - yasal nedenlerle' in text.lower() or 'yasal nedenlerle erisime kapali' in text.lower()
+    lower = text.lower()
+    return '451 - yasal nedenlerle' in lower or 'yasal nedenlerle erisime kapali' in lower
+
+
+def is_tor_open(host='127.0.0.1', port=9050):
+    try:
+        with socket.create_connection((host, port), timeout=0.25):
+            return True
+    except Exception:
+        return False
+
+
+def build_env_proxy():
+    raw = (os.environ.get('PROXY_SERVER') or '').strip()
+    if not raw:
+        return None
+    if '://' not in raw:
+        raw = 'http://' + raw
+    username = (os.environ.get('PROXY_USERNAME') or '').strip()
+    password = (os.environ.get('PROXY_PASSWORD') or '').strip()
+    try:
+        parsed = urlparse(raw)
+        if username and not parsed.username:
+            auth = f"{username}:{password}@" if password else f"{username}@"
+            netloc = f"{auth}{parsed.netloc}"
+            raw = urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+    except Exception:
+        pass
+    if raw.startswith('socks5://'):
+        raw = 'socks5h://' + raw[len('socks5://'):]
+    return {'http': raw, 'https': raw}
+
 
 def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None, extra_headers=None, timeout_sec=5):
+    is_hdf = bool(re.search(r'hdfilmcehennemi\.[^/]+', url, re.I))
     is_hdf_ajax = bool(re.search(r'hdfilmcehennemi\.[^/]+/(?:search/|video/\d+)', url, re.I))
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -40,7 +77,8 @@ def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None, extra_
         headers['x-requested-with'] = 'fetch'
         headers['Accept'] = 'application/json, text/plain, */*'
         if not headers.get('Referer'):
-            headers['Referer'] = 'https://www.hdfilmcehennemi.nl/'
+            parsed_u = urlparse(url)
+            headers['Referer'] = f"{parsed_u.scheme}://{parsed_u.netloc}/"
     if method.upper() == 'POST' and data:
         headers['Content-Type'] = 'application/json'
     if isinstance(extra_headers, dict):
@@ -48,41 +86,59 @@ def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None, extra_
             if v is not None and v != '':
                 headers[str(k)] = str(v)
 
-    proxies = {
+    env_proxies = build_env_proxy() if use_proxy else None
+    tor_proxies = ({
         'http': 'socks5h://127.0.0.1:9050',
         'https': 'socks5h://127.0.0.1:9050'
-    } if use_proxy else None
+    } if (use_proxy and is_tor_open()) else None)
 
-    # Direct Chrome 124 TLS first (fast, ~0.4-1.5s); Tor fallback only if direct fails/is challenged
-    attempts = [None] + ([proxies] if use_proxy else [])
-    takedown_fallback = ""
-    for px in attempts:
-        try:
-            kwargs = {
-                'impersonate': 'chrome124',
-                'headers': headers,
-                'timeout': 6 if px else timeout_sec,
-            }
-            if px:
-                kwargs['proxies'] = px
-            if method.upper() == 'POST' or '?do=' in url:
-                if data is not None:
-                    kwargs['data'] = data
-                r = requests.post(url, **kwargs)
-            else:
-                r = requests.get(url, **kwargs)
-            if r.status_code == 200 and not is_challenge(r.text):
-                if is_takedown(r.text):
-                    if not takedown_fallback:
-                        takedown_fallback = r.text
+    attempts = []
+    if env_proxies:
+        attempts.append(('env_proxy', env_proxies, max(timeout_sec, 6)))
+    if is_hdf:
+        # HDF geo-blocks OCI Frankfurt with HTTP 451; prefer proxy/Tor first just like deb5aa8.
+        if tor_proxies:
+            attempts.append(('tor', tor_proxies, max(timeout_sec, 7)))
+        attempts.append(('direct', None, timeout_sec))
+    else:
+        attempts.append(('direct', None, timeout_sec))
+        if tor_proxies:
+            attempts.append(('tor', tor_proxies, max(timeout_sec, 6)))
+
+    proxy_takedown = ""
+    for kind, px, tmo in attempts:
+        for imp in ('chrome124', 'chrome120'):
+            try:
+                kwargs = {
+                    'impersonate': imp,
+                    'headers': headers,
+                    'timeout': tmo,
+                }
+                if px:
+                    kwargs['proxies'] = px
+                if method.upper() == 'POST' or '?do=' in url:
+                    if data is not None:
+                        kwargs['data'] = data
+                    r = requests.post(url, **kwargs)
+                else:
+                    r = requests.get(url, **kwargs)
+                if r.status_code == 200 and not is_challenge(r.text):
+                    if is_takedown(r.text):
+                        if kind != 'direct' and not proxy_takedown:
+                            proxy_takedown = r.text
+                        break
+                    return r.text
+                if r.status_code == 451 and r.text:
+                    if kind != 'direct' and not proxy_takedown:
+                        proxy_takedown = r.text
+                break
+            except Exception as e:
+                msg = str(e).lower()
+                if 'impersonat' in msg and imp == 'chrome124':
                     continue
-                return r.text
-            if r.status_code == 451 and r.text and not takedown_fallback:
-                takedown_fallback = r.text
-        except Exception:
-            pass
+                break
 
-    return takedown_fallback
+    return proxy_takedown
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

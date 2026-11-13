@@ -428,7 +428,8 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
             'OLD_HEAD=$(git rev-parse HEAD);',
             'git fetch --depth=1 origin main && git reset --hard origin/main && git gc --prune=now --quiet &&',
             'if ! git diff --quiet "$OLD_HEAD" HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi &&',
-            '(pm2 reload oxypace-backend --update-env || pm2 restart all)',
+            'if [ -f stream-resolver/package.json ] && { [ ! -d stream-resolver/node_modules ] || ! git diff --quiet "$OLD_HEAD" HEAD -- stream-resolver/package.json; }; then PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 NODE_OPTIONS="--max-old-space-size=256" npm install --prefix stream-resolver --omit=dev --no-audit --no-fund; fi &&',
+            '(timeout 35 pm2 reload all --update-env || pm2 restart all --update-env)',
         ].join(' ');
         try {
             const child = spawn('bash', ['-c', deployScript], {
@@ -871,5 +872,31 @@ httpServer.listen(PORT, async () => {
             });
         }
     });
+
+// Graceful shutdown so PM2 cluster reloads replace all workers cleanly without split-brain hangs
+let isShuttingDown = false;
+function handleGracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`🛑 ${signal} received, closing HTTP/Socket servers cleanly...`);
+    const forceExit = setTimeout(() => {
+        try { httpServer.closeAllConnections?.(); } catch (_) {}
+        process.exit(0);
+    }, 2500);
+    forceExit.unref?.();
+    try { io?.close?.(); } catch (_) {}
+    try {
+        httpServer.close(() => {
+            clearTimeout(forceExit);
+            process.exit(0);
+        });
+        httpServer.closeIdleConnections?.();
+    } catch (_) {
+        clearTimeout(forceExit);
+        process.exit(0);
+    }
+}
+process.once('SIGINT', () => handleGracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
 
 export default app;

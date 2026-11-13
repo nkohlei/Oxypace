@@ -429,10 +429,101 @@ function extractStreamFromUnpackedJs(unpackedJs, outerHtml = '', embedUrl = '') 
   return null;
 }
 
-const { execFile } = require('child_process');
+const { execFile, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const path = require('path');
+const fs = require('fs');
+const net = require('net');
+
+let cachedTlsPythonBin = null;
+let cachedTlsPythonChecked = false;
+function resolveTlsPythonBin() {
+  if (cachedTlsPythonChecked) return cachedTlsPythonBin;
+  cachedTlsPythonChecked = true;
+  const candidates = [];
+  if (process.env.TLS_PYTHON_BIN) candidates.push(process.env.TLS_PYTHON_BIN);
+  if (process.platform === 'win32') {
+    candidates.push(
+      path.join(__dirname, '../venv/Scripts/python.exe'),
+      path.join(__dirname, '../../venv/Scripts/python.exe'),
+      'python',
+      'python3'
+    );
+  } else {
+    candidates.push(
+      path.join(__dirname, '../venv/bin/python'),
+      path.join(__dirname, '../.venv/bin/python'),
+      path.join(__dirname, '../../venv/bin/python'),
+      path.join(__dirname, '../../.venv/bin/python'),
+      '/home/ubuntu/venv/bin/python',
+      '/root/venv/bin/python',
+      '/opt/venv/bin/python',
+      'python3',
+      'python'
+    );
+  }
+  for (const bin of candidates) {
+    if (!bin) continue;
+    if (bin.includes('/') || bin.includes('\\')) {
+      try {
+        if (!fs.existsSync(bin)) continue;
+      } catch {
+        continue;
+      }
+    }
+    try {
+      execFileSync(bin, ['-c', 'import curl_cffi'], { timeout: 2500, stdio: 'ignore' });
+      cachedTlsPythonBin = bin;
+      return cachedTlsPythonBin;
+    } catch {
+      // Binary missing or curl_cffi not installed in this environment
+    }
+  }
+  cachedTlsPythonBin = '';
+  return '';
+}
+
+let cachedTorCheck = { checkedAt: 0, open: false };
+async function isTorReachable() {
+  const now = Date.now();
+  if (now - cachedTorCheck.checkedAt < 30000) return cachedTorCheck.open;
+  const open = await new Promise((resolve) => {
+    const sock = new net.Socket();
+    let settled = false;
+    const finish = (val) => {
+      if (settled) return;
+      settled = true;
+      try { sock.destroy(); } catch {}
+      resolve(val);
+    };
+    sock.setTimeout(350);
+    sock.once('connect', () => finish(true));
+    sock.once('timeout', () => finish(false));
+    sock.once('error', () => finish(false));
+    sock.connect(9050, '127.0.0.1');
+  });
+  cachedTorCheck = { checkedAt: now, open };
+  return open;
+}
+
+function buildEnvProxyUrl() {
+  let raw = (process.env.PROXY_SERVER || '').trim();
+  if (!raw) return '';
+  if (!/^[a-z0-9]+:\/\//i.test(raw)) raw = `http://${raw}`;
+  const username = (process.env.PROXY_USERNAME || '').trim();
+  const password = (process.env.PROXY_PASSWORD || '').trim();
+  try {
+    const parsed = new URL(raw);
+    if (username && !parsed.username) {
+      parsed.username = username;
+      if (password) parsed.password = password;
+    }
+    return parsed.href;
+  } catch {
+    return raw;
+  }
+}
 
 const exhaustedScraperKeys = new Set();
 function getValidScraperApiKey() {
@@ -451,6 +542,7 @@ function isChallengeOrDeadHtml(text) {
     text.includes('error code: 444') ||
     text.includes('Attention Required! | Cloudflare') ||
     text.includes('<title>Just a moment...</title>') ||
+    text.includes('Oynatıcı durduruldu') ||
     text.includes('Bir bakım çalışması mevcut')
   ) {
     return true;
@@ -462,36 +554,35 @@ function isChallengeOrDeadHtml(text) {
 }
 
 /**
- * Fetches HTML using native Python curl_cffi Chrome TLS impersonation (Direct first, Tor fallback inside Python)
+ * Fetches HTML using native Python curl_cffi Chrome TLS impersonation (Proxy/Tor/Direct inside Python)
  */
 function fetchWithTlsImpersonation(targetUrl, referer = '', method = 'GET', postData = '', extraHeaders = {}, options = {}) {
   return new Promise((resolve) => {
+    const bin = resolveTlsPythonBin();
+    if (!bin) return resolve('');
     const scriptPath = path.join(__dirname, 'tlsFetcher.py');
     const hdrJson = extraHeaders && Object.keys(extraHeaders).length > 0 ? JSON.stringify(extraHeaders) : '';
     const args = [scriptPath, targetUrl, referer, method, postData || '', hdrJson];
     if (options.noTor) args.push('no_tor');
-    const tryBin = (bin) => {
-      execFile(bin, args, { timeout: 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
-        if (err && err.code === 'ENOENT' && bin === 'python3') {
-          return tryBin('python');
-        }
-        if (err || !stdout || stdout.length === 0) {
-          return resolve('');
-        }
-        resolve(stdout);
-      });
-    };
-    tryBin(process.env.TLS_PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3'));
+    execFile(bin, args, { timeout: options.timeoutMs || 12000, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+      if (err || !stdout || stdout.length === 0) {
+        return resolve('');
+      }
+      resolve(stdout);
+    });
   });
 }
 
 /**
- * Fetches HTML directly, via curl, via direct-first Python TLS Impersonator, or via Tor/ScraperAPI if needed
+ * Fetches HTML directly, via curl, via Python TLS Impersonator, or via Proxy/Tor/ScraperAPI if needed
  */
 async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
   const isHdf = targetUrl.includes('hdfilmcehennemi');
   const isHdfAjax = /hdfilmcehennemi\.[^/]+\/(?:search\/|video\/\d+)/i.test(targetUrl);
-  const effectiveReferer = referer || (isHdf ? 'https://www.hdfilmcehennemi.nl/' : '');
+  const targetOrigin = (() => { try { return new URL(targetUrl).origin + '/'; } catch { return 'https://www.hdfilmcehennemi.nl/'; } })();
+  const effectiveReferer = referer || (isHdf ? targetOrigin : '');
+  const envProxyUrl = buildEnvProxyUrl();
+  const torOpen = await isTorReachable();
 
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
@@ -521,27 +612,31 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     return text;
   };
 
-  // 1. Doğrudan İstek Denemesi (451 durumunda Tor/TLS fallback şansı saklanır)
+  const isTakedownHtml = (text) => Boolean(text && (text.includes('451 - Yasal Nedenlerle') || text.includes('Yasal Nedenlerle Erisime Kapali')));
   let takedownFallback = '';
-  try {
-    const res = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(3500) });
-    const text = await res.text();
-    if (res.status === 451 || text.includes('451 - Yasal Nedenlerle') || text.includes('Yasal Nedenlerle Erisime Kapali')) {
-      takedownFallback = text;
-    } else if (res.ok && !isChallengeOrDeadHtml(text)) {
-      return parseJsonIfAny(text);
-    }
-  } catch (e) {
-    // Fallback
+  let directTakedown = '';
+
+  // 1. Doğrudan İstek Denemesi (Proxy/Tor varsa HDF'de doğrudan 451'e takılıp kalma)
+  if (!isHdf || (!envProxyUrl && !torOpen)) {
+    try {
+      const res = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(3500) });
+      const text = await res.text();
+      if (res.status === 451 || isTakedownHtml(text)) {
+        directTakedown = text;
+      } else if (res.ok && !isChallengeOrDeadHtml(text)) {
+        return parseJsonIfAny(text);
+      }
+    } catch {}
   }
 
-  // 1.5. Doğrudan Curl İsteği (header forwarding dahil — Closeload/Pichive Sec-Fetch-Dest: iframe için şart!)
+  // 1.5. Curl İsteği (header forwarding + opsiyonel PROXY_SERVER / Tor)
   const curlBin = process.platform === 'win32' ? 'curl.exe' : 'curl';
   const extraHeaderEntries = Object.entries(extraHeaders || {}).filter(([k, v]) => v !== undefined && v !== null && v !== '' && k.toLowerCase() !== 'user-agent');
-  const buildCurlArgs = (useTor) => {
+  const buildCurlArgs = (proxyKind = 'direct') => {
     const args = [
-      '-s', '-L', '--max-time', useTor ? '6' : '4',
-      ...(useTor ? ['--socks5-hostname', '127.0.0.1:9050'] : []),
+      '-s', '-L', '--max-time', proxyKind === 'direct' ? '4' : '7',
+      ...(proxyKind === 'env' && envProxyUrl ? ['-x', envProxyUrl] : []),
+      ...(proxyKind === 'tor' ? ['--socks5-hostname', '127.0.0.1:9050'] : []),
       '-A', headers['User-Agent'],
       '-H', `Accept: ${headers['Accept']}`,
       '-H', `Accept-Language: ${headers['Accept-Language']}`,
@@ -555,11 +650,24 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     return args;
   };
 
-  if (!takedownFallback) {
+  if (envProxyUrl) {
     try {
-      const { stdout } = await execFileAsync(curlBin, buildCurlArgs(false));
-      if (stdout && (stdout.includes('451 - Yasal Nedenlerle') || stdout.includes('Yasal Nedenlerle Erisime Kapali'))) {
+      const { stdout } = await execFileAsync(curlBin, buildCurlArgs('env'));
+      if (isTakedownHtml(stdout)) {
         takedownFallback = stdout;
+      } else if (!isChallengeOrDeadHtml(stdout)) {
+        const parsedBody = parseJsonIfAny(stdout);
+        logger.info(`[FastScraper] ⚡ Env-Proxy Curl ile sayfa çekildi (${parsedBody.length} byte): ${targetUrl}`);
+        return parsedBody;
+      }
+    } catch {}
+  }
+
+  if (!directTakedown && !isHdf) {
+    try {
+      const { stdout } = await execFileAsync(curlBin, buildCurlArgs('direct'));
+      if (isTakedownHtml(stdout)) {
+        directTakedown = stdout;
       } else if (!isChallengeOrDeadHtml(stdout)) {
         const parsedBody = parseJsonIfAny(stdout);
         logger.info(`[FastScraper] ⚡ Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
@@ -568,12 +676,12 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     } catch {}
   }
 
-  // 2. Python TLS Chrome 124 Impersonation (önce doğrudan, takılırsa Python içinde Tor fallback)
+  // 2. Python TLS Chrome Impersonation (Proxy -> Tor/Direct)
   try {
     const tlsExtraHdrs = { ...extraHeaders };
     if (headers['Accept']) tlsExtraHdrs['Accept'] = headers['Accept'];
     const tlsHtml = await fetchWithTlsImpersonation(targetUrl, effectiveReferer, 'GET', '', tlsExtraHdrs);
-    if (tlsHtml && (tlsHtml.includes('451 - Yasal Nedenlerle') || tlsHtml.includes('Yasal Nedenlerle Erisime Kapali'))) {
+    if (isTakedownHtml(tlsHtml)) {
       if (!takedownFallback) takedownFallback = tlsHtml;
     } else if (!isChallengeOrDeadHtml(tlsHtml)) {
       const parsedBody = parseJsonIfAny(tlsHtml);
@@ -584,17 +692,19 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     logger.debug(`[FastScraper] TLS fetcher error: ${e.message}`);
   }
 
-  // 2.5. Son Çare Tor Curl
-  try {
-    const { stdout } = await execFileAsync(curlBin, buildCurlArgs(true));
-    if (stdout && (stdout.includes('451 - Yasal Nedenlerle') || stdout.includes('Yasal Nedenlerle Erisime Kapali'))) {
-      if (!takedownFallback) takedownFallback = stdout;
-    } else if (!isChallengeOrDeadHtml(stdout)) {
-      const parsedBody = parseJsonIfAny(stdout);
-      logger.info(`[FastScraper] ⚡ Tor Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
-      return parsedBody;
-    }
-  } catch {}
+  // 2.5. Tor Curl (yalnızca 127.0.0.1:9050 açık olduğunda)
+  if (torOpen) {
+    try {
+      const { stdout } = await execFileAsync(curlBin, buildCurlArgs('tor'));
+      if (isTakedownHtml(stdout)) {
+        if (!takedownFallback) takedownFallback = stdout;
+      } else if (!isChallengeOrDeadHtml(stdout)) {
+        const parsedBody = parseJsonIfAny(stdout);
+        logger.info(`[FastScraper] ⚡ Tor Curl ile sayfa başarıyla çekildi (${parsedBody.length} byte): ${targetUrl}`);
+        return parsedBody;
+      }
+    } catch {}
+  }
 
   // 3. ScraperAPI Standart Fallback (yalnızca ortam değişkeninde anahtar tanımlıysa)
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -618,7 +728,7 @@ async function fetchHtmlWithBypass(targetUrl, referer = '', extraHeaders = {}) {
     }
   }
 
-  return takedownFallback || '';
+  return takedownFallback || directTakedown || '';
 }
 
 /**
@@ -983,14 +1093,19 @@ async function collectPageEmbedCandidates(targetUrl, html) {
     }
   }
 
-  // 3. FilmMakinesi: <a data-video_url="...">Label</a> + data-href/part tabs
+  // 3. FilmMakinesi: <a data-video_url="...">Label</a> + data-href/part tabs + playmix ayna fallback
   if (targetUrl.includes('filmmakinesi')) {
     const fmBtns = [
       ...html.matchAll(/<a[^>]+data-video_url=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi),
       ...html.matchAll(/<(?:a|li|button)[^>]+data-href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/(?:a|li|button)>/gi),
     ];
     for (const [, vUrl, rawLbl] of fmBtns) {
-      pushCandidate(vUrl, rawLbl.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+      const cleanLabel = rawLbl.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      pushCandidate(vUrl, cleanLabel);
+      const idM = vUrl.match(/\/video\/embed\/([^/?#]+)/);
+      if (vUrl.includes('closeload.filmmakinesi.to') && idM?.[1]) {
+        pushCandidate(`https://playmix.uno/video/embed/${idM[1]}/`, cleanLabel ? `${cleanLabel} Ayna` : 'Ayna');
+      }
     }
   }
 
@@ -1341,7 +1456,7 @@ async function fastResolve(targetUrl, options = {}) {
       let mainReferer = '';
       if (targetUrl.includes('hdfilmcehennemi.mobi')) {
         mainReferer = 'https://www.hdfilmcehennemi.nl/';
-      } else if (targetUrl.includes('closeload')) {
+      } else if (targetUrl.includes('closeload') || targetUrl.includes('rapid.filmmakinesi')) {
         mainReferer = 'https://filmmakinesi.to/';
       } else if (targetUrl.includes('rapidvid')) {
         mainReferer = 'https://www.fullhdfilmizlesene.now/';
@@ -1351,19 +1466,35 @@ async function fastResolve(targetUrl, options = {}) {
         mainReferer = 'https://roketdizi.life/';
       }
 
-      const html = await fetchHtmlWithBypass(targetUrl, mainReferer);
+      let activeTargetUrl = targetUrl;
+      let html = await fetchHtmlWithBypass(activeTargetUrl, mainReferer);
+
+      // HDFilmCehennemi .nl geo-blocked/451 or empty -> automatically try .com mirror on OCI/Frankfurt
+      if (
+        (!html || html.includes('451 - Yasal Nedenlerle') || html.includes('Yasal Nedenlerle Erisime Kapali')) &&
+        /hdfilmcehennemi\.nl/i.test(activeTargetUrl) &&
+        !options._mirrorTried
+      ) {
+        const comUrl = activeTargetUrl.replace(/hdfilmcehennemi\.nl/i, 'hdfilmcehennemi.com');
+        const comHtml = await fetchHtmlWithBypass(comUrl, 'https://www.hdfilmcehennemi.com/');
+        if (comHtml && !comHtml.includes('451 - Yasal Nedenlerle') && !comHtml.includes('Yasal Nedenlerle Erisime Kapali')) {
+          activeTargetUrl = comUrl;
+          html = comHtml;
+        }
+      }
+
       if (!html) return null;
 
       if (html.includes('451 - Yasal Nedenlerle') || html.includes('Yasal Nedenlerle Erisime Kapali')) {
-        logger.warn(`[FastScraper] ⛔ Telif takedown: ${targetUrl}`);
+        logger.warn(`[FastScraper] ⛔ Telif takedown: ${activeTargetUrl}`);
         return { error: 'Bu film telif ve yasal nedenlerle kaynak site tarafından yayından kaldırılmıştır.', isTakedown: true };
       }
 
       // Series index auto-navigation (/dizi/)
-      if (targetUrl.includes('/dizi/') && !targetUrl.includes('/bolum-')) {
+      if (activeTargetUrl.includes('/dizi/') && !activeTargetUrl.includes('/bolum-')) {
         const epMatch = html.match(/href="([^"]*\/dizi\/[^"]+\/sezon-\d+\/bolum-\d+\/?)"/i) || html.match(/href="([^"]*(?:sezon-1\/bolum-1|bolum-1)[^"]*)"/i);
         if (epMatch && epMatch[1]) {
-          const epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], targetUrl).href;
+          const epUrl = epMatch[1].startsWith('http') ? epMatch[1] : new URL(epMatch[1], activeTargetUrl).href;
           logger.info(`[FastScraper] 📺 Dizi sayfası tespit edildi, 1. bölüme yönlendiriliyor: ${epUrl}`);
           return await fastResolve(epUrl, { ...options, timeout: Math.max(4000, timeoutMs - 2000) });
         }
@@ -1374,15 +1505,17 @@ async function fastResolve(targetUrl, options = {}) {
 
       // Fast path if targetUrl itself IS an embed URL
       if (
-        targetUrl.includes('vixolity.com') ||
-        targetUrl.includes('ok.ru/videoembed') ||
-        targetUrl.includes('/video/embed/') ||
-        targetUrl.includes('/rplayer/') ||
-        targetUrl.includes('vidmoly') ||
-        targetUrl.includes('pichive.online/iframe') ||
-        targetUrl.includes('rapidvid.org/vx')
+        activeTargetUrl.includes('vixolity.com') ||
+        activeTargetUrl.includes('ok.ru/videoembed') ||
+        activeTargetUrl.includes('/video/embed/') ||
+        activeTargetUrl.includes('/rplayer/') ||
+        activeTargetUrl.includes('rapid.filmmakinesi') ||
+        activeTargetUrl.includes('/embed-') ||
+        activeTargetUrl.includes('vidmoly') ||
+        activeTargetUrl.includes('pichive.online/iframe') ||
+        activeTargetUrl.includes('rapidvid.org/vx')
       ) {
-        const directEmbedRes = await resolveSingleEmbed(targetUrl, mainReferer || targetUrl, pageTitle);
+        const directEmbedRes = await resolveSingleEmbed(activeTargetUrl, mainReferer || activeTargetUrl, pageTitle);
         if (directEmbedRes) {
           if (Array.isArray(directEmbedRes.extraStreams) && directEmbedRes.extraStreams.length > 0 && !directEmbedRes.alternatives) {
             const { extraStreams, ...primaryOnly } = directEmbedRes;
@@ -1391,7 +1524,7 @@ async function fastResolve(targetUrl, options = {}) {
               alternatives: [primaryOnly, ...extraStreams].map((item, idx) => ({
                 ...item,
                 candidateLabel: item.candidateLabel || `Alternatif ${idx + 1}`,
-                embedUrl: targetUrl,
+                embedUrl: activeTargetUrl,
               })),
             };
           }
@@ -1399,9 +1532,9 @@ async function fastResolve(targetUrl, options = {}) {
         }
       }
 
-      const decodedFromMain = decodeDynamicObfuscation(html, targetUrl) || decodeDcFunction(html);
+      const decodedFromMain = decodeDynamicObfuscation(html, activeTargetUrl) || decodeDcFunction(html);
       if (decodedFromMain && !options.collectAlternatives) {
-        return buildResult(decodedFromMain, '', targetUrl, 'm3u8', pageTitle, html);
+        return buildResult(decodedFromMain, '', activeTargetUrl, 'm3u8', pageTitle, html);
       }
 
       for (const pattern of FAST_STREAM_PATTERNS) {
@@ -1412,13 +1545,13 @@ async function fastResolve(targetUrl, options = {}) {
           const isSubtitle = lowerStream.endsWith('.vtt') || lowerStream.endsWith('.srt') || lowerStream.includes('/vtt/');
           const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
           if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
-            return buildResult(streamUrl, '', targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, html);
+            return buildResult(streamUrl, '', activeTargetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, html);
           }
         }
       }
 
-      const candidates = await collectPageEmbedCandidates(targetUrl, html);
-      logger.info(`[FastScraper] Bulunan embed aday sayısı: ${candidates.length} (${targetUrl})`);
+      const candidates = await collectPageEmbedCandidates(activeTargetUrl, html);
+      logger.info(`[FastScraper] Bulunan embed aday sayısı: ${candidates.length} (${activeTargetUrl})`);
 
       // Prefer non-PoW candidates first (skipping likely four.pichive PoW stalls first)
       const orderedCandidates = [...candidates].sort((a, b) => {

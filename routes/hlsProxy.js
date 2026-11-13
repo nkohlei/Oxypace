@@ -7,8 +7,10 @@ import { createRequire } from 'module';
 import crypto from 'crypto';
 import zlib from 'zlib';
 import vm from 'vm';
-import { execFile, spawn } from 'child_process';
+import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -17,6 +19,101 @@ const CURL_BIN = process.platform === 'win32' ? 'curl.exe' : 'curl';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+let cachedTlsPythonBin = null;
+let cachedTlsPythonChecked = false;
+function resolveTlsPythonBin() {
+  if (cachedTlsPythonChecked) return cachedTlsPythonBin;
+  cachedTlsPythonChecked = true;
+  const candidates = [];
+  if (process.env.TLS_PYTHON_BIN) candidates.push(process.env.TLS_PYTHON_BIN);
+  if (process.platform === 'win32') {
+    candidates.push(
+      path.join(__dirname, '../stream-resolver/venv/Scripts/python.exe'),
+      path.join(__dirname, '../venv/Scripts/python.exe'),
+      'python',
+      'python3'
+    );
+  } else {
+    candidates.push(
+      path.join(__dirname, '../stream-resolver/venv/bin/python'),
+      path.join(__dirname, '../stream-resolver/.venv/bin/python'),
+      path.join(__dirname, '../venv/bin/python'),
+      path.join(__dirname, '../.venv/bin/python'),
+      '/home/ubuntu/venv/bin/python',
+      '/root/venv/bin/python',
+      '/opt/venv/bin/python',
+      'python3',
+      'python'
+    );
+  }
+  for (const bin of candidates) {
+    if (!bin) continue;
+    if (bin.includes('/') || bin.includes('\\')) {
+      try {
+        if (!fs.existsSync(bin)) continue;
+      } catch {
+        continue;
+      }
+    }
+    try {
+      execFileSync(bin, ['-c', 'import curl_cffi'], { timeout: 2500, stdio: 'ignore' });
+      cachedTlsPythonBin = bin;
+      return cachedTlsPythonBin;
+    } catch {
+      // Binary missing or curl_cffi not installed here
+    }
+  }
+  cachedTlsPythonBin = '';
+  return '';
+}
+
+let cachedTorProbe = { checkedAt: 0, open: false };
+async function isTorReachable() {
+  const now = Date.now();
+  if (now - cachedTorProbe.checkedAt < 30000) return cachedTorProbe.open;
+  const open = await new Promise((resolve) => {
+    const sock = new net.Socket();
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      try { sock.destroy(); } catch {}
+      resolve(val);
+    };
+    sock.setTimeout(350);
+    sock.once('connect', () => done(true));
+    sock.once('timeout', () => done(false));
+    sock.once('error', () => done(false));
+    sock.connect(9050, '127.0.0.1');
+  });
+  cachedTorProbe = { checkedAt: now, open };
+  return open;
+}
+
+function buildEnvProxyUrl() {
+  let raw = (process.env.PROXY_SERVER || '').trim();
+  if (!raw) return '';
+  if (!/^[a-z0-9]+:\/\//i.test(raw)) raw = `http://${raw}`;
+  const username = (process.env.PROXY_USERNAME || '').trim();
+  const password = (process.env.PROXY_PASSWORD || '').trim();
+  try {
+    const parsed = new URL(raw);
+    if (username && !parsed.username) {
+      parsed.username = username;
+      if (password) parsed.password = password;
+    }
+    return parsed.href;
+  } catch {
+    return raw;
+  }
+}
+
+function is451TakedownHtml(text) {
+  if (!text || typeof text !== 'string') return false;
+  const low = text.toLowerCase();
+  return low.includes('451 - yasal nedenlerle') || low.includes('yasal nedenlerle erisime kapali');
+}
 
 const require = createRequire(import.meta.url);
 let fastResolve = null;
@@ -210,30 +307,27 @@ function decodeHtmlEntities(str) {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
 }
 
-// Python curl_cffi Chrome 124 TLS impersonator (direct first, Tor fallback inside script)
+// Python curl_cffi Chrome TLS impersonator (Proxy/Tor/Direct inside script)
 function fetchWithTlsImpersonator(url, referer = '', method = 'GET', postData = '', extraHeaders = {}, { noTor = false, timeoutMs = 9500 } = {}) {
   return new Promise((resolve) => {
+    const bin = resolveTlsPythonBin();
+    if (!bin) return resolve('');
     const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
     const hdrJson = extraHeaders && Object.keys(extraHeaders).length > 0 ? JSON.stringify(extraHeaders) : '';
     const args = [scriptPath, url, referer || '', method || 'GET', postData || '', hdrJson];
     if (noTor) args.push('no_tor');
-    const run = (bin) => {
-      execFile(bin, args, { timeout: timeoutMs, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
-        if (err && err.code === 'ENOENT' && bin === 'python3') {
-          return run('python');
-        }
-        if (err || !stdout || stdout.length === 0) {
-          return resolve('');
-        }
-        resolve(stdout);
-      });
-    };
-    run(process.env.TLS_PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3'));
+    execFile(bin, args, { timeout: timeoutMs, maxBuffer: 15 * 1024 * 1024 }, (err, stdout) => {
+      if (err || !stdout || stdout.length === 0) {
+        return resolve('');
+      }
+      resolve(stdout);
+    });
   });
 }
 
 function isBlockedOrChallenge(text) {
   if (!text || typeof text !== 'string') return true;
+  if (is451TakedownHtml(text)) return true;
   const trimmed = text.trimStart();
   if (trimmed.startsWith('#EXTM3U')) return false;
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -258,14 +352,16 @@ function isBlockedOrChallenge(text) {
   if (lower.includes('<title>404 not found</title>') && lower.includes('nginx')) return true;
   if (lower.includes('error code: 1005') || lower.includes('error code: 444') || lower.includes('error code: 403')) return true;
   if (lower.includes('403 forbidden') && text.length < 2000) return true;
-  if (lower.includes('cf-browser-verification')) return true;
+  if (lower.includes('cf-browser-verification') || text.includes('Oynatıcı durduruldu')) return true;
   return false;
 }
 
-// Direct curl -> Direct-first Python TLS Impersonator -> Tor Curl fallback
+// Env Proxy -> Direct curl -> Python TLS Impersonator -> Tor Curl fallback
 async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
   // SSRF / option-injection guard: only public http(s) URLs may ever reach the curl binary
   if (!validateSsrfUrl(url).safe) return '';
+  const envProxyUrl = buildEnvProxyUrl();
+  const torOpen = await isTorReachable();
   const extraHdrObj = {};
   let ref = '';
   for (const h of headers) {
@@ -278,10 +374,37 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
     }
   }
 
-  // 1. For HDFilmCehennemi, try direct-first Chrome 124 TLS Impersonator first
+  const runCurlWithProxy = async (proxyMode, maxTimeSec) => {
+    const args = [
+      '-s',
+      '-L',
+      '--max-time', String(maxTimeSec),
+      '--proto', '=http,https',
+      '--proto-redir', '=http,https',
+      '--max-redirs', '5',
+      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+      ...headers.flatMap(h => ['-H', h]),
+    ];
+    if (proxyMode === 'env' && envProxyUrl) args.push('-x', envProxyUrl);
+    if (proxyMode === 'tor') args.push('--socks5-hostname', '127.0.0.1:9050');
+    args.push(url);
+    const { stdout } = await execFileAsync(CURL_BIN, args);
+    return !isBlockedOrChallenge(stdout) ? stdout : '';
+  };
+
+  if (envProxyUrl) {
+    try {
+      const pxHtml = await runCurlWithProxy('env', Math.min(timeoutSec + 2, 7));
+      if (pxHtml) return pxHtml;
+    } catch {}
+  }
+
+  // 1. For HDFilmCehennemi, try TLS Impersonator (Proxy/Tor first inside Python)
   if (url.includes('hdfilmcehennemi')) {
     try {
-      const tlsHtml = await fetchWithTlsImpersonator(url, ref || 'https://www.hdfilmcehennemi.nl/', 'GET', '', extraHdrObj, { timeoutMs: 8000 });
+      const originRef = (() => { try { return new URL(url).origin + '/'; } catch { return 'https://www.hdfilmcehennemi.nl/'; } })();
+      const tlsHtml = await fetchWithTlsImpersonator(url, ref || originRef, 'GET', '', extraHdrObj, { timeoutMs: 8000 });
       if (!isBlockedOrChallenge(tlsHtml)) {
         return tlsHtml;
       }
@@ -290,25 +413,11 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
 
   // 2. Direct curl execution (fast, zero Tor overhead)
   try {
-    const args = [
-      '-s',
-      '-L',
-      '--max-time', String(Math.min(timeoutSec, 4)),
-      '--proto', '=http,https',
-      '--proto-redir', '=http,https',
-      '--max-redirs', '5',
-      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      ...headers.flatMap(h => ['-H', h]),
-      url
-    ];
-    const { stdout } = await execFileAsync(CURL_BIN, args);
-    if (!isBlockedOrChallenge(stdout)) {
-      return stdout;
-    }
+    const directOut = await runCurlWithProxy('direct', Math.min(timeoutSec, 4));
+    if (directOut) return directOut;
   } catch (e) {}
 
-  // 3. Python TLS Chrome 124 Impersonator (direct first, Tor fallback inside Python)
+  // 3. Python TLS Chrome Impersonator
   if (!url.includes('hdfilmcehennemi')) {
     try {
       const tlsHtml = await fetchWithTlsImpersonator(url, ref, 'GET', '', extraHdrObj, { timeoutMs: 8500 });
@@ -318,26 +427,13 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
     } catch (e) {}
   }
 
-  // 4. Emergency Tor SOCKS5 curl fallback if Python TLS was unavailable
-  try {
-    const argsTor = [
-      '-s',
-      '-L',
-      '--socks5-hostname', '127.0.0.1:9050',
-      '--max-time', String(Math.min(timeoutSec + 1, 6)),
-      '--proto', '=http,https',
-      '--proto-redir', '=http,https',
-      '--max-redirs', '5',
-      '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      ...headers.flatMap(h => ['-H', h]),
-      url
-    ];
-    const { stdout } = await execFileAsync(CURL_BIN, argsTor);
-    if (!isBlockedOrChallenge(stdout)) {
-      return stdout;
-    }
-  } catch (e) {}
+  // 4. Emergency Tor SOCKS5 curl fallback (only if Tor daemon is reachable)
+  if (torOpen) {
+    try {
+      const torOut = await runCurlWithProxy('tor', Math.min(timeoutSec + 2, 6));
+      if (torOut) return torOut;
+    } catch (e) {}
+  }
 
   return '';
 }
@@ -345,7 +441,9 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 5) {
 // Direct curl fetch for binary data (images/posters)
 async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
   if (!validateSsrfUrl(url).safe) return null;
-  const runCurl = (useTor = false) => new Promise((resolve, reject) => {
+  const envProxyUrl = buildEnvProxyUrl();
+  const torOpen = await isTorReachable();
+  const runCurl = (proxyMode = 'direct') => new Promise((resolve, reject) => {
     const args = [
       '-s',
       '-L',
@@ -356,7 +454,8 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
       '--max-filesize', String(25 * 1024 * 1024),
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     ];
-    if (useTor) args.push('--socks5-hostname', '127.0.0.1:9050');
+    if (proxyMode === 'env' && envProxyUrl) args.push('-x', envProxyUrl);
+    if (proxyMode === 'tor') args.push('--socks5-hostname', '127.0.0.1:9050');
     if (referer) args.push('-H', `Referer: ${referer}`);
     args.push(url);
 
@@ -373,19 +472,30 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
     });
   });
 
+  if (envProxyUrl) {
+    try {
+      const pxBuf = await runCurl('env');
+      if (pxBuf && pxBuf.length > 0 && !isBlockedOrChallenge(pxBuf.toString('utf8', 0, 500))) {
+        return pxBuf;
+      }
+    } catch {}
+  }
+
   try {
-    const directBuf = await runCurl(false);
+    const directBuf = await runCurl('direct');
     if (directBuf && directBuf.length > 0 && !isBlockedOrChallenge(directBuf.toString('utf8', 0, 500))) {
       return directBuf;
     }
   } catch (directErr) {}
 
-  try {
-    const torBuf = await runCurl(true);
-    if (torBuf && torBuf.length > 0 && !isBlockedOrChallenge(torBuf.toString('utf8', 0, 500))) {
-      return torBuf;
-    }
-  } catch (torErr) {}
+  if (torOpen) {
+    try {
+      const torBuf = await runCurl('tor');
+      if (torBuf && torBuf.length > 0 && !isBlockedOrChallenge(torBuf.toString('utf8', 0, 500))) {
+        return torBuf;
+      }
+    } catch (torErr) {}
+  }
 
   return null;
 }
@@ -1179,22 +1289,37 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.includes('hdfilmcehennemi')) return null;
   const start = Date.now();
 
+  const envProxyUrl = buildEnvProxyUrl();
+  const torOpen = await isTorReachable();
+  const isValidHdfResp = (t) => Boolean(t && t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required') && !is451TakedownHtml(t));
+
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
-    // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
-    if (process.platform === 'linux') {
+    // 0. Env Proxy priority (residential/Turkey/datacenter bypass)
+    if (envProxyUrl) {
+      try {
+        const { stdout } = await execFileAsync(CURL_BIN, [
+          '-s', '-L', '-x', envProxyUrl, '--max-time', String(timeoutSec + 2),
+          '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          ...headers.flatMap(h => ['-H', h]),
+          url,
+        ]);
+        if (isValidHdfResp(stdout)) return stdout;
+      } catch {}
+    }
+
+    // 1. Tor SOCKS5 priority on Linux server when reachable (bypasses Datacenter ASN Cloudflare Error 1005 & GEO 451)
+    if (process.platform === 'linux' && torOpen) {
       try {
         const argsTor = [
           '-s', '-L',
           '--socks5-hostname', '127.0.0.1:9050',
-          '--max-time', String(timeoutSec),
+          '--max-time', String(timeoutSec + 1),
           '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           ...headers.flatMap(h => ['-H', h]),
           url
         ];
-        const { stdout } = await execFileAsync('curl', argsTor);
-        if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
-          return stdout;
-        }
+        const { stdout } = await execFileAsync(CURL_BIN, argsTor);
+        if (isValidHdfResp(stdout)) return stdout;
       } catch (e) {}
     }
 
@@ -1211,7 +1336,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
       if (res.ok) {
         const t = await res.text();
-        if (t.length > 500 && !t.includes('error code: 1005') && !t.includes('Attention Required')) return t;
+        if (isValidHdfResp(t)) return t;
       }
     } catch (e) {}
 
@@ -1225,20 +1350,30 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         url
       ];
       const { stdout } = await execFileAsync(CURL_BIN, args);
-      if (stdout && stdout.length > 500 && !stdout.includes('error code: 1005') && !stdout.includes('Attention Required')) {
-        return stdout;
-      }
+      if (isValidHdfResp(stdout)) return stdout;
     } catch (e) {}
 
     return '';
   };
 
   try {
-    let text = await fetchWithTorOrDirect(targetUrl, [
-      'Referer: https://www.hdfilmcehennemi.nl/',
+    let activeTarget = targetUrl;
+    let activeOrigin = (() => { try { return new URL(activeTarget).origin; } catch { return 'https://www.hdfilmcehennemi.nl'; } })();
+    let text = await fetchWithTorOrDirect(activeTarget, [
+      `Referer: ${activeOrigin}/`,
       'x-requested-with: fetch',
       'Accept: application/json, text/plain, */*'
     ], 6);
+
+    if (!text && /hdfilmcehennemi\.nl/i.test(activeTarget)) {
+      activeTarget = activeTarget.replace(/hdfilmcehennemi\.nl/i, 'hdfilmcehennemi.com');
+      activeOrigin = 'https://www.hdfilmcehennemi.com';
+      text = await fetchWithTorOrDirect(activeTarget, [
+        `Referer: ${activeOrigin}/`,
+        'x-requested-with: fetch',
+        'Accept: application/json, text/plain, */*'
+      ], 6);
+    }
 
     if (!text) return null;
     let html = text;
@@ -1552,7 +1687,9 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
   }
   if (Array.isArray(sources)) {
     for (const s of sources) {
-      if (s?.sourceToken) {
+      if (typeof s === 'string') {
+        addTarget(s, { title, year, imdbId });
+      } else if (s?.sourceToken) {
         const u = unsealSourcePayload(s.sourceToken);
         if (u?.url) addTarget(u.url, u);
       } else if (s?.url) {
@@ -1603,6 +1740,7 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
 
   // 4. Race resolution across ALL source websites concurrently
   const perSourcePromises = targets.map(async (src) => {
+    const t0 = Date.now();
     let resolved = null;
     if (fastResolve) {
       try {
@@ -1627,7 +1765,7 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
         }
       } catch {}
     }
-    return { src, resolved };
+    return { src, resolved, elapsedMs: Date.now() - t0 };
   });
 
   const [resolvedSources, externalSubtitles] = await Promise.all([
@@ -1783,29 +1921,51 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
       });
     };
 
-    if (process.env.STREAM_RESOLVER_API_URL) {
-      const resolverUrl = process.env.STREAM_RESOLVER_API_URL;
+    const callResolverMicroservice = async (baseUrl, fallbackTarget) => {
       const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.min(fetchTimeout, 9500));
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), Math.min(fetchTimeout, 9500));
         const headers = { 'Content-Type': 'application/json' };
         if (apiKey) headers['x-api-key'] = apiKey;
-        const microResponse = await fetch(`${resolverUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
+        const microResponse = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/resolve-stream`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ url: targets[0].url, timeout: Math.min(fetchTimeout, 9500) }),
+          body: JSON.stringify({ url: fallbackTarget.url, timeout: Math.min(fetchTimeout, 9500) }),
           signal: controller.signal,
         });
-        clearTimeout(timer);
         const data = await microResponse.json().catch(() => null);
         const payload = data?.data || data;
         const sUrl = payload?.streamUrl;
         if (microResponse.ok && sUrl && !sUrl.includes('filmakinesimp4') && !sUrl.includes('blank.mp4')) {
-          pushFallbackResult(sUrl, payload.headers, payload.subtitles, payload.pageTitle, targets[0]);
+          pushFallbackResult(sUrl, payload.headers, payload.subtitles, payload.pageTitle, fallbackTarget);
+          return true;
+        }
+      } catch {} finally {
+        clearTimeout(timer);
+      }
+      return false;
+    };
+
+    let microSucceeded = false;
+    if (process.env.STREAM_RESOLVER_API_URL) {
+      microSucceeded = await callResolverMicroservice(process.env.STREAM_RESOLVER_API_URL, targets[0]);
+    } else if (!process.env.BLOG_ORIGIN) {
+      // Probe local standalone stream-resolver daemon on 127.0.0.1:3001 (only when BLOG_ORIGIN isn't occupying 3001)
+      try {
+        const healthRes = await fetch('http://127.0.0.1:3001/health', { signal: AbortSignal.timeout(350) });
+        if (healthRes.ok) {
+          for (const fallbackTarget of targets.slice(0, 2)) {
+            if (await callResolverMicroservice('http://127.0.0.1:3001', fallbackTarget)) {
+              microSucceeded = true;
+              break;
+            }
+          }
         }
       } catch {}
-    } else if (inProcessPlaywrightResolve) {
+    }
+
+    if (!microSucceeded && inProcessPlaywrightResolve) {
       for (const fallbackTarget of targets.slice(0, 2)) {
         try {
           const pwRes = await inProcessPlaywrightResolve(fallbackTarget.url, { timeout: Math.min(fetchTimeout, 9000) });
@@ -1820,17 +1980,37 @@ router.post('/resolve-stream', optionalProtect, resolverLimiter, (req, res, next
   }
 
   if (streamCandidates.length === 0) {
+    const adminDiagnostics = isPrivileged
+      ? {
+          capabilities: {
+            tlsPythonReady: Boolean(resolveTlsPythonBin()),
+            torReachable: await isTorReachable(),
+            proxyConfigured: Boolean(buildEnvProxyUrl()),
+            playwrightReady: Boolean(inProcessPlaywrightResolve),
+          },
+          perTarget: resolvedSources.map(({ src, resolved, elapsedMs }) => ({
+            providerKey: src.providerKey,
+            elapsedMs: elapsedMs || 0,
+            status: resolved?.isTakedown
+              ? 'takedown_451'
+              : (resolved?.streamUrl ? 'resolved_filtered' : (resolved ? 'alts_no_stream' : 'empty')),
+          })),
+        }
+      : undefined;
+
     if (takedownError) {
       return res.status(451).json({
         success: false,
         error: takedownError,
         code: 'LEGAL_TAKEDOWN',
+        ...(adminDiagnostics ? { diagnostics: adminDiagnostics } : {}),
       });
     }
     return res.status(404).json({
       success: false,
       error: 'Film akışı şu anda hiçbir kaynakta çözümlenemedi. Lütfen başka bir film veya tekrar denemeyi seçin.',
       code: 'STREAM_NOT_FOUND',
+      ...(adminDiagnostics ? { diagnostics: adminDiagnostics } : {}),
     });
   }
 
@@ -2627,8 +2807,8 @@ async function searchFullHDFilm(query) {
  * HDFilmCehennemi hızlı arama (concurrent direct/TLS AJAX + HTML /?s= fallback)
  */
 async function searchHDFilmCehennemi(query) {
-  const base = 'https://www.hdfilmcehennemi.nl';
-  const parseHdfJsonItems = (jsonRaw) => {
+  const bases = ['https://www.hdfilmcehennemi.nl', 'https://www.hdfilmcehennemi.com'];
+  const parseHdfJsonItems = (jsonRaw, activeBase) => {
     const json = JSON.parse(jsonRaw);
     const results = [];
     if (json && Array.isArray(json.results)) {
@@ -2641,12 +2821,12 @@ async function searchHDFilmCehennemi(query) {
           const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
           let finalUrl = urlMatch[1].trim();
           if (!finalUrl.startsWith('http')) {
-            finalUrl = `${base}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
+            finalUrl = `${activeBase}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
           }
           let finalPoster = posterMatch ? posterMatch[1].trim() : null;
           if (finalPoster && finalPoster.startsWith('data:')) finalPoster = null;
           if (finalPoster && !finalPoster.startsWith('http')) {
-            finalPoster = `${base}${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
+            finalPoster = `${activeBase}${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
           }
           results.push({
             provider: 'HDFilmCehennemi',
@@ -2663,82 +2843,91 @@ async function searchHDFilmCehennemi(query) {
   };
 
   try {
-    const targetUrl = `${base}/search/?q=${encodeURIComponent(query)}`;
-    const reqHeaders = {
-      'Referer': `${base}/`,
-      'Origin': base,
-      'x-requested-with': 'fetch',
-      'Accept': 'application/json, text/plain, */*',
+    const tryAjaxForBase = async (activeBase) => {
+      const targetUrl = `${activeBase}/search/?q=${encodeURIComponent(query)}`;
+      const reqHeaders = {
+        'Referer': `${activeBase}/`,
+        'Origin': activeBase,
+        'x-requested-with': 'fetch',
+        'Accept': 'application/json, text/plain, */*',
+      };
+      const tryFetch = async () => {
+        const fRes = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+            ...reqHeaders,
+          },
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!fRes.ok) throw new Error(`HTTP ${fRes.status}`);
+        const txt = await fRes.text();
+        if (!txt || !txt.trim().startsWith('{')) throw new Error('Not JSON');
+        return { txt, activeBase };
+      };
+      const tryTls = async () => {
+        const txt = await fetchWithTlsImpersonator(targetUrl, `${activeBase}/`, 'GET', '', reqHeaders, { timeoutMs: 7000 });
+        if (!txt || !txt.trim().startsWith('{')) throw new Error('TLS Not JSON');
+        return { txt, activeBase };
+      };
+      return await Promise.any([tryFetch(), tryTls()]);
     };
 
-    const tryFetch = async () => {
-      const fRes = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-          ...reqHeaders,
-        },
-        signal: AbortSignal.timeout(3000),
-      });
-      if (!fRes.ok) throw new Error(`HTTP ${fRes.status}`);
-      const txt = await fRes.text();
-      if (!txt || !txt.trim().startsWith('{')) throw new Error('Not JSON');
-      return txt;
-    };
-
-    const tryTls = async () => {
-      const txt = await fetchWithTlsImpersonator(targetUrl, `${base}/`, 'GET', '', reqHeaders, { timeoutMs: 5500 });
-      if (!txt || !txt.trim().startsWith('{')) throw new Error('TLS Not JSON');
-      return txt;
-    };
-
-    let raw = '';
+    let matched = null;
     try {
-      raw = await Promise.any([tryFetch(), tryTls()]);
+      matched = await Promise.any(bases.map((b) => tryAjaxForBase(b)));
     } catch {}
 
-    if (!raw || !raw.trim().startsWith('{')) {
-      raw = await fetchViaScraperApi(targetUrl, { timeoutMs: 5000, headers: reqHeaders, keepHeaders: true });
+    if (!matched?.txt || !matched.txt.trim().startsWith('{')) {
+      const scUrl = `${bases[0]}/search/?q=${encodeURIComponent(query)}`;
+      const scTxt = await fetchViaScraperApi(scUrl, {
+        timeoutMs: 5000,
+        headers: { Referer: `${bases[0]}/`, Origin: bases[0], 'x-requested-with': 'fetch', Accept: 'application/json, text/plain, */*' },
+        keepHeaders: true,
+      });
+      if (scTxt && scTxt.trim().startsWith('{')) matched = { txt: scTxt, activeBase: bases[0] };
     }
 
-    if (raw && raw.trim().startsWith('{')) {
-      const parsed = parseHdfJsonItems(raw);
+    if (matched?.txt && matched.txt.trim().startsWith('{')) {
+      const parsed = parseHdfJsonItems(matched.txt, matched.activeBase);
       if (parsed.length > 0) return parsed;
       return [];
     }
   } catch {}
 
-  // Fallback to HTML /?s= only when AJAX endpoint couldn't return JSON at all
-  try {
-    const htmlUrl = `${base}/?s=${encodeURIComponent(query)}`;
-    const html = await fetchHtmlRobust(htmlUrl, {
-      fetchHeaders: { Referer: `${base}/` },
-      curlHeaders: [`Referer: ${base}/`],
-      timeoutSec: 4,
-      fastSearch: true,
-    });
-    if (html) {
-      const results = [];
-      const cardRegex = /<a[^>]+class="poster"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-      let m;
-      while ((m = cardRegex.exec(html)) !== null) {
-        const href = m[1];
-        const inner = m[2];
-        const title = inner.match(/class="title"[^>]*>([^<]+)</i)?.[1] || inner.match(/alt="([^"]+)"/i)?.[1];
-        const poster = inner.match(/data-src="([^"]+)"/i)?.[1] || inner.match(/src="([^"]+)"/i)?.[1] || null;
-        if (href && title) {
-          results.push({
-            provider: 'HDFilmCehennemi',
-            providerKey: 'hdfilmcehennemi',
-            title: decodeHtmlEntities(title.trim()),
-            year: inner.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '',
-            url: href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`,
-            poster,
-          });
+  // Fallback to HTML /?s= across .nl and .com mirrors when AJAX endpoint couldn't return JSON
+  for (const activeBase of bases) {
+    try {
+      const htmlUrl = `${activeBase}/?s=${encodeURIComponent(query)}`;
+      const html = await fetchHtmlRobust(htmlUrl, {
+        fetchHeaders: { Referer: `${activeBase}/` },
+        curlHeaders: [`Referer: ${activeBase}/`],
+        timeoutSec: 4,
+        fastSearch: true,
+      });
+      if (html) {
+        const results = [];
+        const cardRegex = /<a[^>]+class="poster"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+        let m;
+        while ((m = cardRegex.exec(html)) !== null) {
+          const href = m[1];
+          const inner = m[2];
+          const title = inner.match(/class="title"[^>]*>([^<]+)</i)?.[1] || inner.match(/alt="([^"]+)"/i)?.[1];
+          const poster = inner.match(/data-src="([^"]+)"/i)?.[1] || inner.match(/src="([^"]+)"/i)?.[1] || null;
+          if (href && title) {
+            results.push({
+              provider: 'HDFilmCehennemi',
+              providerKey: 'hdfilmcehennemi',
+              title: decodeHtmlEntities(title.trim()),
+              year: inner.match(/\b(19\d{2}|20\d{2})\b/)?.[1] || '',
+              url: href.startsWith('http') ? href : `${activeBase}${href.startsWith('/') ? '' : '/'}${href}`,
+              poster,
+            });
+          }
         }
+        if (results.length > 0) return results.slice(0, 10);
       }
-      if (results.length > 0) return results.slice(0, 10);
-    }
-  } catch {}
+    } catch {}
+  }
 
   return [];
 }
@@ -2915,10 +3104,11 @@ async function searchRoketDizi(query) {
       }
     } catch {}
 
-    // 2. Direct Curl POST (fast)
-    try {
-      const { stdout } = await execFileAsync(CURL_BIN, [
-        '-s', '-L', '--max-time', '3',
+    const envProxyUrl = buildEnvProxyUrl();
+    const torOpen = await isTorReachable();
+    const runCurlPost = async (proxyMode) => {
+      const args = [
+        '-s', '-L', '--max-time', proxyMode === 'direct' ? '3' : '6',
         '-X', 'POST',
         '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         '-H', 'Content-Type: application/json',
@@ -2926,18 +3116,42 @@ async function searchRoketDizi(query) {
         '-H', 'Referer: https://roketdizi.life/',
         '-H', 'Origin: https://roketdizi.life',
         '-d', payload,
-        apiEndpoint,
-      ]);
-      const p = parseRoketJson(stdout);
+      ];
+      if (proxyMode === 'env' && envProxyUrl) args.push('-x', envProxyUrl);
+      if (proxyMode === 'tor') args.push('--socks5-hostname', '127.0.0.1:9050');
+      args.push(apiEndpoint);
+      const { stdout } = await execFileAsync(CURL_BIN, args);
+      return parseRoketJson(stdout);
+    };
+
+    // 1.5. Env Proxy POST (if configured)
+    if (envProxyUrl) {
+      try {
+        const p = await runCurlPost('env');
+        if (p.valid) return p;
+      } catch {}
+    }
+
+    // 2. Direct Curl POST (fast)
+    try {
+      const p = await runCurlPost('direct');
       if (p.valid) return p;
     } catch {}
 
-    // 3. Python TLS Chrome 124 Impersonator POST (direct first, Tor fallback inside Python)
+    // 3. Python TLS Chrome Impersonator POST (Proxy/Direct/Tor inside Python)
     try {
-      const tlsOut = await fetchWithTlsImpersonator(apiEndpoint, 'https://roketdizi.life/', 'POST', payload, reqHdrs, { timeoutMs: 6500 });
+      const tlsOut = await fetchWithTlsImpersonator(apiEndpoint, 'https://roketdizi.life/', 'POST', payload, reqHdrs, { timeoutMs: 7500 });
       const p = parseRoketJson(tlsOut);
       if (p.valid) return p;
     } catch {}
+
+    // 3.5. Tor Curl POST fallback if Tor daemon is reachable
+    if (torOpen) {
+      try {
+        const p = await runCurlPost('tor');
+        if (p.valid) return p;
+      } catch {}
+    }
 
     // 4. ScraperAPI POST fallback if configured
     const scOut = await fetchViaScraperApi(apiEndpoint, {
@@ -3275,21 +3489,62 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
       showSources: isPrivileged,
       cached: true,
       searchMs: Date.now() - searchStart,
+      ...(isPrivileged && cached.diagnostics ? { diagnostics: cached.diagnostics } : {}),
     });
   }
 
-  // 2. Eşzamanlı 6 kaynak arama (Jet hızında: her sağlayıcıya sıkı 5.8 sn bütçe + aynı sorgu tekilleştirme)
+  // 2. Eşzamanlı 6 kaynak arama (Tor/TLS şansı korunarak sıkı zaman bütçesi + aynı sorgu tekilleştirme)
   let sharedTask = inFlightMovieSearches.get(cacheKey);
   if (!sharedTask) {
     sharedTask = (async () => {
+      const capabilities = {
+        tlsPythonReady: Boolean(resolveTlsPythonBin()),
+        torReachable: await isTorReachable(),
+        proxyConfigured: Boolean(buildEnvProxyUrl()),
+        playwrightReady: Boolean(inProcessMovieSearch),
+      };
+      const providerStats = {};
+      const runTimedProvider = async (providerKey, promiseFn, budgetMs) => {
+        const t0 = Date.now();
+        let timedOut = false;
+        let timer = null;
+        try {
+          const items = await Promise.race([
+            promiseFn(),
+            new Promise((resolve) => {
+              timer = setTimeout(() => {
+                timedOut = true;
+                resolve([]);
+              }, budgetMs);
+            }),
+          ]);
+          const list = Array.isArray(items) ? items : [];
+          providerStats[providerKey] = {
+            count: list.length,
+            ms: Date.now() - t0,
+            status: timedOut ? 'timeout' : (list.length > 0 ? 'ok' : 'empty'),
+          };
+          return list;
+        } catch (err) {
+          providerStats[providerKey] = {
+            count: 0,
+            ms: Date.now() - t0,
+            status: 'error',
+          };
+          return [];
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      };
+
       try {
         const settled = await Promise.allSettled([
-          withSearchTimeout(searchFullHDFilm(trimmedQuery), 5800),
-          withSearchTimeout(searchHDFilmCehennemi(trimmedQuery), 5800),
-          withSearchTimeout(searchFilmMakinesi(trimmedQuery), 5800),
-          withSearchTimeout(searchFilmDozu(trimmedQuery), 5000),
-          withSearchTimeout(searchFilmIzyon(trimmedQuery), 5000),
-          withSearchTimeout(searchRoketDizi(trimmedQuery), 5800),
+          runTimedProvider('fullhdfilmizlesene', () => searchFullHDFilm(trimmedQuery), 7200),
+          runTimedProvider('hdfilmcehennemi', () => searchHDFilmCehennemi(trimmedQuery), 7500),
+          runTimedProvider('filmmakinesi', () => searchFilmMakinesi(trimmedQuery), 7200),
+          runTimedProvider('filmdozu', () => searchFilmDozu(trimmedQuery), 5500),
+          runTimedProvider('filmizyon', () => searchFilmIzyon(trimmedQuery), 5500),
+          runTimedProvider('roketdizi', () => searchRoketDizi(trimmedQuery), 7200),
         ]);
 
         const combined = [];
@@ -3299,12 +3554,14 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
           }
         }
 
+        const diagnostics = { capabilities, providers: providerStats };
+
         if (combined.length > 0) {
           const unifiedResults = deduplicateMovieResults(combined);
           const providerCount = new Set(combined.map(r => r.providerKey)).size;
           const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : (providerCount >= 2 ? 90 * 1000 : 15 * 1000);
-          inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unifiedResults });
-          return { results: unifiedResults, providerCount };
+          inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unifiedResults, diagnostics });
+          return { results: unifiedResults, providerCount, diagnostics };
         }
       } catch (fastSearchErr) {
         console.warn('[HLSProxy] Fast search error:', fastSearchErr.message);
@@ -3318,15 +3575,16 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
             const unified = deduplicateMovieResults(rawResults);
             const providerCount = new Set(rawResults.map(r => r.providerKey)).size;
             const ttlMs = providerCount >= 4 ? SEARCH_CACHE_TTL : (providerCount >= 2 ? 90 * 1000 : 15 * 1000);
-            inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unified });
-            return { results: unified, providerCount };
+            const diagnostics = { capabilities, providers: providerStats, playwrightFallbackUsed: true };
+            inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), ttlMs, results: unified, diagnostics });
+            return { results: unified, providerCount, diagnostics };
           }
         } catch (err) {
           console.warn('[HLSProxy] In-process movie search error:', err.message);
         }
       }
 
-      return { results: [], providerCount: 0 };
+      return { results: [], providerCount: 0, diagnostics: { capabilities, providers: providerStats } };
     })().finally(() => {
       inFlightMovieSearches.delete(cacheKey);
     });
@@ -3343,6 +3601,7 @@ router.all(['/search-movies', '/api/search-movies'], optionalProtect, async (req
     providerCount: outcome.providerCount || 0,
     showSources: isPrivileged,
     searchMs: Date.now() - searchStart,
+    ...(isPrivileged && outcome.diagnostics ? { diagnostics: outcome.diagnostics } : {}),
   });
 });
 
