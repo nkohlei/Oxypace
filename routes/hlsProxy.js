@@ -1047,7 +1047,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   const isValidHdfResponse = (t) => Boolean(t && t.length > 500 && !isBlockedOrChallenge(t));
 
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
-    const isHdfMainOnLinux = process.platform === 'linux' && url.includes('hdfilmcehennemi.nl') && !!getValidScraperApiKey();
+    const isHdfMainOnLinux = process.platform === 'linux' && url.includes('hdfilmcehennemi.') && !!getValidScraperApiKey();
 
     // 0. Configured PROXY_SERVER (residential/TR proxy if set in .env)
     const envProxy = buildEnvProxyUrl();
@@ -1133,7 +1133,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
           if (idx !== -1) fHeaders[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
         }
         const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&keep_headers=true&url=${encodeURIComponent(url)}`;
-        const res = await fetch(sUrl, { headers: fHeaders, signal: AbortSignal.timeout((timeoutSec + 10) * 1000) });
+        const res = await fetch(sUrl, { headers: fHeaders, signal: AbortSignal.timeout((timeoutSec + 6) * 1000) });
         if (res.status === 401 || res.status === 403) {
           exhaustedScraperKeys.add(apiKey);
         } else if (res.ok) {
@@ -1172,16 +1172,15 @@ async function directResolveHDFilmCehennemi(targetUrl) {
     for (const [, u] of embedMatches) {
       let clean = u.trim();
       if (clean.startsWith('//')) clean = 'https:' + clean;
-      if (clean.startsWith('http') && !embedUrls.includes(clean)) {
-        embedUrls.push(clean);
-
-        // Mirror expansion: playmix.uno is the open mirror of hdfilmcehennemi.mobi (bypasses Turnstile)
+      if (clean.startsWith('http')) {
+        // Mirror expansion: playmix.uno is the open mirror of hdfilmcehennemi.mobi (bypasses Turnstile, fast direct)
         const idMatch = clean.match(/\/video\/embed\/([^/?#]+)/) || clean.match(/\/embed\/([^/?#]+)/);
         if (idMatch && idMatch[1]) {
           const mirror = `https://playmix.uno/video/embed/${idMatch[1]}/`;
           if (!embedUrls.includes(mirror)) embedUrls.push(mirror);
-          const mirrorAlt = `https://playmix.uno/embed/${idMatch[1]}`;
-          if (!embedUrls.includes(mirrorAlt)) embedUrls.push(mirrorAlt);
+        }
+        if (!embedUrls.includes(clean)) {
+          embedUrls.push(clean);
         }
       }
     }
