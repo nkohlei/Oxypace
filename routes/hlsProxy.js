@@ -1048,6 +1048,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
 
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
     const isHdfMainOnLinux = process.platform === 'linux' && url.includes('hdfilmcehennemi.') && !!getValidScraperApiKey();
+    const isPlaymix = url.includes('playmix.uno');
 
     // 0. Configured PROXY_SERVER (residential/TR proxy if set in .env)
     const envProxy = buildEnvProxyUrl();
@@ -1067,10 +1068,10 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       } catch (e) {}
     }
 
-    // Fast-path: on OCI Linux where hdfilmcehennemi.nl blocks datacenter/Tor, skip guaranteed 451/403 hops
+    // Fast-path: on OCI Linux where hdfilmcehennemi blocks datacenter/Tor, skip guaranteed 451/403 hops
     if (!isHdfMainOnLinux) {
-      // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
-      if (process.platform === 'linux' && await isTorReachable()) {
+      // 1. Tor SOCKS5 priority on Linux server (skip for playmix.uno which works direct in ~200ms)
+      if (!isPlaymix && process.platform === 'linux' && await isTorReachable()) {
         try {
           const argsTor = [
             '-s', '-L',
@@ -1087,10 +1088,12 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         } catch (e) {}
       }
 
-      // 2. Direct fetch (for local or non-blocked environments)
+      // 2. Direct fetch (for local or non-blocked environments; playmix.uno blocks bare Chrome UA without Sec-CH-UA -> use Mozilla/5.0)
       try {
         const fHeaders = {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'User-Agent': isPlaymix
+            ? 'Mozilla/5.0'
+            : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         };
         for (const h of headers) {
