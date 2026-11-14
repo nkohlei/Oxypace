@@ -1153,7 +1153,10 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       'Accept: application/json, text/plain, */*'
     ], 6);
 
-    if (!text) return null;
+    if (!text) {
+      console.warn('[directResolveHDFilmCehennemi] Empty main response for:', targetUrl);
+      return null;
+    }
     let html = text;
     if (text.trim().startsWith('{')) {
       try {
@@ -1187,6 +1190,9 @@ async function directResolveHDFilmCehennemi(targetUrl) {
 
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').replace(/-?\s*HDFilmcehennemi.*/i, '').trim() : 'Film Akışı';
+    if (embedUrls.length === 0) {
+      console.warn('[directResolveHDFilmCehennemi] 0 embedUrls found in html len:', html.length);
+    }
 
     for (const embedUrl of embedUrls) {
       let embedHost = 'hdfilmcehennemi.mobi';
@@ -1196,7 +1202,10 @@ async function directResolveHDFilmCehennemi(targetUrl) {
         'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       ], 5);
 
-      if (!embedHtml) continue;
+      if (!embedHtml) {
+        console.warn('[directResolveHDFilmCehennemi] Empty embedHtml for:', embedUrl);
+        continue;
+      }
 
       // Collect subtitles
       const subtitles = [];
@@ -1325,31 +1334,6 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
           type: rawStream.toLowerCase().includes('.mp4') ? 'mp4' : 'm3u8',
           headers: directRes.headers || {},
           pageTitle: directRes.pageTitle || 'HDFilmCehennemi',
-          subtitles: proxiedSubtitles,
-          cached: false,
-          resolvedIn: Date.now() - startTime,
-        });
-      }
-    } catch {}
-  }
-  if (trimmedUrl.includes('hdfilmcehennemi')) {
-    try {
-      const directResult = await directResolveHDFilmCehennemi(trimmedUrl);
-      if (directResult && directResult.streamUrl) {
-        const streamHeaders = directResult.headers || {};
-        const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(directResult.streamUrl)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`;
-        const proxiedSubtitles = (directResult.subtitles || []).map(sub => ({
-          ...sub,
-          playableUrl: `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(sub.file)}&referer=${encodeURIComponent(streamHeaders.referer || '')}&origin=${encodeURIComponent(streamHeaders.origin || '')}`,
-        }));
-        return res.status(200).json({
-          success: true,
-          status: 'success',
-          streamUrl: directResult.streamUrl,
-          playableStreamUrl,
-          type: 'm3u8',
-          headers: streamHeaders,
-          pageTitle: directResult.pageTitle || 'Film Akışı',
           subtitles: proxiedSubtitles,
           cached: false,
           resolvedIn: Date.now() - startTime,
