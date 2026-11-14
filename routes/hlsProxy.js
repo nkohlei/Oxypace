@@ -1047,6 +1047,8 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   const isValidHdfResponse = (t) => Boolean(t && t.length > 500 && !isBlockedOrChallenge(t));
 
   const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
+    const isHdfMainOnLinux = process.platform === 'linux' && url.includes('hdfilmcehennemi.nl') && !!getValidScraperApiKey();
+
     // 0. Configured PROXY_SERVER (residential/TR proxy if set in .env)
     const envProxy = buildEnvProxyUrl();
     if (envProxy) {
@@ -1065,55 +1067,58 @@ async function directResolveHDFilmCehennemi(targetUrl) {
       } catch (e) {}
     }
 
-    // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
-    if (process.platform === 'linux' && await isTorReachable()) {
+    // Fast-path: on OCI Linux where hdfilmcehennemi.nl blocks datacenter/Tor, skip guaranteed 451/403 hops
+    if (!isHdfMainOnLinux) {
+      // 1. Tor SOCKS5 priority on Linux server (bypasses Datacenter ASN Cloudflare Error 1005)
+      if (process.platform === 'linux' && await isTorReachable()) {
+        try {
+          const argsTor = [
+            '-s', '-L',
+            '--socks5-hostname', '127.0.0.1:9050',
+            '--max-time', String(timeoutSec),
+            '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            ...headers.flatMap(h => ['-H', h]),
+            url
+          ];
+          const { stdout } = await execFileAsync('curl', argsTor);
+          if (isValidHdfResponse(stdout)) {
+            return stdout;
+          }
+        } catch (e) {}
+      }
+
+      // 2. Direct fetch (for local or non-blocked environments)
       try {
-        const argsTor = [
+        const fHeaders = {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        };
+        for (const h of headers) {
+          const idx = h.indexOf(':');
+          if (idx !== -1) fHeaders[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
+        }
+        const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
+        if (res.ok) {
+          const t = await res.text();
+          if (isValidHdfResponse(t)) return t;
+        }
+      } catch (e) {}
+
+      // 3. Direct curl fallback
+      try {
+        const args = [
           '-s', '-L',
-          '--socks5-hostname', '127.0.0.1:9050',
           '--max-time', String(timeoutSec),
           '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           ...headers.flatMap(h => ['-H', h]),
           url
         ];
-        const { stdout } = await execFileAsync('curl', argsTor);
+        const { stdout } = await execFileAsync(CURL_BIN, args);
         if (isValidHdfResponse(stdout)) {
           return stdout;
         }
       } catch (e) {}
     }
-
-    // 2. Direct fetch (for local or non-blocked environments)
-    try {
-      const fHeaders = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      };
-      for (const h of headers) {
-        const idx = h.indexOf(':');
-        if (idx !== -1) fHeaders[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
-      }
-      const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
-      if (res.ok) {
-        const t = await res.text();
-        if (isValidHdfResponse(t)) return t;
-      }
-    } catch (e) {}
-
-    // 3. Direct curl fallback
-    try {
-      const args = [
-        '-s', '-L',
-        '--max-time', String(timeoutSec),
-        '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        ...headers.flatMap(h => ['-H', h]),
-        url
-      ];
-      const { stdout } = await execFileAsync(CURL_BIN, args);
-      if (isValidHdfResponse(stdout)) {
-        return stdout;
-      }
-    } catch (e) {}
 
     // 4. ScraperAPI TR fallback (only if configured and not exhausted)
     const apiKey = getValidScraperApiKey();
@@ -1302,7 +1307,32 @@ router.post('/resolve-stream', resolverLimiter, (req, res, next) => (req.body ? 
   const startTime = Date.now();
   const fetchTimeout = Math.min(parseInt(timeout, 10) || 20000, 21000);
 
-  // 0. Instant Standalone Direct Resolver for HDFilmCehennemi (Pure Node.js fetch & VM sandbox, 0 dependencies)
+  // 0. Instant Standalone Direct Resolver for HDFilmCehennemi (before slow fastResolve/Playwright)
+  if (lower.includes('hdfilmcehennemi')) {
+    try {
+      const directRes = await directResolveHDFilmCehennemi(trimmedUrl);
+      if (directRes && directRes.streamUrl) {
+        const proxiedSubtitles = (directRes.subtitles || []).map(sub => ({
+          ...sub,
+          playableUrl: `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(sub.file)}`,
+        }));
+        const rawStream = directRes.streamUrl;
+        const playableStreamUrl = `${resolveBaseOrigin}/api/proxy?url=${encodeURIComponent(rawStream)}${directRes.headers?.referer ? `&referer=${encodeURIComponent(directRes.headers.referer)}` : ''}`;
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          streamUrl: rawStream,
+          playableStreamUrl,
+          type: rawStream.toLowerCase().includes('.mp4') ? 'mp4' : 'm3u8',
+          headers: directRes.headers || {},
+          pageTitle: directRes.pageTitle || 'HDFilmCehennemi',
+          subtitles: proxiedSubtitles,
+          cached: false,
+          resolvedIn: Date.now() - startTime,
+        });
+      }
+    } catch {}
+  }
   if (trimmedUrl.includes('hdfilmcehennemi')) {
     try {
       const directResult = await directResolveHDFilmCehennemi(trimmedUrl);
@@ -1644,57 +1674,57 @@ async function searchFullHDFilm(query) {
  * HDFilmCehennemi doğrudan arama (Önce Doğrudan Curl Ajax, sonra DuckDuckGo/ScraperAPI fallback)
  */
 async function searchHDFilmCehennemi(query) {
-  // 1. Direct Node fetch with AJAX headers (ultra-fast, ~500ms, zero external dependencies)
   try {
     const targetUrl = `https://www.hdfilmcehennemi.nl/search/?q=${encodeURIComponent(query)}`;
     let raw = '';
-    try {
-      const fRes = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://www.hdfilmcehennemi.nl/',
-          'x-requested-with': 'fetch',
-          'Accept': 'application/json, text/plain, */*',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-      if (fRes.ok) {
-        raw = await fRes.text();
-      }
-    } catch {}
+    const apiKey = getValidScraperApiKey();
+    const preferScraperOnLinux = process.platform === 'linux' && !!apiKey && !buildEnvProxyUrl();
 
-    // Fallback to Python TLS Impersonator or curl if direct fetch fails
-    if (!raw || !raw.startsWith('{')) {
-      raw = await fetchWithTlsImpersonator(targetUrl, 'https://www.hdfilmcehennemi.nl/');
-    }
-    if (!raw || !raw.startsWith('{')) {
-      raw = await fetchWithCurl(targetUrl, [
-        'Referer: https://www.hdfilmcehennemi.nl/',
-        'x-requested-with: fetch',
-        'Accept: application/json, text/plain, */*'
-      ], 6);
-    }
-    if (!raw || !raw.startsWith('{')) {
-      const apiKey = getValidScraperApiKey();
-      if (apiKey) {
-        try {
-          const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
-          const sRes = await fetch(sUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-              'Referer': 'https://www.hdfilmcehennemi.nl/',
-              'x-requested-with': 'fetch',
-              'Accept': 'application/json, text/plain, */*',
-            },
-            signal: AbortSignal.timeout(15000),
-          });
-          if (sRes.status === 401 || sRes.status === 403) {
-            exhaustedScraperKeys.add(apiKey);
-          } else if (sRes.ok) {
-            raw = await sRes.text();
-          }
-        } catch {}
+    if (!preferScraperOnLinux) {
+      try {
+        const fRes = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.hdfilmcehennemi.nl/',
+            'x-requested-with': 'fetch',
+            'Accept': 'application/json, text/plain, */*',
+          },
+          signal: AbortSignal.timeout(4000),
+        });
+        if (fRes.ok) {
+          raw = await fRes.text();
+        }
+      } catch {}
+
+      if (!raw || !raw.startsWith('{')) {
+        raw = await fetchWithTlsImpersonator(targetUrl, 'https://www.hdfilmcehennemi.nl/');
       }
+      if (!raw || !raw.startsWith('{')) {
+        raw = await fetchWithCurl(targetUrl, [
+          'Referer: https://www.hdfilmcehennemi.nl/',
+          'x-requested-with: fetch',
+          'Accept: application/json, text/plain, */*'
+        ], 5);
+      }
+    }
+    if ((!raw || !raw.startsWith('{')) && apiKey) {
+      try {
+        const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
+        const sRes = await fetch(sUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.hdfilmcehennemi.nl/',
+            'x-requested-with': 'fetch',
+            'Accept': 'application/json, text/plain, */*',
+          },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (sRes.status === 401 || sRes.status === 403) {
+          exhaustedScraperKeys.add(apiKey);
+        } else if (sRes.ok) {
+          raw = await sRes.text();
+        }
+      } catch {}
     }
 
     const json = JSON.parse(raw);
@@ -1786,10 +1816,11 @@ async function searchHDFilmCehennemi(query) {
  * FilmMakinesi doğrudan arama (Önce Doğrudan Curl, sonra DDG/ScraperAPI fallback)
  */
 async function searchFilmMakinesi(query) {
-  // 1. Doğrudan Curl (filmmakinesi.to/arama/?s=, afiş ve başlıklarla 200ms)
+  // Direct site search only (avoid DuckDuckGo fallback returning unrelated homepage/sidebar movies)
   try {
     const targetUrl = `https://filmmakinesi.to/arama/?s=${encodeURIComponent(query)}`;
-    const html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 5);
+    const html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 3);
+    if (!html || isBlockedOrChallenge(html)) return [];
     const results = [];
     const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"/gi;
     let match;
@@ -1809,49 +1840,8 @@ async function searchFilmMakinesi(query) {
     }
     if (results.length > 0) return results.slice(0, 8);
   } catch (err) {
-    // continue to fallback
+    // ignore
   }
-
-  // 2. DuckDuckGo + ScraperAPI Fallback (Sadece geçerli anahtar varsa)
-  const apiKey = getValidScraperApiKey();
-  if (apiKey) {
-    try {
-      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent('site:filmmakinesi.to ' + query + ' izle')}`;
-      const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(ddgUrl)}`;
-      const res = await fetch(proxyUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
-      if (res.status === 403) {
-        exhaustedScraperKeys.add(apiKey);
-        return [];
-      }
-      if (!res.ok) return [];
-      const html = await res.text();
-      const results = [];
-      const matches = [...html.matchAll(/<h2[^>]+class="result__title"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
-      for (const m of matches) {
-        const rawHref = m[1];
-        const titleHtml = m[2];
-        let actualUrl = rawHref;
-        const uddgMatch = rawHref.match(/uddg=([^&]+)/);
-        if (uddgMatch) {
-          actualUrl = decodeURIComponent(uddgMatch[1]);
-        }
-        const title = titleHtml.replace(/<[^>]+>/g, '').replace(/izle$/i, '').replace(/film.*izle/i, '').replace(/filmmakinesi/i, '').replace(/[-–|]/g, ' ').trim();
-        if (actualUrl.includes('filmmakinesi.to') && (actualUrl.includes('/film/') || !actualUrl.endsWith('.to/')) && !actualUrl.includes('/kategori/') && !actualUrl.includes('/tur/')) {
-          results.push({
-            provider: 'FilmMakinesi',
-            providerKey: 'filmmakinesi',
-            title: decodeHtmlEntities(title),
-            url: actualUrl,
-            poster: null,
-          });
-        }
-      }
-      return results.slice(0, 6);
-    } catch (e) {
-      return [];
-    }
-  }
-
   return [];
 }
 

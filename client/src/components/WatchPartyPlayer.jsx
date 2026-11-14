@@ -1712,7 +1712,7 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         const subTicker = setInterval(() => {
             syncCurrentSubtitleCue();
-        }, 100);
+        }, 200);
         return () => clearInterval(subTicker);
     }, [syncCurrentSubtitleCue]);
 
@@ -2470,6 +2470,7 @@ const WatchPartyPlayer = () => {
         let playTransitionGuardTimer = null;
         let isBufferingStall = false;
         let lastPausedLockedTarget = null;
+        let lastPlayAttemptAt = 0;
 
         // ── Seek-storm guard ──
         // Every correction seek flushes the hardware decoder and usually triggers a new 'waiting' → recovery → seek cycle,
@@ -2524,10 +2525,15 @@ const WatchPartyPlayer = () => {
             if (!video || !watchParty || !watchParty.isPlaying) return;
             if (Date.now() < isUserActionCooldownRef.current) return;
 
+            if (video.paused && !video.seeking && Date.now() - lastPlayAttemptAt > 500) {
+                lastPlayAttemptAt = Date.now();
+                safePlay(video);
+            }
+
             const targetTime = computeTargetTime();
             const drift = targetTime - (video.currentTime || 0);
-            // Small drifts after a stall are tolerated (a seek costs more than it fixes). Tolerance widens during a seek storm.
-            const recoveryThreshold = recentCorrections() >= 2 ? 2.5 : 0.7;
+            // Tolerate HLS keyframe offsets to prevent audio desync & decoder flush stutters
+            const recoveryThreshold = recentCorrections() >= 2 ? 3.5 : 2.0;
             if (Math.abs(drift) > recoveryThreshold && (wasStalled || playTransitionGuardActive) && canCorrectNow()) {
                 playTransitionGuardActive = false;
                 performCorrectionSeek(targetTime);
@@ -2567,14 +2573,25 @@ const WatchPartyPlayer = () => {
                 setTimeout(() => { isSyncingRef.current = false; }, 200);
                 return;
             } else if (watchParty.isPlaying && video.paused) {
+                if (video.seeking) return;
+                // Wait for at least HAVE_CURRENT_DATA before repeatedly seeking/playing, throttle play() to prevent AbortError loop
+                if (video.readyState < 2) {
+                    if (Date.now() - lastPlayAttemptAt > 900) {
+                        lastPlayAttemptAt = Date.now();
+                        safePlay(video);
+                    }
+                    return;
+                }
+                if (Date.now() - lastPlayAttemptAt < 700) return;
+                lastPlayAttemptAt = Date.now();
                 isSyncingRef.current = true;
                 lastPausedLockedTarget = null;
                 playTransitionGuardActive = true;
                 if (playTransitionGuardTimer) clearTimeout(playTransitionGuardTimer);
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
-                }, 400);
-                if (absDrift > 1.2 && !video.seeking) {
+                }, 600);
+                if (absDrift > 2.0) {
                     lastProgrammaticSeekTimeRef.current = targetTime;
                     video.currentTime = targetTime;
                     setCurrentTime(targetTime);
@@ -2608,7 +2625,7 @@ const WatchPartyPlayer = () => {
                 video.playbackRate = 1.0;
             }
 
-            const hardSeekThreshold = recentCorrections() >= 2 ? 3.0 : 1.5;
+            const hardSeekThreshold = recentCorrections() >= 2 ? 4.5 : 3.0;
             const canHardSeek = !playTransitionGuardActive && canCorrectNow();
 
             if (absDrift > hardSeekThreshold && canHardSeek) {
@@ -2623,14 +2640,14 @@ const WatchPartyPlayer = () => {
 
         alignNativeVideo();
 
-        syncInterval = setInterval(alignNativeVideo, 250);
+        syncInterval = setInterval(alignNativeVideo, 400);
 
         if (watchParty.isPlaying && requestWatchSync) {
             masterSyncRequestInterval = setInterval(() => {
                 if (!video.seeking && Date.now() >= isUserActionCooldownRef.current) {
                     requestWatchSync();
                 }
-            }, 4000);
+            }, 8000);
         }
 
         return () => {
