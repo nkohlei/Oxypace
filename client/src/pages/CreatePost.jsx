@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Image, Camera, Mic, FolderOpen } from 'lucide-react';
+import { Image, Camera, Mic, FolderOpen, ClipboardPaste } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
 import { useUploadStore } from '../store/useUploadStore';
 import {
     MAX_POST_ATTACHMENTS,
     appendAttachmentDrafts,
     createFolderDraftFromPackage,
+    extractClipboardImageFiles,
     extractYouTubeInfo,
     prepareAndUploadPostAttachments,
+    readClipboardImageFiles,
     revokeAttachmentDraft,
 } from '../utils/mediaAttachments';
 
@@ -136,6 +138,35 @@ const CreatePost = () => {
         attachmentDrafts.forEach(revokeAttachmentDraft);
         setAttachmentDrafts([]);
         setError('');
+    };
+
+    const handleClipboardPasteEvent = useCallback((e) => {
+        if (loading || e.defaultPrevented) return;
+        const files = extractClipboardImageFiles(e.clipboardData);
+        if (files.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            appendFilesToDrafts(files);
+        }
+    }, [appendFilesToDrafts, loading]);
+
+    useEffect(() => {
+        const onWindowPaste = (e) => {
+            if (e.defaultPrevented) return;
+            handleClipboardPasteEvent(e);
+        };
+        window.addEventListener('paste', onWindowPaste);
+        return () => window.removeEventListener('paste', onWindowPaste);
+    }, [handleClipboardPasteEvent]);
+
+    const handleManualClipboardPaste = async () => {
+        if (loading) return;
+        const { files, error: clipErr } = await readClipboardImageFiles();
+        if (files.length > 0) {
+            appendFilesToDrafts(files);
+        } else if (clipErr) {
+            setError(clipErr);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -303,7 +334,7 @@ const CreatePost = () => {
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="create-form">
+                    <form onSubmit={handleSubmit} onPaste={handleClipboardPasteEvent} className="create-form">
                         <textarea
                             placeholder="Ne düşünüyorsun? (YouTube bağlantıları otomatik algılanır)"
                             value={content}
@@ -389,6 +420,16 @@ const CreatePost = () => {
                             >
                                 <FolderOpen size={20} strokeWidth={1.8} />
                                 <span>Dosya</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="media-btn"
+                                onClick={handleManualClipboardPaste}
+                                disabled={isSubmitting}
+                                title="Panodaki görseli yapıştır (Ctrl+V)"
+                            >
+                                <ClipboardPaste size={20} strokeWidth={1.8} />
+                                <span>Pano</span>
                             </button>
                         </div>
                     </form>

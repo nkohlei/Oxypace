@@ -26,6 +26,8 @@ import PostImageGallery from '../components/PostImageGallery';
 import PostAttachments from '../components/PostAttachments';
 import {
     extractYouTubeInfo,
+    extractClipboardImageFiles,
+    readClipboardImageFiles,
     revokeAttachmentDraft,
     appendAttachmentDrafts,
     createFolderDraftFromPackage,
@@ -40,7 +42,7 @@ import ReportModal from '../components/ReportModal';
 import UserAvatar from '../components/UserAvatar';
 import PortalInfoModal from '../components/PortalInfoModal';
 import { useSocket } from '../context/SocketContext';
-import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown, Search, Download, Image, Camera, Mic, FolderOpen } from 'lucide-react';
+import { User, FileText, Globe, Users, Lock, X, Check, Shield, AlertCircle, CheckCircle2, AtSign, Info, ChevronDown, Search, Download, Image, Camera, Mic, FolderOpen, ClipboardPaste } from 'lucide-react';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import { validateProfileFields } from '../utils/profanityFilter';
 import './Profile.css';
@@ -741,6 +743,7 @@ const Profile = () => {
         setComposeAttachments((prev) => {
             const { nextDrafts, warnings } = appendAttachmentDrafts(prev, files, { extra });
             if (warnings.length > 0) setError(warnings[0]);
+            else setError('');
             return nextDrafts;
         });
     }, []);
@@ -793,6 +796,45 @@ const Profile = () => {
             prev.forEach(revokeAttachmentDraft);
             return [];
         });
+        setError('');
+    };
+
+    const handleComposePaste = useCallback((e) => {
+        if (!isOwnProfile || composeLoading || e.defaultPrevented) return;
+        const files = extractClipboardImageFiles(e.clipboardData);
+        if (files.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            setComposeFocused(true);
+            appendComposeFiles(files);
+        }
+    }, [appendComposeFiles, composeLoading, isOwnProfile]);
+
+    useEffect(() => {
+        if (!isOwnProfile || activeTab !== 'posts') return undefined;
+        const onWindowPaste = (e) => {
+            if (e.defaultPrevented) return;
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+                if (!composeBoxRef.current?.contains(active)) return;
+            }
+            handleComposePaste(e);
+        };
+        window.addEventListener('paste', onWindowPaste);
+        return () => window.removeEventListener('paste', onWindowPaste);
+    }, [activeTab, handleComposePaste, isOwnProfile]);
+
+    const handleManualComposeClipboardPaste = async (e) => {
+        e?.stopPropagation?.();
+        if (composeLoading) return;
+        const { files, error: clipErr } = await readClipboardImageFiles();
+        if (files.length > 0) {
+            setComposeFocused(true);
+            appendComposeFiles(files);
+        } else if (clipErr) {
+            setComposeFocused(true);
+            setError(clipErr);
+        }
     };
 
     // Format date helper for posts
@@ -1594,6 +1636,7 @@ const Profile = () => {
                                                                         placeholder="Ne düşünüyorsun?"
                                                                         value={composeText}
                                                                         onChange={(e) => setComposeText(e.target.value)}
+                                                                        onPaste={handleComposePaste}
                                                                         autoFocus
                                                                         rows={3}
                                                                         className="compose-textarea"
@@ -1604,6 +1647,12 @@ const Profile = () => {
                                                                         onRemoveAttachment={handleRemoveComposeAttachment}
                                                                         onClearAll={handleClearComposeAttachments}
                                                                     />
+                                                                    {error && (
+                                                                        <div className="profile-edit-alert error" style={{ marginTop: '8px' }}>
+                                                                            <AlertCircle size={15} className="profile-edit-alert-icon" />
+                                                                            <span>{error}</span>
+                                                                        </div>
+                                                                    )}
                                                                     <div className="compose-actions">
                                                                         <div className="compose-tools">
                                                                             <button type="button" className="compose-tool-btn" onClick={() => composeGalleryInputRef.current?.click()} title="Galeri (Görsel / Video / GIF)">
@@ -1617,6 +1666,9 @@ const Profile = () => {
                                                                             </button>
                                                                             <button type="button" className="compose-tool-btn" onClick={() => setShowComposeFilePicker(true)} title="Dosya / Klasör">
                                                                                 <FolderOpen size={18} strokeWidth={1.8} />
+                                                                            </button>
+                                                                            <button type="button" className="compose-tool-btn" onClick={handleManualComposeClipboardPaste} title="Panodaki Görseli Yapıştır (Ctrl+V)">
+                                                                                <ClipboardPaste size={18} strokeWidth={1.8} />
                                                                             </button>
                                                                             <button type="button" className="compose-tool-btn" onClick={() => {
                                                                                 const ta = composeBoxRef.current?.querySelector('.compose-textarea');

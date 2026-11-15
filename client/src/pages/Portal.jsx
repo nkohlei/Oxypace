@@ -32,7 +32,7 @@ const ConferenceChannel = lazy(() => import('../components/ConferenceChannel'));
 import { useGlobalStore } from '../store/useGlobalStore';
 import { setActivePortalChannel, dismissPortalChannelNotifications } from '../utils/notificationUtils';
 import { useSocket } from '../context/SocketContext';
-import { X, Youtube, Search, Users, SendHorizontal, MessageSquare, Image, Camera, Mic, FolderOpen } from 'lucide-react';
+import { X, Youtube, Search, Users, SendHorizontal, MessageSquare, Image, Camera, Mic, FolderOpen, ClipboardPaste } from 'lucide-react';
 import PortalAlertBanner from '../components/PortalAlertBanner';
 import CameraCaptureModal from '../components/CameraCaptureModal';
 import AudioRecorderPopover from '../components/AudioRecorderPopover';
@@ -40,6 +40,8 @@ import FileFolderPickerModal from '../components/FileFolderPickerModal';
 import ComposerAttachmentTray from '../components/ComposerAttachmentTray';
 import {
     extractYouTubeInfo,
+    extractClipboardImageFiles,
+    readClipboardImageFiles,
     revokeAttachmentDraft,
     appendAttachmentDrafts,
     createFolderDraftFromPackage,
@@ -717,6 +719,42 @@ const Portal = () => {
             prev.forEach(revokeAttachmentDraft);
             return [];
         });
+    };
+
+    const handleComposerPaste = useCallback((e) => {
+        if (!canCreatePostInPortal || isGhost || isTanitimPortal || uploadLoading || e.defaultPrevented) return;
+        const files = extractClipboardImageFiles(e.clipboardData);
+        if (files.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            appendComposerFiles(files);
+            setShowPlusMenu(false);
+        }
+    }, [appendComposerFiles, canCreatePostInPortal, isGhost, isTanitimPortal, uploadLoading]);
+
+    useEffect(() => {
+        if (!canCreatePostInPortal || isGhost || isTanitimPortal || isVoiceChannelActive) return undefined;
+        const onWindowPaste = (e) => {
+            if (e.defaultPrevented) return;
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+                if (!active.closest?.('.channel-input-area')) return;
+            }
+            handleComposerPaste(e);
+        };
+        window.addEventListener('paste', onWindowPaste);
+        return () => window.removeEventListener('paste', onWindowPaste);
+    }, [canCreatePostInPortal, handleComposerPaste, isGhost, isTanitimPortal, isVoiceChannelActive]);
+
+    const handleManualClipboardPaste = async () => {
+        setShowPlusMenu(false);
+        if (uploadLoading) return;
+        const { files, error: clipErr } = await readClipboardImageFiles();
+        if (files.length > 0) {
+            appendComposerFiles(files);
+        } else if (clipErr) {
+            triggerToast(clipErr, 'warning');
+        }
     };
 
     // Typing Indicator Persistence logic
@@ -2016,6 +2054,15 @@ const Portal = () => {
                                                                                 </div>
                                                                                 Kamera
                                                                             </div>
+                                                                            <div
+                                                                                className="plus-menu-item"
+                                                                                onClick={handleManualClipboardPaste}
+                                                                            >
+                                                                                <div className="plus-menu-icon">
+                                                                                    <ClipboardPaste size={18} strokeWidth={1.9} />
+                                                                                </div>
+                                                                                Panodan Yapıştır
+                                                                            </div>
                                                                             {!isImageChannel && (
                                                                                 <>
                                                                                     <div
@@ -2200,6 +2247,7 @@ const Portal = () => {
                                                                                 onChange={(e) => {
                                                                                     setMessageText(e.target.value);
                                                                                 }}
+                                                                                onPaste={handleComposerPaste}
                                                                                 onKeyDown={(e) => {
                                                                                     if (e.key === 'Enter' && !e.shiftKey) {
                                                                                         e.preventDefault();

@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { Clipboard } from '@capacitor/clipboard';
 import { createCoverPreviewAndPalette } from './audioMetadata';
 
 export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB standard limit
@@ -474,4 +476,182 @@ export const prepareAndUploadPostAttachments = async ({
         mode: 'post',
         payloadFields: { attachments: uploaded },
     };
+};
+
+const CLIPBOARD_IMAGE_EXT_BY_MIME = {
+    'image/png': '.png',
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+    'image/bmp': '.bmp',
+    'image/avif': '.avif',
+};
+
+const CLIPBOARD_IMAGE_EXTS = new Set(Object.values(CLIPBOARD_IMAGE_EXT_BY_MIME).concat(['.heic']));
+
+export const mimeToImageExt = (mime = '') => {
+    const clean = String(mime || '').split(';')[0].trim().toLowerCase();
+    return CLIPBOARD_IMAGE_EXT_BY_MIME[clean] || '.png';
+};
+
+export const normalizeClipboardImageFile = (fileOrBlob, index = 0) => {
+    if (!fileOrBlob) return null;
+    const rawMime = String(fileOrBlob.type || '').split(';')[0].trim().toLowerCase();
+    const rawExt = getFileExtension(fileOrBlob.name || '');
+    const mime = rawMime.startsWith('image/') && !rawMime.includes('svg')
+        ? rawMime
+        : 'image/png';
+    const ext = rawExt && CLIPBOARD_IMAGE_EXTS.has(rawExt) ? rawExt : mimeToImageExt(mime);
+    const rawName = String(fileOrBlob.name || '').trim();
+    const isGeneric = !rawName || /^(image\.(png|jpg|jpeg|webp|gif)|blob|clipboard.*)$/i.test(rawName);
+    const suffix = index > 0 ? `-${index + 1}` : '';
+    const fileName = isGeneric ? `pano-gorseli-${Date.now()}${suffix}${ext}` : rawName;
+
+    return new File([fileOrBlob], fileName, {
+        type: mime,
+        lastModified: Date.now(),
+    });
+};
+
+export const dataUrlToImageFile = (dataUrl, index = 0) => {
+    if (!dataUrl || typeof dataUrl !== 'string') return null;
+    const match = dataUrl.trim().match(/^data:(image\/[a-zA-Z0-9.+-]+)(?:;(base64))?,(.*)$/s);
+    if (!match) return null;
+    const mime = match[1].toLowerCase();
+    if (mime.includes('svg')) return null;
+
+    try {
+        let bytes;
+        if (match[2]) {
+            const binary = atob(match[3].replace(/\s+/g, ''));
+            bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i += 1) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+        } else {
+            const decoded = decodeURIComponent(match[3]);
+            bytes = new Uint8Array(decoded.length);
+            for (let i = 0; i < decoded.length; i += 1) {
+                bytes[i] = decoded.charCodeAt(i) & 0xff;
+            }
+        }
+        const blob = new Blob([bytes], { type: mime });
+        return normalizeClipboardImageFile(blob, index);
+    } catch (_) {
+        return null;
+    }
+};
+
+const extractDataImageFilesFromHtml = (html = '', startIndex = 0) => {
+    if (!html || typeof html !== 'string') return [];
+    const files = [];
+    const regex = /<img[^>]+src=["'](data:image\/[^"']+)["']/gi;
+    let m;
+    while ((m = regex.exec(html)) !== null) {
+        const f = dataUrlToImageFile(m[1], startIndex + files.length);
+        if (f) files.push(f);
+    }
+    return files;
+};
+
+/**
+ * Synchronously extracts image Files from a DOM PasteEvent's clipboardData.
+ */
+export const extractClipboardImageFiles = (clipboardData) => {
+    if (!clipboardData) return [];
+    const files = [];
+
+    const items = Array.from(clipboardData.items || []);
+    for (const item of items) {
+        if (item.kind === 'file' && item.type && item.type.toLowerCase().startsWith('image/') && !item.type.toLowerCase().includes('svg')) {
+            const raw = item.getAsFile();
+            const normalized = normalizeClipboardImageFile(raw, files.length);
+            if (normalized) files.push(normalized);
+        }
+    }
+
+    if (files.length === 0 && clipboardData.files?.length) {
+        for (const raw of Array.from(clipboardData.files)) {
+            const mime = String(raw?.type || '').toLowerCase();
+            const ext = getFileExtension(raw?.name || '');
+            const isImage = (mime.startsWith('image/') && !mime.includes('svg')) || CLIPBOARD_IMAGE_EXTS.has(ext);
+            if (isImage) {
+                const normalized = normalizeClipboardImageFile(raw, files.length);
+                if (normalized) files.push(normalized);
+            }
+        }
+    }
+
+    if (files.length === 0 && typeof clipboardData.getData === 'function') {
+        const html = clipboardData.getData('text/html');
+        if (html) {
+            files.push(...extractDataImageFilesFromHtml(html, files.length));
+        }
+    }
+
+    return files;
+};
+
+/**
+ * Asynchronously reads image Files from the system clipboard on user gesture.
+ * Returns { files: File[], error: string | null }.
+ */
+export const readClipboardImageFiles = async () => {
+    try {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const res = await Clipboard.read();
+                const val = typeof res?.value === 'string' ? res.value.trim() : '';
+                if (val && (val.startsWith('data:image/') || res?.type?.toLowerCase().startsWith('image/'))) {
+                    const dataUrl = val.startsWith('data:image/')
+                        ? val
+                        : `data:${res.type};base64,${val}`;
+                    const file = dataUrlToImageFile(dataUrl, 0);
+                    if (file) return { files: [file], error: null };
+                }
+            } catch (_) {
+                // Fall through to web Clipboard API if available
+            }
+        }
+
+        if (typeof navigator === 'undefined' || !navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
+            return {
+                files: [],
+                error: 'Pano erişim izni verilmedi veya desteklenmiyor. Görseli Ctrl+V kısayolu ile yapıştırabilirsiniz.',
+            };
+        }
+
+        const clipboardItems = await navigator.clipboard.read();
+        const files = [];
+
+        for (const item of clipboardItems) {
+            const types = Array.from(item.types || []);
+            const imgType = types.find((t) => t.toLowerCase().startsWith('image/') && !t.toLowerCase().includes('svg'));
+            if (imgType) {
+                const blob = await item.getType(imgType);
+                const normalized = normalizeClipboardImageFile(blob, files.length);
+                if (normalized) files.push(normalized);
+                continue;
+            }
+            if (types.includes('text/html')) {
+                const htmlBlob = await item.getType('text/html');
+                const htmlText = await htmlBlob.text();
+                files.push(...extractDataImageFilesFromHtml(htmlText, files.length));
+            }
+        }
+
+        if (files.length > 0) {
+            return { files, error: null };
+        }
+        return {
+            files: [],
+            error: 'Panoda yapıştırılacak bir görsel bulunamadı.',
+        };
+    } catch (_) {
+        return {
+            files: [],
+            error: 'Pano erişim izni verilmedi veya desteklenmiyor. Görseli Ctrl+V kısayolu ile yapıştırabilirsiniz.',
+        };
+    }
 };
