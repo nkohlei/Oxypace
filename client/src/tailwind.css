@@ -1,30 +1,9 @@
 @import "tailwindcss";
 
 /* ── EVENT HORIZON PREMIUM DESIGN SYSTEM ── */
-:root, [data-theme='light'] {
-  --background: #FAF9F6;
-  --foreground: #0D0E12;
-  --foreground-muted: #6B7280;
-  --foreground-subtle: #9CA3AF;
-  --accent: #6366f1;
-  --accent-muted: rgba(99, 102, 241, 0.12);
-  --border-color: rgba(0, 0, 0, 0.07);
-  --border-hover: rgba(0, 0, 0, 0.14);
-  --grid-color: rgba(0, 0, 0, 0.022);
-  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
-  --glass-bg-hover: linear-gradient(135deg, rgba(255, 255, 255, 0.60) 0%, rgba(255, 255, 255, 0.25) 100%);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-border-hover: rgba(0, 0, 0, 0.12);
-  --glass-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 16px rgba(0, 0, 0, 0.06);
-  --glass-shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 12px 36px rgba(0, 0, 0, 0.12);
-  --nav-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
-  --modal-bg: rgba(255, 255, 255, 0.35);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.10);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
-  --panel-bg: rgba(255, 255, 255, 0.15);
-}
-
-[data-theme='dark'] {
+:root,
+[data-theme='dark'],
+html.dark {
   --background: #050505;
   --foreground: #F2F2F5;
   --foreground-muted: #71717A;
@@ -45,6 +24,31 @@
   --scrollbar-thumb: rgba(255, 255, 255, 0.08);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.20);
   --panel-bg: rgba(255, 255, 255, 0.02);
+}
+
+:root[data-theme='light'],
+[data-theme='light'],
+html.light {
+  --background: #FAF9F6;
+  --foreground: #0D0E12;
+  --foreground-muted: #6B7280;
+  --foreground-subtle: #9CA3AF;
+  --accent: #6366f1;
+  --accent-muted: rgba(99, 102, 241, 0.12);
+  --border-color: rgba(0, 0, 0, 0.07);
+  --border-hover: rgba(0, 0, 0, 0.14);
+  --grid-color: rgba(0, 0, 0, 0.022);
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
+  --glass-bg-hover: linear-gradient(135deg, rgba(255, 255, 255, 0.60) 0%, rgba(255, 255, 255, 0.25) 100%);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border-hover: rgba(0, 0, 0, 0.12);
+  --glass-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --glass-shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 12px 36px rgba(0, 0, 0, 0.12);
+  --nav-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
+  --modal-bg: rgba(255, 255, 255, 0.35);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.10);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --panel-bg: rgba(255, 255, 255, 0.15);
 }
 
 @theme {

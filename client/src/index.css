@@ -3,6 +3,7 @@
 /* Oxypace Theme - Fire & Stark Contrast */
 :root {
   /* Sleek Pure Black Theme (Dark Mode) */
+  --background: #050505;
   --bg-dark: #000000;
   --bg-darker: #000000;
   --bg-card: #121212;
@@ -265,6 +266,7 @@ html.has-gesture-nav {
 /* LIGHT THEME - Stark White & High Readability */
 :root[data-theme='light'],
 [data-theme='light'] {
+  --background: #FAF9F6;
   --bg-dark: #FFFFFF;
   --bg-darker: #F8FAFC;
   /* Very light gray for sidebars */
@@ -311,6 +313,7 @@ html.has-gesture-nav {
 html {
   font-size: 17px;
   height: 100%;
+  background-color: var(--background);
   overflow-x: hidden !important;
 }
 
@@ -322,6 +325,7 @@ html {
 
 body {
   background: var(--background);
+  background-color: var(--background);
   background-attachment: fixed;
   color: var(--text-primary);
   height: 100%;
