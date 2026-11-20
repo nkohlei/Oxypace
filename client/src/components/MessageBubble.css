@@ -483,9 +483,10 @@
 /* Unified Bubble when Card/Media + Caption coexist in one message */
 .message-bubble-content.unified-card {
     border-radius: 15px;
-    padding: 4px;
+    padding: 6px;
     gap: 0;
-    max-width: 258px;
+    width: 298px;
+    max-width: 298px;
     overflow: hidden;
 }
 
@@ -517,7 +518,7 @@
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
-    padding: 6px 8px 4px 8px;
+    padding: 7px 6px 2px 6px;
     width: 100%;
     color: inherit;
 }
@@ -525,9 +526,11 @@
 .message-bubble-content.unified-card .shared-portal-card,
 .message-bubble-content.unified-card .shared-post-card,
 .message-bubble-content.unified-card .message-media,
-.message-bubble-content.unified-card .post-pdf-container {
+.message-bubble-content.unified-card .post-pdf-container,
+.message-bubble-content.unified-card .internal-preview-card {
     width: 100%;
     max-width: 100%;
+    margin-top: 0;
     border-radius: 11px;
 }
 
@@ -539,11 +542,118 @@
     border: none;
 }
 
+/* Identical Balanced Medium Size for BOTH Portal URL Preview & Portal Invite Cards in Messages (ZERO Blue) */
+.message-bubble .internal-preview-card {
+    width: 286px;
+    max-width: 286px;
+    margin-top: 4px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+    transform: none !important;
+}
+
+.message-bubble .internal-preview-card.msg-portal-card {
+    margin-top: 0;
+}
+
+.message-bubble .internal-preview-card:hover {
+    transform: none !important;
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+.message-bubble .internal-card-banner {
+    height: 94px;
+}
+
+.message-bubble .internal-avatar-wrapper {
+    width: 44px;
+    height: 44px;
+    bottom: -16px;
+    left: 12px;
+    border-radius: 11px;
+    padding: 2px;
+}
+
+.message-bubble .internal-avatar-img {
+    border-radius: 9px;
+}
+
+.message-bubble .internal-card-content {
+    padding: 22px 12px 12px;
+    gap: 4px;
+}
+
+.message-bubble .internal-site-tag {
+    font-size: 9.5px;
+    letter-spacing: 0.8px;
+    color: rgba(255, 255, 255, 0.72) !important;
+    opacity: 1;
+}
+
+.message-bubble .internal-card-title {
+    font-size: 14px;
+    color: #ffffff;
+    margin: 0;
+}
+
+.message-bubble .internal-card-description {
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.72);
+    margin: 0;
+}
+
+/* Dark-on-Light own bubble adjustments */
+.message-bubble.own:not([data-custom-theme]) .internal-preview-card {
+    background: rgba(0, 0, 0, 0.82);
+}
+
+[data-theme='light'] .message-bubble.other .internal-preview-card {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .message-bubble.other .internal-site-tag {
+    color: rgba(13, 14, 18, 0.62) !important;
+}
+
+[data-theme='light'] .message-bubble.other .internal-card-title {
+    color: #0d0e12;
+}
+
+[data-theme='light'] .message-bubble.other .internal-card-description {
+    color: rgba(13, 14, 18, 0.68);
+}
+
 @media (max-width: 768px) {
     .shared-portal-card,
     .shared-post-card,
     .message-bubble-content.unified-card {
-        max-width: 226px;
+        width: 248px;
+        max-width: 248px;
+    }
+
+    .message-bubble .internal-preview-card {
+        width: 236px;
+        max-width: 236px;
+    }
+
+    .message-bubble .internal-card-banner {
+        height: 82px;
+    }
+
+    .message-bubble .internal-avatar-wrapper {
+        width: 38px;
+        height: 38px;
+        bottom: -14px;
+        left: 10px;
+    }
+
+    .message-bubble .internal-card-content {
+        padding: 19px 10px 10px;
     }
 }
 

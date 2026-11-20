@@ -11,6 +11,7 @@ const InviteUserModal = ({ portalId, onClose }) => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [invitedUsers, setInvitedUsers] = useState(new Set());
+    const [existingMembers, setExistingMembers] = useState(new Set());
     const [copiedLink, setCopiedLink] = useState(false);
     const [statusBanner, setStatusBanner] = useState(null);
     const feedbackTimerRef = useRef(null);
@@ -24,6 +25,24 @@ const InviteUserModal = ({ portalId, onClose }) => {
             setStatusBanner(null);
         }, 2600);
     };
+
+    useEffect(() => {
+        if (!portalId) return;
+        let cancelled = false;
+        axios
+            .get(`/api/portals/${portalId}`)
+            .then((res) => {
+                if (cancelled || !res.data) return;
+                const ids = new Set();
+                if (res.data.owner) ids.add(String(res.data.owner._id || res.data.owner));
+                (res.data.members || []).forEach((m) => ids.add(String(m._id || m)));
+                setExistingMembers(ids);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [portalId]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -61,15 +80,18 @@ const InviteUserModal = ({ portalId, onClose }) => {
     }, [searchQuery]);
 
     const handleInvite = async (userId) => {
+        const uidStr = String(userId);
+        if (existingMembers.has(uidStr)) {
+            showFeedback('Bu kullanıcı zaten bu portalın üyesi.', 'error');
+            return;
+        }
         try {
-            await Promise.all([
-                axios.post(`/api/portals/${portalId}/invite`, { userId }),
-                axios.post('/api/messages', {
-                    recipientId: userId,
-                    portalId,
-                    content: 'Seni bir portala davet ettim!',
-                }),
-            ]);
+            await axios.post(`/api/portals/${portalId}/invite`, { userId });
+            await axios.post('/api/messages', {
+                recipientId: userId,
+                portalId,
+                content: 'Seni bir portala davet ettim!',
+            });
             setInvitedUsers((prev) => new Set(prev).add(userId));
             showFeedback('Portal daveti gönderildi.');
         } catch (err) {
@@ -179,6 +201,7 @@ const InviteUserModal = ({ portalId, onClose }) => {
 
                     {results.map((user) => {
                         const userId = user._id || user;
+                        const isMember = existingMembers.has(String(userId));
                         const isInvited = invitedUsers.has(userId);
                         const fullName = user.profile?.fullName || user.profile?.displayName;
 
@@ -202,11 +225,16 @@ const InviteUserModal = ({ portalId, onClose }) => {
 
                                 <button
                                     type="button"
-                                    className={`invite-action-btn ${isInvited ? 'invited' : ''}`}
-                                    onClick={() => !isInvited && handleInvite(userId)}
-                                    disabled={isInvited}
+                                    className={`invite-action-btn ${isInvited || isMember ? 'invited' : ''}`}
+                                    onClick={() => !isInvited && !isMember && handleInvite(userId)}
+                                    disabled={isInvited || isMember}
                                 >
-                                    {isInvited ? (
+                                    {isMember ? (
+                                        <>
+                                            <Check size={14} strokeWidth={2.4} />
+                                            <span>Üye</span>
+                                        </>
+                                    ) : isInvited ? (
                                         <>
                                             <Check size={14} strokeWidth={2.4} />
                                             <span>Gönderildi</span>

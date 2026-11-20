@@ -578,32 +578,44 @@ const MessageBubble = ({
                         {displayPortal ? (
                             <Link
                                 to={`/portal/${displayPortal._id}`}
-                                className="shared-portal-card"
+                                className="internal-preview-card msg-portal-card"
+                                onClick={(e) => {
+                                    if (selectMode) e.preventDefault();
+                                    else e.stopPropagation();
+                                }}
                             >
-                                <div className="shared-portal-header">
-                                    <div className="shared-portal-avatar-container">
+                                <div className="internal-card-banner">
+                                    {displayPortal.banner ? (
                                         <img
-                                            src={getImageUrl(displayPortal.avatar)}
+                                            src={getImageUrl(displayPortal.banner)}
                                             alt={displayPortal.name}
-                                            className="shared-portal-avatar"
+                                            className="internal-banner-img"
                                             loading="lazy"
                                             decoding="async"
-                                            width="40"
-                                            height="40"
                                         />
-                                        <div className="portal-badge">P</div>
-                                    </div>
-                                    <div className="shared-portal-info">
-                                        <h4>{displayPortal.name}</h4>
-                                        <p>
-                                            {displayPortal.description?.substring(0, 80) ||
-                                                'Dinamik bir topluluk portalı...'}
-                                        </p>
-                                    </div>
+                                    ) : (
+                                        <div className="internal-banner-placeholder" />
+                                    )}
+                                    {displayPortal.avatar && (
+                                        <div className="internal-avatar-wrapper">
+                                            <img
+                                                src={getImageUrl(displayPortal.avatar)}
+                                                alt={displayPortal.name}
+                                                className="internal-avatar-img"
+                                                loading="lazy"
+                                                decoding="async"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="view-portal-footer">
-                                    <span>Portalı Görüntüle</span>
-                                    <ArrowRight size={16} strokeWidth={2.5} />
+                                <div className="internal-card-content">
+                                    <div className="internal-card-header">
+                                        <span className="internal-site-tag">OXYPACE PORTAL</span>
+                                        <h4 className="internal-card-title">{displayPortal.name}</h4>
+                                    </div>
+                                    <p className="internal-card-description">
+                                        {displayPortal.description || 'Dinamik bir topluluk portalı...'}
+                                    </p>
                                 </div>
                             </Link>
                         ) : message.sharedPortal ? (

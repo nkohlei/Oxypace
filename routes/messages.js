@@ -3,6 +3,7 @@ import { protect } from '../middleware/auth.js';
 import Message from '../models/Message.js';
 import ChatPreference from '../models/ChatPreference.js';
 import User from '../models/User.js';
+import Portal from '../models/Portal.js';
 import Notification from '../models/Notification.js';
 import { messageValidation, mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
@@ -398,7 +399,7 @@ router.post('/:id/forward', protect, mongoIdValidation('id'), async (req, res) =
                         select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
                     },
                 })
-                .populate({ path: 'sharedPortal', select: 'name avatar description' });
+                .populate({ path: 'sharedPortal', select: 'name avatar banner description' });
 
             createdMessages.push(populated);
             if (io) {
@@ -536,6 +537,20 @@ router.post(
                 });
             }
 
+            // Prevent sending portal invite message if recipient is already a member or owner of the portal
+            if (portalId) {
+                const targetPortal = await Portal.findById(portalId).select('owner members').lean();
+                if (targetPortal) {
+                    const recipientStr = String(recipientId);
+                    const isAlreadyMember =
+                        String(targetPortal.owner) === recipientStr ||
+                        (targetPortal.members || []).some((m) => String(m) === recipientStr);
+                    if (isAlreadyMember) {
+                        return res.status(400).json({ message: 'Bu kullanıcı zaten bu portalın üyesi.' });
+                    }
+                }
+            }
+
             // Check per-chat block & disappearing preferences
             const [senderPref, recipientPref] = await Promise.all([
                 ChatPreference.findOne({ user: req.user._id, partner: recipientId }).lean(),
@@ -650,7 +665,7 @@ router.post(
                 })
                 .populate({
                     path: 'sharedPortal',
-                    select: 'name avatar description',
+                    select: 'name avatar banner description',
                 })
                 .populate({
                     path: 'replyTo',
@@ -738,7 +753,7 @@ router.get('/conversations', protect, async (req, res) => {
                 })
                 .populate({
                     path: 'sharedPortal',
-                    select: 'name avatar description',
+                    select: 'name avatar banner description',
                 })
                 .populate({
                     path: 'replyTo',
@@ -847,7 +862,7 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
             })
             .populate({
                 path: 'sharedPortal',
-                select: 'name avatar description',
+                select: 'name avatar banner description',
             })
             .populate({
                 path: 'replyTo',
