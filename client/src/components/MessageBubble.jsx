@@ -163,10 +163,10 @@ const MessageBubble = ({
         }
 
         const rect = (anchorEl || bubbleRef.current)?.getBoundingClientRect();
-        const menuW = 220;
-        const menuH = 385;
+        const menuW = 176;
+        const menuH = 275;
         let left = isOwn ? (rect ? rect.right - menuW : vw - menuW - 16) : (rect ? rect.left : 16);
-        let top = rect ? rect.bottom + 6 : 120;
+        let top = rect ? rect.bottom + 4 : 120;
 
         if (left + menuW > vw - 12) left = vw - menuW - 12;
         if (left < 12) left = 12;
@@ -703,7 +703,7 @@ const MessageBubble = ({
                                     onShowInfo?.(message, isOwn);
                                 }}
                             >
-                                <Info size={16} />
+                                <Info size={13} />
                                 <span>Mesaj bilgisi</span>
                             </button>
 
@@ -716,7 +716,7 @@ const MessageBubble = ({
                                         onReply?.(message);
                                     }}
                                 >
-                                    <Reply size={16} />
+                                    <Reply size={13} />
                                     <span>Cevapla</span>
                                 </button>
                             )}
@@ -730,7 +730,7 @@ const MessageBubble = ({
                                         onCopy?.(message);
                                     }}
                                 >
-                                    <Copy size={16} />
+                                    <Copy size={13} />
                                     <span>Kopyala</span>
                                 </button>
                             )}
@@ -741,7 +741,7 @@ const MessageBubble = ({
                                     className="msg-context-item"
                                     onClick={() => setHighlightReactions(true)}
                                 >
-                                    <Smile size={16} />
+                                    <Smile size={13} />
                                     <span>İfade bırak</span>
                                 </button>
                             )}
@@ -755,7 +755,7 @@ const MessageBubble = ({
                                         onForward?.(message);
                                     }}
                                 >
-                                    <Forward size={16} />
+                                    <Forward size={13} />
                                     <span>İlet</span>
                                 </button>
                             )}
@@ -769,7 +769,7 @@ const MessageBubble = ({
                                         onPin?.(message._id);
                                     }}
                                 >
-                                    {message.pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                                    {message.pinned ? <PinOff size={13} /> : <Pin size={13} />}
                                     <span>{message.pinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}</span>
                                 </button>
                             )}
@@ -782,7 +782,7 @@ const MessageBubble = ({
                                     onStar?.(message._id);
                                 }}
                             >
-                                <Star size={16} fill={isStarred ? 'currentColor' : 'none'} />
+                                <Star size={13} fill={isStarred ? 'currentColor' : 'none'} />
                                 <span>{isStarred ? 'Yıldızı kaldır' : 'Yıldız ekle'}</span>
                             </button>
 
@@ -794,7 +794,7 @@ const MessageBubble = ({
                                     onEnterSelect?.(message._id);
                                 }}
                             >
-                                <CheckSquare size={16} />
+                                <CheckSquare size={13} />
                                 <span>Seç</span>
                             </button>
 
@@ -809,7 +809,7 @@ const MessageBubble = ({
                                             onRequestDelete?.(message, isOwn);
                                         }}
                                     >
-                                        <Trash2 size={16} />
+                                        <Trash2 size={13} />
                                         <span>Sil</span>
                                     </button>
                                 </>

@@ -16,7 +16,7 @@ import logActivity from '../utils/auditLogger.js';
 
 const router = express.Router();
 
-const ALLOWED_CHAT_THEMES = new Set(['default', 'graphite', 'midnight', 'emerald', 'violet', 'rose', 'amber']);
+const ALLOWED_CHAT_THEMES = new Set(['default', 'graphite', 'obsidian', 'emerald', 'violet', 'rose', 'amber']);
 const ALLOWED_DISAPPEARING_SECONDS = new Set([0, 86400, 604800, 7776000]);
 
 const formatChatPreference = (pref) => {

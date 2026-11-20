@@ -35,9 +35,9 @@ export const CHAT_THEMES = [
         label: 'Varsayılan',
         darkBg: '#08080a',
         lightBg: '#ffffff',
-        ownDark: 'linear-gradient(135deg, #00C6FF 0%, #0072FF 100%)',
-        ownLight: 'linear-gradient(135deg, #00C6FF 0%, #0072FF 100%)',
-        swatch: '#0072FF',
+        ownDark: '#ffffff',
+        ownLight: '#141418',
+        swatch: 'linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%)',
     },
     {
         id: 'graphite',
@@ -49,13 +49,13 @@ export const CHAT_THEMES = [
         swatch: '#52525b',
     },
     {
-        id: 'midnight',
-        label: 'Gece Mavisi',
-        darkBg: '#070b14',
-        lightBg: '#f2f6fc',
-        ownDark: 'linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)',
-        ownLight: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-        swatch: '#2563eb',
+        id: 'obsidian',
+        label: 'Kömür',
+        darkBg: '#050506',
+        lightBg: '#f3f3f4',
+        ownDark: 'linear-gradient(135deg, #27272a 0%, #18181b 100%)',
+        ownLight: 'linear-gradient(135deg, #18181b 0%, #09090b 100%)',
+        swatch: '#27272a',
     },
     {
         id: 'emerald',
@@ -660,9 +660,9 @@ export const ChatThemeModal = ({ currentTheme, onSelect, onClose }) => {
                                 >
                                     <span
                                         className="chat-theme-swatch"
-                                        style={{ background: t.ownDark }}
+                                        style={{ background: t.swatch }}
                                     >
-                                        {active && <Check size={15} color="#fff" strokeWidth={3} />}
+                                        {active && <Check size={14} color={t.id === 'default' ? '#09090b' : '#fff'} strokeWidth={3} />}
                                     </span>
                                     <span className="chat-theme-name">{t.label}</span>
                                 </button>

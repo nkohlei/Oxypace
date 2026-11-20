@@ -50,6 +50,22 @@
     flex-direction: column;
 }
 
+/* Stack media + caption / reply / shared card cleanly vertically (never side-by-side) */
+.message-bubble-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 100%;
+}
+
+.message-bubble.own .message-bubble-content {
+    align-items: flex-end;
+}
+
+.message-bubble.other .message-bubble-content {
+    align-items: flex-start;
+}
+
 .message-row.other .message-bubble {
     order: 1;
 }
@@ -72,11 +88,16 @@
     display: inline;
 }
 
-/* Own Message Style */
+/* Own Message Style — Opposite of Theme (White in Dark Mode, Charcoal/Black in Light Mode, ZERO Blue) */
 .message-bubble.own .message-content {
-    background: var(--chat-own-bubble-bg, linear-gradient(135deg, #00C6FF 0%, #0072FF 100%));
-    color: white;
+    background: var(--chat-own-bubble-bg, #ffffff);
+    color: var(--chat-own-bubble-color, #0d0e12);
     border-bottom-right-radius: 4px;
+}
+
+[data-theme='light'] .message-bubble.own .message-content {
+    background: var(--chat-own-bubble-bg, #141418);
+    color: var(--chat-own-bubble-color, #ffffff);
 }
 
 /* Consecutive connected corners (WhatsApp / Telegram style) */
@@ -115,7 +136,11 @@
 }
 
 .message-bubble.own .message-time-in-bubble {
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--chat-own-time-color, rgba(13, 14, 18, 0.56));
+}
+
+[data-theme='light'] .message-bubble.own .message-time-in-bubble {
+    color: var(--chat-own-time-color, rgba(255, 255, 255, 0.72));
 }
 
 .message-bubble.other .message-time-in-bubble {
@@ -322,20 +347,20 @@
 /* Reply Preview */
 .message-reply-preview {
     font-size: 0.8rem;
-    background: rgba(125, 125, 125, 0.1);
-    /* Subtle generic bg */
-    padding: 8px 10px;
+    background: rgba(125, 125, 125, 0.12);
+    padding: 7px 10px;
     border-radius: 8px;
-    margin-bottom: 6px;
-    border-left: 3px solid var(--primary-cyan, #00d2ff);
+    margin-bottom: 2px;
+    border-left: 3px solid var(--text-tertiary);
     cursor: pointer;
     display: flex;
     flex-direction: column;
+    max-width: 100%;
 }
 
 .reply-sender {
     font-weight: 700;
-    color: var(--primary-cyan, #00d2ff);
+    color: var(--text-primary);
     margin-bottom: 2px;
     font-size: 0.75rem;
 }
@@ -363,7 +388,7 @@
 }
 
 .shared-post-card:hover {
-    border-color: var(--primary-cyan);
+    border-color: var(--border-neon);
 }
 
 .shared-post-header {
@@ -443,7 +468,7 @@
 
 .shared-portal-card:hover {
     transform: translateY(-2px);
-    border-color: #5865f2;
+    border-color: rgba(255, 255, 255, 0.3);
     box-shadow: none;
 }
 
@@ -474,8 +499,8 @@
     position: absolute;
     bottom: -4px;
     right: -4px;
-    background: #5865f2;
-    color: white;
+    background: #ececef;
+    color: #0d0e12;
     font-size: 10px;
     font-weight: 900;
     width: 18px;
@@ -521,8 +546,8 @@
     justify-content: center;
     gap: 8px;
     padding: 10px;
-    background-color: rgba(88, 101, 242, 0.1);
-    color: #5865f2;
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #e4e4e7;
     font-size: 0.85rem;
     font-weight: 700;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -530,8 +555,8 @@
 }
 
 .shared-portal-card:hover .view-portal-footer {
-    background-color: rgba(88, 101, 242, 0.2);
-    color: #7289da;
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
 }
 
 .shared-portal-card.fallback {
@@ -832,7 +857,7 @@
 }
 
 .pdf-download-btn:hover {
-    background: var(--primary-cyan);
+    background: rgba(255, 255, 255, 0.22);
     color: #ffffff;
     transform: scale(1.08);
 }
@@ -862,20 +887,18 @@
 
 
 /* ============================================================
-   WHATSAPP-STYLE HOVER CHEVRON & PER-MESSAGE CONTEXT MENU
+   WHATSAPP-STYLE HOVER CHEVRON & COMPACT PER-MESSAGE MENU (ZERO BLUE)
    ============================================================ */
 
 .msg-chevron-trigger {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 24px;
-    height: 24px;
+    top: 50%;
+    transform: translateY(-50%) !important;
+    width: 22px;
+    height: 22px;
     border-radius: 50% !important;
-    background: rgba(0, 0, 0, 0.45) !important;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-primary) !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -884,22 +907,26 @@
     opacity: 0;
     pointer-events: none;
     z-index: 25;
-    transition: opacity 0.15s ease, background-color 0.15s ease;
-    transform: none !important;
+    transition: opacity 0.14s ease, background-color 0.14s ease;
 }
 
 .message-bubble.other .msg-chevron-trigger {
-    background: rgba(20, 22, 26, 0.65) !important;
+    right: -26px;
+    left: auto;
 }
 
-[data-theme='light'] .message-bubble.other .msg-chevron-trigger {
-    background: rgba(255, 255, 255, 0.88) !important;
-    color: #111115 !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14) !important;
+.message-bubble.own .msg-chevron-trigger {
+    left: -26px;
+    right: auto;
+}
+
+[data-theme='light'] .msg-chevron-trigger {
+    background: rgba(0, 0, 0, 0.07) !important;
+    color: #141418 !important;
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .message-bubble:hover .msg-chevron-trigger,
+    .message-row:hover .msg-chevron-trigger,
     .msg-chevron-trigger.active {
         opacity: 1;
         pointer-events: auto;
@@ -907,13 +934,12 @@
 }
 
 .msg-chevron-trigger:hover {
-    background: rgba(0, 0, 0, 0.72) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
     color: #ffffff !important;
-    transform: none !important;
 }
 
-[data-theme='light'] .message-bubble.other .msg-chevron-trigger:hover {
-    background: #ffffff !important;
+[data-theme='light'] .msg-chevron-trigger:hover {
+    background: rgba(0, 0, 0, 0.14) !important;
     color: #000000 !important;
 }
 
@@ -933,21 +959,21 @@
 }
 
 .msg-inline-pin {
-    opacity: 0.8;
+    opacity: 0.78;
 }
 
 .msg-inline-star {
-    color: #facc15;
+    color: #eab308;
 }
 
 .msg-read-tick {
-    opacity: 0.75;
+    opacity: 0.65;
     flex-shrink: 0;
 }
 
 .msg-read-tick.read {
     opacity: 1;
-    color: #e0f2fe;
+    color: inherit;
 }
 
 .msg-forwarded-label {
@@ -957,7 +983,7 @@
     font-size: 0.7rem;
     font-style: italic;
     opacity: 0.75;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     padding: 0 4px;
     color: var(--text-tertiary);
 }
@@ -975,7 +1001,7 @@
     transform: scale(1.2);
 }
 
-/* Multi-select Mode */
+/* Multi-select Mode — Pure Monochrome */
 .message-row.select-mode {
     cursor: pointer;
     padding: 3px 6px;
@@ -988,20 +1014,24 @@
 }
 
 .message-row.select-mode.selected {
-    background: rgba(56, 189, 248, 0.12);
+    background: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='light'] .message-row.select-mode:hover {
+    background: rgba(0, 0, 0, 0.03);
 }
 
 [data-theme='light'] .message-row.select-mode.selected {
-    background: rgba(2, 132, 199, 0.1);
+    background: rgba(0, 0, 0, 0.07);
 }
 
 .msg-select-checkbox {
-    width: 20px;
-    height: 20px;
+    width: 19px;
+    height: 19px;
     border-radius: 6px !important;
     border: 1.5px solid var(--border-neon) !important;
     background: transparent !important;
-    color: #000000 !important;
+    color: #09090b !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1013,31 +1043,68 @@
 }
 
 .msg-select-checkbox.checked {
-    background: var(--primary-cyan, #38bdf8) !important;
-    border-color: var(--primary-cyan, #38bdf8) !important;
+    background: #ffffff !important;
+    border-color: #ffffff !important;
+    color: #09090b !important;
 }
 
-/* Jump / Search Highlight */
-.message-row.search-match .message-bubble {
-    outline: 1.5px solid rgba(56, 189, 248, 0.55);
-    border-radius: 18px;
+[data-theme='light'] .msg-select-checkbox.checked {
+    background: #141418 !important;
+    border-color: #141418 !important;
+    color: #ffffff !important;
 }
 
-.message-row.jump-highlight {
-    animation: msgJumpPulse 1.6s ease-out;
-    border-radius: 14px;
+/* Search & Jump Highlight — NO Border, ONLY Matching Message Box Flashes */
+.message-row.search-match .message-content,
+.message-row.search-match .message-media,
+.message-row.search-match .shared-post-card,
+.message-row.search-match .shared-portal-card,
+.message-row.search-match .pdf-glass-card {
+    animation: searchBubbleFlash 1.3s ease-in-out infinite;
 }
 
-@keyframes msgJumpPulse {
-    0% {
-        background: rgba(56, 189, 248, 0.28);
+.message-row.jump-highlight .message-content,
+.message-row.jump-highlight .message-media,
+.message-row.jump-highlight .shared-post-card,
+.message-row.jump-highlight .shared-portal-card,
+.message-row.jump-highlight .pdf-glass-card {
+    animation: msgBubbleJumpFlash 1.4s ease-out;
+}
+
+@keyframes searchBubbleFlash {
+    0%, 100% {
+        filter: brightness(1);
+    }
+    50% {
+        filter: brightness(1.32);
+    }
+}
+
+[data-theme='light'] .message-row.search-match .message-content,
+[data-theme='light'] .message-row.search-match .message-media,
+[data-theme='light'] .message-row.search-match .shared-post-card {
+    animation: searchBubbleFlashLight 1.3s ease-in-out infinite;
+}
+
+@keyframes searchBubbleFlashLight {
+    0%, 100% {
+        filter: brightness(1);
+    }
+    50% {
+        filter: brightness(0.84);
+    }
+}
+
+@keyframes msgBubbleJumpFlash {
+    0%, 35% {
+        filter: brightness(1.45);
     }
     100% {
-        background: transparent;
+        filter: brightness(1);
     }
 }
 
-/* Per-Message Context Menu Backdrop & Popover */
+/* Per-Message Context Menu — Compact & Sleek */
 .msg-context-backdrop {
     position: fixed;
     inset: 0;
@@ -1046,7 +1113,7 @@
 }
 
 .msg-context-backdrop.mobile-sheet {
-    background: rgba(0, 0, 0, 0.52);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     display: flex;
@@ -1056,39 +1123,39 @@
 
 .msg-context-menu {
     position: fixed;
-    width: 220px;
+    width: 176px;
     background: #16171b;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 14px;
-    padding: 6px;
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.62);
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     z-index: 99999;
-    animation: msgMenuFadeIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: msgMenuFadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='light'] .msg-context-menu {
     background: #ffffff;
     border-color: rgba(0, 0, 0, 0.1);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
 }
 
 .msg-context-menu.mobile-sheet {
     position: relative;
     width: 100%;
-    max-width: 480px;
-    border-radius: 18px 18px 0 0;
-    padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px)) 12px;
+    max-width: 440px;
+    border-radius: 16px 16px 0 0;
+    padding: 10px 10px calc(12px + env(safe-area-inset-bottom, 0px)) 10px;
     border-bottom: none;
-    animation: msgSheetSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: msgSheetSlideUp 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes msgMenuFadeIn {
     from {
         opacity: 0;
-        transform: scale(0.95) translateY(-4px);
+        transform: scale(0.96) translateY(-3px);
     }
     to {
         opacity: 1;
@@ -1099,7 +1166,7 @@
 @keyframes msgSheetSlideUp {
     from {
         opacity: 0;
-        transform: translateY(28px);
+        transform: translateY(24px);
     }
     to {
         opacity: 1;
@@ -1111,22 +1178,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 6px 8px 6px;
-    margin-bottom: 4px;
+    padding: 3px 4px 5px 4px;
+    margin-bottom: 2px;
     border-bottom: 1px solid var(--border-subtle);
 }
 
 .msg-reaction-bar.pulse {
-    background: rgba(56, 189, 248, 0.12);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}
+
+[data-theme='light'] .msg-reaction-bar.pulse {
+    background: rgba(0, 0, 0, 0.06);
 }
 
 .msg-reaction-btn {
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     border-radius: 50% !important;
     background: transparent !important;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1137,7 +1208,7 @@
 
 .msg-reaction-btn:hover {
     background: rgba(255, 255, 255, 0.1) !important;
-    transform: scale(1.22) !important;
+    transform: scale(1.18) !important;
 }
 
 [data-theme='light'] .msg-reaction-btn:hover {
@@ -1149,12 +1220,12 @@
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 11px;
-    padding: 9px 11px;
-    border-radius: 9px !important;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 7px !important;
     background: transparent !important;
     color: var(--text-primary) !important;
-    font-size: 0.86rem;
+    font-size: 0.76rem;
     font-weight: 500;
     text-align: left;
     cursor: pointer;
@@ -1185,7 +1256,7 @@
 .msg-context-divider {
     height: 1px;
     background: var(--border-subtle);
-    margin: 4px 6px;
+    margin: 2px 4px;
 }
 
 /* Compact PDF Card */

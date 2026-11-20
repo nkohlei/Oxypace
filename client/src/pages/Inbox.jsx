@@ -145,6 +145,7 @@ const Inbox = () => {
     const [chatSearchIdx, setChatSearchIdx] = useState(0);
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
     const [activePinnedIdx, setActivePinnedIdx] = useState(0);
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
     const [selectMode, setSelectMode] = useState(false);
     const [selectedMessageIds, setSelectedMessageIds] = useState([]);
@@ -389,6 +390,7 @@ const Inbox = () => {
         setSelectedMessageIds([]);
         setActivePinnedIdx(0);
         setShowContactInfo(false);
+        setShowScrollToBottom(false);
     }, [selectedUser]);
 
     const scrollToBottom = useCallback((instant = true) => {
@@ -573,7 +575,9 @@ const Inbox = () => {
             let isNearBottom = true;
 
             const handleScroll = () => {
-                isNearBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 120;
+                const distanceFromBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+                isNearBottom = distanceFromBottom <= 120;
+                setShowScrollToBottom(distanceFromBottom > 180);
             };
 
             container.addEventListener('scroll', handleScroll);
@@ -1303,7 +1307,7 @@ const Inbox = () => {
                                                     })()}
                                                 </span>
                                             </div>
-                                            <p className="conv-preview" style={{ color: typingUsers[conv.user._id] ? 'var(--primary-color)' : 'inherit', fontWeight: typingUsers[conv.user._id] ? '600' : 'normal' }}>
+                                            <p className="conv-preview" style={{ color: typingUsers[conv.user._id] ? 'var(--text-primary)' : 'inherit', fontWeight: typingUsers[conv.user._id] ? '600' : 'normal' }}>
                                                 {typingUsers[conv.user._id] ? (
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                         <span className="sidebar-typing-dots">
@@ -1629,6 +1633,18 @@ const Inbox = () => {
                                 )}
                                 <div ref={messagesEndRef} />
                             </div>
+
+                            {showScrollToBottom && (
+                                <button
+                                    type="button"
+                                    className="chat-scroll-bottom-btn"
+                                    onClick={() => scrollToBottom(false)}
+                                    title="En aşağı in"
+                                    aria-label="En aşağı in"
+                                >
+                                    <ChevronDown size={18} strokeWidth={2.2} />
+                                </button>
+                            )}
 
                             {replyingTo && (
                                 <div className="reply-preview-bar">
@@ -2023,7 +2039,7 @@ const Inbox = () => {
                                 setShowContactInfo(true);
                             }}
                         >
-                            <Info size={16} />
+                            <Info size={13} />
                             <span>Kişi bilgisi</span>
                         </button>
                         <button
@@ -2034,7 +2050,7 @@ const Inbox = () => {
                                 setShowChatSearch(true);
                             }}
                         >
-                            <Search size={16} />
+                            <Search size={13} />
                             <span>Ara</span>
                         </button>
                         <button
@@ -2045,7 +2061,7 @@ const Inbox = () => {
                                 handleEnterSelectMode(null);
                             }}
                         >
-                            <CheckSquare size={16} />
+                            <CheckSquare size={13} />
                             <span>Mesaj seç</span>
                         </button>
                         {!isGhost && (
@@ -2058,7 +2074,7 @@ const Inbox = () => {
                                         setShowMuteModal(true);
                                     }}
                                 >
-                                    {isCurrentChatMuted ? <Bell size={16} /> : <BellOff size={16} />}
+                                    {isCurrentChatMuted ? <Bell size={13} /> : <BellOff size={13} />}
                                     <span>{isCurrentChatMuted ? 'Bildirimlerin sesini aç' : 'Bildirimleri sessize al'}</span>
                                 </button>
                                 <button
@@ -2069,7 +2085,7 @@ const Inbox = () => {
                                         setShowDisappearingModal(true);
                                     }}
                                 >
-                                    <Timer size={16} />
+                                    <Timer size={13} />
                                     <span>Süreli mesajlar</span>
                                 </button>
                                 <button
@@ -2080,7 +2096,7 @@ const Inbox = () => {
                                         setShowThemeModal(true);
                                     }}
                                 >
-                                    <Palette size={16} />
+                                    <Palette size={13} />
                                     <span>Sohbet teması</span>
                                 </button>
                                 <button
@@ -2094,7 +2110,7 @@ const Inbox = () => {
                                         );
                                     }}
                                 >
-                                    <Heart size={16} fill={currentPrefs.isFavorite ? 'currentColor' : 'none'} />
+                                    <Heart size={13} fill={currentPrefs.isFavorite ? 'currentColor' : 'none'} />
                                     <span>{currentPrefs.isFavorite ? 'Favorilerden çıkar' : "Favoriler'e ekle"}</span>
                                 </button>
                             </>
@@ -2107,7 +2123,7 @@ const Inbox = () => {
                                 handleExportChat();
                             }}
                         >
-                            <Download size={16} />
+                            <Download size={13} />
                             <span>Sohbeti dışa aktar</span>
                         </button>
                         <button
@@ -2118,7 +2134,7 @@ const Inbox = () => {
                                 handleBackToList();
                             }}
                         >
-                            <XCircle size={16} />
+                            <XCircle size={13} />
                             <span>Sohbeti kapat</span>
                         </button>
 
@@ -2133,7 +2149,7 @@ const Inbox = () => {
                                         setShowReportModal(true);
                                     }}
                                 >
-                                    <Flag size={16} />
+                                    <Flag size={13} />
                                     <span>Şikayet et</span>
                                 </button>
                                 <button
@@ -2147,7 +2163,7 @@ const Inbox = () => {
                                         );
                                     }}
                                 >
-                                    <Ban size={16} />
+                                    <Ban size={13} />
                                     <span>{currentPrefs.isBlocked ? 'Engeli kaldır' : 'Engelle'}</span>
                                 </button>
                                 <button
@@ -2158,7 +2174,7 @@ const Inbox = () => {
                                         setConfirmAction('clear');
                                     }}
                                 >
-                                    <MinusCircle size={16} />
+                                    <MinusCircle size={13} />
                                     <span>Sohbeti temizle</span>
                                 </button>
                                 <button
@@ -2169,7 +2185,7 @@ const Inbox = () => {
                                         setConfirmAction('deleteChat');
                                     }}
                                 >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={13} />
                                     <span>Sohbeti sil</span>
                                 </button>
                             </>
