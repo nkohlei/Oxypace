@@ -146,6 +146,10 @@ const Inbox = () => {
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
     const [activePinnedIdx, setActivePinnedIdx] = useState(0);
     const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const [chatScrollReady, setChatScrollReady] = useState(true);
+    const isNearBottomRef = useRef(true);
+    const lastMessageIdRef = useRef(null);
+    const initialPinUntilRef = useRef(0);
 
     const [selectMode, setSelectMode] = useState(false);
     const [selectedMessageIds, setSelectedMessageIds] = useState([]);
@@ -567,98 +571,128 @@ const Inbox = () => {
         }
     }, [socket, selectedUser, user._id, updateConversationInstant, markConversationAsRead]);
 
-    useLayoutEffect(() => {
-        if (selectedUser) {
-            const container = messagesContainerRef.current;
-            if (!container) return;
-
-            let isNearBottom = true;
-
-            const handleScroll = () => {
-                const distanceFromBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
-                isNearBottom = distanceFromBottom <= 120;
-                setShowScrollToBottom(distanceFromBottom > 180);
-            };
-
-            container.addEventListener('scroll', handleScroll);
-
-            const observer = new MutationObserver(() => {
-                if (isNearBottom) {
-                    scrollToBottom(true);
-                }
-            });
-
-            observer.observe(container, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                characterData: true,
-            });
-
-            scrollToBottom(true);
-
-            return () => {
-                container.removeEventListener('scroll', handleScroll);
-                observer.disconnect();
-            };
-        }
-    }, [selectedUser, messages, media, replyingTo, scrollToBottom]);
-
-    // Unconditional scroll to bottom when messages finish loading or conversation changes
+    // Track scroll position & show/hide "Aşağı in" button (never triggers scroll on message mutations)
     useEffect(() => {
-        if (selectedUser && !messagesLoading) {
-            scrollToBottom(true);
-            const rafId = requestAnimationFrame(() => scrollToBottom(true));
-            const t1 = setTimeout(() => scrollToBottom(true), 50);
-            const t2 = setTimeout(() => scrollToBottom(true), 150);
-            const t3 = setTimeout(() => scrollToBottom(true), 350);
-            return () => {
-                cancelAnimationFrame(rafId);
-                clearTimeout(t1);
-                clearTimeout(t2);
-                clearTimeout(t3);
-            };
-        }
-    }, [selectedUser?._id, messagesLoading, scrollToBottom]);
+        const container = messagesContainerRef.current;
+        if (!selectedUser || !container) return undefined;
 
-    // WhatsApp-style Floating Sticky Date Header on Scroll
+        const handleScroll = () => {
+            const distanceFromBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+            isNearBottomRef.current = distanceFromBottom <= 120;
+            setShowScrollToBottom(distanceFromBottom > 180);
+            if (distanceFromBottom > 120) {
+                initialPinUntilRef.current = 0;
+            }
+        };
+
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [selectedUser?._id]);
+
+    // Synchronous pre-paint jump to bottom when a conversation finishes loading (first visible frame is ALWAYS at the bottom)
+    useLayoutEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!selectedUser || messagesLoading || !container) return undefined;
+
+        container.scrollTop = container.scrollHeight;
+        isNearBottomRef.current = true;
+        setShowScrollToBottom(false);
+        lastMessageIdRef.current = messages.length > 0 ? String(messages[messages.length - 1]._id) : null;
+        initialPinUntilRef.current = Date.now() + 700;
+        setChatScrollReady(true);
+
+        // Keep pinned to bottom briefly if images/media finish sizing right after initial open
+        const handleMediaResize = () => {
+            if (Date.now() <= initialPinUntilRef.current && isNearBottomRef.current && messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+        };
+
+        let resizeObserver = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(handleMediaResize);
+            resizeObserver.observe(container);
+        }
+        container.addEventListener('load', handleMediaResize, true);
+        const rafId = requestAnimationFrame(handleMediaResize);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            container.removeEventListener('load', handleMediaResize, true);
+            if (resizeObserver) resizeObserver.disconnect();
+        };
+    }, [selectedUser?._id, messagesLoading]);
+
+    // Auto-scroll ONLY when a brand-new message is appended (never on emoji reactions, pin, star, read receipts, or edits)
+    useLayoutEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!selectedUser || messagesLoading || !container || messages.length === 0) return;
+
+        const latestMsg = messages[messages.length - 1];
+        const latestId = latestMsg?._id ? String(latestMsg._id) : null;
+        if (!latestId || latestId === lastMessageIdRef.current) {
+            return;
+        }
+
+        const prevLastId = lastMessageIdRef.current;
+        lastMessageIdRef.current = latestId;
+
+        const senderId = String(latestMsg.sender?._id || latestMsg.sender || '');
+        const isMyNewMessage = senderId && String(user?._id || '') === senderId;
+
+        if (!prevLastId || isMyNewMessage || isNearBottomRef.current) {
+            container.scrollTop = container.scrollHeight;
+            isNearBottomRef.current = true;
+            setShowScrollToBottom(false);
+        }
+    }, [messages, selectedUser?._id, messagesLoading, user?._id]);
+
+    // Smart Floating Sticky Date Header: hidden whenever ANY inline date divider is visible on screen
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container || messages.length === 0) {
             setActiveFloatingDate('');
-            return;
+            return undefined;
         }
 
-        const handleScroll = () => {
+        const updateFloatingDate = () => {
             const dividers = container.querySelectorAll('.chat-date-divider');
             if (dividers.length === 0) {
                 setActiveFloatingDate('');
                 return;
             }
 
-            let currentHeader = '';
             const containerRect = container.getBoundingClientRect();
+            let anyDividerVisible = false;
+            let lastAboveHeader = '';
 
             dividers.forEach((divider) => {
                 const rect = divider.getBoundingClientRect();
-                if (rect.top - containerRect.top <= 40) {
-                    currentHeader = divider.getAttribute('data-date-str') || '';
+                const isVisible =
+                    rect.bottom > containerRect.top + 6 &&
+                    rect.top < containerRect.bottom - 6;
+                if (isVisible) {
+                    anyDividerVisible = true;
+                } else if (rect.bottom <= containerRect.top + 6) {
+                    lastAboveHeader = divider.getAttribute('data-date-str') || '';
                 }
             });
 
-            const firstRect = dividers[0].getBoundingClientRect();
-            if (firstRect.top - containerRect.top > 10) {
+            if (anyDividerVisible) {
                 setActiveFloatingDate('');
             } else {
-                setActiveFloatingDate(currentHeader);
+                setActiveFloatingDate(lastAboveHeader);
             }
         };
 
-        container.addEventListener('scroll', handleScroll);
-        handleScroll();
+        container.addEventListener('scroll', updateFloatingDate, { passive: true });
+        const rafId = requestAnimationFrame(updateFloatingDate);
 
-        return () => container.removeEventListener('scroll', handleScroll);
-    }, [messages, selectedUser]);
+        return () => {
+            cancelAnimationFrame(rafId);
+            container.removeEventListener('scroll', updateFloatingDate);
+        };
+    }, [messages, selectedUser?._id, chatScrollReady]);
 
     // Direct Message Typing Indicator Persistence
     useEffect(() => {
@@ -726,6 +760,9 @@ const Inbox = () => {
 
     const fetchMessages = async (userId) => {
         setMessagesLoading(true);
+        setChatScrollReady(false);
+        lastMessageIdRef.current = null;
+        isNearBottomRef.current = true;
         try {
             const response = await axios.get(`/api/messages/${userId}`);
             setMessages(response.data);
@@ -733,6 +770,7 @@ const Inbox = () => {
             useGlobalStore.getState().fetchUnreadMessagesCount();
         } catch (err) {
             console.error('Failed to fetch messages:', err);
+            setChatScrollReady(true);
         } finally {
             setMessagesLoading(false);
         }
@@ -1531,7 +1569,11 @@ const Inbox = () => {
                                 </div>
                             )}
 
-                            <div className="messages-container" ref={messagesContainerRef}>
+                            <div
+                                className="messages-container"
+                                ref={messagesContainerRef}
+                                style={{ visibility: !messagesLoading && !chatScrollReady ? 'hidden' : 'visible' }}
+                            >
                                 {messagesLoading ? (
                                     <div className="spinner-container" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px' }}>
                                         <div className="spinner"></div>

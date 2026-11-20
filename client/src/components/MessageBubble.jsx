@@ -286,6 +286,9 @@ const MessageBubble = ({
     );
 
     const hasMediaOnly = Boolean(message.media && !message.content);
+    const hasCardWithCaption = Boolean(
+        message.content && (message.media || message.sharedPost || message.sharedPortal)
+    );
 
     return (
         <>
@@ -340,7 +343,7 @@ const MessageBubble = ({
                         </button>
                     )}
 
-                    <div className="message-bubble-content">
+                    <div className={`message-bubble-content ${hasCardWithCaption ? 'unified-card' : ''}`}>
                         {message.forwarded && (
                             <div className={`msg-forwarded-label ${isOwn ? 'own' : 'other'}`}>
                                 <Forward size={11} />
