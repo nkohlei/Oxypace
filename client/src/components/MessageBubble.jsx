@@ -5,13 +5,52 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
 import LinkPreview from './LinkPreview';
-import UserAvatar from './UserAvatar';
-import { Trash2, Play, Download, ArrowRight } from 'lucide-react';
+import {
+    Play,
+    Download,
+    ArrowRight,
+    ChevronDown,
+    Info,
+    Reply,
+    Copy,
+    Smile,
+    Forward,
+    Pin,
+    PinOff,
+    Star,
+    CheckSquare,
+    Trash2,
+    Check,
+    CheckCheck,
+} from 'lucide-react';
 import './MessageBubble.css';
 
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 
-const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onReact }) => {
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+const MessageBubble = ({
+    message,
+    isOwn,
+    isConsecutive,
+    currentUserId,
+    isGhost = false,
+    selectMode = false,
+    isSelected = false,
+    isHighlighted = false,
+    isSearchMatch = false,
+    onToggleSelect,
+    onEnterSelect,
+    onRequestDelete,
+    onReply,
+    onReact,
+    onCopy,
+    onForward,
+    onPin,
+    onStar,
+    onShowInfo,
+    onJumpToMessage,
+}) => {
     const formatTime = (date) => {
         return new Date(date).toLocaleTimeString('tr-TR', {
             hour: '2-digit',
@@ -30,10 +69,20 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
     const [dynamicPortal, setDynamicPortal] = React.useState(null);
     const [loadingError, setLoadingError] = React.useState(false);
     const [portalLoadingError, setPortalLoadingError] = React.useState(false);
-    const [confirmDelete, setConfirmDelete] = React.useState(false);
-    const [showEmojiMenu, setShowEmojiMenu] = React.useState(false);
-    const [showActionsMobile, setShowActionsMobile] = React.useState(false);
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const [menuPos, setMenuPos] = React.useState({ top: 0, left: 0, isMobileSheet: false });
+    const [highlightReactions, setHighlightReactions] = React.useState(false);
+
+    const bubbleRef = React.useRef(null);
+    const menuRef = React.useRef(null);
     const longPressTimer = React.useRef(null);
+    const touchStartPos = React.useRef({ x: 0, y: 0 });
+    const longPressTriggered = React.useRef(false);
+
+    const isStarred = React.useMemo(
+        () => (message.starredBy || []).some((id) => String(id) === String(currentUserId)),
+        [message.starredBy, currentUserId]
+    );
 
     React.useEffect(() => {
         if (message.sharedPost && typeof message.sharedPost === 'string') {
@@ -63,135 +112,249 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
         }
     }, [message.sharedPost, message.sharedPortal]);
 
-    // Close menu when clicking outside
+    // Close context menu on outside click, escape, or scroll
     React.useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (
-                showEmojiMenu &&
-                !event.target.closest('.emoji-menu') &&
-                !event.target.closest('.react-btn')
-            ) {
-                setShowEmojiMenu(false);
+        if (!menuOpen) return;
+
+        const handleOutside = (event) => {
+            if (menuRef.current && menuRef.current.contains(event.target)) return;
+            if (event.target.closest?.('.msg-chevron-trigger')) return;
+            setMenuOpen(false);
+            setHighlightReactions(false);
+        };
+
+        const handleKey = (event) => {
+            if (event.key === 'Escape') {
+                setMenuOpen(false);
+                setHighlightReactions(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showEmojiMenu]);
+
+        const timer = setTimeout(() => {
+            document.addEventListener('mousedown', handleOutside);
+            document.addEventListener('touchstart', handleOutside, { passive: true });
+            document.addEventListener('keydown', handleKey);
+        }, 0);
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('mousedown', handleOutside);
+            document.removeEventListener('touchstart', handleOutside);
+            document.removeEventListener('keydown', handleKey);
+        };
+    }, [menuOpen]);
+
+    React.useEffect(() => {
+        return () => {
+            if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        };
+    }, []);
+
+    const openContextMenu = (anchorEl) => {
+        if (selectMode || message.isOptimistic) return;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const isMobileSheet = vw <= 640;
+
+        if (isMobileSheet) {
+            setMenuPos({ top: 0, left: 0, isMobileSheet: true });
+            setMenuOpen(true);
+            return;
+        }
+
+        const rect = (anchorEl || bubbleRef.current)?.getBoundingClientRect();
+        const menuW = 220;
+        const menuH = 385;
+        let left = isOwn ? (rect ? rect.right - menuW : vw - menuW - 16) : (rect ? rect.left : 16);
+        let top = rect ? rect.bottom + 6 : 120;
+
+        if (left + menuW > vw - 12) left = vw - menuW - 12;
+        if (left < 12) left = 12;
+        if (top + menuH > vh - 12) {
+            top = Math.max(12, (rect ? rect.top : vh) - menuH - 6);
+        }
+
+        setMenuPos({ top, left, isMobileSheet: false });
+        setMenuOpen(true);
+    };
+
+    const handleChevronClick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (menuOpen) {
+            setMenuOpen(false);
+            setHighlightReactions(false);
+        } else {
+            openContextMenu(e.currentTarget);
+        }
+    };
+
+    const handleTouchStart = (e) => {
+        if (selectMode || message.isOptimistic) return;
+        const touch = e.touches?.[0];
+        if (!touch) return;
+        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+        longPressTriggered.current = false;
+
+        longPressTimer.current = setTimeout(() => {
+            longPressTriggered.current = true;
+            if (navigator.vibrate) {
+                try { navigator.vibrate(18); } catch (_) {}
+            }
+            openContextMenu(bubbleRef.current);
+        }, 420);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!longPressTimer.current) return;
+        const touch = e.touches?.[0];
+        if (!touch) return;
+        const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+        const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+        if (dx > 10 || dy > 10) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
+
+    const handleRowClick = (e) => {
+        if (longPressTriggered.current) {
+            longPressTriggered.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (selectMode && onToggleSelect) {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect(message._id);
+        }
+    };
 
     const displayPost = typeof message.sharedPost === 'object' ? message.sharedPost : dynamicPost;
     const displayPortal =
         typeof message.sharedPortal === 'object' ? message.sharedPortal : dynamicPortal;
 
     const toggleLightbox = (e) => {
+        if (selectMode) return;
         if (e) e.stopPropagation();
-        setShowLightbox(!showLightbox);
+        setShowLightbox((prev) => !prev);
     };
 
-    React.useEffect(() => {
-        if (showActionsMobile) {
-            const timer = setTimeout(() => {
-                setShowActionsMobile(false);
-            }, 2500);
-            return () => clearTimeout(timer);
-        }
-    }, [showActionsMobile]);
-
-    const handleRowClick = () => {
-        if (window.matchMedia('(pointer: coarse)').matches) {
-            setShowActionsMobile((prev) => !prev);
-        }
-    };
-
-    const handleTouchStart = () => {
-        longPressTimer.current = setTimeout(() => {
-            setShowActionsMobile(true);
-        }, 350);
-    };
-
-    const handleTouchEnd = () => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-        }
-    };
-
-    const handleReaction = (emoji) => {
+    const handleReactionClick = (emoji) => {
         if (onReact) onReact(message._id, emoji);
-        setShowEmojiMenu(false);
+        setMenuOpen(false);
+        setHighlightReactions(false);
     };
 
-    const emojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
-
-    const isVideo = message.media && (message.media.match(/\.(mp4|webm|ogg|mov)$/i) || (message.isOptimistic && message.media.startsWith('blob:') && message.mediaType?.startsWith('video')));
-    const isImage = message.media && (message.media.match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i) || (message.isOptimistic && message.media.startsWith('blob:') && message.mediaType?.startsWith('image')));
+    const isVideo =
+        message.media &&
+        (message.media.match(/\.(mp4|webm|ogg|mov)$/i) ||
+            (message.isOptimistic &&
+                message.media.startsWith('blob:') &&
+                message.mediaType?.startsWith('video')));
+    const isImage =
+        message.media &&
+        (message.media.match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i) ||
+            (message.isOptimistic &&
+                message.media.startsWith('blob:') &&
+                message.mediaType?.startsWith('image')));
     const isDocument = message.media && !isVideo && !isImage;
+
+    const renderStatusMeta = (inline = true) => (
+        <span className={`message-meta-inline ${inline ? '' : 'standalone'}`}>
+            {message.pinned && <Pin size={10} className="msg-inline-pin" title="Sabitlendi" />}
+            {isStarred && <Star size={10} fill="currentColor" className="msg-inline-star" title="Yıldızlı" />}
+            <span>{formatTime(message.createdAt)}</span>
+            {message.isOptimistic ? (
+                <span className="sending-indicator">...</span>
+            ) : isOwn ? (
+                message.read ? (
+                    <CheckCheck size={13} className="msg-read-tick read" />
+                ) : (
+                    <Check size={13} className="msg-read-tick" />
+                )
+            ) : null}
+        </span>
+    );
+
+    const hasMediaOnly = Boolean(message.media && !message.content);
 
     return (
         <>
             <div
-                className={`message-row ${isOwn ? 'own' : 'other'} ${isConsecutive ? 'consecutive' : ''} ${showActionsMobile ? 'mobile-actions-visible' : ''}`}
+                data-message-id={message._id}
+                className={`message-row ${isOwn ? 'own' : 'other'} ${isConsecutive ? 'consecutive' : ''} ${
+                    selectMode ? 'select-mode' : ''
+                } ${isSelected ? 'selected' : ''} ${isHighlighted ? 'jump-highlight' : ''} ${
+                    isSearchMatch ? 'search-match' : ''
+                } ${menuOpen ? 'menu-open' : ''}`}
                 onClick={handleRowClick}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
+                onContextMenu={(e) => {
+                    if (window.matchMedia('(pointer: coarse)').matches) {
+                        e.preventDefault();
+                    }
+                }}
             >
-                {/* Actions Bar (Right for other, Left for own - handled by CSS order) */}
-                <div className="message-actions">
-                    {/* Delete Button (Trash Icon) */}
+                {selectMode && (
                     <button
-                        className="action-btn delete-btn"
-                        title="Sil"
+                        type="button"
+                        className={`msg-select-checkbox ${isSelected ? 'checked' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
-                            setConfirmDelete(true);
+                            onToggleSelect?.(message._id);
                         }}
+                        aria-label={isSelected ? 'Seçimi kaldır' : 'Mesajı seç'}
                     >
-                        <Trash2 size={24} strokeWidth={2} />
+                        {isSelected && <Check size={12} strokeWidth={3} />}
                     </button>
-                </div>
-
+                )}
 
                 <div
-                    className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''}`}
+                    ref={bubbleRef}
+                    className={`message-bubble ${isOwn ? 'own' : 'other'} ${message.isOptimistic ? 'optimistic' : ''} ${
+                        hasMediaOnly ? 'media-only' : ''
+                    }`}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                 >
-                    {/* Full Screen Foggy Overlay for Delete Confirmation */}
-                    {/* Full Screen Foggy Overlay for Delete Confirmation */}
-                    {confirmDelete &&
-                        createPortal(
-                            <div className="delete-confirm-overlay">
-                                <div className="delete-confirm-modal">
-                                    <p>Sil?</p>
-                                    <div className="delete-confirm-actions">
-                                        <button
-                                            className="confirm-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onDelete(message._id); // This calls handleDeleteMessage in Inbox.jsx
-                                                setConfirmDelete(false);
-                                            }}
-                                        >
-                                            Evet
-                                        </button>
-                                        <button
-                                            className="cancel-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setConfirmDelete(false);
-                                            }}
-                                        >
-                                            İptal
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>,
-                            document.body
-                        )}
+                    {/* Minimal WhatsApp-style hover chevron trigger (desktop) */}
+                    {!selectMode && !message.isOptimistic && (
+                        <button
+                            type="button"
+                            className={`msg-chevron-trigger ${menuOpen ? 'active' : ''}`}
+                            onClick={handleChevronClick}
+                            title="Mesaj seçenekleri"
+                            aria-label="Mesaj seçenekleri"
+                        >
+                            <ChevronDown size={15} strokeWidth={2.2} />
+                        </button>
+                    )}
 
                     <div className="message-bubble-content">
-                        {message.media && (
-                            isDocument ? (
+                        {message.forwarded && (
+                            <div className={`msg-forwarded-label ${isOwn ? 'own' : 'other'}`}>
+                                <Forward size={11} />
+                                <span>İletildi</span>
+                            </div>
+                        )}
+
+                        {message.media &&
+                            (isDocument ? (
                                 <div className="post-pdf-container" onClick={(e) => e.stopPropagation()}>
                                     <div
                                         className="pdf-glass-card"
                                         onClick={(e) => {
+                                            if (selectMode) return;
                                             e.preventDefault();
                                             window.open(getImageUrl(message.media), '_blank', 'noopener,noreferrer');
                                         }}
@@ -214,21 +377,27 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                         ) : (
                                             <div className="pdf-icon-placeholder">
                                                 <div className="pdf-icon-text">
-                                                    {message.mediaName?.split('.').pop()?.substring(0, 4).toUpperCase() || 
-                                                     message.media.split('.').pop()?.substring(0, 4).toUpperCase() || 
-                                                     'FILE'}
+                                                    {message.mediaName?.split('.').pop()?.substring(0, 4).toUpperCase() ||
+                                                        message.media.split('.').pop()?.substring(0, 4).toUpperCase() ||
+                                                        'FILE'}
                                                 </div>
                                             </div>
                                         )}
                                         <div className="pdf-info">
-                                            <span className="pdf-name" title={message.mediaName || message.media.split('/').pop() || 'Doküman'}>
+                                            <span
+                                                className="pdf-name"
+                                                title={message.mediaName || message.media.split('/').pop() || 'Doküman'}
+                                            >
                                                 {message.mediaName || message.media.split('/').pop() || 'Doküman'}
                                             </span>
                                             <span className="pdf-size">
-                                                {message.mediaSize ? (message.mediaSize / (1024 * 1024)).toFixed(2) + ' MB' : 'Doküman'}
+                                                {message.mediaSize
+                                                    ? (message.mediaSize / (1024 * 1024)).toFixed(2) + ' MB'
+                                                    : 'Doküman'}
                                             </span>
                                         </div>
                                         <button
+                                            type="button"
                                             className="pdf-download-btn"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -239,10 +408,7 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                             <Download size={16} />
                                         </button>
                                         {!message.content && (
-                                            <div className="pdf-time-in-card">
-                                                {formatTime(message.createdAt)}
-                                                {message.isOptimistic && <span className="sending-indicator">...</span>}
-                                            </div>
+                                            <div className="pdf-time-in-card">{renderStatusMeta(true)}</div>
                                         )}
                                     </div>
                                 </div>
@@ -255,7 +421,7 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                                 className="bubble-video"
                                             />
                                             <div className="video-play-overlay">
-                                                <Play size={32} fill="currentColor" />
+                                                <Play size={28} fill="currentColor" />
                                             </div>
                                         </div>
                                     ) : (
@@ -268,32 +434,36 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                             alt="Attachment"
                                             loading="lazy"
                                             decoding="async"
-                                            width="250"
-                                            height="250"
+                                            width="240"
+                                            height="240"
                                         />
                                     )}
                                     {!message.isOptimistic && (
                                         <button
+                                            type="button"
                                             className="msg-download-btn"
-                                            onClick={(e) =>
-                                                handleDownload(e, getImageUrl(message.media))
-                                            }
+                                            onClick={(e) => handleDownload(e, getImageUrl(message.media))}
+                                            title="İndir"
                                         >
-                                            <Download size={24} strokeWidth={2} />
+                                            <Download size={16} strokeWidth={2} />
                                         </button>
                                     )}
                                     {!message.content && (
-                                        <div className="media-time-badge">
-                                            {formatTime(message.createdAt)}
-                                            {message.isOptimistic && <span className="sending-indicator">...</span>}
-                                        </div>
+                                        <div className="media-time-badge">{renderStatusMeta(true)}</div>
                                     )}
                                 </div>
-                            )
-                        )}
+                            ))}
 
                         {message.replyTo && (
-                            <div className="message-reply-preview">
+                            <div
+                                className="message-reply-preview"
+                                onClick={(e) => {
+                                    if (selectMode) return;
+                                    e.stopPropagation();
+                                    const targetId = message.replyTo?._id || message.replyTo;
+                                    if (targetId && onJumpToMessage) onJumpToMessage(targetId);
+                                }}
+                            >
                                 <div className="reply-bar-line"></div>
                                 <div className="reply-content-box">
                                     <p className="reply-sender">
@@ -332,7 +502,9 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                 )}
                                 {displayPost.media && (
                                     <div className="shared-post-media-preview">
-                                        {displayPost.mediaType === 'video' || displayPost.mediaType === 'videoUrl' || displayPost.media.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                        {displayPost.mediaType === 'video' ||
+                                        displayPost.mediaType === 'videoUrl' ||
+                                        displayPost.media.match(/\.(mp4|webm|ogg|mov)$/i) ? (
                                             <div className="shared-post-video-wrapper">
                                                 <video
                                                     src={getImageUrl(displayPost.media)}
@@ -366,10 +538,13 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                                     src={getImageUrl(displayPost.pdfThumbnailUrl)}
                                                     alt="PDF Preview"
                                                     className="shared-post-pdf-thumbnail"
-                                                    style={{ width: '100%', height: '180px', objectFit: 'cover' }}
+                                                    style={{ width: '100%', height: '150px', objectFit: 'cover' }}
                                                 />
                                             ) : (
-                                                <div className="pdf-icon-placeholder" style={{ height: '140px', width: '100%', borderRadius: 0 }}>
+                                                <div
+                                                    className="pdf-icon-placeholder"
+                                                    style={{ height: '120px', width: '100%', borderRadius: 0 }}
+                                                >
                                                     <div className="pdf-icon-text">PDF</div>
                                                 </div>
                                             )}
@@ -451,15 +626,14 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                                     const firstUrl = extractFirstUrl(message.content);
                                     return (
                                         <>
-                                            <span className="message-text-span">{linkifyText(message.content, firstUrl)}</span>
+                                            <span className="message-text-span">
+                                                {linkifyText(message.content, firstUrl)}
+                                            </span>
                                             {firstUrl && <LinkPreview url={firstUrl} />}
                                         </>
                                     );
                                 })()}
-                                <span className="message-time-in-bubble">
-                                    {formatTime(message.createdAt)}
-                                    {message.isOptimistic && <span className="sending-indicator">...</span>}
-                                </span>
+                                <span className="message-time-in-bubble">{renderStatusMeta(true)}</span>
                             </div>
                         )}
 
@@ -467,7 +641,16 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                         {message.reactions && message.reactions.length > 0 && (
                             <div className="message-reactions">
                                 {message.reactions.map((reaction, index) => (
-                                    <span key={index} className="reaction-emoji">
+                                    <span
+                                        key={index}
+                                        className="reaction-emoji"
+                                        onClick={(e) => {
+                                            if (isGhost) return;
+                                            e.stopPropagation();
+                                            onReact?.(message._id, reaction.emoji);
+                                        }}
+                                        title="İfadeyi değiştir / kaldır"
+                                    >
                                         {reaction.emoji}
                                     </span>
                                 ))}
@@ -477,27 +660,190 @@ const MessageBubble = ({ message, isOwn, isConsecutive, onDelete, onReply, onRea
                 </div>
             </div>
 
+            {/* WhatsApp-style Per-Message Context Menu (Desktop Popover / Mobile Bottom Sheet) */}
+            {menuOpen &&
+                createPortal(
+                    <div
+                        className={`msg-context-backdrop ${menuPos.isMobileSheet ? 'mobile-sheet' : ''}`}
+                        onClick={() => {
+                            setMenuOpen(false);
+                            setHighlightReactions(false);
+                        }}
+                    >
+                        <div
+                            ref={menuRef}
+                            className={`msg-context-menu ${menuPos.isMobileSheet ? 'mobile-sheet' : ''}`}
+                            style={
+                                menuPos.isMobileSheet
+                                    ? undefined
+                                    : { top: menuPos.top, left: menuPos.left }
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {!isGhost && (
+                                <div className={`msg-reaction-bar ${highlightReactions ? 'pulse' : ''}`}>
+                                    {QUICK_REACTIONS.map((emoji) => (
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            className="msg-reaction-btn"
+                                            onClick={() => handleReactionClick(emoji)}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                className="msg-context-item"
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    onShowInfo?.(message, isOwn);
+                                }}
+                            >
+                                <Info size={16} />
+                                <span>Mesaj bilgisi</span>
+                            </button>
+
+                            {!isGhost && (
+                                <button
+                                    type="button"
+                                    className="msg-context-item"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        onReply?.(message);
+                                    }}
+                                >
+                                    <Reply size={16} />
+                                    <span>Cevapla</span>
+                                </button>
+                            )}
+
+                            {message.content && (
+                                <button
+                                    type="button"
+                                    className="msg-context-item"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        onCopy?.(message);
+                                    }}
+                                >
+                                    <Copy size={16} />
+                                    <span>Kopyala</span>
+                                </button>
+                            )}
+
+                            {!isGhost && (
+                                <button
+                                    type="button"
+                                    className="msg-context-item"
+                                    onClick={() => setHighlightReactions(true)}
+                                >
+                                    <Smile size={16} />
+                                    <span>İfade bırak</span>
+                                </button>
+                            )}
+
+                            {!isGhost && (
+                                <button
+                                    type="button"
+                                    className="msg-context-item"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        onForward?.(message);
+                                    }}
+                                >
+                                    <Forward size={16} />
+                                    <span>İlet</span>
+                                </button>
+                            )}
+
+                            {!isGhost && (
+                                <button
+                                    type="button"
+                                    className="msg-context-item"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        onPin?.(message._id);
+                                    }}
+                                >
+                                    {message.pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                                    <span>{message.pinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}</span>
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                className="msg-context-item"
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    onStar?.(message._id);
+                                }}
+                            >
+                                <Star size={16} fill={isStarred ? 'currentColor' : 'none'} />
+                                <span>{isStarred ? 'Yıldızı kaldır' : 'Yıldız ekle'}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="msg-context-item"
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    onEnterSelect?.(message._id);
+                                }}
+                            >
+                                <CheckSquare size={16} />
+                                <span>Seç</span>
+                            </button>
+
+                            {!isGhost && (
+                                <>
+                                    <div className="msg-context-divider" />
+                                    <button
+                                        type="button"
+                                        className="msg-context-item danger"
+                                        onClick={() => {
+                                            setMenuOpen(false);
+                                            onRequestDelete?.(message, isOwn);
+                                        }}
+                                    >
+                                        <Trash2 size={16} />
+                                        <span>Sil</span>
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
             {/* Lightbox Modal */}
-            {showLightbox && (
-                <div className="lightbox-overlay" onClick={toggleLightbox}>
-                    <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-                        {message.media.match(/\.(mp4|webm|ogg|mov)$/i) || (message.isOptimistic && message.media.startsWith('blob:')) && message.mediaType?.startsWith('video') ? (
-                            <video 
-                                src={message.isOptimistic ? message.media : getImageUrl(message.media)} 
-                                controls 
-                                autoPlay 
-                                className="lightbox-video"
-                            />
-                        ) : (
-                            <img
-                                src={message.isOptimistic ? message.media : getImageUrl(message.media)}
-                                alt="Full Size"
-                            />
-                        )}
-                        <button className="lightbox-close" onClick={toggleLightbox}>×</button>
-                    </div>
-                </div>
-            )}
+            {showLightbox &&
+                createPortal(
+                    <div className="lightbox-overlay" onClick={toggleLightbox}>
+                        <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                            {isVideo ? (
+                                <video
+                                    src={message.isOptimistic ? message.media : getImageUrl(message.media)}
+                                    controls
+                                    autoPlay
+                                    className="lightbox-video"
+                                />
+                            ) : (
+                                <img
+                                    src={message.isOptimistic ? message.media : getImageUrl(message.media)}
+                                    alt="Full Size"
+                                />
+                            )}
+                            <button type="button" className="lightbox-close" onClick={toggleLightbox}>
+                                ×
+                            </button>
+                        </div>
+                    </div>,
+                    document.body
+                )}
         </>
     );
 };

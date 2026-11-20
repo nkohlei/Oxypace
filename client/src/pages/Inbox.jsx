@@ -1,8 +1,33 @@
-import React, { Fragment, useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { Fragment, useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
+import {
+    Search,
+    MoreVertical,
+    Info,
+    CheckSquare,
+    BellOff,
+    Bell,
+    Timer,
+    Palette,
+    Heart,
+    Download,
+    XCircle,
+    Flag,
+    Ban,
+    MinusCircle,
+    Trash2,
+    Pin,
+    X,
+    ChevronUp,
+    ChevronDown,
+    Copy,
+    Star,
+    Forward,
+} from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
+import { copyTextSafely } from '../utils/shareUtils';
 
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -10,6 +35,19 @@ import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import MessageBubble from '../components/MessageBubble';
 import NewMessageModal from '../components/NewMessageModal';
+import ReportModal from '../components/ReportModal';
+import {
+    CHAT_THEMES,
+    ContactInfoDrawer,
+    MessageInfoModal,
+    ForwardMessageModal,
+    ChatThemeModal,
+    DisappearingMessagesModal,
+    MuteChatModal,
+    DeleteMessageModal,
+    ConfirmChatActionModal,
+    formatDisappearingLabel,
+} from '../components/ChatModals';
 import UserAvatar from '../components/UserAvatar';
 import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from '../components/UserBadges';
@@ -93,6 +131,139 @@ const Inbox = () => {
     const plusMenuRef = useRef(null);
     const plusButtonRef = useRef(null);
     const selectedUserRef = useRef(selectedUser);
+
+    // WhatsApp-style Chat Settings, Search, Multi-Select & Modals State
+    const [chatPreferences, setChatPreferences] = useState({});
+    const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'unread' | 'favorites'
+    const [showChatMenu, setShowChatMenu] = useState(false);
+    const [chatMenuPos, setChatMenuPos] = useState({ top: 0, right: 16 });
+    const chatMenuBtnRef = useRef(null);
+    const chatMenuRef = useRef(null);
+
+    const [showChatSearch, setShowChatSearch] = useState(false);
+    const [chatSearchQuery, setChatSearchQuery] = useState('');
+    const [chatSearchIdx, setChatSearchIdx] = useState(0);
+    const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+    const [activePinnedIdx, setActivePinnedIdx] = useState(0);
+
+    const [selectMode, setSelectMode] = useState(false);
+    const [selectedMessageIds, setSelectedMessageIds] = useState([]);
+
+    const [showContactInfo, setShowContactInfo] = useState(false);
+    const [infoModalData, setInfoModalData] = useState(null); // { message, isOwn }
+    const [forwardMessages, setForwardMessages] = useState(null); // Message[]
+    const [showThemeModal, setShowThemeModal] = useState(false);
+    const [showDisappearingModal, setShowDisappearingModal] = useState(false);
+    const [showMuteModal, setShowMuteModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState(null); // { ids: string[], canDeleteForEveryone: boolean }
+    const [confirmAction, setConfirmAction] = useState(null); // 'clear' | 'deleteChat'
+    const [inboxToast, setInboxToast] = useState('');
+    const toastTimerRef = useRef(null);
+
+    const showToast = useCallback((msg) => {
+        setInboxToast(msg);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => setInboxToast(''), 2600);
+    }, []);
+
+    const fetchChatPreferences = useCallback(async () => {
+        try {
+            const res = await axios.get('/api/messages/preferences');
+            if (res.data && typeof res.data === 'object') {
+                setChatPreferences(res.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch chat preferences:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchChatPreferences();
+    }, [fetchChatPreferences]);
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        };
+    }, []);
+
+    const selectedPartnerId = selectedUser?._id ? String(selectedUser._id) : null;
+    const currentPrefs = useMemo(() => {
+        const defaults = {
+            mutedUntil: null,
+            isFavorite: false,
+            theme: 'default',
+            disappearingSeconds: 0,
+            isBlocked: false,
+            blockedByPartner: false,
+        };
+        if (!selectedPartnerId) return defaults;
+        return { ...defaults, ...(chatPreferences[selectedPartnerId] || {}) };
+    }, [chatPreferences, selectedPartnerId]);
+
+    const isCurrentChatMuted = Boolean(
+        currentPrefs.mutedUntil && new Date(currentPrefs.mutedUntil) > new Date()
+    );
+
+    const pinnedMessages = useMemo(
+        () => messages.filter((m) => Boolean(m.pinned)),
+        [messages]
+    );
+
+    const searchMatchedIds = useMemo(() => {
+        const q = chatSearchQuery.trim().toLowerCase();
+        if (!showChatSearch || !q) return [];
+        return messages
+            .filter((m) => (m.content || '').toLowerCase().includes(q) || (m.mediaName || '').toLowerCase().includes(q))
+            .map((m) => String(m._id));
+    }, [messages, showChatSearch, chatSearchQuery]);
+
+    const jumpToMessage = useCallback((messageId) => {
+        const idStr = String(messageId);
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const el = container.querySelector(`[data-message-id="${idStr}"]`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHighlightedMessageId(idStr);
+            setTimeout(() => {
+                setHighlightedMessageId((prev) => (prev === idStr ? null : prev));
+            }, 1700);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (searchMatchedIds.length > 0) {
+            const safeIdx = Math.min(chatSearchIdx, searchMatchedIds.length - 1);
+            if (safeIdx !== chatSearchIdx) setChatSearchIdx(safeIdx);
+            jumpToMessage(searchMatchedIds[safeIdx]);
+        }
+    }, [searchMatchedIds, chatSearchIdx, jumpToMessage]);
+
+    // Close chat header menu on outside click or Escape
+    useEffect(() => {
+        if (!showChatMenu) return;
+        const handleOutside = (e) => {
+            if (chatMenuRef.current?.contains(e.target)) return;
+            if (chatMenuBtnRef.current?.contains(e.target)) return;
+            setShowChatMenu(false);
+        };
+        const handleKey = (e) => {
+            if (e.key === 'Escape') setShowChatMenu(false);
+        };
+        const t = setTimeout(() => {
+            document.addEventListener('mousedown', handleOutside);
+            document.addEventListener('touchstart', handleOutside, { passive: true });
+            document.addEventListener('keydown', handleKey);
+        }, 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handleOutside);
+            document.removeEventListener('touchstart', handleOutside);
+            document.removeEventListener('keydown', handleKey);
+        };
+    }, [showChatMenu]);
 
     useEffect(() => {
         selectedUserRef.current = selectedUser;
@@ -210,6 +381,14 @@ const Inbox = () => {
     // Reset when switching conversations
     useEffect(() => {
         setShowPlusMenu(false);
+        setShowChatMenu(false);
+        setShowChatSearch(false);
+        setChatSearchQuery('');
+        setChatSearchIdx(0);
+        setSelectMode(false);
+        setSelectedMessageIds([]);
+        setActivePinnedIdx(0);
+        setShowContactInfo(false);
     }, [selectedUser]);
 
     const scrollToBottom = useCallback((instant = true) => {
@@ -305,13 +484,13 @@ const Inbox = () => {
                 fetchConversations();
             };
 
-            const handleMessagesRead = ({ readerId }) => {
+            const handleMessagesRead = ({ readerId, readAt }) => {
                 const activeSelectedId = selectedUserRef.current ? String(selectedUserRef.current._id) : null;
                 if (activeSelectedId && activeSelectedId === String(readerId)) {
                     setMessages((prev) =>
                         prev.map((msg) =>
                             String(msg.sender?._id || msg.sender) === String(user._id)
-                                ? { ...msg, read: true }
+                                ? { ...msg, read: true, readAt: msg.readAt || readAt || new Date().toISOString() }
                                 : msg
                         )
                     );
@@ -329,6 +508,32 @@ const Inbox = () => {
                 );
             };
 
+            const handleMessagePinned = ({ messageId, pinned, pinnedBy, pinnedAt }) => {
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        String(msg._id) === String(messageId)
+                            ? { ...msg, pinned, pinnedBy, pinnedAt }
+                            : msg
+                    )
+                );
+            };
+
+            const handleChatSettingsUpdated = ({ partnerId, disappearingSeconds, blockedByPartner }) => {
+                if (!partnerId) return;
+                const pid = String(partnerId);
+                setChatPreferences((prev) => {
+                    const existing = prev[pid] || {};
+                    return {
+                        ...prev,
+                        [pid]: {
+                            ...existing,
+                            ...(disappearingSeconds !== undefined ? { disappearingSeconds } : {}),
+                            ...(blockedByPartner !== undefined ? { blockedByPartner } : {}),
+                        },
+                    };
+                });
+            };
+
             const handleDmTypingUpdate = ({ senderId, isTyping }) => {
                 setTypingUsers((prev) => ({
                     ...prev,
@@ -342,6 +547,8 @@ const Inbox = () => {
             socket.on('messagesRead', handleMessagesRead);
             socket.on('messageDeleted', handleMessageDeleted);
             socket.on('messageReaction', handleMessageReaction);
+            socket.on('messagePinned', handleMessagePinned);
+            socket.on('chatSettingsUpdated', handleChatSettingsUpdated);
             socket.on('dm_typing_update', handleDmTypingUpdate);
 
             return () => {
@@ -351,6 +558,8 @@ const Inbox = () => {
                 socket.off('messagesRead', handleMessagesRead);
                 socket.off('messageDeleted', handleMessageDeleted);
                 socket.off('messageReaction', handleMessageReaction);
+                socket.off('messagePinned', handleMessagePinned);
+                socket.off('chatSettingsUpdated', handleChatSettingsUpdated);
                 socket.off('dm_typing_update', handleDmTypingUpdate);
             };
         }
@@ -689,18 +898,224 @@ const Inbox = () => {
         }
     };
 
-    const handleDeleteMessage = async (messageId) => {
+    const updateChatPref = async (patch, successMsg) => {
+        if (!selectedPartnerId || isGhost) return;
+        const previous = chatPreferences[selectedPartnerId];
+        setChatPreferences((prev) => ({
+            ...prev,
+            [selectedPartnerId]: { ...(prev[selectedPartnerId] || {}), ...patch },
+        }));
+        try {
+            const res = await axios.put(`/api/messages/preferences/${selectedPartnerId}`, patch);
+            setChatPreferences((prev) => ({
+                ...prev,
+                [selectedPartnerId]: res.data,
+            }));
+            if (successMsg) showToast(successMsg);
+        } catch (err) {
+            console.error('Update chat preference failed:', err);
+            setChatPreferences((prev) => ({
+                ...prev,
+                [selectedPartnerId]: previous || {},
+            }));
+            showToast(err?.response?.data?.message || 'Ayar güncellenemedi.');
+        }
+    };
+
+    const handleDeleteMessage = async (messageIds, scope = 'everyone') => {
+        const ids = Array.isArray(messageIds) ? messageIds.map(String) : [String(messageIds)];
+        if (ids.length === 0) return;
         const previousMessages = [...messages];
-        setMessages((prev) => prev.filter((msg) => String(msg._id) !== String(messageId)));
+        setMessages((prev) => prev.filter((msg) => !ids.includes(String(msg._id))));
+        setDeleteTarget(null);
+        if (selectMode) {
+            setSelectMode(false);
+            setSelectedMessageIds([]);
+        }
 
         try {
-            await axios.delete(`/api/messages/${messageId}`);
+            if (ids.length === 1) {
+                await axios.delete(`/api/messages/${ids[0]}?scope=${scope}`);
+            } else {
+                await axios.post('/api/messages/bulk-delete', { messageIds: ids, scope });
+            }
             fetchConversations();
+            showToast(ids.length > 1 ? `${ids.length} mesaj silindi.` : 'Mesaj silindi.');
         } catch (err) {
             console.error('Failed to delete message:', err);
             setMessages(previousMessages);
-            alert('Mesaj silinemedi.');
+            showToast(err?.response?.data?.message || 'Mesaj silinemedi.');
         }
+    };
+
+    const handleCopyMessage = async (msg) => {
+        if (!msg?.content) return;
+        await copyTextSafely(msg.content);
+        showToast('Mesaj kopyalandı.');
+    };
+
+    const handlePinMessage = async (messageId) => {
+        if (isGhost) return;
+        try {
+            const res = await axios.post(`/api/messages/${messageId}/pin`);
+            setMessages((prev) =>
+                prev.map((m) =>
+                    String(m._id) === String(messageId)
+                        ? { ...m, pinned: res.data.pinned, pinnedBy: res.data.pinnedBy, pinnedAt: res.data.pinnedAt }
+                        : m
+                )
+            );
+            showToast(res.data.pinned ? 'Mesaj sabitlendi.' : 'Sabitleme kaldırıldı.');
+        } catch (err) {
+            console.error('Pin failed:', err);
+            showToast('İşlem yapılamadı.');
+        }
+    };
+
+    const handleStarMessage = async (messageId) => {
+        try {
+            const res = await axios.post(`/api/messages/${messageId}/star`);
+            setMessages((prev) =>
+                prev.map((m) =>
+                    String(m._id) === String(messageId) ? { ...m, starredBy: res.data.starredBy } : m
+                )
+            );
+            showToast(res.data.starred ? 'Yıldız eklendi.' : 'Yıldız kaldırıldı.');
+        } catch (err) {
+            console.error('Star failed:', err);
+            showToast('İşlem yapılamadı.');
+        }
+    };
+
+    const handleEnterSelectMode = (initialId) => {
+        setSelectMode(true);
+        setSelectedMessageIds(initialId ? [String(initialId)] : []);
+    };
+
+    const handleToggleSelectMessage = (messageId) => {
+        const idStr = String(messageId);
+        setSelectedMessageIds((prev) =>
+            prev.includes(idStr) ? prev.filter((id) => id !== idStr) : [...prev, idStr]
+        );
+    };
+
+    const handleBulkCopy = async () => {
+        const selectedMsgs = messages.filter((m) => selectedMessageIds.includes(String(m._id)));
+        const text = selectedMsgs
+            .map((m) => m.content)
+            .filter(Boolean)
+            .join('\n');
+        if (!text) {
+            showToast('Seçili mesajlarda kopyalanacak metin yok.');
+            return;
+        }
+        await copyTextSafely(text);
+        showToast(`${selectedMsgs.length} mesaj kopyalandı.`);
+        setSelectMode(false);
+        setSelectedMessageIds([]);
+    };
+
+    const handleBulkStar = async () => {
+        const ids = [...selectedMessageIds];
+        for (const id of ids) {
+            try {
+                const res = await axios.post(`/api/messages/${id}/star`);
+                setMessages((prev) =>
+                    prev.map((m) => (String(m._id) === id ? { ...m, starredBy: res.data.starredBy } : m))
+                );
+            } catch (_) {}
+        }
+        showToast(`${ids.length} mesaj için yıldız güncellendi.`);
+        setSelectMode(false);
+        setSelectedMessageIds([]);
+    };
+
+    const handleBulkForward = () => {
+        const selectedMsgs = messages.filter((m) => selectedMessageIds.includes(String(m._id)));
+        if (selectedMsgs.length === 0) return;
+        setForwardMessages(selectedMsgs);
+    };
+
+    const handleBulkDeleteRequest = () => {
+        const selectedMsgs = messages.filter((m) => selectedMessageIds.includes(String(m._id)));
+        if (selectedMsgs.length === 0) return;
+        const myId = String(user?._id || '');
+        const allOwn = selectedMsgs.every((m) => String(m.sender?._id || m.sender) === myId);
+        setDeleteTarget({
+            ids: selectedMsgs.map((m) => String(m._id)),
+            canDeleteForEveryone: allOwn,
+        });
+    };
+
+    const handleExportChat = () => {
+        if (!selectedUser) return;
+        const lines = [
+            `Oxypace Sohbet Dışa Aktarımı — ${selectedUser.profile?.displayName || selectedUser.username} (@${selectedUser.username})`,
+            `Tarih: ${new Date().toLocaleString('tr-TR')}`,
+            '--------------------------------------------------',
+            '',
+        ];
+        messages.forEach((m) => {
+            const dt = new Date(m.createdAt).toLocaleString('tr-TR');
+            const senderName = m.sender?.profile?.displayName || m.sender?.username || 'Kullanıcı';
+            const body = [m.content, m.media ? `[Medya: ${m.mediaName || 'ek'}]` : ''].filter(Boolean).join(' ');
+            lines.push(`[${dt}] ${senderName}: ${body || '[Mesaj]'}`);
+        });
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `oxypace-sohbet-${selectedUser.username || 'export'}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('Sohbet .txt olarak indirildi.');
+    };
+
+    const handleClearConversation = async () => {
+        if (!selectedPartnerId) return;
+        try {
+            await axios.post(`/api/messages/conversation/${selectedPartnerId}/clear`);
+            setMessages([]);
+            setConfirmAction(null);
+            fetchConversations();
+            showToast('Sohbet temizlendi.');
+        } catch (err) {
+            console.error('Clear conversation failed:', err);
+            showToast('Sohbet temizlenemedi.');
+        }
+    };
+
+    const handleDeleteConversation = async () => {
+        if (!selectedPartnerId) return;
+        try {
+            await axios.delete(`/api/messages/conversation/${selectedPartnerId}`);
+            setConfirmAction(null);
+            setSelectedUser(null);
+            setMessages([]);
+            useGlobalStore.getState().setActiveChatUserId(null);
+            fetchConversations();
+            showToast('Sohbet silindi.');
+        } catch (err) {
+            console.error('Delete conversation failed:', err);
+            showToast('Sohbet silinemedi.');
+        }
+    };
+
+    const handleToggleChatMenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowChatMenu((prev) => {
+            if (!prev && chatMenuBtnRef.current) {
+                const rect = chatMenuBtnRef.current.getBoundingClientRect();
+                setChatMenuPos({
+                    top: rect.bottom + 8,
+                    right: Math.max(12, window.innerWidth - rect.right),
+                });
+            }
+            return !prev;
+        });
     };
 
     const formatTime = (date) => {
@@ -725,10 +1140,17 @@ const Inbox = () => {
         return `Katıldı ${date.getFullYear()}`;
     };
 
-    const filteredConversations = Array.isArray(conversations) ? conversations.filter((conv) => {
-        const name = conv.user?.profile?.displayName || conv.user?.username || '';
-        return name.toLowerCase().includes(searchQuery.toLowerCase());
-    }) : [];
+    const filteredConversations = Array.isArray(conversations)
+        ? conversations.filter((conv) => {
+              const name = conv.user?.profile?.displayName || conv.user?.username || '';
+              if (!name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+              const pid = String(conv.user?._id || '');
+              const pref = chatPreferences[pid] || conv.preferences || {};
+              if (activeFilter === 'unread') return (conv.unreadCount || 0) > 0;
+              if (activeFilter === 'favorites') return Boolean(pref.isFavorite);
+              return true;
+          })
+        : [];
 
     return (
         <div className="app-wrapper inbox-wrapper">
@@ -801,6 +1223,29 @@ const Inbox = () => {
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
+                            <div className="inbox-filter-pills">
+                                <button
+                                    type="button"
+                                    className={`inbox-filter-pill ${activeFilter === 'all' ? 'active' : ''}`}
+                                    onClick={() => setActiveFilter('all')}
+                                >
+                                    Tümü
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`inbox-filter-pill ${activeFilter === 'unread' ? 'active' : ''}`}
+                                    onClick={() => setActiveFilter('unread')}
+                                >
+                                    Okunmamış
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`inbox-filter-pill ${activeFilter === 'favorites' ? 'active' : ''}`}
+                                    onClick={() => setActiveFilter('favorites')}
+                                >
+                                    Favoriler
+                                </button>
+                            </div>
                         </div>
                         {loading ? (
                             <div className="spinner-container">
@@ -844,7 +1289,18 @@ const Inbox = () => {
                                                     <UserBadges user={conv.user} size={16} />
                                                 </div>
                                                 <span className="conv-time">
-                                                    {formatTime(conv.lastMessage.createdAt)}
+                                                    {(() => {
+                                                        const pid = String(conv.user?._id || '');
+                                                        const pref = chatPreferences[pid] || conv.preferences || {};
+                                                        const muted = Boolean(pref.mutedUntil && new Date(pref.mutedUntil) > new Date());
+                                                        return (
+                                                            <span className="conv-meta-icons">
+                                                                {pref.isFavorite && <Heart size={11} fill="currentColor" className="conv-fav-icon" />}
+                                                                {muted && <BellOff size={11} className="conv-muted-icon" />}
+                                                                {formatTime(conv.lastMessage.createdAt)}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </span>
                                             </div>
                                             <p className="conv-preview" style={{ color: typingUsers[conv.user._id] ? 'var(--primary-color)' : 'inherit', fontWeight: typingUsers[conv.user._id] ? '600' : 'normal' }}>
@@ -879,7 +1335,7 @@ const Inbox = () => {
 
                     {/* Right Side: Chat */}
                     {selectedUser ? (
-                        <div className="chat-view">
+                        <div className="chat-view" data-chat-theme={currentPrefs.theme || 'default'}>
                             <div className="chat-header">
                                 <button className="back-btn" onClick={handleBackToList}>
                                     <svg
@@ -898,7 +1354,8 @@ const Inbox = () => {
                                 <div
                                     className="chat-header-content"
                                     style={{ cursor: 'pointer' }}
-                                    onClick={() => navigate(`/profile/${selectedUser.username}`)}
+                                    onClick={() => setShowContactInfo(true)}
+                                    title="Kişi bilgisi"
                                 >
                                     <UserAvatar
                                         src={selectedUser.profile?.lowResAvatar || selectedUser.profile?.avatar}
@@ -915,11 +1372,154 @@ const Inbox = () => {
                                         {selectedUser.username && (
                                             <span className="chat-header-joined">
                                                 @{selectedUser.username}
+                                                {isCurrentChatMuted && (
+                                                    <span className="chat-header-pill" title="Bildirimler sessiz">
+                                                        <BellOff size={11} />
+                                                    </span>
+                                                )}
+                                                {currentPrefs.disappearingSeconds > 0 && (
+                                                    <span className="chat-header-pill" title="Süreli mesajlar açık">
+                                                        <Timer size={11} />
+                                                        {formatDisappearingLabel(currentPrefs.disappearingSeconds)}
+                                                    </span>
+                                                )}
                                             </span>
                                         )}
                                     </div>
                                 </div>
+
+                                <div className="chat-header-actions">
+                                    <button
+                                        type="button"
+                                        className={`chat-header-icon-btn ${showChatSearch ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setShowChatSearch((prev) => {
+                                                if (prev) {
+                                                    setChatSearchQuery('');
+                                                    setChatSearchIdx(0);
+                                                }
+                                                return !prev;
+                                            });
+                                        }}
+                                        title="Sohbette ara"
+                                        aria-label="Sohbette ara"
+                                    >
+                                        <Search size={18} strokeWidth={2} />
+                                    </button>
+                                    <button
+                                        ref={chatMenuBtnRef}
+                                        type="button"
+                                        className={`chat-header-icon-btn ${showChatMenu ? 'active' : ''}`}
+                                        onClick={handleToggleChatMenu}
+                                        title="Sohbet seçenekleri"
+                                        aria-label="Sohbet seçenekleri"
+                                    >
+                                        <MoreVertical size={18} strokeWidth={2} />
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* In-Chat Search Bar */}
+                            {showChatSearch && (
+                                <div className="chat-search-bar">
+                                    <Search size={15} className="chat-search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Bu sohbette mesaj ara..."
+                                        value={chatSearchQuery}
+                                        onChange={(e) => {
+                                            setChatSearchQuery(e.target.value);
+                                            setChatSearchIdx(0);
+                                        }}
+                                        autoFocus
+                                    />
+                                    {chatSearchQuery.trim() && (
+                                        <span className="chat-search-count">
+                                            {searchMatchedIds.length > 0
+                                                ? `${chatSearchIdx + 1} / ${searchMatchedIds.length}`
+                                                : '0 / 0'}
+                                        </span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="chat-search-nav-btn"
+                                        disabled={searchMatchedIds.length === 0}
+                                        onClick={() =>
+                                            setChatSearchIdx((prev) =>
+                                                prev <= 0 ? searchMatchedIds.length - 1 : prev - 1
+                                            )
+                                        }
+                                        title="Önceki sonuç"
+                                    >
+                                        <ChevronUp size={15} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="chat-search-nav-btn"
+                                        disabled={searchMatchedIds.length === 0}
+                                        onClick={() =>
+                                            setChatSearchIdx((prev) =>
+                                                prev >= searchMatchedIds.length - 1 ? 0 : prev + 1
+                                            )
+                                        }
+                                        title="Sonraki sonuç"
+                                    >
+                                        <ChevronDown size={15} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="chat-search-nav-btn"
+                                        onClick={() => {
+                                            setShowChatSearch(false);
+                                            setChatSearchQuery('');
+                                            setChatSearchIdx(0);
+                                        }}
+                                        title="Aramayı kapat"
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Pinned Message Banner */}
+                            {pinnedMessages.length > 0 && (() => {
+                                const safePinIdx = activePinnedIdx % pinnedMessages.length;
+                                const activePin = pinnedMessages[pinnedMessages.length - 1 - safePinIdx];
+                                return (
+                                    <div
+                                        className="chat-pinned-banner"
+                                        onClick={() => {
+                                            jumpToMessage(activePin._id);
+                                            if (pinnedMessages.length > 1) {
+                                                setActivePinnedIdx((prev) => (prev + 1) % pinnedMessages.length);
+                                            }
+                                        }}
+                                    >
+                                        <Pin size={14} className="chat-pinned-icon" />
+                                        <div className="chat-pinned-text">
+                                            <span className="chat-pinned-title">
+                                                Sabitlenen mesaj{pinnedMessages.length > 1 ? ` (${safePinIdx + 1}/${pinnedMessages.length})` : ''}
+                                            </span>
+                                            <span className="chat-pinned-preview">
+                                                {activePin.content || (activePin.media ? '📷 Medya' : 'Mesaj')}
+                                            </span>
+                                        </div>
+                                        {!isGhost && (
+                                            <button
+                                                type="button"
+                                                className="chat-pinned-close"
+                                                title="Sabitlemeyi kaldır"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handlePinMessage(activePin._id);
+                                                }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {activeFloatingDate && (
                                 <div className="floating-date-sticky">
@@ -989,9 +1589,28 @@ const Inbox = () => {
                                                     message={message}
                                                     isOwn={isOwn}
                                                     isConsecutive={isConsecutive}
-                                                    onDelete={handleDeleteMessage}
+                                                    currentUserId={myId}
+                                                    isGhost={isGhost}
+                                                    selectMode={selectMode}
+                                                    isSelected={selectedMessageIds.includes(String(message._id))}
+                                                    isHighlighted={highlightedMessageId === String(message._id)}
+                                                    isSearchMatch={searchMatchedIds.includes(String(message._id))}
+                                                    onToggleSelect={handleToggleSelectMessage}
+                                                    onEnterSelect={handleEnterSelectMode}
+                                                    onRequestDelete={(msg, ownFlag) =>
+                                                        setDeleteTarget({
+                                                            ids: [String(msg._id)],
+                                                            canDeleteForEveryone: ownFlag,
+                                                        })
+                                                    }
                                                     onReply={handleReply}
                                                     onReact={handleReact}
+                                                    onCopy={handleCopyMessage}
+                                                    onForward={(msg) => setForwardMessages([msg])}
+                                                    onPin={handlePinMessage}
+                                                    onStar={handleStarMessage}
+                                                    onShowInfo={(msg, ownFlag) => setInfoModalData({ message: msg, isOwn: ownFlag })}
+                                                    onJumpToMessage={jumpToMessage}
                                                 />
                                             </React.Fragment>
                                         );
@@ -1042,7 +1661,64 @@ const Inbox = () => {
                                 </div>
                             )}
 
-                            {isGhost ? (
+                            {selectMode ? (
+                                <div className="chat-multiselect-bar">
+                                    <button
+                                        type="button"
+                                        className="chat-ms-close"
+                                        onClick={() => {
+                                            setSelectMode(false);
+                                            setSelectedMessageIds([]);
+                                        }}
+                                        title="Seçimi kapat"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                    <span className="chat-ms-count">{selectedMessageIds.length} seçildi</span>
+                                    <div className="chat-ms-actions">
+                                        <button
+                                            type="button"
+                                            className="chat-ms-btn"
+                                            disabled={selectedMessageIds.length === 0}
+                                            onClick={handleBulkCopy}
+                                            title="Kopyala"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="chat-ms-btn"
+                                            disabled={selectedMessageIds.length === 0}
+                                            onClick={handleBulkStar}
+                                            title="Yıldızla"
+                                        >
+                                            <Star size={16} />
+                                        </button>
+                                        {!isGhost && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="chat-ms-btn"
+                                                    disabled={selectedMessageIds.length === 0}
+                                                    onClick={handleBulkForward}
+                                                    title="İlet"
+                                                >
+                                                    <Forward size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="chat-ms-btn danger"
+                                                    disabled={selectedMessageIds.length === 0}
+                                                    onClick={handleBulkDeleteRequest}
+                                                    title="Sil"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : isGhost ? (
                                 <div className="system-no-reply-notice" style={{ backgroundColor: '#0c0c0c', borderTop: '1px solid #222', color: '#888', padding: '14px 20px' }}>
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.7 }}>
                                         <path d="M12 2a5 5 0 0 0-5 5v14l3-2 2 2 2-2 3 2V7a5 5 0 0 0-5-5z" />
@@ -1059,6 +1735,23 @@ const Inbox = () => {
                                         <line x1="12" y1="17" x2="12.01" y2="17" />
                                     </svg>
                                     <span>Bu hesap doğrudan mesaj kabul etmemektedir.</span>
+                                </div>
+                            ) : currentPrefs.isBlocked ? (
+                                <div className="system-no-reply-notice chat-blocked-bar">
+                                    <Ban size={16} />
+                                    <span>Bu kullanıcıyı engellediniz.</span>
+                                    <button
+                                        type="button"
+                                        className="chat-unblock-inline-btn"
+                                        onClick={() => updateChatPref({ isBlocked: false }, 'Kullanıcının engeli kaldırıldı.')}
+                                    >
+                                        Engeli kaldır
+                                    </button>
+                                </div>
+                            ) : currentPrefs.blockedByPartner ? (
+                                <div className="system-no-reply-notice">
+                                    <Ban size={16} />
+                                    <span>Bu kullanıcıya şu anda mesaj gönderilemiyor.</span>
                                 </div>
                             ) : (
                                 <form onSubmit={handleSendMessage} className="message-form">
@@ -1312,6 +2005,331 @@ const Inbox = () => {
                         onClose={() => setShowNewMessageModal(false)}
                         onSelectUser={handleStartNewConversation}
                     />
+                )}
+
+                {/* Chat Options Dropdown Menu (Top Right ⋮) */}
+                {showChatMenu && selectedUser && createPortal(
+                    <div
+                        ref={chatMenuRef}
+                        className="chat-options-dropdown"
+                        style={{ top: chatMenuPos.top, right: chatMenuPos.right }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className="chat-opt-item"
+                            onClick={() => {
+                                setShowChatMenu(false);
+                                setShowContactInfo(true);
+                            }}
+                        >
+                            <Info size={16} />
+                            <span>Kişi bilgisi</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="chat-opt-item"
+                            onClick={() => {
+                                setShowChatMenu(false);
+                                setShowChatSearch(true);
+                            }}
+                        >
+                            <Search size={16} />
+                            <span>Ara</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="chat-opt-item"
+                            onClick={() => {
+                                setShowChatMenu(false);
+                                handleEnterSelectMode(null);
+                            }}
+                        >
+                            <CheckSquare size={16} />
+                            <span>Mesaj seç</span>
+                        </button>
+                        {!isGhost && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        setShowMuteModal(true);
+                                    }}
+                                >
+                                    {isCurrentChatMuted ? <Bell size={16} /> : <BellOff size={16} />}
+                                    <span>{isCurrentChatMuted ? 'Bildirimlerin sesini aç' : 'Bildirimleri sessize al'}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        setShowDisappearingModal(true);
+                                    }}
+                                >
+                                    <Timer size={16} />
+                                    <span>Süreli mesajlar</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        setShowThemeModal(true);
+                                    }}
+                                >
+                                    <Palette size={16} />
+                                    <span>Sohbet teması</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        updateChatPref(
+                                            { isFavorite: !currentPrefs.isFavorite },
+                                            !currentPrefs.isFavorite ? 'Favorilere eklendi.' : 'Favorilerden çıkarıldı.'
+                                        );
+                                    }}
+                                >
+                                    <Heart size={16} fill={currentPrefs.isFavorite ? 'currentColor' : 'none'} />
+                                    <span>{currentPrefs.isFavorite ? 'Favorilerden çıkar' : "Favoriler'e ekle"}</span>
+                                </button>
+                            </>
+                        )}
+                        <button
+                            type="button"
+                            className="chat-opt-item"
+                            onClick={() => {
+                                setShowChatMenu(false);
+                                handleExportChat();
+                            }}
+                        >
+                            <Download size={16} />
+                            <span>Sohbeti dışa aktar</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="chat-opt-item"
+                            onClick={() => {
+                                setShowChatMenu(false);
+                                handleBackToList();
+                            }}
+                        >
+                            <XCircle size={16} />
+                            <span>Sohbeti kapat</span>
+                        </button>
+
+                        {!isGhost && (
+                            <>
+                                <div className="chat-opt-divider" />
+                                <button
+                                    type="button"
+                                    className="chat-opt-item"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        setShowReportModal(true);
+                                    }}
+                                >
+                                    <Flag size={16} />
+                                    <span>Şikayet et</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item danger"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        updateChatPref(
+                                            { isBlocked: !currentPrefs.isBlocked },
+                                            !currentPrefs.isBlocked ? 'Kullanıcı engellendi.' : 'Kullanıcının engeli kaldırıldı.'
+                                        );
+                                    }}
+                                >
+                                    <Ban size={16} />
+                                    <span>{currentPrefs.isBlocked ? 'Engeli kaldır' : 'Engelle'}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item danger"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        setConfirmAction('clear');
+                                    }}
+                                >
+                                    <MinusCircle size={16} />
+                                    <span>Sohbeti temizle</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="chat-opt-item danger"
+                                    onClick={() => {
+                                        setShowChatMenu(false);
+                                        setConfirmAction('deleteChat');
+                                    }}
+                                >
+                                    <Trash2 size={16} />
+                                    <span>Sohbeti sil</span>
+                                </button>
+                            </>
+                        )}
+                    </div>,
+                    document.body
+                )}
+
+                {/* Contact Info Drawer */}
+                {showContactInfo && selectedUser && (
+                    <ContactInfoDrawer
+                        partner={selectedUser}
+                        messages={messages}
+                        currentUserId={user?._id}
+                        preferences={currentPrefs}
+                        onClose={() => setShowContactInfo(false)}
+                        onNavigateProfile={() => navigate(`/profile/${selectedUser.username}`)}
+                        onOpenMute={() => {
+                            setShowContactInfo(false);
+                            setShowMuteModal(true);
+                        }}
+                        onToggleFavorite={() =>
+                            updateChatPref(
+                                { isFavorite: !currentPrefs.isFavorite },
+                                !currentPrefs.isFavorite ? 'Favorilere eklendi.' : 'Favorilerden çıkarıldı.'
+                            )
+                        }
+                        onOpenDisappearing={() => {
+                            setShowContactInfo(false);
+                            setShowDisappearingModal(true);
+                        }}
+                        onOpenTheme={() => {
+                            setShowContactInfo(false);
+                            setShowThemeModal(true);
+                        }}
+                        onExportChat={handleExportChat}
+                        onOpenReport={() => {
+                            setShowContactInfo(false);
+                            setShowReportModal(true);
+                        }}
+                        onToggleBlock={() =>
+                            updateChatPref(
+                                { isBlocked: !currentPrefs.isBlocked },
+                                !currentPrefs.isBlocked ? 'Kullanıcı engellendi.' : 'Kullanıcının engeli kaldırıldı.'
+                            )
+                        }
+                        onJumpToMessage={jumpToMessage}
+                    />
+                )}
+
+                {/* Message Info Modal */}
+                {infoModalData && (
+                    <MessageInfoModal
+                        message={infoModalData.message}
+                        isOwn={infoModalData.isOwn}
+                        currentUserId={user?._id}
+                        onClose={() => setInfoModalData(null)}
+                    />
+                )}
+
+                {/* Forward Message Modal */}
+                {forwardMessages && (
+                    <ForwardMessageModal
+                        messagesToForward={forwardMessages}
+                        conversations={conversations}
+                        currentUserId={user?._id}
+                        onClose={() => setForwardMessages(null)}
+                        onForwarded={(recipientCount, msgCount) => {
+                            fetchConversations();
+                            setSelectMode(false);
+                            setSelectedMessageIds([]);
+                            showToast(`${msgCount} mesaj ${recipientCount} kişiye iletildi.`);
+                        }}
+                    />
+                )}
+
+                {/* Chat Theme Modal */}
+                {showThemeModal && (
+                    <ChatThemeModal
+                        currentTheme={currentPrefs.theme}
+                        onSelect={(themeId) => {
+                            updateChatPref({ theme: themeId }, 'Sohbet teması güncellendi.');
+                            setShowThemeModal(false);
+                        }}
+                        onClose={() => setShowThemeModal(false)}
+                    />
+                )}
+
+                {/* Disappearing Messages Modal */}
+                {showDisappearingModal && (
+                    <DisappearingMessagesModal
+                        currentSeconds={currentPrefs.disappearingSeconds}
+                        onSelect={(seconds) => {
+                            updateChatPref(
+                                { disappearingSeconds: seconds },
+                                seconds > 0
+                                    ? `Süreli mesajlar açıldı (${formatDisappearingLabel(seconds)}).`
+                                    : 'Süreli mesajlar kapatıldı.'
+                            );
+                            setShowDisappearingModal(false);
+                        }}
+                        onClose={() => setShowDisappearingModal(false)}
+                    />
+                )}
+
+                {/* Mute Notifications Modal */}
+                {showMuteModal && (
+                    <MuteChatModal
+                        mutedUntil={currentPrefs.mutedUntil}
+                        onSelect={(until) => {
+                            updateChatPref(
+                                { mutedUntil: until },
+                                until ? 'Sohbet bildirimleri sessize alındı.' : 'Sohbet bildirimlerinin sesi açıldı.'
+                            );
+                            setShowMuteModal(false);
+                        }}
+                        onClose={() => setShowMuteModal(false)}
+                    />
+                )}
+
+                {/* Delete Message Modal */}
+                {deleteTarget && (
+                    <DeleteMessageModal
+                        count={deleteTarget.ids.length}
+                        canDeleteForEveryone={deleteTarget.canDeleteForEveryone}
+                        onDeleteForMe={() => handleDeleteMessage(deleteTarget.ids, 'me')}
+                        onDeleteForEveryone={() => handleDeleteMessage(deleteTarget.ids, 'everyone')}
+                        onClose={() => setDeleteTarget(null)}
+                    />
+                )}
+
+                {/* Clear / Delete Conversation Confirm Modal */}
+                {confirmAction && selectedUser && (
+                    <ConfirmChatActionModal
+                        title={confirmAction === 'clear' ? 'Sohbeti temizle?' : 'Sohbeti sil?'}
+                        description={
+                            confirmAction === 'clear'
+                                ? 'Bu sohbetteki tüm mesajlar yalnızca sizin görünümünüzden temizlenecektir.'
+                                : 'Bu sohbet ve içindeki mesajlar yalnızca sizin gelen kutunuzdan kaldırılacaktır.'
+                        }
+                        confirmLabel={confirmAction === 'clear' ? 'Temizle' : 'Sohbeti sil'}
+                        onConfirm={confirmAction === 'clear' ? handleClearConversation : handleDeleteConversation}
+                        onClose={() => setConfirmAction(null)}
+                    />
+                )}
+
+                {/* Report User Modal */}
+                {showReportModal && selectedUser && (
+                    <ReportModal
+                        targetType="user"
+                        targetId={selectedUser._id}
+                        targetName={selectedUser.profile?.displayName || selectedUser.username}
+                        onClose={() => setShowReportModal(false)}
+                    />
+                )}
+
+                {/* Subtle Toast Feedback */}
+                {inboxToast && createPortal(
+                    <div className="inbox-action-toast">{inboxToast}</div>,
+                    document.body
                 )}
             </main>
         </div>

@@ -43,6 +43,43 @@ const messageSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    readAt: {
+        type: Date,
+        default: null,
+    },
+    deletedFor: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+    ],
+    pinned: {
+        type: Boolean,
+        default: false,
+    },
+    pinnedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+    },
+    pinnedAt: {
+        type: Date,
+        default: null,
+    },
+    starredBy: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+    ],
+    forwarded: {
+        type: Boolean,
+        default: false,
+    },
+    expiresAt: {
+        type: Date,
+        default: null,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -66,6 +103,7 @@ const messageSchema = new mongoose.Schema({
 // Indexes for faster queries
 messageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
 messageSchema.index({ recipient: 1, read: 1 });
+messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $type: 'date' } } });
 
 const Message = mongoose.model('Message', messageSchema);
 

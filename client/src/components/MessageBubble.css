@@ -74,7 +74,7 @@
 
 /* Own Message Style */
 .message-bubble.own .message-content {
-    background: linear-gradient(135deg, #00C6FF 0%, #0072FF 100%);
+    background: var(--chat-own-bubble-bg, linear-gradient(135deg, #00C6FF 0%, #0072FF 100%));
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -143,20 +143,23 @@
     line-height: 1;
 }
 
-/* Media (Images) */
+/* Media (Images & Videos — Compact WhatsApp-style Frame Width) */
 .message-media {
     position: relative;
     display: inline-block;
-    max-width: 100%;
+    max-width: 245px;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .message-media img,
 .bubble-video {
     border-radius: 12px;
-    max-width: 350px;
+    max-width: 245px;
+    max-height: 290px;
     width: 100%;
     height: auto;
-    object-fit: contain;
+    object-fit: cover;
     margin-bottom: 0;
     border: 1px solid var(--border-subtle);
     cursor: pointer;
@@ -171,7 +174,8 @@
 
 .video-container {
     position: relative;
-    max-width: 350px;
+    max-width: 245px;
+    max-height: 290px;
     width: 100%;
     border-radius: 12px;
     overflow: hidden;
@@ -194,20 +198,21 @@
     background: rgba(0, 0, 0, 0.4);
 }
 
-/* Download Button on Media (Top Right Corner) */
+/* Download Button on Media (Top Left so Top Right stays clean for Chevron) */
 .msg-download-btn {
     position: absolute;
     top: 8px;
-    right: 8px;
+    left: 8px;
+    right: auto;
     bottom: auto;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(0, 0, 0, 0.62);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -215,6 +220,7 @@
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s ease;
     z-index: 20;
+    padding: 0;
 }
 
 .message-media:hover .msg-download-btn {
@@ -248,20 +254,17 @@
 }
 
 @media (max-width: 768px) {
+    .message-media,
     .message-media img,
     .bubble-video,
     .video-container {
-        max-width: 100%;
+        max-width: 210px;
+        max-height: 250px;
     }
 
     .msg-download-btn {
         opacity: 1 !important; /* Force visible on mobile */
         visibility: visible !important;
-    }
-    
-    .message-row.mobile-actions-visible .message-actions {
-        opacity: 1;
-        visibility: visible;
     }
 }
 
@@ -355,7 +358,7 @@
     text-decoration: none;
     color: inherit;
     transition: border-color 0.2s;
-    width: 320px;
+    width: 260px;
     max-width: 100%;
 }
 
@@ -855,4 +858,337 @@
 
 .message-bubble.own .pdf-time-in-card {
     color: rgba(255, 255, 255, 0.85);
+}
+
+
+/* ============================================================
+   WHATSAPP-STYLE HOVER CHEVRON & PER-MESSAGE CONTEXT MENU
+   ============================================================ */
+
+.msg-chevron-trigger {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 25;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+    transform: none !important;
+}
+
+.message-bubble.other .msg-chevron-trigger {
+    background: rgba(20, 22, 26, 0.65) !important;
+}
+
+[data-theme='light'] .message-bubble.other .msg-chevron-trigger {
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: #111115 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .message-bubble:hover .msg-chevron-trigger,
+    .msg-chevron-trigger.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.msg-chevron-trigger:hover {
+    background: rgba(0, 0, 0, 0.72) !important;
+    color: #ffffff !important;
+    transform: none !important;
+}
+
+[data-theme='light'] .message-bubble.other .msg-chevron-trigger:hover {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Hide hover chevron on coarse touch devices — long-press opens the menu */
+@media (hover: none) and (pointer: coarse) {
+    .msg-chevron-trigger {
+        display: none !important;
+    }
+}
+
+/* Inline Status Meta (Time + Pin + Star + Read Ticks) */
+.message-meta-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    vertical-align: middle;
+}
+
+.msg-inline-pin {
+    opacity: 0.8;
+}
+
+.msg-inline-star {
+    color: #facc15;
+}
+
+.msg-read-tick {
+    opacity: 0.75;
+    flex-shrink: 0;
+}
+
+.msg-read-tick.read {
+    opacity: 1;
+    color: #e0f2fe;
+}
+
+.msg-forwarded-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-style: italic;
+    opacity: 0.75;
+    margin-bottom: 3px;
+    padding: 0 4px;
+    color: var(--text-tertiary);
+}
+
+.msg-forwarded-label.own {
+    align-self: flex-end;
+}
+
+.message-reactions .reaction-emoji {
+    cursor: pointer;
+    transition: transform 0.12s ease;
+}
+
+.message-reactions .reaction-emoji:hover {
+    transform: scale(1.2);
+}
+
+/* Multi-select Mode */
+.message-row.select-mode {
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 10px;
+    transition: background-color 0.15s ease;
+}
+
+.message-row.select-mode:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.message-row.select-mode.selected {
+    background: rgba(56, 189, 248, 0.12);
+}
+
+[data-theme='light'] .message-row.select-mode.selected {
+    background: rgba(2, 132, 199, 0.1);
+}
+
+.msg-select-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px !important;
+    border: 1.5px solid var(--border-neon) !important;
+    background: transparent !important;
+    color: #000000 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 6px;
+    order: 0;
+    padding: 0;
+    transform: none !important;
+}
+
+.msg-select-checkbox.checked {
+    background: var(--primary-cyan, #38bdf8) !important;
+    border-color: var(--primary-cyan, #38bdf8) !important;
+}
+
+/* Jump / Search Highlight */
+.message-row.search-match .message-bubble {
+    outline: 1.5px solid rgba(56, 189, 248, 0.55);
+    border-radius: 18px;
+}
+
+.message-row.jump-highlight {
+    animation: msgJumpPulse 1.6s ease-out;
+    border-radius: 14px;
+}
+
+@keyframes msgJumpPulse {
+    0% {
+        background: rgba(56, 189, 248, 0.28);
+    }
+    100% {
+        background: transparent;
+    }
+}
+
+/* Per-Message Context Menu Backdrop & Popover */
+.msg-context-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: transparent;
+}
+
+.msg-context-backdrop.mobile-sheet {
+    background: rgba(0, 0, 0, 0.52);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.msg-context-menu {
+    position: fixed;
+    width: 220px;
+    background: #16171b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 99999;
+    animation: msgMenuFadeIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='light'] .msg-context-menu {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+}
+
+.msg-context-menu.mobile-sheet {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 18px 18px 0 0;
+    padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px)) 12px;
+    border-bottom: none;
+    animation: msgSheetSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes msgMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes msgSheetSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(28px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.msg-reaction-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 6px 8px 6px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.msg-reaction-bar.pulse {
+    background: rgba(56, 189, 248, 0.12);
+    border-radius: 10px;
+}
+
+.msg-reaction-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50% !important;
+    background: transparent !important;
+    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.12s ease, background-color 0.12s ease;
+}
+
+.msg-reaction-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(1.22) !important;
+}
+
+[data-theme='light'] .msg-reaction-btn:hover {
+    background: rgba(0, 0, 0, 0.06) !important;
+}
+
+.msg-context-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 11px;
+    padding: 9px 11px;
+    border-radius: 9px !important;
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    font-size: 0.86rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    transform: none !important;
+}
+
+.msg-context-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+    transform: none !important;
+}
+
+[data-theme='light'] .msg-context-item:hover {
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: #0d0e12 !important;
+}
+
+.msg-context-item.danger {
+    color: #f87171 !important;
+}
+
+.msg-context-item.danger:hover {
+    background: rgba(239, 68, 68, 0.14) !important;
+    color: #fca5a5 !important;
+}
+
+.msg-context-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 6px;
+}
+
+/* Compact PDF Card */
+.post-pdf-container {
+    max-width: 260px;
 }
