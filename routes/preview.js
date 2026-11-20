@@ -9,6 +9,7 @@ import { validateSsrfUrl } from '../utils/security.js';
 import Portal from '../models/Portal.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
+import Badge from '../models/Badge.js';
 
 const router = express.Router();
 
@@ -123,15 +124,23 @@ async function fetchInternalPreview(urlStr, baseUrl = '') {
         const portalMatch = path.match(/^\/portal\/([a-f\d]{24})/i);
         if (portalMatch) {
             const portalId = portalMatch[1];
-            const portal = await Portal.findById(portalId).select('name description avatar banner');
+            const portal = await Portal.findById(portalId).select(
+                'name description avatar banner badges isVerified customBadge isNSFW privacy'
+            );
             if (portal) {
                 return {
                     type: 'internal',
                     subType: 'portal',
+                    portalId: portal._id,
                     title: portal.name,
-                    description: portal.description || 'Oxypace portalını keşfedin.',
+                    description: portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.',
                     image: ensureFullUrl(portal.banner, baseUrl),
                     avatar: ensureFullUrl(portal.avatar, baseUrl),
+                    badges: portal.badges || [],
+                    isVerified: Boolean(portal.isVerified),
+                    customBadge: portal.customBadge || null,
+                    isNSFW: Boolean(portal.isNSFW),
+                    privacy: portal.privacy || 'public',
                     url: urlStr,
                     siteName: 'Oxypace Portal',
                     favicon: '/favicon.ico'
@@ -607,6 +616,284 @@ router.get('/thumbnail', async (req, res) => {
         console.error('Thumbnail generation error:', err.message);
         // Fallback to direct redirect if sharp fails
         return res.redirect(imageUrl);
+    }
+});
+
+// ── Dynamic Portal OG Card Generator (1200x630) ─────────────────────────────
+
+function escapeSvgXml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+function wrapCardLines(text, maxCharsPerLine = 54, maxLines = 2) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean) return [];
+    const words = clean.split(' ');
+    const lines = [];
+    let current = '';
+
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= maxCharsPerLine) {
+            current = candidate;
+        } else {
+            if (current) lines.push(current);
+            current = word;
+            if (lines.length === maxLines - 1) break;
+        }
+    }
+    if (current && lines.length < maxLines) {
+        lines.push(current);
+    }
+    if (lines.length === maxLines) {
+        const joined = lines.join(' ');
+        if (joined.length < clean.length) {
+            let last = lines[maxLines - 1];
+            if (last.length > maxCharsPerLine - 3) {
+                last = last.slice(0, maxCharsPerLine - 3).trimEnd();
+            }
+            lines[maxLines - 1] = `${last}...`;
+        }
+    }
+    return lines;
+}
+
+function resolveDirectMediaUrl(media) {
+    if (!media || typeof media !== 'string') return '';
+    const trimmed = media.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    const cleanKey = trimmed.replace(/^\/+/, '');
+    return `${R2_DOMAIN}/${cleanKey}`;
+}
+
+async function fetchImageBufferSafe(url, timeoutMs = 8000) {
+    if (!url) return null;
+    try {
+        const check = validateSsrfUrl(url);
+        if (!check.safe) return null;
+        const resp = await axios.get(url, {
+            responseType: 'arraybuffer',
+            timeout: timeoutMs,
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
+        return Buffer.from(resp.data);
+    } catch (_) {
+        return null;
+    }
+}
+
+const OG_BADGE_ICONS = {
+    checkmark: 'M9.86 16.29l-3.3-3.3a1 1 0 0 1 1.41-1.41l1.89 1.89 5.3-5.3a1 1 0 0 1 1.41 1.41l-6.71 6.71z',
+    verified: 'M9.86 16.29l-3.3-3.3a1 1 0 0 1 1.41-1.41l1.89 1.89 5.3-5.3a1 1 0 0 1 1.41 1.41l-6.71 6.71z',
+    star: 'M12 6.5l1.65 3.35 3.7.54-2.68 2.61.63 3.69L12 14.95l-3.3 1.74.63-3.69-2.68-2.61 3.7-.54L12 6.5z',
+    shield: 'M12 6L7 8.2v4.2c0 3.2 2.1 6.2 5 7 2.9-.8 5-3.8 5-7V8.2L12 6z',
+    crown: 'M7 16h10l1-7-3.5 2.5L12 7l-2.5 4.5L6 9l1 7z',
+    lightning: 'M13 5.5l-5 7.5h4l-1 5.5 5-7.5h-4l1-5.5z',
+    fire: 'M12 5.5c.5 1.5 0 2.5-1 3.5-1 1-1.5 2-1.5 3 0 2 1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5c0-1.8-1-3-2-4 .5 1.5 0 2.5-1 3-.3-1.5-.2-3.5-1.5-5.5z',
+    heart: 'M12 16.7l-.9-.82C7.9 13.01 5.75 11.06 5.75 8.67 5.75 6.72 7.3 5.2 9.25 5.2c1.1 0 2.16.51 2.75 1.32.59-.81 1.65-1.32 2.75-1.32 1.95 0 3.5 1.52 3.5 3.47 0 2.39-2.15 4.34-5.35 7.21l-.9.82z',
+    diamond: 'M12 6L17.5 12 12 18 6.5 12 12 6z',
+    sparkle: 'M12 5.5l1.3 3.9 3.9 1.3-3.9 1.3L12 15.9l-1.3-3.9-3.9-1.3 3.9-1.3L12 5.5z',
+};
+
+const OG_ROSETTE_PATH =
+    'M 12 3.2 A 2.9 2.9 0 0 1 17.173 4.881 A 2.9 2.9 0 0 1 20.369 9.281 A 2.9 2.9 0 0 1 20.369 14.719 A 2.9 2.9 0 0 1 17.173 19.119 A 2.9 2.9 0 0 1 12 20.8 A 2.9 2.9 0 0 1 6.827 19.119 A 2.9 2.9 0 0 1 3.631 14.719 A 2.9 2.9 0 0 1 3.631 9.281 A 2.9 2.9 0 0 1 6.827 4.881 A 2.9 2.9 0 0 1 12 3.2 Z';
+
+function getBadgeFillColor(slug, badgeDef) {
+    if (badgeDef?.style?.metallicType === 'gold' || slug.includes('gold')) return '#eab308';
+    if (badgeDef?.style?.metallicType === 'silver' || slug.includes('silver')) return '#cbd5e1';
+    if (badgeDef?.style?.metallicType === 'platinum') return '#e2e8f0';
+    if (badgeDef?.style?.metallicType === 'rose_gold') return '#f4a29e';
+    if (badgeDef?.style?.metallicType === 'bronze') return '#d97706';
+    if (badgeDef?.style?.primaryColor) return badgeDef.style.primaryColor;
+    if (slug.includes('crown') || slug.includes('founder') || slug.includes('owner')) return '#f59e0b';
+    return '#e4e4e7';
+}
+
+router.get('/portal-card/:portalId', async (req, res) => {
+    const { portalId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(portalId)) {
+        return res.status(400).send('Invalid portal id');
+    }
+
+    try {
+        const portal = await Portal.findById(portalId)
+            .select('name description avatar banner badges isVerified customBadge privacy members')
+            .lean();
+
+        if (!portal || portal.privacy === 'private') {
+            return res.status(404).send('Portal not found');
+        }
+
+        const rawBadges = Array.isArray(portal.badges)
+            ? portal.badges.filter((b) => b && typeof b === 'string' && b !== 'none')
+            : [];
+        const systemBadges = rawBadges.length > 0 ? rawBadges : (portal.isVerified ? ['verified'] : []);
+
+        const [postCount, badgeDocs, bannerRaw, avatarRaw, customBadgeRaw] = await Promise.all([
+            Post.countDocuments({ portal: portalId }),
+            systemBadges.length > 0 ? Badge.find({ slug: { $in: systemBadges } }).lean() : Promise.resolve([]),
+            fetchImageBufferSafe(resolveDirectMediaUrl(portal.banner)),
+            fetchImageBufferSafe(resolveDirectMediaUrl(portal.avatar)),
+            portal.customBadge?.url ? fetchImageBufferSafe(resolveDirectMediaUrl(portal.customBadge.url)) : Promise.resolve(null),
+        ]);
+
+        const badgeMap = new Map(badgeDocs.map((b) => [b.slug, b]));
+        const W = 1200;
+        const H = 630;
+        const BANNER_H = 300;
+        const AVATAR_FRAME = 188;
+        const AVATAR_SIZE = 170;
+        const AVATAR_X = 56;
+        const AVATAR_Y = 202;
+
+        const composites = [];
+
+        // 1. Banner image (or gradient fallback drawn on base)
+        if (bannerRaw) {
+            try {
+                const resizedBanner = await sharp(bannerRaw)
+                    .resize(W, BANNER_H, { fit: 'cover', position: 'center' })
+                    .toBuffer();
+                composites.push({ input: resizedBanner, left: 0, top: 0 });
+            } catch (_) {}
+        }
+
+        // 2. Card overlay SVG (avatar frame cutout, title + badges next to avatar, description, stats)
+        const titleText = String(portal.name || 'Portal').slice(0, 26);
+        const approxTitleWidth = Math.min(620, Math.max(80, Math.round(titleText.length * 29)));
+        const titleX = AVATAR_X + AVATAR_FRAME + 26;
+        const titleBaselineY = 368;
+
+        let badgeCursorX = titleX + approxTitleWidth + 16;
+        const badgeSvgItems = systemBadges.slice(0, 4).map((slug) => {
+            const def = badgeMap.get(slug);
+            const fill = getBadgeFillColor(slug, def);
+            const iconKey = def?.icon || (slug.includes('crown') ? 'crown' : 'checkmark');
+            const iconPath = OG_BADGE_ICONS[iconKey] || OG_BADGE_ICONS.checkmark;
+            const innerColor = def?.style?.innerIconColor || '#ffffff';
+            const bx = badgeCursorX;
+            badgeCursorX += 48;
+            return `<g transform="translate(${bx}, ${titleBaselineY - 34}) scale(1.75)">
+                <path d="${OG_ROSETTE_PATH}" fill="${escapeSvgXml(fill)}"/>
+                <path d="${iconPath}" fill="${escapeSvgXml(innerColor)}"/>
+            </g>`;
+        });
+
+        const descLines = wrapCardLines(
+            portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.',
+            56,
+            2
+        );
+        const descSvg = descLines
+            .map(
+                (line, idx) =>
+                    `<text x="56" y="${452 + idx * 40}" font-family="DejaVu Sans, Arial, sans-serif" font-size="28" fill="#a1a1aa">${escapeSvgXml(line)}</text>`
+            )
+            .join('\n');
+
+        const memberCount = Array.isArray(portal.members) ? portal.members.length : 0;
+        const initials = escapeSvgXml(titleText.substring(0, 2).toUpperCase());
+
+        const overlaySvg = `
+        <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bannerFallback" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#18181b"/>
+              <stop offset="50%" stop-color="#27272a"/>
+              <stop offset="100%" stop-color="#3f3f46"/>
+            </linearGradient>
+            <linearGradient id="bannerFade" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="65%" stop-color="#0e1015" stop-opacity="0"/>
+              <stop offset="100%" stop-color="#0e1015" stop-opacity="0.55"/>
+            </linearGradient>
+          </defs>
+          ${!bannerRaw ? `<rect x="0" y="0" width="${W}" height="${BANNER_H}" fill="url(#bannerFallback)"/>` : ''}
+          <rect x="0" y="0" width="${W}" height="${BANNER_H}" fill="url(#bannerFade)"/>
+          <rect x="0" y="${BANNER_H}" width="${W}" height="${H - BANNER_H}" fill="#0e1015"/>
+
+          <!-- Avatar Cutout Frame -->
+          <rect x="${AVATAR_X}" y="${AVATAR_Y}" width="${AVATAR_FRAME}" height="${AVATAR_FRAME}" rx="34" fill="#0e1015"/>
+          ${!avatarRaw ? `
+          <rect x="${AVATAR_X + 9}" y="${AVATAR_Y + 9}" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" rx="26" fill="#27272a"/>
+          <text x="${AVATAR_X + AVATAR_FRAME / 2}" y="${AVATAR_Y + AVATAR_FRAME / 2 + 20}" font-family="DejaVu Sans, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc" text-anchor="middle">${initials}</text>
+          ` : ''}
+
+          <!-- Portal Title & Badges beside Avatar -->
+          <text x="${titleX}" y="${titleBaselineY}" font-family="DejaVu Sans, Arial, sans-serif" font-size="50" font-weight="700" fill="#ffffff">${escapeSvgXml(titleText)}</text>
+          ${badgeSvgItems.join('\n')}
+
+          <!-- Description -->
+          ${descSvg}
+
+          <!-- Stats Pills -->
+          <rect x="56" y="544" width="144" height="44" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <text x="128" y="573" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="600" fill="#d4d4d8" text-anchor="middle">${memberCount} Üye</text>
+
+          <rect x="216" y="544" width="168" height="44" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <text x="300" y="573" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="600" fill="#d4d4d8" text-anchor="middle">${postCount} Gönderi</text>
+
+          <text x="1144" y="573" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="600" fill="#71717a" text-anchor="end">oxypace.com.tr</text>
+        </svg>`;
+
+        composites.push({ input: Buffer.from(overlaySvg), left: 0, top: 0 });
+
+        // 3. Rounded Avatar composite on top of the cutout frame
+        if (avatarRaw) {
+            try {
+                const avatarMask = Buffer.from(
+                    `<svg width="${AVATAR_SIZE}" height="${AVATAR_SIZE}"><rect x="0" y="0" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" rx="26" fill="#fff"/></svg>`
+                );
+                const roundedAvatar = await sharp(avatarRaw)
+                    .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: 'cover', position: 'center' })
+                    .composite([{ input: avatarMask, blend: 'dest-in' }])
+                    .png()
+                    .toBuffer();
+                composites.push({ input: roundedAvatar, left: AVATAR_X + 9, top: AVATAR_Y + 9 });
+            } catch (_) {}
+        }
+
+        // 4. Custom Badge image composite right next to system badges
+        if (customBadgeRaw && badgeCursorX < W - 80) {
+            try {
+                const cbSize = 42;
+                const cbRadius = portal.customBadge?.shape === 'square' ? 10 : cbSize / 2;
+                const cbMask = Buffer.from(
+                    `<svg width="${cbSize}" height="${cbSize}"><rect x="0" y="0" width="${cbSize}" height="${cbSize}" rx="${cbRadius}" fill="#fff"/></svg>`
+                );
+                const roundedCb = await sharp(customBadgeRaw)
+                    .resize(cbSize, cbSize, { fit: 'cover', position: 'center' })
+                    .composite([{ input: cbMask, blend: 'dest-in' }])
+                    .png()
+                    .toBuffer();
+                composites.push({ input: roundedCb, left: badgeCursorX, top: titleBaselineY - 35 });
+            } catch (_) {}
+        }
+
+        const finalBuffer = await sharp({
+            create: {
+                width: W,
+                height: H,
+                channels: 4,
+                background: { r: 14, g: 16, b: 21, alpha: 1 },
+            },
+        })
+            .composite(composites)
+            .jpeg({ quality: 84, mozjpeg: true })
+            .toBuffer();
+
+        res.set('Content-Type', 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=1800');
+        return res.send(finalBuffer);
+    } catch (err) {
+        console.error('Portal OG card error:', err.message);
+        const clientBase = process.env.CLIENT_URL || 'https://oxypace.com.tr';
+        return res.redirect(`${clientBase.replace(/\/$/, '')}/logo.png`);
     }
 });
 

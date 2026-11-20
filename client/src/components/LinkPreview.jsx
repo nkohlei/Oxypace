@@ -3,6 +3,7 @@ import axios from 'axios';
 import { MessageCircle, Repeat, Heart } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import PortalBadges from './PortalBadges';
 import './LinkPreview.css';
 
 const TweetVideo = ({ src, poster }) => {
@@ -215,45 +216,57 @@ const LinkPreview = ({ url, postId }) => {
 
     // Internal Oxypace card (Portal, Profile, Post)
     if (data.type === 'internal') {
+        const isPortal = data.subType === 'portal';
         return (
             <a
                 href={data.url}
-                className="internal-preview-card"
+                className={`internal-preview-card${isPortal ? ' msg-portal-card' : ''}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Banner/Cover Image */}
                 <div className="internal-card-banner">
                     {data.image ? (
-                        <img 
-                            src={data.image} 
-                            alt={data.title} 
+                        <img
+                            src={data.image}
+                            alt={data.title}
                             className="internal-banner-img"
-                            onLoad={() => console.log('Image loaded successfully:', data.image)}
-                            onError={(e) => console.error('Image failed to load:', data.image)}
+                            loading="lazy"
+                            decoding="async"
                         />
                     ) : (
                         <div className="internal-banner-placeholder" />
-                    )}
-                    
-                    {/* Avatar Overlay */}
-                    {data.avatar && (
-                        <div className="internal-avatar-wrapper">
-                            <img 
-                                src={data.avatar} 
-                                alt="Avatar" 
-                                className="internal-avatar-img"
-                                onLoad={() => console.log('Avatar loaded successfully:', data.avatar)}
-                                onError={(e) => console.error('Avatar failed to load:', data.avatar)}
-                            />
-                        </div>
                     )}
                 </div>
 
                 {/* Content Section */}
                 <div className="internal-card-content">
-                    <div className="internal-card-header">
-                        <span className="internal-site-tag">{data.siteName}</span>
-                        <h4 className="internal-card-title">{data.title}</h4>
+                    <div className="internal-card-head-row">
+                        {(data.avatar || isPortal) && (
+                            <div className="internal-avatar-wrapper">
+                                {data.avatar ? (
+                                    <img
+                                        src={data.avatar}
+                                        alt={data.title || 'Avatar'}
+                                        className="internal-avatar-img"
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                ) : (
+                                    <div className="internal-avatar-placeholder">
+                                        {(data.title || 'P').substring(0, 2).toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <div className="internal-card-header">
+                            {!isPortal && data.siteName && (
+                                <span className="internal-site-tag">{data.siteName}</span>
+                            )}
+                            <h4 className="internal-card-title">
+                                <span className="internal-card-title-text">{data.title}</span>
+                                {isPortal && <PortalBadges portal={data} size={16} />}
+                            </h4>
+                        </div>
                     </div>
                     {data.description && (
                         <p className="internal-card-description">{data.description}</p>

@@ -8,6 +8,7 @@ import { extractYouTubeInfo, formatDuration, formatFileSize } from '../utils/med
 import LinkPreview from './LinkPreview';
 import VideoPlayer from './VideoPlayer';
 import UserAvatar from './UserAvatar';
+import PortalBadges from './PortalBadges';
 import {
     Play,
     Download,
@@ -778,25 +779,33 @@ const MessageBubble = ({
                                     ) : (
                                         <div className="internal-banner-placeholder" />
                                     )}
-                                    {displayPortal.avatar && (
-                                        <div className="internal-avatar-wrapper">
-                                            <img
-                                                src={getImageUrl(displayPortal.avatar)}
-                                                alt={displayPortal.name}
-                                                className="internal-avatar-img"
-                                                loading="lazy"
-                                                decoding="async"
-                                            />
-                                        </div>
-                                    )}
                                 </div>
                                 <div className="internal-card-content">
-                                    <div className="internal-card-header">
-                                        <span className="internal-site-tag">OXYPACE PORTAL</span>
-                                        <h4 className="internal-card-title">{displayPortal.name}</h4>
+                                    <div className="internal-card-head-row">
+                                        <div className="internal-avatar-wrapper">
+                                            {displayPortal.avatar ? (
+                                                <img
+                                                    src={getImageUrl(displayPortal.avatar)}
+                                                    alt={displayPortal.name}
+                                                    className="internal-avatar-img"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                />
+                                            ) : (
+                                                <div className="internal-avatar-placeholder">
+                                                    {(displayPortal.name || 'P').substring(0, 2).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="internal-card-header">
+                                            <h4 className="internal-card-title">
+                                                <span className="internal-card-title-text">{displayPortal.name}</span>
+                                                <PortalBadges portal={displayPortal} size={16} />
+                                            </h4>
+                                        </div>
                                     </div>
                                     <p className="internal-card-description">
-                                        {displayPortal.description || 'Dinamik bir topluluk portalı...'}
+                                        {displayPortal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
                                     </p>
                                 </div>
                             </Link>

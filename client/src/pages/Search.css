@@ -427,13 +427,21 @@
     height: 140px;
 }
 
+.card-head-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
 .card-icon-wrapper {
-    margin-top: -40px;
-    margin-left: 20px;
-    width: 72px;
-    height: 72px;
-    border-radius: 20px;
-    padding: 5px;
+    margin-top: -42px;
+    margin-left: 0;
+    width: 76px;
+    height: 76px;
+    flex-shrink: 0;
+    border-radius: 18px;
+    padding: 4px;
     background-color: #0e1015 !important;
     position: relative;
     z-index: 2;
@@ -442,6 +450,12 @@
 
 [data-theme='light'] .card-icon-wrapper {
     background-color: #ffffff !important;
+}
+
+.card-title-group {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 4px;
 }
 
 .card-icon-img,
@@ -482,13 +496,20 @@
 }
 
 .card-title {
-    margin: 8px 0;
-    font-size: 1.1rem;
+    margin: 0;
+    font-size: 1.08rem;
     font-weight: 700;
     color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
+}
+
+.card-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .oxypace-privacy-pill {
@@ -818,19 +839,24 @@
     .modern-portal-card:hover .card-banner {
         height: 108px !important;
     }
+    .card-head-row {
+        gap: 12px !important;
+        margin-bottom: 8px !important;
+    }
     .card-icon-wrapper {
-        margin-top: -32px !important;
-        margin-left: 16px !important;
-        width: 60px !important;
-        height: 60px !important;
-        border-radius: 14px !important;
+        margin-top: -38px !important;
+        margin-left: 0 !important;
+        width: 72px !important;
+        height: 72px !important;
+        border-radius: 16px !important;
+        padding: 4px !important;
     }
     .card-body {
-        padding: 8px 16px 12px !important;
+        padding: 10px 16px 14px !important;
     }
     .card-title {
-        margin: 4px 0 !important;
-        font-size: 1.05rem !important;
+        margin: 0 !important;
+        font-size: 1.06rem !important;
     }
     .card-desc {
         font-size: 0.85rem !important;
@@ -912,20 +938,24 @@
     .modern-portal-card:hover .card-banner {
         height: 85px !important;
     }
+    .card-head-row {
+        gap: 8px !important;
+        margin-bottom: 6px !important;
+    }
     .card-icon-wrapper {
-        margin-top: -24px !important;
-        margin-left: 12px !important;
-        width: 48px !important;
-        height: 48px !important;
-        border-radius: 10px !important;
+        margin-top: -30px !important;
+        margin-left: 0 !important;
+        width: 56px !important;
+        height: 56px !important;
+        border-radius: 12px !important;
         padding: 3px !important;
     }
     .card-body {
-        padding: 6px 10px 10px !important;
+        padding: 8px 10px 10px !important;
     }
     .card-title {
-        margin: 2px 0 !important;
-        font-size: 0.85rem !important;
+        margin: 0 !important;
+        font-size: 0.86rem !important;
         gap: 4px !important;
     }
     .card-title svg {

@@ -342,138 +342,207 @@
 }
 
 /* ==========================================
-   INTERNAL OXYPACE PREVIEW CARD
+   INTERNAL OXYPACE PREVIEW CARD (Unified with Explore Portal Card)
    ========================================== */
 .internal-preview-card {
     margin-top: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(12px);
+    background: #0e1015;
     display: flex;
     flex-direction: column;
     text-decoration: none !important;
     color: inherit;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 500px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 440px;
     position: relative;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-    animation: fadeIn 0.4s ease-out;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    animation: fadeIn 0.35s ease-out;
+}
+
+[data-theme='light'] .internal-preview-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .internal-preview-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.24);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme='light'] .internal-preview-card:hover {
+    border-color: rgba(0, 0, 0, 0.28);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 .internal-card-banner {
     width: 100%;
-    height: 140px;
+    height: 112px;
     position: relative;
-    background: #111;
-    overflow: visible; /* To allow avatar overlap */
+    background: #18181b;
+    overflow: hidden;
 }
 
 .internal-banner-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    display: block;
+    transition: transform 0.4s ease;
 }
 
 .internal-preview-card:hover .internal-banner-img {
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
 .internal-banner-placeholder {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-}
-
-.internal-avatar-wrapper {
-    position: absolute;
-    bottom: -20px;
-    left: 16px;
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    padding: 3px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    z-index: 2;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-}
-
-.internal-avatar-img {
-    width: 100%;
-    height: 100%;
-    border-radius: 11px;
-    object-fit: cover;
-    background: #000;
+    background: linear-gradient(135deg, #18181b 0%, #27272a 50%, #3f3f46 100%);
 }
 
 .internal-card-content {
-    padding: 28px 16px 16px; /* Extra top padding for avatar overlap */
+    padding: 10px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    background: inherit;
+}
+
+.internal-card-head-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 11px;
+    min-width: 0;
+}
+
+.internal-avatar-wrapper {
+    position: relative;
+    margin-top: -38px;
+    width: 68px;
+    height: 68px;
+    flex-shrink: 0;
+    border-radius: 16px;
+    padding: 4px;
+    background: #0e1015;
+    z-index: 2;
+    box-shadow: none;
+}
+
+[data-theme='light'] .internal-avatar-wrapper {
+    background: #ffffff;
+}
+
+.internal-avatar-img,
+.internal-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    object-fit: cover;
+    display: block;
+}
+
+.internal-avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #27272a 0%, #18181b 100%);
+    color: #f8fafc;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+[data-theme='light'] .internal-avatar-placeholder {
+    background: linear-gradient(135deg, #e4e4e7 0%, #d4d4d8 100%);
+    color: #09090b;
 }
 
 .internal-card-header {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 4px;
 }
 
 .internal-site-tag {
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--primary-cyan, #00f2ff);
-    opacity: 0.8;
+    letter-spacing: 0.7px;
+    color: rgba(255, 255, 255, 0.56);
+}
+
+[data-theme='light'] .internal-site-tag {
+    color: rgba(13, 14, 18, 0.56);
 }
 
 .internal-card-title {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
-    color: #fff;
-    line-height: 1.2;
+    color: #ffffff;
+    line-height: 1.25;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+[data-theme='light'] .internal-card-title {
+    color: #0d0e12;
+}
+
+.internal-card-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .internal-card-description {
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
-    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.68);
+    line-height: 1.45;
+    margin: 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
+[data-theme='light'] .internal-card-description {
+    color: rgba(13, 14, 18, 0.68);
+}
+
 @media (max-width: 500px) {
     .internal-card-banner {
-        height: 120px;
+        height: 96px;
     }
-    
+
     .internal-avatar-wrapper {
-        width: 48px;
-        height: 48px;
-        bottom: -16px;
-        left: 12px;
+        width: 56px;
+        height: 56px;
+        margin-top: -30px;
+        border-radius: 13px;
+        padding: 3px;
     }
-    
+
+    .internal-avatar-img,
+    .internal-avatar-placeholder {
+        border-radius: 10px;
+    }
+
     .internal-card-content {
-        padding: 24px 12px 14px;
+        padding: 8px 12px 12px;
     }
-    
+
     .internal-card-title {
-        font-size: 15px;
+        font-size: 14.5px;
     }
 }
 

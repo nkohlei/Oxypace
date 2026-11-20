@@ -405,7 +405,7 @@ router.post('/:id/forward', protect, mongoIdValidation('id'), async (req, res) =
                         },
                     ],
                 })
-                .populate({ path: 'sharedPortal', select: 'name avatar banner description' });
+                .populate({ path: 'sharedPortal', select: 'name avatar banner description badges isVerified customBadge isNSFW privacy' });
 
             createdMessages.push(populated);
             if (io) {
@@ -677,7 +677,7 @@ router.post(
                 })
                 .populate({
                     path: 'sharedPortal',
-                    select: 'name avatar banner description',
+                    select: 'name avatar banner description badges isVerified customBadge isNSFW privacy',
                 })
                 .populate({
                     path: 'replyTo',
@@ -771,7 +771,7 @@ router.get('/conversations', protect, async (req, res) => {
                 })
                 .populate({
                     path: 'sharedPortal',
-                    select: 'name avatar banner description',
+                    select: 'name avatar banner description badges isVerified customBadge isNSFW privacy',
                 })
                 .populate({
                     path: 'replyTo',
@@ -886,7 +886,7 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
             })
             .populate({
                 path: 'sharedPortal',
-                select: 'name avatar banner description',
+                select: 'name avatar banner description badges isVerified customBadge isNSFW privacy',
             })
             .populate({
                 path: 'replyTo',

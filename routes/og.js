@@ -481,13 +481,10 @@ router.get('/portal/:portalId', async (req, res) => {
             }));
         }
 
-        const banner = resolveMediaUrl(portal.banner);
-        const avatar = resolveMediaUrl(portal.avatar);
-
         const html = buildOGHtml({
             title: portal.name,
-            description: portal.description || `${portal.name} - Oxypace portali`,
-            imageUrl: getOGImageUrl(banner || avatar || DEFAULT_IMAGE, false),
+            description: portal.description || `${portal.name} - Oxypace portalı`,
+            imageUrl: `${BACKEND_URL}/api/preview/portal-card/${portalId}?v=2`,
             pageUrl,
             type: 'website',
         });
