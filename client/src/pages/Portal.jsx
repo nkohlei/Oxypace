@@ -1705,7 +1705,7 @@ const Portal = () => {
             <SEO
                 title={portal.name}
                 description={portal.description || `${portal.name} topluluğuna katılın.`}
-                image={`${(axios.defaults.baseURL || 'https://api.oxypace.com.tr').replace(/\/$/, '')}/api/preview/portal-card/${portal._id}?v=3`}
+                image={`${(axios.defaults.baseURL || 'https://api.oxypace.com.tr').replace(/\/$/, '')}/api/preview/portal-card/${portal._id}?v=4`}
                 type="website"
                 schema={{
                     "@context": "https://schema.org",

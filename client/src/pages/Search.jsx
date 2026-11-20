@@ -349,8 +349,21 @@ const Search = () => {
                                                             : getDefaultBanner(portal),
                                                     }}
                                                 >
-                                                    {portal.isNSFW && (
-                                                        <span className="nsfw-badge-search">+18</span>
+                                                    {(portal.isNSFW || portal.privacy === 'private') && (
+                                                        <div className="card-banner-top-right">
+                                                            {portal.privacy === 'private' && (
+                                                                <span className="oxypace-privacy-pill private" title="Gizli Portal">
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                                                    </svg>
+                                                                    <span className="privacy-pill-text">Gizli</span>
+                                                                </span>
+                                                            )}
+                                                            {portal.isNSFW && (
+                                                                <span className="nsfw-badge-search">+18</span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
 
@@ -379,19 +392,7 @@ const Search = () => {
                                                         <div className="card-title-group">
                                                             <h3 className="card-title">
                                                                 <span className="card-title-text">{portal.name}</span>
-                                                                <PortalBadges portal={portal} size={18} />
-                                                                {portal.isNSFW && (
-                                                                    <span className="nsfw-tag-inline">+18</span>
-                                                                )}
-                                                                {portal.privacy === 'private' && (
-                                                                    <span className="oxypace-privacy-pill private" title="Gizli Portal">
-                                                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                                                        </svg>
-                                                                        <span className="privacy-pill-text">Gizli</span>
-                                                                    </span>
-                                                                )}
+                                                                <PortalBadges portal={portal} size={20} />
                                                             </h3>
                                                         </div>
                                                     </div>

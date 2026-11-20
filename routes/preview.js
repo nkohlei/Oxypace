@@ -764,13 +764,13 @@ router.get('/portal-card/:portalId', async (req, res) => {
             } catch (_) {}
         }
 
-        // 2. Card overlay SVG (avatar centered on banner/body seam, larger title + badges resting right above the seam)
-        const titleText = String(portal.name || 'Portal').slice(0, 24);
-        const approxTitleWidth = Math.min(640, Math.max(90, Math.round(titleText.length * 34)));
+        // 2. Card overlay SVG (avatar centered on banner/body seam, large title + badges dead-center on seam beside avatar)
+        const titleText = String(portal.name || 'Portal').slice(0, 22);
+        const approxTitleWidth = Math.min(660, Math.max(100, Math.round(titleText.length * 40)));
         const titleX = AVATAR_X + AVATAR_FRAME + 24;
-        const titleBaselineY = BANNER_H - 18;
+        const titleBaselineY = BANNER_H + 22;
 
-        let badgeCursorX = titleX + approxTitleWidth + 16;
+        let badgeCursorX = titleX + approxTitleWidth + 18;
         const badgeSvgItems = systemBadges.slice(0, 4).map((slug) => {
             const def = badgeMap.get(slug);
             const fill = getBadgeFillColor(slug, def);
@@ -778,8 +778,8 @@ router.get('/portal-card/:portalId', async (req, res) => {
             const iconPath = OG_BADGE_ICONS[iconKey] || OG_BADGE_ICONS.checkmark;
             const innerColor = def?.style?.innerIconColor || '#ffffff';
             const bx = badgeCursorX;
-            badgeCursorX += 52;
-            return `<g transform="translate(${bx}, ${titleBaselineY - 40}) scale(1.9)">
+            badgeCursorX += 56;
+            return `<g transform="translate(${bx}, ${titleBaselineY - 46}) scale(2.1)">
                 <path d="${OG_ROSETTE_PATH}" fill="${escapeSvgXml(fill)}"/>
                 <path d="${iconPath}" fill="${escapeSvgXml(innerColor)}"/>
             </g>`;
@@ -825,8 +825,8 @@ router.get('/portal-card/:portalId', async (req, res) => {
           <text x="${AVATAR_X + AVATAR_FRAME / 2}" y="${AVATAR_Y + AVATAR_FRAME / 2 + 20}" font-family="DejaVu Sans, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc" text-anchor="middle">${initials}</text>
           ` : ''}
 
-          <!-- Portal Title & Badges resting right on top of boundary beside Avatar -->
-          <text x="${titleX}" y="${titleBaselineY}" font-family="DejaVu Sans, Arial, sans-serif" font-size="58" font-weight="800" fill="#ffffff">${escapeSvgXml(titleText)}</text>
+          <!-- Portal Title & Badges dead-center on boundary beside Avatar -->
+          <text x="${titleX}" y="${titleBaselineY}" font-family="DejaVu Sans, Arial, sans-serif" font-size="68" font-weight="800" fill="#ffffff">${escapeSvgXml(titleText)}</text>
           ${badgeSvgItems.join('\n')}
 
           <!-- Description -->
