@@ -4,11 +4,14 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { linkifyText, extractFirstUrl } from '../utils/linkify';
+import { extractYouTubeInfo, formatDuration, formatFileSize } from '../utils/mediaAttachments';
 import LinkPreview from './LinkPreview';
+import VideoPlayer from './VideoPlayer';
+import UserAvatar from './UserAvatar';
 import {
     Play,
     Download,
-    ArrowRight,
+    ArrowUpRight,
     ChevronDown,
     Info,
     Reply,
@@ -22,6 +25,10 @@ import {
     Trash2,
     Check,
     CheckCheck,
+    Music,
+    Mic,
+    FileText,
+    FolderOpen,
 } from 'lucide-react';
 import './MessageBubble.css';
 
@@ -143,6 +150,15 @@ const MessageBubble = ({
             document.removeEventListener('keydown', handleKey);
         };
     }, [menuOpen]);
+
+    React.useEffect(() => {
+        if (!showLightbox) return undefined;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') setShowLightbox(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [showLightbox]);
 
     React.useEffect(() => {
         return () => {
@@ -422,9 +438,14 @@ const MessageBubble = ({
                                             <video
                                                 src={message.isOptimistic ? message.media : getImageUrl(message.media)}
                                                 className="bubble-video"
+                                                muted
+                                                playsInline
+                                                preload="metadata"
                                             />
-                                            <div className="video-play-overlay">
-                                                <Play size={28} fill="currentColor" />
+                                            <div className="native-center-play-overlay msg-video-play-cover">
+                                                <div className="native-center-play-btn">
+                                                    <Play className="native-center-play-icon" />
+                                                </div>
                                             </div>
                                         </div>
                                     ) : (
@@ -482,80 +503,241 @@ const MessageBubble = ({
                             </div>
                         )}
 
-                        {displayPost ? (
-                            <Link to={`/post/${displayPost._id}`} className="shared-post-card">
-                                <div className="shared-post-header">
-                                    <img
-                                        src={getImageUrl(displayPost.author?.profile?.avatar)}
-                                        alt={displayPost.author?.username}
-                                        className="shared-post-avatar"
-                                        loading="lazy"
-                                        decoding="async"
-                                        width="32"
-                                        height="32"
-                                    />
-                                    <span className="shared-post-username">
-                                        @{displayPost.author?.username}
-                                    </span>
-                                </div>
-                                {displayPost.content && (
-                                    <p className="shared-post-content">
-                                        {displayPost.content.substring(0, 100)}...
-                                    </p>
-                                )}
-                                {displayPost.media && (
+                        {displayPost ? (() => {
+                            const attachments = Array.isArray(displayPost.attachments) ? displayPost.attachments : [];
+                            const mediaArr = Array.isArray(displayPost.media)
+                                ? displayPost.media.filter(Boolean)
+                                : displayPost.media
+                                    ? [displayPost.media]
+                                    : [];
+
+                            // Resolve primary preview across ALL post types (image, gif, video, youtube, audio, pdf, file, folder, mixed, text)
+                            const firstImgAtt = attachments.find((a) => a.kind === 'image' || a.kind === 'gif');
+                            const firstVidAtt = attachments.find((a) => a.kind === 'video' || a.kind === 'videoUrl');
+                            const firstYtAtt = attachments.find((a) => a.kind === 'youtube');
+                            const firstAudioAtt = attachments.find((a) => a.kind === 'audio');
+                            const firstPdfAtt = attachments.find((a) => a.kind === 'pdf');
+                            const firstFolderAtt = attachments.find((a) => a.kind === 'folder');
+                            const firstFileAtt = attachments.find((a) => a.kind === 'file');
+
+                            const ytFromMedia = displayPost.mediaType === 'youtube' ? extractYouTubeInfo(mediaArr[0] || displayPost.content || '') : null;
+                            const ytFromText = !ytFromMedia && !firstImgAtt && !firstVidAtt && mediaArr.length === 0
+                                ? extractYouTubeInfo(displayPost.content || '')
+                                : null;
+                            const ytId = firstYtAtt?.youtubeId || ytFromMedia?.id || ytFromText?.id || null;
+
+                            const isLegacyVideo =
+                                displayPost.mediaType === 'video' ||
+                                displayPost.mediaType === 'videoUrl' ||
+                                (mediaArr[0] && /\.(mp4|webm|ogg|mov)$/i.test(mediaArr[0]));
+                            const isLegacyImage =
+                                !isLegacyVideo &&
+                                displayPost.mediaType !== 'youtube' &&
+                                displayPost.mediaType !== 'pdf' &&
+                                displayPost.mediaType !== 'audio' &&
+                                displayPost.mediaType !== 'file' &&
+                                displayPost.mediaType !== 'folder' &&
+                                mediaArr.length > 0;
+
+                            const totalVisualCount = Math.max(
+                                mediaArr.length,
+                                attachments.length
+                            );
+
+                            let previewEl = null;
+
+                            if (ytId) {
+                                previewEl = (
                                     <div className="shared-post-media-preview">
-                                        {displayPost.mediaType === 'video' ||
-                                        displayPost.mediaType === 'videoUrl' ||
-                                        displayPost.media.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                                            <div className="shared-post-video-wrapper">
+                                        <img
+                                            src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`}
+                                            alt="YouTube"
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                        <div className="native-center-play-overlay msg-video-play-cover">
+                                            <div className="native-center-play-btn">
+                                                <Play className="native-center-play-icon" />
+                                            </div>
+                                        </div>
+                                        <span className="shared-post-media-badge">YouTube</span>
+                                    </div>
+                                );
+                            } else if (firstVidAtt || isLegacyVideo) {
+                                const vidSrc = firstVidAtt ? getImageUrl(firstVidAtt.url) : getImageUrl(mediaArr[0]);
+                                const vidPoster = firstVidAtt?.thumbnailUrl ? getImageUrl(firstVidAtt.thumbnailUrl) : undefined;
+                                previewEl = (
+                                    <div className="shared-post-media-preview">
+                                        <div className="shared-post-video-wrapper">
+                                            {vidPoster ? (
+                                                <img src={vidPoster} alt="Video" className="shared-post-video" loading="lazy" decoding="async" />
+                                            ) : (
                                                 <video
-                                                    src={getImageUrl(displayPost.media)}
+                                                    src={vidSrc}
                                                     className="shared-post-video"
                                                     muted
                                                     playsInline
+                                                    preload="metadata"
                                                 />
-                                                <div className="video-play-overlay">
-                                                    <Play size={24} fill="currentColor" />
+                                            )}
+                                            <div className="native-center-play-overlay msg-video-play-cover">
+                                                <div className="native-center-play-btn">
+                                                    <Play className="native-center-play-icon" />
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <img
-                                                src={getImageUrl(
-                                                    Array.isArray(displayPost.media)
-                                                        ? displayPost.media[0]
-                                                        : displayPost.media
-                                                )}
-                                                alt="Shared Post"
-                                                loading="lazy"
-                                                decoding="async"
-                                            />
+                                        </div>
+                                        {totalVisualCount > 1 && (
+                                            <span className="shared-post-media-badge">+{totalVisualCount - 1}</span>
                                         )}
                                     </div>
-                                )}
-                                {!displayPost.media && displayPost.pdfUrl && (
+                                );
+                            } else if (firstImgAtt || isLegacyImage) {
+                                const imgSrc = firstImgAtt ? getImageUrl(firstImgAtt.url) : getImageUrl(mediaArr[0]);
+                                const isGifPost = firstImgAtt?.kind === 'gif' || displayPost.mediaType === 'gif' || /\.gif(\?|$)/i.test(imgSrc);
+                                previewEl = (
                                     <div className="shared-post-media-preview">
-                                        <div className="shared-post-pdf-wrapper">
-                                            {displayPost.pdfThumbnailUrl ? (
-                                                <img
-                                                    src={getImageUrl(displayPost.pdfThumbnailUrl)}
-                                                    alt="PDF Preview"
-                                                    className="shared-post-pdf-thumbnail"
-                                                    style={{ width: '100%', height: '150px', objectFit: 'cover' }}
-                                                />
+                                        <img
+                                            src={imgSrc}
+                                            alt="Shared Post"
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                        {isGifPost && <span className="shared-post-media-badge left">GIF</span>}
+                                        {totalVisualCount > 1 && (
+                                            <span className="shared-post-media-badge">+{totalVisualCount - 1}</span>
+                                        )}
+                                    </div>
+                                );
+                            } else if (firstAudioAtt || displayPost.mediaType === 'audio') {
+                                const audioTitle = firstAudioAtt?.name || (firstAudioAtt?.isVoiceRecording ? 'Ses Kaydı' : 'Ses Dosyası');
+                                const audioDur = firstAudioAtt?.duration ? formatDuration(firstAudioAtt.duration) : '';
+                                previewEl = (
+                                    <div className="shared-post-file-chip">
+                                        <div className="shared-post-file-icon">
+                                            {firstAudioAtt?.coverUrl ? (
+                                                <img src={getImageUrl(firstAudioAtt.coverUrl)} alt="" className="shared-post-audio-cover" />
+                                            ) : firstAudioAtt?.isVoiceRecording ? (
+                                                <Mic size={16} />
                                             ) : (
-                                                <div
-                                                    className="pdf-icon-placeholder"
-                                                    style={{ height: '120px', width: '100%', borderRadius: 0 }}
-                                                >
-                                                    <div className="pdf-icon-text">PDF</div>
-                                                </div>
+                                                <Music size={16} />
                                             )}
                                         </div>
+                                        <div className="shared-post-file-meta">
+                                            <span className="shared-post-file-name">{audioTitle}</span>
+                                            <span className="shared-post-file-sub">
+                                                {firstAudioAtt?.isVoiceRecording ? 'Ses Kaydı' : 'Ses Dosyası'}
+                                                {audioDur ? ` • ${audioDur}` : ''}
+                                            </span>
+                                        </div>
                                     </div>
-                                )}
-                            </Link>
-                        ) : message.sharedPost ? (
+                                );
+                            } else if (firstPdfAtt || displayPost.pdfUrl || displayPost.mediaType === 'pdf') {
+                                const pdfThumb = firstPdfAtt?.thumbnailUrl || displayPost.pdfThumbnailUrl;
+                                const pdfTitle = firstPdfAtt?.name || displayPost.pdfName || 'PDF Dokümanı';
+                                const pdfSz = firstPdfAtt?.size || displayPost.pdfSize || 0;
+                                previewEl = pdfThumb ? (
+                                    <div className="shared-post-media-preview">
+                                        <img
+                                            src={getImageUrl(pdfThumb)}
+                                            alt="PDF Preview"
+                                            className="shared-post-pdf-thumbnail"
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                        <span className="shared-post-media-badge">PDF</span>
+                                    </div>
+                                ) : (
+                                    <div className="shared-post-file-chip">
+                                        <div className="shared-post-file-icon">
+                                            <FileText size={16} />
+                                        </div>
+                                        <div className="shared-post-file-meta">
+                                            <span className="shared-post-file-name">{pdfTitle}</span>
+                                            <span className="shared-post-file-sub">
+                                                PDF{pdfSz ? ` • ${formatFileSize(pdfSz)}` : ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            } else if (firstFolderAtt || displayPost.mediaType === 'folder') {
+                                const folderTitle = firstFolderAtt?.folderName || firstFolderAtt?.name || 'Klasör';
+                                const fCount = firstFolderAtt?.fileCount || firstFolderAtt?.folderFiles?.length || 0;
+                                previewEl = (
+                                    <div className="shared-post-file-chip">
+                                        <div className="shared-post-file-icon">
+                                            <FolderOpen size={16} />
+                                        </div>
+                                        <div className="shared-post-file-meta">
+                                            <span className="shared-post-file-name">{folderTitle}</span>
+                                            <span className="shared-post-file-sub">
+                                                Klasör{fCount ? ` • ${fCount} dosya` : ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            } else if (firstFileAtt || displayPost.mediaType === 'file') {
+                                const fName = firstFileAtt?.name || 'Dosya Eki';
+                                const fSz = firstFileAtt?.size || 0;
+                                previewEl = (
+                                    <div className="shared-post-file-chip">
+                                        <div className="shared-post-file-icon">
+                                            <FileText size={16} />
+                                        </div>
+                                        <div className="shared-post-file-meta">
+                                            <span className="shared-post-file-name">{fName}</span>
+                                            <span className="shared-post-file-sub">
+                                                Dosya{fSz ? ` • ${formatFileSize(fSz)}` : ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            const authorDisplay =
+                                displayPost.author?.profile?.displayName ||
+                                displayPost.author?.username ||
+                                'Kullanıcı';
+
+                            return (
+                                <Link
+                                    to={`/post/${displayPost._id}`}
+                                    className="shared-post-card"
+                                    onClick={(e) => {
+                                        if (selectMode) e.preventDefault();
+                                        else e.stopPropagation();
+                                    }}
+                                >
+                                    <div className="shared-post-header">
+                                        <UserAvatar
+                                            src={displayPost.author?.profile?.lowResAvatar || displayPost.author?.profile?.avatar}
+                                            alt={authorDisplay}
+                                            size={24}
+                                            className="shared-post-avatar"
+                                            isDeleted={displayPost.author?.isDeleted}
+                                        />
+                                        <div className="shared-post-author-meta">
+                                            <span className="shared-post-displayname">{authorDisplay}</span>
+                                            {displayPost.author?.username && (
+                                                <span className="shared-post-username">@{displayPost.author.username}</span>
+                                            )}
+                                        </div>
+                                        {displayPost.portal?.name && (
+                                            <span className="shared-post-portal-pill">{displayPost.portal.name}</span>
+                                        )}
+                                    </div>
+                                    {previewEl}
+                                    {displayPost.content && (
+                                        <p className={`shared-post-content ${!previewEl ? 'text-only' : ''}`}>
+                                            {displayPost.content}
+                                        </p>
+                                    )}
+                                    <div className="shared-post-footer">
+                                        <span>Gönderiyi görüntüle</span>
+                                        <ArrowUpRight size={13} />
+                                    </div>
+                                </Link>
+                            );
+                        })() : message.sharedPost ? (
                             <Link
                                 to={`/post/${message.sharedPost}`}
                                 className="shared-post-card fallback"
@@ -834,17 +1016,18 @@ const MessageBubble = ({
                     document.body
                 )}
 
-            {/* Lightbox Modal */}
+            {/* Centered Lightbox Modal (No Top-Right × Button; Click Outside or Press Esc to Close) */}
             {showLightbox &&
                 createPortal(
                     <div className="lightbox-overlay" onClick={toggleLightbox}>
-                        <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                        <div
+                            className={`lightbox-content ${isVideo ? 'video-lightbox' : ''}`}
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             {isVideo ? (
-                                <video
+                                <VideoPlayer
                                     src={message.isOptimistic ? message.media : getImageUrl(message.media)}
-                                    controls
-                                    autoPlay
-                                    className="lightbox-video"
+                                    className="msg-lightbox-video-player"
                                 />
                             ) : (
                                 <img
@@ -852,9 +1035,6 @@ const MessageBubble = ({
                                     alt="Full Size"
                                 />
                             )}
-                            <button type="button" className="lightbox-close" onClick={toggleLightbox}>
-                                ×
-                            </button>
                         </div>
                     </div>,
                     document.body

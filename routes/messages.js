@@ -394,10 +394,16 @@ router.post('/:id/forward', protect, mongoIdValidation('id'), async (req, res) =
                 .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
                 .populate({
                     path: 'sharedPost',
-                    populate: {
-                        path: 'author',
-                        select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
-                    },
+                    populate: [
+                        {
+                            path: 'author',
+                            select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
+                        },
+                        {
+                            path: 'portal',
+                            select: 'name',
+                        },
+                    ],
                 })
                 .populate({ path: 'sharedPortal', select: 'name avatar banner description' });
 
@@ -658,10 +664,16 @@ router.post(
                 .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
                 .populate({
                     path: 'sharedPost',
-                    populate: {
-                        path: 'author',
-                        select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
-                    },
+                    populate: [
+                        {
+                            path: 'author',
+                            select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
+                        },
+                        {
+                            path: 'portal',
+                            select: 'name',
+                        },
+                    ],
                 })
                 .populate({
                     path: 'sharedPortal',
@@ -746,10 +758,16 @@ router.get('/conversations', protect, async (req, res) => {
                 .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
                 .populate({
                     path: 'sharedPost',
-                    populate: {
-                        path: 'author',
-                        select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
-                    },
+                    populate: [
+                        {
+                            path: 'author',
+                            select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
+                        },
+                        {
+                            path: 'portal',
+                            select: 'name',
+                        },
+                    ],
                 })
                 .populate({
                     path: 'sharedPortal',
@@ -855,10 +873,16 @@ router.get('/:userId', protect, mongoIdValidation('userId'), async (req, res) =>
             .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
             .populate({
                 path: 'sharedPost',
-                populate: {
-                    path: 'author',
-                    select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
-                },
+                populate: [
+                    {
+                        path: 'author',
+                        select: 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted',
+                    },
+                    {
+                        path: 'portal',
+                        select: 'name',
+                    },
+                ],
             })
             .populate({
                 path: 'sharedPortal',
