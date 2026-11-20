@@ -746,11 +746,11 @@ router.get('/portal-card/:portalId', async (req, res) => {
         const badgeMap = new Map(badgeDocs.map((b) => [b.slug, b]));
         const W = 1200;
         const H = 630;
-        const BANNER_H = 300;
+        const BANNER_H = 310;
         const AVATAR_FRAME = 188;
         const AVATAR_SIZE = 170;
         const AVATAR_X = 56;
-        const AVATAR_Y = 202;
+        const AVATAR_Y = BANNER_H - Math.round(AVATAR_FRAME / 2);
 
         const composites = [];
 
@@ -764,11 +764,11 @@ router.get('/portal-card/:portalId', async (req, res) => {
             } catch (_) {}
         }
 
-        // 2. Card overlay SVG (avatar frame cutout, title + badges next to avatar, description, stats)
-        const titleText = String(portal.name || 'Portal').slice(0, 26);
-        const approxTitleWidth = Math.min(620, Math.max(80, Math.round(titleText.length * 29)));
-        const titleX = AVATAR_X + AVATAR_FRAME + 26;
-        const titleBaselineY = 368;
+        // 2. Card overlay SVG (avatar centered on banner/body seam, larger title + badges resting right above the seam)
+        const titleText = String(portal.name || 'Portal').slice(0, 24);
+        const approxTitleWidth = Math.min(640, Math.max(90, Math.round(titleText.length * 34)));
+        const titleX = AVATAR_X + AVATAR_FRAME + 24;
+        const titleBaselineY = BANNER_H - 18;
 
         let badgeCursorX = titleX + approxTitleWidth + 16;
         const badgeSvgItems = systemBadges.slice(0, 4).map((slug) => {
@@ -778,8 +778,8 @@ router.get('/portal-card/:portalId', async (req, res) => {
             const iconPath = OG_BADGE_ICONS[iconKey] || OG_BADGE_ICONS.checkmark;
             const innerColor = def?.style?.innerIconColor || '#ffffff';
             const bx = badgeCursorX;
-            badgeCursorX += 48;
-            return `<g transform="translate(${bx}, ${titleBaselineY - 34}) scale(1.75)">
+            badgeCursorX += 52;
+            return `<g transform="translate(${bx}, ${titleBaselineY - 40}) scale(1.9)">
                 <path d="${OG_ROSETTE_PATH}" fill="${escapeSvgXml(fill)}"/>
                 <path d="${iconPath}" fill="${escapeSvgXml(innerColor)}"/>
             </g>`;
@@ -793,7 +793,7 @@ router.get('/portal-card/:portalId', async (req, res) => {
         const descSvg = descLines
             .map(
                 (line, idx) =>
-                    `<text x="56" y="${452 + idx * 40}" font-family="DejaVu Sans, Arial, sans-serif" font-size="28" fill="#a1a1aa">${escapeSvgXml(line)}</text>`
+                    `<text x="56" y="${456 + idx * 40}" font-family="DejaVu Sans, Arial, sans-serif" font-size="28" fill="#a1a1aa">${escapeSvgXml(line)}</text>`
             )
             .join('\n');
 
@@ -809,23 +809,24 @@ router.get('/portal-card/:portalId', async (req, res) => {
               <stop offset="100%" stop-color="#3f3f46"/>
             </linearGradient>
             <linearGradient id="bannerFade" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="65%" stop-color="#0e1015" stop-opacity="0"/>
-              <stop offset="100%" stop-color="#0e1015" stop-opacity="0.55"/>
+              <stop offset="35%" stop-color="#0e1015" stop-opacity="0"/>
+              <stop offset="72%" stop-color="#0e1015" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#0e1015" stop-opacity="0.88"/>
             </linearGradient>
           </defs>
           ${!bannerRaw ? `<rect x="0" y="0" width="${W}" height="${BANNER_H}" fill="url(#bannerFallback)"/>` : ''}
           <rect x="0" y="0" width="${W}" height="${BANNER_H}" fill="url(#bannerFade)"/>
           <rect x="0" y="${BANNER_H}" width="${W}" height="${H - BANNER_H}" fill="#0e1015"/>
 
-          <!-- Avatar Cutout Frame -->
+          <!-- Avatar Cutout Frame (Exact 50/50 on boundary) -->
           <rect x="${AVATAR_X}" y="${AVATAR_Y}" width="${AVATAR_FRAME}" height="${AVATAR_FRAME}" rx="34" fill="#0e1015"/>
           ${!avatarRaw ? `
           <rect x="${AVATAR_X + 9}" y="${AVATAR_Y + 9}" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" rx="26" fill="#27272a"/>
           <text x="${AVATAR_X + AVATAR_FRAME / 2}" y="${AVATAR_Y + AVATAR_FRAME / 2 + 20}" font-family="DejaVu Sans, Arial, sans-serif" font-size="60" font-weight="700" fill="#f8fafc" text-anchor="middle">${initials}</text>
           ` : ''}
 
-          <!-- Portal Title & Badges beside Avatar -->
-          <text x="${titleX}" y="${titleBaselineY}" font-family="DejaVu Sans, Arial, sans-serif" font-size="50" font-weight="700" fill="#ffffff">${escapeSvgXml(titleText)}</text>
+          <!-- Portal Title & Badges resting right on top of boundary beside Avatar -->
+          <text x="${titleX}" y="${titleBaselineY}" font-family="DejaVu Sans, Arial, sans-serif" font-size="58" font-weight="800" fill="#ffffff">${escapeSvgXml(titleText)}</text>
           ${badgeSvgItems.join('\n')}
 
           <!-- Description -->

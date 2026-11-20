@@ -484,7 +484,7 @@ router.get('/portal/:portalId', async (req, res) => {
         const html = buildOGHtml({
             title: portal.name,
             description: portal.description || `${portal.name} - Oxypace portalı`,
-            imageUrl: `${BACKEND_URL}/api/preview/portal-card/${portalId}?v=2`,
+            imageUrl: `${BACKEND_URL}/api/preview/portal-card/${portalId}?v=3`,
             pageUrl,
             type: 'website',
         });

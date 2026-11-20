@@ -746,12 +746,13 @@
 
 .message-bubble .internal-card-head-row {
     gap: 10px;
+    margin-top: -38px;
 }
 
 .message-bubble .internal-avatar-wrapper {
     width: 60px;
     height: 60px;
-    margin-top: -32px;
+    margin-top: 0;
     border-radius: 14px;
     padding: 3px;
     background: #0e1015;
@@ -763,19 +764,22 @@
 }
 
 .message-bubble .internal-card-header {
+    height: 30px;
     padding-bottom: 3px;
 }
 
 .message-bubble .internal-site-tag {
-    font-size: 9.5px;
+    font-size: 9px;
     letter-spacing: 0.7px;
-    color: rgba(255, 255, 255, 0.65) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
     opacity: 1;
 }
 
 .message-bubble .internal-card-title {
-    font-size: 14.5px;
-    color: #ffffff;
+    font-size: 16.5px;
+    font-weight: 800;
+    color: #ffffff !important;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
     margin: 0;
 }
 
@@ -795,14 +799,6 @@
 [data-theme='light'] .message-bubble.other .internal-card-content,
 [data-theme='light'] .message-bubble.other .internal-avatar-wrapper {
     background: #ffffff;
-}
-
-[data-theme='light'] .message-bubble.other .internal-site-tag {
-    color: rgba(13, 14, 18, 0.62) !important;
-}
-
-[data-theme='light'] .message-bubble.other .internal-card-title {
-    color: #0d0e12;
 }
 
 [data-theme='light'] .message-bubble.other .internal-card-description {
@@ -826,12 +822,21 @@
         height: 84px;
     }
 
+    .message-bubble .internal-card-head-row {
+        margin-top: -33px;
+    }
+
     .message-bubble .internal-avatar-wrapper {
         width: 52px;
         height: 52px;
-        margin-top: -27px;
+        margin-top: 0;
         border-radius: 12px;
         padding: 3px;
+    }
+
+    .message-bubble .internal-card-header {
+        height: 26px;
+        padding-bottom: 2px;
     }
 
     .message-bubble .internal-avatar-img,
@@ -844,7 +849,7 @@
     }
 
     .message-bubble .internal-card-title {
-        font-size: 13.5px;
+        font-size: 15px;
     }
 }
 
