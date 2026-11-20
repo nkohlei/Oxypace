@@ -578,11 +578,11 @@
 .message-input-wrapper {
     background: #141518;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    border-radius: 9999px !important;
     box-shadow: none;
     display: flex;
     align-items: center;
-    padding: 0 16px;
+    padding: 0 14px;
     height: 48px; /* Compact height */
     position: relative;
     transition: all 0.2s ease;
@@ -990,8 +990,8 @@
     /* Input area safe bottom padding */
     .message-form {
         padding: 8px 12px calc(8px + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
-        background: #000000;
-        border-top: 1px solid var(--border-subtle);
+        background: transparent;
+        border-top: none !important;
     }
 
     /* 3-Button Navigation Adaptations (Only active on devices with 3-button navigation bars) */
