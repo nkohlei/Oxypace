@@ -54,9 +54,10 @@ import './Portal.css';
 const Portal = () => {
     const { id } = useParams();
     const location = useLocation();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const urlChannel = searchParams.get('channel');
     const urlPost = searchParams.get('post');
+    const lastAppliedUrlChannelRef = useRef(null);
     const { user, token, updateUser, loading: authLoading } = useAuth();
     const { socket, connected } = useSocket();
     const navigate = useNavigate();
@@ -613,8 +614,26 @@ const Portal = () => {
         return () => window.removeEventListener('oxypace:scroll_portal_top', handleScrollTopEvent);
     }, [scrollToTop, portal?._id, portal?.channels?.length]);
 
+    const clearChannelQueryParams = useCallback(() => {
+        if (searchParams.has('channel') || searchParams.has('joinVoice')) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('channel');
+            nextParams.delete('joinVoice');
+            setSearchParams(nextParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
+    const handleMobileBackToPortalMenu = useCallback(() => {
+        explicitMobileBackRef.current = true;
+        clearChannelQueryParams();
+        if (setMobileChannelOpen) {
+            setMobileChannelOpen(false);
+        }
+    }, [clearChannelQueryParams, setMobileChannelOpen]);
+
     const handleChannelSelect = (channelId) => {
         explicitMobileBackRef.current = false;
+        clearChannelQueryParams();
         setCurrentChannel(channelId);
         setShowScrollTop(false); // Reset scroll button when changing channels
         if (isMobileView) {
@@ -1033,6 +1052,7 @@ const Portal = () => {
                 if (urlChannel) {
                     const matchedChannel = portal.channels.find(c => String(c._id) === String(urlChannel));
                     if (matchedChannel) {
+                        lastAppliedUrlChannelRef.current = String(urlChannel);
                         setCurrentChannel(matchedChannel._id);
                         return;
                     }
@@ -1042,11 +1062,15 @@ const Portal = () => {
                     setCurrentChannel(defaultChannel._id);
                 }
             } else {
-                // If urlChannel was passed and differs from current channel, switch to it immediately!
-                if (urlChannel) {
+                // Only apply urlChannel when the URL query parameter itself actually changes
+                // (prevents background portal refreshes from bouncing user back to a previous channel)
+                if (urlChannel && lastAppliedUrlChannelRef.current !== String(urlChannel)) {
                     const matchedChannel = portal.channels.find(c => String(c._id) === String(urlChannel));
-                    if (matchedChannel && String(matchedChannel._id) !== String(currentChannel)) {
-                        setCurrentChannel(matchedChannel._id);
+                    if (matchedChannel) {
+                        lastAppliedUrlChannelRef.current = String(urlChannel);
+                        if (String(matchedChannel._id) !== String(currentChannel)) {
+                            setCurrentChannel(matchedChannel._id);
+                        }
                         return;
                     }
                 }
@@ -1061,7 +1085,7 @@ const Portal = () => {
                 }
             }
         }
-    }, [portal, authLoading, urlChannel]);
+    }, [portal, authLoading, urlChannel, id, currentChannel]);
 
     // Direct channel switch event listener (used by UserBar / Navbar live room quick-nav)
     useEffect(() => {
@@ -1730,6 +1754,19 @@ const Portal = () => {
 
 
             <div className={`discord-split-view ${isMobileView && mobileChannelOpen ? 'mobile-feed-active' : ''} ${isVoiceChannelActive ? 'voice-room-active' : ''} ${isDesktopSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+                {user && isMobileView && mobileChannelOpen && isVoiceChannelActive && (
+                    <button
+                        type="button"
+                        className="sidebar-toggle-btn mobile-live-portal-toggle-btn"
+                        onClick={handleMobileBackToPortalMenu}
+                        title="Portal Menüsüne Dön"
+                        aria-label="Portal Menüsüne Dön"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                )}
                 {user && (
                     <ChannelSidebar
                         portal={portal}
@@ -1742,8 +1779,7 @@ const Portal = () => {
                         }}
                         currentChannel={currentChannel}
                         onChangeChannel={handleChannelSelect}
-                        isMobileLiveRoomActive={Boolean(isMobileView && mobileChannelOpen && isVoiceChannelActive)}
-                        className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen && !isVoiceChannelActive ? 'mobile-hidden' : ''}`}
+                        className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen ? 'mobile-hidden' : ''}`}
                         onShowPortalInfo={() => setShowPortalInfo(true)}
                     />
                 )}
@@ -1781,20 +1817,14 @@ const Portal = () => {
                                                         portalId={id}
                                                         channelId={currentChannel}
                                                         channelName={channelName}
-                                                        onBack={() => {
-                                                            explicitMobileBackRef.current = true;
-                                                            setMobileChannelOpen(false);
-                                                        }}
+                                                        onBack={handleMobileBackToPortalMenu}
                                                     />
                                                 ) : (
                                                     <VoiceChannel
                                                         portalId={id}
                                                         channelId={currentChannel}
                                                         channelName={channelName}
-                                                        onBack={() => {
-                                                            explicitMobileBackRef.current = true;
-                                                            setMobileChannelOpen(false);
-                                                        }}
+                                                        onBack={handleMobileBackToPortalMenu}
                                                     />
                                                 )}
                                             </Suspense>
@@ -1827,7 +1857,7 @@ const Portal = () => {
                                                                 {isMobileView && (
                                                                     <button
                                                                         className="mobile-back-btn-inline"
-                                                                        onClick={() => setMobileChannelOpen(false)}
+                                                                        onClick={handleMobileBackToPortalMenu}
                                                                     >
                                                                         <svg
                                                                             viewBox="0 0 24 24"

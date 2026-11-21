@@ -1066,62 +1066,44 @@
         display: none !important;
     }
 
-    /* Mobile Live Room Slide-Out Portal Drawer with Edge-Attached Toggle Tab */
-    .mobile-live-drawer-backdrop {
+    /* Mobile Live Room Left-Edge Portal Menu Return Button (Always visible, never auto-hidden) */
+    .mobile-live-portal-toggle-btn {
         position: fixed !important;
-        inset: 0 !important;
-        background: rgba(0, 0, 0, 0.58) !important;
-        backdrop-filter: blur(4px) !important;
-        -webkit-backdrop-filter: blur(4px) !important;
-        z-index: 1340 !important;
-    }
-
-    .channel-sidebar.mobile-live-drawer {
-        position: fixed !important;
-        top: 0 !important;
         left: 0 !important;
-        width: min(312px, 84vw) !important;
-        max-width: min(312px, 84vw) !important;
-        height: 100dvh !important;
-        min-height: 100dvh !important;
-        margin: 0 !important;
-        padding: max(12px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 8px)) 10px max(14px, calc(var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)) + 10px)) 10px !important;
-        border-radius: 0 16px 16px 0 !important;
-        border: none !important;
-        border-right: 1px solid var(--border-subtle) !important;
-        background: #09090b !important;
-        overflow: visible !important;
-        z-index: 1350 !important;
-        box-shadow: none !important;
-        animation: none !important;
-        transform: translate3d(-100%, 0, 0) !important;
-        transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
-        display: flex !important;
-        box-sizing: border-box !important;
-    }
-
-    [data-theme='light'] .channel-sidebar.mobile-live-drawer {
-        background: #f8f9fa !important;
-    }
-
-    .channel-sidebar.mobile-live-drawer.mobile-live-drawer-open {
-        transform: translate3d(0, 0, 0) !important;
-        box-shadow: 12px 0 36px rgba(0, 0, 0, 0.65) !important;
-    }
-
-    [data-theme='light'] .channel-sidebar.mobile-live-drawer.mobile-live-drawer-open {
-        box-shadow: 12px 0 32px rgba(0, 0, 0, 0.16) !important;
-    }
-
-    .channel-sidebar.mobile-live-drawer .sidebar-toggle-btn {
-        position: absolute !important;
-        right: -24px !important;
+        right: auto !important;
         top: max(18px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) !important;
         width: 24px !important;
         height: 112px !important;
+        background: rgba(18, 18, 24, 0.78) !important;
+        backdrop-filter: blur(16px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
         border-left: none !important;
-        pointer-events: auto !important;
+        border-radius: 0 10px 10px 0 !important;
+        color: #cbd5e1 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        padding: 0 !important;
         z-index: 1360 !important;
+        pointer-events: auto !important;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.38) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    [data-theme='light'] .mobile-live-portal-toggle-btn {
+        background: rgba(255, 255, 255, 0.88) !important;
+        border-color: rgba(0, 0, 0, 0.14) !important;
+        color: #1e293b !important;
+        box-shadow: 4px 0 14px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .mobile-live-portal-toggle-btn:active {
+        background: rgba(35, 38, 50, 0.94) !important;
+        color: #ffffff !important;
     }
 
     /* When no channel is selected — hide the feed, show the channel list */
@@ -1159,15 +1141,20 @@
         height: calc(100% - 12px - var(--safe-area-bottom, 48px)) !important;
     }
 
-    .channel-sidebar:not(.mobile-hidden):not(.mobile-live-drawer) {
-        animation: portalSidebarEnter 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    .channel-sidebar:not(.mobile-hidden) {
+        animation: portalSidebarEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+        will-change: transform, opacity;
+    }
+
+    .portal-sidebar-wrapper.mobile-show-sidebar {
+        animation: portalSidebarEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
         will-change: transform, opacity;
     }
 
     @keyframes portalFeedEnter {
         from {
             opacity: 0;
-            transform: translate3d(14px, 0, 0);
+            transform: translate3d(24px, 0, 0);
         }
         to {
             opacity: 1;
@@ -1177,8 +1164,8 @@
 
     @keyframes portalSidebarEnter {
         from {
-            opacity: 0;
-            transform: translate3d(-14px, 0, 0);
+            opacity: 0.45;
+            transform: translate3d(-42%, 0, 0);
         }
         to {
             opacity: 1;
