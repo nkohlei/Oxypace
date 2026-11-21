@@ -2265,6 +2265,30 @@ html.has-3button-nav .vc-controls {
     border-radius: 6px !important;
 }
 
+/* Auto-hide live room buttons after inactivity (Desktop & Mobile); portal sidebar toggle stays visible */
+.vc-top-right-controls.vc-controls-idle {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateY(-8px) !important;
+}
+
+.vc-controls.vc-controls-idle {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate(-50%, 14px) !important;
+}
+
+@media (max-width: 768px) {
+    .vc-controls.vc-controls-idle {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        transform: translate(-50%, 14px) scale(0.85) !important;
+    }
+}
+
 
 
 

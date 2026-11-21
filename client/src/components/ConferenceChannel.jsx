@@ -312,6 +312,51 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const userRole = activeRoom?.userRole || 'member';
     const isAdmin = userRole === 'owner' || userRole === 'admin';
 
+    const [isIdle, setIsIdle] = useState(false);
+    const idleTimerRef = useRef(null);
+    const hasOpenOverlay = Boolean(
+        isChatOpen ||
+        isInviteOpen ||
+        isVolumeOpen ||
+        isListenersOpen ||
+        isMoreMenuOpen ||
+        isWatchInputOpen ||
+        isMicMenuOpen ||
+        isCameraMenuOpen ||
+        isHlsModalOpen ||
+        isHlsVol2ModalOpen
+    );
+
+    useEffect(() => {
+        if (!isConnected || hasOpenOverlay) {
+            setIsIdle(false);
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            return;
+        }
+        const scheduleHide = () => {
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            idleTimerRef.current = setTimeout(() => setIsIdle(true), 4000);
+        };
+        const handleActivity = () => {
+            setIsIdle(false);
+            scheduleHide();
+        };
+        scheduleHide();
+        window.addEventListener('mousemove', handleActivity, { passive: true });
+        window.addEventListener('mousedown', handleActivity, { passive: true });
+        window.addEventListener('pointerdown', handleActivity, { passive: true });
+        window.addEventListener('touchstart', handleActivity, { passive: true });
+        window.addEventListener('keydown', handleActivity, { passive: true });
+        return () => {
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            window.removeEventListener('mousemove', handleActivity);
+            window.removeEventListener('mousedown', handleActivity);
+            window.removeEventListener('pointerdown', handleActivity);
+            window.removeEventListener('touchstart', handleActivity);
+            window.removeEventListener('keydown', handleActivity);
+        };
+    }, [isConnected, hasOpenOverlay]);
+
     useEffect(() => {
         const handleResize = () => setIsMobile(detectMobileLayout());
         handleResize();
@@ -524,7 +569,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
     return (
         <div className={`vc-container glass-container ${watchParty?.url ? 'vc-has-watchparty' : ''}`.trim()}>
-            <div className="vc-top-right-controls">
+            <div className={`vc-top-right-controls ${isIdle && !hasOpenOverlay ? 'vc-controls-idle' : ''}`}>
                 {isAdmin && (
                     <button type="button" className={`vc-ctrl-btn ${isListenersOpen ? 'active' : ''}`} onClick={() => { setIsListenersOpen(!isListenersOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); }} title="Dinleyiciler">
                         <Users size={18} />
@@ -710,7 +755,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
             </div>
 
             {isConnected && (
-                <div className="vc-controls glass-controls">
+                <div className={`vc-controls glass-controls ${isIdle && !hasOpenOverlay ? 'vc-controls-idle' : ''}`}>
                     {canSpeak ? (
                         <>
                             <div className="vc-ctrl-group">

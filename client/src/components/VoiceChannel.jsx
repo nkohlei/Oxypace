@@ -451,15 +451,9 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     }, [startWatchParty]);
 
     useEffect(() => {
-        // Controls stay permanently responsive so touch devices never suffer dead taps after 3s idle
-        setIsIdle(false);
+        // Portal menu toggle button (.sidebar-toggle-btn) must ALWAYS stay visible
         const btn = document.querySelector('.sidebar-toggle-btn');
         if (btn) btn.classList.remove('user-idle-btn');
-        return () => {
-            if (idleTimerRef.current) {
-                clearTimeout(idleTimerRef.current);
-            }
-        };
     }, [isConnected]);
 
     // Invitation states
@@ -525,7 +519,60 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         }
     }, [screenShareIdentity, lastScreenShareId]);
 
-    const showControls = true; // Permanent controls, no auto-hide
+    const hasOpenOverlay = Boolean(
+        isChatOpen ||
+        isInviteOpen ||
+        isVolumeOpen ||
+        isMoreMenuOpen ||
+        isWatchInputOpen ||
+        isMicMenuOpen ||
+        isCameraMenuOpen ||
+        isHlsModalOpen ||
+        isHlsVol2ModalOpen
+    );
+
+    // Auto-hide room buttons (desktop & mobile) after 4s of inactivity — portal menu toggle (.sidebar-toggle-btn) stays visible
+    useEffect(() => {
+        if (!isConnected) {
+            setIsIdle(false);
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            return;
+        }
+
+        if (hasOpenOverlay) {
+            setIsIdle(false);
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            return;
+        }
+
+        const scheduleHide = () => {
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            idleTimerRef.current = setTimeout(() => {
+                setIsIdle(true);
+            }, 4000);
+        };
+
+        const handleActivity = () => {
+            setIsIdle(false);
+            scheduleHide();
+        };
+
+        scheduleHide();
+        window.addEventListener('mousemove', handleActivity, { passive: true });
+        window.addEventListener('mousedown', handleActivity, { passive: true });
+        window.addEventListener('pointerdown', handleActivity, { passive: true });
+        window.addEventListener('touchstart', handleActivity, { passive: true });
+        window.addEventListener('keydown', handleActivity, { passive: true });
+
+        return () => {
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            window.removeEventListener('mousemove', handleActivity);
+            window.removeEventListener('mousedown', handleActivity);
+            window.removeEventListener('pointerdown', handleActivity);
+            window.removeEventListener('touchstart', handleActivity);
+            window.removeEventListener('keydown', handleActivity);
+        };
+    }, [isConnected, hasOpenOverlay]);
 
     const handleContainerClick = () => {
         if (isVolumeOpen) setIsVolumeOpen(false);
@@ -834,7 +881,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
     return (
         <div className={`vc-container glass-container ${watchParty?.url ? 'vc-has-watchparty' : ''}`} onClick={handleContainerClick}>
-            <div className="vc-top-right-controls">
+            <div className={`vc-top-right-controls ${isIdle && !hasOpenOverlay ? 'vc-controls-idle' : ''}`}>
                 <button
                     type="button"
                     className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`}
@@ -1053,7 +1100,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             </div>
 
             {isConnected && (
-                <div className={`vc-controls ${(!showControls && isMobile) ? 'controls-hidden' : ''}`}>
+                <div className={`vc-controls ${isIdle && !hasOpenOverlay ? 'vc-controls-idle' : ''}`}>
                     <div className="vc-ctrl-section glass-controls">
                         {/* Microphone */}
                         <div className="vc-ctrl-group">
