@@ -70,12 +70,15 @@
     letter-spacing: -0.01em;
 }
 
-.share-close-btn {
+.share-modal .share-close-btn {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: transparent;
+    border-radius: 50% !important;
+    border: none !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
     color: #a3a3a3;
     display: inline-flex;
     align-items: center;
@@ -85,9 +88,12 @@
     transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.share-close-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
+.share-modal .share-close-btn:hover,
+.share-modal .share-close-btn:focus {
+    background: rgba(255, 255, 255, 0.08) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #ffffff !important;
 }
 
 .share-feedback-banner {
@@ -112,51 +118,71 @@
 }
 
 /* Compact Search */
-.share-search-box {
+.share-modal .share-search-box {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 0 12px;
     height: 36px;
+    min-height: 36px;
     border-radius: 9999px;
     background: #161616;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
-.share-search-box:focus-within {
+.share-modal .share-search-box:focus-within {
     border-color: rgba(255, 255, 255, 0.24);
 }
 
-.share-search-icon {
+.share-modal .share-search-icon {
     color: #8a8a8a;
     flex-shrink: 0;
 }
 
-.share-search-input {
+.share-modal .share-search-input,
+.share-modal .share-search-input:focus,
+.share-modal .share-search-input:hover,
+.share-modal .share-search-input:active {
     flex: 1;
     min-width: 0;
+    width: 100%;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
     background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
     border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     outline: none !important;
-    color: #ffffff;
-    font-size: 0.84rem;
+    color: #ffffff !important;
+    font-size: 0.84rem !important;
+    line-height: 1.2 !important;
 }
 
-.share-search-input::placeholder {
+.share-modal .share-search-input::placeholder {
     color: #777777;
 }
 
-.share-search-clear {
-    border: none;
-    background: transparent;
-    color: #a3a3a3;
+.share-modal .share-search-clear,
+.share-modal .share-search-clear:hover,
+.share-modal .share-search-clear:focus {
+    border: none !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #a3a3a3 !important;
     width: 20px;
     height: 20px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    padding: 0;
+    padding: 0 !important;
 }
 
 /* Side-by-Side Horizontal Users Strip (No Checkboxes — Avatar Ring Selection) */
@@ -183,27 +209,35 @@
     font-size: 0.8rem;
 }
 
-.share-user-chip {
+.share-modal .share-user-chip,
+.share-modal .share-user-chip:hover,
+.share-modal .share-user-chip:focus,
+.share-modal .share-user-chip:active {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
     width: 62px;
     flex-shrink: 0;
-    background: transparent;
-    border: none;
-    padding: 0;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
     cursor: pointer;
     touch-action: manipulation;
     color: #d4d4d4;
     transition: transform 0.14s ease, color 0.14s ease;
 }
 
-.share-user-chip:hover {
+.share-modal .share-user-chip:hover {
     color: #ffffff;
 }
 
-.share-user-chip:active {
+.share-modal .share-user-chip:active {
     transform: scale(0.95);
 }
 
@@ -293,12 +327,18 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.share-icon-btn {
+.share-modal .share-icon-btn,
+.share-modal .share-icon-btn:hover,
+.share-modal .share-icon-btn:focus,
+.share-modal .share-icon-btn:active {
     background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    padding: 6px;
+    outline: none !important;
+    padding: 6px !important;
     color: #e5e5e5;
     display: inline-flex;
     align-items: center;
@@ -308,12 +348,12 @@
     transition: transform 0.14s ease, opacity 0.14s ease;
 }
 
-.share-icon-btn:hover {
+.share-modal .share-icon-btn:hover {
     transform: scale(1.14);
     opacity: 1;
 }
 
-.share-icon-btn:active {
+.share-modal .share-icon-btn:active {
     transform: scale(0.94);
 }
 
@@ -423,9 +463,9 @@ body.light-mode .share-search-box {
     border-color: rgba(0, 0, 0, 0.08);
 }
 
-[data-theme='light'] .share-search-input,
-body.light-mode .share-search-input {
-    color: #0a0a0a;
+[data-theme='light'] .share-modal .share-search-input,
+body.light-mode .share-modal .share-search-input {
+    color: #0a0a0a !important;
 }
 
 [data-theme='light'] .share-user-chip.selected .share-user-avatar-ring,
