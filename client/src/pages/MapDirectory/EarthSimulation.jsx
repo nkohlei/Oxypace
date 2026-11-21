@@ -25,6 +25,7 @@ export default function EarthSimulation() {
     const [isMember, setIsMember] = useState(false);
     const [joining, setJoining] = useState(false);
     const [isNativeApp, setIsNativeApp] = useState(false);
+    const [telemetry, setTelemetry] = useState({ lat: 24, lng: 22, altitudeKm: 14972 });
 
     const resolvePortalImage = (url) => {
         if (!url) return '';
@@ -39,9 +40,7 @@ export default function EarthSimulation() {
                 console.error('Error decoding portal image URL:', e);
             }
         }
-        const resolved = getImageUrl(clean);
-        console.log('[Portal Image Resolution]:', resolved);
-        return resolved;
+        return getImageUrl(clean);
     };
 
     useEffect(() => {
@@ -303,6 +302,7 @@ export default function EarthSimulation() {
                         onPortalClick={handlePortalClick}
                         activePortalSearch={activePortalSearch}
                         onGlobeClick={() => setSidebarOpen(false)}
+                        onTelemetry={setTelemetry}
                     />
                 </div>
 
@@ -490,6 +490,16 @@ export default function EarthSimulation() {
                         )}
                     </aside>
                 )}
+
+                {/* Live Camera Telemetry Bar (Google Earth Style) */}
+                <div className="map-telemetry-hud" aria-hidden="true">
+                    <span>Kamera: {telemetry.altitudeKm.toLocaleString('tr-TR')} km</span>
+                    <span className="map-telemetry-sep">·</span>
+                    <span>
+                        {Math.abs(telemetry.lat).toFixed(2)}°{telemetry.lat >= 0 ? 'K' : 'G'}{' '}
+                        {Math.abs(telemetry.lng).toFixed(2)}°{telemetry.lng >= 0 ? 'D' : 'B'}
+                    </span>
+                </div>
 
             </main>
 
@@ -891,6 +901,39 @@ export default function EarthSimulation() {
                     backdrop-filter: blur(20px);
                     -webkit-backdrop-filter: blur(20px);
                     border: 1px solid rgba(255,255,255,0.1);
+                }
+
+                .map-telemetry-hud {
+                    position: absolute;
+                    right: 16px;
+                    bottom: 14px;
+                    z-index: 15;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 5px 11px;
+                    border-radius: 999px;
+                    background: rgba(4, 6, 12, 0.62);
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.09);
+                    color: rgba(226, 232, 240, 0.78);
+                    font-size: 11px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    letter-spacing: 0.02em;
+                    pointer-events: none;
+                    user-select: none;
+                }
+                .map-telemetry-sep {
+                    opacity: 0.4;
+                }
+                @media (max-width: 768px) {
+                    .map-telemetry-hud {
+                        right: 10px;
+                        bottom: calc(10px + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+                        font-size: 10px;
+                        padding: 4px 9px;
+                    }
                 }
 
                 /* Slider thumb */

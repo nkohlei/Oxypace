@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
 import { Plus, Minus, Crosshair } from 'lucide-react';
+import { EARTH_TEXTURES, enhanceEarthScene } from '../utils/earthAtmosphere';
 
 const Globe = lazy(() => import('react-globe.gl'));
-
-const SATELLITE_TILE_URL = (x, y, z) =>
-    `https://mt1.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}&scale=2`;
 
 const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
     const hasPin =
@@ -15,8 +13,9 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
 
     const containerRef = useRef(null);
     const globeRef = useRef(null);
+    const sceneFxRef = useRef(null);
     const initializedRef = useRef(false);
-    const [size, setSize] = useState({ width: 520, height: 240 });
+    const [size, setSize] = useState({ width: 520, height: 250 });
     const [globeReady, setGlobeReady] = useState(false);
 
     useEffect(() => {
@@ -43,22 +42,60 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
         if (hasPin) {
             const currentPov = globeRef.current.pointOfView();
             const targetAlt = initializedRef.current
-                ? Math.min(currentPov?.altitude || 1.2, 0.9)
-                : 1.1;
+                ? Math.min(currentPov?.altitude || 1.25, 0.95)
+                : 1.15;
             globeRef.current.pointOfView(
                 { lat, lng, altitude: targetAlt },
                 initializedRef.current ? 650 : 0
             );
             initializedRef.current = true;
         } else if (!initializedRef.current) {
-            globeRef.current.pointOfView({ lat: 39.0, lng: 35.0, altitude: 2.1 }, 0);
+            globeRef.current.pointOfView({ lat: 39.0, lng: 35.0, altitude: 2.15 }, 0);
             initializedRef.current = true;
         }
     }, [lat, lng, hasPin, globeReady]);
 
+    // Unified 60fps loop for atmosphere, clouds, damping & altitude-adaptive rotation
+    useEffect(() => {
+        if (!globeReady) return;
+        let rafId = null;
+        let lastTime = performance.now();
+
+        const tick = (now) => {
+            rafId = requestAnimationFrame(tick);
+            const dt = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime = now;
+
+            const globe = globeRef.current;
+            if (!globe) return;
+
+            const pov = globe.pointOfView();
+            const alt = pov?.altitude ?? 2.0;
+
+            if (sceneFxRef.current) {
+                sceneFxRef.current.update(dt, alt);
+            }
+
+            const controls = globe.controls?.();
+            if (controls) {
+                controls.rotateSpeed = Math.max(0.04, Math.min(0.55, alt * 0.28));
+                controls.update();
+            }
+        };
+
+        rafId = requestAnimationFrame(tick);
+        return () => {
+            if (rafId) cancelAnimationFrame(rafId);
+        };
+    }, [globeReady]);
+
     // Dispose Three.js resources on unmount
     useEffect(() => {
         return () => {
+            if (sceneFxRef.current) {
+                sceneFxRef.current.dispose();
+                sceneFxRef.current = null;
+            }
             if (globeRef.current) {
                 try {
                     const scene = globeRef.current.scene();
@@ -86,7 +123,7 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
         if (!globeRef.current) return;
         const pov = globeRef.current.pointOfView();
         const nextAlt = Math.max(0.03, Math.min(3.5, (pov.altitude || 1.5) * factor));
-        globeRef.current.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: nextAlt }, 300);
+        globeRef.current.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: nextAlt }, 320);
     };
 
     const handleFocusPin = () => {
@@ -110,21 +147,28 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
                     ref={globeRef}
                     width={size.width}
                     height={size.height}
-                    backgroundColor="#040508"
-                    globeImageUrl="//unpkg.com/three-globe@2.24.0/example/img/earth-blue-marble.jpg"
-                    bumpImageUrl="//unpkg.com/three-globe@2.24.0/example/img/earth-topology.png"
-                    backgroundImageUrl="//unpkg.com/three-globe@2.24.0/example/img/night-sky.png"
-                    globeTileEngineUrl={SATELLITE_TILE_URL}
-                    showAtmosphere={true}
-                    atmosphereColor="#b8d4ff"
-                    atmosphereAltitude={0.14}
+                    backgroundColor="#000003"
+                    globeImageUrl={EARTH_TEXTURES.day}
+                    bumpImageUrl={EARTH_TEXTURES.bump}
+                    globeTileEngineUrl={EARTH_TEXTURES.satelliteTileUrl}
+                    showAtmosphere={false}
                     onGlobeReady={() => {
                         if (globeRef.current) {
                             const controls = globeRef.current.controls();
+                            controls.enableDamping = true;
+                            controls.dampingFactor = 0.07;
                             controls.autoRotate = false;
-                            controls.rotateSpeed = 0.55;
-                            controls.zoomSpeed = 0.8;
-                            controls.minDistance = 102;
+                            controls.rotateSpeed = 0.5;
+                            controls.zoomSpeed = 0.75;
+                            controls.minDistance = 101.5;
+
+                            if (sceneFxRef.current) sceneFxRef.current.dispose();
+                            sceneFxRef.current = enhanceEarthScene(globeRef.current, {
+                                starCount: 1600,
+                                enableClouds: true,
+                                enableStars: true,
+                                cloudDriftSpeed: 0.0018,
+                            });
                         }
                         setGlobeReady(true);
                     }}
