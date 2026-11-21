@@ -2,8 +2,8 @@
     padding: 0;
 }
 
-/* Back Button */
-.back-btn {
+/* Back Button (scoped to CommentDetail so it never leaks to other pages) */
+.comment-detail-container .back-btn {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -20,12 +20,12 @@
     box-sizing: border-box;
 }
 
-.back-btn svg {
+.comment-detail-container .back-btn svg {
     width: 20px;
     height: 20px;
 }
 
-.back-btn:hover {
+.comment-detail-container .back-btn:hover {
     color: var(--primary-cyan);
 }
 
