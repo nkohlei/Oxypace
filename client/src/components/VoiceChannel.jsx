@@ -37,19 +37,28 @@ const VideoRenderer = React.memo(({ participant, isShowingScreen, className, ide
         const el = videoRef.current;
         if (!el) return;
 
-        if (rawTrack && isVideoActive) {
+        const resumePlay = () => {
+            if (el && el.srcObject && el.paused) {
+                el.play().catch(() => {});
+            }
+        };
+
+        if (rawTrack && isVideoActive && rawTrack.readyState !== 'ended') {
+            el.muted = true;
+            el.playsInline = true;
+            el.autoplay = true;
             const currentStream = el.srcObject;
             if (currentStream && currentStream.getVideoTracks?.()[0]?.id === rawTrack.id && currentStream.active) {
-                if (el.paused) el.play().catch(() => {});
-                return;
-            }
-
-            if (typeof rawTrackObj?.attach === 'function') {
+                resumePlay();
+            } else if (typeof rawTrackObj?.attach === 'function') {
                 rawTrackObj.attach(el);
             } else {
                 el.srcObject = new MediaStream([rawTrack]);
                 el.play().catch(e => console.warn("[VoiceChannel] Video play error:", e));
             }
+            el.addEventListener('loadedmetadata', resumePlay);
+            el.addEventListener('canplay', resumePlay);
+            rawTrack.addEventListener?.('unmute', resumePlay);
         } else {
             if (typeof rawTrackObj?.detach === 'function') {
                 rawTrackObj.detach(el);
@@ -59,13 +68,16 @@ const VideoRenderer = React.memo(({ participant, isShowingScreen, className, ide
         }
 
         return () => {
+            el.removeEventListener('loadedmetadata', resumePlay);
+            el.removeEventListener('canplay', resumePlay);
+            rawTrack?.removeEventListener?.('unmute', resumePlay);
             if (typeof rawTrackObj?.detach === 'function') {
                 rawTrackObj.detach(el);
             } else if (el) {
                 el.srcObject = null;
             }
         };
-    }, [rawTrack?.id, participant?.isCameraOn, participant?.isScreenSharing, isShowingScreen, isVideoActive]);
+    }, [rawTrack?.id, rawTrack?.readyState, participant?.isCameraOn, participant?.isScreenSharing, isShowingScreen, isVideoActive]);
 
     // Continuous watch: guarantee element resumes playing if browser pauses it during renegotiation or local camera start
     useEffect(() => {
@@ -515,8 +527,12 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
     const showControls = true; // Permanent controls, no auto-hide
 
-    const handleContainerClick = (e) => {
-        // No-op, controls are permanently active
+    const handleContainerClick = () => {
+        if (isVolumeOpen) setIsVolumeOpen(false);
+        if (isMoreMenuOpen) setIsMoreMenuOpen(false);
+        if (isWatchInputOpen) setIsWatchInputOpen(false);
+        if (isMicMenuOpen) setIsMicMenuOpen(false);
+        if (isCameraMenuOpen) setIsCameraMenuOpen(false);
     };
 
     useEffect(() => {
@@ -709,7 +725,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         const avatarUrl = getImageUrl(p.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=333&color=fff&size=120`;
 
         return (
-            <div key={`${p.identity}-${role}`} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={handleCardClick}>
+            <div key={p.identity} className={`vc-card ${p.isSpeaking ? 'speaking' : ''} role-${role}`} onClick={handleCardClick}>
                 <div className="vc-card-video-area">
                     <div className="vc-avatar-blur-bg" style={{ backgroundImage: `url(${avatarUrl})` }} />
                     <VideoRenderer 
@@ -730,7 +746,11 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                 <div className="vc-card-info">
                     <span className="vc-card-name">{p.name} {p.isLocal && '(Sen)'}</span>
                     <div className="vc-card-indicators">
-                        {p.isMuted && !isShowingScreen && <div className="vc-indicator muted"><MicOff size={14} /></div>}
+                        {!isShowingScreen && (
+                            p.isMuted
+                                ? <div className="vc-indicator muted" title="Mikrofon Kapalı"><MicOff size={13} /></div>
+                                : <div className="vc-indicator unmuted" title="Mikrofon Açık"><Mic size={13} /></div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -815,126 +835,134 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
     return (
         <div className={`vc-container glass-container ${watchParty?.url ? 'vc-has-watchparty' : ''}`} onClick={handleContainerClick}>
             <div className="vc-top-right-controls">
-                <button 
-                    className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`} 
-                    onClick={() => { setIsInviteOpen(!isInviteOpen); setIsChatOpen(false); setIsVolumeOpen(false); }} 
+                <button
+                    type="button"
+                    className={`vc-ctrl-btn ${isInviteOpen ? 'active' : ''}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsInviteOpen(!isInviteOpen);
+                        setIsChatOpen(false);
+                        setIsVolumeOpen(false);
+                    }}
                     title="Davet Et"
                 >
                     <UserPlus size={18} />
                 </button>
-                <button className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`} style={{ position: 'relative' }} onClick={() => { setIsChatOpen(!isChatOpen); setIsInviteOpen(false); setIsVolumeOpen(false); }} title="Sohbet">
+                <button
+                    type="button"
+                    className={`vc-ctrl-btn ${isChatOpen ? 'active' : ''}`}
+                    style={{ position: 'relative' }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsChatOpen(!isChatOpen);
+                        setIsInviteOpen(false);
+                        setIsVolumeOpen(false);
+                    }}
+                    title="Sohbet"
+                >
                     <MessageCircle size={18} />
                     {unreadCount > 0 && (
-                        <span style={{
-                            position: 'absolute',
-                            top: '-2px',
-                            right: '-2px',
-                            background: '#ef4444',
-                            color: 'white',
-                            fontSize: '9px',
-                            fontWeight: '700',
-                            borderRadius: '50%',
-                            width: '14px',
-                            height: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1.5px solid #090a0d',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                        }}>
-                            {unreadCount}
-                        </span>
+                        <span className="vc-unread-dot">{unreadCount}</span>
                     )}
                 </button>
-                
-                {/* Volume Slider Group */}
-                <div 
-                    style={{ position: 'relative' }}
-                    onMouseEnter={handleVolumeMouseEnter}
-                    onMouseLeave={handleVolumeMouseLeave}
-                >
-                    <button 
-                        className={`vc-ctrl-btn ${isVolumeOpen ? 'active' : ''}`} 
-                        onClick={() => { setIsVolumeOpen(!isVolumeOpen); setIsChatOpen(false); setIsInviteOpen(false); }} 
-                        title="Kullanıcı Ses Düzeyi"
+
+                {/* Volume & Audio Output Minimal Dropdown */}
+                <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        className={`vc-ctrl-btn ${isVolumeOpen ? 'active' : ''}`}
+                        onClick={() => {
+                            setIsVolumeOpen((prev) => !prev);
+                            setIsChatOpen(false);
+                            setIsInviteOpen(false);
+                        }}
+                        title="Ses ve Çıkış"
                     >
-                        <Volume2 size={18} />
+                        {userVolume <= 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
                     </button>
                     {isVolumeOpen && (
                         <div className="vc-volume-dropdown-container">
-                            <input 
-                                type="range" 
-                                min="0" 
-                                max="1" 
-                                step="0.05" 
-                                value={userVolume} 
-                                onChange={(e) => setUserVolume(parseFloat(e.target.value))} 
-                                className="vc-volume-slider-input"
-                            />
+                            <div className="vc-vol-section">
+                                <div className="vc-vol-header">
+                                    <span>Ses Düzeyi</span>
+                                    <span className="vc-vol-pct">{Math.round((userVolume ?? 1) * 100)}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={userVolume}
+                                    onChange={(e) => setUserVolume(parseFloat(e.target.value))}
+                                    className="vc-volume-slider-input"
+                                    aria-label="Ses Düzeyi"
+                                />
+                            </div>
+
+                            {Capacitor.isNativePlatform() ? (
+                                <div className="vc-audio-out-section">
+                                    <div className="vc-menu-label">SES ÇIKIŞI</div>
+                                    <button
+                                        type="button"
+                                        className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'speaker' ? 'active' : ''}`}
+                                        onClick={() => { setAudioOutput('speaker'); setIsVolumeOpen(false); }}
+                                    >
+                                        <Volume2 size={14} />
+                                        <span className="vc-opt-text">Hoparlör</span>
+                                        {nativeAudioRoute?.currentRoute === 'speaker' && <Check size={13} />}
+                                    </button>
+                                    {nativeAudioRoute?.hasHeadset && (
+                                        <button
+                                            type="button"
+                                            className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'headset' ? 'active' : ''}`}
+                                            onClick={() => { setAudioOutput('headset'); setIsVolumeOpen(false); }}
+                                        >
+                                            <Headphones size={14} />
+                                            <span className="vc-opt-text">{nativeAudioRoute.headsetName || 'Kulaklık'}</span>
+                                            {nativeAudioRoute?.currentRoute === 'headset' && <Check size={13} />}
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
+                                    <div className="vc-audio-out-section">
+                                        <div className="vc-menu-label">SES ÇIKIŞI</div>
+                                        {availableDevices.audioOutputs.map((d) => {
+                                            const lowerLabel = (d.label || '').toLowerCase();
+                                            const isHeadset = lowerLabel.includes('headphone') || lowerLabel.includes('kulaklık') || lowerLabel.includes('headset') || lowerLabel.includes('airpods');
+                                            const isSelected = selectedAudioOutput === d.deviceId || (!selectedAudioOutput && d.deviceId === 'default');
+                                            return (
+                                                <button
+                                                    key={d.deviceId}
+                                                    type="button"
+                                                    className={`vc-more-option ${isSelected ? 'active' : ''}`}
+                                                    onClick={() => { setAudioOutput(d.deviceId); setIsVolumeOpen(false); }}
+                                                >
+                                                    {isHeadset ? <Headphones size={14} /> : <Volume2 size={14} />}
+                                                    <span className="vc-opt-text">{d.label || 'Hoparlör'}</span>
+                                                    {isSelected && <Check size={13} />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )
+                            )}
                         </div>
                     )}
                 </div>
-                
-                {/* When closed: Arrow is right below the top 3 buttons */}
-                {!isExtraControlsOpen && (
-                    <button 
-                        className="vc-ctrl-btn vc-drawer-toggle-btn"
-                        onClick={() => setIsExtraControlsOpen(true)}
-                        title="Daha Fazla Göster"
-                        aria-label="Diğer Kontrolleri Göster"
-                    >
-                        <ChevronDown size={18} className="vc-drawer-chevron" />
-                    </button>
-                )}
 
-                {/* Collapsible Drawer with remaining buttons */}
-                <div 
-                    className={`vc-extra-controls-drawer ${isExtraControlsOpen ? 'open' : ''}`}
-                    onMouseMove={resetDrawerTimer}
-                    onTouchStart={resetDrawerTimer}
+                {/* Picture-in-Picture Button (4th top-right button; HLS & Vol2 buttons temporarily shelved) */}
+                <button
+                    type="button"
+                    className="vc-ctrl-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleTriggerDocumentPiP();
+                    }}
+                    title="Yüzen Pencere (PiP)"
                 >
-                    {/* Picture-in-Picture Button */}
-                    <button 
-                        className="vc-ctrl-btn" 
-                        onClick={handleTriggerDocumentPiP} 
-                        title="Yüzen Pencereye Geç (PiP)"
-                        style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
-                    >
-                        <PictureInPicture size={18} color="#818cf8" />
-                    </button>
-
-                    {/* HLS Video Oynatıcı & Çözücü Butonu */}
-                    <button 
-                        className={`vc-ctrl-btn ${isHlsModalOpen ? 'active' : ''}`} 
-                        onClick={() => { setIsHlsModalOpen(true); resetDrawerTimer(); }} 
-                        title="HLS Oynatıcı & Çözücü Modalını Aç"
-                        style={{ background: 'rgba(168, 85, 247, 0.25)', borderColor: 'rgba(168, 85, 247, 0.6)' }}
-                    >
-                        <Radio size={18} color="#c084fc" />
-                    </button>
-
-                    {/* HLS Video Oynatıcı Vol 2 (Microservice Stream Resolver) */}
-                    <button 
-                        className={`vc-ctrl-btn ${isHlsVol2ModalOpen ? 'active' : ''}`} 
-                        onClick={() => { setIsHlsVol2ModalOpen(!isHlsVol2ModalOpen); setIsChatOpen(false); setIsInviteOpen(false); setIsVolumeOpen(false); resetDrawerTimer(); }} 
-                        title="HLS Video Oynatıcı Vol 2 (Stream Resolver)"
-                        style={{ background: isHlsVol2ModalOpen ? 'rgba(56, 139, 253, 0.25)' : 'rgba(255, 255, 255, 0.05)', borderColor: isHlsVol2ModalOpen ? '#58a6ff' : 'rgba(255, 255, 255, 0.12)' }}
-                    >
-                        <Film size={18} color={isHlsVol2ModalOpen ? '#58a6ff' : '#c9d1d9'} />
-                    </button>
-
-                    {/* When open: Arrow moves to the very bottom of the drawer */}
-                    {isExtraControlsOpen && (
-                        <button 
-                            className="vc-ctrl-btn vc-drawer-toggle-btn active"
-                            onClick={() => setIsExtraControlsOpen(false)}
-                            title="Daha Az Göster"
-                            aria-label="Diğer Kontrolleri Gizle"
-                        >
-                            <ChevronUp size={18} className="vc-drawer-chevron" />
-                        </button>
-                    )}
-                </div>
+                    <PictureInPicture size={18} />
+                </button>
             </div>
 
             <div className={`vc-viewport ${gridClass}`} style={{ marginTop: '0px', position: 'relative' }}>
@@ -1087,123 +1115,67 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             )}
                         </div>
 
-                        {/* Medya URL Watch Party Button */}
-                        <div className="vc-ctrl-group" style={{ position: 'relative' }}>
-                            <button className={`vc-ctrl-btn ${watchParty?.url && !watchParty?.isLive ? 'active' : ''}`} onClick={() => { setIsWatchInputOpen(!isWatchInputOpen); setIsLiveWatchInputOpen(false); }} title="Birlikte Video İzle">
-                                <Link size={22} color={watchParty?.url && !watchParty?.isLive ? '#ffffff' : '#ef4444'} />
+                        {/* Unified Media & Live Stream Watch Party Button */}
+                        <div className="vc-ctrl-group" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`}
+                                onClick={() => {
+                                    setIsWatchInputOpen(!isWatchInputOpen);
+                                    setIsMoreMenuOpen(false);
+                                    setIsVolumeOpen(false);
+                                }}
+                                title="Birlikte İzle (Video / Canlı Yayın)"
+                            >
+                                <Link size={20} />
                             </button>
                             {isWatchInputOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: '100%',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    marginBottom: '10px',
-                                    padding: '12px',
-                                    width: 'min(330px, 92vw)',
-                                    background: '#121418',
-                                    border: '1px solid rgba(255, 255, 255, 0.14)',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.75)',
-                                    zIndex: 1005,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '10px',
-                                    boxSizing: 'border-box'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <Link size={14} color="#58a6ff" />
-                                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#e6edf3', letterSpacing: '0.2px' }}>
-                                                Video Bağlantısı
-                                            </span>
+                                <div className="vc-watch-popover">
+                                    <div className="vc-watch-popover-header">
+                                        <div className="vc-watch-popover-title">
+                                            <Link size={14} />
+                                            <span>Birlikte İzle</span>
                                         </div>
                                         <button
                                             type="button"
+                                            className="vc-watch-close-btn"
                                             onClick={() => setIsWatchInputOpen(false)}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                color: '#8b949e',
-                                                cursor: 'pointer',
-                                                padding: '2px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
                                             title="Kapat"
+                                            aria-label="Kapat"
                                         >
                                             <X size={14} />
                                         </button>
                                     </div>
 
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        background: '#0d1117',
-                                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                                        borderRadius: '6px',
-                                        padding: '0 8px',
-                                        height: '36px',
-                                        gap: '6px'
-                                    }}>
-                                        <input 
-                                            type="text" 
-                                            placeholder="YouTube, MP4 veya video URL..." 
-                                            value={watchUrl} 
+                                    <div className="vc-watch-input-row">
+                                        <input
+                                            type="text"
+                                            className="vc-watch-url-input"
+                                            placeholder="Video veya canlı yayın URL..."
+                                            value={watchUrl}
                                             onChange={(e) => setWatchUrl(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && watchUrl.trim()) {
-                                                    startWatchParty(watchUrl.trim(), false);
+                                                    startWatchParty(watchUrl.trim());
                                                     setIsWatchInputOpen(false);
                                                 }
                                             }}
-                                            style={{
-                                                flex: 1,
-                                                background: 'transparent',
-                                                border: 'none',
-                                                outline: 'none',
-                                                color: '#ffffff',
-                                                fontSize: '12px',
-                                                minWidth: 0
-                                            }}
                                         />
                                         {watchUrl && (
-                                            <button 
+                                            <button
                                                 type="button"
+                                                className="vc-watch-clear-btn"
                                                 onClick={() => setWatchUrl('')}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    color: '#8b949e',
-                                                    cursor: 'pointer',
-                                                    padding: '2px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
-                                                }}
                                                 title="Temizle"
+                                                aria-label="Temizle"
                                             >
                                                 <X size={13} />
                                             </button>
                                         )}
-                                        <button 
+                                        <button
                                             type="button"
+                                            className="vc-watch-paste-btn"
                                             onClick={() => handlePasteToInput(setWatchUrl)}
-                                            style={{
-                                                background: 'rgba(255, 255, 255, 0.08)',
-                                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                borderRadius: '4px',
-                                                color: '#c9d1d9',
-                                                fontSize: '11px',
-                                                fontWeight: '500',
-                                                cursor: 'pointer',
-                                                padding: '4px 8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                flexShrink: 0
-                                            }}
                                             title="Panodan Yapıştır"
                                         >
                                             <Clipboard size={12} />
@@ -1211,86 +1183,46 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                         </button>
                                     </div>
 
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button 
+                                    <div className="vc-watch-actions">
+                                        <button
                                             type="button"
+                                            className="vc-watch-start-btn"
                                             onClick={() => {
                                                 if (watchUrl.trim()) {
-                                                    startWatchParty(watchUrl.trim(), false);
+                                                    startWatchParty(watchUrl.trim());
                                                     setIsWatchInputOpen(false);
                                                 }
                                             }}
                                             disabled={!watchUrl.trim()}
-                                            style={{
-                                                flex: 1,
-                                                height: '32px',
-                                                background: '#238636',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: '6px',
-                                                color: '#ffffff',
-                                                fontSize: '12px',
-                                                fontWeight: '600',
-                                                cursor: watchUrl.trim() ? 'pointer' : 'not-allowed',
-                                                opacity: watchUrl.trim() ? 1 : 0.5,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
                                         >
                                             Başlat
                                         </button>
-                                        <button 
+                                        <button
                                             type="button"
+                                            className="vc-watch-film-btn"
                                             onClick={() => {
                                                 setIsHlsVol2ModalOpen(true);
                                                 setIsWatchInputOpen(false);
                                             }}
-                                            style={{
-                                                height: '32px',
-                                                padding: '0 10px',
-                                                background: '#21262d',
-                                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                borderRadius: '6px',
-                                                color: '#58a6ff',
-                                                fontSize: '12px',
-                                                fontWeight: '500',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px'
-                                            }}
-                                            title="Film Arama ve Çözümleyici"
+                                            title="Film Oynatıcı"
                                         >
-                                            <Film size={13} color="#58a6ff" />
-                                            <span>Film Ara</span>
+                                            <Film size={13} />
+                                            <span>Film</span>
                                         </button>
                                         {!!window.desktopAPI && (
-                                            <button 
+                                            <button
                                                 type="button"
+                                                className="vc-watch-film-btn"
                                                 onClick={() => {
                                                     const urlVal = watchUrl.trim();
                                                     const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
                                                     window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
                                                     setIsWatchInputOpen(false);
                                                 }}
-                                                style={{
-                                                    height: '32px',
-                                                    padding: '0 10px',
-                                                    background: '#21262d',
-                                                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                    borderRadius: '6px',
-                                                    color: '#f85149',
-                                                    fontSize: '12px',
-                                                    fontWeight: '500',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '5px'
-                                                }}
-                                                title="Film Sitesini Aç"
+                                                title="Tarayıcıda Aç"
                                             >
-                                                <Globe size={13} color="#f85149" />
-                                                <span>Film Aç</span>
+                                                <Globe size={13} />
+                                                <span>Aç</span>
                                             </button>
                                         )}
                                     </div>
@@ -1298,314 +1230,57 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                             )}
                         </div>
 
-                        {/* Canlı Yayın Watch Party Button */}
-                        <div className="vc-ctrl-group" style={{ position: 'relative' }}>
-                            <button className={`vc-ctrl-btn ${watchParty?.url && watchParty?.isLive ? 'active' : ''}`} onClick={() => { setIsLiveWatchInputOpen(!isLiveWatchInputOpen); setIsWatchInputOpen(false); }} title="Birlikte Canlı Yayın İzle">
-                                <Radio size={22} color={watchParty?.url && watchParty?.isLive ? '#ffffff' : '#10b981'} />
-                            </button>
-                            {isLiveWatchInputOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: '100%',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    marginBottom: '10px',
-                                    padding: '12px',
-                                    width: 'min(330px, 92vw)',
-                                    background: '#121418',
-                                    border: '1px solid rgba(255, 255, 255, 0.14)',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.75)',
-                                    zIndex: 1005,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '10px',
-                                    boxSizing: 'border-box'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <Radio size={14} color="#3fb950" />
-                                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#e6edf3', letterSpacing: '0.2px' }}>
-                                                Canlı Yayın Bağlantısı
-                                            </span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsLiveWatchInputOpen(false)}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                color: '#8b949e',
-                                                cursor: 'pointer',
-                                                padding: '2px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                            title="Kapat"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        background: '#0d1117',
-                                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                                        borderRadius: '6px',
-                                        padding: '0 8px',
-                                        height: '36px',
-                                        gap: '6px'
-                                    }}>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Canlı akış linki (.m3u8, .mpd)..." 
-                                            value={liveWatchUrl} 
-                                            onChange={(e) => setLiveWatchUrl(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && liveWatchUrl.trim()) {
-                                                    startWatchParty(liveWatchUrl.trim(), true);
-                                                    setIsLiveWatchInputOpen(false);
-                                                }
-                                            }}
-                                            style={{
-                                                flex: 1,
-                                                background: 'transparent',
-                                                border: 'none',
-                                                outline: 'none',
-                                                color: '#ffffff',
-                                                fontSize: '12px',
-                                                minWidth: 0
-                                            }}
-                                        />
-                                        {liveWatchUrl && (
-                                            <button 
-                                                type="button"
-                                                onClick={() => setLiveWatchUrl('')}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    color: '#8b949e',
-                                                    cursor: 'pointer',
-                                                    padding: '2px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
-                                                }}
-                                                title="Temizle"
-                                            >
-                                                <X size={13} />
-                                            </button>
-                                        )}
-                                        <button 
-                                            type="button"
-                                            onClick={() => handlePasteToInput(setLiveWatchUrl)}
-                                            style={{
-                                                background: 'rgba(255, 255, 255, 0.08)',
-                                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                borderRadius: '4px',
-                                                color: '#c9d1d9',
-                                                fontSize: '11px',
-                                                fontWeight: '500',
-                                                cursor: 'pointer',
-                                                padding: '4px 8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                flexShrink: 0
-                                            }}
-                                            title="Panodan Yapıştır"
-                                        >
-                                            <Clipboard size={12} />
-                                            <span>Yapıştır</span>
-                                        </button>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button 
-                                            type="button"
-                                            onClick={() => {
-                                                if (liveWatchUrl.trim()) {
-                                                    startWatchParty(liveWatchUrl.trim(), true);
-                                                    setIsLiveWatchInputOpen(false);
-                                                }
-                                            }}
-                                            disabled={!liveWatchUrl.trim()}
-                                            style={{
-                                                flex: 1,
-                                                height: '32px',
-                                                background: '#238636',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: '6px',
-                                                color: '#ffffff',
-                                                fontSize: '12px',
-                                                fontWeight: '600',
-                                                cursor: liveWatchUrl.trim() ? 'pointer' : 'not-allowed',
-                                                opacity: liveWatchUrl.trim() ? 1 : 0.5,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                        >
-                                            Başlat
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => setIsHlsModalOpen(true)}
-                                            style={{
-                                                height: '32px',
-                                                padding: '0 10px',
-                                                background: '#21262d',
-                                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                borderRadius: '6px',
-                                                color: '#c9d1d9',
-                                                fontSize: '12px',
-                                                fontWeight: '500',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px'
-                                            }}
-                                            title="HLS Akış Çözücü"
-                                        >
-                                            <Radio size={13} color="#c9d1d9" />
-                                            <span>HLS</span>
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => {
-                                                setIsHlsVol2ModalOpen(true);
-                                                setIsLiveWatchInputOpen(false);
-                                            }}
-                                            style={{
-                                                height: '32px',
-                                                padding: '0 10px',
-                                                background: '#21262d',
-                                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                borderRadius: '6px',
-                                                color: '#58a6ff',
-                                                fontSize: '12px',
-                                                fontWeight: '500',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px'
-                                            }}
-                                            title="Entegre Film Arama ve Oynatıcı"
-                                        >
-                                            <Film size={13} color="#58a6ff" />
-                                            <span>Film Ara</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Ek Ayar Butonu (Çark Simgesi - Canlı video izle butonunun hemen sağında) */}
-                        <div className="vc-ctrl-group" style={{ position: 'relative' }}>
-                            <button 
-                                className={`vc-ctrl-btn ${isMoreMenuOpen ? 'active' : ''}`} 
-                                onClick={() => { setIsMoreMenuOpen(!isMoreMenuOpen); setIsWatchInputOpen(false); setIsLiveWatchInputOpen(false); }} 
+                        {/* Compact Settings Menu (Audio Output moved to Top-Right Volume Menu; zero emojis) */}
+                        <div className="vc-ctrl-group" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                className={`vc-ctrl-btn ${isMoreMenuOpen ? 'menu-open' : ''}`}
+                                onClick={() => {
+                                    setIsMoreMenuOpen(!isMoreMenuOpen);
+                                    setIsWatchInputOpen(false);
+                                    setIsVolumeOpen(false);
+                                }}
                                 title="Oda Ayarları"
                             >
-                                <Settings size={22} />
+                                <Settings size={20} />
                             </button>
                             {isMoreMenuOpen && (
-                                <div className="vc-settings-dropdown glass-panel" style={{ 
-                                    position: 'absolute', 
-                                    bottom: '100%', 
-                                    right: '0', 
-                                    marginBottom: '8px', 
-                                    padding: '6px', 
-                                    width: 'min(220px, 80vw)',
-                                    background: 'rgba(18, 18, 18, 0.98)',
-                                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                                    borderRadius: '12px',
-                                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7)',
-                                    zIndex: 1000,
-                                    boxSizing: 'border-box'
-                                }}>
-                                    <button className={`vc-more-option ${localState.isScreenSharing ? 'active' : ''}`} onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
-                                        <MonitorUp size={15} /> <span>{localState.isScreenSharing ? 'Ekran Paylaşımını Durdur' : 'Ekran Paylaş'}</span>
+                                <div className="vc-settings-dropdown vc-compact-settings-menu">
+                                    <button type="button" className={`vc-more-option ${localState.isScreenSharing ? 'active' : ''}`} onClick={() => { toggleScreenShare(); setIsMoreMenuOpen(false); }}>
+                                        <MonitorUp size={14} />
+                                        <span className="vc-opt-text">{localState.isScreenSharing ? 'Paylaşımı Durdur' : 'Ekran Paylaş'}</span>
                                     </button>
-                                    <button className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
-                                        {localState.isDeafened ? <VolumeX size={15} /> : <Volume2 size={15} />} <span>{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
+                                    <button type="button" className={`vc-more-option ${localState.isDeafened ? 'active' : ''}`} onClick={() => { toggleDeafen(); setIsMoreMenuOpen(false); }}>
+                                        {localState.isDeafened ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                                        <span className="vc-opt-text">{localState.isDeafened ? 'Sesi Aç' : 'Sağırlaştır'}</span>
                                     </button>
-                                    <button className={`vc-more-option ${hideSelfView ? 'active' : ''}`} onClick={() => { toggleHideSelfView(); setIsMoreMenuOpen(false); }}>
-                                        {hideSelfView ? <Eye size={15} /> : <EyeOff size={15} />} <span>{hideSelfView ? 'Kendi Görüntümü Göster' : 'Kamera görüntü penceremi benden gizle'}</span>
+                                    <button type="button" className={`vc-more-option ${hideSelfView ? 'active' : ''}`} onClick={() => { toggleHideSelfView(); setIsMoreMenuOpen(false); }}>
+                                        {hideSelfView ? <Eye size={14} /> : <EyeOff size={14} />}
+                                        <span className="vc-opt-text">{hideSelfView ? 'Kendimi Göster' : 'Kendimi Gizle'}</span>
                                     </button>
-                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-                                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>YAYIN KALİTESİ</div>
-                                    <button 
-                                        className={`vc-more-option ${callQualityMode === 'saver' ? 'active' : ''}`} 
+                                    <div className="vc-menu-divider" />
+                                    <div className="vc-menu-label">KALİTE</div>
+                                    <button
+                                        type="button"
+                                        className={`vc-more-option ${callQualityMode === 'saver' ? 'active' : ''}`}
                                         onClick={() => { setCallQualityMode('saver'); setIsMoreMenuOpen(false); }}
                                     >
-                                        <Zap size={15} style={{ color: callQualityMode === 'saver' ? '#4ade80' : 'inherit' }} />
-                                        <span>⚡ Veri Tasarrufu (Önerilen)</span>
-                                        {callQualityMode === 'saver' && <Check size={13} style={{ color: '#4ade80' }} />}
+                                        <Zap size={14} />
+                                        <span className="vc-opt-text">Veri Tasarrufu</span>
+                                        {callQualityMode === 'saver' && <Check size={13} />}
                                     </button>
-                                    <button 
-                                        className={`vc-more-option ${callQualityMode === 'high' ? 'active' : ''}`} 
+                                    <button
+                                        type="button"
+                                        className={`vc-more-option ${callQualityMode === 'high' ? 'active' : ''}`}
                                         onClick={() => { setCallQualityMode('high'); setIsMoreMenuOpen(false); }}
                                     >
-                                        <Sparkles size={15} style={{ color: callQualityMode === 'high' ? '#93c5fd' : 'inherit' }} />
-                                        <span>🎬 Yüksek Kalite (HD)</span>
-                                        {callQualityMode === 'high' && <Check size={13} style={{ color: '#93c5fd' }} />}
+                                        <Sparkles size={14} />
+                                        <span className="vc-opt-text">Yüksek (HD)</span>
+                                        {callQualityMode === 'high' && <Check size={13} />}
                                     </button>
-                                    {Capacitor.isNativePlatform() ? (
-                                        <>
-                                            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-                                            <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SES ÇIKIŞI</div>
-                                            <button 
-                                                className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'speaker' ? 'active' : ''}`} 
-                                                onClick={() => { setAudioOutput('speaker'); setIsMoreMenuOpen(false); }}
-                                            >
-                                                <Volume2 size={15} /> 
-                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Hoparlör</span>
-                                                {nativeAudioRoute?.currentRoute === 'speaker' && <Check size={13} />}
-                                            </button>
-                                            {nativeAudioRoute?.hasHeadset && (
-                                                <button 
-                                                    className={`vc-more-option ${nativeAudioRoute?.currentRoute === 'headset' ? 'active' : ''}`} 
-                                                    onClick={() => { setAudioOutput('headset'); setIsMoreMenuOpen(false); }}
-                                                >
-                                                    <Headphones size={15} /> 
-                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nativeAudioRoute.headsetName || 'Kulaklık'}</span>
-                                                    {nativeAudioRoute?.currentRoute === 'headset' && <Check size={13} />}
-                                                </button>
-                                            )}
-                                        </>
-                                    ) : (
-                                        Array.isArray(availableDevices?.audioOutputs) && availableDevices.audioOutputs.length > 0 && (
-                                            <>
-                                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-                                                <div style={{ fontSize: '9px', color: 'var(--text-muted)', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SES ÇIKIŞI</div>
-                                                {availableDevices.audioOutputs.map(d => {
-                                                    const isHeadset = d.label?.toLowerCase().includes('headphone') || d.label?.toLowerCase().includes('kulaklık') || d.label?.toLowerCase().includes('headset') || d.label?.toLowerCase().includes('airpods');
-                                                    const isSelected = selectedAudioOutput === d.deviceId || (!selectedAudioOutput && d.deviceId === 'default');
-                                                    return (
-                                                        <button key={d.deviceId} className={`vc-more-option ${isSelected ? 'active' : ''}`} onClick={() => { setAudioOutput(d.deviceId); setIsMoreMenuOpen(false); }}>
-                                                            {isHeadset ? <Headphones size={15} /> : <Volume2 size={15} />}
-                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label || 'Hoparlör'}</span>
-                                                            {isSelected && <Check size={13} />}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </>
-                                        )
-                                    )}
                                 </div>
                             )}
                         </div>
-
-                        <HlsTesterModal
-                            isOpen={isHlsModalOpen}
-                            onClose={() => setIsHlsModalOpen(false)}
-                            onStartWatchParty={(streamUrl) => {
-                                startWatchParty(streamUrl, false);
-                            }}
-                        />
 
                         {/* Desktop Direct Quick Shortcuts (Screen Share & Deafen) */}
                         {!isMobile && (

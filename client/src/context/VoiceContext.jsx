@@ -210,11 +210,15 @@ export const VoiceProvider = ({ children }) => {
 
     // Derived UI states
     const [participants, setParticipants] = useState([]);
-    const [localState, setLocalState] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
+    const [localState, setLocalStateRaw] = useState({ isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false });
     const localStateRef = useRef(localState);
-    useEffect(() => {
-        localStateRef.current = localState;
-    }, [localState]);
+    const setLocalState = useCallback((updater) => {
+        setLocalStateRaw(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            localStateRef.current = next;
+            return next;
+        });
+    }, []);
     const [pinnedParticipant, setPinnedParticipant] = useState(null);
 
     // Device management
@@ -686,9 +690,13 @@ export const VoiceProvider = ({ children }) => {
     }, []);
 
     // Update derived participants array for React components
+    // Always reads from refs (localStateRef, activeRoomRef, localStreamRef) so socket callbacks,
+    // watch-party transitions, and new-user joins NEVER overwrite active mic/camera state with stale closures.
     const updateParticipantList = useCallback(() => {
         const list = [];
         const localUserId = user?._id?.toString();
+        const curLocal = localStateRef.current || { isMuted: true, isCameraOn: false, isScreenSharing: false, isDeafened: false };
+        const curRoom = activeRoomRef.current;
 
         // 1. Add Local Participant
         if (localUserId) {
@@ -704,7 +712,25 @@ export const VoiceProvider = ({ children }) => {
                 localScreenTrack = screenStreamRef.current.getVideoTracks().find(t => t.readyState === 'live') || null;
             }
 
-            if (localAudioTrack && !localState.isMuted) {
+            // Reconcile hardware track truth with localState so active live camera/mic never appears falsely off
+            const hasLiveEnabledCamera = Boolean(localVideoTrack && localVideoTrack.enabled && localVideoTrack.readyState === 'live');
+            const hasLiveEnabledMic = Boolean(localAudioTrack && localAudioTrack.enabled && localAudioTrack.readyState === 'live');
+            const effectiveCameraOn = Boolean(curLocal.isCameraOn || hasLiveEnabledCamera);
+            const effectiveMuted = curLocal.isMuted && !hasLiveEnabledMic;
+            const effectiveScreenSharing = Boolean(curLocal.isScreenSharing || localScreenTrack);
+
+            // Auto-heal localState if React state drifted behind live hardware tracks
+            if (effectiveCameraOn !== curLocal.isCameraOn || effectiveMuted !== curLocal.isMuted) {
+                const healed = {
+                    ...curLocal,
+                    isCameraOn: effectiveCameraOn,
+                    isMuted: effectiveMuted,
+                };
+                localStateRef.current = healed;
+                setLocalStateRaw(healed);
+            }
+
+            if (localAudioTrack && !effectiveMuted) {
                 attachVAD(localUserId, localAudioTrack);
             } else {
                 detachVAD(localUserId);
@@ -715,25 +741,25 @@ export const VoiceProvider = ({ children }) => {
                 identity: localUserId,
                 name: user?.profile?.displayName || user?.username || 'Sen',
                 avatar: user?.profile?.avatar || '',
-                role: activeRoom?.userRole || 'member',
+                role: curRoom?.userRole || 'member',
                 isLocal: true,
-                isMuted: localState.isMuted,
-                isCameraOn: localState.isCameraOn,
+                isMuted: effectiveMuted,
+                isCameraOn: effectiveCameraOn,
                 isScreenSharing: false,
                 isSpeaking: speakingMapRef.current.get(localUserId) || false,
-                videoTrack: (localState.isCameraOn && localVideoTrack) ? makeTrackObject(localVideoTrack) : null,
+                videoTrack: (effectiveCameraOn && localVideoTrack) ? makeTrackObject(localVideoTrack) : null,
                 audioTrack: makeTrackObject(localAudioTrack),
                 screenShareTrack: null,
             });
 
             // Independent screenshare card
-            if (localState.isScreenSharing && localScreenTrack) {
+            if (effectiveScreenSharing && localScreenTrack) {
                 const localScreenAudioTrack = screenStreamRef.current?.getAudioTracks()[0] || null;
                 list.push({
                     identity: `${localUserId}-screen`,
                     name: `${user?.profile?.displayName || user?.username || 'Sen'} (Ekran)`,
                     avatar: user?.profile?.avatar || '',
-                    role: activeRoom?.userRole || 'member',
+                    role: curRoom?.userRole || 'member',
                     isLocal: true,
                     isMuted: true,
                     isCameraOn: true,
@@ -841,7 +867,14 @@ export const VoiceProvider = ({ children }) => {
         });
 
         setParticipants(list);
-    }, [user, activeRoom, localState, attachVAD, detachVAD]);
+    }, [user, attachVAD, detachVAD]);
+
+    // Keep participant cards synced whenever localState or watchParty changes
+    useEffect(() => {
+        if (activeRoomRef.current) {
+            updateParticipantList();
+        }
+    }, [localState, watchParty?.url, updateParticipantList]);
 
     // Enumerate devices
     const enumerateDevices = useCallback(async () => {
@@ -2014,9 +2047,9 @@ export const VoiceProvider = ({ children }) => {
                 safeEmit('voice:state-update', {
                     roomName: activeRoom.roomName,
                     userId: user?._id?.toString(),
-                    isMuted: localState.isMuted,
-                    isCameraOn: localState.isCameraOn,
-                    isScreenSharing: localState.isScreenSharing
+                    isMuted: localStateRef.current.isMuted,
+                    isCameraOn: localStateRef.current.isCameraOn,
+                    isScreenSharing: localStateRef.current.isScreenSharing
                 });
             }
         };
@@ -2024,14 +2057,14 @@ export const VoiceProvider = ({ children }) => {
         return () => {
             socket.off('connect', handleConnect);
         };
-    }, [socket, activeRoom, user, localState, safeEmit]);
+    }, [socket, activeRoom, user, safeEmit]);
 
     // Media toggle functions
     const toggleMicrophone = useCallback(async () => {
         if (!localStreamRef.current) {
             localStreamRef.current = new MediaStream();
         }
-        const willMute = !localState.isMuted;
+        const willMute = !localStateRef.current.isMuted;
         const screenAudioTrack = screenStreamRef.current?.getAudioTracks()[0];
         const isScreenAudioSender = (s) => Boolean(screenAudioTrack && s?.track === screenAudioTrack);
 
@@ -2217,7 +2250,7 @@ export const VoiceProvider = ({ children }) => {
         
         // Find the active camera track (any live video track that is not the placeholder)
         let cameraTrack = localStreamRef.current.getVideoTracks().find(t => !t.isPlaceholder && t.readyState === 'live');
-        const willCameraOn = !localState.isCameraOn;
+        const willCameraOn = !localStateRef.current.isCameraOn;
 
         if (willCameraOn) {
             if (!cameraTrack) {
@@ -2682,6 +2715,17 @@ export const VoiceProvider = ({ children }) => {
             }
         } else {
             setSelectedAudioOutput(deviceIdOrRoute);
+            // Apply sinkId immediately to all live audio & watch-party video elements
+            try {
+                if (typeof document !== 'undefined') {
+                    const mediaEls = document.querySelectorAll('audio, video');
+                    mediaEls.forEach((el) => {
+                        if (typeof el.setSinkId === 'function') {
+                            el.setSinkId(deviceIdOrRoute).catch(() => {});
+                        }
+                    });
+                }
+            } catch (_) {}
         }
     }, []);
 
@@ -2913,22 +2957,39 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, safeEmit]);
 
-    const startWatchParty = useCallback(async (url, isLive = false, subtitles = [], title = '') => {
-        if (activeRoom && url) {
+    const startWatchParty = useCallback(async (url, isLive = undefined, subtitles = [], title = '') => {
+        const curRoom = activeRoomRef.current || activeRoom;
+        if (curRoom && url) {
+            const trimmedUrl = String(url).trim();
+            const lowerUrl = trimmedUrl.toLowerCase();
+            const cleanUrl = lowerUrl.split('?')[0].split('#')[0];
+            const isStaticVideo = /\.(mp4|m4v|webm|mov|mkv|ogg|avi)$/.test(cleanUrl);
+            const autoDetectedLive = !isStaticVideo && (
+                /\.(m3u8|mpd)$/.test(cleanUrl) ||
+                lowerUrl.includes('.m3u8') ||
+                lowerUrl.includes('.mpd') ||
+                lowerUrl.includes('/live/') ||
+                lowerUrl.includes('twitch.tv/') ||
+                lowerUrl.includes('kick.com/') ||
+                lowerUrl.includes('youtube.com/live/') ||
+                lowerUrl.includes('chunklist') ||
+                lowerUrl.startsWith('rtmp://')
+            );
+            const resolvedLiveHint = typeof isLive === 'boolean' ? isLive : autoDetectedLive;
             try {
-                console.log(`[WatchParty] Requesting stream validation for: ${url} (isLiveHint: ${isLive})`);
+                console.log(`[WatchParty] Requesting stream validation for: ${trimmedUrl} (isLiveHint: ${resolvedLiveHint})`);
                 const response = await axios.post('/api/media/validate-stream', { 
-                    url, 
-                    portalId: activeRoom?.portalId,
-                    isLiveHint: isLive
+                    url: trimmedUrl, 
+                    portalId: curRoom?.portalId,
+                    isLiveHint: resolvedLiveHint
                 });
                 const validatedLive = response.data.isLive;
-                let streamUrl = response.data.streamUrl || url;
+                let streamUrl = response.data.streamUrl || trimmedUrl;
                 if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:') && !streamUrl.startsWith('/api/proxy')) {
                     streamUrl = getImageUrl(streamUrl);
                 }
                 console.log(`[WatchParty] URL validated by server. Final Stream: ${streamUrl}, isLive: ${validatedLive}`);
-                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url: streamUrl, isLive: validatedLive, subtitles, title });
+                safeEmit('voice:watch-start', { roomName: curRoom.roomName, url: streamUrl, isLive: validatedLive, subtitles, title });
             } catch (err) {
                 if (err.response?.status === 403 || err.response?.data?.isForbidden) {
                     const msg = err.response?.data?.message || 'Gizli bir portalda paylaşılan video izlenemez.';
@@ -2936,10 +2997,8 @@ export const VoiceProvider = ({ children }) => {
                     return;
                 }
                 console.warn('[WatchParty] Validation failed, falling back to local detection:', err);
-                const cleanUrl = url ? url.split('?')[0].split('#')[0].toLowerCase() : '';
-                const isStaticVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg');
-                const detectedLive = !isStaticVideo && isLive === true;
-                safeEmit('voice:watch-start', { roomName: activeRoom.roomName, url, isLive: detectedLive, subtitles, title });
+                const detectedLive = !isStaticVideo && resolvedLiveHint === true;
+                safeEmit('voice:watch-start', { roomName: curRoom.roomName, url: trimmedUrl, isLive: detectedLive, subtitles, title });
             }
         }
     }, [activeRoom, safeEmit]);
@@ -3328,7 +3387,14 @@ const AudioTrackPlayer = ({ track, muted, isRemoteMuted, isScreenAudio, volume, 
                 el.srcObject = null;
             } catch (_) {}
         };
-    }, [track, audioOutputId]);
+    }, [track]);
+
+    // Switch audio output device smoothly without tearing down the MediaStream
+    useEffect(() => {
+        const el = audioEl.current;
+        if (!el || !audioOutputId || typeof el.setSinkId !== 'function') return;
+        el.setSinkId(audioOutputId).catch(() => {});
+    }, [audioOutputId]);
 
     // When remote user unmutes via replaceTrack(), the RTCRtpReceiver.track reference stays identical,
     // so ensure the <audio> element is actively playing whenever isRemoteMuted transitions to false.

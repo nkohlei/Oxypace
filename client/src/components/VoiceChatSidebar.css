@@ -1,11 +1,10 @@
 /* VoiceChatSidebar.css */
 .voice-chat-sidebar {
     position: absolute;
-    right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px));
-    top: max(20px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
-    /* Removed header spacing, so stretch to top */
-    bottom: max(96px, calc(var(--safe-area-bottom, var(--system-nav-height, env(safe-area-inset-bottom, 0px))) + 80px));
-    /* Keep space for bottom controls */
+    left: auto !important;
+    right: max(18px, calc(env(safe-area-inset-right, 0px) + 18px)) !important;
+    top: calc(max(18px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) + 46px);
+    bottom: max(92px, calc(var(--safe-area-bottom, var(--system-nav-height, env(safe-area-inset-bottom, 0px))) + 78px));
     width: 300px;
     display: flex;
     flex-direction: column;
@@ -225,12 +224,12 @@
 
 @media (max-width: 768px) {
     .voice-chat-sidebar {
-        top: max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
-        right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
-        left: max(12px, calc(env(safe-area-inset-left, 0px) + 12px));
-        width: auto;
-        bottom: max(96px, calc(var(--safe-area-bottom, var(--system-nav-height, env(safe-area-inset-bottom, 0px))) + 80px));
-        max-width: 100%;
-        border-radius: 20px;
+        top: calc(max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) + 46px) !important;
+        left: auto !important;
+        right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px)) !important;
+        width: min(296px, calc(100vw - 24px)) !important;
+        bottom: max(88px, calc(var(--safe-area-bottom, var(--system-nav-height, env(safe-area-inset-bottom, 0px))) + 74px)) !important;
+        max-width: calc(100vw - 24px) !important;
+        border-radius: 16px !important;
     }
 }
