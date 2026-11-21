@@ -4,6 +4,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
 import PortalBadges from './PortalBadges';
+import LocationMapPicker from './LocationMapPicker';
 
 import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio, Bot, Play, Pause, RefreshCw, Plus, Zap, AlertCircle, ExternalLink, Power, Clock, CheckCircle, FileText, Copy, Link2, ShieldAlert, EyeOff } from 'lucide-react';
 import './PortalSettingsModal.css';
@@ -79,43 +80,43 @@ const PortalSettingsModal = ({
     // --- Presets for Portal Bots ---
     const BOT_PRESETS = [
         {
-            title: '🚀 Teknoloji',
+            title: 'Teknoloji',
             defaultName: 'Teknoloji Botu',
             bio: 'TechCrunch ve küresel teknoloji kaynaklarından son dakika haberleri.',
             feed: 'https://techcrunch.com/feed/',
-            prefix: '💻',
+            prefix: '',
             channelHint: 'teknoloji'
         },
         {
-            title: '🎮 Oyun Dünyası',
+            title: 'Oyun Dünyası',
             defaultName: 'Oyun Haber Botu',
             bio: 'IGN ve oyun dünyasından son gelişmeler ve incelemeler.',
             feed: 'https://feeds.feedburner.com/ign/news',
-            prefix: '🎮',
+            prefix: '',
             channelHint: 'oyun'
         },
         {
-            title: '🎬 Sinema & Dizi',
+            title: 'Sinema & Dizi',
             defaultName: 'Sinema Botu',
             bio: 'Vizyondaki filmler, diziler ve fragmanlar.',
             feed: 'https://collider.com/feed/',
-            prefix: '🎬',
+            prefix: '',
             channelHint: 'sinema'
         },
         {
-            title: '🌌 Bilim & Uzay',
+            title: 'Bilim & Uzay',
             defaultName: 'Bilim Botu',
             bio: 'Uzay keşifleri, NASA haberleri ve bilimsel buluşlar.',
             feed: 'https://www.space.com/feeds/all',
-            prefix: '🚀',
+            prefix: '',
             channelHint: 'bilim'
         },
         {
-            title: '⚽ Dünya Sporu',
+            title: 'Dünya Sporu',
             defaultName: 'Spor Haber Botu',
             bio: 'Dünya sporundan ve futbol liglerinden son dakika gelişmeleri.',
             feed: 'https://www.skysports.com/rss/12040',
-            prefix: '⚽',
+            prefix: '',
             channelHint: 'spor'
         }
     ];
@@ -151,7 +152,7 @@ const PortalSettingsModal = ({
                         name: prev.name || data.title || ''
                     }));
                 }
-                alert(`✓ RSS akışı otomatik olarak bulundu ve eklendi!\n\nBesleme: ${data.feedUrl}\nBaşlık: ${data.title || 'Site Beslemesi'}`);
+                alert(` RSS akışı otomatik olarak bulundu ve eklendi!\n\nBesleme: ${data.feedUrl}\nBaşlık: ${data.title || 'Site Beslemesi'}`);
             }
         } catch (err) {
             alert(err.response?.data?.message || err.message || 'RSS beslemesi otomatik olarak bulunamadı.');
@@ -167,7 +168,7 @@ const PortalSettingsModal = ({
         feedUrl: '',
         intervalMinutes: 15,
         autoTranslate: true,
-        postPrefix: '📢',
+        postPrefix: '',
         includeSourceLink: true,
     });
 
@@ -221,7 +222,7 @@ const PortalSettingsModal = ({
                 feedUrl: '',
                 intervalMinutes: 15,
                 autoTranslate: true,
-                postPrefix: '📢',
+                postPrefix: '',
                 includeSourceLink: true,
             });
             fetchPortalBots();
@@ -247,7 +248,7 @@ const PortalSettingsModal = ({
                 intervalMinutes: editingBot.config?.intervalMinutes || 15,
                 isActive: editingBot.config?.isActive !== false,
                 autoTranslate: editingBot.config?.autoTranslate !== false,
-                postPrefix: editingBot.config?.postPrefix || '📢',
+                postPrefix: editingBot.config?.postPrefix || '',
                 includeSourceLink: editingBot.config?.includeSourceLink !== false
             });
             setEditingBot(null);
@@ -1354,9 +1355,9 @@ const PortalSettingsModal = ({
                                     <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
                                         {[
                                             { value: 'text', label: '# Metin', icon: '#' },
-                                            { value: 'voice', label: '🎙️ Ses', icon: '🎙️' },
-                                            { value: 'conference', label: '🎤 Seminer', icon: '🎤' },
-                                            { value: 'image', label: '🖼️ Görsel', icon: '🖼️' },
+                                            { value: 'voice', label: ' Ses', icon: '' },
+                                            { value: 'conference', label: ' Seminer', icon: '' },
+                                            { value: 'image', label: ' Görsel', icon: '' },
                                         ].map((t) => (
                                             <button
                                                 key={t.value}
@@ -1365,15 +1366,15 @@ const PortalSettingsModal = ({
                                                     flex: 1,
                                                     padding: '8px 12px',
                                                     background: newChannelType === t.value
-                                                        ? (t.value === 'text' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'voice' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'conference' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(245, 158, 11, 0.2)')
+                                                        ? (t.value === 'text' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'voice' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'conference' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.2)')
                                                         : 'rgba(255,255,255,0.04)',
                                                     border: newChannelType === t.value
-                                                        ? `1px solid ${t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#a855f7' : '#f59e0b'}`
+                                                        ? `1px solid ${t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#e5e5e5' : '#e5e5e5'}`
                                                         : '1px solid rgba(255,255,255,0.08)',
                                                     borderRadius: '8px',
                                                     color: newChannelType === t.value
-                                                        ? (t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#c084fc' : '#fbbf24')
-                                                        : '#94a3b8',
+                                                        ? (t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#e5e5e5' : '#e5e5e5')
+                                                        : '#a3a3a3',
                                                     cursor: 'pointer',
                                                     fontSize: '13px',
                                                     fontWeight: newChannelType === t.value ? '600' : '400',
@@ -1406,7 +1407,7 @@ const PortalSettingsModal = ({
                                         <button
                                             className="btn-save"
                                             style={{
-                                                background: newChannelType === 'text' ? '#e5e5e5' : newChannelType === 'voice' ? '#e5e5e5' : newChannelType === 'conference' ? '#a855f7' : '#f59e0b',
+                                                background: newChannelType === 'text' ? '#e5e5e5' : newChannelType === 'voice' ? '#e5e5e5' : newChannelType === 'conference' ? '#e5e5e5' : '#e5e5e5',
                                                 whiteSpace: 'nowrap',
                                             }}
                                             onClick={handleAddChannel}
@@ -1415,12 +1416,12 @@ const PortalSettingsModal = ({
                                         </button>
                                     </div>
                                     {newChannelType !== 'text' && (
-                                        <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+                                        <div style={{ fontSize: '12px', color: '#8a8a8a', lineHeight: '1.4' }}>
                                             {newChannelType === 'voice'
-                                                ? '💡 Ses kanallarında tüm katılımcılar serbestçe konuşabilir (N-to-N).'
+                                                ? ' Ses kanallarında tüm katılımcılar serbestçe konuşabilir (N-to-N).'
                                                 : newChannelType === 'conference'
-                                                    ? '💡 Seminer kanallarında yalnızca yöneticiler yayın yapabilir, diğer üyeler dinleyicidir.'
-                                                    : '💡 Görsel kanallarda her gönderide en az bir görsel bulunması zorunludur.'}
+                                                    ? ' Seminer kanallarında yalnızca yöneticiler yayın yapabilir, diğer üyeler dinleyicidir.'
+                                                    : ' Görsel kanallarda her gönderide en az bir görsel bulunması zorunludur.'}
                                         </div>
                                     )}
                                 </div>
@@ -1470,9 +1471,9 @@ const PortalSettingsModal = ({
                                                             }}
                                                         >
                                                             <option value="text" style={{ background: '#2c2e33' }}># Metin</option>
-                                                            <option value="voice" style={{ background: '#2c2e33' }}>🎙️ Ses</option>
-                                                            <option value="conference" style={{ background: '#2c2e33' }}>🎤 Seminer</option>
-                                                            <option value="image" style={{ background: '#2c2e33' }}>🖼️ Görsel</option>
+                                                            <option value="voice" style={{ background: '#2c2e33' }}> Ses</option>
+                                                            <option value="conference" style={{ background: '#2c2e33' }}> Seminer</option>
+                                                            <option value="image" style={{ background: '#2c2e33' }}> Görsel</option>
                                                         </select>
                                                     </div>
                                                     
@@ -1483,7 +1484,7 @@ const PortalSettingsModal = ({
                                                                 alignItems: 'center',
                                                                 gap: '8px',
                                                                 fontSize: '13px',
-                                                                color: '#94a3b8',
+                                                                color: '#a3a3a3',
                                                                 cursor: 'pointer',
                                                             }}
                                                         >
@@ -1546,13 +1547,13 @@ const PortalSettingsModal = ({
                                                     >
                                                         <span style={{ 
                                                             fontSize: '18px',
-                                                            color: ch.type === 'voice' ? '#e5e5e5' : ch.type === 'conference' ? '#a855f7' : ch.type === 'image' ? '#f59e0b' : '#94a3b8' 
+                                                            color: ch.type === 'voice' ? '#e5e5e5' : ch.type === 'conference' ? '#e5e5e5' : ch.type === 'image' ? '#e5e5e5' : '#a3a3a3' 
                                                         }}>
-                                                            {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : ch.type === 'image' ? '🖼️' : '#'}
+                                                            {ch.type === 'voice' ? '' : ch.type === 'conference' ? '' : ch.type === 'image' ? '' : '#'}
                                                         </span>
                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                             <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{ch.name}</span>
-                                                            <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'capitalize' }}>
+                                                            <span style={{ fontSize: '11px', color: '#8a8a8a', textTransform: 'capitalize' }}>
                                                                 {ch.type === 'image' ? 'Görsel Kanal' : ch.type === 'voice' ? 'Ses Kanalı' : ch.type === 'conference' ? 'Seminer Kanalı' : 'Metin Kanalı'}
                                                             </span>
                                                         </div>
@@ -1677,17 +1678,17 @@ const PortalSettingsModal = ({
                                                     {member.username || 'Kullanıcı'}
                                                     {member.isBot && (
                                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', background: 'rgba(255, 255, 255, 0.15)', color: '#e5e5e5', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '4px', fontSize: '11px', fontWeight: 700, marginLeft: '6px' }}>
-                                                            🤖 BOT
+                                                             BOT
                                                         </span>
                                                     )}
                                                     {isOwnerMember && (
                                                         <span className="role-badge owner">
-                                                            👑 As Yönetici
+                                                             As Yönetici
                                                         </span>
                                                     )}
                                                     {isAdminMember && !isOwnerMember && (
                                                         <span className="role-badge admin">
-                                                            🛡️ Er Yönetici
+                                                             Er Yönetici
                                                         </span>
                                                     )}
                                                 </div>
@@ -1862,42 +1863,56 @@ const PortalSettingsModal = ({
 
                     {activeTab === 'location' && isAdmin && (
                         <div className="animate-fade-in">
-                            <h2 className="settings-title">🌍 Dünya Haritası Konumu</h2>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', lineHeight: '1.6' }}>
-                                Portalınızın dünya haritasında görünmesini sağlamak için bir konum seçin. Seçilen konumda portalınızın kapak fotoğrafı gösterilecek.
+                            <h2 className="settings-title">Dünya Haritası Konumu</h2>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: '-10px', marginBottom: '16px', lineHeight: '1.5' }}>
+                                Harita üzerinden tıklayarak veya arama yaparak portalınızın konumunu belirleyin.
                             </p>
+
+                            {/* Interactive Click-to-Pick Map */}
+                            <LocationMapPicker
+                                lat={locationData.lat}
+                                lng={locationData.lng}
+                                disabled={!isOwner}
+                                onPick={async (pickedLat, pickedLng) => {
+                                    setLocationData((prev) => ({
+                                        ...prev,
+                                        lat: pickedLat,
+                                        lng: pickedLng,
+                                        label: prev.label || `${pickedLat.toFixed(4)}, ${pickedLng.toFixed(4)}`,
+                                    }));
+                                    try {
+                                        const resp = await fetch(
+                                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pickedLat}&lon=${pickedLng}&zoom=10&accept-language=tr`
+                                        );
+                                        const data = await resp.json();
+                                        const addr = data?.address || {};
+                                        const city = addr.city || addr.town || addr.province || addr.state || '';
+                                        const country = addr.country || '';
+                                        const cleanLabel = [city, country].filter(Boolean).join(', ') || data?.display_name?.split(',').slice(0, 2).join(', ');
+                                        if (cleanLabel) {
+                                            setLocationData((prev) => ({ ...prev, label: cleanLabel }));
+                                        }
+                                    } catch (_) {}
+                                }}
+                            />
 
                             {/* Current Location Preview */}
                             {locationData.lat !== null && locationData.lat !== undefined && (
-                                <div style={{
-                                    background: 'linear-gradient(135deg, rgba(19,91,236,0.12), rgba(99,179,237,0.08))',
-                                    border: '1px solid rgba(19,91,236,0.3)',
-                                    borderRadius: '12px',
-                                    padding: '16px',
-                                    marginBottom: '24px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '14px',
-                                }}>
-                                    {portal.avatar ? (
-                                        <img src={portal.avatar} alt="" style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid rgba(19,91,236,0.5)', objectFit: 'cover' }} />
-                                    ) : (
-                                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', color: 'white' }}>
-                                            {portal.name[0]}
+                                <div className="psm-card" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <MapPin size={18} />
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                                            {locationData.label || 'Konum seçildi'}
                                         </div>
-                                    )}
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>{portal.name}</div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{locationData.label || 'Konum seçildi'}</div>
-                                        <div style={{ color: '#135bec', fontSize: '0.78rem', marginTop: '2px', fontFamily: 'monospace' }}>
-                                            {locationData.lat?.toFixed(4)}°, {locationData.lng?.toFixed(4)}°
+                                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.76rem', fontFamily: 'monospace', marginTop: '2px' }}>
+                                            {Number(locationData.lat).toFixed(4)}°, {Number(locationData.lng).toFixed(4)}°
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                        <span style={{ background: showOnMap ? 'rgba(255, 255, 255,0.15)' : 'rgba(114,118,125,0.15)', color: showOnMap ? '#e5e5e5' : '#72767d', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', border: `1px solid ${showOnMap ? 'rgba(255, 255, 255,0.4)' : 'rgba(114,118,125,0.3)'}` }}>
-                                            {showOnMap ? '🌍 Haritada' : 'Gizli'}
-                                        </span>
-                                    </div>
+                                    <span className="role-badge">
+                                        {showOnMap ? 'Haritada' : 'Gizli'}
+                                    </span>
                                 </div>
                             )}
 
@@ -1906,30 +1921,30 @@ const PortalSettingsModal = ({
                                 <div className="form-group">
                                     <label className="form-label">Konum Ara</label>
                                     <div className="search-container" style={{ position: 'relative' }}>
-                                        <Search size={18} strokeWidth={2} className="search-icon" />
+                                        <Search size={16} strokeWidth={2} className="search-icon" />
                                         <input
-                                            className="search-input-modern"
-                                            placeholder="Şehir, ülke veya adres ara... (örn: İstanbul, Türkiye)"
+                                            className="search-input-modern form-input"
+                                            style={{ paddingLeft: '36px' }}
+                                            placeholder="Şehir, ülke veya adres ara..."
                                             value={locationSearch}
                                             onChange={(e) => handleLocationSearch(e.target.value)}
                                         />
                                         {locationSearching && (
-                                            <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Aranıyor...</div>
+                                            <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.76rem' }}>Aranıyor...</div>
                                         )}
                                         {locationResults.length > 0 && (
-                                            <div className="search-results-dropdown" style={{ top: '50px', zIndex: 10 }}>
+                                            <div className="search-results-dropdown" style={{ top: '46px', zIndex: 10 }}>
                                                 {locationResults.map((result, i) => (
                                                     <div
                                                         key={i}
                                                         onClick={() => handleSelectLocation(result)}
-                                                        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-                                                        className="user-row"
+                                                        style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                                                     >
-                                                        <span style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '0.88rem' }}>
+                                                        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.84rem' }}>
                                                             {result.display_name.split(',').slice(0, 2).join(', ')}
                                                         </span>
-                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                                                            {parseFloat(result.lat).toFixed(4)}°N, {parseFloat(result.lon).toFixed(4)}°E
+                                                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.74rem', fontFamily: 'monospace' }}>
+                                                            {parseFloat(result.lat).toFixed(4)}°, {parseFloat(result.lon).toFixed(4)}°
                                                         </span>
                                                     </div>
                                                 ))}
@@ -1941,42 +1956,43 @@ const PortalSettingsModal = ({
 
                             {/* Manual Coordinate Entry */}
                             {isOwner && (
-                                <div style={{ marginBottom: '20px' }}>
+                                <div style={{ marginBottom: '14px' }}>
                                     <button
+                                        type="button"
+                                        className="psm-btn-secondary"
                                         onClick={() => setManualMode(!manualMode)}
-                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', padding: '0', textDecoration: 'underline' }}
                                     >
-                                        {manualMode ? '▲ Manuel girişi kapat' : '▼ Manuel koordinat gir'}
+                                        {manualMode ? 'Manuel koordinat girişini gizle' : 'Manuel koordinat gir'}
                                     </button>
                                     {manualMode && (
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
                                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Enlem (Lat)</label>
+                                                <label className="form-label">Enlem (Lat)</label>
                                                 <input
                                                     className="form-input"
                                                     type="number"
                                                     step="any"
-                                                    placeholder="Örn: 41.0082"
+                                                    placeholder="41.0082"
                                                     value={locationData.lat ?? ''}
-                                                    onChange={(e) => setLocationData(prev => ({ ...prev, lat: parseFloat(e.target.value) || null }))}
+                                                    onChange={(e) => setLocationData(prev => ({ ...prev, lat: e.target.value === '' ? null : parseFloat(e.target.value) }))}
                                                 />
                                             </div>
                                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Boylam (Lng)</label>
+                                                <label className="form-label">Boylam (Lng)</label>
                                                 <input
                                                     className="form-input"
                                                     type="number"
                                                     step="any"
-                                                    placeholder="Örn: 28.9784"
+                                                    placeholder="28.9784"
                                                     value={locationData.lng ?? ''}
-                                                    onChange={(e) => setLocationData(prev => ({ ...prev, lng: parseFloat(e.target.value) || null }))}
+                                                    onChange={(e) => setLocationData(prev => ({ ...prev, lng: e.target.value === '' ? null : parseFloat(e.target.value) }))}
                                                 />
                                             </div>
                                             <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-                                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Konum Etiketi</label>
+                                                <label className="form-label">Konum Etiketi</label>
                                                 <input
                                                     className="form-input"
-                                                    placeholder="Örn: İstanbul, Türkiye"
+                                                    placeholder="İstanbul, Türkiye"
                                                     value={locationData.label}
                                                     onChange={(e) => setLocationData(prev => ({ ...prev, label: e.target.value }))}
                                                 />
@@ -1988,87 +2004,61 @@ const PortalSettingsModal = ({
 
                             {/* Show on Map Toggle */}
                             {isOwner && (
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    background: 'var(--bg-secondary)',
-                                    border: '1px solid var(--border-subtle)',
-                                    borderRadius: '10px',
-                                    padding: '14px 18px',
-                                    marginBottom: '24px',
-                                }}>
-                                    <div>
-                                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '2px' }}>Dünya Haritasında Göster</div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Portalınız 3D dünya haritasında görünür olacak</div>
+                                <div
+                                    className={`privacy-option-row ${showOnMap && locationData.lat !== null ? 'selected' : ''}`}
+                                    style={{ marginBottom: '16px', opacity: locationData.lat === null ? 0.5 : 1 }}
+                                    onClick={() => locationData.lat !== null && setShowOnMap((v) => !v)}
+                                >
+                                    <div className="privacy-row-icon-wrapper">
+                                        <Globe size={18} strokeWidth={2} />
                                     </div>
-                                    <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', cursor: 'pointer', flexShrink: 0 }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={showOnMap}
-                                            onChange={(e) => setShowOnMap(e.target.checked)}
-                                            style={{ opacity: 0, width: 0, height: 0 }}
-                                            disabled={locationData.lat === null}
-                                        />
-                                        <span style={{
-                                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                                            background: showOnMap && locationData.lat !== null ? 'var(--primary-color)' : 'var(--border-color)',
-                                            borderRadius: '26px',
-                                            transition: '0.3s',
-                                            cursor: locationData.lat === null ? 'not-allowed' : 'pointer',
-                                        }}>
-                                            <span style={{
-                                                position: 'absolute',
-                                                content: '',
-                                                height: '20px', width: '20px',
-                                                left: showOnMap && locationData.lat !== null ? '23px' : '3px',
-                                                bottom: '3px',
-                                                background: 'white',
-                                                borderRadius: '50%',
-                                                transition: '0.3s',
-                                                display: 'block',
-                                            }} />
-                                        </span>
-                                    </label>
+                                    <div className="privacy-row-content">
+                                        <div className="privacy-row-title">Dünya Haritasında Göster</div>
+                                        <div className="privacy-row-desc">Portalınız 3D dünya haritasında görünür olacak.</div>
+                                    </div>
+                                    <span className={`psm-toggle-switch ${showOnMap && locationData.lat !== null ? 'on' : ''}`} />
                                 </div>
                             )}
 
                             {!isOwner && (
-                                <div style={{ background: 'rgba(250,166,26,0.1)', border: '1px solid rgba(250,166,26,0.3)', borderRadius: '10px', padding: '14px', color: '#faa61a', fontSize: '0.88rem', marginBottom: '20px' }}>
-                                    ⚠️ Konum ayarları yalnızca portal sahibi tarafından değiştirilebilir.
+                                <div className="psm-card" style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                                    Konum ayarları yalnızca portal sahibi tarafından değiştirilebilir.
                                 </div>
                             )}
 
-                            {/* Save Status (Location) */}
                             {locationSaveStatus === 'success' && (
-                                <div style={{ background: 'rgba(255, 255, 255,0.12)', border: '1px solid rgba(255, 255, 255,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#e5e5e5', marginBottom: '16px', fontWeight: '600' }}>
-                                    ✅ Konum başarıyla kaydedildi!
+                                <div className="psm-card" style={{ fontSize: '0.84rem', fontWeight: 600 }}>
+                                    Konum başarıyla kaydedildi.
                                 </div>
                             )}
                             {locationSaveStatus === 'error' && (
-                                <div style={{ background: 'rgba(237,66,69,0.12)', border: '1px solid rgba(237,66,69,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#ed4245', marginBottom: '16px', fontWeight: '600' }}>
-                                    ❌ Kaydetme hatası. Lütfen tekrar deneyin.
+                                <div className="psm-card danger" style={{ fontSize: '0.84rem', color: '#ef4444', fontWeight: 600 }}>
+                                    Kaydetme hatası. Lütfen tekrar deneyin.
                                 </div>
                             )}
 
                             {isOwner && (
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                    {(portal.location?.lat !== null && portal.location?.lat !== undefined) && (
+                                        <button
+                                            type="button"
+                                            className="psm-btn-danger"
+                                            onClick={handleClearLocation}
+                                            disabled={loading}
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>Konumu Kaldır</span>
+                                        </button>
+                                    )}
                                     <button
+                                        type="button"
                                         className="btn-save"
+                                        style={{ float: 'none' }}
                                         onClick={handleSaveLocation}
                                         disabled={loading || locationData.lat === null}
                                     >
-                                        {loading ? 'Kaydediliyor...' : '💾 Konumu Kaydet'}
+                                        {loading ? 'Kaydediliyor...' : 'Konumu Kaydet'}
                                     </button>
-                                    {(portal.location?.lat !== null && portal.location?.lat !== undefined) && (
-                                        <button
-                                            onClick={handleClearLocation}
-                                            disabled={loading}
-                                            style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid rgba(237,66,69,0.4)', background: 'rgba(237,66,69,0.1)', color: '#ed4245', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem' }}
-                                        >
-                                            🗑️ Konumu Kaldır
-                                        </button>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -2076,54 +2066,47 @@ const PortalSettingsModal = ({
 
                     {/* Advanced Tab Content */}
                     {activeTab === 'advanced' && isOwner && (
-                        <div className="settings-section fade-in">
-                            <h3 className="section-title" style={{ color: '#ef4444', borderBottomColor: 'rgba(239, 68, 68, 0.2)' }}>
-                                Gelişmiş Portal Yönetimi
-                            </h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                                Bu sayfadaki işlemler portalı ciddi şekilde etkiler. Sadece portal sahibi (kurucu) bu işlemleri yapabilir.
+                        <div className="animate-fade-in">
+                            <h2 className="settings-title">Gelişmiş</h2>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '-10px', marginBottom: '16px', lineHeight: '1.5' }}>
+                                Bu sayfadaki işlemler portalı doğrudan etkiler. Yalnızca portal kurucusu tarafından kullanılabilir.
                             </p>
 
                             {/* Status Area */}
-                            <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Portal Durumu: <span style={{ color: portalStatus === 'active' ? '#e5e5e5' : '#f1c40f' }}>{portalStatus === 'active' ? 'Aktif' : 'Arşivde (Kapalı)'}</span></h4>
+                            <div className="psm-card">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Portal Durumu</h4>
+                                    <span className="role-badge">{portalStatus === 'active' ? 'Aktif' : 'Arşivde'}</span>
                                 </div>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                                    Portalı arşive aldığınızda genel arama sonuçlarında çıkmaz ve yeni üye eklenemez. Sadece mevcut üyeler eski mesajları okumak için ulaşabilir.
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.45 }}>
+                                    Portalı arşive aldığınızda genel arama sonuçlarında çıkmaz ve yeni üye eklenemez.
                                 </p>
                                 <button
+                                    type="button"
+                                    className="psm-btn-secondary"
                                     onClick={handleToggleStatus}
                                     disabled={actionProcessing}
-                                    style={{
-                                        background: portalStatus === 'active' ? 'rgba(241,196,15,0.15)' : 'rgba(255, 255, 255,0.15)',
-                                        color: portalStatus === 'active' ? '#f1c40f' : '#e5e5e5',
-                                        border: `1px solid ${portalStatus === 'active' ? 'rgba(241,196,15,0.3)' : 'rgba(255, 255, 255,0.3)'}`,
-                                        padding: '8px 16px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontWeight: '600'
-                                    }}
                                 >
-                                    {portalStatus === 'active' ? '📦 Portalı Arşive Al' : '✨ Portalı Tekrar Aktifleştir'}
+                                    <Power size={14} />
+                                    <span>{portalStatus === 'active' ? 'Portalı Arşive Al' : 'Portalı Aktifleştir'}</span>
                                 </button>
                             </div>
 
                             {/* Transfer Ownership */}
-                            <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
-                                <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Sahiplik Devri</h4>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                                    Portalın kuruculuğunu başka bir üyeye devredebilirsiniz. Devrettiğiniz an tüm kurucu haklarınızı kaybedersiniz ancak admin olarak kalmaya devam edersiniz.
+                            <div className="psm-card">
+                                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.92rem', color: 'var(--text-primary)' }}>Sahiplik Devri</h4>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.45 }}>
+                                    Portalın kuruculuğunu başka bir üyeye devredebilirsiniz. Devir sonrası yönetici olarak kalırsınız.
                                 </p>
-                                <div style={{ display: 'flex', gap: '12px' }}>
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                     <select
                                         className="form-input"
-                                        style={{ height: '40px' }}
+                                        style={{ flex: 1, minWidth: '180px' }}
                                         value={newOwnerId}
                                         onChange={(e) => setNewOwnerId(e.target.value)}
                                         disabled={actionProcessing}
                                     >
-                                        <option value="">Devredilecek Üyeyi Seçin...</option>
+                                        <option value="">Devredilecek üyeyi seçin...</option>
                                         {portal.members
                                             .filter(m => String(m._id || m) !== String(currentUserId))
                                             .map(member => (
@@ -2135,19 +2118,10 @@ const PortalSettingsModal = ({
                                         }
                                     </select>
                                     <button
+                                        type="button"
+                                        className="psm-btn-danger"
                                         onClick={handleTransferOwnership}
                                         disabled={actionProcessing || !newOwnerId}
-                                        style={{
-                                            background: '#ef4444',
-                                            color: '#fff',
-                                            border: 'none',
-                                            padding: '0 20px',
-                                            borderRadius: '6px',
-                                            cursor: !newOwnerId ? 'not-allowed' : 'pointer',
-                                            fontWeight: '600',
-                                            opacity: !newOwnerId ? 0.5 : 1,
-                                            whiteSpace: 'nowrap'
-                                        }}
                                     >
                                         Devret
                                     </button>
@@ -2155,15 +2129,14 @@ const PortalSettingsModal = ({
                             </div>
 
                             {/* Danger Zone */}
-                            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                                <h4 style={{ margin: '0 0 8px 0', color: '#ef4444' }}>TEHLİKELİ BÖLGE</h4>
-                                <p style={{ fontSize: '0.85rem', color: 'rgba(239, 68, 68, 0.8)', marginBottom: '16px', fontWeight: '500' }}>
-                                    Bu işlem geri alınamaz! Portal kalıcı olarak silinir, içindeki tüm mesajlar, kanallar ve dosyalar tamamen yok olur.
+                            <div className="psm-card danger">
+                                <h4 style={{ margin: '0 0 6px 0', fontSize: '0.92rem', color: '#ef4444' }}>Tehlikeli Bölge</h4>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: 1.45 }}>
+                                    Bu işlem geri alınamaz. Portal, tüm kanallar, mesajlar ve dosyalar kalıcı olarak silinir.
                                 </p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        Eğer eminseniz onaylamak için portal adını tam olarak yazın:
-                                        <b style={{ color: 'var(--text-primary)', marginLeft: '4px' }}>{portal.name}</b>
+                                    <label style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                                        Onaylamak için portal adını yazın: <strong style={{ color: 'var(--text-primary)' }}>{portal.name}</strong>
                                     </label>
                                     <input
                                         type="text"
@@ -2171,26 +2144,18 @@ const PortalSettingsModal = ({
                                         placeholder="Portal adını yazın..."
                                         value={deleteConfirmText}
                                         onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                        style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}
                                     />
-                                    <button
-                                        onClick={handleDeletePortal}
-                                        disabled={actionProcessing || deleteConfirmText !== portal.name}
-                                        style={{
-                                            background: '#dc2626',
-                                            color: '#ffffff',
-                                            border: 'none',
-                                            padding: '12px',
-                                            borderRadius: '8px',
-                                            cursor: deleteConfirmText !== portal.name ? 'not-allowed' : 'pointer',
-                                            fontWeight: '700',
-                                            marginTop: '8px',
-                                            opacity: deleteConfirmText !== portal.name ? 0.5 : 1,
-                                            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.2)'
-                                        }}
-                                    >
-                                        🗑️ PORTALI GERİ DÖNÜLMEZ ŞEKİLDE SİL
-                                    </button>
+                                    <div>
+                                        <button
+                                            type="button"
+                                            className="psm-btn-danger"
+                                            onClick={handleDeletePortal}
+                                            disabled={actionProcessing || deleteConfirmText !== portal.name}
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>Portalı Kalıcı Olarak Sil</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2220,12 +2185,12 @@ const PortalSettingsModal = ({
                                             feedUrl: '',
                                             intervalMinutes: 15,
                                             autoTranslate: true,
-                                            postPrefix: '📢',
+                                            postPrefix: '',
                                             includeSourceLink: true,
                                         });
                                         setShowNewBotModal(true);
                                     }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', color: '#090909', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
                                 >
                                     <Plus size={16} />
                                     Yeni Bot Kur
@@ -2234,8 +2199,8 @@ const PortalSettingsModal = ({
 
                             {/* Quick Presets Bar */}
                             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px' }}>
-                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Zap size={14} color="#f59e0b" />
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Zap size={14} color="#e5e5e5" />
                                     Tek Tıkla Hazır Şablon Botlar
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -2250,7 +2215,7 @@ const PortalSettingsModal = ({
                                             style={{
                                                 background: 'rgba(255,255,255,0.05)',
                                                 border: '1px solid rgba(255,255,255,0.1)',
-                                                color: '#e2e8f0',
+                                                color: '#e5e5e5',
                                                 padding: '6px 12px',
                                                 borderRadius: '20px',
                                                 fontSize: '12px',
@@ -2292,7 +2257,7 @@ const PortalSettingsModal = ({
                                             <div style={{ fontWeight: 600, color: testRunResult.success ? '#e5e5e5' : '#f87171' }}>
                                                 {testRunResult.success ? 'Paylaşım Testi Başarılı!' : 'Test Sonucu / Bilgilendirme'}
                                             </div>
-                                            <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '2px' }}>
+                                            <div style={{ color: '#d4d4d4', fontSize: '12px', marginTop: '2px' }}>
                                                 {testRunResult.message}
                                                 {testRunResult.title && <strong> "{testRunResult.title}"</strong>}
                                             </div>
@@ -2301,7 +2266,7 @@ const PortalSettingsModal = ({
                                     <button
                                         type="button"
                                         onClick={() => setTestRunResult(null)}
-                                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                                        style={{ background: 'transparent', border: 'none', color: '#a3a3a3', cursor: 'pointer', padding: '4px' }}
                                     >
                                         <X size={16} />
                                     </button>
@@ -2310,15 +2275,15 @@ const PortalSettingsModal = ({
 
                             {/* Bots List */}
                             {loadingBots ? (
-                                <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                                <div style={{ padding: '40px', textAlign: 'center', color: '#8a8a8a' }}>
                                     <RefreshCw size={24} className="spin" style={{ marginBottom: '8px' }} />
                                     <div>Botlar yükleniyor...</div>
                                 </div>
                             ) : portalBots.length === 0 ? (
                                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px', padding: '40px 20px', textAlign: 'center' }}>
-                                    <Bot size={44} style={{ color: '#475569', marginBottom: '12px' }} />
-                                    <h3 style={{ color: '#f1f5f9', margin: '0 0 6px 0', fontSize: '16px' }}>Bu portalda henüz bot bulunmuyor</h3>
-                                    <p style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '420px', margin: '0 auto 16px auto', lineHeight: '1.5' }}>
+                                    <Bot size={44} style={{ color: '#737373', marginBottom: '12px' }} />
+                                    <h3 style={{ color: '#f4f4f4', margin: '0 0 6px 0', fontSize: '16px' }}>Bu portalda henüz bot bulunmuyor</h3>
+                                    <p style={{ color: '#a3a3a3', fontSize: '13px', maxWidth: '420px', margin: '0 auto 16px auto', lineHeight: '1.5' }}>
                                         Yukarıdaki hazır şablonlardan birini seçerek veya "Yeni Bot Kur" butonuna tıklayarak portalınıza otomatik haber botu ekleyebilirsiniz.
                                     </p>
                                 </div>
@@ -2334,7 +2299,7 @@ const PortalSettingsModal = ({
                                             <div
                                                 key={b._id}
                                                 style={{
-                                                    background: 'rgba(15, 23, 42, 0.6)',
+                                                    background: '#141414',
                                                     border: '1px solid rgba(255,255,255,0.08)',
                                                     borderRadius: '12px',
                                                     padding: '16px',
@@ -2351,19 +2316,19 @@ const PortalSettingsModal = ({
                                                             <img
                                                                 src={getImageUrl(b.profile?.avatar)}
                                                                 alt=""
-                                                                style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', background: '#1e293b' }}
+                                                                style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', background: '#1a1a1a' }}
                                                                 onError={(e) => (e.target.style.display = 'none')}
                                                             />
                                                             <div>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                    <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>
+                                                                    <span style={{ fontWeight: 700, color: '#ffffff', fontSize: '14px' }}>
                                                                         {b.profile?.displayName || b.username}
                                                                     </span>
                                                                     <span style={{ background: 'rgba(255, 255, 255,0.2)', color: '#e5e5e5', border: '1px solid rgba(255, 255, 255,0.3)', padding: '1px 5px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 }}>
                                                                         BOT
                                                                     </span>
                                                                 </div>
-                                                                <div style={{ fontSize: '12px', color: '#64748b' }}>@{b.username}</div>
+                                                                <div style={{ fontSize: '12px', color: '#8a8a8a' }}>@{b.username}</div>
                                                             </div>
                                                         </div>
 
@@ -2375,8 +2340,8 @@ const PortalSettingsModal = ({
                                                                     Hata
                                                                 </span>
                                                             ) : !isActive ? (
-                                                                <span style={{ background: 'rgba(234,179,8,0.15)', color: '#facc15', border: '1px solid rgba(234,179,8,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308' }}></span>
+                                                                <span style={{ background: 'rgba(255, 255, 255,0.15)', color: '#d4d4d4', border: '1px solid rgba(255, 255, 255,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a3a3a3' }}></span>
                                                                     Duraklatıldı
                                                                 </span>
                                                             ) : (
@@ -2389,28 +2354,28 @@ const PortalSettingsModal = ({
                                                     </div>
 
                                                     {/* Details */}
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: '#94a3b8', background: 'rgba(0,0,0,0.25)', padding: '10px', borderRadius: '8px' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: '#a3a3a3', background: 'rgba(0,0,0,0.25)', padding: '10px', borderRadius: '8px' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span>Hedef Kanal:</span>
                                                             <strong style={{ color: '#e5e5e5' }}>#{targetChannel?.name || b.config?.defaultChannel || 'Genel'}</strong>
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span>Aralık:</span>
-                                                            <strong style={{ color: '#e2e8f0' }}>Her {b.config?.intervalMinutes || 15} dk</strong>
+                                                            <strong style={{ color: '#e5e5e5' }}>Her {b.config?.intervalMinutes || 15} dk</strong>
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span>Toplam Paylaşım:</span>
-                                                            <strong style={{ color: '#e2e8f0' }}>{b.config?.stats?.totalPosts || 0} gönderi</strong>
+                                                            <strong style={{ color: '#e5e5e5' }}>{b.config?.stats?.totalPosts || 0} gönderi</strong>
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span>Son Çalışma:</span>
-                                                            <span style={{ color: '#cbd5e1' }}>
+                                                            <span style={{ color: '#d4d4d4' }}>
                                                                 {b.config?.stats?.lastRunAt ? new Date(b.config.stats.lastRunAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) : 'Henüz çalışmadı'}
                                                             </span>
                                                         </div>
                                                         <div style={{ marginTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px' }}>
-                                                            <span style={{ color: '#64748b', display: 'block', marginBottom: '2px' }}>Kaynak RSS / Site:</span>
-                                                            <span style={{ color: '#94a3b8', wordBreak: 'break-all', fontSize: '11px' }}>
+                                                            <span style={{ color: '#8a8a8a', display: 'block', marginBottom: '2px' }}>Kaynak RSS / Site:</span>
+                                                            <span style={{ color: '#a3a3a3', wordBreak: 'break-all', fontSize: '11px' }}>
                                                                 {(b.config?.feeds || []).join(', ') || 'Kaynak yok'}
                                                             </span>
                                                         </div>
@@ -2419,7 +2384,7 @@ const PortalSettingsModal = ({
                                                     {/* Last Error banner if any */}
                                                     {b.config?.stats?.lastError && (
                                                         <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', fontSize: '11px', color: '#f87171' }}>
-                                                            <strong>⚠️ Son Hata:</strong> {b.config.stats.lastError}
+                                                            <strong> Son Hata:</strong> {b.config.stats.lastError}
                                                         </div>
                                                     )}
                                                 </div>
@@ -2433,8 +2398,7 @@ const PortalSettingsModal = ({
                                                         style={{
                                                             flex: 1,
                                                             padding: '8px',
-                                                            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                                                            color: '#fff',
+                                                            background: '#ffffff', color: '#090909',
                                                             border: 'none',
                                                             borderRadius: '6px',
                                                             cursor: isRunning ? 'not-allowed' : 'pointer',
@@ -2467,7 +2431,7 @@ const PortalSettingsModal = ({
                                                         style={{
                                                             padding: '8px 10px',
                                                             background: 'rgba(255,255,255,0.05)',
-                                                            color: isActive ? '#facc15' : '#e5e5e5',
+                                                            color: isActive ? '#d4d4d4' : '#e5e5e5',
                                                             border: '1px solid rgba(255,255,255,0.1)',
                                                             borderRadius: '6px',
                                                             cursor: 'pointer',
@@ -2487,7 +2451,7 @@ const PortalSettingsModal = ({
                                                         style={{
                                                             padding: '8px 10px',
                                                             background: 'rgba(255,255,255,0.05)',
-                                                            color: '#cbd5e1',
+                                                            color: '#d4d4d4',
                                                             border: '1px solid rgba(255,255,255,0.1)',
                                                             borderRadius: '6px',
                                                             cursor: 'pointer',
@@ -2526,18 +2490,18 @@ const PortalSettingsModal = ({
                                 <div className="modal-overlay-modern" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
                                     <div style={{ background: '#0b1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', maxWidth: '520px', width: '100%', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                                            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Bot size={20} color="#e5e5e5" />
                                                 Yeni Portal Botu Kur
                                             </h3>
-                                            <button type="button" onClick={() => setShowNewBotModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                                            <button type="button" onClick={() => setShowNewBotModal(false)} style={{ background: 'transparent', border: 'none', color: '#a3a3a3', cursor: 'pointer' }}>
                                                 <X size={20} />
                                             </button>
                                         </div>
 
                                         <form onSubmit={handleCreatePortalBot} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                             <div>
-                                                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Bot Adı *</label>
+                                                <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Bot Adı *</label>
                                                 <input
                                                     type="text"
                                                     className="form-input"
@@ -2551,8 +2515,8 @@ const PortalSettingsModal = ({
 
                                             <div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                                    <label style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Hedef Web Sitesi veya RSS Bağlantısı *</label>
-                                                    <span style={{ fontSize: '11px', color: '#e5e5e5' }}>✨ Doğrudan site linki de girebilirsiniz</span>
+                                                    <label style={{ fontSize: '12px', color: '#a3a3a3', margin: 0 }}>Hedef Web Sitesi veya RSS Bağlantısı *</label>
+                                                    <span style={{ fontSize: '11px', color: '#e5e5e5' }}> Doğrudan site linki de girebilirsiniz</span>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <input
@@ -2570,8 +2534,7 @@ const PortalSettingsModal = ({
                                                         onClick={() => handleDiscoverFeed(newBotData.feedUrl, false)}
                                                         style={{
                                                             padding: '0 14px',
-                                                            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                                                            color: '#fff',
+                                                            background: '#ffffff', color: '#090909',
                                                             border: 'none',
                                                             borderRadius: '6px',
                                                             cursor: discoveringFeed ? 'not-allowed' : 'pointer',
@@ -2588,19 +2551,19 @@ const PortalSettingsModal = ({
                                                         {discoveringFeed ? 'Aranıyor...' : 'Otomatik Bul'}
                                                     </button>
                                                 </div>
-                                                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                                                <span style={{ fontSize: '11px', color: '#8a8a8a', marginTop: '4px', display: 'block' }}>
                                                     Web sitesi linkini yapıştırıp 'Otomatik Bul' butonuna tıklayarak RSS beslemesini saniyeler içinde çıkarabilirsiniz.
                                                 </span>
                                             </div>
 
                                             <div style={{ display: 'flex', gap: '12px' }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Paylaşılacak Kanal</label>
+                                                    <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Paylaşılacak Kanal</label>
                                                     <select
                                                         className="form-input"
                                                         value={newBotData.channel}
                                                         onChange={(e) => setNewBotData({ ...newBotData, channel: e.target.value })}
-                                                        style={{ width: '100%', background: '#0f172a', color: '#fff' }}
+                                                        style={{ width: '100%', background: '#0c0c0c', color: '#fff' }}
                                                     >
                                                         {(portal.channels || []).map((ch) => (
                                                             <option key={ch._id} value={ch._id}>
@@ -2611,12 +2574,12 @@ const PortalSettingsModal = ({
                                                 </div>
 
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Kontrol Aralığı</label>
+                                                    <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Kontrol Aralığı</label>
                                                     <select
                                                         className="form-input"
                                                         value={newBotData.intervalMinutes}
                                                         onChange={(e) => setNewBotData({ ...newBotData, intervalMinutes: Number(e.target.value) })}
-                                                        style={{ width: '100%', background: '#0f172a', color: '#fff' }}
+                                                        style={{ width: '100%', background: '#0c0c0c', color: '#fff' }}
                                                     >
                                                         <option value={5}>5 dakikada bir</option>
                                                         <option value={10}>10 dakikada bir</option>
@@ -2630,11 +2593,11 @@ const PortalSettingsModal = ({
 
                                             <div style={{ display: 'flex', gap: '12px' }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Gönderi Öneki (Emoji/İkon)</label>
+                                                    <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Gönderi Öneki (Emoji/İkon)</label>
                                                     <input
                                                         type="text"
                                                         className="form-input"
-                                                        placeholder="📢 veya ⚡"
+                                                        placeholder=" veya "
                                                         value={newBotData.postPrefix}
                                                         onChange={(e) => setNewBotData({ ...newBotData, postPrefix: e.target.value })}
                                                         style={{ width: '100%' }}
@@ -2643,7 +2606,7 @@ const PortalSettingsModal = ({
                                             </div>
 
                                             <div>
-                                                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Bot Biyografisi (İsteğe Bağlı)</label>
+                                                <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Bot Biyografisi (İsteğe Bağlı)</label>
                                                 <input
                                                     type="text"
                                                     className="form-input"
@@ -2655,7 +2618,7 @@ const PortalSettingsModal = ({
                                             </div>
 
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e5e5e5', cursor: 'pointer' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={newBotData.autoTranslate}
@@ -2663,7 +2626,7 @@ const PortalSettingsModal = ({
                                                     />
                                                     <span>Yabancı haberleri otomatik Türkçe'ye çevir</span>
                                                 </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e5e5e5', cursor: 'pointer' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={newBotData.includeSourceLink}
@@ -2678,7 +2641,7 @@ const PortalSettingsModal = ({
                                                     type="button"
                                                     className="btn-modern-ghost"
                                                     onClick={() => setShowNewBotModal(false)}
-                                                    style={{ padding: '8px 16px', background: 'transparent', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer' }}
+                                                    style={{ padding: '8px 16px', background: 'transparent', color: '#a3a3a3', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer' }}
                                                 >
                                                     İptal
                                                 </button>
@@ -2686,7 +2649,7 @@ const PortalSettingsModal = ({
                                                     type="submit"
                                                     className="btn-modern-primary"
                                                     disabled={loading}
-                                                    style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                                                    style={{ padding: '8px 20px', background: '#ffffff', color: '#090909', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
                                                 >
                                                     {loading ? 'Oluşturuluyor...' : 'Botu Başlat'}
                                                 </button>
@@ -2701,18 +2664,18 @@ const PortalSettingsModal = ({
                                 <div className="modal-overlay-modern" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
                                     <div style={{ background: '#0b1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', maxWidth: '520px', width: '100%', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                                            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Pencil size={18} color="#e5e5e5" />
                                                 Botu Düzenle: @{editingBot.username}
                                             </h3>
-                                            <button type="button" onClick={() => setEditingBot(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                                            <button type="button" onClick={() => setEditingBot(null)} style={{ background: 'transparent', border: 'none', color: '#a3a3a3', cursor: 'pointer' }}>
                                                 <X size={20} />
                                             </button>
                                         </div>
 
                                         <form onSubmit={handleUpdatePortalBot} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                             <div>
-                                                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Görünen İsim</label>
+                                                <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Görünen İsim</label>
                                                 <input
                                                     type="text"
                                                     className="form-input"
@@ -2726,7 +2689,7 @@ const PortalSettingsModal = ({
                                             </div>
 
                                             <div>
-                                                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Hedef RSS / Site Bağlantısı</label>
+                                                <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Hedef RSS / Site Bağlantısı</label>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <input
                                                         type="text"
@@ -2744,8 +2707,7 @@ const PortalSettingsModal = ({
                                                         onClick={() => handleDiscoverFeed(editingBot.config?.feeds?.[0] || '', true)}
                                                         style={{
                                                             padding: '0 14px',
-                                                            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                                                            color: '#fff',
+                                                            background: '#ffffff', color: '#090909',
                                                             border: 'none',
                                                             borderRadius: '6px',
                                                             cursor: discoveringFeed ? 'not-allowed' : 'pointer',
@@ -2765,7 +2727,7 @@ const PortalSettingsModal = ({
 
                                             <div style={{ display: 'flex', gap: '12px' }}>
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Paylaşılacak Kanal</label>
+                                                    <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Paylaşılacak Kanal</label>
                                                     <select
                                                         className="form-input"
                                                         value={editingBot.config?.defaultChannel || 'general'}
@@ -2773,7 +2735,7 @@ const PortalSettingsModal = ({
                                                             ...editingBot,
                                                             config: { ...editingBot.config, defaultChannel: e.target.value }
                                                         })}
-                                                        style={{ width: '100%', background: '#0f172a', color: '#fff' }}
+                                                        style={{ width: '100%', background: '#0c0c0c', color: '#fff' }}
                                                     >
                                                         {(portal.channels || []).map((ch) => (
                                                             <option key={ch._id} value={ch._id}>
@@ -2784,7 +2746,7 @@ const PortalSettingsModal = ({
                                                 </div>
 
                                                 <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Kontrol Aralığı</label>
+                                                    <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Kontrol Aralığı</label>
                                                     <select
                                                         className="form-input"
                                                         value={editingBot.config?.intervalMinutes || 15}
@@ -2792,7 +2754,7 @@ const PortalSettingsModal = ({
                                                             ...editingBot,
                                                             config: { ...editingBot.config, intervalMinutes: Number(e.target.value) }
                                                         })}
-                                                        style={{ width: '100%', background: '#0f172a', color: '#fff' }}
+                                                        style={{ width: '100%', background: '#0c0c0c', color: '#fff' }}
                                                     >
                                                         <option value={5}>5 dakikada bir</option>
                                                         <option value={10}>10 dakikada bir</option>
@@ -2805,7 +2767,7 @@ const PortalSettingsModal = ({
                                             </div>
 
                                             <div>
-                                                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Biyografi</label>
+                                                <label style={{ fontSize: '12px', color: '#a3a3a3', display: 'block', marginBottom: '6px' }}>Biyografi</label>
                                                 <input
                                                     type="text"
                                                     className="form-input"
@@ -2819,7 +2781,7 @@ const PortalSettingsModal = ({
                                             </div>
 
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e5e5e5', cursor: 'pointer' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={editingBot.config?.isActive !== false}
@@ -2830,7 +2792,7 @@ const PortalSettingsModal = ({
                                                     />
                                                     <span>Bot Aktif (Otomatik Gönderi Paylaşsın)</span>
                                                 </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e5e5e5', cursor: 'pointer' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={editingBot.config?.autoTranslate !== false}
@@ -2841,7 +2803,7 @@ const PortalSettingsModal = ({
                                                     />
                                                     <span>Yabancı haberleri otomatik Türkçe'ye çevir</span>
                                                 </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e2e8f0', cursor: 'pointer' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#e5e5e5', cursor: 'pointer' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={editingBot.config?.includeSourceLink !== false}
@@ -2859,7 +2821,7 @@ const PortalSettingsModal = ({
                                                     type="button"
                                                     className="btn-modern-ghost"
                                                     onClick={() => setEditingBot(null)}
-                                                    style={{ padding: '8px 16px', background: 'transparent', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer' }}
+                                                    style={{ padding: '8px 16px', background: 'transparent', color: '#a3a3a3', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer' }}
                                                 >
                                                     İptal
                                                 </button>
@@ -2867,7 +2829,7 @@ const PortalSettingsModal = ({
                                                     type="submit"
                                                     className="btn-modern-primary"
                                                     disabled={loading}
-                                                    style={{ padding: '8px 20px', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                                                    style={{ padding: '8px 20px', background: '#ffffff', color: '#090909', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
                                                 >
                                                     {loading ? 'Kaydediliyor...' : 'Kaydet'}
                                                 </button>
@@ -2963,10 +2925,10 @@ const PortalSettingsModal = ({
                                 <div className="live-rooms-footer">
                                     <div className="live-rooms-status-area">
                                         {liveRoomSaveStatus === 'success' && (
-                                            <span className="live-rooms-status success">✓ Değişiklikler başarıyla kaydedildi.</span>
+                                            <span className="live-rooms-status success"> Değişiklikler başarıyla kaydedildi.</span>
                                         )}
                                         {liveRoomSaveStatus === 'error' && (
-                                            <span className="live-rooms-status error">✕ Kaydedilirken hata oluştu.</span>
+                                            <span className="live-rooms-status error"> Kaydedilirken hata oluştu.</span>
                                         )}
                                     </div>
                                     <button

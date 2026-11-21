@@ -712,14 +712,15 @@ const ChannelSidebar = ({
                 top: 8px;
                 right: 8px;
                 z-index: 5;
-                width: 30px;
-                height: 30px;
-                border-radius: 50% !important;
-                background: rgba(10, 10, 10, 0.62) !important;
+                width: 28px;
+                height: 28px;
+                border-radius: 0 !important;
+                background: transparent !important;
+                background-color: transparent !important;
                 background-image: none !important;
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                border: 1px solid rgba(255, 255, 255, 0.16) !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                border: none !important;
                 color: #ffffff !important;
                 display: flex;
                 align-items: center;
@@ -727,11 +728,15 @@ const ChannelSidebar = ({
                 cursor: pointer;
                 padding: 0 !important;
                 box-shadow: none !important;
-                transition: background-color 0.16s ease, transform 0.2s ease, border-color 0.16s ease;
+                filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.85));
+                transition: opacity 0.16s ease, transform 0.2s ease;
+                opacity: 0.9;
             }
             .channel-banner-settings-btn:hover {
-                background: rgba(10, 10, 10, 0.86) !important;
-                border-color: rgba(255, 255, 255, 0.34) !important;
+                background: transparent !important;
+                background-image: none !important;
+                border: none !important;
+                opacity: 1;
                 transform: rotate(22deg);
             }
 

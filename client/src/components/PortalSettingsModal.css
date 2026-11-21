@@ -1029,6 +1029,184 @@
     width: 6px;
 }
 
+/* ── Interactive Map Picker (Location Tab) ── */
+.psm-map-picker {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #0a0a0a;
+    cursor: crosshair;
+    user-select: none;
+    touch-action: none;
+    margin-bottom: 14px;
+}
+
+.psm-map-picker.is-disabled {
+    cursor: grab;
+}
+
+:root[data-theme='light'] .psm-map-picker,
+[data-theme='light'] .psm-map-picker {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: #ececec;
+}
+
+.psm-map-tiles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.psm-map-tile {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    max-width: none !important;
+    user-select: none;
+    pointer-events: none;
+}
+
+.psm-map-pin {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    color: #ffffff;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.9));
+    pointer-events: none;
+    z-index: 4;
+}
+
+:root[data-theme='light'] .psm-map-pin,
+[data-theme='light'] .psm-map-pin {
+    color: #0a0a0a;
+    filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.9));
+}
+
+.psm-map-hint {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 5;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(10, 10, 10, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #d4d4d4;
+    font-size: 0.72rem;
+    font-weight: 500;
+    pointer-events: none;
+}
+
+.psm-map-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.psm-map-ctrl-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px !important;
+    background: rgba(12, 12, 12, 0.84) !important;
+    background-image: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+.psm-map-ctrl-btn:hover {
+    background: #1f1f1f !important;
+}
+
+/* ── Shared Monochrome Section Cards & Action Buttons ── */
+.psm-card {
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 15px 16px;
+    margin-bottom: 14px;
+}
+
+:root[data-theme='light'] .psm-card,
+[data-theme='light'] .psm-card {
+    background: #f7f7f7;
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.psm-card.danger {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.28);
+}
+
+.psm-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px !important;
+    border-radius: 9999px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    background-image: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #ffffff !important;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: background-color 0.15s ease;
+}
+
+.psm-btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14) !important;
+}
+
+:root[data-theme='light'] .psm-btn-secondary,
+[data-theme='light'] .psm-btn-secondary {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.14) !important;
+    color: #0a0a0a !important;
+}
+
+.psm-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 18px !important;
+    border-radius: 9999px !important;
+    background: rgba(239, 68, 68, 0.14) !important;
+    background-image: none !important;
+    border: 1px solid rgba(239, 68, 68, 0.35) !important;
+    color: #ef4444 !important;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.psm-btn-danger:hover:not(:disabled) {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+}
+
+.psm-btn-danger:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .settings-content::-webkit-scrollbar-thumb,
 .settings-sidebar::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.14);
