@@ -475,26 +475,8 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     };
 
     if (!isActiveRoom) {
-        const handleBack = () => {
-            if (onBack) {
-                onBack();
-            } else {
-                window.history.back();
-            }
-        };
-
         return (
             <div className="vc-container glass-container lobby-bg">
-                <button
-                    className="vc-lobby-back-btn"
-                    onClick={handleBack}
-                    aria-label="Geri"
-                    title="Geri"
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                </button>
                 <div className="vc-lobby-card">
                     {/* Live Status Badge */}
                     <div className="vc-lobby-status-pill">
@@ -534,27 +516,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
     return (
         <div className={`vc-container glass-container ${watchParty?.url ? 'vc-has-watchparty' : ''}`.trim()}>
-            {isMobile && (
-                <button 
-                    className="vc-mobile-back-btn" 
-                    onClick={onBack || (() => window.history.back())} 
-                    title="Geri"
-                    aria-label="Geri"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        width="24"
-                        height="24"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                </button>
-            )}
             <div className="vc-top-right-controls">
                 {isAdmin && (
                     <button className={`vc-ctrl-btn ${isListenersOpen ? 'active' : ''}`} onClick={() => { setIsListenersOpen(!isListenersOpen); setIsChatOpen(false); setIsSettingsOpen(false); }}>

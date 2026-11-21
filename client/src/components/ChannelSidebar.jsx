@@ -25,9 +25,11 @@ const ChannelSidebar = ({
     className,
     canManage,
     onShowPortalInfo,
+    isMobileLiveRoomActive = false,
 }) => {
     const { user } = useAuth();
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [mobileLiveDrawerOpen, setMobileLiveDrawerOpen] = useState(false);
     const navigate = useNavigate();
     const uiContext = useUI();
     const { isMobileView } = uiContext || {};
@@ -191,6 +193,10 @@ const ChannelSidebar = ({
         }
     }, [isLiveRoom, isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed]);
 
+    useEffect(() => {
+        setMobileLiveDrawerOpen(false);
+    }, [currentChannel, isMobileLiveRoomActive]);
+
     const isSelected = (id) => String(currentChannel) === String(id);
 
     const rawBanner = portal?.coverImage || portal?.banner;
@@ -234,57 +240,77 @@ const ChannelSidebar = ({
 
     if (!portal) return null;
 
-    return (
-        <div
-            className={`channel-sidebar ${isDesktopSidebarCollapsed ? 'collapsed' : ''} ${className || ''}`}
-            style={{
-                height: 'calc(100% - 24px)',
-                backgroundColor: 'transparent',
-                display: 'flex',
-                flexDirection: 'column',
-                flexShrink: 0,
-                overflow: 'visible',
-                position: 'relative',
-                borderRight: 'none',
-            }}
-        >
-            {!isMobileView && isLiveRoom && (
-                <button
-                    className="sidebar-toggle-btn"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
-                    }}
-                    title={isDesktopSidebarCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
-                >
-                    {isDesktopSidebarCollapsed ? (
-                        <ChevronRight size={16} />
-                    ) : (
-                        <ChevronLeft size={16} />
-                    )}
-                </button>
-            )}
+    const showToggleTab = (!isMobileView && isLiveRoom) || isMobileLiveRoomActive;
+    const isToggleCollapsed = isMobileLiveRoomActive ? !mobileLiveDrawerOpen : isDesktopSidebarCollapsed;
 
-            <div className="sidebar-content-wrapper" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                flex: 1,
-                width: '100%',
-                height: '100%',
-                overflow: 'hidden',
-                transition: 'opacity 0.2s ease, visibility 0.2s ease',
-                opacity: isDesktopSidebarCollapsed ? 0 : 1,
-                visibility: isDesktopSidebarCollapsed ? 'hidden' : 'visible',
-                gap: '8px',
-                padding: '0px',
-                boxSizing: 'border-box',
-            }}>
+    return (
+        <>
+            {isMobileLiveRoomActive && mobileLiveDrawerOpen && (
+                <div
+                    className="mobile-live-drawer-backdrop"
+                    onClick={() => setMobileLiveDrawerOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+            <div
+                className={`channel-sidebar ${!isMobileLiveRoomActive && isDesktopSidebarCollapsed ? 'collapsed' : ''} ${isMobileLiveRoomActive ? 'mobile-live-drawer' : ''} ${isMobileLiveRoomActive && mobileLiveDrawerOpen ? 'mobile-live-drawer-open' : ''} ${className || ''}`}
+                style={{
+                    height: 'calc(100% - 24px)',
+                    backgroundColor: 'transparent',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flexShrink: 0,
+                    overflow: 'visible',
+                    position: 'relative',
+                    borderRight: 'none',
+                }}
+            >
+                {showToggleTab && (
+                    <button
+                        type="button"
+                        className="sidebar-toggle-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isMobileLiveRoomActive) {
+                                setMobileLiveDrawerOpen((prev) => !prev);
+                            } else {
+                                setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
+                            }
+                        }}
+                        title={isToggleCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
+                        aria-label={isToggleCollapsed ? "Menüyü Göster" : "Menüyü Gizle"}
+                    >
+                        {isToggleCollapsed ? (
+                            <ChevronRight size={16} />
+                        ) : (
+                            <ChevronLeft size={16} />
+                        )}
+                    </button>
+                )}
+
+                <div className="sidebar-content-wrapper" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flex: 1,
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden',
+                    transition: 'opacity 0.2s ease, visibility 0.2s ease',
+                    opacity: !isMobileLiveRoomActive && isDesktopSidebarCollapsed ? 0 : 1,
+                    visibility: !isMobileLiveRoomActive && isDesktopSidebarCollapsed ? 'hidden' : 'visible',
+                    gap: '8px',
+                    padding: '0px',
+                    boxSizing: 'border-box',
+                }}>
 
                 {/* ── SECTION 1: Banner + Portal Info ── */}
                 <div className="cs-panel cs-panel--banner">
                     <div
                         className="channel-banner-container"
-                        onClick={() => onShowPortalInfo && onShowPortalInfo()}
+                        onClick={() => {
+                            setMobileLiveDrawerOpen(false);
+                            onShowPortalInfo && onShowPortalInfo();
+                        }}
                     >
                         <div
                             className="channel-banner-image"
@@ -300,6 +326,7 @@ const ChannelSidebar = ({
                                 className="channel-banner-settings-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    setMobileLiveDrawerOpen(false);
                                     onEdit && onEdit('overview');
                                 }}
                                 title="Portal Ayarları"
@@ -968,6 +995,7 @@ const ChannelSidebar = ({
                 <InviteUserModal portalId={portal._id} onClose={() => setShowInviteModal(false)} />
             )}
         </div>
+        </>
     );
 };
 

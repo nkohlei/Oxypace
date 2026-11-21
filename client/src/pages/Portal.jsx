@@ -1742,7 +1742,8 @@ const Portal = () => {
                         }}
                         currentChannel={currentChannel}
                         onChangeChannel={handleChannelSelect}
-                        className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen ? 'mobile-hidden' : ''}`}
+                        isMobileLiveRoomActive={Boolean(isMobileView && mobileChannelOpen && isVoiceChannelActive)}
+                        className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen && !isVoiceChannelActive ? 'mobile-hidden' : ''}`}
                         onShowPortalInfo={() => setShowPortalInfo(true)}
                     />
                 )}
