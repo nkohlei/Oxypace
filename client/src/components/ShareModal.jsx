@@ -9,23 +9,35 @@ import {
     Share2,
     Send,
     Mail,
-    Users,
-    MessageCircle,
-    Globe,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { getPostShareUrl, copyTextSafely, systemShare, openExternalShareUrl } from '../utils/shareUtils';
-import UserBadges from './UserBadges';
 import './ShareModal.css';
 
-const EXTERNAL_PLATFORMS = [
-    { id: 'whatsapp', label: 'WhatsApp', short: 'WA' },
-    { id: 'telegram', label: 'Telegram', short: 'TG' },
-    { id: 'x', label: 'X', short: 'X' },
-    { id: 'facebook', label: 'Facebook', short: 'FB' },
-    { id: 'email', label: 'E-posta', short: 'mail' },
-];
+const WhatsAppLogo = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366" aria-hidden="true">
+        <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5.016L2 22l5.156-1.344a9.926 9.926 0 0 0 4.875 1.281h.004c5.512 0 9.965-4.453 9.965-9.969 0-2.66-1.035-5.16-2.918-7.043A9.898 9.898 0 0 0 12.031 2zm5.828 14.172c-.246.695-1.434 1.328-1.984 1.406-.512.074-1.16.105-1.871-.121-.434-.137-.992-.324-1.707-.633-3.004-1.297-4.965-4.324-5.113-4.523-.148-.199-1.219-1.621-1.219-3.094 0-1.473.773-2.195 1.047-2.496.273-.301.598-.375.797-.375.199 0 .398.004.574.012.184.008.43-.07.672.512.246.598.844 2.066.918 2.215.074.148.125.324.023.523-.098.199-.148.324-.297.496-.148.176-.312.391-.445.523-.148.148-.305.312-.133.609.176.301.777 1.281 1.668 2.074 1.145 1.02 2.109 1.336 2.41 1.484.301.148.477.125.652-.074.176-.199.746-.871.945-1.172.199-.301.398-.25.672-.148.273.098 1.742.82 2.043.969.301.148.5.223.574.348.074.125.074.723-.172 1.418z" />
+    </svg>
+);
+
+const TelegramLogo = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#26A5E4" aria-hidden="true">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+);
+
+const XLogo = () => (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
+
+const FacebookLogo = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
+        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+    </svg>
+);
 
 const ShareModal = ({ postId, onClose }) => {
     const { user: currentUser } = useAuth();
@@ -64,7 +76,7 @@ const ShareModal = ({ postId, onClose }) => {
         if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
         feedbackTimerRef.current = setTimeout(() => {
             setStatusBanner('');
-        }, 2600);
+        }, 2200);
     };
 
     const handleSearchInput = (value) => {
@@ -115,13 +127,13 @@ const ShareModal = ({ postId, onClose }) => {
                 )
             );
             setSentSuccess(true);
-            showFeedback('Gönderi seçilen kişilere iletildi.');
+            showFeedback('Gönderildi.');
             closeTimerRef.current = setTimeout(() => {
                 onClose?.();
-            }, 850);
+            }, 750);
         } catch (err) {
             console.error('Failed to send post in DM:', err);
-            showFeedback(err.response?.data?.message || 'Gönderilemedi. Lütfen tekrar dene.');
+            showFeedback(err.response?.data?.message || 'Gönderilemedi.');
         } finally {
             setSending(false);
         }
@@ -131,10 +143,10 @@ const ShareModal = ({ postId, onClose }) => {
         const ok = await copyTextSafely(shareUrl);
         if (ok) {
             setCopiedLink(true);
-            showFeedback('Bağlantı panoya kopyalandı.');
-            setTimeout(() => setCopiedLink(false), 2200);
+            showFeedback('Bağlantı kopyalandı.');
+            setTimeout(() => setCopiedLink(false), 2000);
         } else {
-            showFeedback('Bağlantı kopyalanamadı.');
+            showFeedback('Kopyalanamadı.');
         }
     };
 
@@ -150,14 +162,14 @@ const ShareModal = ({ postId, onClose }) => {
                 const copied = await copyTextSafely(shareUrl);
                 if (copied) {
                     setCopiedLink(true);
-                    showFeedback('Sistem paylaşımı desteklenmiyor, bağlantı kopyalandı.');
+                    showFeedback('Bağlantı kopyalandı.');
                 }
             }
         } catch {
             const copied = await copyTextSafely(shareUrl);
             if (copied) {
                 setCopiedLink(true);
-                showFeedback('Bağlantı panoya kopyalandı.');
+                showFeedback('Bağlantı kopyalandı.');
             }
         }
     };
@@ -191,7 +203,6 @@ const ShareModal = ({ postId, onClose }) => {
 
     const isSearching = searchQuery.trim().length > 0;
     const listToRender = isSearching ? results : friends;
-    const displayUrl = shareUrl.replace(/^https?:\/\//i, '');
 
     const modalContent = (
         <div
@@ -204,15 +215,12 @@ const ShareModal = ({ postId, onClose }) => {
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Gönderiyi Paylaş"
+                aria-label="Paylaş"
             >
                 <div className="share-sheet-handle" aria-hidden="true" />
 
                 <header className="share-modal-header">
-                    <div className="share-header-title">
-                        <Share2 size={17} strokeWidth={2} />
-                        <h3>Gönderiyi Paylaş</h3>
-                    </div>
+                    <h3>Paylaş</h3>
                     <button
                         type="button"
                         className="share-close-btn"
@@ -225,171 +233,166 @@ const ShareModal = ({ postId, onClose }) => {
 
                 {statusBanner && (
                     <div className="share-feedback-banner" role="status">
-                        <Check size={14} strokeWidth={2.5} />
+                        <Check size={13} strokeWidth={2.5} />
                         <span>{statusBanner}</span>
                     </div>
                 )}
 
-                <div className="share-modal-body custom-scrollbar">
-                    {/* 1. Hızlı Bağlantı ve Sistem Paylaşımı */}
-                    <section className="share-section share-quick-card">
-                        <div className="share-link-preview-row">
-                            <Link2 size={14} strokeWidth={2} className="share-link-icon" />
-                            <span className="share-link-url" title={shareUrl}>
-                                {displayUrl}
-                            </span>
-                        </div>
-
-                        <div className="share-primary-actions">
+                <div className="share-modal-body">
+                    {/* Compact Search */}
+                    <div className="share-search-box">
+                        <Search size={14} strokeWidth={2} className="share-search-icon" />
+                        <input
+                            type="text"
+                            className="share-search-input"
+                            placeholder="Kişi ara..."
+                            value={searchQuery}
+                            onChange={(e) => handleSearchInput(e.target.value)}
+                        />
+                        {searchQuery && (
                             <button
                                 type="button"
-                                className={`share-action-pill primary ${copiedLink ? 'is-done' : ''}`}
-                                onClick={handleCopyLink}
+                                className="share-search-clear"
+                                onClick={() => handleSearchInput('')}
+                                aria-label="Temizle"
                             >
-                                {copiedLink ? <Check size={15} strokeWidth={2.4} /> : <Link2 size={15} strokeWidth={2} />}
-                                <span>{copiedLink ? 'Kopyalandı' : 'Bağlantıyı Kopyala'}</span>
+                                <X size={13} strokeWidth={2.2} />
                             </button>
-
-                            <button
-                                type="button"
-                                className="share-action-pill"
-                                onClick={handleNativeShare}
-                            >
-                                <Share2 size={15} strokeWidth={2} />
-                                <span>Uygulamalarda Paylaş</span>
-                            </button>
-                        </div>
-
-                        <div className="share-external-grid">
-                            {EXTERNAL_PLATFORMS.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    className="share-external-tile"
-                                    onClick={() => handleExternalShare(item.id)}
-                                >
-                                    <span className="share-external-glyph" aria-hidden="true">
-                                        {item.id === 'email' ? (
-                                            <Mail size={15} strokeWidth={1.9} />
-                                        ) : item.id === 'whatsapp' ? (
-                                            <MessageCircle size={15} strokeWidth={1.9} />
-                                        ) : item.id === 'facebook' ? (
-                                            <Globe size={15} strokeWidth={1.9} />
-                                        ) : (
-                                            item.short
-                                        )}
-                                    </span>
-                                    <span className="share-external-label">{item.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* 2. Direkt Mesaj / Arkadaş Listesi */}
-                    <section className="share-section share-friends-section">
-                        <div className="share-section-row">
-                            <span className="share-section-label">
-                                <Users size={13} strokeWidth={2} />
-                                <span>Arkadaşına Mesaj Olarak Gönder</span>
-                            </span>
-                            {selectedUsers.length > 0 && (
-                                <span className="share-selected-counter">{selectedUsers.length} seçili</span>
-                            )}
-                        </div>
-
-                        <div className="share-search-box">
-                            <Search size={15} strokeWidth={2} className="share-search-icon" />
-                            <input
-                                type="text"
-                                className="share-search-input"
-                                placeholder="Kullanıcı adı veya isim ara..."
-                                value={searchQuery}
-                                onChange={(e) => handleSearchInput(e.target.value)}
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    className="share-search-clear"
-                                    onClick={() => handleSearchInput('')}
-                                    aria-label="Aramayı temizle"
-                                >
-                                    <X size={13} strokeWidth={2.2} />
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="share-friends-scroll custom-scrollbar">
-                            {loading ? (
-                                <div className="share-empty-state">Kullanıcılar aranıyor...</div>
-                            ) : listToRender.length === 0 ? (
-                                <div className="share-empty-state">
-                                    {isSearching
-                                        ? 'Aramanla eşleşen kullanıcı bulunamadı.'
-                                        : 'Henüz arkadaşın yok. Yukarıdan kullanıcı arayabilirsin.'}
-                                </div>
-                            ) : (
-                                listToRender.map((u) => {
-                                    const isSelected = selectedUsers.some((s) => s._id === u._id);
-                                    const displayName =
-                                        u.profile?.displayName || u.profile?.fullName || u.username;
-                                    return (
-                                        <button
-                                            key={u._id}
-                                            type="button"
-                                            className={`share-friend-row ${isSelected ? 'selected' : ''}`}
-                                            onClick={() => toggleUserSelection(u)}
-                                        >
-                                            <div className="share-friend-left">
-                                                <img
-                                                    src={getImageUrl(u.profile?.avatar)}
-                                                    alt={u.username || 'Kullanıcı'}
-                                                    className="share-friend-avatar"
-                                                />
-                                                <div className="share-friend-meta">
-                                                    <span className="share-friend-name-line">
-                                                        <span className="share-friend-display">{displayName}</span>
-                                                        <UserBadges user={u} size={13} />
-                                                    </span>
-                                                    <span className="share-friend-handle">@{u.username}</span>
-                                                </div>
-                                            </div>
-                                            <span className={`share-check-box ${isSelected ? 'checked' : ''}`}>
-                                                {isSelected && <Check size={13} strokeWidth={2.8} />}
-                                            </span>
-                                        </button>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </section>
-                </div>
-
-                <footer className="share-modal-footer">
-                    <button
-                        type="button"
-                        className={`share-send-btn ${sentSuccess ? 'is-done' : ''}`}
-                        disabled={selectedUsers.length === 0 || sending || sentSuccess}
-                        onClick={handleSendToFriends}
-                    >
-                        {sentSuccess ? (
-                            <>
-                                <Check size={16} strokeWidth={2.5} />
-                                <span>Gönderildi</span>
-                            </>
-                        ) : (
-                            <>
-                                <Send size={15} strokeWidth={2} />
-                                <span>
-                                    {sending
-                                        ? 'Gönderiliyor...'
-                                        : selectedUsers.length > 0
-                                            ? `Mesaj Olarak Gönder (${selectedUsers.length})`
-                                            : 'Göndermek İçin Kişi Seç'}
-                                </span>
-                            </>
                         )}
-                    </button>
-                </footer>
+                    </div>
+
+                    {/* Horizontal Side-by-Side Users (No checkboxes — avatar ring on select) */}
+                    <div className="share-users-strip">
+                        {loading ? (
+                            <div className="share-empty-state">Aranıyor...</div>
+                        ) : listToRender.length === 0 ? (
+                            <div className="share-empty-state">
+                                {isSearching ? 'Kullanıcı bulunamadı.' : 'Kişi ara veya aşağıdan paylaş.'}
+                            </div>
+                        ) : (
+                            listToRender.map((u) => {
+                                const isSelected = selectedUsers.some((s) => s._id === u._id);
+                                const displayName =
+                                    u.profile?.displayName || u.profile?.fullName || u.username;
+                                return (
+                                    <button
+                                        key={u._id}
+                                        type="button"
+                                        className={`share-user-chip ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => toggleUserSelection(u)}
+                                        title={displayName}
+                                    >
+                                        <span className="share-user-avatar-ring">
+                                            <img
+                                                src={getImageUrl(u.profile?.avatar)}
+                                                alt={u.username || 'Kullanıcı'}
+                                                className="share-user-avatar"
+                                            />
+                                        </span>
+                                        <span className="share-user-name">{displayName}</span>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Send Button (only visible when at least 1 user is selected or just sent) */}
+                    {(selectedUsers.length > 0 || sentSuccess) && (
+                        <button
+                            type="button"
+                            className={`share-send-btn ${sentSuccess ? 'is-done' : ''}`}
+                            disabled={sending || sentSuccess}
+                            onClick={handleSendToFriends}
+                        >
+                            {sentSuccess ? (
+                                <>
+                                    <Check size={15} strokeWidth={2.5} />
+                                    <span>Gönderildi</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Send size={14} strokeWidth={2} />
+                                    <span>
+                                        {sending ? 'Gönderiliyor...' : `Gönder (${selectedUsers.length})`}
+                                    </span>
+                                </>
+                            )}
+                        </button>
+                    )}
+
+                    {/* Single Minimal Icon-Only Row: Copy, Native Share + Real App Logos (No text, no frames) */}
+                    <div className="share-icon-row">
+                        <button
+                            type="button"
+                            className={`share-icon-btn ${copiedLink ? 'is-done' : ''}`}
+                            onClick={handleCopyLink}
+                            title="Bağlantıyı Kopyala"
+                            aria-label="Bağlantıyı Kopyala"
+                        >
+                            {copiedLink ? <Check size={20} strokeWidth={2.4} /> : <Link2 size={20} strokeWidth={2} />}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="share-icon-btn"
+                            onClick={handleNativeShare}
+                            title="Uygulamalarda Paylaş"
+                            aria-label="Uygulamalarda Paylaş"
+                        >
+                            <Share2 size={20} strokeWidth={2} />
+                        </button>
+
+                        <button
+                            type="button"
+                            className="share-icon-btn"
+                            onClick={() => handleExternalShare('whatsapp')}
+                            title="WhatsApp"
+                            aria-label="WhatsApp"
+                        >
+                            <WhatsAppLogo />
+                        </button>
+
+                        <button
+                            type="button"
+                            className="share-icon-btn"
+                            onClick={() => handleExternalShare('telegram')}
+                            title="Telegram"
+                            aria-label="Telegram"
+                        >
+                            <TelegramLogo />
+                        </button>
+
+                        <button
+                            type="button"
+                            className="share-icon-btn"
+                            onClick={() => handleExternalShare('x')}
+                            title="X"
+                            aria-label="X"
+                        >
+                            <XLogo />
+                        </button>
+
+                        <button
+                            type="button"
+                            className="share-icon-btn"
+                            onClick={() => handleExternalShare('facebook')}
+                            title="Facebook"
+                            aria-label="Facebook"
+                        >
+                            <FacebookLogo />
+                        </button>
+
+                        <button
+                            type="button"
+                            className="share-icon-btn"
+                            onClick={() => handleExternalShare('email')}
+                            title="E-posta"
+                            aria-label="E-posta"
+                        >
+                            <Mail size={20} strokeWidth={1.9} />
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
