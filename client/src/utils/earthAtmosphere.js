@@ -376,19 +376,20 @@ export function createCloudLayers(radius, sunDirUniform, cloudTexture) {
                 float sunLight = smoothstep(-0.22, 0.45, NdotL);
                 float twilight = exp(-pow((NdotL + 0.02) * 5.0, 2.0));
 
-                vec3 dayCloudColor = vec3(0.95, 0.97, 1.00) + vec3(relief * 0.45);
-                vec3 twilightCloudColor = vec3(0.76, 0.80, 0.90);
-                vec3 nightCloudColor = vec3(0.03, 0.04, 0.07);
+                // Soft, natural atmospheric cloud tones (never blinding pure white)
+                vec3 dayCloudColor = vec3(0.82, 0.86, 0.92) + vec3(relief * 0.20);
+                vec3 twilightCloudColor = vec3(0.66, 0.72, 0.82);
+                vec3 nightCloudColor = vec3(0.025, 0.035, 0.06);
 
                 vec3 col = mix(nightCloudColor, dayCloudColor, sunLight);
-                col = mix(col, twilightCloudColor, twilight * 0.25);
+                col = mix(col, twilightCloudColor, twilight * 0.28);
 
                 // Pale atmospheric scattering tint on clouds near Earth's limb
-                float limbTint = pow(1.0 - NdotV, 2.4) * sunLight * 0.28;
-                col = mix(col, vec3(0.68, 0.84, 1.0), limbTint);
+                float limbTint = pow(1.0 - NdotV, 2.3) * sunLight * 0.34;
+                col = mix(col, vec3(0.62, 0.80, 0.98), limbTint);
 
-                // Sharpen wisps while keeping delicate feathering
-                float alpha = smoothstep(0.06, 0.88, density) * uOpacity;
+                // Delicate feathery alpha so continents & coastlines breathe naturally underneath
+                float alpha = smoothstep(0.09, 0.95, density) * uOpacity;
                 gl_FragColor = vec4(col, alpha);
             }
         `,
@@ -539,12 +540,12 @@ export function enhanceEarthScene(globeInstance, {
         const cloudFade = THREE.MathUtils.clamp((altitude - 0.12) / 0.55, 0.0, 1.0);
         if (cloudMesh) {
             cloudMesh.rotation.y += cloudDriftSpeed * dtSeconds;
-            cloudMesh.material.uniforms.uOpacity.value = 0.90 * cloudFade;
+            cloudMesh.material.uniforms.uOpacity.value = 0.64 * cloudFade;
             cloudMesh.visible = cloudFade > 0.01;
         }
         if (shadowMesh) {
             shadowMesh.rotation.y = cloudMesh ? cloudMesh.rotation.y : shadowMesh.rotation.y + cloudDriftSpeed * dtSeconds;
-            shadowMesh.material.uniforms.uOpacity.value = 0.22 * cloudFade;
+            shadowMesh.material.uniforms.uOpacity.value = 0.14 * cloudFade;
             shadowMesh.visible = cloudFade > 0.01;
         }
 

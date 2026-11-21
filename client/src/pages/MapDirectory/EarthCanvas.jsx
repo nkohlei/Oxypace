@@ -4,19 +4,53 @@ import { getImageUrl } from '../../utils/imageUtils';
 import { EARTH_TEXTURES, enhanceEarthScene } from '../../utils/earthAtmosphere';
 
 const EARTH_RADIUS_KM = 6371;
+const MIN_ALTITUDE = 0.004;
+const MAX_ALTITUDE = 4.2;
+const DEFAULT_POV = { lat: 24, lng: 22, altitude: 2.35 };
+
+const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+const normalizeLng = (lng) => ((lng + 180) % 360 + 360) % 360 - 180;
+
+const shortestLngDiff = (targetLng, currentLng) => {
+    let diff = targetLng - currentLng;
+    while (diff > 180) diff -= 360;
+    while (diff < -180) diff += 360;
+    return diff;
+};
+
+// Smooth quintic ease-in-out for cinematic Google-Earth flyTo arcs
+const easeInOutQuint = (t) =>
+    t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
 const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearch, onGlobeClick, onTelemetry }, ref) => {
     const globeRef = useRef();
     const containerRef = useRef();
     const sceneFxRef = useRef(null);
 
-    // Smooth camera & zoom state
-    const targetAltitude = useRef(2.35);
-    const zoomAnchor = useRef(null);
-    const mousePos = useRef({ x: 0, y: 0 });
-    const isZoomAnimating = useRef(false);
-    const isFlying = useRef(false);
-    const flyTimeoutRef = useRef(null);
+    // Camera physics state (all in refs so 60fps loop never triggers React re-renders)
+    const targetLogAlt = useRef(Math.log(DEFAULT_POV.altitude));
+    const zoomAnchor = useRef(null); // { lat, lng } locked under cursor/pinch center
+    const cursorPos = useRef({ x: 0, y: 0 });
+    const isZooming = useRef(false);
+    const isDragging = useRef(false);
+    const pointerDownPos = useRef({ x: 0, y: 0 });
+    const pointerMoved = useRef(false);
+
+    // Custom cinematic parabolic flyTo animation (Google Earth style arc: rises smoothly on long flights)
+    const flyAnimRef = useRef(null);
+
+    // Touch gesture state machine (prevents 2->1 finger teleport bug!)
+    const touchState = useRef({
+        mode: 'idle', // 'idle' | 'drag' | 'pinch' | 'pinch-cooldown'
+        startDist: 0,
+        startLogAlt: Math.log(DEFAULT_POV.altitude),
+        lastTapTime: 0,
+        lastTapX: 0,
+        lastTapY: 0,
+        tapMoved: false,
+    });
+
     const lastTelemetryAt = useRef(0);
 
     const [dimensions, setDimensions] = useState({
@@ -24,69 +58,126 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         height: typeof window !== 'undefined' ? window.innerHeight : 720,
     });
 
-    const cancelFlyLock = useCallback(() => {
-        isFlying.current = false;
-        if (flyTimeoutRef.current) {
-            clearTimeout(flyTimeoutRef.current);
-            flyTimeoutRef.current = null;
+    const cancelFlyAnim = useCallback(() => {
+        flyAnimRef.current = null;
+    }, []);
+
+    const syncTargetAltFromGlobe = useCallback(() => {
+        const pov = globeRef.current?.pointOfView?.();
+        if (pov && Number.isFinite(pov.altitude) && pov.altitude > 0) {
+            targetLogAlt.current = Math.log(clamp(pov.altitude, MIN_ALTITUDE, MAX_ALTITUDE));
         }
     }, []);
 
+    // Start a Google-Earth-style smooth parabolic flight (auto-arcs altitude over long distances)
+    const startFlight = useCallback((destLat, destLng, destAlt, durationMs = 1500) => {
+        const globe = globeRef.current;
+        if (!globe) return;
+
+        const controls = globe.controls?.();
+        if (controls) {
+            controls.autoRotate = false;
+            controls.target.set(0, 0, 0);
+        }
+
+        const startPov = globe.pointOfView();
+        const safeStartAlt = clamp(startPov?.altitude || DEFAULT_POV.altitude, MIN_ALTITUDE, MAX_ALTITUDE);
+        const safeDestAlt = clamp(destAlt, MIN_ALTITUDE, MAX_ALTITUDE);
+
+        const dLat = destLat - (startPov?.lat || 0);
+        const dLng = shortestLngDiff(destLng, startPov?.lng || 0);
+        const angularDist = Math.hypot(dLat, dLng);
+
+        // Parabolic apex: when flying far while zoomed in, arc gracefully upward like Google Earth
+        const maxEndpointAlt = Math.max(safeStartAlt, safeDestAlt);
+        const arcLift = angularDist > 8 ? clamp((angularDist / 90) * 1.45, 0, 2.1) : 0;
+        const apexAlt = Math.min(MAX_ALTITUDE, Math.max(maxEndpointAlt, maxEndpointAlt + arcLift * 0.55));
+
+        isZooming.current = false;
+        zoomAnchor.current = null;
+        targetLogAlt.current = Math.log(safeDestAlt);
+
+        flyAnimRef.current = {
+            startTime: performance.now(),
+            duration: durationMs,
+            startLat: startPov?.lat || 0,
+            startLng: startPov?.lng || 0,
+            dLat,
+            dLng,
+            startLogAlt: Math.log(safeStartAlt),
+            destLogAlt: Math.log(safeDestAlt),
+            apexLogAlt: Math.log(apexAlt),
+        };
+    }, []);
+
+    // Zoom smoothly toward a specific screen point (used by double-click & mobile double-tap)
+    const zoomToScreenPoint = useCallback((clientX, clientY, factor = 0.45) => {
+        const globe = globeRef.current;
+        const container = containerRef.current;
+        if (!globe || !container) return;
+
+        cancelFlyAnim();
+        const controls = globe.controls?.();
+        if (controls) controls.autoRotate = false;
+
+        const rect = container.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        const pov = globe.pointOfView();
+        const curAlt = clamp(pov?.altitude || DEFAULT_POV.altitude, MIN_ALTITUDE, MAX_ALTITUDE);
+        const nextAlt = clamp(curAlt * factor, MIN_ALTITUDE, MAX_ALTITUDE);
+
+        const coords = typeof globe.toGlobeCoords === 'function' ? globe.toGlobeCoords(x, y) : null;
+        if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+            // Smoothly fly toward clicked spot while zooming in (exact Google Earth double-click feel)
+            startFlight(coords.lat, coords.lng, nextAlt, 620);
+        } else {
+            targetLogAlt.current = Math.log(nextAlt);
+            zoomAnchor.current = null;
+            isZooming.current = true;
+        }
+    }, [cancelFlyAnim, startFlight]);
+
     useImperativeHandle(ref, () => ({
         zoomIn: () => {
-            cancelFlyLock();
+            cancelFlyAnim();
             if (globeRef.current) globeRef.current.controls().autoRotate = false;
-            targetAltitude.current = Math.max(0.004, targetAltitude.current * 0.52);
+            if (!isZooming.current) syncTargetAltFromGlobe();
+            const nextAlt = clamp(Math.exp(targetLogAlt.current) * 0.52, MIN_ALTITUDE, MAX_ALTITUDE);
+            targetLogAlt.current = Math.log(nextAlt);
             zoomAnchor.current = null;
-            isZoomAnimating.current = true;
+            isZooming.current = true;
         },
         zoomOut: () => {
-            cancelFlyLock();
+            cancelFlyAnim();
             if (globeRef.current) globeRef.current.controls().autoRotate = false;
-            targetAltitude.current = Math.min(4.0, targetAltitude.current * 1.85);
+            if (!isZooming.current) syncTargetAltFromGlobe();
+            const nextAlt = clamp(Math.exp(targetLogAlt.current) * 1.9, MIN_ALTITUDE, MAX_ALTITUDE);
+            targetLogAlt.current = Math.log(nextAlt);
             zoomAnchor.current = null;
-            isZoomAnimating.current = true;
+            isZooming.current = true;
         },
         resetView: () => {
-            cancelFlyLock();
-            targetAltitude.current = 2.35;
-            isZoomAnimating.current = false;
-            zoomAnchor.current = null;
-            isFlying.current = true;
-            if (globeRef.current) {
-                globeRef.current.controls().autoRotate = true;
-                globeRef.current.pointOfView({ lat: 24, lng: 22, altitude: 2.35 }, 1400);
-            }
-            flyTimeoutRef.current = setTimeout(() => {
-                isFlying.current = false;
-            }, 1450);
+            startFlight(DEFAULT_POV.lat, DEFAULT_POV.lng, DEFAULT_POV.altitude, 1150);
+            setTimeout(() => {
+                if (!flyAnimRef.current && globeRef.current) {
+                    globeRef.current.controls().autoRotate = true;
+                }
+            }, 1250);
         },
         flyTo: (lat, lng, alt) => {
-            cancelFlyLock();
-            const flyAlt = alt || 0.015;
-            targetAltitude.current = flyAlt;
-            isZoomAnimating.current = false;
-            zoomAnchor.current = null;
-            isFlying.current = true;
-            if (globeRef.current) {
-                globeRef.current.controls().autoRotate = false;
-                globeRef.current.pointOfView({ lat, lng, altitude: flyAlt }, 1900);
-            }
-            flyTimeoutRef.current = setTimeout(() => {
-                isFlying.current = false;
-            }, 1950);
+            startFlight(lat, lng, alt || 0.02, 1600);
         },
-    }), [cancelFlyLock]);
+    }), [cancelFlyAnim, startFlight, syncTargetAltFromGlobe]);
 
-    // Responsive container sizing via ResizeObserver + window resize
+    // Responsive sizing
     useEffect(() => {
         const updateSize = () => {
             if (containerRef.current) {
                 const w = containerRef.current.clientWidth;
                 const h = containerRef.current.clientHeight;
-                if (w > 0 && h > 0) {
-                    setDimensions({ width: w, height: h });
-                }
+                if (w > 0 && h > 0) setDimensions({ width: w, height: h });
             }
         };
         updateSize();
@@ -102,7 +193,39 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         };
     }, []);
 
-    // Unified 60fps animation loop: lighting, cloud drift, smooth damped zoom, altitude-adaptive rotation, telemetry
+    // Keyboard shortcuts (Google Earth feel: +/- zoom, Arrow keys smooth nudge, R reset)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const tag = e.target?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
+            const globe = globeRef.current;
+            if (!globe) return;
+
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                cancelFlyAnim();
+                globe.controls().autoRotate = false;
+                if (!isZooming.current) syncTargetAltFromGlobe();
+                targetLogAlt.current = Math.log(clamp(Math.exp(targetLogAlt.current) * 0.65, MIN_ALTITUDE, MAX_ALTITUDE));
+                zoomAnchor.current = null;
+                isZooming.current = true;
+            } else if (e.key === '-' || e.key === '_') {
+                e.preventDefault();
+                cancelFlyAnim();
+                globe.controls().autoRotate = false;
+                if (!isZooming.current) syncTargetAltFromGlobe();
+                targetLogAlt.current = Math.log(clamp(Math.exp(targetLogAlt.current) * 1.5, MIN_ALTITUDE, MAX_ALTITUDE));
+                zoomAnchor.current = null;
+                isZooming.current = true;
+            } else if (e.key === 'r' || e.key === 'R') {
+                startFlight(DEFAULT_POV.lat, DEFAULT_POV.lng, DEFAULT_POV.altitude, 1000);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [cancelFlyAnim, startFlight, syncTargetAltFromGlobe]);
+
+    // Unified 60fps physics + rendering loop
     useEffect(() => {
         let rafId = null;
         let lastTime = performance.now();
@@ -115,59 +238,102 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
             const globe = globeRef.current;
             if (!globe) return;
 
-            const pov = globe.pointOfView();
-            const currentAlt = pov?.altitude ?? 2.35;
-
-            // 1. Update Google-Earth-grade atmosphere, sun position & 3K drifting clouds
-            if (sceneFxRef.current) {
-                sceneFxRef.current.update(dt, currentAlt);
-            }
-
-            // 2. Altitude-adaptive orbital rotation speed (surgical precision up close, effortless from space)
             const controls = globe.controls?.();
-            if (controls) {
-                controls.rotateSpeed = Math.max(0.025, Math.min(0.54, currentAlt * 0.24));
-                controls.update();
+            // Guarantee planet stays dead-center (never drifts off-origin)
+            if (controls && (controls.target.x !== 0 || controls.target.y !== 0 || controls.target.z !== 0)) {
+                controls.target.set(0, 0, 0);
             }
 
-            // 3. Frame-rate-independent exponential zoom-to-cursor physics
-            if (isZoomAnimating.current && !isFlying.current) {
-                const diffAlt = targetAltitude.current - currentAlt;
-                if (Math.abs(diffAlt) < 0.00025) {
-                    isZoomAnimating.current = false;
+            // 1. Parabolic flyTo animation (takes priority while active)
+            if (flyAnimRef.current) {
+                const anim = flyAnimRef.current;
+                const rawT = clamp((now - anim.startTime) / anim.duration, 0, 1);
+                const easeT = easeInOutQuint(rawT);
+
+                const curLat = clamp(anim.startLat + anim.dLat * easeT, -89.5, 89.5);
+                const curLng = normalizeLng(anim.startLng + anim.dLng * easeT);
+
+                // Quadratic Bezier in log-altitude space for natural Google Earth arc
+                const inv = 1 - easeT;
+                const curLogAlt =
+                    inv * inv * anim.startLogAlt +
+                    2 * inv * easeT * anim.apexLogAlt +
+                    easeT * easeT * anim.destLogAlt;
+
+                globe.pointOfView({ lat: curLat, lng: curLng, altitude: Math.exp(curLogAlt) }, 0);
+
+                if (rawT >= 1) {
+                    flyAnimRef.current = null;
+                    targetLogAlt.current = anim.destLogAlt;
+                }
+            } else if (isZooming.current) {
+                // 2. Logarithmic zoom-to-cursor physics (equal perceptual speed at EVERY altitude!)
+                const pov = globe.pointOfView();
+                const currentAlt = clamp(pov?.altitude || DEFAULT_POV.altitude, MIN_ALTITUDE, MAX_ALTITUDE);
+                const currentLogAlt = Math.log(currentAlt);
+                const diffLog = targetLogAlt.current - currentLogAlt;
+
+                if (Math.abs(diffLog) < 0.0008) {
+                    isZooming.current = false;
                     zoomAnchor.current = null;
                 } else {
-                    const lerpFactor = 1 - Math.exp(-8.8 * dt);
-                    const nextAlt = currentAlt + diffAlt * lerpFactor;
-                    let nextLat = pov.lat;
-                    let nextLng = pov.lng;
+                    // Exponential critically-damped smoothing in log space
+                    const smoothAlpha = 1 - Math.exp(-11.5 * dt);
+                    const nextAlt = clamp(Math.exp(currentLogAlt + diffLog * smoothAlpha), MIN_ALTITUDE, MAX_ALTITUDE);
 
-                    if (zoomAnchor.current && typeof globe.toGlobeCoords === 'function') {
-                        const curUnderMouse = globe.toGlobeCoords(mousePos.current.x, mousePos.current.y);
-                        if (curUnderMouse) {
-                            const diffLat = zoomAnchor.current.lat - curUnderMouse.lat;
-                            let diffLng = zoomAnchor.current.lng - curUnderMouse.lng;
-                            diffLng = ((diffLng + 180) % 360 + 360) % 360 - 180;
+                    // Step 1: apply new altitude first
+                    globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: nextAlt }, 0);
 
-                            const anchorLerp = 1 - Math.exp(-10.5 * dt);
-                            nextLat += diffLat * anchorLerp;
-                            nextLng += diffLng * anchorLerp;
+                    // Step 2: lock cursor/pinch anchor smoothly (pixel-tight on zoom-in, gentle on zoom-out)
+                    if (
+                        zoomAnchor.current &&
+                        !isDragging.current &&
+                        typeof globe.toGlobeCoords === 'function'
+                    ) {
+                        const afterCoords = globe.toGlobeCoords(cursorPos.current.x, cursorPos.current.y);
+                        if (afterCoords && Number.isFinite(afterCoords.lat) && Number.isFinite(afterCoords.lng)) {
+                            const lockWeight = diffLog < 0 ? 0.92 : 0.42;
+                            const corrLat = clamp((zoomAnchor.current.lat - afterCoords.lat) * lockWeight, -10, 10);
+                            const corrLng = clamp(shortestLngDiff(zoomAnchor.current.lng, afterCoords.lng) * lockWeight, -16, 16);
+                            const lockedLat = clamp(pov.lat + corrLat, -85, 85);
+                            const lockedLng = normalizeLng(pov.lng + corrLng);
+                            globe.pointOfView({ lat: lockedLat, lng: lockedLng, altitude: nextAlt }, 0);
                         }
                     }
 
-                    nextLat = Math.max(-89.5, Math.min(89.5, nextLat));
-                    nextLng = ((nextLng + 180) % 360 + 360) % 360 - 180;
-                    globe.pointOfView({ lat: nextLat, lng: nextLng, altitude: nextAlt }, 0);
+                    // Keep OrbitControls internal spherical state synced so no jump occurs on next drag
+                    if (controls) {
+                        const prevDamping = controls.enableDamping;
+                        controls.enableDamping = false;
+                        controls.update();
+                        controls.enableDamping = prevDamping;
+                    }
                 }
+            } else if (controls) {
+                // 3. Normal inertial orbital rotation with smooth altitude-adaptive sensitivity
+                const pov = globe.pointOfView();
+                const curAlt = clamp(pov?.altitude || DEFAULT_POV.altitude, MIN_ALTITUDE, MAX_ALTITUDE);
+
+                // Smooth non-linear rotation curve: crisp & weighted in space, surgical at street level
+                const adaptiveSpeed = clamp(Math.pow(curAlt, 0.82) * 0.29, 0.018, 0.56);
+                controls.rotateSpeed = adaptiveSpeed;
+                controls.update();
             }
 
-            // 4. Live camera telemetry (throttled ~8 Hz)
-            if (onTelemetry && now - lastTelemetryAt.current > 125 && pov) {
+            // 4. Update atmospheric shaders, sun lighting & drifting 3K clouds
+            const finalPov = globe.pointOfView();
+            const finalAlt = clamp(finalPov?.altitude || DEFAULT_POV.altitude, MIN_ALTITUDE, MAX_ALTITUDE);
+            if (sceneFxRef.current) {
+                sceneFxRef.current.update(dt, finalAlt);
+            }
+
+            // 5. Live telemetry readout (~8 Hz)
+            if (onTelemetry && now - lastTelemetryAt.current > 125 && finalPov) {
                 lastTelemetryAt.current = now;
                 onTelemetry({
-                    lat: pov.lat,
-                    lng: pov.lng,
-                    altitudeKm: Math.max(1, Math.round(currentAlt * EARTH_RADIUS_KM)),
+                    lat: finalPov.lat,
+                    lng: finalPov.lng,
+                    altitudeKm: Math.max(1, Math.round(finalAlt * EARTH_RADIUS_KM)),
                 });
             }
         };
@@ -176,7 +342,7 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
 
         return () => {
             if (rafId) cancelAnimationFrame(rafId);
-            cancelFlyLock();
+            cancelFlyAnim();
             if (sceneFxRef.current) {
                 sceneFxRef.current.dispose();
                 sceneFxRef.current = null;
@@ -197,86 +363,176 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                 } catch (_) {}
             }
         };
-    }, [cancelFlyLock, onTelemetry]);
+    }, [cancelFlyAnim, onTelemetry]);
 
-    // Smooth wheel zoom-to-cursor
+    // Smooth Google-Earth mouse wheel & trackpad pinch zoom
     const handleWheel = useCallback((e) => {
         e.preventDefault();
-        if (!globeRef.current) return;
+        const globe = globeRef.current;
+        const container = containerRef.current;
+        if (!globe || !container) return;
 
-        cancelFlyLock();
-        globeRef.current.controls().autoRotate = false;
+        cancelFlyAnim();
+        const controls = globe.controls?.();
+        if (controls) controls.autoRotate = false;
 
-        // Normalize trackpad vs mouse wheel delta smoothly
-        const clampedDelta = Math.max(-120, Math.min(120, e.deltaY));
-        const zoomScale = Math.pow(1.0018, clampedDelta);
-        targetAltitude.current = Math.max(0.004, Math.min(4.0, targetAltitude.current * zoomScale));
+        if (!isZooming.current) {
+            syncTargetAltFromGlobe();
+        }
 
-        if (containerRef.current && typeof globeRef.current.toGlobeCoords === 'function') {
-            const rect = containerRef.current.getBoundingClientRect();
+        // Normalize pixel / line / page wheel modes cleanly across mice and laptop trackpads
+        let delta = e.deltaY;
+        if (e.deltaMode === 1) delta *= 32; // Firefox line mode
+        else if (e.deltaMode === 2) delta *= 240; // Page mode
+
+        // Trackpad pinch sets ctrlKey = true with small deltas; boost sensitivity slightly
+        const sensitivity = e.ctrlKey ? 0.0085 : 0.00185;
+        const clampedStep = clamp(delta * sensitivity, -0.42, 0.42);
+        const nextLogAlt = clamp(
+            targetLogAlt.current + clampedStep,
+            Math.log(MIN_ALTITUDE),
+            Math.log(MAX_ALTITUDE)
+        );
+        targetLogAlt.current = nextLogAlt;
+
+        // Lock cursor anchor cleanly on the globe surface
+        if (typeof globe.toGlobeCoords === 'function') {
+            const rect = container.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            const distMoved = Math.hypot(x - mousePos.current.x, y - mousePos.current.y);
+            const moved = Math.hypot(x - cursorPos.current.x, y - cursorPos.current.y);
 
-            if (distMoved > 2 || !isZoomAnimating.current || !zoomAnchor.current) {
-                const targetCoords = globeRef.current.toGlobeCoords(x, y);
-                if (targetCoords) {
-                    zoomAnchor.current = targetCoords;
-                    mousePos.current = { x, y };
+            if (moved > 3 || !isZooming.current || !zoomAnchor.current) {
+                const coords = globe.toGlobeCoords(x, y);
+                if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+                    zoomAnchor.current = coords;
+                    cursorPos.current = { x, y };
                 } else {
                     zoomAnchor.current = null;
                 }
             }
         }
 
-        isZoomAnimating.current = true;
-    }, [cancelFlyLock]);
+        isZooming.current = true;
+    }, [cancelFlyAnim, syncTargetAltFromGlobe]);
 
-    // Mobile pinch-to-zoom & double-tap zoom
-    const touchStartDist = useRef(null);
-    const touchStartAltitude = useRef(null);
-    const lastTapTime = useRef(0);
-
+    // Rock-solid Mobile Touch State Machine (zero 2->1 finger jump, pinch-to-midpoint, double-tap zoom)
     const handleTouchStart = useCallback((e) => {
-        if (!globeRef.current) return;
-        cancelFlyLock();
-        globeRef.current.controls().autoRotate = false;
+        const globe = globeRef.current;
+        const container = containerRef.current;
+        if (!globe || !container) return;
 
-        if (e.touches.length === 2) {
-            globeRef.current.controls().enabled = false;
-            zoomAnchor.current = null;
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            touchStartDist.current = Math.hypot(dx, dy);
-            touchStartAltitude.current = targetAltitude.current;
-        } else if (e.touches.length === 1) {
-            const now = Date.now();
-            if (now - lastTapTime.current < 280) {
-                targetAltitude.current = Math.max(0.004, targetAltitude.current * 0.5);
-                isZoomAnimating.current = true;
+        cancelFlyAnim();
+        const controls = globe.controls?.();
+        if (controls) controls.autoRotate = false;
+
+        const ts = touchState.current;
+
+        if (e.touches.length >= 2) {
+            // Enter pinch mode: lock OrbitControls so single-finger rotation never fights pinch!
+            e.preventDefault();
+            ts.mode = 'pinch';
+            ts.tapMoved = true;
+            isDragging.current = false;
+            if (controls) controls.enabled = false;
+
+            const t0 = e.touches[0];
+            const t1 = e.touches[1];
+            ts.startDist = Math.max(10, Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY));
+
+            const pov = globe.pointOfView();
+            const curAlt = clamp(pov?.altitude || DEFAULT_POV.altitude, MIN_ALTITUDE, MAX_ALTITUDE);
+            ts.startLogAlt = Math.log(curAlt);
+            targetLogAlt.current = ts.startLogAlt;
+
+            // Anchor pinch zoom directly at the midpoint between both fingers!
+            const rect = container.getBoundingClientRect();
+            const midX = (t0.clientX + t1.clientX) * 0.5 - rect.left;
+            const midY = (t0.clientY + t1.clientY) * 0.5 - rect.top;
+            cursorPos.current = { x: midX, y: midY };
+            if (typeof globe.toGlobeCoords === 'function') {
+                const midCoords = globe.toGlobeCoords(midX, midY);
+                zoomAnchor.current = midCoords && Number.isFinite(midCoords.lat) ? midCoords : null;
             }
-            lastTapTime.current = now;
+        } else if (e.touches.length === 1 && ts.mode === 'idle') {
+            const t = e.touches[0];
+            ts.mode = 'drag';
+            ts.tapMoved = false;
+            isDragging.current = true;
+            isZooming.current = false;
+            zoomAnchor.current = null;
+            if (controls) controls.enabled = true;
+
+            // Check double-tap (within 280ms and 36px of previous tap)
+            const now = Date.now();
+            const distFromPrevTap = Math.hypot(t.clientX - ts.lastTapX, t.clientY - ts.lastTapY);
+            if (now - ts.lastTapTime < 280 && distFromPrevTap < 36) {
+                ts.lastTapTime = 0;
+                ts.tapMoved = true;
+                zoomToScreenPoint(t.clientX, t.clientY, 0.45);
+                return;
+            }
+            ts.lastTapX = t.clientX;
+            ts.lastTapY = t.clientY;
+            ts.lastTapTime = now;
         }
-    }, [cancelFlyLock]);
+    }, [cancelFlyAnim, zoomToScreenPoint]);
 
     const handleTouchMove = useCallback((e) => {
-        if (e.touches.length === 2 && globeRef.current && touchStartDist.current !== null) {
+        const globe = globeRef.current;
+        const container = containerRef.current;
+        if (!globe || !container) return;
+
+        const ts = touchState.current;
+
+        if (ts.mode === 'pinch' && e.touches.length >= 2) {
             e.preventDefault();
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 0) {
-                const ratio = touchStartDist.current / dist;
-                targetAltitude.current = Math.max(0.004, Math.min(4.0, touchStartAltitude.current * ratio));
-                isZoomAnimating.current = true;
+            const t0 = e.touches[0];
+            const t1 = e.touches[1];
+            const dist = Math.max(10, Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY));
+
+            // Logarithmic pinch ratio: feels 1:1 natural with finger spread
+            const logDelta = Math.log(ts.startDist / dist) * 1.05;
+            targetLogAlt.current = clamp(
+                ts.startLogAlt + logDelta,
+                Math.log(MIN_ALTITUDE),
+                Math.log(MAX_ALTITUDE)
+            );
+
+            // Track moving finger midpoint so two-finger pinch-and-pan feels effortless
+            const rect = container.getBoundingClientRect();
+            cursorPos.current = {
+                x: (t0.clientX + t1.clientX) * 0.5 - rect.left,
+                y: (t0.clientY + t1.clientY) * 0.5 - rect.top,
+            };
+
+            isZooming.current = true;
+        } else if (ts.mode === 'drag' && e.touches.length === 1) {
+            const t = e.touches[0];
+            if (Math.hypot(t.clientX - ts.lastTapX, t.clientY - ts.lastTapY) > 10) {
+                ts.tapMoved = true;
             }
         }
     }, []);
 
     const handleTouchEnd = useCallback((e) => {
-        if (e.touches.length < 2 && globeRef.current) {
-            touchStartDist.current = null;
-            globeRef.current.controls().enabled = true;
+        const globe = globeRef.current;
+        const controls = globe?.controls?.();
+        const ts = touchState.current;
+
+        if (ts.mode === 'pinch' && e.touches.length === 1) {
+            // CRITICAL STABILITY FIX: Keep controls disabled during 2->1 finger release
+            // so the remaining finger NEVER violently flicks/teleports the globe!
+            ts.mode = 'pinch-cooldown';
+            if (controls) controls.enabled = false;
+            return;
+        }
+
+        if (e.touches.length === 0) {
+            ts.mode = 'idle';
+            isDragging.current = false;
+            zoomAnchor.current = null;
+            if (controls) controls.enabled = true;
         }
     }, []);
 
@@ -286,12 +542,14 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         container.addEventListener('wheel', handleWheel, { passive: false });
         container.addEventListener('touchstart', handleTouchStart, { passive: false });
         container.addEventListener('touchmove', handleTouchMove, { passive: false });
-        container.addEventListener('touchend', handleTouchEnd);
+        container.addEventListener('touchend', handleTouchEnd, { passive: true });
+        container.addEventListener('touchcancel', handleTouchEnd, { passive: true });
         return () => {
             container.removeEventListener('wheel', handleWheel);
             container.removeEventListener('touchstart', handleTouchStart);
             container.removeEventListener('touchmove', handleTouchMove);
             container.removeEventListener('touchend', handleTouchEnd);
+            container.removeEventListener('touchcancel', handleTouchEnd);
         };
     }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
@@ -301,16 +559,19 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
 
         const controls = globe.controls();
         controls.enableDamping = true;
-        controls.dampingFactor = 0.065;
+        controls.dampingFactor = 0.08;
+        controls.enablePan = false; // Prevent right-click/2-finger drag from knocking Earth off center!
+        controls.minPolarAngle = 0.08;
+        controls.maxPolarAngle = Math.PI - 0.08;
         controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.22;
+        controls.autoRotateSpeed = 0.2;
         controls.rotateSpeed = 0.45;
         controls.minDistance = 100.3;
-        controls.enableZoom = false;
+        controls.enableZoom = false; // Handled by our custom Google-Earth logarithmic zoom engine
+        controls.target.set(0, 0, 0);
 
-        // Frame Africa/Europe/Middle East like Google Earth default view
-        globe.pointOfView({ lat: 24, lng: 22, altitude: 2.35 }, 0);
-        targetAltitude.current = 2.35;
+        globe.pointOfView(DEFAULT_POV, 0);
+        targetLogAlt.current = Math.log(DEFAULT_POV.altitude);
 
         if (sceneFxRef.current) {
             sceneFxRef.current.dispose();
@@ -327,10 +588,33 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
         <div
             ref={containerRef}
             className="w-full h-full earth-canvas-stage"
-            onPointerDown={() => {
-                cancelFlyLock();
-                if (globeRef.current) globeRef.current.controls().autoRotate = false;
+            onContextMenu={(e) => e.preventDefault()}
+            onPointerDown={(e) => {
+                cancelFlyAnim();
+                isDragging.current = true;
+                isZooming.current = false;
                 zoomAnchor.current = null;
+                pointerDownPos.current = { x: e.clientX, y: e.clientY };
+                pointerMoved.current = false;
+                if (globeRef.current) globeRef.current.controls().autoRotate = false;
+            }}
+            onPointerMove={(e) => {
+                if (!isDragging.current) return;
+                if (
+                    Math.hypot(e.clientX - pointerDownPos.current.x, e.clientY - pointerDownPos.current.y) > 6
+                ) {
+                    pointerMoved.current = true;
+                }
+            }}
+            onPointerUp={() => {
+                isDragging.current = false;
+            }}
+            onPointerCancel={() => {
+                isDragging.current = false;
+            }}
+            onDoubleClick={(e) => {
+                if (e.target.closest('.portal-marker-container')) return;
+                zoomToScreenPoint(e.clientX, e.clientY, 0.45);
             }}
         >
             <Globe
@@ -340,7 +624,10 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                 height={dimensions.height}
                 backgroundColor="#000003"
                 showAtmosphere={false}
-                onGlobeClick={onGlobeClick}
+                onGlobeClick={(coords, event) => {
+                    if (pointerMoved.current) return;
+                    if (onGlobeClick) onGlobeClick(coords, event);
+                }}
                 globeImageUrl={EARTH_TEXTURES.day}
                 bumpImageUrl={EARTH_TEXTURES.bump}
                 globeTileEngineUrl={EARTH_TEXTURES.satelliteTileUrl}
@@ -408,6 +695,11 @@ const EarthCanvas = forwardRef(({ portals = [], onPortalClick, activePortalSearc
                 .earth-canvas-stage {
                     cursor: grab;
                     background: #000003;
+                    touch-action: none;
+                    overscroll-behavior: none;
+                    user-select: none;
+                    -webkit-user-select: none;
+                    -webkit-touch-callout: none;
                 }
                 .earth-canvas-stage:active {
                     cursor: grabbing;
