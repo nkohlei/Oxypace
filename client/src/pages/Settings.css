@@ -1919,6 +1919,10 @@ input:checked + .slider::before {
     line-height: 1.6;
 }
 
+.settings-sidebar-global .channel-header {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
 .settings-sidebar-header-inner {
     position: relative;
     z-index: 2;
@@ -2009,13 +2013,15 @@ input:checked + .slider::before {
         box-sizing: border-box !important;
     }
 
+    .settings-sidebar-global .channel-header,
     .settings-sidebar-global .sidebar-header {
         height: 52px !important;
-        padding: 0 14px !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 10px !important;
+        min-height: 52px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
         border-bottom: 1px solid var(--border-subtle) !important;
+        background: transparent !important;
         box-sizing: border-box !important;
     }
 

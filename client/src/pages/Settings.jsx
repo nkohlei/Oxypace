@@ -599,19 +599,8 @@ const Settings = () => {
 
     const renderSidebar = () => (
         <div className={`channel-sidebar settings-sidebar-global ${activeMenu !== 'main' ? 'hidden-on-mobile' : ''}`}>
-            {/* Sidebar Header mimicking ChannelSidebar */}
+            {/* Sidebar Header mimicking Inbox Header */}
             <div className="channel-header" style={{ cursor: 'default' }}>
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    background: 'transparent',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    zIndex: 0
-                }}></div>
-
                 <div className="settings-sidebar-header-inner">
                     {activeMenu === 'main' && (
                         <button 
