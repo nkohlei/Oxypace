@@ -12,7 +12,7 @@ import { useSocket } from '../context/SocketContext';
 import RoomTimer from './RoomTimer';
 
 import { getImageUrl } from '../utils/imageUtils';
-import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image, Mic, MessageSquare } from 'lucide-react';
+import { UserPlus, Bell, ChevronRight, ChevronLeft, Volume2, Megaphone, Hash, Info, UserCheck, Image, Mic, MessageSquare, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PortalInfoModal from './PortalInfoModal';
 
@@ -294,6 +294,20 @@ const ChannelSidebar = ({
                             }}
                         />
                         <div className="channel-banner-overlay" />
+                        {canManage && (
+                            <button
+                                type="button"
+                                className="channel-banner-settings-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEdit && onEdit('overview');
+                                }}
+                                title="Portal Ayarları"
+                                aria-label="Portal Ayarları"
+                            >
+                                <Settings size={15} strokeWidth={2} />
+                            </button>
+                        )}
                     </div>
 
                     {/* Portal Quick Info */}
@@ -692,6 +706,33 @@ const ChannelSidebar = ({
                 background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 100%);
                 border-top-left-radius: 14px;
                 border-top-right-radius: 14px;
+            }
+            .channel-banner-settings-btn {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                z-index: 5;
+                width: 30px;
+                height: 30px;
+                border-radius: 50% !important;
+                background: rgba(10, 10, 10, 0.62) !important;
+                background-image: none !important;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.16) !important;
+                color: #ffffff !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                padding: 0 !important;
+                box-shadow: none !important;
+                transition: background-color 0.16s ease, transform 0.2s ease, border-color 0.16s ease;
+            }
+            .channel-banner-settings-btn:hover {
+                background: rgba(10, 10, 10, 0.86) !important;
+                border-color: rgba(255, 255, 255, 0.34) !important;
+                transform: rotate(22deg);
             }
 
             /* ── Portal quick info ── */

@@ -907,7 +907,7 @@ router.post('/:id/leave', protect, mongoIdValidation('id'), async (req, res) => 
 
 router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
     try {
-        const { name, description, privacy, allowedUsers, location, showOnMap, liveRoomSettings } = req.body;
+        const { name, description, privacy, allowedUsers, location, showOnMap, liveRoomSettings, isReadOnly, isNSFW } = req.body;
         const portal = await Portal.findById(req.params.id);
 
         if (!portal) {
@@ -938,6 +938,12 @@ router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
         }
         if (showOnMap !== undefined) {
             portal.showOnMap = showOnMap;
+        }
+        if (isReadOnly !== undefined) {
+            portal.isReadOnly = Boolean(isReadOnly);
+        }
+        if (isNSFW !== undefined) {
+            portal.isNSFW = Boolean(isNSFW);
         }
         if (liveRoomSettings !== undefined) {
             portal.liveRoomSettings = {

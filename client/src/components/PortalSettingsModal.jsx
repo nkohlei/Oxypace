@@ -5,7 +5,7 @@ import { uploadFile } from '../utils/uploadUtils';
 import ImageCropper from './ImageCropper';
 import PortalBadges from './PortalBadges';
 
-import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio, Bot, Play, Pause, RefreshCw, Plus, Zap, AlertCircle, ExternalLink, Power, Clock, CheckCircle } from 'lucide-react';
+import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio, Bot, Play, Pause, RefreshCw, Plus, Zap, AlertCircle, ExternalLink, Power, Clock, CheckCircle, FileText, Copy, Link2, ShieldAlert, EyeOff } from 'lucide-react';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({
@@ -475,16 +475,45 @@ const PortalSettingsModal = ({
     // --- Access Management State ---
     const [accessData, setAccessData] = useState({
         privacy: portal.privacy,
-        allowedUsers: portal.allowedUsers || []
+        allowedUsers: portal.allowedUsers || [],
+        isReadOnly: Boolean(portal.isReadOnly),
+        isNSFW: Boolean(portal.isNSFW),
     });
     const [allowedUserSearch, setAllowedUserSearch] = useState('');
     const [allowedUserResults, setAllowedUserResults] = useState([]);
+    const [portalLinkCopied, setPortalLinkCopied] = useState(false);
+
+    // --- Audit Log State ---
+    const [auditLogs, setAuditLogs] = useState([]);
+    const [auditLoading, setAuditLoading] = useState(false);
+
+    const fetchAuditLogs = async () => {
+        if (!isAdmin) return;
+        setAuditLoading(true);
+        try {
+            const res = await axios.get(`/api/portals/${portal._id}/audit-logs?limit=40`);
+            setAuditLogs(Array.isArray(res.data?.logs) ? res.data.logs : []);
+        } catch (err) {
+            console.error('Fetch portal audit logs error:', err);
+            setAuditLogs([]);
+        } finally {
+            setAuditLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'audit' && isAdmin) {
+            fetchAuditLogs();
+        }
+    }, [activeTab, portal._id, isAdmin]);
 
     // Sync with portal updates
     useEffect(() => {
         setAccessData({
             privacy: portal.privacy,
-            allowedUsers: portal.allowedUsers || []
+            allowedUsers: portal.allowedUsers || [],
+            isReadOnly: Boolean(portal.isReadOnly),
+            isNSFW: Boolean(portal.isNSFW),
         });
     }, [portal]);
 
@@ -532,7 +561,9 @@ const PortalSettingsModal = ({
             // Send only IDs for allowedUsers
             const payload = {
                 privacy: accessData.privacy,
-                allowedUsers: accessData.allowedUsers.map(u => u._id || u)
+                allowedUsers: accessData.allowedUsers.map(u => u._id || u),
+                isReadOnly: Boolean(accessData.isReadOnly),
+                isNSFW: Boolean(accessData.isNSFW),
             };
             const res = await axios.put(`/api/portals/${portal._id}`, payload);
             onUpdate(res.data);
@@ -812,6 +843,17 @@ const PortalSettingsModal = ({
     return (
         <div className="settings-modal-overlay" onClick={onClose}>
             <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="psm-mobile-sheet-handle" aria-hidden="true" />
+                <div className="psm-mobile-topbar">
+                    <div className="psm-mobile-topbar-title">
+                        <span>{portal.name}</span>
+                        <PortalBadges portal={portal} size={15} />
+                    </div>
+                    <button type="button" className="psm-mobile-close-btn" onClick={onClose} aria-label="Kapat">
+                        <X size={20} strokeWidth={2} />
+                    </button>
+                </div>
+
                 {/* Sidebar */}
                 <div className="settings-sidebar">
                     <div className="sidebar-header">
@@ -901,7 +943,17 @@ const PortalSettingsModal = ({
                             title="Canlı Oda Ayarları"
                         >
                             <Radio size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
-                            <span className="tab-label">Canlı Oda Ayarları</span>
+                            <span className="tab-label">Canlı Odalar</span>
+                        </div>
+                    )}
+                    {isAdmin && (
+                        <div
+                            className={`settings-tab ${activeTab === 'audit' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('audit')}
+                            title="Denetim Günlüğü"
+                        >
+                            <FileText size={20} strokeWidth={2} style={{ minWidth: '20px' }} />
+                            <span className="tab-label">Denetim Günlüğü</span>
                         </div>
                     )}
 
@@ -925,6 +977,40 @@ const PortalSettingsModal = ({
                     {activeTab === 'overview' && (
                         <div className="animate-fade-in">
                             <h2 className="settings-title">Genel Bakış</h2>
+
+                            <div className="psm-stats-strip">
+                                <div className="psm-stat-box">
+                                    <span className="psm-stat-value">{(portal.members || []).length}</span>
+                                    <span className="psm-stat-label">Üye</span>
+                                </div>
+                                <div className="psm-stat-box">
+                                    <span className="psm-stat-value">{(portal.channels || []).length}</span>
+                                    <span className="psm-stat-label">Kanal</span>
+                                </div>
+                                <div className="psm-stat-box">
+                                    <span className="psm-stat-value">{portal.postCount || 0}</span>
+                                    <span className="psm-stat-label">Gönderi</span>
+                                </div>
+                            </div>
+
+                            <div className="psm-link-bar">
+                                <Link2 size={14} style={{ color: '#8a8a8a', flexShrink: 0 }} />
+                                <span className="psm-link-text">oxypace.com.tr/portal/{portal._id}</span>
+                                <button
+                                    type="button"
+                                    className="psm-copy-btn"
+                                    onClick={() => {
+                                        const url = `https://oxypace.com.tr/portal/${portal._id}`;
+                                        navigator.clipboard?.writeText(url).then(() => {
+                                            setPortalLinkCopied(true);
+                                            setTimeout(() => setPortalLinkCopied(false), 2000);
+                                        }).catch(() => {});
+                                    }}
+                                >
+                                    {portalLinkCopied ? <Check size={13} /> : <Copy size={13} />}
+                                    <span>{portalLinkCopied ? 'Kopyalandı' : 'Kopyala'}</span>
+                                </button>
+                            </div>
 
                             <div className="images-grid">
                                 <div
@@ -1020,21 +1106,6 @@ const PortalSettingsModal = ({
                                     {loading ? '...' : 'Değişiklikleri Kaydet'}
                                 </button>
                             )}
-
-                            <input
-                                type="file"
-                                ref={bannerRef}
-                                onChange={(e) => handleFileSelect(e, 'banner')}
-                                hidden
-                                accept="image/*"
-                            />
-                            <input
-                                type="file"
-                                ref={avatarRef}
-                                onChange={(e) => handleFileSelect(e, 'avatar')}
-                                hidden
-                                accept="image/*"
-                            />
                         </div>
                     )}
 
@@ -1127,7 +1198,7 @@ const PortalSettingsModal = ({
                                                     <div key={user._id} className="user-row" onClick={() => handleAddAllowedUser(user)} style={{ cursor: 'pointer', padding: '10px 12px' }}>
                                                         <img src={getImageUrl(user.profile?.avatar)} className="user-avatar-small" alt="" />
                                                         <span className="user-name">{user.username}</span>
-                                                        <div style={{ marginLeft: 'auto', color: '#2ecc71', fontSize: '0.8rem', fontWeight: '600' }}>EKLE</div>
+                                                        <div style={{ marginLeft: 'auto', color: '#e5e5e5', fontSize: '0.8rem', fontWeight: '600' }}>EKLE</div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1173,8 +1244,41 @@ const PortalSettingsModal = ({
                                 </div>
                             )}
 
+                            <div className="form-group" style={{ marginTop: '18px' }}>
+                                <label className="form-label" style={{ marginBottom: '10px' }}>İçerik ve Yayın Politikası</label>
+                                <div className="privacy-options-container">
+                                    <div
+                                        className={`privacy-option-row ${accessData.isReadOnly ? 'selected' : ''}`}
+                                        onClick={() => isOwner && setAccessData((prev) => ({ ...prev, isReadOnly: !prev.isReadOnly }))}
+                                    >
+                                        <div className="privacy-row-icon-wrapper">
+                                            <EyeOff size={18} strokeWidth={2} />
+                                        </div>
+                                        <div className="privacy-row-content">
+                                            <div className="privacy-row-title">Salt Okunur Mod</div>
+                                            <div className="privacy-row-desc">Sadece portal yöneticileri yeni gönderi paylaşabilir.</div>
+                                        </div>
+                                        <span className={`psm-toggle-switch ${accessData.isReadOnly ? 'on' : ''}`} />
+                                    </div>
+
+                                    <div
+                                        className={`privacy-option-row ${accessData.isNSFW ? 'selected' : ''}`}
+                                        onClick={() => isOwner && setAccessData((prev) => ({ ...prev, isNSFW: !prev.isNSFW }))}
+                                    >
+                                        <div className="privacy-row-icon-wrapper">
+                                            <ShieldAlert size={18} strokeWidth={2} />
+                                        </div>
+                                        <div className="privacy-row-content">
+                                            <div className="privacy-row-title">+18 İçerik Etiketi</div>
+                                            <div className="privacy-row-desc">Portal kartlarında yaş sınırı uyarısı gösterilir.</div>
+                                        </div>
+                                        <span className={`psm-toggle-switch ${accessData.isNSFW ? 'on' : ''}`} />
+                                    </div>
+                                </div>
+                            </div>
+
                             {isOwner && (
-                                <div className="modal-actions" style={{ marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
+                                <div className="modal-actions" style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
                                     <button
                                         className="btn-save"
                                         onClick={handleSaveAccess}
@@ -1182,6 +1286,59 @@ const PortalSettingsModal = ({
                                     >
                                         {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                                     </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'audit' && isAdmin && (
+                        <div className="animate-fade-in">
+                            <div className="psm-audit-header">
+                                <h2 className="settings-title" style={{ margin: 0 }}>Denetim Günlüğü</h2>
+                                <button
+                                    type="button"
+                                    className="psm-copy-btn"
+                                    onClick={fetchAuditLogs}
+                                    disabled={auditLoading}
+                                >
+                                    <RefreshCw size={13} />
+                                    <span>{auditLoading ? 'Yükleniyor...' : 'Yenile'}</span>
+                                </button>
+                            </div>
+
+                            {auditLoading ? (
+                                <div className="empty-state-text">Kayıtlar yükleniyor...</div>
+                            ) : auditLogs.length === 0 ? (
+                                <div className="empty-state-text">Bu portal için henüz denetim kaydı yok.</div>
+                            ) : (
+                                <div className="psm-audit-list">
+                                    {auditLogs.map((log, idx) => (
+                                        <div key={log._id || idx} className="psm-audit-row">
+                                            {log.user?.profile?.avatar ? (
+                                                <img
+                                                    src={getImageUrl(log.user.profile.avatar)}
+                                                    alt=""
+                                                    className="user-avatar-small"
+                                                />
+                                            ) : (
+                                                <div className="user-avatar-small" style={{ background: '#262626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
+                                                    {(log.user?.username || 'S')[0].toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="psm-audit-body">
+                                                <div className="user-name">
+                                                    <span>{log.user?.profile?.displayName || log.user?.username || 'Sistem'}</span>
+                                                    <span className="role-badge">{log.action || log.category || 'İşlem'}</span>
+                                                </div>
+                                                <div className="psm-audit-meta">
+                                                    <span>{log.description || log.details?.message || 'Portal etkinliği'}</span>
+                                                    {log.createdAt && (
+                                                        <span>· {new Date(log.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -1208,14 +1365,14 @@ const PortalSettingsModal = ({
                                                     flex: 1,
                                                     padding: '8px 12px',
                                                     background: newChannelType === t.value
-                                                        ? (t.value === 'text' ? 'rgba(88, 101, 242, 0.2)' : t.value === 'voice' ? 'rgba(34, 197, 94, 0.2)' : t.value === 'conference' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(245, 158, 11, 0.2)')
+                                                        ? (t.value === 'text' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'voice' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'conference' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(245, 158, 11, 0.2)')
                                                         : 'rgba(255,255,255,0.04)',
                                                     border: newChannelType === t.value
-                                                        ? `1px solid ${t.value === 'text' ? '#5865f2' : t.value === 'voice' ? '#22c55e' : t.value === 'conference' ? '#a855f7' : '#f59e0b'}`
+                                                        ? `1px solid ${t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#a855f7' : '#f59e0b'}`
                                                         : '1px solid rgba(255,255,255,0.08)',
                                                     borderRadius: '8px',
                                                     color: newChannelType === t.value
-                                                        ? (t.value === 'text' ? '#818cf8' : t.value === 'voice' ? '#4ade80' : t.value === 'conference' ? '#c084fc' : '#fbbf24')
+                                                        ? (t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#c084fc' : '#fbbf24')
                                                         : '#94a3b8',
                                                     cursor: 'pointer',
                                                     fontSize: '13px',
@@ -1249,7 +1406,7 @@ const PortalSettingsModal = ({
                                         <button
                                             className="btn-save"
                                             style={{
-                                                background: newChannelType === 'text' ? '#5865f2' : newChannelType === 'voice' ? '#22c55e' : newChannelType === 'conference' ? '#a855f7' : '#f59e0b',
+                                                background: newChannelType === 'text' ? '#e5e5e5' : newChannelType === 'voice' ? '#e5e5e5' : newChannelType === 'conference' ? '#a855f7' : '#f59e0b',
                                                 whiteSpace: 'nowrap',
                                             }}
                                             onClick={handleAddChannel}
@@ -1363,7 +1520,7 @@ const PortalSettingsModal = ({
                                                                 onClick={handleUpdateChannel}
                                                                 style={{
                                                                     padding: '6px 16px',
-                                                                    background: '#5865f2',
+                                                                    background: '#e5e5e5',
                                                                     color: 'white',
                                                                     border: 'none',
                                                                     borderRadius: '8px',
@@ -1389,7 +1546,7 @@ const PortalSettingsModal = ({
                                                     >
                                                         <span style={{ 
                                                             fontSize: '18px',
-                                                            color: ch.type === 'voice' ? '#22c55e' : ch.type === 'conference' ? '#a855f7' : ch.type === 'image' ? '#f59e0b' : '#94a3b8' 
+                                                            color: ch.type === 'voice' ? '#e5e5e5' : ch.type === 'conference' ? '#a855f7' : ch.type === 'image' ? '#f59e0b' : '#94a3b8' 
                                                         }}>
                                                             {ch.type === 'voice' ? '🎙️' : ch.type === 'conference' ? '🎤' : ch.type === 'image' ? '🖼️' : '#'}
                                                         </span>
@@ -1519,7 +1676,7 @@ const PortalSettingsModal = ({
                                                 <div className="member-username">
                                                     {member.username || 'Kullanıcı'}
                                                     {member.isBot && (
-                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '4px', fontSize: '11px', fontWeight: 700, marginLeft: '6px' }}>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', background: 'rgba(255, 255, 255, 0.15)', color: '#e5e5e5', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '4px', fontSize: '11px', fontWeight: 700, marginLeft: '6px' }}>
                                                             🤖 BOT
                                                         </span>
                                                     )}
@@ -1555,7 +1712,7 @@ const PortalSettingsModal = ({
                                                                         )
                                                                     }
                                                                     title="Er Yönetici Yap"
-                                                                    style={{ color: '#5865f2' }}
+                                                                    style={{ color: '#e5e5e5' }}
                                                                 >
                                                                     <ArrowUp size={18} strokeWidth={2} />
                                                                 </button>
@@ -1737,7 +1894,7 @@ const PortalSettingsModal = ({
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                        <span style={{ background: showOnMap ? 'rgba(46,204,113,0.15)' : 'rgba(114,118,125,0.15)', color: showOnMap ? '#2ecc71' : '#72767d', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', border: `1px solid ${showOnMap ? 'rgba(46,204,113,0.4)' : 'rgba(114,118,125,0.3)'}` }}>
+                                        <span style={{ background: showOnMap ? 'rgba(255, 255, 255,0.15)' : 'rgba(114,118,125,0.15)', color: showOnMap ? '#e5e5e5' : '#72767d', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700', border: `1px solid ${showOnMap ? 'rgba(255, 255, 255,0.4)' : 'rgba(114,118,125,0.3)'}` }}>
                                             {showOnMap ? '🌍 Haritada' : 'Gizli'}
                                         </span>
                                     </div>
@@ -1884,7 +2041,7 @@ const PortalSettingsModal = ({
 
                             {/* Save Status (Location) */}
                             {locationSaveStatus === 'success' && (
-                                <div style={{ background: 'rgba(46,204,113,0.12)', border: '1px solid rgba(46,204,113,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#2ecc71', marginBottom: '16px', fontWeight: '600' }}>
+                                <div style={{ background: 'rgba(255, 255, 255,0.12)', border: '1px solid rgba(255, 255, 255,0.4)', borderRadius: '10px', padding: '12px 16px', color: '#e5e5e5', marginBottom: '16px', fontWeight: '600' }}>
                                     ✅ Konum başarıyla kaydedildi!
                                 </div>
                             )}
@@ -1930,7 +2087,7 @@ const PortalSettingsModal = ({
                             {/* Status Area */}
                             <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Portal Durumu: <span style={{ color: portalStatus === 'active' ? '#2ecc71' : '#f1c40f' }}>{portalStatus === 'active' ? 'Aktif' : 'Arşivde (Kapalı)'}</span></h4>
+                                    <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Portal Durumu: <span style={{ color: portalStatus === 'active' ? '#e5e5e5' : '#f1c40f' }}>{portalStatus === 'active' ? 'Aktif' : 'Arşivde (Kapalı)'}</span></h4>
                                 </div>
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
                                     Portalı arşive aldığınızda genel arama sonuçlarında çıkmaz ve yeni üye eklenemez. Sadece mevcut üyeler eski mesajları okumak için ulaşabilir.
@@ -1939,9 +2096,9 @@ const PortalSettingsModal = ({
                                     onClick={handleToggleStatus}
                                     disabled={actionProcessing}
                                     style={{
-                                        background: portalStatus === 'active' ? 'rgba(241,196,15,0.15)' : 'rgba(46,204,113,0.15)',
-                                        color: portalStatus === 'active' ? '#f1c40f' : '#2ecc71',
-                                        border: `1px solid ${portalStatus === 'active' ? 'rgba(241,196,15,0.3)' : 'rgba(46,204,113,0.3)'}`,
+                                        background: portalStatus === 'active' ? 'rgba(241,196,15,0.15)' : 'rgba(255, 255, 255,0.15)',
+                                        color: portalStatus === 'active' ? '#f1c40f' : '#e5e5e5',
+                                        border: `1px solid ${portalStatus === 'active' ? 'rgba(241,196,15,0.3)' : 'rgba(255, 255, 255,0.3)'}`,
                                         padding: '8px 16px',
                                         borderRadius: '6px',
                                         cursor: 'pointer',
@@ -2044,7 +2201,7 @@ const PortalSettingsModal = ({
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                                 <div>
                                     <h2 className="settings-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Bot size={22} style={{ color: '#38bdf8' }} />
+                                        <Bot size={22} style={{ color: '#e5e5e5' }} />
                                         Portal Botları ({portalBots.length})
                                     </h2>
                                     <p className="settings-desc" style={{ marginTop: '4px', marginBottom: 0 }}>
@@ -2103,11 +2260,11 @@ const PortalSettingsModal = ({
                                                 gap: '6px',
                                                 transition: 'all 0.2s'
                                             }}
-                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(56,189,248,0.15)'; e.currentTarget.style.borderColor = '#38bdf8'; }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255,0.15)'; e.currentTarget.style.borderColor = '#e5e5e5'; }}
                                             onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                                         >
                                             <span>{preset.title}</span>
-                                            <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 600 }}>+ Ekle</span>
+                                            <span style={{ fontSize: '10px', color: '#e5e5e5', fontWeight: 600 }}>+ Ekle</span>
                                         </button>
                                     ))}
                                 </div>
@@ -2116,8 +2273,8 @@ const PortalSettingsModal = ({
                             {/* Test Run Output Notification */}
                             {testRunResult && (
                                 <div style={{
-                                    background: testRunResult.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                                    border: `1px solid ${testRunResult.success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                                    background: testRunResult.success ? 'rgba(255, 255, 255,0.1)' : 'rgba(239,68,68,0.1)',
+                                    border: `1px solid ${testRunResult.success ? 'rgba(255, 255, 255,0.3)' : 'rgba(239,68,68,0.3)'}`,
                                     borderRadius: '8px',
                                     padding: '12px 16px',
                                     display: 'flex',
@@ -2127,12 +2284,12 @@ const PortalSettingsModal = ({
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
                                         {testRunResult.success ? (
-                                            <CheckCircle size={18} color="#4ade80" />
+                                            <CheckCircle size={18} color="#e5e5e5" />
                                         ) : (
                                             <AlertCircle size={18} color="#f87171" />
                                         )}
                                         <div>
-                                            <div style={{ fontWeight: 600, color: testRunResult.success ? '#4ade80' : '#f87171' }}>
+                                            <div style={{ fontWeight: 600, color: testRunResult.success ? '#e5e5e5' : '#f87171' }}>
                                                 {testRunResult.success ? 'Paylaşım Testi Başarılı!' : 'Test Sonucu / Bilgilendirme'}
                                             </div>
                                             <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '2px' }}>
@@ -2202,7 +2359,7 @@ const PortalSettingsModal = ({
                                                                     <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>
                                                                         {b.profile?.displayName || b.username}
                                                                     </span>
-                                                                    <span style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', padding: '1px 5px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 }}>
+                                                                    <span style={{ background: 'rgba(255, 255, 255,0.2)', color: '#e5e5e5', border: '1px solid rgba(255, 255, 255,0.3)', padding: '1px 5px', borderRadius: '4px', fontSize: '10px', fontWeight: 700 }}>
                                                                         BOT
                                                                     </span>
                                                                 </div>
@@ -2223,8 +2380,8 @@ const PortalSettingsModal = ({
                                                                     Duraklatıldı
                                                                 </span>
                                                             ) : (
-                                                                <span style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }}></span>
+                                                                <span style={{ background: 'rgba(255, 255, 255,0.15)', color: '#e5e5e5', border: '1px solid rgba(255, 255, 255,0.3)', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e5e5e5' }}></span>
                                                                     Aktif
                                                                 </span>
                                                             )}
@@ -2235,7 +2392,7 @@ const PortalSettingsModal = ({
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: '#94a3b8', background: 'rgba(0,0,0,0.25)', padding: '10px', borderRadius: '8px' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span>Hedef Kanal:</span>
-                                                            <strong style={{ color: '#38bdf8' }}>#{targetChannel?.name || b.config?.defaultChannel || 'Genel'}</strong>
+                                                            <strong style={{ color: '#e5e5e5' }}>#{targetChannel?.name || b.config?.defaultChannel || 'Genel'}</strong>
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span>Aralık:</span>
@@ -2310,7 +2467,7 @@ const PortalSettingsModal = ({
                                                         style={{
                                                             padding: '8px 10px',
                                                             background: 'rgba(255,255,255,0.05)',
-                                                            color: isActive ? '#facc15' : '#4ade80',
+                                                            color: isActive ? '#facc15' : '#e5e5e5',
                                                             border: '1px solid rgba(255,255,255,0.1)',
                                                             borderRadius: '6px',
                                                             cursor: 'pointer',
@@ -2370,7 +2527,7 @@ const PortalSettingsModal = ({
                                     <div style={{ background: '#0b1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', maxWidth: '520px', width: '100%', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                                             <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <Bot size={20} color="#38bdf8" />
+                                                <Bot size={20} color="#e5e5e5" />
                                                 Yeni Portal Botu Kur
                                             </h3>
                                             <button type="button" onClick={() => setShowNewBotModal(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
@@ -2395,7 +2552,7 @@ const PortalSettingsModal = ({
                                             <div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                                     <label style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Hedef Web Sitesi veya RSS Bağlantısı *</label>
-                                                    <span style={{ fontSize: '11px', color: '#38bdf8' }}>✨ Doğrudan site linki de girebilirsiniz</span>
+                                                    <span style={{ fontSize: '11px', color: '#e5e5e5' }}>✨ Doğrudan site linki de girebilirsiniz</span>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <input
@@ -2545,7 +2702,7 @@ const PortalSettingsModal = ({
                                     <div style={{ background: '#0b1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', maxWidth: '520px', width: '100%', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                                             <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <Pencil size={18} color="#38bdf8" />
+                                                <Pencil size={18} color="#e5e5e5" />
                                                 Botu Düzenle: @{editingBot.username}
                                             </h3>
                                             <button type="button" onClick={() => setEditingBot(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
