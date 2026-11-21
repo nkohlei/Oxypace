@@ -612,15 +612,7 @@ const Settings = () => {
                     zIndex: 0
                 }}></div>
 
-                <div style={{
-                    position: 'relative',
-                    zIndex: 2,
-                    padding: '16px',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                }}>
+                <div className="settings-sidebar-header-inner">
                     {activeMenu === 'main' && (
                         <button 
                             className="mobile-back-btn-inline" 
@@ -659,12 +651,7 @@ const Settings = () => {
                             </svg>
                         </button>
                     )}
-                    <h2 style={{
-                        color: 'var(--text-primary)',
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        margin: 0
-                    }}>Ayarlar</h2>
+                    <h2 className="settings-sidebar-title">Ayarlar</h2>
                 </div>
             </div>
 

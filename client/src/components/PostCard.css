@@ -1,43 +1,47 @@
 /* Google Fonts loaded via index.html preload — no @import needed */
 
-/* Post Card - Discord Clone Layout */
+/* Post Card - Clean Solid Surface (No Glassmorphism Fog) */
 .post-card.twitter-layout {
     display: grid;
     grid-template-columns: 52px 1fr;
     gap: 0;
     padding: 16px 20px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: #0e1015;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 12px;
-    margin: 12px 0;
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    margin: 10px 0;
+    border: 1px solid var(--border-subtle);
+    box-shadow: none;
     position: relative;
     cursor: default;
-    /* Fix: use only cheap GPU-composited properties in transition.
-       'transition: all' was animating backdrop-filter on hover which
-       causes expensive GPU repaint/composite and freezes the UI. */
-    transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-    /* Force card to its own GPU layer so hover effects don't trigger
-       repaint of surrounding content (background animation, etc.) */
+    transition: background 0.2s ease, border-color 0.2s ease;
     transform: translateZ(0);
-    will-change: background, border-color, box-shadow;
+    will-change: background, border-color;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    /* Contain paint to this card's bounds */
     contain: layout style;
+}
+
+[data-theme='light'] .post-card.twitter-layout {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Guaranteed Visible Separator */
 .post-separator {
-    display: none; /* Hide separators since they are now separate glass cards */
+    display: none;
 }
 
 .post-card.twitter-layout:hover {
-    background: var(--glass-bg-hover);
-    border-color: var(--glass-border-hover);
-    box-shadow: var(--glass-shadow-hover);
+    background: #13151b;
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
+}
+
+[data-theme='light'] .post-card.twitter-layout:hover {
+    background: #f9fafb;
+    border-color: rgba(0, 0, 0, 0.14);
 }
 
 /* Optimistic UI Styles */

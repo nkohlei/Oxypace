@@ -38,19 +38,24 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--glass-border);
+    background: #0e1015;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
     margin: 12px 0 0 0 !important;
-    box-shadow: var(--glass-shadow);
+    box-shadow: none;
     flex-shrink: 0;
     z-index: 1000 !important;
     position: relative;
     width: fit-content;
-    min-width: 200px; /* Sensible minimum width */
-    order: -2; /* Header goes to the absolute top */
+    min-width: 200px;
+    order: -2;
+}
+
+[data-theme='light'] .channel-top-bar {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 .channel-title-wrapper {
@@ -211,7 +216,7 @@
 /* Message Input Area */
 .channel-input-area {
     padding: 0;
-    margin: 12px 0 4px 0; /* Margin adjusted */
+    margin: 12px 0 12px 0;
     width: 100%;
     background: transparent;
     border: none;
@@ -264,28 +269,39 @@
 }
 
 .message-input-wrapper {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    box-shadow: var(--glass-shadow);
-    transform: translateZ(0); /* Force hardware acceleration to fix Chromium blur edge flashing */
-    will-change: transform;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    overflow: hidden; /* Strictly prevent blur bleeding outside border-radius */
+    background: #141518;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: 9999px;
+    box-shadow: none;
+    overflow: hidden;
     display: flex;
     align-items: center;
     padding: 0 16px;
-    height: 48px; /* Compact height */
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    height: 48px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme='light'] .message-input-wrapper {
+    background: #f3f4f6;
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 .message-input-wrapper:focus-within {
-    background: var(--glass-bg-hover);
-    border-color: var(--glass-border-hover);
-    box-shadow: var(--glass-shadow-hover);
+    background: #1a1b1e;
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: none;
+}
+
+[data-theme='light'] .message-input-wrapper:focus-within {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.portal-feed-container .post-card.twitter-layout:first-child,
+.discord-feed .post-card.twitter-layout:first-child {
+    margin-top: 0 !important;
 }
 
 /* Plus Menu Popover */
@@ -1055,7 +1071,7 @@
         display: none !important;
     }
 
-    /* Standardized thin-box feed mode on mobile with smooth high-FPS enter */
+    /* Standardized solid feed card on mobile (matches Inbox & Portal menu palette) */
     .mobile-feed-active .discord-main-content {
         width: calc(100% - 12px) !important;
         max-width: calc(100% - 12px) !important;
@@ -1063,14 +1079,21 @@
         height: calc(100% - 12px) !important;
         border-radius: 14px !important;
         border: 1px solid var(--border-subtle) !important;
-        background: var(--glass-bg) !important;
-        box-shadow: var(--glass-shadow) !important;
+        background: #08080a !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
         overflow: hidden !important;
         display: flex !important;
         flex-direction: column !important;
         flex: 1 !important;
         animation: portalFeedEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
         will-change: transform, opacity;
+    }
+
+    [data-theme='light'] .mobile-feed-active .discord-main-content {
+        background: #ffffff !important;
+        border-color: rgba(0, 0, 0, 0.08) !important;
     }
 
     html.has-3button-nav .mobile-feed-active .discord-main-content:not(.voice-channel-active) {
@@ -1158,20 +1181,22 @@
         transform: scale(0.9);
     }
 
-    /* Mobile slim side margins: brings header, compose bar and posts closer to outer frame without touching */
+    /* Edge-to-edge header matching Mesajlar, equalized compose bar spacing */
     .channel-messages-area {
-        padding: 0 6px !important;
+        padding: 0 !important;
     }
 
     .channel-top-bar {
-        height: 52px;
-        padding: 0 14px;
-        gap: 10px;
-        height: 50px;
+        height: 52px !important;
+        padding: 0 14px !important;
+        gap: 10px !important;
         width: 100% !important;
         min-width: 100% !important;
         margin: 0 !important;
-        border-radius: 14px 14px 0 0 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: 0 !important;
         border: none !important;
         border-bottom: 1px solid var(--border-subtle) !important;
         box-shadow: none !important;
@@ -1179,20 +1204,20 @@
     }
 
     .discord-feed {
-        padding: 6px 0 16px 0 !important;
+        padding: 0 10px 16px 10px !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
 
     .portal-feed-container {
-        padding: 6px 0 16px 0 !important;
+        padding: 0 0 16px 0 !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
 
     .channel-input-area {
-        padding: 0 !important;
-        margin: 6px 0 !important;
+        padding: 0 10px !important;
+        margin: 10px 0 !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
@@ -1210,6 +1235,10 @@
         box-sizing: border-box !important;
     }
 
+    .portal-feed-container .post-card.twitter-layout:first-child {
+        margin-top: 0 !important;
+    }
+
     .channel-input {
         font-size: 14px;
     }
@@ -1217,33 +1246,34 @@
 
 @media (max-width: 480px) {
     .channel-messages-area {
-        padding: 0 5px !important;
+        padding: 0 !important;
     }
 
     .channel-top-bar {
         height: 52px !important;
         padding: 0 14px !important;
         gap: 10px !important;
+        background: transparent !important;
         width: 100% !important;
         margin: 0 !important;
         box-sizing: border-box !important;
     }
 
     .discord-feed {
-        padding: 4px 0 12px 0 !important;
+        padding: 0 10px 12px 10px !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
 
     .portal-feed-container {
-        padding: 4px 0 12px 0 !important;
+        padding: 0 0 12px 0 !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
 
     .channel-input-area {
-        padding: 0 !important;
-        margin: 6px 0 !important;
+        padding: 0 10px !important;
+        margin: 10px 0 !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
