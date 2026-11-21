@@ -38,7 +38,29 @@
 .title-with-back {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+}
+
+@media (max-width: 768px) {
+    .feedback-main-wrapper {
+        padding: 0 14px 80px;
+    }
+
+    .feedback-header-section {
+        margin: 0 -14px 16px -14px;
+        height: 52px;
+        padding: 0 14px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--border-subtle);
+        box-sizing: border-box;
+    }
+
+    .feedback-header-section .gradient-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1;
+    }
 }
 
 .minimal-back-btn {

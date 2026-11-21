@@ -503,11 +503,12 @@
 /* Input Area */
 /* --- Modern Message Input Area (Portal Style) --- */
 .message-form {
-    padding: 8px 20px 12px 20px;
+    padding: 10px 14px 14px 14px;
     background-color: transparent;
     z-index: 20;
     border-top: none;
     width: 100%;
+    box-sizing: border-box;
 }
 
 /* Minimal Media Preview Above Input Box */
@@ -955,17 +956,22 @@
         display: flex !important;
     }
 
-    .back-btn {
-        margin-right: 6px;
-        min-width: 38px;
-        min-height: 38px;
-    }
-
     .inbox-header,
     .chat-header {
         height: 52px;
         padding: 0 14px;
+        gap: 10px;
         border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .chat-header .back-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+        padding: 4px;
+        margin: 0;
+        border-radius: 50%;
     }
 
     .inbox-header .title-with-back {
@@ -985,13 +991,15 @@
         width: 32px;
         height: 32px;
         padding: 4px;
+        margin: 0;
     }
 
-    /* Input area safe bottom padding */
+    /* Input area equal left, right, and bottom spacing */
     .message-form {
-        padding: 8px 12px calc(8px + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+        padding: 8px 12px calc(12px + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px))) 12px;
         background: transparent;
         border-top: none !important;
+        box-sizing: border-box;
     }
 
     /* 3-Button Navigation Adaptations (Only active on devices with 3-button navigation bars) */

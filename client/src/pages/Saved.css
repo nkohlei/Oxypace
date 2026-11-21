@@ -87,6 +87,21 @@
     }
 
     .saved-header {
-        padding: 14px 16px;
+        height: 52px;
+        padding: 0 14px;
+        gap: 10px;
+        box-sizing: border-box;
+    }
+
+    .saved-back-btn {
+        width: 32px;
+        height: 32px;
+        padding: 4px;
+    }
+
+    .saved-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1;
     }
 }

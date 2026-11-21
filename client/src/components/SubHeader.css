@@ -131,20 +131,60 @@
 }
 
 @media (max-width: 768px) {
+    .sub-header:not(.frosted),
+    .sub-header.frosted:has(.sub-header-container) {
+        height: 52px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--border-subtle);
+        box-sizing: border-box;
+    }
+
+    .sub-header-container {
+        width: 100%;
+        padding: 0;
+        gap: 10px;
+    }
+
+    .sub-header-left {
+        gap: 10px;
+    }
+
+    .sub-header-back-circle,
+    .sub-header.frosted .sub-header-back-circle {
+        width: 32px;
+        height: 32px;
+        padding: 4px;
+    }
+
+    .sub-header-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
     .mobile-back-btn-inline {
         display: flex;
+        width: 32px;
+        height: 32px;
+        padding: 4px;
     }
-    
+
+    .title-with-back {
+        gap: 10px;
+    }
+
     .desktop-only {
         display: none !important;
     }
-    
+
     /* Ensure existing titles are visible on mobile if we want the back button next to them */
     .inbox-header h1.desktop-only,
     .notifications-header h1.desktop-only,
     .channel-header h2.desktop-only {
         display: block !important;
-        font-size: 1.5rem !important;
+        font-size: 1.25rem !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
         margin: 0 !important;
     }
 }

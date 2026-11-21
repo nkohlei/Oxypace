@@ -489,7 +489,22 @@
     }
     
     .notifications-header {
-        margin-bottom: 14px;
+        height: 52px !important;
+        padding: 0 14px !important;
+        margin: -14px -12px 12px -12px !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        box-sizing: border-box !important;
+    }
+
+    .notifications-header .title-with-back {
+        gap: 10px;
+    }
+
+    .notifications-header .back-btn-minimalist {
+        width: 32px;
+        height: 32px;
+        padding: 4px;
+        margin: 0;
     }
 
     .title-with-back h1,
@@ -497,6 +512,8 @@
     .notifications-title,
     .notifications-header .gradient-title {
         font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1;
     }
 
     .notifications-header-actions {
