@@ -153,6 +153,11 @@ const portalSchema = new mongoose.Schema(
                     minlength: 1,
                     maxlength: 100,
                 },
+                description: {
+                    type: String,
+                    default: '',
+                    maxlength: 200,
+                },
                 type: {
                     type: String,
                     enum: ['text', 'voice', 'conference', 'image'],
@@ -168,6 +173,10 @@ const portalSchema = new mongoose.Schema(
                     default: 25,
                 },
                 isPrivate: {
+                    type: Boolean,
+                    default: false,
+                },
+                isReadOnly: {
                     type: Boolean,
                     default: false,
                 },

@@ -1246,7 +1246,7 @@ router.put('/:id/channels/reorder', protect, mongoIdValidation('id'), async (req
 // @access  Private (Owner/Admin)
 router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoIdValidation('channelId'), async (req, res) => {
     try {
-        const { name, isPrivate, type } = req.body;
+        const { name, isPrivate, type, description, isReadOnly, maxParticipants, roomMode } = req.body;
         const portal = await Portal.findById(req.params.id);
         if (!portal) {
             return res.status(404).json({ message: 'Portal not found' });
@@ -1293,13 +1293,28 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
             }
         }
         if (isPrivate !== undefined) {
-            channel.isPrivate = isPrivate;
+            channel.isPrivate = Boolean(isPrivate);
+        }
+        if (isReadOnly !== undefined) {
+            channel.isReadOnly = Boolean(isReadOnly);
+        }
+        if (description !== undefined && typeof description === 'string') {
+            channel.description = description.trim().slice(0, 200);
+        }
+        if (maxParticipants !== undefined) {
+            const parsedMax = parseInt(maxParticipants, 10);
+            if (!Number.isNaN(parsedMax)) {
+                channel.maxParticipants = Math.max(2, Math.min(100, parsedMax));
+            }
         }
         if (type && ['text', 'voice', 'conference', 'image'].includes(type)) {
             channel.type = type;
             // Defaults for specific types
-            if (type === 'conference') channel.roomMode = 'stage';
-            if (type === 'voice') channel.roomMode = 'free';
+            if (type === 'conference' && !roomMode) channel.roomMode = 'stage';
+            if (type === 'voice' && !roomMode) channel.roomMode = 'free';
+        }
+        if (roomMode && ['free', 'stage'].includes(roomMode)) {
+            channel.roomMode = roomMode;
         }
 
         await portal.save();

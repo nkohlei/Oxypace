@@ -6,7 +6,7 @@ import ImageCropper from './ImageCropper';
 import PortalBadges from './PortalBadges';
 import LocationMapPicker from './LocationMapPicker';
 
-import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio, Bot, Play, Pause, RefreshCw, Plus, Zap, AlertCircle, ExternalLink, Power, Clock, CheckCircle, FileText, Copy, Link2, ShieldAlert, EyeOff } from 'lucide-react';
+import { Settings, Lock, List, Users, Ban, MapPin, AlertTriangle, X, Globe, Search, Check, Pencil, Trash2, ArrowUp, ArrowDown, UserMinus, ChevronRight, Radio, Bot, Play, Pause, RefreshCw, Plus, Zap, AlertCircle, ExternalLink, Power, Clock, CheckCircle, FileText, Copy, Link2, ShieldAlert, EyeOff, Hash, Volume2, Video, Image as ImageIcon, GripVertical } from 'lucide-react';
 import './PortalSettingsModal.css';
 
 const PortalSettingsModal = ({
@@ -55,8 +55,11 @@ const PortalSettingsModal = ({
     // Blocked Users State
     const [blockedUsers, setBlockedUsers] = useState([]);
 
-    // Channel Editing State
-    const [editingChannel, setEditingChannel] = useState(null); // { id, name, isPrivate, type }
+    // Channel Editing & Drag Reorder State
+    const [editingChannel, setEditingChannel] = useState(null);
+    const [draggedChannelIdx, setDraggedChannelIdx] = useState(null);
+    const [dragOverChannelIdx, setDragOverChannelIdx] = useState(null);
+    const touchDragIdxRef = useRef(null);
 
     // --- Location State ---
     const [locationData, setLocationData] = useState({
@@ -748,18 +751,50 @@ const PortalSettingsModal = ({
         }
     };
 
-    const moveChannel = (index, direction) => {
-        const sortedChannels = [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0));
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-        if (targetIndex < 0 || targetIndex >= sortedChannels.length) return;
-
-        // Swap
-        const temp = sortedChannels[index];
-        sortedChannels[index] = sortedChannels[targetIndex];
-        sortedChannels[targetIndex] = temp;
-
+    const reorderChannelsByIndex = (fromIndex, toIndex) => {
+        if (fromIndex === null || toIndex === null || fromIndex === toIndex) return;
+        const sortedChannels = [...(portal.channels || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+        if (fromIndex < 0 || fromIndex >= sortedChannels.length || toIndex < 0 || toIndex >= sortedChannels.length) return;
+        const [moved] = sortedChannels.splice(fromIndex, 1);
+        sortedChannels.splice(toIndex, 0, moved);
         handleReorderChannels(sortedChannels);
+    };
+
+    const handleChannelTouchStart = (index) => {
+        if (!isAdmin || editingChannel) return;
+        touchDragIdxRef.current = index;
+        setDraggedChannelIdx(index);
+        setDragOverChannelIdx(index);
+    };
+
+    const handleChannelTouchMove = (e) => {
+        if (touchDragIdxRef.current === null) return;
+        const touch = e.touches?.[0];
+        if (!touch) return;
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const row = el?.closest?.('[data-channel-index]');
+        if (row) {
+            const overIdx = Number(row.getAttribute('data-channel-index'));
+            if (!Number.isNaN(overIdx)) {
+                setDragOverChannelIdx(overIdx);
+            }
+        }
+    };
+
+    const handleChannelTouchEnd = () => {
+        if (touchDragIdxRef.current !== null && dragOverChannelIdx !== null) {
+            reorderChannelsByIndex(touchDragIdxRef.current, dragOverChannelIdx);
+        }
+        touchDragIdxRef.current = null;
+        setDraggedChannelIdx(null);
+        setDragOverChannelIdx(null);
+    };
+
+    const renderChannelTypeIcon = (type) => {
+        if (type === 'voice') return <Volume2 size={15} strokeWidth={2} />;
+        if (type === 'conference') return <Video size={15} strokeWidth={2} />;
+        if (type === 'image') return <ImageIcon size={15} strokeWidth={2} />;
+        return <Hash size={15} strokeWidth={2} />;
     };
 
     const handleUpdateChannel = async () => {
@@ -769,11 +804,18 @@ const PortalSettingsModal = ({
             return;
         }
         try {
-            const res = await axios.put(`/api/portals/${portal._id}/channels/${editingChannel.id}`, {
+            const payload = {
                 name: editingChannel.name.trim(),
-                isPrivate: editingChannel.isPrivate,
+                isPrivate: Boolean(editingChannel.isPrivate),
+                isReadOnly: Boolean(editingChannel.isReadOnly),
+                description: (editingChannel.description || '').trim(),
                 type: editingChannel.type,
-            });
+            };
+            if (editingChannel.type === 'voice' || editingChannel.type === 'conference') {
+                payload.maxParticipants = Number(editingChannel.maxParticipants) || 25;
+                payload.roomMode = editingChannel.roomMode || (editingChannel.type === 'conference' ? 'stage' : 'free');
+            }
+            const res = await axios.put(`/api/portals/${portal._id}/channels/${editingChannel.id}`, payload);
             onUpdate({ ...portal, channels: res.data });
             setEditingChannel(null);
         } catch (err) {
@@ -1350,43 +1392,9 @@ const PortalSettingsModal = ({
                             <h2 className="settings-title">Kanallar</h2>
 
                             {isAdmin && (
-                                <div className="add-channel-bar" style={{ flexDirection: 'column', gap: '10px' }}>
-                                    {/* Channel Type Selector */}
-                                    <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
-                                        {[
-                                            { value: 'text', label: '# Metin', icon: '#' },
-                                            { value: 'voice', label: ' Ses', icon: '' },
-                                            { value: 'conference', label: ' Seminer', icon: '' },
-                                            { value: 'image', label: ' Görsel', icon: '' },
-                                        ].map((t) => (
-                                            <button
-                                                key={t.value}
-                                                onClick={() => setNewChannelType(t.value)}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '8px 12px',
-                                                    background: newChannelType === t.value
-                                                        ? (t.value === 'text' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'voice' ? 'rgba(255, 255, 255, 0.2)' : t.value === 'conference' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.2)')
-                                                        : 'rgba(255,255,255,0.04)',
-                                                    border: newChannelType === t.value
-                                                        ? `1px solid ${t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#e5e5e5' : '#e5e5e5'}`
-                                                        : '1px solid rgba(255,255,255,0.08)',
-                                                    borderRadius: '8px',
-                                                    color: newChannelType === t.value
-                                                        ? (t.value === 'text' ? '#e5e5e5' : t.value === 'voice' ? '#e5e5e5' : t.value === 'conference' ? '#e5e5e5' : '#e5e5e5')
-                                                        : '#a3a3a3',
-                                                    cursor: 'pointer',
-                                                    fontSize: '13px',
-                                                    fontWeight: newChannelType === t.value ? '600' : '400',
-                                                    transition: 'all 0.2s',
-                                                }}
-                                            >
-                                                {t.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {/* Channel Name Input + Create Button */}
-                                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                <div className="psm-new-channel-card">
+                                    <label className="form-label" style={{ marginBottom: '8px' }}>Yeni Kanal Oluştur</label>
+                                    <div className="psm-new-channel-row">
                                         <input
                                             className="form-input"
                                             maxLength={20}
@@ -1394,246 +1402,312 @@ const PortalSettingsModal = ({
                                                 newChannelType === 'text'
                                                     ? 'Kanal adı (örn: oyun, müzik)'
                                                     : newChannelType === 'voice'
-                                                        ? 'Ses kanalı adı (örn: genel-ses)'
+                                                        ? 'Ses kanalı adı (örn: sohbet)'
                                                         : newChannelType === 'conference'
-                                                            ? 'Seminer adı (örn: egitim)'
-                                                            : 'Görsel kanalı adı (örn: wallpaper)'
+                                                            ? 'Seminer adı (örn: etkinlik)'
+                                                            : 'Görsel kanalı adı (örn: galeri)'
                                             }
                                             value={newChannelName}
                                             onChange={(e) => setNewChannelName(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
-                                            style={{ flex: 1 }}
+                                            style={{ flex: 1, minWidth: 0 }}
                                         />
+                                        <select
+                                            className="form-input psm-channel-type-select"
+                                            value={newChannelType}
+                                            onChange={(e) => setNewChannelType(e.target.value)}
+                                            aria-label="Kanal Türü"
+                                        >
+                                            <option value="text">Metin</option>
+                                            <option value="voice">Ses</option>
+                                            <option value="conference">Seminer</option>
+                                            <option value="image">Görsel</option>
+                                        </select>
                                         <button
+                                            type="button"
                                             className="btn-save"
-                                            style={{
-                                                background: newChannelType === 'text' ? '#e5e5e5' : newChannelType === 'voice' ? '#e5e5e5' : newChannelType === 'conference' ? '#e5e5e5' : '#e5e5e5',
-                                                whiteSpace: 'nowrap',
-                                            }}
+                                            style={{ float: 'none', whiteSpace: 'nowrap' }}
                                             onClick={handleAddChannel}
                                         >
                                             Oluştur
                                         </button>
                                     </div>
-                                    {newChannelType !== 'text' && (
-                                        <div style={{ fontSize: '12px', color: '#8a8a8a', lineHeight: '1.4' }}>
-                                            {newChannelType === 'voice'
-                                                ? ' Ses kanallarında tüm katılımcılar serbestçe konuşabilir (N-to-N).'
-                                                : newChannelType === 'conference'
-                                                    ? ' Seminer kanallarında yalnızca yöneticiler yayın yapabilir, diğer üyeler dinleyicidir.'
-                                                    : ' Görsel kanallarda her gönderide en az bir görsel bulunması zorunludur.'}
-                                        </div>
-                                    )}
+                                    <div className="form-hint" style={{ marginTop: '6px' }}>
+                                        {newChannelType === 'voice'
+                                            ? 'Ses kanallarında tüm katılımcılar serbestçe konuşabilir.'
+                                            : newChannelType === 'conference'
+                                                ? 'Seminer kanallarında yöneticiler konuşur, diğer üyeler dinleyicidir.'
+                                                : newChannelType === 'image'
+                                                    ? 'Görsel kanallarda her gönderide en az bir görsel zorunludur.'
+                                                    : 'Sıralamayı değiştirmek için kanalları tutup sürükleyin.'}
+                                    </div>
                                 </div>
                             )}
 
                             <div className="channel-list">
                                 {portal.channels &&
-                                    [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0)).map((ch, index, allChannels) => (
-                                        <div key={ch._id} className="channel-row">
-                                            {editingChannel && editingChannel.id === ch._id ? (
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: '12px',
-                                                        flex: 1,
-                                                        padding: '10px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        borderRadius: '12px',
-                                                        border: '1px solid rgba(255,255,255,0.06)'
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                        <input
-                                                            className="form-input"
-                                                            maxLength={20}
-                                                            value={editingChannel.name}
-                                                            onChange={(e) =>
-                                                                setEditingChannel({
-                                                                    ...editingChannel,
-                                                                    name: e.target.value,
-                                                                })
-                                                            }
-                                                            style={{ flex: 1 }}
-                                                        />
-                                                        <select
-                                                            className="form-input"
-                                                            value={editingChannel.type}
-                                                            onChange={(e) => setEditingChannel({ ...editingChannel, type: e.target.value })}
-                                                            style={{
-                                                                width: '120px',
-                                                                padding: '8px',
-                                                                background: 'rgba(255,255,255,0.05)',
-                                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                                color: 'white',
-                                                                borderRadius: '8px'
-                                                            }}
-                                                        >
-                                                            <option value="text" style={{ background: '#2c2e33' }}># Metin</option>
-                                                            <option value="voice" style={{ background: '#2c2e33' }}> Ses</option>
-                                                            <option value="conference" style={{ background: '#2c2e33' }}> Seminer</option>
-                                                            <option value="image" style={{ background: '#2c2e33' }}> Görsel</option>
-                                                        </select>
-                                                    </div>
-                                                    
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <label
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '8px',
-                                                                fontSize: '13px',
-                                                                color: '#a3a3a3',
-                                                                cursor: 'pointer',
-                                                            }}
-                                                        >
+                                    [...portal.channels].sort((a, b) => (a.order || 0) - (b.order || 0)).map((ch, index) => {
+                                        const isEditing = editingChannel && editingChannel.id === ch._id;
+                                        const isVoiceOrConf = editingChannel?.type === 'voice' || editingChannel?.type === 'conference';
+                                        return (
+                                            <div
+                                                key={ch._id}
+                                                data-channel-index={index}
+                                                draggable={isAdmin && !editingChannel}
+                                                onDragStart={() => {
+                                                    if (!isAdmin || editingChannel) return;
+                                                    setDraggedChannelIdx(index);
+                                                }}
+                                                onDragOver={(e) => {
+                                                    if (!isAdmin || editingChannel) return;
+                                                    e.preventDefault();
+                                                    if (dragOverChannelIdx !== index) {
+                                                        setDragOverChannelIdx(index);
+                                                    }
+                                                }}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    if (draggedChannelIdx !== null && draggedChannelIdx !== index) {
+                                                        reorderChannelsByIndex(draggedChannelIdx, index);
+                                                    }
+                                                    setDraggedChannelIdx(null);
+                                                    setDragOverChannelIdx(null);
+                                                }}
+                                                onDragEnd={() => {
+                                                    setDraggedChannelIdx(null);
+                                                    setDragOverChannelIdx(null);
+                                                }}
+                                                className={`channel-row ${isAdmin && !editingChannel ? 'is-draggable' : ''} ${draggedChannelIdx === index ? 'is-dragging' : ''} ${dragOverChannelIdx === index && draggedChannelIdx !== null && draggedChannelIdx !== index ? 'is-drag-over' : ''}`}
+                                            >
+                                                {isEditing ? (
+                                                    <div className="psm-channel-edit-panel">
+                                                        <div className="psm-channel-edit-grid">
+                                                            <div>
+                                                                <label className="form-label">Kanal Adı</label>
+                                                                <input
+                                                                    className="form-input"
+                                                                    maxLength={20}
+                                                                    value={editingChannel.name}
+                                                                    onChange={(e) =>
+                                                                        setEditingChannel({
+                                                                            ...editingChannel,
+                                                                            name: e.target.value,
+                                                                        })
+                                                                    }
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="form-label">Kanal Türü</label>
+                                                                <select
+                                                                    className="form-input"
+                                                                    value={editingChannel.type}
+                                                                    onChange={(e) =>
+                                                                        setEditingChannel({
+                                                                            ...editingChannel,
+                                                                            type: e.target.value,
+                                                                            roomMode: e.target.value === 'conference' ? 'stage' : 'free',
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    <option value="text">Metin</option>
+                                                                    <option value="voice">Ses</option>
+                                                                    <option value="conference">Seminer</option>
+                                                                    <option value="image">Görsel</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="form-label">Kanal Açıklaması (Opsiyonel)</label>
                                                             <input
-                                                                type="checkbox"
-                                                                checked={editingChannel.isPrivate}
+                                                                className="form-input"
+                                                                maxLength={200}
+                                                                placeholder="Bu kanalda neler paylaşılır?"
+                                                                value={editingChannel.description || ''}
                                                                 onChange={(e) =>
                                                                     setEditingChannel({
                                                                         ...editingChannel,
-                                                                        isPrivate: e.target.checked,
+                                                                        description: e.target.value,
                                                                     })
                                                                 }
-                                                                style={{ width: '16px', height: '16px' }}
                                                             />
-                                                            Gizli Kanal
-                                                        </label>
-                                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                                        </div>
+
+                                                        {isVoiceOrConf && (
+                                                            <div className="psm-channel-edit-grid">
+                                                                <div>
+                                                                    <label className="form-label">Maksimum Katılımcı (2-100)</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        min={2}
+                                                                        max={100}
+                                                                        className="form-input"
+                                                                        value={editingChannel.maxParticipants ?? 25}
+                                                                        onChange={(e) =>
+                                                                            setEditingChannel({
+                                                                                ...editingChannel,
+                                                                                maxParticipants: e.target.value,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="form-label">Oda Modu</label>
+                                                                    <select
+                                                                        className="form-input"
+                                                                        value={editingChannel.roomMode || 'free'}
+                                                                        onChange={(e) =>
+                                                                            setEditingChannel({
+                                                                                ...editingChannel,
+                                                                                roomMode: e.target.value,
+                                                                            })
+                                                                        }
+                                                                    >
+                                                                        <option value="free">Serbest Konuşma</option>
+                                                                        <option value="stage">Sahne (Yalnızca Yöneticiler)</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="psm-channel-toggles">
+                                                            <div
+                                                                className="psm-channel-toggle-row"
+                                                                onClick={() =>
+                                                                    setEditingChannel((prev) => ({
+                                                                        ...prev,
+                                                                        isPrivate: !prev.isPrivate,
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <div>
+                                                                    <div className="psm-channel-toggle-title">Gizli Kanal</div>
+                                                                    <div className="psm-channel-toggle-desc">Yalnızca yetkili üyeler görebilir.</div>
+                                                                </div>
+                                                                <span className={`psm-toggle-switch ${editingChannel.isPrivate ? 'on' : ''}`} />
+                                                            </div>
+
+                                                            {!isVoiceOrConf && (
+                                                                <div
+                                                                    className="psm-channel-toggle-row"
+                                                                    onClick={() =>
+                                                                        setEditingChannel((prev) => ({
+                                                                            ...prev,
+                                                                            isReadOnly: !prev.isReadOnly,
+                                                                        }))
+                                                                    }
+                                                                >
+                                                                    <div>
+                                                                        <div className="psm-channel-toggle-title">Salt Okunur (Duyuru)</div>
+                                                                        <div className="psm-channel-toggle-desc">Yalnızca yöneticiler gönderi paylaşabilir.</div>
+                                                                    </div>
+                                                                    <span className={`psm-toggle-switch ${editingChannel.isReadOnly ? 'on' : ''}`} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="psm-channel-edit-actions">
                                                             <button
+                                                                type="button"
+                                                                className="psm-btn-secondary"
                                                                 onClick={() => setEditingChannel(null)}
-                                                                style={{
-                                                                    padding: '6px 16px',
-                                                                    background: 'rgba(237,66,69,0.1)',
-                                                                    color: '#ed4245',
-                                                                    border: '1px solid rgba(237,66,69,0.3)',
-                                                                    borderRadius: '8px',
-                                                                    fontSize: '13px',
-                                                                    fontWeight: '600',
-                                                                    cursor: 'pointer'
-                                                                }}
                                                             >
                                                                 İptal
                                                             </button>
                                                             <button
+                                                                type="button"
+                                                                className="btn-save"
+                                                                style={{ float: 'none' }}
                                                                 onClick={handleUpdateChannel}
-                                                                style={{
-                                                                    padding: '6px 16px',
-                                                                    background: '#e5e5e5',
-                                                                    color: 'white',
-                                                                    border: 'none',
-                                                                    borderRadius: '8px',
-                                                                    fontSize: '13px',
-                                                                    fontWeight: '600',
-                                                                    cursor: 'pointer'
-                                                                }}
                                                             >
                                                                 Kaydet
                                                             </button>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div
-                                                        className="channel-name"
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '8px',
-                                                        }}
-                                                    >
-                                                        <span style={{ 
-                                                            fontSize: '18px',
-                                                            color: ch.type === 'voice' ? '#e5e5e5' : ch.type === 'conference' ? '#e5e5e5' : ch.type === 'image' ? '#e5e5e5' : '#a3a3a3' 
-                                                        }}>
-                                                            {ch.type === 'voice' ? '' : ch.type === 'conference' ? '' : ch.type === 'image' ? '' : '#'}
-                                                        </span>
-                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{ch.name}</span>
-                                                            <span style={{ fontSize: '11px', color: '#8a8a8a', textTransform: 'capitalize' }}>
-                                                                {ch.type === 'image' ? 'Görsel Kanal' : ch.type === 'voice' ? 'Ses Kanalı' : ch.type === 'conference' ? 'Seminer Kanalı' : 'Metin Kanalı'}
-                                                            </span>
-                                                        </div>
-                                                        {ch.isPrivate && (
-                                                            <Lock size={14} strokeWidth={2.5} style={{ color: '#faa61a', marginLeft: '4px' }} title="Gizli Kanal" />
-                                                        )}
-                                                    </div>
-                                                    {isAdmin && (
-                                                        <div className="channel-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                            {/* Reorder Buttons */}
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '8px' }}>
-                                                                <button
-                                                                    onClick={() => moveChannel(index, 'up')}
-                                                                    disabled={index === 0}
-                                                                    style={{ 
-                                                                        padding: '2px', 
-                                                                        opacity: index === 0 ? 0.3 : 1,
-                                                                        background: 'rgba(255,255,255,0.05)',
-                                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                                        borderRadius: '4px',
-                                                                        cursor: index === 0 ? 'default' : 'pointer',
-                                                                        color: 'var(--text-secondary)'
-                                                                    }}
+                                                ) : (
+                                                    <>
+                                                        <div className="channel-name" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                                                            {isAdmin && (
+                                                                <span
+                                                                    className="psm-channel-drag-handle"
+                                                                    title="Sıralamak için tutup sürükleyin"
+                                                                    onTouchStart={() => handleChannelTouchStart(index)}
+                                                                    onTouchMove={handleChannelTouchMove}
+                                                                    onTouchEnd={handleChannelTouchEnd}
                                                                 >
-                                                                    <ChevronRight size={14} style={{ transform: 'rotate(-90deg)' }} />
+                                                                    <GripVertical size={15} />
+                                                                </span>
+                                                            )}
+                                                            <span className="psm-channel-icon-badge" aria-hidden="true">
+                                                                {renderChannelTypeIcon(ch.type)}
+                                                            </span>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{ch.name}</span>
+                                                                    {ch.isPrivate && (
+                                                                        <span className="psm-channel-badge" title="Gizli Kanal">
+                                                                            <Lock size={11} strokeWidth={2.2} />
+                                                                            Gizli
+                                                                        </span>
+                                                                    )}
+                                                                    {ch.isReadOnly && (
+                                                                        <span className="psm-channel-badge" title="Salt Okunur">
+                                                                            Duyuru
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <span style={{ fontSize: '11px', color: '#8a8a8a' }}>
+                                                                    {ch.type === 'image'
+                                                                        ? 'Görsel Kanal'
+                                                                        : ch.type === 'voice'
+                                                                            ? `Ses Kanalı · Maks ${ch.maxParticipants || 25} kişi`
+                                                                            : ch.type === 'conference'
+                                                                                ? `Seminer Kanalı · Maks ${ch.maxParticipants || 25} kişi`
+                                                                                : 'Metin Kanalı'}
+                                                                    {ch.description ? ` · ${ch.description}` : ''}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {isAdmin && (
+                                                            <div className="channel-actions" style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="portal-action-btn-circle"
+                                                                    style={{ width: '32px', height: '32px' }}
+                                                                    onClick={() =>
+                                                                        setEditingChannel({
+                                                                            id: ch._id,
+                                                                            name: ch.name,
+                                                                            description: ch.description || '',
+                                                                            isPrivate: Boolean(ch.isPrivate),
+                                                                            isReadOnly: Boolean(ch.isReadOnly),
+                                                                            type: ch.type || 'text',
+                                                                            maxParticipants: ch.maxParticipants || 25,
+                                                                            roomMode: ch.roomMode || (ch.type === 'conference' ? 'stage' : 'free'),
+                                                                        })
+                                                                    }
+                                                                    title="Kanal Ayarları"
+                                                                >
+                                                                    <Pencil size={15} strokeWidth={2} />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => moveChannel(index, 'down')}
-                                                                    disabled={index === allChannels.length - 1}
-                                                                    style={{ 
-                                                                        padding: '2px', 
-                                                                        opacity: index === allChannels.length - 1 ? 0.3 : 1,
-                                                                        background: 'rgba(255,255,255,0.05)',
-                                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                                        borderRadius: '4px',
-                                                                        cursor: index === allChannels.length - 1 ? 'default' : 'pointer',
-                                                                        color: 'var(--text-secondary)'
-                                                                    }}
+                                                                    type="button"
+                                                                    className="portal-action-btn-circle"
+                                                                    style={{ width: '32px', height: '32px' }}
+                                                                    onClick={() => handleDeleteChannel(ch._id)}
+                                                                    title="Kanalı Sil"
                                                                 >
-                                                                    <ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                                                    <Trash2 size={15} strokeWidth={2} color="#ef4444" />
                                                                 </button>
                                                             </div>
-
-                                                            <button
-                                                                className="portal-action-btn-circle"
-                                                                style={{ width: '32px', height: '32px' }}
-                                                                onClick={() =>
-                                                                    setEditingChannel({
-                                                                        id: ch._id,
-                                                                        name: ch.name,
-                                                                        isPrivate: ch.isPrivate || false,
-                                                                        type: ch.type || 'text'
-                                                                    })
-                                                                }
-                                                                title="Düzenle"
-                                                            >
-                                                                <Pencil size={16} strokeWidth={2} />
-                                                            </button>
-                                                            <button
-                                                                className="portal-action-btn-circle"
-                                                                style={{ width: '32px', height: '32px', borderColor: 'rgba(237,66,69,0.2)' }}
-                                                                onClick={() => handleDeleteChannel(ch._id)}
-                                                                title="Kanalı Sil"
-                                                            >
-                                                                <Trash2 size={16} strokeWidth={2} color="#ed4245" />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    ))}
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 {(!portal.channels || portal.channels.length === 0) && (
-                                    <div
-                                        style={{
-                                            padding: '20px',
-                                            textAlign: 'center',
-                                            color: '#72767d',
-                                        }}
-                                    >
+                                    <div style={{ padding: '20px', textAlign: 'center', color: '#8a8a8a' }}>
                                         Hiç kanal yok.
                                     </div>
                                 )}
@@ -1920,11 +1994,10 @@ const PortalSettingsModal = ({
                             {isOwner && (
                                 <div className="form-group">
                                     <label className="form-label">Konum Ara</label>
-                                    <div className="search-container" style={{ position: 'relative' }}>
-                                        <Search size={16} strokeWidth={2} className="search-icon" />
+                                    <div className="search-container">
+                                        <Search size={15} strokeWidth={2} className="search-icon" />
                                         <input
                                             className="search-input-modern form-input"
-                                            style={{ paddingLeft: '36px' }}
                                             placeholder="Şehir, ülke veya adres ara..."
                                             value={locationSearch}
                                             onChange={(e) => handleLocationSearch(e.target.value)}

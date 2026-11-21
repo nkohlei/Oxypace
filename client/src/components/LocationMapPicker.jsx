@@ -1,44 +1,23 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Minus, Crosshair, MapPin } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
+import { Plus, Minus, Crosshair } from 'lucide-react';
 
-const TILE_SIZE = 256;
+const Globe = lazy(() => import('react-globe.gl'));
 
-function latLngToWorld(lat, lng, zoom) {
-    const scale = TILE_SIZE * Math.pow(2, zoom);
-    const x = ((lng + 180) / 360) * scale;
-    const sinLat = Math.sin((Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180);
-    const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
-    return { x, y };
-}
-
-function worldToLatLng(x, y, zoom) {
-    const scale = TILE_SIZE * Math.pow(2, zoom);
-    const lng = (x / scale) * 360 - 180;
-    const n = Math.PI - (2 * Math.PI * y) / scale;
-    const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-    return {
-        lat: Math.max(-85, Math.min(85, lat)),
-        lng: ((lng + 540) % 360) - 180,
-    };
-}
+const SATELLITE_TILE_URL = (x, y, z) =>
+    `https://mt1.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}&scale=2`;
 
 const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
-    const hasPin = typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng);
-    const [center, setCenter] = useState({
-        lat: hasPin ? lat : 39.0,
-        lng: hasPin ? lng : 35.0,
-    });
-    const [zoom, setZoom] = useState(hasPin ? 10 : 5);
-    const [size, setSize] = useState({ width: 520, height: 220 });
-    const containerRef = useRef(null);
-    const dragRef = useRef({ active: false, moved: false, startX: 0, startY: 0, startCenterWorld: null });
+    const hasPin =
+        typeof lat === 'number' &&
+        typeof lng === 'number' &&
+        !Number.isNaN(lat) &&
+        !Number.isNaN(lng);
 
-    useEffect(() => {
-        if (hasPin) {
-            setCenter({ lat, lng });
-            setZoom((z) => (z < 7 ? 10 : z));
-        }
-    }, [lat, lng, hasPin]);
+    const containerRef = useRef(null);
+    const globeRef = useRef(null);
+    const initializedRef = useRef(false);
+    const [size, setSize] = useState({ width: 520, height: 240 });
+    const [globeReady, setGlobeReady] = useState(false);
 
     useEffect(() => {
         const el = containerRef.current;
@@ -46,7 +25,10 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
         const updateSize = () => {
             const rect = el.getBoundingClientRect();
             if (rect.width > 0 && rect.height > 0) {
-                setSize({ width: rect.width, height: rect.height });
+                setSize({
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                });
             }
         };
         updateSize();
@@ -55,133 +37,132 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
         return () => ro.disconnect();
     }, []);
 
-    const centerWorld = latLngToWorld(center.lat, center.lng, zoom);
-    const topLeftX = centerWorld.x - size.width / 2;
-    const topLeftY = centerWorld.y - size.height / 2;
-
-    const maxTile = Math.pow(2, zoom);
-    const startTileX = Math.floor(topLeftX / TILE_SIZE);
-    const endTileX = Math.floor((topLeftX + size.width) / TILE_SIZE);
-    const startTileY = Math.max(0, Math.floor(topLeftY / TILE_SIZE));
-    const endTileY = Math.min(maxTile - 1, Math.floor((topLeftY + size.height) / TILE_SIZE));
-
-    const isLight =
-        typeof document !== 'undefined' &&
-        (document.documentElement.getAttribute('data-theme') === 'light' ||
-            document.body.classList.contains('light-mode'));
-    const tileStyle = isLight ? 'light_all' : 'dark_all';
-
-    const tiles = [];
-    for (let tx = startTileX; tx <= endTileX; tx++) {
-        const wrappedX = ((tx % maxTile) + maxTile) % maxTile;
-        for (let ty = startTileY; ty <= endTileY; ty++) {
-            const sub = ['a', 'b', 'c'][(wrappedX + ty) % 3];
-            tiles.push({
-                key: `${zoom}-${tx}-${ty}`,
-                url: `https://${sub}.basemaps.cartocdn.com/${tileStyle}/${zoom}/${wrappedX}/${ty}.png`,
-                left: tx * TILE_SIZE - topLeftX,
-                top: ty * TILE_SIZE - topLeftY,
-            });
-        }
-    }
-
-    let pinPos = null;
-    if (hasPin) {
-        const pw = latLngToWorld(lat, lng, zoom);
-        const px = pw.x - topLeftX;
-        const py = pw.y - topLeftY;
-        if (px >= -24 && px <= size.width + 24 && py >= -24 && py <= size.height + 24) {
-            pinPos = { x: px, y: py };
-        }
-    }
-
-    const handlePointerDown = (e) => {
-        if (e.target.closest('.psm-map-controls')) return;
-        e.currentTarget.setPointerCapture?.(e.pointerId);
-        dragRef.current = {
-            active: true,
-            moved: false,
-            startX: e.clientX,
-            startY: e.clientY,
-            startCenterWorld: centerWorld,
-        };
-    };
-
-    const handlePointerMove = (e) => {
-        if (!dragRef.current.active) return;
-        const dx = e.clientX - dragRef.current.startX;
-        const dy = e.clientY - dragRef.current.startY;
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-            dragRef.current.moved = true;
-        }
-        if (dragRef.current.moved && dragRef.current.startCenterWorld) {
-            const next = worldToLatLng(
-                dragRef.current.startCenterWorld.x - dx,
-                dragRef.current.startCenterWorld.y - dy,
-                zoom
+    // Fly to pin whenever lat/lng updates
+    useEffect(() => {
+        if (!globeReady || !globeRef.current) return;
+        if (hasPin) {
+            const currentPov = globeRef.current.pointOfView();
+            const targetAlt = initializedRef.current
+                ? Math.min(currentPov?.altitude || 1.2, 0.9)
+                : 1.1;
+            globeRef.current.pointOfView(
+                { lat, lng, altitude: targetAlt },
+                initializedRef.current ? 650 : 0
             );
-            setCenter(next);
+            initializedRef.current = true;
+        } else if (!initializedRef.current) {
+            globeRef.current.pointOfView({ lat: 39.0, lng: 35.0, altitude: 2.1 }, 0);
+            initializedRef.current = true;
         }
+    }, [lat, lng, hasPin, globeReady]);
+
+    // Dispose Three.js resources on unmount
+    useEffect(() => {
+        return () => {
+            if (globeRef.current) {
+                try {
+                    const scene = globeRef.current.scene();
+                    scene.traverse((obj) => {
+                        if (obj.geometry) obj.geometry.dispose();
+                        if (obj.material) {
+                            if (Array.isArray(obj.material)) {
+                                obj.material.forEach((m) => m.dispose());
+                            } else {
+                                obj.material.dispose();
+                            }
+                        }
+                    });
+                } catch (_) {}
+            }
+        };
+    }, []);
+
+    const pinData = useMemo(() => {
+        if (!hasPin) return [];
+        return [{ lat, lng }];
+    }, [hasPin, lat, lng]);
+
+    const handleZoom = (factor) => {
+        if (!globeRef.current) return;
+        const pov = globeRef.current.pointOfView();
+        const nextAlt = Math.max(0.03, Math.min(3.5, (pov.altitude || 1.5) * factor));
+        globeRef.current.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: nextAlt }, 300);
     };
 
-    const handlePointerUp = useCallback(
-        (e) => {
-            if (!dragRef.current.active) return;
-            const wasMoved = dragRef.current.moved;
-            dragRef.current.active = false;
-            if (!wasMoved && !disabled && containerRef.current && onPick) {
-                const rect = containerRef.current.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-                const picked = worldToLatLng(topLeftX + clickX, topLeftY + clickY, zoom);
-                onPick(Number(picked.lat.toFixed(5)), Number(picked.lng.toFixed(5)));
-            }
-        },
-        [disabled, onPick, topLeftX, topLeftY, zoom]
-    );
+    const handleFocusPin = () => {
+        if (!globeRef.current || !hasPin) return;
+        globeRef.current.pointOfView({ lat, lng, altitude: 0.45 }, 650);
+    };
 
     return (
         <div
             ref={containerRef}
-            className={`psm-map-picker ${disabled ? 'is-disabled' : ''}`}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={() => {
-                dragRef.current.active = false;
-            }}
+            className={`psm-map-picker psm-globe-picker ${disabled ? 'is-disabled' : ''}`}
         >
-            <div className="psm-map-tiles">
-                {tiles.map((t) => (
-                    <img
-                        key={t.key}
-                        src={t.url}
-                        alt=""
-                        draggable={false}
-                        className="psm-map-tile"
-                        style={{ left: `${t.left}px`, top: `${t.top}px` }}
-                    />
-                ))}
-            </div>
-
-            {pinPos && (
-                <div
-                    className="psm-map-pin"
-                    style={{ left: `${pinPos.x}px`, top: `${pinPos.y}px` }}
-                >
-                    <MapPin size={24} strokeWidth={2.2} />
-                </div>
-            )}
+            <Suspense
+                fallback={
+                    <div className="psm-globe-loading">
+                        3D Dünya Haritası yükleniyor...
+                    </div>
+                }
+            >
+                <Globe
+                    ref={globeRef}
+                    width={size.width}
+                    height={size.height}
+                    backgroundColor="#040508"
+                    globeImageUrl="//unpkg.com/three-globe@2.24.0/example/img/earth-blue-marble.jpg"
+                    bumpImageUrl="//unpkg.com/three-globe@2.24.0/example/img/earth-topology.png"
+                    backgroundImageUrl="//unpkg.com/three-globe@2.24.0/example/img/night-sky.png"
+                    globeTileEngineUrl={SATELLITE_TILE_URL}
+                    showAtmosphere={true}
+                    atmosphereColor="#b8d4ff"
+                    atmosphereAltitude={0.14}
+                    onGlobeReady={() => {
+                        if (globeRef.current) {
+                            const controls = globeRef.current.controls();
+                            controls.autoRotate = false;
+                            controls.rotateSpeed = 0.55;
+                            controls.zoomSpeed = 0.8;
+                            controls.minDistance = 102;
+                        }
+                        setGlobeReady(true);
+                    }}
+                    onGlobeClick={({ lat: pickedLat, lng: pickedLng }) => {
+                        if (disabled || !onPick) return;
+                        onPick(Number(pickedLat.toFixed(5)), Number(pickedLng.toFixed(5)));
+                    }}
+                    ringsData={pinData}
+                    ringLat={(d) => d.lat}
+                    ringLng={(d) => d.lng}
+                    ringColor={() => (t) => `rgba(255, 255, 255, ${1 - t})`}
+                    ringMaxRadius={3.2}
+                    ringPropagationSpeed={2.2}
+                    ringRepeatPeriod={1200}
+                    htmlElementsData={pinData}
+                    htmlLat={(d) => d.lat}
+                    htmlLng={(d) => d.lng}
+                    htmlAltitude={0.01}
+                    htmlElement={() => {
+                        const el = document.createElement('div');
+                        el.className = 'psm-globe-pin';
+                        el.innerHTML = `<span class="psm-globe-pin-dot"></span>`;
+                        return el;
+                    }}
+                />
+            </Suspense>
 
             <div className="psm-map-hint">
-                {disabled ? 'Konum önizlemesi' : 'Konum seçmek için haritaya dokunun veya sürükleyin'}
+                {disabled
+                    ? '3D Dünya Haritası önizlemesi'
+                    : 'Konum seçmek için 3D dünyaya tıklayın · Döndürmek için sürükleyin'}
             </div>
 
             <div className="psm-map-controls">
                 <button
                     type="button"
                     className="psm-map-ctrl-btn"
-                    onClick={() => setZoom((z) => Math.min(16, z + 1))}
+                    onClick={() => handleZoom(0.6)}
                     title="Yakınlaştır"
                     aria-label="Yakınlaştır"
                 >
@@ -190,7 +171,7 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
                 <button
                     type="button"
                     className="psm-map-ctrl-btn"
-                    onClick={() => setZoom((z) => Math.max(2, z - 1))}
+                    onClick={() => handleZoom(1.6)}
                     title="Uzaklaştır"
                     aria-label="Uzaklaştır"
                 >
@@ -200,10 +181,7 @@ const LocationMapPicker = ({ lat, lng, disabled = false, onPick }) => {
                     <button
                         type="button"
                         className="psm-map-ctrl-btn"
-                        onClick={() => {
-                            setCenter({ lat, lng });
-                            setZoom(11);
-                        }}
+                        onClick={handleFocusPin}
                         title="Seçili Konuma Odaklan"
                         aria-label="Seçili Konuma Odaklan"
                     >
