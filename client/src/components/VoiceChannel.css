@@ -1705,24 +1705,33 @@ html.has-3button-nav .vc-controls {
     background: #0a0a0a !important;
 }
 
-/* Unified Theme-Matched Watch Party URL Popover */
+/* Unified Theme-Matched Watch Party URL Popover — centered in room, never overflows viewport */
 .vc-watch-popover {
     position: absolute;
-    bottom: calc(100% + 12px);
+    bottom: calc(78px + var(--safe-area-bottom, max(env(safe-area-inset-bottom, 0px), var(--system-nav-height, 0px))));
     left: 50%;
     transform: translateX(-50%);
-    width: min(328px, calc(100vw - 24px));
+    width: min(332px, calc(100% - 24px));
+    max-width: calc(100vw - 24px);
     padding: 12px;
     background: #111113;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 14px;
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.78);
-    z-index: 1500;
+    z-index: 1600;
     display: flex;
     flex-direction: column;
     gap: 10px;
     box-sizing: border-box;
     pointer-events: auto !important;
+}
+
+.vc-container.vc-has-watchparty .vc-watch-popover {
+    pointer-events: auto !important;
+}
+
+html.has-3button-nav .vc-watch-popover {
+    bottom: calc(82px + var(--safe-area-bottom, 48px));
 }
 
 [data-theme='light'] .vc-watch-popover {

@@ -810,96 +810,6 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 <button type="button" className={`vc-ctrl-btn ${watchParty?.url ? 'active' : ''}`} onClick={() => { setIsWatchInputOpen(!isWatchInputOpen); setIsVolumeOpen(false); }} title="Birlikte İzle (Video / Canlı Yayın)">
                                     <Link size={20} />
                                 </button>
-                                {isWatchInputOpen && (
-                                    <div className="vc-watch-popover">
-                                        <div className="vc-watch-popover-header">
-                                            <div className="vc-watch-popover-title">
-                                                <Link size={14} />
-                                                <span>Birlikte İzle</span>
-                                            </div>
-                                            <button type="button" className="vc-watch-close-btn" onClick={() => setIsWatchInputOpen(false)} title="Kapat" aria-label="Kapat">
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                        <div className="vc-watch-input-row">
-                                            <input
-                                                type="text"
-                                                className="vc-watch-url-input"
-                                                placeholder="Video veya canlı yayın URL..."
-                                                value={watchUrl}
-                                                onChange={(e) => setWatchUrl(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && watchUrl.trim()) {
-                                                        startWatchParty(watchUrl.trim());
-                                                        setIsWatchInputOpen(false);
-                                                    }
-                                                }}
-                                            />
-                                            {watchUrl && (
-                                                <button type="button" className="vc-watch-clear-btn" onClick={() => setWatchUrl('')} title="Temizle" aria-label="Temizle">
-                                                    <X size={13} />
-                                                </button>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className="vc-watch-paste-btn"
-                                                onClick={async () => {
-                                                    try {
-                                                        const text = await navigator.clipboard.readText();
-                                                        if (text) setWatchUrl(text.trim());
-                                                    } catch (_) {}
-                                                }}
-                                                title="Panodan Yapıştır"
-                                            >
-                                                <Clipboard size={12} />
-                                                <span>Yapıştır</span>
-                                            </button>
-                                        </div>
-                                        <div className="vc-watch-actions">
-                                            <button
-                                                type="button"
-                                                className="vc-watch-start-btn"
-                                                disabled={!watchUrl.trim()}
-                                                onClick={() => {
-                                                    if (watchUrl.trim()) {
-                                                        startWatchParty(watchUrl.trim());
-                                                        setIsWatchInputOpen(false);
-                                                    }
-                                                }}
-                                            >
-                                                Başlat
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="vc-watch-film-btn"
-                                                onClick={() => {
-                                                    setIsHlsVol2ModalOpen(true);
-                                                    setIsWatchInputOpen(false);
-                                                }}
-                                                title="Film Oynatıcı"
-                                            >
-                                                <Film size={13} />
-                                                <span>Film</span>
-                                            </button>
-                                            {!!window.desktopAPI && (
-                                                <button
-                                                    type="button"
-                                                    className="vc-watch-film-btn"
-                                                    onClick={() => {
-                                                        const urlVal = watchUrl.trim();
-                                                        const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
-                                                        window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
-                                                        setIsWatchInputOpen(false);
-                                                    }}
-                                                    title="Tarayıcıda Aç"
-                                                >
-                                                    <Globe size={13} />
-                                                    <span>Aç</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <HlsTesterModal
@@ -930,6 +840,97 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         <button className={`vc-ctrl-btn ${handRaised ? 'active' : ''}`} onClick={handleRaiseHand} style={{ background: handRaised ? 'rgba(99, 102, 241, 0.5)' : undefined }}><Hand size={22} /></button>
                     )}
                     <button className="vc-ctrl-btn danger leave" onClick={handleLeave}><PhoneOff size={22} /></button>
+                </div>
+            )}
+
+            {isConnected && canSpeak && isWatchInputOpen && (
+                <div className="vc-watch-popover" onClick={(e) => e.stopPropagation()}>
+                    <div className="vc-watch-popover-header">
+                        <div className="vc-watch-popover-title">
+                            <Link size={14} />
+                            <span>Birlikte İzle</span>
+                        </div>
+                        <button type="button" className="vc-watch-close-btn" onClick={() => setIsWatchInputOpen(false)} title="Kapat" aria-label="Kapat">
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <div className="vc-watch-input-row">
+                        <input
+                            type="text"
+                            className="vc-watch-url-input"
+                            placeholder="Video veya canlı yayın URL..."
+                            value={watchUrl}
+                            onChange={(e) => setWatchUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && watchUrl.trim()) {
+                                    startWatchParty(watchUrl.trim());
+                                    setIsWatchInputOpen(false);
+                                }
+                            }}
+                        />
+                        {watchUrl && (
+                            <button type="button" className="vc-watch-clear-btn" onClick={() => setWatchUrl('')} title="Temizle" aria-label="Temizle">
+                                <X size={13} />
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            className="vc-watch-paste-btn"
+                            onClick={async () => {
+                                try {
+                                    const text = await navigator.clipboard.readText();
+                                    if (text) setWatchUrl(text.trim());
+                                } catch (_) {}
+                            }}
+                            title="Panodan Yapıştır"
+                        >
+                            <Clipboard size={12} />
+                            <span>Yapıştır</span>
+                        </button>
+                    </div>
+                    <div className="vc-watch-actions">
+                        <button
+                            type="button"
+                            className="vc-watch-start-btn"
+                            disabled={!watchUrl.trim()}
+                            onClick={() => {
+                                if (watchUrl.trim()) {
+                                    startWatchParty(watchUrl.trim());
+                                    setIsWatchInputOpen(false);
+                                }
+                            }}
+                        >
+                            Başlat
+                        </button>
+                        <button
+                            type="button"
+                            className="vc-watch-film-btn"
+                            onClick={() => {
+                                setIsHlsVol2ModalOpen(true);
+                                setIsWatchInputOpen(false);
+                            }}
+                            title="Film Oynatıcı"
+                        >
+                            <Film size={13} />
+                            <span>Film</span>
+                        </button>
+                        {!!window.desktopAPI && (
+                            <button
+                                type="button"
+                                className="vc-watch-film-btn"
+                                onClick={() => {
+                                    const urlVal = watchUrl.trim();
+                                    const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
+                                    window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
+                                    setIsWatchInputOpen(false);
+                                }}
+                                title="Tarayıcıda Aç"
+                            >
+                                <Globe size={13} />
+                                <span>Aç</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
