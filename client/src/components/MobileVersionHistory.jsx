@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.0)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.1)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.6.1',
+        versionCode: 261,
+        releaseDate: '22 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Cihaz Bildirimi Tasarımı, Özel Müzik/Ses Bildirim Kartı, Silinen Bildirimlerin Birikmemesi & Canlı OTA Güncelleyici',
+        summary: 'Portal cihaz bildirimlerinde yazarın görünen adı ile @kullanıcı adı yan yana hizalandı ve bildirim alt kenarına temiz boşluk eklendi. Bildirim çekmecesinden silinen mesaj veya portal post bildirimlerinin okundu sayılmadan bir sonraki bildirimde tekrar birikmesi engellendi. Müzik ve ses dosyaları için özel dalga/kapak tasarımlı bildirim kartı ile mobilde ince ses oynatıcı görünümü eklendi; kendi sunucumuz üzerinden canlı arayüz güncellemesi sağlayan @capgo/capacitor-updater entegre edildi.',
+        category: 'feature',
+        apkSize: '40 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Portal Bildirim Kartı & İsim Hizalaması: Yazar adı ile @kullanıcı adının yan yana gösterilmesi ve bildirim kartlarının alt kenarından ayrılması için temiz alt boşluk eklenmesi',
+            'Silinen Bildirim Birikmesinin Önlenmesi: NotificationDismissReceiver ve sistem tepsisi kontrolüyle cihazdan silinen bildirimlerin okundu işaretlenmeden bir sonraki bildirimde tekrar görünmemesi',
+            'Özel Müzik & Ses Bildirim Kartı: Ses dosyalarının PDF gibi görünmesi giderilerek kapak, oynatma ikonu, ses dalgası ve süre/boyut içeren özgün ses kartı tasarımı',
+            'Canlı OTA Güncelleyici & Mobil İnce Ses Kartı: @capgo/capacitor-updater (self-hosted bundle.zip) entegrasyonu ve mobilde çerçevesiz oynatma butonlu ince ses kartı'
+        ],
+        changes: [
+            { type: 'Bildirim Tasarımı & Müzik Kartı', detail: 'OxypaceMessagingService.java ve portalNotificationService.js üzerinde formatAuthorLabel, createMinimalAudioCardBitmap ve şeffaf alt boşluklu görsel/kart çıktıları güncellendi.' },
+            { type: 'Bildirim Silme Takibi', detail: 'NotificationDismissReceiver.java, AndroidManifest.xml ve aktif tepsi kontrolüyle silinen bildirimlerin yerel birikme geçmişinden temizlenmesi sağlandı.' },
+            { type: 'Canlı OTA Güncelleme', detail: '@capgo/capacitor-updater, otaUpdater.js, App.jsx, server.js (/api/app/version) ve proguard-rules.pro ile otomatik canlı paket güncelleme altyapısı kuruldu.' },
+            { type: 'Mobil Ses Oynatıcı & DM Gizliliği', detail: 'PostAttachments.jsx/.css üzerinde mobil ince ses oynatıcı ve DM gizliliği/bildirim iyileştirmeleri pakete dahil edildi.' }
+        ],
+        filesModified: 14
+    },
     {
         version: 'v2.6.0',
         versionCode: 260,
         releaseDate: '22 Kasım 2026',
         commitHash: 'HEAD',
-        status: 'active',
+        status: 'stable',
         title: 'Portal Cihaz Bildirimleri, Orijinal Uzantılı İndirme, Ekran Paylaşımı Sesi, Canlı Oda Arayüzü & 3D Dünya Yenilemesi',
         summary: 'Tek aktif hesapta portal bildirim ayarlarının kesintisiz cihaz bildirimi iletmesi sağlandı. Post eklerinin (.pptx, .docx, .zip vb.) mobilde .mp4 olarak kaydedilmesi sorunu giderilerek orijinal uzantı ve MIME türü korundu. Canlı odalarda Android AudioPlaybackCapture + WebRTC ekran paylaşımı sesi aktarımı, Birlikte İzle yapıştır butonu, masaüstü dikey/mobil yatay sağ üst kontroller, otomatik gizlenme, YouTube nocookie/iframe kurtarma motoru ve Google Earth seviyesinde 3D Dünya haritası yayınlandı.',
         category: 'feature',

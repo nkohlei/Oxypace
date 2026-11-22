@@ -481,13 +481,16 @@ app.get('/downloads/bundle.zip', (req, res) => {
 // App version check endpoint (public) - used by clients on startup to detect newer APK
 app.get('/api/app/version', (req, res) => {
     res.json({
-        latestVersion: '2.6.0',
-        versionCode: 260,
-        minSupportedVersionCode: 260,
+        latestVersion: '2.6.1',
+        versionCode: 261,
+        minSupportedVersionCode: 261,
+        otaVersion: '2.6.1-ota.1',
+        otaBundleUrl: 'https://api.oxypace.com.tr/downloads/bundle.zip',
+        otaMinNativeVersionCode: 261,
         downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
         fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
         forceUpdate: true,
-        changelog: 'Oxypace 2.6.0: Portal anlık cihaz bildirimleri ve tek aktif hesap eşleştirmesi düzeltildi, indirilen post dosyalarının orijinal uzantıları korundu (.pptx/.docx/.zip vb.), canlı oda ekran paylaşımına sistem sesi aktarımı eklendi, Birlikte İzle yapıştır butonu ve YouTube oynatıcı uyumluluğu onarıldı, 3D Dünya haritası yenilendi.',
+        changelog: 'Oxypace 2.6.1: Portal cihaz bildirimlerinde isim ve @kullanıcı adı yan yana, bildirim alt boşluğu ve özel müzik/ses kartı eklendi; silinen cihaz bildirimlerinin tekrar birikmesi önlendi, mobil ince ses oynatıcı, DM gizliliği ve canlı OTA güncelleyici (@capgo/capacitor-updater) devreye alındı.',
     });
 });
 

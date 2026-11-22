@@ -1,6 +1,6 @@
 {
     "name": "oxypace-backend",
-    "version": "2.6.0",
+    "version": "2.6.1",
     "description": "Oxypace - Modern Social & Portal Platform backend",
     "main": "server.js",
     "type": "module",
@@ -50,6 +50,7 @@
         "@capacitor/keyboard": "^8.0.1",
         "@capacitor/push-notifications": "^8.0.2",
         "@capacitor/status-bar": "^8.0.1",
+        "@capgo/capacitor-updater": "^8.54.2",
         "@socket.io/redis-adapter": "^8.3.0",
         "axios": "^1.14.0",
         "bcryptjs": "^2.4.3",

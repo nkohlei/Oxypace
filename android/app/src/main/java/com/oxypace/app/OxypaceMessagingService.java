@@ -139,10 +139,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         final String postMedia;
         final String pdfName;
         final String pdfSize;
+        final String audioName;
+        final String audioDuration;
+        final String audioSize;
+        final boolean isVoiceRecording;
+        final String audioColor;
         final long timestamp;
 
         PortalPostItem(String postId, String authorName, String authorUsername, String authorAvatar,
-                       String text, String mediaType, String postMedia, String pdfName, String pdfSize, long timestamp) {
+                       String text, String mediaType, String postMedia, String pdfName, String pdfSize,
+                       String audioName, String audioDuration, String audioSize, boolean isVoiceRecording,
+                       String audioColor, long timestamp) {
             this.postId = postId != null ? postId : "";
             this.authorName = authorName != null ? authorName : "Oxypace Üyesi";
             this.authorUsername = authorUsername != null ? authorUsername : "";
@@ -152,6 +159,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             this.postMedia = postMedia != null ? postMedia : "";
             this.pdfName = pdfName != null ? pdfName : "";
             this.pdfSize = pdfSize != null ? pdfSize : "";
+            this.audioName = audioName != null ? audioName : "";
+            this.audioDuration = audioDuration != null ? audioDuration : "";
+            this.audioSize = audioSize != null ? audioSize : "";
+            this.isVoiceRecording = isVoiceRecording;
+            this.audioColor = audioColor != null ? audioColor : "";
             this.timestamp = timestamp > 0 ? timestamp : System.currentTimeMillis();
         }
 
@@ -167,6 +179,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 obj.put("postMedia", postMedia);
                 obj.put("pdfName", pdfName);
                 obj.put("pdfSize", pdfSize);
+                obj.put("audioName", audioName);
+                obj.put("audioDuration", audioDuration);
+                obj.put("audioSize", audioSize);
+                obj.put("isVoiceRecording", isVoiceRecording);
+                obj.put("audioColor", audioColor);
                 obj.put("timestamp", timestamp);
             } catch (Exception ignored) {}
             return obj;
@@ -184,6 +201,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 obj.optString("postMedia", ""),
                 obj.optString("pdfName", ""),
                 obj.optString("pdfSize", ""),
+                obj.optString("audioName", ""),
+                obj.optString("audioDuration", ""),
+                obj.optString("audioSize", ""),
+                obj.optBoolean("isVoiceRecording", false),
+                obj.optString("audioColor", ""),
                 obj.optLong("timestamp", System.currentTimeMillis())
             );
         }
@@ -227,6 +249,49 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                     .apply();
             } catch (Exception ignored) {}
         }
+    }
+
+    private static int loadPortalChannelCount(Context context, String channelKey) {
+        if (context == null || channelKey == null) return 0;
+        try {
+            android.content.SharedPreferences prefs = context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE);
+            return prefs.getInt("count_" + channelKey, 0);
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    private static boolean isNotificationCurrentlyActive(NotificationManager nm, int notifId) {
+        if (nm == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return false;
+        }
+        try {
+            android.service.notification.StatusBarNotification[] active = nm.getActiveNotifications();
+            if (active != null) {
+                for (android.service.notification.StatusBarNotification sbn : active) {
+                    if (sbn != null && sbn.getId() == notifId) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private PendingIntent createDismissPendingIntent(String notifType, String key, int requestCode) {
+        Intent dismissIntent = new Intent(this, NotificationDismissReceiver.class);
+        dismissIntent.setAction(NotificationDismissReceiver.ACTION_NOTIF_DISMISSED);
+        dismissIntent.putExtra(NotificationDismissReceiver.EXTRA_NOTIF_TYPE, notifType);
+        if ("message".equals(notifType)) {
+            dismissIntent.putExtra(NotificationDismissReceiver.EXTRA_SENDER_ID, key);
+        } else {
+            dismissIntent.putExtra(NotificationDismissReceiver.EXTRA_CHANNEL_KEY, key);
+        }
+        return PendingIntent.getBroadcast(
+            this,
+            requestCode,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
     }
 
     public static void clearPortalHistoryForChannel(Context context, String channelKey) {
@@ -360,10 +425,15 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             displaySenderTitle = senderName + " (@" + senderUsername.trim() + ")";
         }
 
+        int notifId = Math.abs(senderId.hashCode());
+        if (!isNotificationCurrentlyActive(nm, notifId)) {
+            clearHistoryForSender(senderId);
+        }
+
         long now = System.currentTimeMillis();
         java.util.List<MessageItem> list = messageHistory.computeIfAbsent(senderId, k -> new java.util.ArrayList<>());
         synchronized (list) {
-            String mime = (imageUrl != null && !imageUrl.isEmpty()) ? "image/jpeg" : null;
+            String mime = (imageUrl != null && !imageUrl.isEmpty()) ? "image/png" : null;
             list.add(new MessageItem(messageBody, now, imageUrl, mime));
             // Keep last 10 messages for conversation thread
             if (list.size() > 10) {
@@ -440,7 +510,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 if (item.dataUri != null && !item.dataUri.isEmpty()) {
                     android.net.Uri contentUri = downloadImageToContentUri(item.dataUri, senderId);
                     if (contentUri != null) {
-                        msg.setData("image/jpeg", contentUri);
+                        msg.setData(item.mimeType != null ? item.mimeType : "image/png", contentUri);
                     }
                 }
                 style.addMessage(msg);
@@ -452,7 +522,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         intent.putExtra("route", route);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(
-            this, Math.abs(senderId.hashCode()), intent,
+            this, notifId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
@@ -460,8 +530,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         androidx.core.app.RemoteInput remoteInput = new androidx.core.app.RemoteInput.Builder(DirectReplyReceiver.KEY_TEXT_REPLY)
             .setLabel("Yanıtla...")
             .build();
-
-        int notifId = Math.abs(senderId.hashCode());
 
         Intent replyIntent = new Intent(this, DirectReplyReceiver.class);
         replyIntent.setAction("com.oxypace.app.ACTION_DIRECT_REPLY");
@@ -496,6 +564,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setStyle(style)
             .setAutoCancel(true)
             .setContentIntent(pi)
+            .setDeleteIntent(createDismissPendingIntent("message", senderId, notifId + 100000))
             .addAction(replyAction)
             .setShowWhen(true)
             .setWhen(now)
@@ -811,6 +880,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         String postMedia = getOrDefault(data, "postMedia", "").trim();
         String pdfName = getOrDefault(data, "pdfName", "").trim();
         String pdfSize = getOrDefault(data, "pdfSize", "").trim();
+        String audioName = getOrDefault(data, "audioName", "").trim();
+        String audioDuration = getOrDefault(data, "audioDuration", "").trim();
+        String audioSize = getOrDefault(data, "audioSize", "").trim();
+        boolean isVoiceRecording = "true".equalsIgnoreCase(getOrDefault(data, "isVoiceRecording", "false"));
+        String audioColor = getOrDefault(data, "audioColor", "").trim();
 
         // Fallback extraction if legacy payload without postText was sent
         if (postText.isEmpty() && "none".equalsIgnoreCase(mediaType)) {
@@ -824,43 +898,38 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             }
         }
 
-        // Load persistent unread post history for this portal/channel (survives notification swipe/dismiss)
-        java.util.List<PortalPostItem> existingHistory = loadPortalChannelHistory(this, channelKey);
-        java.util.Map<String, PortalPostItem> mergedMap = new java.util.LinkedHashMap<>();
-        for (PortalPostItem oldItem : existingHistory) {
-            String key = (oldItem.postId != null && !oldItem.postId.isEmpty()) ? oldItem.postId : (oldItem.authorName + "_" + oldItem.timestamp);
-            mergedMap.put(key, oldItem);
-        }
+        int notifId = Math.abs(("portal_channel_" + channelKey).hashCode());
+        boolean isStillActive = isNotificationCurrentlyActive(nm, notifId);
 
-        // Merge unreadItems array from backend (represents all unread posts in MongoDB for this portal/channel)
-        String unreadItemsJson = getOrDefault(data, "unreadItems", "");
-        if (!unreadItemsJson.isEmpty()) {
-            try {
-                org.json.JSONArray arr = new org.json.JSONArray(unreadItemsJson);
-                for (int i = 0; i < arr.length(); i++) {
-                    PortalPostItem pItem = PortalPostItem.fromJson(arr.optJSONObject(i));
-                    if (pItem != null) {
-                        String key = !pItem.postId.isEmpty() ? pItem.postId : (pItem.authorName + "_" + pItem.timestamp);
-                        mergedMap.put(key, pItem);
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-
-        // Ensure current incoming post is also in mergedMap
         PortalPostItem currentItem = new PortalPostItem(
             postId, authorName, authorUsername, authorAvatar,
-            postText, mediaType, postMedia, pdfName, pdfSize, System.currentTimeMillis()
+            postText, mediaType, postMedia, pdfName, pdfSize,
+            audioName, audioDuration, audioSize, isVoiceRecording, audioColor,
+            System.currentTimeMillis()
         );
         String currentKey = !postId.isEmpty() ? postId : (authorName + "_" + currentItem.timestamp);
-        mergedMap.put(currentKey, currentItem);
+
+        // Only accumulate posts if the previous notification is STILL active in the device notification tray.
+        // If the user dismissed/swiped away the previous notification, never re-inject dismissed posts.
+        java.util.Map<String, PortalPostItem> mergedMap = new java.util.LinkedHashMap<>();
+        int totalUnreadCount = 1;
+        if (isStillActive) {
+            java.util.List<PortalPostItem> existingHistory = loadPortalChannelHistory(this, channelKey);
+            for (PortalPostItem oldItem : existingHistory) {
+                String key = (oldItem.postId != null && !oldItem.postId.isEmpty()) ? oldItem.postId : (oldItem.authorName + "_" + oldItem.timestamp);
+                mergedMap.put(key, oldItem);
+            }
+            boolean alreadyContainedCurrent = mergedMap.containsKey(currentKey);
+            mergedMap.put(currentKey, currentItem);
+            int prevCount = loadPortalChannelCount(this, channelKey);
+            totalUnreadCount = Math.max(prevCount + (alreadyContainedCurrent ? 0 : 1), mergedMap.size());
+        } else {
+            clearPortalHistoryForChannel(this, channelKey);
+            mergedMap.put(currentKey, currentItem);
+            totalUnreadCount = 1;
+        }
 
         java.util.List<PortalPostItem> allMerged = new java.util.ArrayList<>(mergedMap.values());
-        int backendUnreadCount = 1;
-        try {
-            backendUnreadCount = Integer.parseInt(getOrDefault(data, "unreadCount", "1"));
-        } catch (Exception ignored) {}
-        int totalUnreadCount = Math.max(backendUnreadCount, allMerged.size());
 
         // Enforce visual limit: only keep the latest MAX_VISIBLE_PORTAL_POSTS (5) items so notification never overflows
         java.util.List<PortalPostItem> itemsToDisplay;
@@ -876,7 +945,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         intent.setAction("OPEN_ROUTE");
         if (!route.isEmpty()) intent.putExtra("route", route);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        int notifId = Math.abs(("portal_channel_" + channelKey).hashCode());
         PendingIntent pi = PendingIntent.getActivity(
             this, notifId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
@@ -971,6 +1039,10 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 if ("pdf".equalsIgnoreCase(item.mediaType)) {
                     String pName = item.pdfName.isEmpty() ? "Doküman.pdf" : item.pdfName;
                     fallbackText = "📄 " + pName + (item.pdfSize.isEmpty() ? "" : " • " + item.pdfSize);
+                } else if ("audio".equalsIgnoreCase(item.mediaType)) {
+                    String aTitle = item.audioName.isEmpty() ? (item.isVoiceRecording ? "Ses Kaydı" : "Ses Dosyası") : item.audioName;
+                    fallbackText = (item.isVoiceRecording ? "🎙️ " : "🎵 ") + aTitle
+                        + (item.audioDuration.isEmpty() ? "" : " (" + item.audioDuration + ")");
                 } else if ("video".equalsIgnoreCase(item.mediaType)) {
                     fallbackText = "🎬 Video paylaştı";
                 } else if ("gif".equalsIgnoreCase(item.mediaType)) {
@@ -985,7 +1057,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
             boolean addedAttachmentMsg = false;
             android.net.Uri attachmentUri = null;
-            String attachmentMime = "image/jpeg";
+            String attachmentMime = "image/png";
 
             if ("pdf".equalsIgnoreCase(item.mediaType)) {
                 android.graphics.Bitmap pageThumb = null;
@@ -999,12 +1071,27 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 );
                 attachmentUri = saveBitmapToContentUri(pdfCardBmp, "portal_pdf_" + channelKey);
                 attachmentMime = "image/png";
+            } else if ("audio".equalsIgnoreCase(item.mediaType)) {
+                android.graphics.Bitmap coverThumb = null;
+                if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
+                    coverThumb = fetchBitmapFromUrl(item.postMedia);
+                }
+                android.graphics.Bitmap audioCardBmp = createMinimalAudioCardBitmap(
+                    coverThumb,
+                    item.audioName,
+                    item.audioDuration,
+                    item.audioSize,
+                    item.isVoiceRecording,
+                    item.audioColor
+                );
+                attachmentUri = saveBitmapToContentUri(audioCardBmp, "portal_audio_" + channelKey);
+                attachmentMime = "image/png";
             } else if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
                 android.graphics.Bitmap rawMedia = fetchBitmapFromUrl(item.postMedia);
                 if (rawMedia != null) {
                     android.graphics.Bitmap compactMedia = createCompactMediaPreviewBitmap(rawMedia);
                     attachmentUri = saveBitmapToContentUri(compactMedia, "portal_media_" + channelKey);
-                    attachmentMime = "image/jpeg";
+                    attachmentMime = "image/png";
                 }
             }
 
@@ -1038,6 +1125,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 PortalPostItem item = itemsToDisplay.get(i);
                 String authorLabel = formatAuthorLabel(item.authorName, item.authorUsername);
                 boolean hasMedia = "pdf".equalsIgnoreCase(item.mediaType)
+                    || "audio".equalsIgnoreCase(item.mediaType)
                     || (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar))
                     || "image".equalsIgnoreCase(item.mediaType)
                     || "video".equalsIgnoreCase(item.mediaType)
@@ -1072,6 +1160,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                     String pName = item.pdfName.isEmpty() ? "Doküman.pdf" : item.pdfName;
                     String pdfBadge = "📄 " + pName + (item.pdfSize.isEmpty() ? "" : " (" + item.pdfSize + ")");
                     rowText = item.text.isEmpty() ? pdfBadge : (item.text + " • " + pdfBadge);
+                } else if ("audio".equalsIgnoreCase(item.mediaType)) {
+                    String aTitle = item.audioName.isEmpty() ? (item.isVoiceRecording ? "Ses Kaydı" : "Ses Dosyası") : item.audioName;
+                    String audioBadge = (item.isVoiceRecording ? "🎙️ " : "🎵 ") + aTitle
+                        + (item.audioDuration.isEmpty() ? "" : " (" + item.audioDuration + ")");
+                    rowText = item.text.isEmpty() ? audioBadge : (item.text + " • " + audioBadge);
                 } else if ("video".equalsIgnoreCase(item.mediaType)) {
                     rowText = item.text.isEmpty() ? "🎬 Video" : (item.text + " • 🎬 Video");
                 } else if ("gif".equalsIgnoreCase(item.mediaType)) {
@@ -1101,6 +1194,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setNumber(totalUnreadCount)
             .setAutoCancel(true)
             .setContentIntent(pi)
+            .setDeleteIntent(createDismissPendingIntent("portal_post", channelKey, notifId + 200000))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -1130,14 +1224,155 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
     private static String formatAuthorLabel(String authorName, String authorUsername) {
         String name = (authorName != null && !authorName.trim().isEmpty()) ? authorName.trim() : "Oxypace Üyesi";
+        if (name.startsWith("@") && name.length() > 1) {
+            name = name.substring(1).trim();
+        }
         String user = (authorUsername != null && !authorUsername.trim().isEmpty()) ? authorUsername.trim() : "";
+        if (user.startsWith("@") && user.length() > 1) {
+            user = user.substring(1).trim();
+        }
         if (!user.isEmpty()) {
-            if (name.equalsIgnoreCase(user)) {
-                return "@" + user;
-            }
             return name + " (@" + user + ")";
         }
         return name;
+    }
+
+    private static int blendAudioCardAccent(String hexColor) {
+        int fallbackBg = 0xFF1A1B24;
+        if (hexColor == null || hexColor.trim().isEmpty()) return fallbackBg;
+        try {
+            int parsed = android.graphics.Color.parseColor(hexColor.trim());
+            int r = Math.round(android.graphics.Color.red(parsed) * 0.42f + 18 * 0.58f);
+            int g = Math.round(android.graphics.Color.green(parsed) * 0.42f + 20 * 0.58f);
+            int b = Math.round(android.graphics.Color.blue(parsed) * 0.42f + 28 * 0.58f);
+            return android.graphics.Color.rgb(
+                Math.max(16, Math.min(185, r)),
+                Math.max(16, Math.min(185, g)),
+                Math.max(18, Math.min(185, b))
+            );
+        } catch (Exception ignored) {
+            return fallbackBg;
+        }
+    }
+
+    /**
+     * Renders a dedicated horizontal audio/music card bitmap for notifications:
+     * Left: album cover art (or gradient music tile) with crisp Play triangle overlay.
+     * Right: track title, sleek audio waveform bars, and concise music/duration/size metadata.
+     * Includes transparent bottom padding so Android does not clip card corners at notification edge.
+     */
+    private android.graphics.Bitmap createMinimalAudioCardBitmap(
+        android.graphics.Bitmap coverBmp,
+        String audioName,
+        String audioDuration,
+        String audioSize,
+        boolean isVoiceRecording,
+        String audioColor
+    ) {
+        int width = 520;
+        int cardHeight = 124;
+        int topPad = 6;
+        int bottomPad = 24;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(
+            width, cardHeight + topPad + bottomPad, android.graphics.Bitmap.Config.ARGB_8888
+        );
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+        int bgColor = isVoiceRecording ? 0xFF151C28 : blendAudioCardAccent(audioColor);
+        paint.setColor(bgColor);
+        android.graphics.RectF cardRect = new android.graphics.RectF(2f, topPad + 2f, width - 2f, topPad + cardHeight - 2f);
+        canvas.drawRoundRect(cardRect, 22f, 22f, paint);
+
+        android.graphics.Paint borderPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        borderPaint.setStyle(android.graphics.Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(1.8f);
+        borderPaint.setColor(0x36FFFFFF);
+        canvas.drawRoundRect(cardRect, 22f, 22f, borderPaint);
+
+        // Left square cover / artwork box (84x84)
+        float boxLeft = 18f;
+        float boxTop = topPad + 20f;
+        float boxSize = 84f;
+        android.graphics.RectF artRect = new android.graphics.RectF(boxLeft, boxTop, boxLeft + boxSize, boxTop + boxSize);
+        android.graphics.Path artClip = new android.graphics.Path();
+        artClip.addRoundRect(artRect, 14f, 14f, android.graphics.Path.Direction.CW);
+
+        canvas.save();
+        canvas.clipPath(artClip);
+        if (coverBmp != null) {
+            int cw = coverBmp.getWidth();
+            int ch = coverBmp.getHeight();
+            int crop = Math.min(cw, ch);
+            int cx = (cw - crop) / 2;
+            int cy = (ch - crop) / 2;
+            canvas.drawBitmap(coverBmp, new android.graphics.Rect(cx, cy, cx + crop, cy + crop), artRect, paint);
+            paint.setColor(0x45000000);
+            canvas.drawRect(artRect, paint);
+        } else {
+            paint.setColor(isVoiceRecording ? 0xFF1F2B3E : 0xFF282B3A);
+            canvas.drawRect(artRect, paint);
+        }
+        canvas.restore();
+
+        // Crisp translucent play circle + white Play triangle in center of artwork box
+        float centerX = boxLeft + boxSize / 2f;
+        float centerY = boxTop + boxSize / 2f;
+        paint.setColor(0x99000000);
+        canvas.drawCircle(centerX, centerY, 20f, paint);
+
+        android.graphics.Path playTri = new android.graphics.Path();
+        playTri.moveTo(centerX - 6f, centerY - 9f);
+        playTri.lineTo(centerX + 10f, centerY);
+        playTri.lineTo(centerX - 6f, centerY + 9f);
+        playTri.close();
+        paint.setColor(0xFFFFFFFF);
+        canvas.drawPath(playTri, paint);
+
+        // Right text column
+        float textLeft = boxLeft + boxSize + 18f;
+        float maxTextWidth = width - textLeft - 20f;
+
+        String fallbackTitle = isVoiceRecording ? "Ses Kaydı" : "Müzik / Ses Dosyası";
+        String cleanTitle = (audioName != null && !audioName.trim().isEmpty()) ? audioName.trim() : fallbackTitle;
+        android.text.TextPaint titlePaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        titlePaint.setColor(0xFFFFFFFF);
+        titlePaint.setTextSize(24f);
+        titlePaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+        CharSequence ellipsizedTitle = android.text.TextUtils.ellipsize(
+            cleanTitle, titlePaint, maxTextWidth, android.text.TextUtils.TruncateAt.END
+        );
+        canvas.drawText(ellipsizedTitle.toString(), textLeft, topPad + 44f, titlePaint);
+
+        // Sleek horizontal audio waveform bars in middle
+        float[] barHeights = { 9f, 15f, 21f, 13f, 23f, 17f, 11f, 20f, 15f, 22f, 12f, 18f, 21f, 14f, 19f, 11f, 16f, 10f };
+        float barStartX = textLeft;
+        float barCenterY = topPad + 68f;
+        float barWidth = 5f;
+        float barGap = 8f;
+        for (int i = 0; i < barHeights.length; i++) {
+            float bx = barStartX + i * (barWidth + barGap);
+            if (bx + barWidth > width - 20f) break;
+            float bh = barHeights[i];
+            paint.setColor(i < 5 ? 0xFFFFFFFF : 0x5AFFFFFF);
+            android.graphics.RectF barRect = new android.graphics.RectF(bx, barCenterY - bh / 2f, bx + barWidth, barCenterY + bh / 2f);
+            canvas.drawRoundRect(barRect, 2.5f, 2.5f, paint);
+        }
+
+        // Bottom concise metadata row
+        StringBuilder meta = new StringBuilder(isVoiceRecording ? "Ses Kaydı" : "Müzik");
+        if (audioDuration != null && !audioDuration.trim().isEmpty()) {
+            meta.append(" • ").append(audioDuration.trim());
+        }
+        if (audioSize != null && !audioSize.trim().isEmpty()) {
+            meta.append(" • ").append(audioSize.trim());
+        }
+        android.text.TextPaint metaPaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        metaPaint.setColor(0xCCFFFFFF);
+        metaPaint.setTextSize(19f);
+        canvas.drawText(meta.toString(), textLeft, topPad + 104f, metaPaint);
+
+        return bmp;
     }
 
     /**
@@ -1147,15 +1382,17 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
      */
     private android.graphics.Bitmap createMinimalPdfCardBitmap(android.graphics.Bitmap pageThumb, String pdfName, String pdfSize) {
         int width = 520;
-        int height = 132;
-        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888);
+        int cardHeight = 132;
+        int topPad = 6;
+        int bottomPad = 24;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(width, cardHeight + topPad + bottomPad, android.graphics.Bitmap.Config.ARGB_8888);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
 
         android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
 
         // Dark rounded card background (#14161B)
         paint.setColor(0xFF14161B);
-        android.graphics.RectF cardRect = new android.graphics.RectF(2f, 2f, width - 2f, height - 2f);
+        android.graphics.RectF cardRect = new android.graphics.RectF(2f, topPad + 2f, width - 2f, topPad + cardHeight - 2f);
         canvas.drawRoundRect(cardRect, 22f, 22f, paint);
 
         // Subtle border (#262A34)
@@ -1165,9 +1402,9 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         borderPaint.setColor(0xFF262A34);
         canvas.drawRoundRect(cardRect, 22f, 22f, borderPaint);
 
-        // Left PDF page thumbnail box (x: 18..90, y: 16..116 -> 72x100)
+        // Left PDF page thumbnail box (x: 18..90, y: topPad+16..topPad+116 -> 72x100)
         float thumbLeft = 18f;
-        float thumbTop = 16f;
+        float thumbTop = topPad + 16f;
         float thumbWidth = 72f;
         float thumbHeight = 100f;
         android.graphics.RectF thumbRect = new android.graphics.RectF(thumbLeft, thumbTop, thumbLeft + thumbWidth, thumbTop + thumbHeight);
@@ -1218,20 +1455,20 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         String cleanName = (pdfName != null && !pdfName.isEmpty()) ? pdfName : "Doküman.pdf";
         CharSequence ellipsizedName = android.text.TextUtils.ellipsize(cleanName, titlePaint, maxTextWidth, android.text.TextUtils.TruncateAt.MIDDLE);
-        canvas.drawText(ellipsizedName.toString(), textLeft, 60f, titlePaint);
+        canvas.drawText(ellipsizedName.toString(), textLeft, topPad + 60f, titlePaint);
 
         android.text.TextPaint sizePaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         sizePaint.setColor(0xFF98A2B3);
         sizePaint.setTextSize(21f);
         String cleanSize = (pdfSize != null && !pdfSize.isEmpty()) ? pdfSize : "PDF Belgesi";
-        canvas.drawText(cleanSize, textLeft, 92f, sizePaint);
+        canvas.drawText(cleanSize, textLeft, topPad + 92f, sizePaint);
 
         return bmp;
     }
 
     /**
      * Creates a small 96x96 thumbnail icon for accumulated notification rows
-     * so media/PDFs are displayed in small size alongside the message without taking up vertical space.
+     * so media/PDFs/audio are displayed in small size alongside the message without taking up vertical space.
      */
     private android.graphics.Bitmap createSmallMediaThumbIcon(android.graphics.Bitmap rawBmp, String mediaType) {
         int size = 96;
@@ -1261,6 +1498,31 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             tp.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
             tp.setTextAlign(android.graphics.Paint.Align.CENTER);
             canvas.drawText("PDF", size / 2f, size - 10f, tp);
+        } else if ("audio".equalsIgnoreCase(mediaType)) {
+            if (rawBmp != null) {
+                int bw = rawBmp.getWidth();
+                int bh = rawBmp.getHeight();
+                int crop = Math.min(bw, bh);
+                int cx = (bw - crop) / 2;
+                int cy = (bh - crop) / 2;
+                canvas.drawBitmap(rawBmp, new android.graphics.Rect(cx, cy, cx + crop, cy + crop), rect, paint);
+                paint.setColor(0x55000000);
+                canvas.drawRect(rect, paint);
+            } else {
+                paint.setColor(0xFF1F2433);
+                canvas.drawRect(rect, paint);
+            }
+            float mcx = size / 2f;
+            float mcy = size / 2f;
+            paint.setColor(0x99000000);
+            canvas.drawCircle(mcx, mcy, 20f, paint);
+            android.graphics.Path tri = new android.graphics.Path();
+            tri.moveTo(mcx - 6f, mcy - 9f);
+            tri.lineTo(mcx + 10f, mcy);
+            tri.lineTo(mcx - 6f, mcy + 9f);
+            tri.close();
+            paint.setColor(0xFFFFFFFF);
+            canvas.drawPath(tri, paint);
         } else if (rawBmp != null) {
             int bw = rawBmp.getWidth();
             int bh = rawBmp.getHeight();
@@ -1278,7 +1540,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
     }
 
     /**
-     * Scales a post media image to a clean, compact rounded preview bitmap for single-post notifications.
+     * Scales a post media image to a clean, compact rounded preview bitmap with transparent
+     * bottom spacing so Android notifications never sit flush against the card border.
      */
     private android.graphics.Bitmap createCompactMediaPreviewBitmap(android.graphics.Bitmap rawBmp) {
         if (rawBmp == null) return null;
@@ -1291,11 +1554,15 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         float scale = Math.min((float) maxW / w, (float) maxH / h);
         int targetW = Math.max(120, Math.round(w * scale));
         int targetH = Math.max(80, Math.round(h * scale));
+        int topPad = 6;
+        int bottomPad = 24;
 
-        android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(targetW, targetH, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(
+            targetW, targetH + topPad + bottomPad, android.graphics.Bitmap.Config.ARGB_8888
+        );
         android.graphics.Canvas canvas = new android.graphics.Canvas(out);
         android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-        android.graphics.RectF rect = new android.graphics.RectF(0f, 0f, targetW, targetH);
+        android.graphics.RectF rect = new android.graphics.RectF(0f, topPad, targetW, topPad + targetH);
         android.graphics.Path path = new android.graphics.Path();
         path.addRoundRect(rect, 18f, 18f, android.graphics.Path.Direction.CW);
         canvas.clipPath(path);
@@ -1489,11 +1756,14 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             conn.disconnect();
             if (bmp == null) return null;
 
+            android.graphics.Bitmap compactBmp = createCompactMediaPreviewBitmap(bmp);
+            if (compactBmp == null) compactBmp = bmp;
+
             // Save bitmap to cache directory with a stable name per sender
             File cacheDir = getCacheDir();
-            File imgFile = new File(cacheDir, "notif_img_" + senderId.replaceAll("[^a-zA-Z0-9_-]", "_") + ".jpg");
+            File imgFile = new File(cacheDir, "notif_img_" + senderId.replaceAll("[^a-zA-Z0-9_-]", "_") + ".png");
             FileOutputStream fos = new FileOutputStream(imgFile);
-            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, fos);
+            compactBmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 92, fos);
             fos.flush();
             fos.close();
 

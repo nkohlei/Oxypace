@@ -1042,10 +1042,12 @@ const AppContent = () => {
 };
 
 import { App as CapacitorApp } from '@capacitor/app';
+import { initOtaUpdater } from './utils/otaUpdater';
 
 function App() {
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
+            initOtaUpdater();
             requestNativePermissions();
 
             // Handle Deep Linking for Google Auth and general routes

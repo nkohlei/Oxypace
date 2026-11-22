@@ -123,6 +123,11 @@
             android:name=".DirectReplyReceiver"
             android:exported="false" />
 
+        <!-- BroadcastReceiver: clears local notification tray history when user dismisses notifications -->
+        <receiver
+            android:name=".NotificationDismissReceiver"
+            android:exported="false" />
+
         <!-- Foreground Service for ongoing voice/video calls and screen sharing -->
         <service
             android:name=".ActiveCallService"

@@ -4,6 +4,30 @@ import Portal from '../models/Portal.js';
 import { sendPushNotification, constructNotifImageUrl } from './pushService.js';
 
 /**
+ * Helper to format audio duration in MM:SS
+ */
+function formatAudioDuration(seconds) {
+    const num = Number(seconds);
+    if (!Number.isFinite(num) || num <= 0) return '';
+    const totalSec = Math.round(num);
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * Helper to format file size cleanly
+ */
+function formatAudioSize(bytes) {
+    const num = Number(bytes);
+    if (!Number.isFinite(num) || num <= 0) return '';
+    if (num >= 1024 * 1024) {
+        return `${(num / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    return `${Math.max(1, Math.round(num / 1024))} KB`;
+}
+
+/**
  * Helper to extract clean notification details from a Post document
  */
 function extractPostNotificationDetails(p) {
@@ -14,7 +38,12 @@ function extractPostNotificationDetails(p) {
             mediaType: 'none',
             postMedia: '',
             pdfName: '',
-            pdfSize: ''
+            pdfSize: '',
+            audioName: '',
+            audioDuration: '',
+            audioSize: '',
+            isVoiceRecording: false,
+            audioColor: ''
         };
     }
 
@@ -27,6 +56,8 @@ function extractPostNotificationDetails(p) {
 
     if (p.mediaType === 'pdf' || p.pdfUrl || p.pdfName || p.pdfThumbnailUrl || firstAtt?.kind === 'pdf') {
         mediaType = 'pdf';
+    } else if (p.mediaType === 'audio' || firstAtt?.kind === 'audio') {
+        mediaType = 'audio';
     } else if (p.mediaType === 'video' || p.mediaType === 'videoUrl' || p.videoThumbnail || p.videoUrl || firstAtt?.kind === 'video' || firstAtt?.kind === 'videoUrl') {
         mediaType = 'video';
     } else if (p.mediaType === 'gif' || p.gifUrl || firstAtt?.kind === 'gif') {
@@ -35,8 +66,6 @@ function extractPostNotificationDetails(p) {
         mediaType = 'youtube';
     } else if (p.mediaType === 'image' || firstAtt?.kind === 'image') {
         mediaType = 'image';
-    } else if (p.mediaType === 'audio' || firstAtt?.kind === 'audio') {
-        mediaType = 'audio';
     } else if (p.mediaType === 'file' || p.mediaType === 'folder' || firstAtt?.kind === 'file' || firstAtt?.kind === 'folder') {
         mediaType = 'file';
     } else if (p.media) {
@@ -44,6 +73,7 @@ function extractPostNotificationDetails(p) {
         if (typeof firstMedia === 'string' && firstMedia.trim()) {
             const lower = firstMedia.toLowerCase();
             if (lower.endsWith('.pdf')) mediaType = 'pdf';
+            else if (/\.(mp3|wav|m4a|ogg|webm|flac|aac)(\?|$)/i.test(lower)) mediaType = 'audio';
             else if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) mediaType = 'video';
             else if (lower.endsWith('.gif')) mediaType = 'gif';
             else mediaType = 'image';
@@ -51,21 +81,23 @@ function extractPostNotificationDetails(p) {
     }
 
     let rawMediaUrl = '';
-    if (p.pdfThumbnailUrl) {
+    if (mediaType === 'audio') {
+        rawMediaUrl = firstAtt?.coverUrl || firstAtt?.thumbnailUrl || '';
+    } else if (p.pdfThumbnailUrl) {
         rawMediaUrl = p.pdfThumbnailUrl;
     } else if (p.videoThumbnail) {
         rawMediaUrl = p.videoThumbnail;
     } else if (firstAtt && (firstAtt.kind === 'image' || firstAtt.kind === 'gif') && firstAtt.url) {
         rawMediaUrl = firstAtt.url;
-    } else if (firstAtt && firstAtt.thumbnailUrl) {
-        rawMediaUrl = firstAtt.thumbnailUrl;
+    } else if (firstAtt && (firstAtt.coverUrl || firstAtt.thumbnailUrl)) {
+        rawMediaUrl = firstAtt.coverUrl || firstAtt.thumbnailUrl;
     } else if (p.media) {
         if (Array.isArray(p.media) && p.media.length > 0) {
             const first = p.media[0];
-            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav)(\?|$)/i.test(first)) {
+            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav|m4a|ogg|flac|aac)(\?|$)/i.test(first)) {
                 rawMediaUrl = first;
             }
-        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav)(\?|$)/i.test(p.media)) {
+        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav|m4a|ogg|flac|aac)(\?|$)/i.test(p.media)) {
             rawMediaUrl = p.media;
         }
     } else if (p.linkPreview?.image) {
@@ -104,6 +136,25 @@ function extractPostNotificationDetails(p) {
         }
     }
 
+    let audioName = '';
+    let audioDuration = '';
+    let audioSize = '';
+    let isVoiceRecording = false;
+    let audioColor = '';
+    if (mediaType === 'audio') {
+        const rawAudioName = String(firstAtt?.name || '').trim();
+        isVoiceRecording = Boolean(
+            firstAtt?.isVoiceRecording || /^ses-kaydi-\d+/i.test(rawAudioName)
+        );
+        const strippedName = rawAudioName.replace(/\.(mp3|wav|m4a|ogg|webm|flac|aac)$/i, '').trim();
+        audioName = isVoiceRecording ? 'Ses Kaydı' : (strippedName || 'Ses Dosyası');
+        audioDuration = formatAudioDuration(firstAtt?.duration);
+        audioSize = formatAudioSize(firstAtt?.size);
+        audioColor = Array.isArray(firstAtt?.palette) && firstAtt.palette[0]
+            ? String(firstAtt.palette[0]).trim()
+            : '';
+    }
+
     let snippet = text;
     if (!snippet) {
         if (mediaType === 'pdf') {
@@ -112,7 +163,9 @@ function extractPostNotificationDetails(p) {
             const fname = firstAtt?.name || 'Dosya';
             snippet = `📎 ${fname}`;
         } else if (mediaType === 'audio') {
-            snippet = '🎵 Ses paylaştı';
+            snippet = isVoiceRecording
+                ? `🎙️ Ses Kaydı${audioDuration ? ` (${audioDuration})` : ''}`
+                : `🎵 ${audioName}${audioDuration ? ` (${audioDuration})` : ''}`;
         } else if (mediaType === 'video') {
             snippet = '🎬 Video paylaştı';
         } else if (mediaType === 'gif') {
@@ -130,7 +183,12 @@ function extractPostNotificationDetails(p) {
         mediaType,
         postMedia,
         pdfName,
-        pdfSize
+        pdfSize,
+        audioName,
+        audioDuration,
+        audioSize,
+        isVoiceRecording,
+        audioColor
     };
 }
 
@@ -382,6 +440,11 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                         postMedia: details.postMedia || '',
                         pdfName: clampText(details.pdfName, 45),
                         pdfSize: details.pdfSize || '',
+                        audioName: clampText(details.audioName, 45),
+                        audioDuration: details.audioDuration || '',
+                        audioSize: details.audioSize || '',
+                        isVoiceRecording: Boolean(details.isVoiceRecording),
+                        audioColor: details.audioColor || '',
                         timestamp: pDoc.createdAt ? new Date(pDoc.createdAt).getTime() : Date.now()
                     };
                 });
@@ -395,6 +458,11 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                     postMedia: currentPostDetails.postMedia || '',
                     pdfName: clampText(currentPostDetails.pdfName, 45),
                     pdfSize: currentPostDetails.pdfSize || '',
+                    audioName: clampText(currentPostDetails.audioName, 45),
+                    audioDuration: currentPostDetails.audioDuration || '',
+                    audioSize: currentPostDetails.audioSize || '',
+                    isVoiceRecording: Boolean(currentPostDetails.isVoiceRecording),
+                    audioColor: currentPostDetails.audioColor || '',
                     timestamp: Date.now()
                 }];
             }
@@ -434,6 +502,11 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                     postMedia: currentPostDetails.postMedia,
                     pdfName: currentPostDetails.pdfName,
                     pdfSize: currentPostDetails.pdfSize,
+                    audioName: currentPostDetails.audioName,
+                    audioDuration: currentPostDetails.audioDuration,
+                    audioSize: currentPostDetails.audioSize,
+                    isVoiceRecording: String(Boolean(currentPostDetails.isVoiceRecording)),
+                    audioColor: currentPostDetails.audioColor,
                     unreadCount: String(totalUnreadCount),
                     unreadItems: unreadItemsJson,
                     route: targetRoute,

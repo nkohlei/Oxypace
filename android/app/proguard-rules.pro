@@ -36,3 +36,7 @@
 -dontwarn javax.annotation.**
 -dontwarn org.bouncycastle.**
 -dontwarn android.window.**
+
+# Capgo CapacitorUpdater (Self-Hosted OTA Live Updates)
+-keep class ee.forgr.capacitor_updater.** { *; }
+-dontwarn ee.forgr.capacitor_updater.**
