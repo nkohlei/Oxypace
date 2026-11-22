@@ -529,7 +529,14 @@ html.has-3button-nav .oxypace-lightbox-footer {
         right: 10px;
     }
 
+    /* Mobilde post akışında kaydırma ok butonlarını gizle (parmakla kaydırma yeterli) */
     .gallery-nav-btn {
+        display: none;
+    }
+
+    /* Mobilde yalnızca post detay sayfasında (PostDetail) ok butonlarını göster */
+    .pd-page-root .gallery-nav-btn {
+        display: flex;
         width: 32px;
         height: 32px;
     }
