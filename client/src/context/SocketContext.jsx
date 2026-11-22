@@ -5,6 +5,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { getActiveOtaVersion } from '../utils/otaUpdater';
 
 const SocketContext = createContext();
 
@@ -101,8 +102,8 @@ export const SocketProvider = ({ children }) => {
             try {
                 if (Capacitor.isNativePlatform()) {
                     Promise.all([
-                        import('@capacitor/app').then(({ App: CapApp }) => CapApp.getInfo()).catch(() => null),
-                        import('../utils/otaUpdater').then(({ getActiveOtaVersion }) => getActiveOtaVersion()).catch(() => null),
+                        CapacitorApp.getInfo().catch(() => null),
+                        getActiveOtaVersion().catch(() => null),
                     ]).then(([info, otaVersion]) => {
                         newSocket.emit('sync_app_version', {
                             appVersion: info?.version || '2.6.2',

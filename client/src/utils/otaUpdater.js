@@ -1,7 +1,11 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import axios from 'axios';
+
+// Use Capacitor's built-in native plugin bridge directly so Netlify's
+// isolated /client web build does not depend on root-installed
+// @capgo/capacitor-updater (which remains in root package.json for Android).
+const CapacitorUpdater = registerPlugin('CapacitorUpdater');
 
 export const CURRENT_OTA_VERSION = '2.6.2-ota.1';
 
@@ -28,7 +32,7 @@ export async function getActiveOtaVersion() {
 
 function isVoiceCallActive() {
     try {
-        if (typeof window !== 'undefined' && window.__oxypaceVoiceActive) return true;
+        if (typeof window !== 'undefined' && (window.__oxypaceVoiceActive || window.__isOxypaceVoiceActive)) return true;
         if (typeof document !== 'undefined' && document.querySelector('.vc-container')) return true;
     } catch (_) {}
     return false;
