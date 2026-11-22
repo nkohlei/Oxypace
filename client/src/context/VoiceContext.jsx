@@ -2964,14 +2964,14 @@ export const VoiceProvider = ({ children }) => {
             const lowerUrl = trimmedUrl.toLowerCase();
             const cleanUrl = lowerUrl.split('?')[0].split('#')[0];
             const isStaticVideo = /\.(mp4|m4v|webm|mov|mkv|ogg|avi)$/.test(cleanUrl);
-            const autoDetectedLive = !isStaticVideo && (
+            const isYouTube = lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be') || lowerUrl.includes('youtube-nocookie.com');
+            const autoDetectedLive = !isStaticVideo && !isYouTube && (
                 /\.(m3u8|mpd)$/.test(cleanUrl) ||
                 lowerUrl.includes('.m3u8') ||
                 lowerUrl.includes('.mpd') ||
                 lowerUrl.includes('/live/') ||
                 lowerUrl.includes('twitch.tv/') ||
                 lowerUrl.includes('kick.com/') ||
-                lowerUrl.includes('youtube.com/live/') ||
                 lowerUrl.includes('chunklist') ||
                 lowerUrl.startsWith('rtmp://')
             );

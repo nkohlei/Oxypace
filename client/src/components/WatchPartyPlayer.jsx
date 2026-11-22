@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
@@ -192,11 +192,45 @@ const getEmbedUrl = (url) => {
   return url;
 };
 
+const extractYouTubeVideoId = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  const patterns = [
+    /(?:youtube(?:-nocookie|education)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i,
+    /[?&]v=([A-Za-z0-9_-]{11})/i,
+  ];
+  for (const re of patterns) {
+    const m = trimmed.match(re);
+    if (m && m[1]) return m[1];
+  }
+  return null;
+};
+
+const isYouTubeUrl = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  const lower = url.toLowerCase();
+  return lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('youtube-nocookie.com');
+};
+
+const normalizePlatformUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (isYouTubeUrl(trimmed)) {
+    const videoId = extractYouTubeVideoId(trimmed);
+    if (videoId) {
+      // Canonical watch URL strips &list=RD... / &list=WL / shorts / live quirks
+      // that make react-player's YouTube.getID() return null and render a black iframe.
+      return `https://www.youtube.com/watch?v=${videoId}`;
+    }
+  }
+  return trimmed;
+};
+
 const isPlatformUrl = (url) => {
   if (!url) return false;
   const lowerUrl = url.toLowerCase();
   return [
-    'youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv',
+    'youtube.com', 'youtu.be', 'youtube-nocookie.com', 'vimeo.com', 'twitch.tv',
     'soundcloud.com', 'facebook.com', 'dailymotion.com',
     'wistia.com', 'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com',
     'vidmoly', 'fembed', 'feurl', 'vidoza', 'upstream',
@@ -1104,9 +1138,16 @@ const WatchPartyPlayer = () => {
     };
 
     const isHost = true;
-    const isStream = isLiveStream(watchParty?.url) && !isPlatformUrl(watchParty?.url);
-    const isLive = !!watchParty?.isLive;
+    const isPlatform = isPlatformUrl(watchParty?.url);
+    const isYouTube = isYouTubeUrl(watchParty?.url);
+    const normalizedPlatformUrl = isPlatform ? normalizePlatformUrl(watchParty?.url) : (watchParty?.url || '');
+    const isStream = isLiveStream(watchParty?.url) && !isPlatform;
+    // Platform URLs (YouTube/Vimeo/Twitch/etc.) must NEVER route into the native HLS <video> engine
+    const isLive = !!watchParty?.isLive && !isPlatform;
     const isNativeVOD = isStream && !isLive;
+    const [platformReloadKey, setPlatformReloadKey] = useState(0);
+    const [platformError, setPlatformError] = useState(null);
+    const platformAutoRetryRef = useRef(false);
 
     const triggerReconnect = () => {
         if (reconnectTimerRef.current) return;
@@ -1134,6 +1175,9 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         setHasError(false);
         setIsReady(false);
+        setPlatformError(null);
+        setPlatformReloadKey(0);
+        platformAutoRetryRef.current = false;
         setUseProxy(false);
         setAudioTracks([]);
         setCurrentAudioTrack(0);
@@ -1493,12 +1537,42 @@ const WatchPartyPlayer = () => {
         return () => clearInterval(interval);
     }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isStream]);
 
+    // Watchdog for YouTube / ReactPlayer initialization:
+    // If YouTube IFrame API fails to fire onReady within 7s (e.g. cold script load or transient stall),
+    // automatically perform one clean remount instead of staying on a black frame.
+    useEffect(() => {
+        if (!watchParty?.url || isLive || isStream || !isPlatform || isIframePlatform(watchParty?.url)) return;
+        if (isReady || platformError) return;
+
+        const timer = setTimeout(() => {
+            if (!platformAutoRetryRef.current) {
+                platformAutoRetryRef.current = true;
+                console.warn('[WatchPartyPlayer] Platform player did not signal ready in 7s, remounting cleanly...');
+                setPlatformReloadKey((k) => k + 1);
+            }
+        }, 7000);
+
+        return () => clearTimeout(timer);
+    }, [watchParty?.url, isLive, isStream, isPlatform, isReady, platformError, platformReloadKey]);
+
     // Standard Video Synchronization (only for non-live files)
     useEffect(() => {
         if (!watchParty || !playerRef.current || !isReady || hasError || isStream) return;
 
         const syncStandardPlayer = () => {
             if (!playerRef.current || !watchParty) return;
+            // Avoid seeking YouTube while the iframe is still unstarted (-1) or buffering (3)
+            const internalPlayer = playerRef.current.getInternalPlayer?.();
+            if (isYouTube && internalPlayer && typeof internalPlayer.getPlayerState === 'function') {
+                const ytState = internalPlayer.getPlayerState();
+                if (ytState === -1 || ytState === 3) {
+                    if (watchParty.isPlaying && ytState === -1 && typeof internalPlayer.playVideo === 'function') {
+                        try { internalPlayer.playVideo(); } catch (_) {}
+                    }
+                    return;
+                }
+            }
+
             const referenceTime = watchParty.serverTimestamp || watchParty.lastUpdated;
             let expectedTime = watchParty.currentTime || 0;
             if (watchParty.isPlaying && referenceTime) {
@@ -1508,13 +1582,13 @@ const WatchPartyPlayer = () => {
 
             const localTime = playerRef.current.getCurrentTime?.() || 0;
             const timeDiff = Math.abs(localTime - expectedTime);
-            const threshold = watchParty.isPlaying ? 1.3 : 0.35;
+            const threshold = watchParty.isPlaying ? 1.5 : 0.5;
 
-            if (timeDiff > threshold) {
+            if (timeDiff > threshold && !(expectedTime < 0.5 && localTime < 0.5)) {
                 isSyncingRef.current = true;
                 lastProgrammaticSeekTimeRef.current = expectedTime;
                 lastPolledTimeRef.current = expectedTime;
-                playerRef.current.seekTo?.(expectedTime, 'seconds');
+                playerRef.current.seekTo?.(expectedTime, 'seconds', !!watchParty.isPlaying);
                 setTimeout(() => {
                     isSyncingRef.current = false;
                 }, 600);
@@ -1524,7 +1598,7 @@ const WatchPartyPlayer = () => {
         syncStandardPlayer();
         const interval = setInterval(syncStandardPlayer, 1000);
         return () => clearInterval(interval);
-    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isStream, getServerNow]);
+    }, [watchParty?.currentTime, watchParty?.isPlaying, watchParty?.url, watchParty?.serverTimestamp, watchParty?.lastUpdated, isReady, hasError, isStream, isYouTube, getServerNow]);
 
     const handlePlay = (time) => {
         if (isSyncingRef.current) return;
@@ -2261,6 +2335,10 @@ const WatchPartyPlayer = () => {
     };
 
     const handlePlayerSurfaceClick = (e) => {
+        // Platform / iframe players (YouTube, Vimeo, etc.) handle their own click/play interactions directly
+        if (!isLive && !isStream) {
+            return;
+        }
         if (
             e.target.closest('button') || 
             e.target.closest('input') || 
@@ -2430,7 +2508,14 @@ const WatchPartyPlayer = () => {
                 } else if (stdPlayer && !isStream) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = liveTarget;
-                    stdPlayer.seekTo?.(liveTarget, 'seconds');
+                    const curLocal = stdPlayer.getCurrentTime?.() || 0;
+                    if (Math.abs(curLocal - liveTarget) > 0.6) {
+                        stdPlayer.seekTo?.(liveTarget, 'seconds', true);
+                    }
+                    const internalPlayer = stdPlayer.getInternalPlayer?.();
+                    if (internalPlayer && typeof internalPlayer.playVideo === 'function') {
+                        try { internalPlayer.playVideo(); } catch (_) {}
+                    }
                     setTimeout(() => { isSyncingRef.current = false; }, 250);
                 }
             } else if (detail.type === 'watch-seek') {
@@ -2447,7 +2532,7 @@ const WatchPartyPlayer = () => {
                 } else if (stdPlayer && !isStream) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = liveTarget;
-                    stdPlayer.seekTo?.(liveTarget, 'seconds');
+                    stdPlayer.seekTo?.(liveTarget, 'seconds', !!watchParty?.isPlaying);
                     setTimeout(() => { isSyncingRef.current = false; }, 250);
                 }
             }
@@ -2697,7 +2782,7 @@ const WatchPartyPlayer = () => {
 
     return (
         <div 
-            className={`watch-party-player-wrapper ${isFullscreen ? 'is-fullscreen' : ''} ${(!controlsVisible || isEdgeHidden) ? 'hide-cursor' : ''}`} 
+            className={`watch-party-player-wrapper ${isFullscreen ? 'is-fullscreen' : ''} ${(!isLive && !isStream && isPlatform) ? 'is-platform-mode' : ''} ${(!controlsVisible || isEdgeHidden) ? 'hide-cursor' : ''}`} 
             ref={wrapperRef}
             onMouseMove={handleContainerMouseMove}
         >
@@ -3448,56 +3533,107 @@ const WatchPartyPlayer = () => {
                  )}
 
                   {(!isLive && !isStream) && (
-                      isIframePlatform(watchParty?.url) ? (
-                         <iframe
-                             src={getEmbedUrl(watchParty.url)}
-                             width="100%"
-                             height="100%"
-                             frameBorder="0"
-                             allowFullScreen
-                             allow="autoplay; encrypted-media; picture-in-picture"
-                             style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
-                             onLoad={() => setIsReady(true)}
-                             referrerPolicy="strict-origin-when-cross-origin"
-                         />
-                      ) : isPlatformUrl(watchParty?.url) ? (
-                        <ReactPlayer
-                            ref={playerRef}
-                            url={watchParty.url}
-                            playing={watchParty.isPlaying}
-                            controls={isHost}
-                            width="100%"
-                            height="100%"
-                            onError={(e) => {
-                                console.warn("ReactPlayer error logged:", e);
-                            }}
-                            onReady={() => setIsReady(true)}
-                            onPlay={handlePlay}
-                            onPause={handlePause}
-                            onSeek={handleSeek}
-                            config={{
-                                youtube: {
-                                    playerVars: { autoplay: 1, disablekb: 0 }
-                                }
-                            }}
-                        />
-                    ) : (
-                        <VideoPlayer
-                            src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
-                            watchParty={watchParty}
-                            volume={volume}
-                            muted={localMuted}
-                            onVolumeChange={setVolume}
-                            onMuteChange={setLocalMuted}
-                            onReady={() => setIsReady(true)}
-                            onPlay={handlePlay}
-                            onPause={handlePause}
-                            onSeek={handleSeek}
-                            serverNow={getServerNow}
-                            disableWatchSync={false}
-                            className="watch-party-custom-videoplayer"
-                        />
-                    )
+                      <div className="watch-party-embed-stage">
+                          {isIframePlatform(watchParty?.url) ? (
+                             <iframe
+                                 src={getEmbedUrl(watchParty.url)}
+                                 width="100%"
+                                 height="100%"
+                                 frameBorder="0"
+                                 allowFullScreen
+                                 allow="autoplay; encrypted-media; picture-in-picture"
+                                 style={{ border: 'none', background: '#000', borderRadius: '12px', width: '100%', height: '100%' }}
+                                 onLoad={() => setIsReady(true)}
+                                 referrerPolicy="strict-origin-when-cross-origin"
+                             />
+                          ) : isPlatform ? (
+                            <>
+                              <ReactPlayer
+                                  key={`${normalizedPlatformUrl}-${platformReloadKey}`}
+                                  ref={playerRef}
+                                  url={normalizedPlatformUrl}
+                                  playing={!!watchParty.isPlaying}
+                                  volume={volume}
+                                  muted={localMuted}
+                                  controls={isHost}
+                                  playsinline
+                                  width="100%"
+                                  height="100%"
+                                  onError={(e) => {
+                                      console.warn("ReactPlayer error logged:", e);
+                                      if (e === 101 || e === 150) {
+                                          setPlatformError('Bu YouTube videosunun sahibi başka sitelerde oynatılmasını (embed) engellemiş.');
+                                      } else if (e === 100) {
+                                          setPlatformError('Video bulunamadı veya gizli olarak ayarlanmış.');
+                                      } else if (e === 2) {
+                                          setPlatformError('Geçersiz video bağlantısı.');
+                                      } else if (e === 5) {
+                                          setPlatformError('Tarayıcı HTML5 oynatıcı hatası oluştu. Yeniden deneyin.');
+                                      }
+                                  }}
+                                  onReady={() => {
+                                      setIsReady(true);
+                                      setPlatformError(null);
+                                  }}
+                                  onPlay={handlePlay}
+                                  onPause={handlePause}
+                                  onSeek={handleSeek}
+                                  config={{
+                                      youtube: {
+                                          playerVars: {
+                                              autoplay: watchParty.isPlaying ? 1 : 0,
+                                              playsinline: 1,
+                                              enablejsapi: 1,
+                                              rel: 0,
+                                              modestbranding: 1,
+                                              disablekb: 0,
+                                              origin: typeof window !== 'undefined' ? window.location.origin : undefined
+                                          }
+                                      }
+                                  }}
+                              />
+                              {!isReady && !platformError && (
+                                  <div className="native-loader-overlay" style={{ background: 'rgba(0,0,0,0.65)', zIndex: 12, pointerEvents: 'none' }}>
+                                      <div className="pro-spinner" />
+                                  </div>
+                              )}
+                              {platformError && (
+                                  <div className="watch-party-platform-error-overlay">
+                                      <AlertCircle size={24} color="#f87171" />
+                                      <p>{platformError}</p>
+                                      <button
+                                          type="button"
+                                          className="watch-party-platform-retry-btn"
+                                          onClick={() => {
+                                              setPlatformError(null);
+                                              setIsReady(false);
+                                              setPlatformReloadKey((k) => k + 1);
+                                          }}
+                                      >
+                                          <RotateCw size={14} />
+                                          <span>Tekrar Dene</span>
+                                      </button>
+                                  </div>
+                              )}
+                            </>
+                        ) : (
+                            <VideoPlayer
+                                src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
+                                watchParty={watchParty}
+                                volume={volume}
+                                muted={localMuted}
+                                onVolumeChange={setVolume}
+                                onMuteChange={setLocalMuted}
+                                onReady={() => setIsReady(true)}
+                                onPlay={handlePlay}
+                                onPause={handlePause}
+                                onSeek={handleSeek}
+                                serverNow={getServerNow}
+                                disableWatchSync={false}
+                                className="watch-party-custom-videoplayer"
+                            />
+                        )}
+                      </div>
                 )}
             </div>
 
@@ -3705,10 +3841,12 @@ const WatchPartyPlayer = () => {
 export const GlobalWatchPartyWrapper = () => {
     const { watchParty } = useVoice();
     const [coords, setCoords] = useState(null);
+    const [hasVisibleLayout, setHasVisibleLayout] = useState(false);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!watchParty || !watchParty.url) {
             setCoords(null);
+            setHasVisibleLayout(false);
             return;
         }
 
@@ -3757,6 +3895,7 @@ export const GlobalWatchPartyWrapper = () => {
                     const left = Math.round(rect.left);
                     const width = Math.round(rect.width);
                     const height = Math.round(rect.height);
+                    setHasVisibleLayout(true);
                     setCoords((prev) =>
                         prev &&
                         prev.visible &&
@@ -3815,7 +3954,14 @@ export const GlobalWatchPartyWrapper = () => {
 
     if (!watchParty || !watchParty.url) return null;
 
-    const isVisible = coords?.visible;
+    const isVisible = !!(coords?.visible && coords.width > 0 && coords.height > 0);
+    // NEVER mount YouTube / ReactPlayer inside an offscreen 1x1 hidden container on initial load:
+    // Chromium/WebView GPU compositors and YouTube's IFrame API render a pitch-black surface
+    // when initialized at 1px x 1px + visibility:hidden + top:-9999px.
+    // Wait until the real placeholder layout has been measured at least once; keep mounted afterward
+    // so navigating away from the room preserves persistent audio/playback.
+    if (!isVisible && !hasVisibleLayout) return null;
+
     const isCarouselDocked = isVisible && coords.height <= 220;
 
     const style = isVisible ? {
@@ -3836,8 +3982,8 @@ export const GlobalWatchPartyWrapper = () => {
         position: 'fixed',
         top: '-9999px',
         left: '-9999px',
-        width: '1px',
-        height: '1px',
+        width: '320px',
+        height: '180px',
         opacity: 0,
         pointerEvents: 'none',
         visibility: 'hidden',
