@@ -484,6 +484,39 @@ app.get('/api/app/version', (req, res) => {
     res.json(APP_VERSION_CONFIG);
 });
 
+// Capgo CapacitorUpdater native & HeadlessUpdateWorker check endpoint
+app.post('/api/app/ota-check', (req, res) => {
+    const body = req.body || {};
+    const clientVerCode = parseInt(body.version_code, 10) || 0;
+    const clientBundleName = String(body.version_name || 'builtin').trim();
+    const latestOta = String(APP_VERSION_CONFIG.otaVersion || '').trim();
+    const builtinOta = String(APP_VERSION_CONFIG.builtinOtaVersion || '').trim();
+    const minNativeCode = Number(APP_VERSION_CONFIG.otaMinNativeVersionCode || APP_VERSION_CONFIG.versionCode || 0);
+    const currentNativeCode = Number(APP_VERSION_CONFIG.versionCode || 0);
+
+    if (!latestOta || !APP_VERSION_CONFIG.otaBundleUrl || (clientVerCode > 0 && clientVerCode < minNativeCode)) {
+        return res.json({ kind: 'up_to_date', message: 'Native update required before OTA' });
+    }
+
+    if (clientBundleName === latestOta) {
+        return res.json({ kind: 'up_to_date', message: 'Already on latest OTA bundle' });
+    }
+
+    if (
+        (clientBundleName === 'builtin' || clientBundleName === '' || clientBundleName === APP_VERSION_CONFIG.latestVersion) &&
+        clientVerCode >= currentNativeCode &&
+        builtinOta &&
+        latestOta === builtinOta
+    ) {
+        return res.json({ kind: 'up_to_date', message: 'Builtin bundle already matches latest OTA' });
+    }
+
+    return res.json({
+        version: latestOta,
+        url: APP_VERSION_CONFIG.otaBundleUrl,
+    });
+});
+
 import contactRoutes from './routes/contact.js';
 import feedbackRoutes from './routes/feedback.js';
 

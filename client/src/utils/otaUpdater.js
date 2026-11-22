@@ -56,6 +56,8 @@ async function reportOtaVersionToServer(otaVersion) {
     } catch (_) {}
 }
 
+let otaPushListenerRegistered = false;
+
 export async function checkAndApplyOtaUpdate(force = false) {
     if (!Capacitor.isNativePlatform() || otaCheckInFlight) return;
     const now = Date.now();
@@ -65,10 +67,11 @@ export async function checkAndApplyOtaUpdate(force = false) {
     lastOtaCheckAt = now;
 
     try {
-        const [{ data }, appInfo, currentOtaVer] = await Promise.all([
+        const [{ data }, appInfo, currentOtaVer, listRes] = await Promise.all([
             axios.get('/api/app/version', { timeout: 10000 }),
             CapacitorApp.getInfo().catch(() => null),
             getActiveOtaVersion(),
+            CapacitorUpdater.list().catch(() => null),
         ]);
 
         if (!data?.otaVersion || !data?.otaBundleUrl) return;
@@ -85,20 +88,34 @@ export async function checkAndApplyOtaUpdate(force = false) {
             return;
         }
 
-        console.log(`[OTA] Downloading live bundle ${data.otaVersion} from ${data.otaBundleUrl}...`);
-        const downloaded = await CapacitorUpdater.download({
-            url: data.otaBundleUrl,
-            version: String(data.otaVersion),
-        });
+        const existingBundles = Array.isArray(listRes?.bundles) ? listRes.bundles : [];
+        const matchedBundle = existingBundles.find((b) => String(b?.version || '') === String(data.otaVersion));
 
-        if (downloaded?.id) {
+        if (matchedBundle?.status === 'downloading') {
+            console.log(`[OTA] Native background download already in progress for ${data.otaVersion}`);
+            return;
+        }
+
+        let targetBundle = null;
+        if (matchedBundle && (matchedBundle.status === 'success' || matchedBundle.status === 'pending')) {
+            console.log(`[OTA] Using already-downloaded background bundle ${data.otaVersion}`);
+            targetBundle = matchedBundle;
+        } else {
+            console.log(`[OTA] Downloading live bundle ${data.otaVersion} from ${data.otaBundleUrl}...`);
+            targetBundle = await CapacitorUpdater.download({
+                url: data.otaBundleUrl,
+                version: String(data.otaVersion),
+            });
+        }
+
+        if (targetBundle?.id) {
             localStorage.setItem('oxypace_ota_version', String(data.otaVersion));
             await reportOtaVersionToServer(data.otaVersion);
             if (isVoiceCallActive()) {
-                await CapacitorUpdater.next(downloaded);
+                await CapacitorUpdater.next(targetBundle);
                 console.log(`[OTA] Queued bundle ${data.otaVersion} for next restart (active call protected).`);
             } else {
-                await CapacitorUpdater.set(downloaded);
+                await CapacitorUpdater.set(targetBundle);
                 console.log(`[OTA] Applied live bundle ${data.otaVersion} cleanly.`);
             }
         }
@@ -124,7 +141,26 @@ export async function initOtaUpdater() {
         console.warn('[OTA] notifyAppReady error:', err?.message || err);
     }
 
-    await checkAndApplyOtaUpdate(true);
+    // Immediately report active/headless-installed OTA bundle version to server
+    try {
+        const activeVer = await getActiveOtaVersion();
+        if (activeVer) {
+            localStorage.setItem('oxypace_ota_version', String(activeVer));
+            reportOtaVersionToServer(activeVer);
+        }
+    } catch (_) {}
+
+    if (!otaPushListenerRegistered && typeof window !== 'undefined') {
+        otaPushListenerRegistered = true;
+        window.addEventListener('oxypace:ota_push', () => {
+            checkAndApplyOtaUpdate(true);
+        });
+    }
+
+    // Slight delay lets native atBackground/headless updater settle without double-download race
+    setTimeout(() => {
+        checkAndApplyOtaUpdate(true);
+    }, 3500);
 
     try {
         CapacitorApp.addListener('appStateChange', ({ isActive }) => {

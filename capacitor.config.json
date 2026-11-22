@@ -20,7 +20,8 @@
       "splashImmersive": true
     },
     "CapacitorUpdater": {
-      "autoUpdate": false,
+      "autoUpdate": "atBackground",
+      "updateUrl": "https://api.oxypace.com.tr/api/app/ota-check",
       "statsUrl": "",
       "resetWhenUpdate": true
     }

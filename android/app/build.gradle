@@ -77,6 +77,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation 'com.google.firebase:firebase-messaging:24.1.0'
+    implementation "androidx.work:work-runtime:2.10.5"
 
     // Java 8 desugaring dependency
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"

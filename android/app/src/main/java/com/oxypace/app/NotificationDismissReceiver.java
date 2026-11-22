@@ -22,7 +22,7 @@ public class NotificationDismissReceiver extends BroadcastReceiver {
         if ("message".equals(type)) {
             String senderId = intent.getStringExtra(EXTRA_SENDER_ID);
             if (senderId != null && !senderId.trim().isEmpty()) {
-                OxypaceMessagingService.clearHistoryForSender(senderId.trim());
+                OxypaceMessagingService.clearHistoryForSender(context, senderId.trim());
             }
         } else if ("portal_post".equals(type)) {
             String channelKey = intent.getStringExtra(EXTRA_CHANNEL_KEY);

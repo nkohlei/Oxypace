@@ -3,13 +3,14 @@ export const APP_VERSION_CONFIG = {
     versionCode: 262,
     minSupportedVersionCode: 262,
     otaVersion: '2.6.2-ota.1',
+    builtinOtaVersion: '2.6.2-ota.1',
     otaBundleUrl: 'https://api.oxypace.com.tr/downloads/bundle.zip',
     otaMinNativeVersionCode: 262,
     downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
-    fallbackDownloadUrl: 'https://oxypace.com.tr/downloads/oxypace.apk',
+    fallbackDownloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
     forceUpdate: true,
     changelog:
-        'Oxypace 2.6.2: Her dosya uzantısına (.docx, .pptx, .xlsx, .zip, .mp3 vb.) özel bildirim kartları, tekil portal bildirimleri, sessiz ve kendi avatarlı satır içi mesaj yanıtlama (önceki mesajlar korunur), otomatik canlı OTA güncelleyici ve Yönetici Sürüm Takip Paneli eklendi.',
+        'Oxypace 2.6.2: Uygulama kapalıyken bile arka planda sessiz otomatik OTA güncelleme, her dosya uzantısına özel bildirim kartları, tekil portal bildirimleri, gönderen adı ve kendi avatarı korunan sessiz mesaj yanıtlama ve Yönetici Sürüm Takip Paneli.',
 };
 
 export default APP_VERSION_CONFIG;

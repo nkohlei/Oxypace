@@ -23,6 +23,28 @@ const MobileAppAdoptionPanel = ({ onSendUpdatePrompt, onBroadcastUpdatePrompt })
     const [error, setError] = useState('');
     const [filter, setFilter] = useState('android');
     const [query, setQuery] = useState('');
+    const [broadcastingOta, setBroadcastingOta] = useState(false);
+    const [otaBanner, setOtaBanner] = useState(null);
+
+    const handleBroadcastSilentOta = async () => {
+        if (broadcastingOta) return;
+        setBroadcastingOta(true);
+        setOtaBanner(null);
+        try {
+            const res = await axios.post('/api/admin/ota/broadcast');
+            setOtaBanner({
+                type: 'success',
+                text: res.data?.message || 'Arka plan OTA sinyali gönderildi.',
+            });
+        } catch (err) {
+            setOtaBanner({
+                type: 'error',
+                text: err?.response?.data?.message || 'Arka plan OTA yayını başarısız oldu.',
+            });
+        } finally {
+            setBroadcastingOta(false);
+        }
+    };
 
     const fetchVersions = async () => {
         setLoading(true);
@@ -109,6 +131,28 @@ const MobileAppAdoptionPanel = ({ onSendUpdatePrompt, onBroadcastUpdatePrompt })
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                        type="button"
+                        onClick={handleBroadcastSilentOta}
+                        disabled={broadcastingOta}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            background: 'rgba(56, 189, 248, 0.16)',
+                            border: '1px solid rgba(56, 189, 248, 0.35)',
+                            color: '#38bdf8',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: broadcastingOta ? 'wait' : 'pointer',
+                            opacity: broadcastingOta ? 0.7 : 1,
+                        }}
+                    >
+                        <Sparkles size={14} />
+                        {broadcastingOta ? 'Gönderiliyor...' : 'Arka Plan OTA Gönder'}
+                    </button>
                     {onBroadcastUpdatePrompt && (
                         <button
                             type="button"
@@ -154,6 +198,22 @@ const MobileAppAdoptionPanel = ({ onSendUpdatePrompt, onBroadcastUpdatePrompt })
                     </button>
                 </div>
             </div>
+
+            {otaBanner && (
+                <div
+                    style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        background: otaBanner.type === 'success' ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
+                        color: otaBanner.type === 'success' ? '#86efac' : '#fca5a5',
+                        border: `1px solid ${otaBanner.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                        fontSize: '13px',
+                        marginBottom: '12px',
+                    }}
+                >
+                    {otaBanner.text}
+                </div>
+            )}
 
             {error && (
                 <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.14)', color: '#fca5a5', fontSize: '13px', marginBottom: '12px' }}>

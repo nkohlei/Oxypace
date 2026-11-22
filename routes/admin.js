@@ -3231,6 +3231,69 @@ router.get('/app-versions', protect, requirePermission('canManageUsers'), async 
     }
 });
 
+// @route   POST /api/admin/ota/broadcast
+// @desc    Trigger silent background OTA check across compatible Android devices via FCM + Socket
+// @access  Private/Admin
+router.post('/ota/broadcast', protect, requirePermission('canManageUsers'), async (req, res) => {
+    try {
+        const minNativeCode = Number(APP_VERSION_CONFIG.otaMinNativeVersionCode || APP_VERSION_CONFIG.versionCode || 262);
+        const targetOtaVersion = String(APP_VERSION_CONFIG.otaVersion || '');
+
+        const eligibleUsers = await User.find({
+            isDeleted: { $ne: true },
+            appPlatform: 'android',
+            versionCode: { $gte: minNativeCode },
+            $or: [
+                { fcmTokens: { $exists: true, $ne: [] } },
+                { fcmToken: { $exists: true, $nin: ['', null] } },
+            ],
+        }).select('fcmTokens fcmToken').lean();
+
+        const tokenSet = new Set();
+        for (const u of eligibleUsers) {
+            if (Array.isArray(u.fcmTokens)) {
+                for (const t of u.fcmTokens) {
+                    if (t && typeof t === 'string' && t.trim()) tokenSet.add(t.trim());
+                }
+            }
+            if (u.fcmToken && typeof u.fcmToken === 'string' && u.fcmToken.trim()) {
+                tokenSet.add(u.fcmToken.trim());
+            }
+        }
+
+        const allTokens = Array.from(tokenSet);
+        let successCount = 0;
+        let failureCount = 0;
+
+        if (allTokens.length > 0) {
+            const { sendSilentOtaPush } = await import('../services/pushService.js');
+            for (let i = 0; i < allTokens.length; i += 500) {
+                const batch = allTokens.slice(i, i + 500);
+                const resp = await sendSilentOtaPush(batch, targetOtaVersion);
+                successCount += resp?.successCount || 0;
+                failureCount += resp?.failureCount || 0;
+            }
+        }
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('ota_update_available', { otaVersion: targetOtaVersion });
+        }
+
+        res.json({
+            success: true,
+            otaVersion: targetOtaVersion,
+            targetDevices: allTokens.length,
+            successCount,
+            failureCount,
+            message: `${allTokens.length} Android cihaza arka plan OTA güncelleme sinyali gönderildi (${successCount} başarılı).`,
+        });
+    } catch (err) {
+        console.error('ota broadcast error:', err);
+        res.status(500).json({ message: 'Arka plan OTA yayını gönderilemedi.' });
+    }
+});
+
 
 // @route   POST /api/admin/bots/discover-feed
 // @desc    Auto-discover RSS feed from a website URL

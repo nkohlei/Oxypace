@@ -50,6 +50,15 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             return;
         }
 
+        // Silent Headless OTA Update trigger: wakes app even when closed or logged out,
+        // shows zero notification/sound, and downloads the new bundle via WorkManager.
+        String earlyType = remoteMessage.getData().get("type");
+        if ("ota_update".equals(earlyType)) {
+            android.util.Log.i("OxypaceMessaging", "Silent OTA update push received -> scheduling headless check");
+            OtaBackgroundScheduler.triggerImmediateCheck(getApplicationContext());
+            return;
+        }
+
         // Strict Single-Session & Multi-Account Notification Isolation:
         // Only 1 user account can be logged in and active on the mobile app at any given time.
         // If no user is logged in (activeUserId is empty), or if the notification is targeted at
@@ -107,8 +116,9 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
     }
 
-    // In-memory message history per sender to stack unread messages in one notification (bounded)
+    // In-memory + persisted message history per sender to stack unread messages & preserve inline reply context
     private static final int MAX_DM_ACCUMULATED = 6;
+    public static final String DM_NOTIF_PREFS = "OxypaceDmNotifPrefs";
     private static final java.util.Map<String, java.util.List<MessageItem>> messageHistory = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.ConcurrentHashMap<String, android.graphics.Bitmap> circularAvatarCache = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.ConcurrentHashMap<String, String> senderAvatarUrlMap = new java.util.concurrent.ConcurrentHashMap<>();
@@ -135,6 +145,95 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             this.dataUri = dataUri;
             this.mimeType = mimeType;
             this.isSelf = isSelf;
+        }
+
+        org.json.JSONObject toJson() {
+            org.json.JSONObject obj = new org.json.JSONObject();
+            try {
+                obj.put("text", text != null ? text : "");
+                obj.put("timestamp", timestamp);
+                obj.put("dataUri", dataUri != null ? dataUri : "");
+                obj.put("mimeType", mimeType != null ? mimeType : "");
+                obj.put("isSelf", isSelf);
+            } catch (Exception ignored) {}
+            return obj;
+        }
+
+        static MessageItem fromJson(org.json.JSONObject obj) {
+            if (obj == null) return null;
+            String dUri = obj.optString("dataUri", "");
+            String mType = obj.optString("mimeType", "");
+            return new MessageItem(
+                obj.optString("text", ""),
+                obj.optLong("timestamp", System.currentTimeMillis()),
+                dUri.isEmpty() ? null : dUri,
+                mType.isEmpty() ? null : mType,
+                obj.optBoolean("isSelf", false)
+            );
+        }
+    }
+
+    private static java.util.List<MessageItem> loadDmHistory(Context context, String senderId) {
+        if (senderId == null) return new java.util.ArrayList<>();
+        java.util.List<MessageItem> memList = messageHistory.get(senderId);
+        if (memList != null && !memList.isEmpty()) {
+            return memList;
+        }
+        java.util.List<MessageItem> loaded = new java.util.ArrayList<>();
+        if (context != null) {
+            try {
+                android.content.SharedPreferences prefs = context.getSharedPreferences(DM_NOTIF_PREFS, Context.MODE_PRIVATE);
+                String raw = prefs.getString("dm_items_" + senderId, null);
+                if (raw != null && !raw.isEmpty()) {
+                    org.json.JSONArray arr = new org.json.JSONArray(raw);
+                    for (int i = 0; i < arr.length(); i++) {
+                        MessageItem item = MessageItem.fromJson(arr.optJSONObject(i));
+                        if (item != null) loaded.add(item);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        messageHistory.put(senderId, loaded);
+        return loaded;
+    }
+
+    private static void saveDmHistory(Context context, String senderId, java.util.List<MessageItem> items, String displayTitle, String senderAvatar) {
+        if (senderId == null) return;
+        if (context != null) {
+            try {
+                org.json.JSONArray arr = new org.json.JSONArray();
+                for (MessageItem item : items) {
+                    arr.put(item.toJson());
+                }
+                android.content.SharedPreferences prefs = context.getSharedPreferences(DM_NOTIF_PREFS, Context.MODE_PRIVATE);
+                android.content.SharedPreferences.Editor ed = prefs.edit()
+                    .putString("dm_items_" + senderId, arr.toString());
+                if (displayTitle != null && !displayTitle.trim().isEmpty()) {
+                    ed.putString("dm_name_" + senderId, displayTitle.trim());
+                }
+                if (senderAvatar != null && !senderAvatar.trim().isEmpty()) {
+                    ed.putString("dm_avatar_" + senderId, senderAvatar.trim());
+                }
+                ed.apply();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private static String loadDmSenderName(Context context, String senderId) {
+        if (context == null || senderId == null) return "";
+        try {
+            return context.getSharedPreferences(DM_NOTIF_PREFS, Context.MODE_PRIVATE).getString("dm_name_" + senderId, "");
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static String loadDmSenderAvatar(Context context, String senderId) {
+        if (context == null || senderId == null) return "";
+        try {
+            return context.getSharedPreferences(DM_NOTIF_PREFS, Context.MODE_PRIVATE).getString("dm_avatar_" + senderId, "");
+        } catch (Exception ignored) {
+            return "";
         }
     }
 
@@ -366,6 +465,21 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
     }
 
+    public static void clearHistoryForSender(Context context, String senderId) {
+        if (senderId == null) return;
+        String clean = senderId.trim();
+        messageHistory.remove(clean);
+        if (context != null) {
+            try {
+                context.getSharedPreferences(DM_NOTIF_PREFS, Context.MODE_PRIVATE).edit()
+                    .remove("dm_items_" + clean)
+                    .remove("dm_name_" + clean)
+                    .remove("dm_avatar_" + clean)
+                    .apply();
+            } catch (Exception ignored) {}
+        }
+    }
+
     public static void clearAllHistory() {
         messageHistory.clear();
         portalChannelHistory.clear();
@@ -377,6 +491,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         if (context != null) {
             try {
                 context.getSharedPreferences(PORTAL_NOTIF_PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+                context.getSharedPreferences(DM_NOTIF_PREFS, Context.MODE_PRIVATE).edit().clear().apply();
             } catch (Exception ignored) {}
         }
     }
@@ -406,7 +521,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 try {
                     nm.cancel(Math.abs(senderId.hashCode()));
                 } catch (Exception ignored) {}
-                clearHistoryForSender(senderId);
+                clearHistoryForSender(this, senderId);
                 return;
             }
         }
@@ -449,7 +564,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         int notifId = Math.abs(senderId.hashCode());
         if (!isNotificationCurrentlyActive(nm, notifId)) {
-            clearHistoryForSender(senderId);
+            clearHistoryForSender(this, senderId);
         }
 
         if (senderAvatar != null && !senderAvatar.trim().isEmpty()) {
@@ -457,7 +572,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         long now = System.currentTimeMillis();
-        java.util.List<MessageItem> list = messageHistory.computeIfAbsent(senderId, k -> new java.util.ArrayList<>());
+        java.util.List<MessageItem> list = loadDmHistory(this, senderId);
+        boolean hasSelfReply = false;
         synchronized (list) {
             String mime = (imageUrl != null && !imageUrl.isEmpty()) ? "image/png" : null;
             list.add(new MessageItem(messageBody, now, imageUrl, mime, false));
@@ -465,6 +581,13 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             while (list.size() > MAX_DM_ACCUMULATED) {
                 list.remove(0);
             }
+            for (MessageItem it : list) {
+                if (it.isSelf) {
+                    hasSelfReply = true;
+                    break;
+                }
+            }
+            saveDmHistory(this, senderId, list, displaySenderTitle, senderAvatar);
         }
 
         android.graphics.Bitmap avatarBitmap = loadOrFetchCachedAvatar(senderAvatar, senderName);
@@ -519,10 +642,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         // WhatsApp MessagingStyle Configuration:
-        // isGroupConversation is false, but setConversationTitle gives the expanded header context
+        // Use groupConversation=true once the user replies so Android/HyperOS always renders
+        // the incoming sender's name & avatar alongside the user's own reply row.
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
             .setConversationTitle(displaySenderTitle)
-            .setGroupConversation(false);
+            .setGroupConversation(hasSelfReply);
 
         synchronized (list) {
             for (MessageItem item : list) {
@@ -645,18 +769,26 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         int resolvedNotifId = notificationId != 0 ? notificationId : Math.abs(cleanRecipient.hashCode());
         long now = System.currentTimeMillis();
 
-        java.util.List<MessageItem> list = messageHistory.computeIfAbsent(cleanRecipient, k -> new java.util.ArrayList<>());
+        String persistedName = loadDmSenderName(context, cleanRecipient);
+        String displayTitle = (senderName != null && !senderName.trim().isEmpty() && !"Oxypace".equals(senderName.trim()))
+            ? senderName.trim()
+            : (!persistedName.isEmpty() ? persistedName : "Oxypace");
+
+        String resolvedSenderAvatar = (senderAvatar != null && !senderAvatar.trim().isEmpty())
+            ? senderAvatar.trim()
+            : senderAvatarUrlMap.getOrDefault(cleanRecipient, "");
+        if (resolvedSenderAvatar.isEmpty()) {
+            resolvedSenderAvatar = loadDmSenderAvatar(context, cleanRecipient);
+        }
+
+        java.util.List<MessageItem> list = loadDmHistory(context, cleanRecipient);
         synchronized (list) {
             list.add(new MessageItem(replyText, now, null, null, true));
             while (list.size() > MAX_DM_ACCUMULATED) {
                 list.remove(0);
             }
+            saveDmHistory(context, cleanRecipient, list, displayTitle, resolvedSenderAvatar);
         }
-
-        String displayTitle = (senderName != null && !senderName.trim().isEmpty()) ? senderName.trim() : "Oxypace";
-        String resolvedSenderAvatar = (senderAvatar != null && !senderAvatar.trim().isEmpty())
-            ? senderAvatar.trim()
-            : senderAvatarUrlMap.getOrDefault(cleanRecipient, "");
 
         android.graphics.Bitmap partnerBmp = loadOrFetchCachedAvatar(resolvedSenderAvatar, displayTitle);
         androidx.core.graphics.drawable.IconCompat partnerIconCompat = partnerBmp != null
@@ -682,9 +814,11 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
         androidx.core.app.Person selfPerson = selfBuilder.build();
 
+        // Keep groupConversation=true so Android/HyperOS ALWAYS renders partnerPerson's sender name
+        // on incoming messages right alongside the user's own reply row + avatar.
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(selfPerson)
             .setConversationTitle(displayTitle)
-            .setGroupConversation(false);
+            .setGroupConversation(true);
 
         synchronized (list) {
             for (MessageItem item : list) {
@@ -713,6 +847,21 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+
+        // Preserve Conversation Shortcut across inline reply updates so OS conversation header/sender stays intact
+        String shortcutId = "conversation_" + cleanRecipient;
+        try {
+            androidx.core.content.pm.ShortcutInfoCompat.Builder scBuilder = new androidx.core.content.pm.ShortcutInfoCompat.Builder(context, shortcutId)
+                .setShortLabel(displayTitle)
+                .setLongLabel(displayTitle)
+                .setPerson(partnerPerson)
+                .setIntent(openIntent)
+                .setLongLived(true);
+            if (partnerIconCompat != null) {
+                scBuilder.setIcon(partnerIconCompat);
+            }
+            androidx.core.content.pm.ShortcutManagerCompat.pushDynamicShortcut(context, scBuilder.build());
+        } catch (Exception ignored) {}
 
         int smallIcon = getSafeSmallIcon(context);
 
@@ -743,6 +892,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setContentTitle(displayTitle)
             .setContentText("Sen: " + replyText)
             .setStyle(style)
+            .setShortcutId(shortcutId)
             .setAutoCancel(true)
             .setSilent(true)
             .setOnlyAlertOnce(true)

@@ -59,7 +59,8 @@ public class MainActivity extends BridgeActivity {
                     serviceIntent.putExtra("channelName", call.getString("channelName", "Görüntülü Sohbet"));
                     serviceIntent.putExtra("route", call.getString("route", ""));
 
-                    // Pass the server-side room startedAt epoch timestamp for timer synchronization.
+                    // Pass the server-side room startedAt epoch timestamp for timer
+                    // synchronization.
                     // Use getData().opt() to avoid JSObject/Number type mismatch;
                     // JS epoch ms values arrive as Double from the Capacitor bridge.
                     long startedAt = 0L;
@@ -68,7 +69,8 @@ public class MainActivity extends BridgeActivity {
                         if (rawStartedAt instanceof Number) {
                             startedAt = ((Number) rawStartedAt).longValue();
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     if (startedAt > 0) {
                         serviceIntent.putExtra("startedAt", startedAt);
@@ -90,18 +92,23 @@ public class MainActivity extends BridgeActivity {
 
                     // Ensure speakerphone and high-fidelity media audio routing are applied
                     try {
-                        android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                        android.media.AudioManager am = (android.media.AudioManager) ctx
+                                .getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
                             applyAudioRouting(am, "call");
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
-                    // Update PiP Params for Android 12+ Auto-Enter and keep screen alive during call
+                    // Update PiP Params for Android 12+ Auto-Enter and keep screen alive during
+                    // call
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             try {
-                                getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                            } catch (Exception ignored) {}
+                                getActivity().getWindow()
+                                        .addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                            } catch (Exception ignored) {
+                            }
                             updatePiPParams(getActivity(), true);
                         });
                     }
@@ -111,42 +118,51 @@ public class MainActivity extends BridgeActivity {
                         if (ActiveCallService.sInstance != null) {
                             ActiveCallService.sInstance.stopCall();
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     try {
                         android.content.Intent stopIntent = new android.content.Intent(ctx, ActiveCallService.class);
                         ctx.stopService(stopIntent);
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     // Explicitly cancel ongoing call notification immediately
                     try {
-                        android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                        android.app.NotificationManager nm = (android.app.NotificationManager) ctx
+                                .getSystemService(android.content.Context.NOTIFICATION_SERVICE);
                         if (nm != null) {
                             nm.cancel(ActiveCallService.NOTIFICATION_ID);
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     // Revert audio mode to normal when call stops
                     try {
-                        android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                        android.media.AudioManager am = (android.media.AudioManager) ctx
+                                .getSystemService(android.content.Context.AUDIO_SERVICE);
                         if (am != null) {
                             am.setMode(android.media.AudioManager.MODE_NORMAL);
                             am.setSpeakerphoneOn(false);
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                                 am.clearCommunicationDevice();
                                 if (sModeChangedListener != null) {
-                                    am.removeOnModeChangedListener((android.media.AudioManager.OnModeChangedListener) sModeChangedListener);
+                                    am.removeOnModeChangedListener(
+                                            (android.media.AudioManager.OnModeChangedListener) sModeChangedListener);
                                     sModeChangedListener = null;
                                 }
                             }
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             try {
-                                getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                            } catch (Exception ignored) {}
+                                getActivity().getWindow()
+                                        .clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                            } catch (Exception ignored) {
+                            }
                             updatePiPParams(getActivity(), false);
                         });
                     }
@@ -165,22 +181,24 @@ public class MainActivity extends BridgeActivity {
         public static Object sModeChangedListener = null;
 
         public static boolean isHeadsetConnected(android.media.AudioManager am) {
-            if (am == null) return false;
+            if (am == null)
+                return false;
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                    android.media.AudioDeviceInfo[] devices = am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS);
+                    android.media.AudioDeviceInfo[] devices = am
+                            .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS);
                     for (android.media.AudioDeviceInfo device : devices) {
                         int type = device.getType();
                         if (type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                            type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-                            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                            type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                            type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET ||
-                            type == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
-                            if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                                type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                                type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
                                 type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                                type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) {
+                                type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                                type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET ||
+                                type == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
+                            if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                                    type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                                    type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) {
                                 sHeadsetName = "Bluetooth Kulaklık";
                             } else {
                                 sHeadsetName = "Kablolu Kulaklık";
@@ -194,8 +212,10 @@ public class MainActivity extends BridgeActivity {
                     boolean wired = am.isWiredHeadsetOn();
                     @SuppressWarnings("deprecation")
                     boolean bt = am.isBluetoothScoOn() || am.isBluetoothA2dpOn();
-                    if (bt) sHeadsetName = "Bluetooth Kulaklık";
-                    else if (wired) sHeadsetName = "Kablolu Kulaklık";
+                    if (bt)
+                        sHeadsetName = "Bluetooth Kulaklık";
+                    else if (wired)
+                        sHeadsetName = "Kablolu Kulaklık";
                     return wired || bt;
                 }
             } catch (Exception e) {
@@ -204,26 +224,30 @@ public class MainActivity extends BridgeActivity {
         }
 
         public static android.media.AudioDeviceInfo getHeadsetDevice(android.media.AudioManager am) {
-            if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return null;
+            if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S)
+                return null;
             try {
                 java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
                 // 1. Prefer BLE Headset or Bluetooth A2DP/Hearing Aid devices
                 for (android.media.AudioDeviceInfo d : devices) {
                     int t = d.getType();
-                    if (t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET || t == android.media.AudioDeviceInfo.TYPE_HEARING_AID) {
+                    if (t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
+                            || t == android.media.AudioDeviceInfo.TYPE_HEARING_AID) {
                         return d;
                     }
                 }
                 // 2. Wired headsets and USB
                 for (android.media.AudioDeviceInfo d : devices) {
                     int t = d.getType();
-                    if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET || t == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
+                    if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
+                            || t == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
                         return d;
                     }
                 }
                 for (android.media.AudioDeviceInfo d : devices) {
                     int t = d.getType();
-                    if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES || t == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
+                    if (t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+                            || t == android.media.AudioDeviceInfo.TYPE_USB_DEVICE) {
                         return d;
                     }
                 }
@@ -234,12 +258,14 @@ public class MainActivity extends BridgeActivity {
                         return d;
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             return null;
         }
 
         public static android.media.AudioDeviceInfo getSpeakerDevice(android.media.AudioManager am) {
-            if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return null;
+            if (am == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S)
+                return null;
             try {
                 java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
                 for (android.media.AudioDeviceInfo d : devices) {
@@ -247,12 +273,14 @@ public class MainActivity extends BridgeActivity {
                         return d;
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             return null;
         }
 
         public static void routeAudio(android.media.AudioManager am, String targetRoute) {
-            if (am == null) return;
+            if (am == null)
+                return;
             try {
                 boolean isSpeaker = !"headset".equalsIgnoreCase(targetRoute);
                 sCurrentRoute = isSpeaker ? "speaker" : "headset";
@@ -272,10 +300,10 @@ public class MainActivity extends BridgeActivity {
                         for (android.media.AudioDeviceInfo d : devices) {
                             int type = d.getType();
                             if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                                type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                                type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                                type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-                                type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
+                                    type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                                    type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                                    type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                                    type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
                                 chosenDevice = d;
                                 break;
                             }
@@ -284,7 +312,8 @@ public class MainActivity extends BridgeActivity {
 
                     if (chosenDevice != null) {
                         boolean res = am.setCommunicationDevice(chosenDevice);
-                        android.util.Log.d("CallManager", "setCommunicationDevice to " + chosenDevice.getProductName() + " result=" + res);
+                        android.util.Log.d("CallManager",
+                                "setCommunicationDevice to " + chosenDevice.getProductName() + " result=" + res);
                     } else {
                         am.clearCommunicationDevice();
                     }
@@ -298,7 +327,8 @@ public class MainActivity extends BridgeActivity {
         }
 
         public static void applyAudioRouting(android.media.AudioManager am, String mode) {
-            if (am == null) return;
+            if (am == null)
+                return;
             try {
                 // Keep MODE_NORMAL for high-fidelity stereo audio
                 am.setMode(android.media.AudioManager.MODE_NORMAL);
@@ -340,15 +370,17 @@ public class MainActivity extends BridgeActivity {
                             android.webkit.WebView wv = bridge != null ? bridge.getWebView() : null;
                             if (wv != null) {
                                 String script = String.format(
-                                    "(function(){ window.dispatchEvent(new CustomEvent('oxypace:audio_route_changed', { detail: { currentRoute: '%s', hasHeadset: %b, headsetName: '%s' } })); })();",
-                                    currentRoute, hasHeadset, (name != null && !name.isEmpty()) ? name : "Kulaklık"
-                                );
+                                        "(function(){ window.dispatchEvent(new CustomEvent('oxypace:audio_route_changed', { detail: { currentRoute: '%s', hasHeadset: %b, headsetName: '%s' } })); })();",
+                                        currentRoute, hasHeadset,
+                                        (name != null && !name.isEmpty()) ? name : "Kulaklık");
                                 wv.evaluateJavascript(script, null);
                             }
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
                     });
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         @PluginMethod
@@ -356,7 +388,8 @@ public class MainActivity extends BridgeActivity {
             String mode = call.getString("mode", "media");
             try {
                 android.content.Context ctx = getContext();
-                android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                android.media.AudioManager am = (android.media.AudioManager) ctx
+                        .getSystemService(android.content.Context.AUDIO_SERVICE);
                 if (am != null) {
                     applyAudioRouting(am, mode);
                 }
@@ -370,7 +403,8 @@ public class MainActivity extends BridgeActivity {
         public void getAudioRouting(PluginCall call) {
             try {
                 android.content.Context ctx = getContext();
-                android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                android.media.AudioManager am = (android.media.AudioManager) ctx
+                        .getSystemService(android.content.Context.AUDIO_SERVICE);
                 boolean hasHeadset = isHeadsetConnected(am);
                 sHasHeadset = hasHeadset;
                 JSObject ret = new JSObject();
@@ -388,7 +422,8 @@ public class MainActivity extends BridgeActivity {
             String route = call.getString("route", "speaker");
             try {
                 android.content.Context ctx = getContext();
-                android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(android.content.Context.AUDIO_SERVICE);
+                android.media.AudioManager am = (android.media.AudioManager) ctx
+                        .getSystemService(android.content.Context.AUDIO_SERVICE);
                 if (am != null) {
                     sUserSelectedRoute = route;
                     routeAudio(am, route);
@@ -419,7 +454,8 @@ public class MainActivity extends BridgeActivity {
                         } catch (Throwable e) {
                             try {
                                 act.enterPictureInPictureMode();
-                            } catch (Throwable ignored) {}
+                            } catch (Throwable ignored) {
+                            }
                         }
                     });
                     call.resolve();
@@ -461,7 +497,8 @@ public class MainActivity extends BridgeActivity {
                 sIntent.putExtra("isMuted", sIsMuted);
                 sIntent.putExtra("isScreenSharing", sIsScreenSharing);
                 ctx.startService(sIntent);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             call.resolve();
         }
@@ -474,8 +511,8 @@ public class MainActivity extends BridgeActivity {
                 call.reject("Activity is null");
                 return;
             }
-            android.media.projection.MediaProjectionManager mpm =
-                (android.media.projection.MediaProjectionManager) act.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            android.media.projection.MediaProjectionManager mpm = (android.media.projection.MediaProjectionManager) act
+                    .getSystemService(Context.MEDIA_PROJECTION_SERVICE);
             if (mpm == null) {
                 call.reject("MediaProjectionManager not available");
                 return;
@@ -503,8 +540,8 @@ public class MainActivity extends BridgeActivity {
             act.runOnUiThread(() -> {
                 String clipText = "";
                 try {
-                    android.content.ClipboardManager cm =
-                        (android.content.ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager) act
+                            .getSystemService(Context.CLIPBOARD_SERVICE);
                     if (cm != null && cm.hasPrimaryClip()) {
                         android.content.ClipData clip = cm.getPrimaryClip();
                         if (clip != null && clip.getItemCount() > 0) {
@@ -529,26 +566,32 @@ public class MainActivity extends BridgeActivity {
     public static volatile String activePortalChannelKey = null;
 
     public static void clearChatNotification(Context context, String senderId) {
-        if (context == null || senderId == null || senderId.trim().isEmpty()) return;
+        if (context == null || senderId == null || senderId.trim().isEmpty())
+            return;
         try {
-            android.app.NotificationManager nm = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            android.app.NotificationManager nm = (android.app.NotificationManager) context
+                    .getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 int notifId = Math.abs(senderId.trim().hashCode());
                 nm.cancel(notifId);
-                android.util.Log.d("ChatNotification", "Cleared status bar notification for sender: " + senderId + " (id=" + notifId + ")");
+                android.util.Log.d("ChatNotification",
+                        "Cleared status bar notification for sender: " + senderId + " (id=" + notifId + ")");
             }
-            OxypaceMessagingService.clearHistoryForSender(senderId.trim());
+            OxypaceMessagingService.clearHistoryForSender(context, senderId.trim());
         } catch (Exception e) {
             android.util.Log.w("ChatNotification", "Error clearing notification: " + e.getMessage());
         }
     }
 
     public static void clearPortalChannelNotification(Context context, String portalId, String channelId) {
-        if (context == null || portalId == null || portalId.trim().isEmpty()) return;
+        if (context == null || portalId == null || portalId.trim().isEmpty())
+            return;
         try {
             String cleanPortalId = portalId.trim();
-            android.app.NotificationManager nm = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (channelId != null && !channelId.trim().isEmpty() && !channelId.equalsIgnoreCase("null") && !channelId.equalsIgnoreCase("undefined")) {
+            android.app.NotificationManager nm = (android.app.NotificationManager) context
+                    .getSystemService(Context.NOTIFICATION_SERVICE);
+            if (channelId != null && !channelId.trim().isEmpty() && !channelId.equalsIgnoreCase("null")
+                    && !channelId.equalsIgnoreCase("undefined")) {
                 String cleanChannelId = channelId.trim();
                 String channelKey = cleanPortalId + "_" + cleanChannelId;
                 if (nm != null) {
@@ -572,11 +615,13 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void setActiveChatPartner(PluginCall call) {
             String partnerId = call.getString("partnerId", null);
-            if (partnerId != null && (partnerId.trim().isEmpty() || partnerId.equalsIgnoreCase("null") || partnerId.equalsIgnoreCase("undefined"))) {
+            if (partnerId != null && (partnerId.trim().isEmpty() || partnerId.equalsIgnoreCase("null")
+                    || partnerId.equalsIgnoreCase("undefined"))) {
                 partnerId = null;
             }
             MainActivity.activeChatPartnerId = partnerId != null ? partnerId.trim() : null;
-            android.util.Log.d("ChatNotificationManager", "Active chat partner set to: " + MainActivity.activeChatPartnerId);
+            android.util.Log.d("ChatNotificationManager",
+                    "Active chat partner set to: " + MainActivity.activeChatPartnerId);
 
             if (MainActivity.activeChatPartnerId != null) {
                 clearChatNotification(getContext(), MainActivity.activeChatPartnerId);
@@ -588,10 +633,12 @@ public class MainActivity extends BridgeActivity {
         public void setActivePortalChannel(PluginCall call) {
             String portalId = call.getString("portalId", null);
             String channelId = call.getString("channelId", null);
-            if (portalId != null && (portalId.trim().isEmpty() || portalId.equalsIgnoreCase("null") || portalId.equalsIgnoreCase("undefined"))) {
+            if (portalId != null && (portalId.trim().isEmpty() || portalId.equalsIgnoreCase("null")
+                    || portalId.equalsIgnoreCase("undefined"))) {
                 portalId = null;
             }
-            if (channelId != null && (channelId.trim().isEmpty() || channelId.equalsIgnoreCase("null") || channelId.equalsIgnoreCase("undefined"))) {
+            if (channelId != null && (channelId.trim().isEmpty() || channelId.equalsIgnoreCase("null")
+                    || channelId.equalsIgnoreCase("undefined"))) {
                 channelId = null;
             }
             if (portalId != null && channelId != null) {
@@ -625,12 +672,14 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void clearAllMessageNotifications(PluginCall call) {
             try {
-                android.app.NotificationManager nm = (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                android.app.NotificationManager nm = (android.app.NotificationManager) getContext()
+                        .getSystemService(Context.NOTIFICATION_SERVICE);
                 if (nm != null) {
                     nm.cancelAll();
                 }
                 OxypaceMessagingService.clearAllHistory(getContext());
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             call.resolve();
         }
     }
@@ -676,50 +725,57 @@ public class MainActivity extends BridgeActivity {
                             inactiveSet.add(id.trim());
                         }
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
-            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId, inactiveSet, userName, userAvatar);
+            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId, inactiveSet, userName,
+                    userAvatar);
 
-            // If a valid JWT token was provided, immediately push device FCM token to backend
+            // If a valid JWT token was provided, immediately push device FCM token to
+            // backend
             if (token != null && !token.trim().isEmpty()) {
                 final Context ctx = getContext();
-                final String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr") && !serverUrl.contains("api.oxypace.com.tr"))
-                    ? "https://api.oxypace.com.tr"
-                    : (serverUrl != null ? serverUrl.replaceAll("/+$", "") : "https://api.oxypace.com.tr");
+                final String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr")
+                        && !serverUrl.contains("api.oxypace.com.tr"))
+                                ? "https://api.oxypace.com.tr"
+                                : (serverUrl != null ? serverUrl.replaceAll("/+$", "") : "https://api.oxypace.com.tr");
                 com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful() && task.getResult() != null) {
-                            String fcmToken = task.getResult();
-                            try {
-                                ctx.getSharedPreferences(DirectReplyReceiver.PREFS_NAME, Context.MODE_PRIVATE)
-                                    .edit()
-                                    .putString("fcm_token", fcmToken)
-                                    .apply();
-                            } catch (Exception ignored) {}
-                            new Thread(() -> {
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful() && task.getResult() != null) {
+                                String fcmToken = task.getResult();
                                 try {
-                                    String apiUrl = apiBase + "/api/users/fcm-token";
-                                    java.net.URL url = new java.net.URL(apiUrl);
-                                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                                    conn.setRequestMethod("POST");
-                                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                                    conn.setRequestProperty("Authorization", "Bearer " + token);
-                                    conn.setDoOutput(true);
-                                    conn.setConnectTimeout(8000);
-                                    conn.setReadTimeout(8000);
-                                    String jsonBody = "{\"token\":\"" + fcmToken + "\"}";
-                                    try (java.io.OutputStream os = conn.getOutputStream()) {
-                                        os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                                    }
-                                    int code = conn.getResponseCode();
-                                    android.util.Log.d("AuthSync", "Immediate FCM token sync on AuthSync: " + code);
-                                    conn.disconnect();
-                                } catch (Exception e) {
-                                    android.util.Log.w("AuthSync", "Immediate FCM token sync error: " + e.getMessage());
+                                    ctx.getSharedPreferences(DirectReplyReceiver.PREFS_NAME, Context.MODE_PRIVATE)
+                                            .edit()
+                                            .putString("fcm_token", fcmToken)
+                                            .apply();
+                                } catch (Exception ignored) {
                                 }
-                            }).start();
-                        }
-                    });
+                                new Thread(() -> {
+                                    try {
+                                        String apiUrl = apiBase + "/api/users/fcm-token";
+                                        java.net.URL url = new java.net.URL(apiUrl);
+                                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url
+                                                .openConnection();
+                                        conn.setRequestMethod("POST");
+                                        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                                        conn.setRequestProperty("Authorization", "Bearer " + token);
+                                        conn.setDoOutput(true);
+                                        conn.setConnectTimeout(8000);
+                                        conn.setReadTimeout(8000);
+                                        String jsonBody = "{\"token\":\"" + fcmToken + "\"}";
+                                        try (java.io.OutputStream os = conn.getOutputStream()) {
+                                            os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                        }
+                                        int code = conn.getResponseCode();
+                                        android.util.Log.d("AuthSync", "Immediate FCM token sync on AuthSync: " + code);
+                                        conn.disconnect();
+                                    } catch (Exception e) {
+                                        android.util.Log.w("AuthSync",
+                                                "Immediate FCM token sync error: " + e.getMessage());
+                                    }
+                                }).start();
+                            }
+                        });
             }
 
             call.resolve();
@@ -739,7 +795,8 @@ public class MainActivity extends BridgeActivity {
                         if (url != null && !url.trim().isEmpty()) {
                             NativeMediaCacheManager.preload(ctx, url.trim());
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             }
             call.resolve();
@@ -755,13 +812,17 @@ public class MainActivity extends BridgeActivity {
                 getActivity().runOnUiThread(() -> {
                     try {
                         if ("landscape".equalsIgnoreCase(orientation)) {
-                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                            getActivity().setRequestedOrientation(
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
                         } else if ("portrait".equalsIgnoreCase(orientation)) {
-                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                            getActivity().setRequestedOrientation(
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                         } else {
-                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                            getActivity().setRequestedOrientation(
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 });
             }
             call.resolve();
@@ -773,15 +834,20 @@ public class MainActivity extends BridgeActivity {
                 getActivity().runOnUiThread(() -> {
                     try {
                         int current = getActivity().getRequestedOrientation();
-                        boolean isLandscape = (current == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE ||
-                                               current == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE ||
-                                               getActivity().getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE);
+                        boolean isLandscape = (current == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                ||
+                                current == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE ||
+                                getActivity().getResources()
+                                        .getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE);
                         if (isLandscape) {
-                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                            getActivity().setRequestedOrientation(
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                         } else {
-                            getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                            getActivity().setRequestedOrientation(
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 });
             }
             call.resolve();
@@ -818,34 +884,47 @@ public class MainActivity extends BridgeActivity {
         }
 
         public static boolean isMediaUrl(String url) {
-            if (url == null) return false;
+            if (url == null)
+                return false;
             String lower = url.toLowerCase();
-            // Video streaming requires HTTP 206 range requests; bypass to standard stream pipeline
+            // Video streaming requires HTTP 206 range requests; bypass to standard stream
+            // pipeline
             if (lower.contains(".mp4") || lower.contains(".m3u8") || lower.contains(".mpd") || lower.contains(".ts")) {
                 return false;
             }
-            if (lower.contains("/api/media/") || lower.contains("/r2-media/") || lower.contains("/uploads/") || lower.contains(".r2.dev/")) {
+            if (lower.contains("/api/media/") || lower.contains("/r2-media/") || lower.contains("/uploads/")
+                    || lower.contains(".r2.dev/")) {
                 return true;
             }
-            return lower.endsWith(".webp") || lower.endsWith(".png") || lower.endsWith(".jpg") || 
-                   lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".svg") || lower.endsWith(".ico");
+            return lower.endsWith(".webp") || lower.endsWith(".png") || lower.endsWith(".jpg") ||
+                    lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".svg")
+                    || lower.endsWith(".ico");
         }
 
         public static String guessMimeType(String url) {
             String clean = url.split("\\?")[0].toLowerCase();
-            if (clean.endsWith(".webp")) return "image/webp";
-            if (clean.endsWith(".png")) return "image/png";
-            if (clean.endsWith(".jpg") || clean.endsWith(".jpeg")) return "image/jpeg";
-            if (clean.endsWith(".gif")) return "image/gif";
-            if (clean.endsWith(".svg")) return "image/svg+xml";
-            if (clean.endsWith(".ico")) return "image/x-icon";
+            if (clean.endsWith(".webp"))
+                return "image/webp";
+            if (clean.endsWith(".png"))
+                return "image/png";
+            if (clean.endsWith(".jpg") || clean.endsWith(".jpeg"))
+                return "image/jpeg";
+            if (clean.endsWith(".gif"))
+                return "image/gif";
+            if (clean.endsWith(".svg"))
+                return "image/svg+xml";
+            if (clean.endsWith(".ico"))
+                return "image/x-icon";
             return "image/webp";
         }
 
-        public static android.webkit.WebResourceResponse handleIntercept(Context ctx, android.webkit.WebResourceRequest request) {
-            if (ctx == null || request == null || request.getUrl() == null) return null;
+        public static android.webkit.WebResourceResponse handleIntercept(Context ctx,
+                android.webkit.WebResourceRequest request) {
+            if (ctx == null || request == null || request.getUrl() == null)
+                return null;
             String urlStr = request.getUrl().toString();
-            if (!isMediaUrl(urlStr)) return null;
+            if (!isMediaUrl(urlStr))
+                return null;
 
             Map<String, String> reqHeaders = request.getRequestHeaders();
             if (reqHeaders != null && (reqHeaders.containsKey("Range") || reqHeaders.containsKey("range"))) {
@@ -853,7 +932,8 @@ public class MainActivity extends BridgeActivity {
             }
 
             init(ctx);
-            if (sCacheDir == null) return null;
+            if (sCacheDir == null)
+                return null;
 
             String key = getCacheKey(urlStr);
             File cachedFile = new File(sCacheDir, key);
@@ -867,8 +947,10 @@ public class MainActivity extends BridgeActivity {
                     respHeaders.put("Access-Control-Allow-Origin", "*");
                     respHeaders.put("Cache-Control", "public, max-age=31536000, immutable");
                     respHeaders.put("X-Oxypace-Native-Cache", "HIT");
-                    return new android.webkit.WebResourceResponse(mimeType, "UTF-8", 200, "OK", respHeaders, new FileInputStream(cachedFile));
-                } catch (Exception ignored) {}
+                    return new android.webkit.WebResourceResponse(mimeType, "UTF-8", 200, "OK", respHeaders,
+                            new FileInputStream(cachedFile));
+                } catch (Exception ignored) {
+                }
             }
 
             // 2. DISK CACHE MISS: Fetch on Chromium worker thread and save to disk
@@ -886,7 +968,7 @@ public class MainActivity extends BridgeActivity {
                 if (statusCode >= 200 && statusCode < 300) {
                     File tmpFile = new File(sCacheDir, key + ".tmp");
                     try (InputStream in = conn.getInputStream();
-                         FileOutputStream out = new FileOutputStream(tmpFile)) {
+                            FileOutputStream out = new FileOutputStream(tmpFile)) {
                         byte[] buffer = new byte[8192];
                         int bytesRead;
                         while ((bytesRead = in.read(buffer)) != -1) {
@@ -909,25 +991,30 @@ public class MainActivity extends BridgeActivity {
                     respHeaders.put("X-Oxypace-Native-Cache", "MISS-FETCHED");
 
                     if (cachedFile.exists() && cachedFile.length() > 0) {
-                        return new android.webkit.WebResourceResponse(contentType, "UTF-8", 200, "OK", respHeaders, new FileInputStream(cachedFile));
+                        return new android.webkit.WebResourceResponse(contentType, "UTF-8", 200, "OK", respHeaders,
+                                new FileInputStream(cachedFile));
                     }
                 }
                 conn.disconnect();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             return null;
         }
 
         public static void preload(Context ctx, String urlStr) {
-            if (ctx == null || urlStr == null || !isMediaUrl(urlStr)) return;
+            if (ctx == null || urlStr == null || !isMediaUrl(urlStr))
+                return;
             init(ctx);
-            if (sCacheDir == null) return;
+            if (sCacheDir == null)
+                return;
 
             sWorkerPool.execute(() -> {
                 try {
                     String key = getCacheKey(urlStr);
                     File cachedFile = new File(sCacheDir, key);
-                    if (cachedFile.exists() && cachedFile.length() > 0) return;
+                    if (cachedFile.exists() && cachedFile.length() > 0)
+                        return;
 
                     URL targetUrl = new URL(urlStr);
                     HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
@@ -940,7 +1027,7 @@ public class MainActivity extends BridgeActivity {
                     if (conn.getResponseCode() == 200) {
                         File tmpFile = new File(sCacheDir, key + ".tmp");
                         try (InputStream in = conn.getInputStream();
-                             FileOutputStream out = new FileOutputStream(tmpFile)) {
+                                FileOutputStream out = new FileOutputStream(tmpFile)) {
                             byte[] buffer = new byte[8192];
                             int read;
                             while ((read = in.read(buffer)) != -1) {
@@ -952,15 +1039,18 @@ public class MainActivity extends BridgeActivity {
                         }
                     }
                     conn.disconnect();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             });
         }
 
         private static void pruneCacheIfNeeded() {
-            if (sCacheDir == null || !sCacheDir.exists()) return;
+            if (sCacheDir == null || !sCacheDir.exists())
+                return;
             try {
                 File[] files = sCacheDir.listFiles();
-                if (files == null) return;
+                if (files == null)
+                    return;
                 long totalSize = 0;
                 for (File f : files) {
                     totalSize += f.length();
@@ -968,25 +1058,28 @@ public class MainActivity extends BridgeActivity {
                 if (totalSize > MAX_CACHE_SIZE_BYTES) {
                     java.util.Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
                     for (File f : files) {
-                        if (totalSize <= (MAX_CACHE_SIZE_BYTES * 0.75)) break;
+                        if (totalSize <= (MAX_CACHE_SIZE_BYTES * 0.75))
+                            break;
                         long len = f.length();
                         if (f.delete()) {
                             totalSize -= len;
                         }
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
     }
 
     public static android.app.PictureInPictureParams buildPiPParams(android.app.Activity activity, boolean enabled) {
-        if (activity == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return null;
+        if (activity == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O)
+            return null;
         try {
             android.app.PictureInPictureParams.Builder builder = new android.app.PictureInPictureParams.Builder();
             android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
             android.util.Rational rational = (dm.widthPixels > dm.heightPixels)
-                ? new android.util.Rational(16, 9)
-                : new android.util.Rational(9, 16);
+                    ? new android.util.Rational(16, 9)
+                    : new android.util.Rational(9, 16);
             builder.setAspectRatio(rational);
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 builder.setAutoEnterEnabled(enabled);
@@ -1002,52 +1095,43 @@ public class MainActivity extends BridgeActivity {
                 android.content.Intent micIntent = new android.content.Intent(activity, CallActionReceiver.class);
                 micIntent.setAction(CallActionReceiver.ACTION_TOGGLE_MIC);
                 android.app.PendingIntent piMic = android.app.PendingIntent.getBroadcast(
-                    activity, 201, micIntent,
-                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-                );
+                        activity, 201, micIntent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
                 android.graphics.drawable.Icon micIcon = android.graphics.drawable.Icon.createWithResource(
-                    activity, CallManager.sIsMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic
-                );
+                        activity, CallManager.sIsMuted ? R.drawable.ic_pip_mic_off : R.drawable.ic_pip_mic);
                 actions.add(new android.app.RemoteAction(
-                    micIcon,
-                    CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
-                    CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
-                    piMic
-                ));
+                        micIcon,
+                        CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
+                        CallManager.sIsMuted ? "Mikrofonu Aç" : "Sesi Kapat",
+                        piMic));
 
                 // 2. Camera
                 android.content.Intent camIntent = new android.content.Intent(activity, CallActionReceiver.class);
                 camIntent.setAction(CallActionReceiver.ACTION_TOGGLE_CAMERA);
                 android.app.PendingIntent piCam = android.app.PendingIntent.getBroadcast(
-                    activity, 202, camIntent,
-                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-                );
+                        activity, 202, camIntent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
                 android.graphics.drawable.Icon camIcon = android.graphics.drawable.Icon.createWithResource(
-                    activity, CallManager.sIsCameraOn ? R.drawable.ic_pip_cam : R.drawable.ic_pip_cam_off
-                );
+                        activity, CallManager.sIsCameraOn ? R.drawable.ic_pip_cam : R.drawable.ic_pip_cam_off);
                 actions.add(new android.app.RemoteAction(
-                    camIcon,
-                    CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
-                    CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
-                    piCam
-                ));
+                        camIcon,
+                        CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
+                        CallManager.sIsCameraOn ? "Kamerayı Kapat" : "Kamerayı Aç",
+                        piCam));
 
                 // 3. Hangup
                 android.content.Intent endIntent = new android.content.Intent(activity, CallActionReceiver.class);
                 endIntent.setAction(CallActionReceiver.ACTION_HANGUP);
                 android.app.PendingIntent piEnd = android.app.PendingIntent.getBroadcast(
-                    activity, 203, endIntent,
-                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-                );
+                        activity, 203, endIntent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
                 android.graphics.drawable.Icon endIcon = android.graphics.drawable.Icon.createWithResource(
-                    activity, R.drawable.ic_pip_end_call
-                );
+                        activity, R.drawable.ic_pip_end_call);
                 actions.add(new android.app.RemoteAction(
-                    endIcon,
-                    "Odadan Ayrıl",
-                    "Odadan Ayrıl",
-                    piEnd
-                ));
+                        endIcon,
+                        "Odadan Ayrıl",
+                        "Odadan Ayrıl",
+                        piEnd));
 
                 builder.setActions(actions);
             }
@@ -1060,13 +1144,15 @@ public class MainActivity extends BridgeActivity {
     }
 
     public static void updatePiPParams(android.app.Activity activity, boolean enabled) {
-        if (activity == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+        if (activity == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O)
+            return;
         try {
             android.app.PictureInPictureParams params = buildPiPParams(activity, enabled);
             if (params != null) {
                 activity.setPictureInPictureParams(params);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
@@ -1083,7 +1169,8 @@ public class MainActivity extends BridgeActivity {
             } catch (Throwable e) {
                 try {
                     enterPictureInPictureMode();
-                } catch (Throwable ignored) {}
+                } catch (Throwable ignored) {
+                }
             }
         }
     }
@@ -1109,8 +1196,8 @@ public class MainActivity extends BridgeActivity {
         stopScreenProjection();
 
         try {
-            android.media.projection.MediaProjectionManager mpm =
-                (android.media.projection.MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            android.media.projection.MediaProjectionManager mpm = (android.media.projection.MediaProjectionManager) getSystemService(
+                    Context.MEDIA_PROJECTION_SERVICE);
             if (mpm == null) {
                 android.util.Log.e("MainActivity", "MediaProjectionManager is null");
                 return false;
@@ -1131,11 +1218,11 @@ public class MainActivity extends BridgeActivity {
                         if (bridge != null && bridge.getWebView() != null) {
                             bridge.getWebView().post(() -> {
                                 bridge.getWebView().evaluateJavascript(
-                                    "window.dispatchEvent(new CustomEvent('oxypace:screenshare_stopped'));", null
-                                );
+                                        "window.dispatchEvent(new CustomEvent('oxypace:screenshare_stopped'));", null);
                             });
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             }, null);
 
@@ -1156,8 +1243,10 @@ public class MainActivity extends BridgeActivity {
                 height = 540;
                 width = Math.round(540f * ((float) realW / (float) realH));
             }
-            if (width % 2 != 0) width++;
-            if (height % 2 != 0) height++;
+            if (width % 2 != 0)
+                width++;
+            if (height % 2 != 0)
+                height++;
             lastScreenCaptureWidth = width;
             lastScreenCaptureHeight = height;
 
@@ -1165,16 +1254,16 @@ public class MainActivity extends BridgeActivity {
             captureThread.start();
             captureHandler = new android.os.Handler(captureThread.getLooper());
 
-            imageReader = android.media.ImageReader.newInstance(width, height, android.graphics.PixelFormat.RGBA_8888, 2);
+            imageReader = android.media.ImageReader.newInstance(width, height, android.graphics.PixelFormat.RGBA_8888,
+                    2);
 
             virtualDisplay = mediaProjection.createVirtualDisplay(
-                "OxypaceScreenCapture",
-                width, height, dm.densityDpi,
-                android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(),
-                null,
-                captureHandler
-            );
+                    "OxypaceScreenCapture",
+                    width, height, dm.densityDpi,
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(),
+                    null,
+                    captureHandler);
 
             final int captureWidth = width;
             final int captureHeight = height;
@@ -1183,7 +1272,8 @@ public class MainActivity extends BridgeActivity {
                 android.media.Image image = null;
                 try {
                     image = reader.acquireLatestImage();
-                    if (image == null) return;
+                    if (image == null)
+                        return;
 
                     long now = System.currentTimeMillis();
                     if (now - lastFrameTimeMs < 35) {
@@ -1198,15 +1288,14 @@ public class MainActivity extends BridgeActivity {
                     int rowPadding = rowStride - pixelStride * captureWidth;
 
                     android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
-                        captureWidth + rowPadding / pixelStride,
-                        captureHeight,
-                        android.graphics.Bitmap.Config.ARGB_8888
-                    );
+                            captureWidth + rowPadding / pixelStride,
+                            captureHeight,
+                            android.graphics.Bitmap.Config.ARGB_8888);
                     bitmap.copyPixelsFromBuffer(buffer);
 
                     android.graphics.Bitmap finalBitmap = (rowPadding > 0)
-                        ? android.graphics.Bitmap.createBitmap(bitmap, 0, 0, captureWidth, captureHeight)
-                        : bitmap;
+                            ? android.graphics.Bitmap.createBitmap(bitmap, 0, 0, captureWidth, captureHeight)
+                            : bitmap;
 
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream(65536);
                     finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, baos);
@@ -1226,17 +1315,21 @@ public class MainActivity extends BridgeActivity {
                                     bridge.getWebView().resumeTimers();
                                 }
                                 bridge.getWebView().evaluateJavascript(
-                                    "if (window.onNativeScreenFrame) { window.onNativeScreenFrame('" + base64 + "'); }",
-                                    null
-                                );
-                            } catch (Exception ignored) {}
+                                        "if (window.onNativeScreenFrame) { window.onNativeScreenFrame('" + base64
+                                                + "'); }",
+                                        null);
+                            } catch (Exception ignored) {
+                            }
                         });
                     }
 
                 } catch (Exception ignored) {
                 } finally {
                     if (image != null) {
-                        try { image.close(); } catch (Exception ignored) {}
+                        try {
+                            image.close();
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
             }, captureHandler);
@@ -1257,41 +1350,43 @@ public class MainActivity extends BridgeActivity {
             return;
         }
         try {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this,
+                    android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 android.util.Log.w("MainActivity", "Skipping AudioPlaybackCapture: RECORD_AUDIO not granted");
                 return;
             }
             final int sampleRate = 24000;
-            android.media.AudioPlaybackCaptureConfiguration config =
-                new android.media.AudioPlaybackCaptureConfiguration.Builder(projection)
+            android.media.AudioPlaybackCaptureConfiguration config = new android.media.AudioPlaybackCaptureConfiguration.Builder(
+                    projection)
                     .addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
                     .addMatchingUsage(android.media.AudioAttributes.USAGE_GAME)
                     .addMatchingUsage(android.media.AudioAttributes.USAGE_UNKNOWN)
                     .build();
 
             int minBuf = android.media.AudioRecord.getMinBufferSize(
-                sampleRate,
-                android.media.AudioFormat.CHANNEL_IN_MONO,
-                android.media.AudioFormat.ENCODING_PCM_16BIT
-            );
+                    sampleRate,
+                    android.media.AudioFormat.CHANNEL_IN_MONO,
+                    android.media.AudioFormat.ENCODING_PCM_16BIT);
             int bufSize = Math.max(minBuf > 0 ? minBuf : 3840, 3840);
 
             android.media.AudioFormat format = new android.media.AudioFormat.Builder()
-                .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(sampleRate)
-                .setChannelMask(android.media.AudioFormat.CHANNEL_IN_MONO)
-                .build();
+                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(android.media.AudioFormat.CHANNEL_IN_MONO)
+                    .build();
 
             screenAudioRecord = new android.media.AudioRecord.Builder()
-                .setAudioPlaybackCaptureConfig(config)
-                .setAudioFormat(format)
-                .setBufferSizeInBytes(bufSize)
-                .build();
+                    .setAudioPlaybackCaptureConfig(config)
+                    .setAudioFormat(format)
+                    .setBufferSizeInBytes(bufSize)
+                    .build();
 
             if (screenAudioRecord.getState() != android.media.AudioRecord.STATE_INITIALIZED) {
                 android.util.Log.w("MainActivity", "AudioRecord playback capture not initialized");
-                try { screenAudioRecord.release(); } catch (Exception ignored) {}
+                try {
+                    screenAudioRecord.release();
+                } catch (Exception ignored) {
+                }
                 screenAudioRecord = null;
                 return;
             }
@@ -1312,10 +1407,11 @@ public class MainActivity extends BridgeActivity {
                                 bridge.getWebView().post(() -> {
                                     try {
                                         bridge.getWebView().evaluateJavascript(
-                                            "if (window.onNativeScreenAudio) { window.onNativeScreenAudio('" + b64 + "', " + sampleRate + "); }",
-                                            null
-                                        );
-                                    } catch (Exception ignored) {}
+                                                "if (window.onNativeScreenAudio) { window.onNativeScreenAudio('" + b64
+                                                        + "', " + sampleRate + "); }",
+                                                null);
+                                    } catch (Exception ignored) {
+                                    }
                                 });
                             }
                         } else if (read < 0) {
@@ -1332,7 +1428,10 @@ public class MainActivity extends BridgeActivity {
             android.util.Log.w("MainActivity", "AudioPlaybackCapture unavailable: " + err.getMessage());
             isScreenAudioCapturing = false;
             if (screenAudioRecord != null) {
-                try { screenAudioRecord.release(); } catch (Exception ignored) {}
+                try {
+                    screenAudioRecord.release();
+                } catch (Exception ignored) {
+                }
                 screenAudioRecord = null;
             }
         }
@@ -1346,11 +1445,18 @@ public class MainActivity extends BridgeActivity {
                 screenAudioThread = null;
             }
             if (screenAudioRecord != null) {
-                try { screenAudioRecord.stop(); } catch (Exception ignored) {}
-                try { screenAudioRecord.release(); } catch (Exception ignored) {}
+                try {
+                    screenAudioRecord.stop();
+                } catch (Exception ignored) {
+                }
+                try {
+                    screenAudioRecord.release();
+                } catch (Exception ignored) {
+                }
                 screenAudioRecord = null;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             if (virtualDisplay != null) {
                 virtualDisplay.release();
@@ -1380,9 +1486,11 @@ public class MainActivity extends BridgeActivity {
                     } else {
                         startService(revertIntent);
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
@@ -1390,19 +1498,22 @@ public class MainActivity extends BridgeActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CallManager.REQUEST_CODE_SCREEN_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
-                // Elevate ActiveCallService synchronously before initializing projection on Android 14+
+                // Elevate ActiveCallService synchronously before initializing projection on
+                // Android 14+
                 if (ActiveCallService.sInstance != null) {
                     ActiveCallService.sInstance.elevateToMediaProjection();
                 } else {
                     try {
-                        android.content.Intent elevateIntent = new android.content.Intent(this, ActiveCallService.class);
+                        android.content.Intent elevateIntent = new android.content.Intent(this,
+                                ActiveCallService.class);
                         elevateIntent.setAction("ENABLE_MEDIA_PROJECTION");
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                             startForegroundService(elevateIntent);
                         } else {
                             startService(elevateIntent);
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 boolean started = startScreenProjection(resultCode, data);
@@ -1437,8 +1548,6 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-
-
     private static com.getcapacitor.Bridge bridgeInstance = null;
     private static MainActivity activityInstance = null;
     private String pendingRoute = null;
@@ -1456,7 +1565,8 @@ public class MainActivity extends BridgeActivity {
 
     private void verifyAppIntegrity() {
         try {
-            boolean isDebuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+            boolean isDebuggable = (getApplicationInfo().flags
+                    & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
             if (isDebuggable) {
                 // Allow debug builds for local testing
                 return;
@@ -1474,9 +1584,8 @@ public class MainActivity extends BridgeActivity {
             String currentCertSha256 = null;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 android.content.pm.PackageInfo packageInfo = getPackageManager().getPackageInfo(
-                    getPackageName(),
-                    android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
-                );
+                        getPackageName(),
+                        android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES);
                 if (packageInfo != null && packageInfo.signingInfo != null) {
                     android.content.pm.Signature[] signatures = packageInfo.signingInfo.getApkContentsSigners();
                     if (signatures != null && signatures.length > 0) {
@@ -1486,9 +1595,8 @@ public class MainActivity extends BridgeActivity {
             } else {
                 @SuppressWarnings("deprecation")
                 android.content.pm.PackageInfo packageInfo = getPackageManager().getPackageInfo(
-                    getPackageName(),
-                    android.content.pm.PackageManager.GET_SIGNATURES
-                );
+                        getPackageName(),
+                        android.content.pm.PackageManager.GET_SIGNATURES);
                 if (packageInfo != null && packageInfo.signatures != null && packageInfo.signatures.length > 0) {
                     currentCertSha256 = computeSha256(packageInfo.signatures[0].toByteArray());
                 }
@@ -1502,7 +1610,8 @@ public class MainActivity extends BridgeActivity {
             }
         } catch (Throwable e) {
             android.util.Log.e("Security", "Integrity check failed: " + e.getMessage());
-            boolean isDebuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+            boolean isDebuggable = (getApplicationInfo().flags
+                    & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
             if (!isDebuggable) {
                 finishAffinity();
                 System.exit(0);
@@ -1538,9 +1647,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ShareTargetManager.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
+        OtaBackgroundScheduler.schedulePeriodicChecks(getApplicationContext());
         handleShareIntent(getIntent());
 
-        // Dynamically detect system navigation bar mode (3-button vs gesture navigation) and safe-areas
+        // Dynamically detect system navigation bar mode (3-button vs gesture
+        // navigation) and safe-areas
         try {
             android.view.View decorView = getWindow().getDecorView();
             decorView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
@@ -1548,9 +1659,11 @@ public class MainActivity extends BridgeActivity {
                     WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
                     if (insets != null) {
                         float density = getResources().getDisplayMetrics().density;
-                        if (density <= 0) density = 1.0f;
+                        if (density <= 0)
+                            density = 1.0f;
 
-                        Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+                        Insets statusInsets = insets.getInsets(
+                                WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
                         float statusDp = statusInsets.top / density;
                         sStatusBarTopDp = Math.max(statusDp, 0f);
 
@@ -1563,15 +1676,18 @@ public class MainActivity extends BridgeActivity {
 
                         applyInsetsToWebView();
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             });
 
             ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
                 try {
                     float density = getResources().getDisplayMetrics().density;
-                    if (density <= 0) density = 1.0f;
+                    if (density <= 0)
+                        density = 1.0f;
 
-                    Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+                    Insets statusInsets = insets
+                            .getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
                     float statusDp = statusInsets.top / density;
                     sStatusBarTopDp = Math.max(statusDp, 0f);
 
@@ -1583,108 +1699,117 @@ public class MainActivity extends BridgeActivity {
                     sIs3ButtonNav = is3Btn;
 
                     applyInsetsToWebView();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
                 return insets;
             });
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         checkAndApplySystemInsets();
 
         // Dismiss any orphaned call notification on app launch if not in active call
         try {
             if (!CallManager.isInCall) {
-                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(
+                        Context.NOTIFICATION_SERVICE);
                 if (nm != null) {
                     nm.cancel(ActiveCallService.NOTIFICATION_ID);
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
-        // Programmatically configure window to display over lock screen and turn screen on (Android 8.0 / 27+)
+        // Programmatically configure window to display over lock screen and turn screen
+        // on (Android 8.0 / 27+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
             try {
-                android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(
+                        Context.KEYGUARD_SERVICE);
                 if (km != null) {
                     km.requestDismissKeyguard(this, null);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         } else {
             // Deprecated flags for older Android versions
             getWindow().addFlags(
-                android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
-                android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-            );
+                    android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                            android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                            android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                            android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         }
 
         // Android Runtime Permissions (Microphone, Camera, Notifications)
         java.util.List<String> permissionsNeeded = new java.util.ArrayList<>();
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(android.Manifest.permission.RECORD_AUDIO);
         }
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(android.Manifest.permission.CAMERA);
         }
         if (android.os.Build.VERSION.SDK_INT >= 33) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
-                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this,
+                    android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 permissionsNeeded.add(android.Manifest.permission.POST_NOTIFICATIONS);
             }
         }
         if (!permissionsNeeded.isEmpty()) {
             androidx.core.app.ActivityCompat.requestPermissions(
-                this,
-                permissionsNeeded.toArray(new String[0]),
-                1001
-            );
+                    this,
+                    permissionsNeeded.toArray(new String[0]),
+                    1001);
         }
-
 
         // Proactively fetch and sync FCM token on startup
         try {
             com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        String currentToken = task.getResult();
-                        android.util.Log.d("MainActivity", "Proactive FCM Token obtained: " + currentToken);
-                        android.content.SharedPreferences prefs = getSharedPreferences("OxypaceAuthPrefs", Context.MODE_PRIVATE);
-                        prefs.edit().putString("fcm_token", currentToken).apply();
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && task.getResult() != null) {
+                            String currentToken = task.getResult();
+                            android.util.Log.d("MainActivity", "Proactive FCM Token obtained: " + currentToken);
+                            android.content.SharedPreferences prefs = getSharedPreferences("OxypaceAuthPrefs",
+                                    Context.MODE_PRIVATE);
+                            prefs.edit().putString("fcm_token", currentToken).apply();
 
-                        String jwtToken = prefs.getString("jwt_token", null);
-                        String serverUrl = prefs.getString("server_url", "https://api.oxypace.com.tr");
-                        String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr") && !serverUrl.contains("api.oxypace.com.tr"))
-                            ? "https://api.oxypace.com.tr"
-                            : (serverUrl != null ? serverUrl.replaceAll("/+$", "") : "https://api.oxypace.com.tr");
-                        if (jwtToken != null && !jwtToken.isEmpty()) {
-                            new Thread(() -> {
-                                try {
-                                    String apiUrl = apiBase + "/api/users/fcm-token";
-                                    java.net.URL url = new java.net.URL(apiUrl);
-                                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                                    conn.setRequestMethod("POST");
-                                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                                    conn.setRequestProperty("Authorization", "Bearer " + jwtToken);
-                                    conn.setDoOutput(true);
-                                    conn.setConnectTimeout(8000);
-                                    conn.setReadTimeout(8000);
-                                    String jsonBody = "{\"token\":\"" + currentToken + "\"}";
-                                    try (java.io.OutputStream os = conn.getOutputStream()) {
-                                        os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            String jwtToken = prefs.getString("jwt_token", null);
+                            String serverUrl = prefs.getString("server_url", "https://api.oxypace.com.tr");
+                            String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr")
+                                    && !serverUrl.contains("api.oxypace.com.tr"))
+                                            ? "https://api.oxypace.com.tr"
+                                            : (serverUrl != null ? serverUrl.replaceAll("/+$", "")
+                                                    : "https://api.oxypace.com.tr");
+                            if (jwtToken != null && !jwtToken.isEmpty()) {
+                                new Thread(() -> {
+                                    try {
+                                        String apiUrl = apiBase + "/api/users/fcm-token";
+                                        java.net.URL url = new java.net.URL(apiUrl);
+                                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url
+                                                .openConnection();
+                                        conn.setRequestMethod("POST");
+                                        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                                        conn.setRequestProperty("Authorization", "Bearer " + jwtToken);
+                                        conn.setDoOutput(true);
+                                        conn.setConnectTimeout(8000);
+                                        conn.setReadTimeout(8000);
+                                        String jsonBody = "{\"token\":\"" + currentToken + "\"}";
+                                        try (java.io.OutputStream os = conn.getOutputStream()) {
+                                            os.write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                        }
+                                        int code = conn.getResponseCode();
+                                        android.util.Log.d("MainActivity", "Proactive FCM Token sync HTTP: " + code);
+                                        conn.disconnect();
+                                    } catch (Exception syncEx) {
+                                        android.util.Log.w("MainActivity",
+                                                "Proactive FCM sync failed: " + syncEx.getMessage());
                                     }
-                                    int code = conn.getResponseCode();
-                                    android.util.Log.d("MainActivity", "Proactive FCM Token sync HTTP: " + code);
-                                    conn.disconnect();
-                                } catch (Exception syncEx) {
-                                    android.util.Log.w("MainActivity", "Proactive FCM sync failed: " + syncEx.getMessage());
-                                }
-                            }).start();
+                                }).start();
+                            }
                         }
-                    }
-                });
+                    });
         } catch (Exception e) {
             android.util.Log.w("MainActivity", "Could not fetch FCM token proactively: " + e.getMessage());
         }
@@ -1692,17 +1817,18 @@ public class MainActivity extends BridgeActivity {
         // Handle JOIN_VOICE_CALL intent from incoming call notification
         handleIncomingCallIntent(getIntent());
 
-        // Initialize and register all notification channels upfront so Android OS never drops notifications
+        // Initialize and register all notification channels upfront so Android OS never
+        // drops notifications
         initNotificationChannels();
 
         // Listen for wired and Bluetooth headset connection/disconnection
         setupAudioDeviceMonitoring();
 
-
         android.webkit.WebView webView = getBridge().getWebView();
 
         if (webView != null) {
-            // Explicitly force hardware acceleration on WebView for 60/120fps smooth scrolling
+            // Explicitly force hardware acceleration on WebView for 60/120fps smooth
+            // scrolling
             webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
 
             android.webkit.WebSettings settings = webView.getSettings();
@@ -1710,7 +1836,7 @@ public class MainActivity extends BridgeActivity {
             settings.setDomStorageEnabled(true);
             settings.setDatabaseEnabled(true);
             settings.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            
+
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setAllowFileAccess(true);
             settings.setAllowContentAccess(true);
@@ -1725,8 +1851,9 @@ public class MainActivity extends BridgeActivity {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                     settings.setOffscreenPreRaster(true);
                 }
-            } catch (Exception ignored) {}
-            
+            } catch (Exception ignored) {
+            }
+
             // WebChromeClient for HTML5 Video & Media in WebView
             webView.setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(getBridge()) {
                 @Override
@@ -1746,9 +1873,12 @@ public class MainActivity extends BridgeActivity {
 
             webView.setWebViewClient(new com.getcapacitor.BridgeWebViewClient(getBridge()) {
                 @Override
-                public android.webkit.WebResourceResponse shouldInterceptRequest(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
-                    // 1. Ultra-fast Native Disk Media Cache (<0.2ms zero-latency load for cached avatars, banners, badges, gifs, images)
-                    android.webkit.WebResourceResponse cached = NativeMediaCacheManager.handleIntercept(MainActivity.this, request);
+                public android.webkit.WebResourceResponse shouldInterceptRequest(android.webkit.WebView view,
+                        android.webkit.WebResourceRequest request) {
+                    // 1. Ultra-fast Native Disk Media Cache (<0.2ms zero-latency load for cached
+                    // avatars, banners, badges, gifs, images)
+                    android.webkit.WebResourceResponse cached = NativeMediaCacheManager
+                            .handleIntercept(MainActivity.this, request);
                     if (cached != null) {
                         return cached;
                     }
@@ -1758,20 +1888,20 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @Override
-                public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
+                public boolean shouldOverrideUrlLoading(android.webkit.WebView view,
+                        android.webkit.WebResourceRequest request) {
                     String url = request.getUrl().toString();
                     String scheme = request.getUrl().getScheme();
                     // Intercept external app URI schemes and launch via Android Intent
-                    if (scheme != null && (
-                        scheme.equals("whatsapp") ||
-                        scheme.equals("twitter") ||
-                        scheme.equals("fb") ||
-                        scheme.equals("instagram") ||
-                        scheme.equals("tg") ||
-                        scheme.equals("mailto")
-                    )) {
+                    if (scheme != null && (scheme.equals("whatsapp") ||
+                            scheme.equals("twitter") ||
+                            scheme.equals("fb") ||
+                            scheme.equals("instagram") ||
+                            scheme.equals("tg") ||
+                            scheme.equals("mailto"))) {
                         try {
-                            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
+                            android.content.Intent intent = new android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
                             intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
                             MainActivity.this.startActivity(intent);
                         } catch (Exception e) {
@@ -1793,33 +1923,38 @@ public class MainActivity extends BridgeActivity {
                     // Automatically extract auth token and user id from WebView localStorage
                     try {
                         view.evaluateJavascript(
-                            "(function() { " +
-                            "  var t = localStorage.getItem('token') || ''; " +
-                            "  var u = ''; " +
-                            "  try { var user = JSON.parse(localStorage.getItem('user')); if (user && user._id) u = user._id; } catch(e){} " +
-                            "  return JSON.stringify({ token: t, userId: u }); " +
-                            "})();",
-                            value -> {
-                                if (value != null && !value.isEmpty() && !value.equals("\"\"") && !value.equals("null")) {
-                                    try {
-                                        String clean = value;
-                                        if (clean.startsWith("\"") && clean.endsWith("\"")) {
-                                            clean = clean.substring(1, clean.length() - 1).replace("\\\"", "\"");
+                                "(function() { " +
+                                        "  var t = localStorage.getItem('token') || ''; " +
+                                        "  var u = ''; " +
+                                        "  try { var user = JSON.parse(localStorage.getItem('user')); if (user && user._id) u = user._id; } catch(e){} "
+                                        +
+                                        "  return JSON.stringify({ token: t, userId: u }); " +
+                                        "})();",
+                                value -> {
+                                    if (value != null && !value.isEmpty() && !value.equals("\"\"")
+                                            && !value.equals("null")) {
+                                        try {
+                                            String clean = value;
+                                            if (clean.startsWith("\"") && clean.endsWith("\"")) {
+                                                clean = clean.substring(1, clean.length() - 1).replace("\\\"", "\"");
+                                            }
+                                            org.json.JSONObject obj = new org.json.JSONObject(clean);
+                                            String cleanToken = obj.optString("token", "").trim();
+                                            String cleanUserId = obj.optString("userId", "").trim();
+                                            DirectReplyReceiver.saveAuthCredentials(MainActivity.this, cleanToken,
+                                                    "https://oxypace.com.tr", cleanUserId);
+                                        } catch (Exception ex) {
+                                            String cleanToken = value.replace("\"", "").trim();
+                                            DirectReplyReceiver.saveAuthCredentials(MainActivity.this, cleanToken,
+                                                    "https://oxypace.com.tr");
                                         }
-                                        org.json.JSONObject obj = new org.json.JSONObject(clean);
-                                        String cleanToken = obj.optString("token", "").trim();
-                                        String cleanUserId = obj.optString("userId", "").trim();
-                                        DirectReplyReceiver.saveAuthCredentials(MainActivity.this, cleanToken, "https://oxypace.com.tr", cleanUserId);
-                                    } catch (Exception ex) {
-                                        String cleanToken = value.replace("\"", "").trim();
-                                        DirectReplyReceiver.saveAuthCredentials(MainActivity.this, cleanToken, "https://oxypace.com.tr");
                                     }
-                                }
-                            }
-                        );
-                    } catch (Exception ignored) {}
+                                });
+                    } catch (Exception ignored) {
+                    }
 
-                    // If a notification click queued a pending route while app was cold-starting, execute it now
+                    // If a notification click queued a pending route while app was cold-starting,
+                    // execute it now
                     if (pendingRoute != null && !pendingRoute.isEmpty()) {
                         final String routeToDispatch = pendingRoute;
                         final boolean isVoiceToDispatch = pendingIsJoinVoice;
@@ -1829,18 +1964,22 @@ public class MainActivity extends BridgeActivity {
                         view.postDelayed(() -> {
                             try {
                                 String script = "(function(){ " +
-                                    "try { " +
-                                    "  sessionStorage.setItem('pending_mobile_route', '" + routeToDispatch.replace("'", "\\'") + "'); " +
-                                    "  if (" + isVoiceToDispatch + ") { " +
-                                    "    window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '" + routeToDispatch.replace("'", "\\'") + "' } })); " +
-                                    "  } " +
-                                    "  if (window.__oxypaceNavigate) { " +
-                                    "    window.__oxypaceNavigate('" + routeToDispatch.replace("'", "\\'") + "'); " +
-                                    "  } else { " +
-                                    "    window.location.href = '" + routeToDispatch.replace("'", "\\'") + "'; " +
-                                    "  } " +
-                                    "} catch(e) { window.location.href = '" + routeToDispatch.replace("'", "\\'") + "'; } " +
-                                    "})();";
+                                        "try { " +
+                                        "  sessionStorage.setItem('pending_mobile_route', '"
+                                        + routeToDispatch.replace("'", "\\'") + "'); " +
+                                        "  if (" + isVoiceToDispatch + ") { " +
+                                        "    window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '"
+                                        + routeToDispatch.replace("'", "\\'") + "' } })); " +
+                                        "  } " +
+                                        "  if (window.__oxypaceNavigate) { " +
+                                        "    window.__oxypaceNavigate('" + routeToDispatch.replace("'", "\\'") + "'); "
+                                        +
+                                        "  } else { " +
+                                        "    window.location.href = '" + routeToDispatch.replace("'", "\\'") + "'; " +
+                                        "  } " +
+                                        "} catch(e) { window.location.href = '" + routeToDispatch.replace("'", "\\'")
+                                        + "'; } " +
+                                        "})();";
                                 view.evaluateJavascript(script, null);
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -1853,37 +1992,50 @@ public class MainActivity extends BridgeActivity {
     }
 
     public static boolean is3ButtonNavigation(android.content.Context context, float navDp) {
-        if (context == null) return false;
+        if (context == null)
+            return false;
         try {
             android.content.ContentResolver cr = context.getContentResolver();
 
             // 1. Samsung OneUI: navigation_bar_gesture_while_hidden
             int samsungGesture = Settings.Global.getInt(cr, "navigation_bar_gesture_while_hidden", -1);
-            if (samsungGesture == 0) return true;
-            if (samsungGesture == 1) return false;
+            if (samsungGesture == 0)
+                return true;
+            if (samsungGesture == 1)
+                return false;
 
             // 2. Xiaomi MIUI / HyperOS: force_fsg_nav_bar
             int miuiFsg = Settings.Global.getInt(cr, "force_fsg_nav_bar", -1);
-            if (miuiFsg == 0) return true;
-            if (miuiFsg == 1) return false;
+            if (miuiFsg == 0)
+                return true;
+            if (miuiFsg == 1)
+                return false;
 
             // 3. Vivo / Funtouch: navigation_gesture_on
             int vivoGesture = Settings.Secure.getInt(cr, "navigation_gesture_on", -1);
-            if (vivoGesture == 0) return true;
-            if (vivoGesture == 1) return false;
+            if (vivoGesture == 0)
+                return true;
+            if (vivoGesture == 1)
+                return false;
 
             // 4. Huawei / Honor: navigationbar_is_min
             int huaweiNav = Settings.System.getInt(cr, "navigationbar_is_min", -1);
-            if (huaweiNav == 0) return true;
-            if (huaweiNav == 1) return false;
+            if (huaweiNav == 0)
+                return true;
+            if (huaweiNav == 1)
+                return false;
 
             // 5. AOSP Standard: navigation_mode (0 = 3 button, 1 = 2 button, 2 = gesture)
             int aospMode = Settings.Secure.getInt(cr, "navigation_mode", -1);
-            if (aospMode == 0 || aospMode == 1) return true;
-            if (aospMode == 2) return false;
-        } catch (Exception ignored) {}
+            if (aospMode == 0 || aospMode == 1)
+                return true;
+            if (aospMode == 2)
+                return false;
+        } catch (Exception ignored) {
+        }
 
-        // Fallback: If bottom nav insets are >= 40dp, it is definitely a 3-button bar (gesture bar is <= 20dp or 0dp)
+        // Fallback: If bottom nav insets are >= 40dp, it is definitely a 3-button bar
+        // (gesture bar is <= 20dp or 0dp)
         return navDp >= 40.0f;
     }
 
@@ -1897,43 +2049,48 @@ public class MainActivity extends BridgeActivity {
                     final boolean is3Btn = sIs3ButtonNav;
                     final int effectiveBottomDp = is3Btn ? Math.max(navDp, 48) : navDp;
                     String script = "(function() {" +
-                        "  try {" +
-                        "    var doc = document.documentElement;" +
-                        "    if (!doc) return;" +
-                        "    doc.style.setProperty('--safe-area-top', '" + statusDp + "px');" +
-                        "    doc.style.setProperty('--system-top-height', '" + statusDp + "px');" +
-                        "    if (" + is3Btn + ") {" +
-                        "      doc.classList.add('has-3button-nav');" +
-                        "      doc.classList.remove('has-gesture-nav');" +
-                        "      doc.style.setProperty('--safe-area-bottom', '" + effectiveBottomDp + "px');" +
-                        "      doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
-                        "    } else {" +
-                        "      doc.classList.remove('has-3button-nav');" +
-                        "      doc.classList.add('has-gesture-nav');" +
-                        "      doc.style.setProperty('--safe-area-bottom', '" + effectiveBottomDp + "px');" +
-                        "      doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
-                        "    }" +
-                        "    window.__oxypaceSystemBars = { navBottom: " + effectiveBottomDp + ", statusBarTop: " + statusDp + ", is3ButtonNav: " + is3Btn + " };" +
-                        "    window.dispatchEvent(new CustomEvent('oxypace:systembars', { detail: window.__oxypaceSystemBars }));" +
-                        "  } catch(e) {}" +
-                        "})();";
+                            "  try {" +
+                            "    var doc = document.documentElement;" +
+                            "    if (!doc) return;" +
+                            "    doc.style.setProperty('--safe-area-top', '" + statusDp + "px');" +
+                            "    doc.style.setProperty('--system-top-height', '" + statusDp + "px');" +
+                            "    if (" + is3Btn + ") {" +
+                            "      doc.classList.add('has-3button-nav');" +
+                            "      doc.classList.remove('has-gesture-nav');" +
+                            "      doc.style.setProperty('--safe-area-bottom', '" + effectiveBottomDp + "px');" +
+                            "      doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
+                            "    } else {" +
+                            "      doc.classList.remove('has-3button-nav');" +
+                            "      doc.classList.add('has-gesture-nav');" +
+                            "      doc.style.setProperty('--safe-area-bottom', '" + effectiveBottomDp + "px');" +
+                            "      doc.style.setProperty('--system-nav-height', '" + effectiveBottomDp + "px');" +
+                            "    }" +
+                            "    window.__oxypaceSystemBars = { navBottom: " + effectiveBottomDp + ", statusBarTop: "
+                            + statusDp + ", is3ButtonNav: " + is3Btn + " };" +
+                            "    window.dispatchEvent(new CustomEvent('oxypace:systembars', { detail: window.__oxypaceSystemBars }));"
+                            +
+                            "  } catch(e) {}" +
+                            "})();";
                     webView.evaluateJavascript(script, null);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         });
     }
 
     private void checkAndApplySystemInsets() {
         try {
             float density = getResources().getDisplayMetrics().density;
-            if (density <= 0) density = 1.0f;
+            if (density <= 0)
+                density = 1.0f;
 
             float navDp = 0f;
             float statusDp = 0f;
             android.view.View decorView = getWindow().getDecorView();
             WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
             if (insets != null) {
-                Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+                Insets statusInsets = insets
+                        .getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
                 statusDp = statusInsets.top / density;
                 Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
                 navDp = navInsets.bottom / density;
@@ -1945,7 +2102,8 @@ public class MainActivity extends BridgeActivity {
             sIs3ButtonNav = is3Btn;
 
             applyInsetsToWebView();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
@@ -1968,7 +2126,8 @@ public class MainActivity extends BridgeActivity {
     }
 
     public void keepWebViewAliveInBackground() {
-        if (!CallManager.isInCall) return;
+        if (!CallManager.isInCall)
+            return;
         runOnUiThread(() -> {
             try {
                 android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
@@ -1977,12 +2136,14 @@ public class MainActivity extends BridgeActivity {
                     webView.resumeTimers();
                     webView.dispatchWindowVisibilityChanged(android.view.View.VISIBLE);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         });
     }
 
     private void scheduleWebViewKeepAlivePulses() {
-        if (!CallManager.isInCall) return;
+        if (!CallManager.isInCall)
+            return;
         keepWebViewAliveInBackground();
         android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
         h.postDelayed(this::keepWebViewAliveInBackground, 120);
@@ -1993,7 +2154,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void finish() {
         if (CallManager.isInCall) {
-            android.util.Log.d("MainActivity", "Intercepted finish() during active call (e.g. PiP X button); moving task to back to keep call & camera alive.");
+            android.util.Log.d("MainActivity",
+                    "Intercepted finish() during active call (e.g. PiP X button); moving task to back to keep call & camera alive.");
             moveTaskToBack(true);
             scheduleWebViewKeepAlivePulses();
             return;
@@ -2002,7 +2164,8 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, android.content.res.Configuration newConfig) {
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode,
+            android.content.res.Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         try {
             if (CallManager.isInCall) {
@@ -2015,9 +2178,9 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public void run() {
                         webView.evaluateJavascript(
-                            "window.dispatchEvent(new CustomEvent('pipModeChanged', { detail: { isInPiP: " + isInPictureInPictureMode + " } }));",
-                            null
-                        );
+                                "window.dispatchEvent(new CustomEvent('pipModeChanged', { detail: { isInPiP: "
+                                        + isInPictureInPictureMode + " } }));",
+                                null);
                     }
                 });
             }
@@ -2047,7 +2210,8 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         isAppForeground = false;
-        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
+        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+                && isInPictureInPictureMode())) {
             // Keep WebView and Camera/WebRTC active in background when in a call or PiP
             scheduleWebViewKeepAlivePulses();
         }
@@ -2056,13 +2220,16 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onStop() {
         super.onStop();
-        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && isInPictureInPictureMode())) {
-            // Keep WebView and Camera/WebRTC active in background when in a call or when PiP X button hides the window
+        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+                && isInPictureInPictureMode())) {
+            // Keep WebView and Camera/WebRTC active in background when in a call or when
+            // PiP X button hides the window
             scheduleWebViewKeepAlivePulses();
         }
     }
 
-    // Called when app is already running and a new Intent arrives (e.g. tapping notification while app is open)
+    // Called when app is already running and a new Intent arrives (e.g. tapping
+    // notification while app is open)
     @Override
     protected void onNewIntent(android.content.Intent intent) {
         super.onNewIntent(intent);
@@ -2076,9 +2243,11 @@ public class MainActivity extends BridgeActivity {
      * from Gallery, File managers (Dosyalar), social apps, browser, etc.
      */
     private void handleShareIntent(android.content.Intent intent) {
-        if (intent == null) return;
+        if (intent == null)
+            return;
         String action = intent.getAction();
-        if (!android.content.Intent.ACTION_SEND.equals(action) && !android.content.Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+        if (!android.content.Intent.ACTION_SEND.equals(action)
+                && !android.content.Intent.ACTION_SEND_MULTIPLE.equals(action)) {
             return;
         }
 
@@ -2096,14 +2265,18 @@ public class MainActivity extends BridgeActivity {
             java.util.List<android.net.Uri> uris = new java.util.ArrayList<>();
             if (android.content.Intent.ACTION_SEND.equals(action)) {
                 android.net.Uri uri = intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM);
-                if (uri != null) uris.add(uri);
+                if (uri != null)
+                    uris.add(uri);
             } else if (android.content.Intent.ACTION_SEND_MULTIPLE.equals(action)) {
-                java.util.ArrayList<android.net.Uri> list = intent.getParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM);
-                if (list != null) uris.addAll(list);
+                java.util.ArrayList<android.net.Uri> list = intent
+                        .getParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM);
+                if (list != null)
+                    uris.addAll(list);
             }
 
             java.io.File cacheDir = new java.io.File(getCacheDir(), "shared_uploads");
-            if (!cacheDir.exists()) cacheDir.mkdirs();
+            if (!cacheDir.exists())
+                cacheDir.mkdirs();
 
             for (android.net.Uri uri : uris) {
                 try {
@@ -2117,7 +2290,8 @@ public class MainActivity extends BridgeActivity {
                                 int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
                                 if (nameIndex >= 0) {
                                     String n = cursor.getString(nameIndex);
-                                    if (n != null && !n.trim().isEmpty()) displayName = n.trim();
+                                    if (n != null && !n.trim().isEmpty())
+                                        displayName = n.trim();
                                 }
                             }
                         } finally {
@@ -2131,7 +2305,7 @@ public class MainActivity extends BridgeActivity {
 
                     java.io.File destFile = new java.io.File(cacheDir, System.currentTimeMillis() + "_" + displayName);
                     try (java.io.InputStream in = getContentResolver().openInputStream(uri);
-                         java.io.FileOutputStream out = new java.io.FileOutputStream(destFile)) {
+                            java.io.FileOutputStream out = new java.io.FileOutputStream(destFile)) {
                         byte[] buffer = new byte[16384];
                         int bytesRead;
                         while ((bytesRead = in.read(buffer)) != -1) {
@@ -2142,18 +2316,21 @@ public class MainActivity extends BridgeActivity {
 
                     long fileSize = destFile.length();
                     String base64 = "";
-                    // If file is reasonably sized (<= 15MB), also provide base64 for direct in-memory File constructor
+                    // If file is reasonably sized (<= 15MB), also provide base64 for direct
+                    // in-memory File constructor
                     if (fileSize > 0 && fileSize <= 15 * 1024 * 1024) {
                         try (java.io.FileInputStream fis = new java.io.FileInputStream(destFile)) {
                             byte[] fileBytes = new byte[(int) fileSize];
                             int totalRead = 0;
                             while (totalRead < fileSize) {
                                 int r = fis.read(fileBytes, totalRead, (int) fileSize - totalRead);
-                                if (r < 0) break;
+                                if (r < 0)
+                                    break;
                                 totalRead += r;
                             }
                             base64 = android.util.Base64.encodeToString(fileBytes, android.util.Base64.NO_WRAP);
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
                     }
 
                     com.getcapacitor.JSObject fileObj = new com.getcapacitor.JSObject();
@@ -2180,14 +2357,16 @@ public class MainActivity extends BridgeActivity {
                     android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                     if (webView != null) {
                         String script = "(function(){ " +
-                            "try { " +
-                            "  window.__oxypaceSharedData = " + payloadJson + "; " +
-                            "  window.dispatchEvent(new CustomEvent('oxypace:shared_content', { detail: " + payloadJson + " })); " +
-                            "} catch(e) {} " +
-                            "})();";
+                                "try { " +
+                                "  window.__oxypaceSharedData = " + payloadJson + "; " +
+                                "  window.dispatchEvent(new CustomEvent('oxypace:shared_content', { detail: "
+                                + payloadJson + " })); " +
+                                "} catch(e) {} " +
+                                "})();";
                         webView.evaluateJavascript(script, null);
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }, 300);
 
             // Clear intent action so it doesn't re-trigger on subsequent rotations
@@ -2198,26 +2377,38 @@ public class MainActivity extends BridgeActivity {
     }
 
     private static String getMimeTypeFromFileName(String fileName) {
-        if (fileName == null) return "application/octet-stream";
+        if (fileName == null)
+            return "application/octet-stream";
         String lower = fileName.toLowerCase();
-        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-        if (lower.endsWith(".png")) return "image/png";
-        if (lower.endsWith(".gif")) return "image/gif";
-        if (lower.endsWith(".webp")) return "image/webp";
-        if (lower.endsWith(".mp4")) return "video/mp4";
-        if (lower.endsWith(".webm")) return "video/webm";
-        if (lower.endsWith(".mov")) return "video/quicktime";
-        if (lower.endsWith(".pdf")) return "application/pdf";
-        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg"))
+            return "image/jpeg";
+        if (lower.endsWith(".png"))
+            return "image/png";
+        if (lower.endsWith(".gif"))
+            return "image/gif";
+        if (lower.endsWith(".webp"))
+            return "image/webp";
+        if (lower.endsWith(".mp4"))
+            return "video/mp4";
+        if (lower.endsWith(".webm"))
+            return "video/webm";
+        if (lower.endsWith(".mov"))
+            return "video/quicktime";
+        if (lower.endsWith(".pdf"))
+            return "application/pdf";
+        if (lower.endsWith(".mp3"))
+            return "audio/mpeg";
         return "application/octet-stream";
     }
 
     /**
      * If the intent carries a JOIN_VOICE_CALL, OPEN_ROUTE action, or deep link URI,
-     * navigate the WebView to the target route using React Router (__oxypaceNavigate).
+     * navigate the WebView to the target route using React Router
+     * (__oxypaceNavigate).
      */
     private void handleIncomingCallIntent(android.content.Intent intent) {
-        if (intent == null) return;
+        if (intent == null)
+            return;
         String action = intent.getAction();
 
         if ("ACTION_NOTIFICATION_START_SCREEN".equals(action)) {
@@ -2230,17 +2421,18 @@ public class MainActivity extends BridgeActivity {
                     android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                     if (webView != null) {
                         webView.evaluateJavascript(
-                            "window.dispatchEvent(new CustomEvent('oxypace:toggle_screenshare'));",
-                            null
-                        );
+                                "window.dispatchEvent(new CustomEvent('oxypace:toggle_screenshare'));",
+                                null);
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }, 150);
             intent.setAction("");
             return;
         }
 
-        // Check if intent contains deep link Uri (e.g. oxypace://auth/process?token=...)
+        // Check if intent contains deep link Uri (e.g.
+        // oxypace://auth/process?token=...)
         android.net.Uri data = intent.getData();
         if (data != null) {
             String scheme = data.getScheme();
@@ -2259,9 +2451,10 @@ public class MainActivity extends BridgeActivity {
                         android.webkit.WebView webView = getBridge().getWebView();
                         if (webView != null) {
                             webView.evaluateJavascript(
-                                "(function(){ if (window.__oxypaceNavigate) { window.__oxypaceNavigate('" + targetRoute.replace("'", "\\'") + "'); } else { window.location.href = '" + targetRoute.replace("'", "\\'") + "'; } })();",
-                                null
-                            );
+                                    "(function(){ if (window.__oxypaceNavigate) { window.__oxypaceNavigate('"
+                                            + targetRoute.replace("'", "\\'") + "'); } else { window.location.href = '"
+                                            + targetRoute.replace("'", "\\'") + "'; } })();",
+                                    null);
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -2271,18 +2464,22 @@ public class MainActivity extends BridgeActivity {
             }
         }
 
-        if (!"JOIN_VOICE_CALL".equals(action) && !"OPEN_ROUTE".equals(action)) return;
+        if (!"JOIN_VOICE_CALL".equals(action) && !"OPEN_ROUTE".equals(action))
+            return;
 
         String route = intent.getStringExtra("route");
-        if (route == null || route.isEmpty()) return;
+        if (route == null || route.isEmpty())
+            return;
 
         // Dismiss the call notification if it was a call
         if ("JOIN_VOICE_CALL".equals(action)) {
             try {
-                android.app.NotificationManager nm =
-                    (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                if (nm != null) nm.cancel(OxypaceMessagingService.VOICE_INVITE_NOTIF_ID);
-            } catch (Exception ignored) {}
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(
+                        NOTIFICATION_SERVICE);
+                if (nm != null)
+                    nm.cancel(OxypaceMessagingService.VOICE_INVITE_NOTIF_ID);
+            } catch (Exception ignored) {
+            }
         }
 
         // Cache for onPageFinished cold-start delivery
@@ -2292,24 +2489,26 @@ public class MainActivity extends BridgeActivity {
         // Navigate WebView to the route seamlessly via React Router
         final String finalRoute = route;
         final boolean isJoinVoice = "JOIN_VOICE_CALL".equals(action);
-        
+
         final Runnable dispatchNav = () -> {
             try {
                 android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                 if (webView != null) {
                     String script = "(function(){ " +
-                        "try { " +
-                        "  sessionStorage.setItem('pending_mobile_route', '" + finalRoute.replace("'", "\\'") + "'); " +
-                        "  if (" + isJoinVoice + ") { " +
-                        "    window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '" + finalRoute.replace("'", "\\'") + "' } })); " +
-                        "  } " +
-                        "  if (window.__oxypaceNavigate) { " +
-                        "    window.__oxypaceNavigate('" + finalRoute.replace("'", "\\'") + "'); " +
-                        "  } else { " +
-                        "    window.location.href = '" + finalRoute.replace("'", "\\'") + "'; " +
-                        "  } " +
-                        "} catch(e) { window.location.href = '" + finalRoute.replace("'", "\\'") + "'; } " +
-                        "})();";
+                            "try { " +
+                            "  sessionStorage.setItem('pending_mobile_route', '" + finalRoute.replace("'", "\\'")
+                            + "'); " +
+                            "  if (" + isJoinVoice + ") { " +
+                            "    window.dispatchEvent(new CustomEvent('oxypace:join_voice', { detail: { route: '"
+                            + finalRoute.replace("'", "\\'") + "' } })); " +
+                            "  } " +
+                            "  if (window.__oxypaceNavigate) { " +
+                            "    window.__oxypaceNavigate('" + finalRoute.replace("'", "\\'") + "'); " +
+                            "  } else { " +
+                            "    window.location.href = '" + finalRoute.replace("'", "\\'") + "'; " +
+                            "  } " +
+                            "} catch(e) { window.location.href = '" + finalRoute.replace("'", "\\'") + "'; } " +
+                            "})();";
                     webView.evaluateJavascript(script, null);
                 }
             } catch (Exception e) {
@@ -2317,7 +2516,8 @@ public class MainActivity extends BridgeActivity {
             }
         };
 
-        // Dispatch with multiple staggered attempts to guarantee reception regardless of WebView mount delay
+        // Dispatch with multiple staggered attempts to guarantee reception regardless
+        // of WebView mount delay
         android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
         handler.postDelayed(dispatchNav, 300);
         handler.postDelayed(dispatchNav, 800);
@@ -2326,28 +2526,30 @@ public class MainActivity extends BridgeActivity {
 
     private void initNotificationChannels() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm == null) return;
+            android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(
+                    Context.NOTIFICATION_SERVICE);
+            if (nm == null)
+                return;
 
             // 1. Voice & Video Call Invites Channel
             if (nm.getNotificationChannel(OxypaceMessagingService.VOICE_INVITE_CHANNEL_ID) == null) {
                 android.app.NotificationChannel callChannel = new android.app.NotificationChannel(
-                    OxypaceMessagingService.VOICE_INVITE_CHANNEL_ID,
-                    "Görüntülü Sohbet Davetleri",
-                    android.app.NotificationManager.IMPORTANCE_MAX
-                );
+                        OxypaceMessagingService.VOICE_INVITE_CHANNEL_ID,
+                        "Görüntülü Sohbet Davetleri",
+                        android.app.NotificationManager.IMPORTANCE_MAX);
                 callChannel.setDescription("Görüntülü ve sesli sohbet odası davetleri");
                 callChannel.enableLights(true);
                 callChannel.enableVibration(true);
-                callChannel.setVibrationPattern(new long[]{0, 1000, 500, 1000});
+                callChannel.setVibrationPattern(new long[] { 0, 1000, 500, 1000 });
                 callChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
                 callChannel.setBypassDnd(true);
 
-                android.net.Uri ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+                android.net.Uri ringtoneUri = android.media.RingtoneManager
+                        .getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
                 android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                    .build();
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .build();
                 callChannel.setSound(ringtoneUri, audioAttributes);
                 nm.createNotificationChannel(callChannel);
             }
@@ -2355,22 +2557,22 @@ public class MainActivity extends BridgeActivity {
             // 2. Direct Messages Channel
             if (nm.getNotificationChannel("oxypace_messages_v2") == null) {
                 android.app.NotificationChannel msgChannel = new android.app.NotificationChannel(
-                    "oxypace_messages_v2",
-                    "Mesaj Bildirimleri",
-                    android.app.NotificationManager.IMPORTANCE_HIGH
-                );
+                        "oxypace_messages_v2",
+                        "Mesaj Bildirimleri",
+                        android.app.NotificationManager.IMPORTANCE_HIGH);
                 msgChannel.setDescription("Kişisel ve grup mesaj bildirimleri");
                 msgChannel.enableLights(true);
                 msgChannel.enableVibration(true);
-                msgChannel.setVibrationPattern(new long[]{0, 250, 200, 250});
+                msgChannel.setVibrationPattern(new long[] { 0, 250, 200, 250 });
                 msgChannel.setShowBadge(true);
                 msgChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
 
-                android.net.Uri defaultSoundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+                android.net.Uri defaultSoundUri = android.media.RingtoneManager
+                        .getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
                 android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
-                    .build();
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+                        .build();
                 msgChannel.setSound(defaultSoundUri, audioAttributes);
                 nm.createNotificationChannel(msgChannel);
             }
@@ -2378,20 +2580,20 @@ public class MainActivity extends BridgeActivity {
             // 3. General App Notifications Channel
             if (nm.getNotificationChannel("oxypace_general_notifications") == null) {
                 android.app.NotificationChannel generalChannel = new android.app.NotificationChannel(
-                    "oxypace_general_notifications",
-                    "Genel Bildirimler",
-                    android.app.NotificationManager.IMPORTANCE_HIGH
-                );
+                        "oxypace_general_notifications",
+                        "Genel Bildirimler",
+                        android.app.NotificationManager.IMPORTANCE_HIGH);
                 generalChannel.setDescription("Portal paylaşımları, alıntılar ve genel sistem bildirimleri");
                 generalChannel.enableLights(true);
                 generalChannel.enableVibration(true);
                 generalChannel.setShowBadge(true);
 
-                android.net.Uri defaultSoundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+                android.net.Uri defaultSoundUri = android.media.RingtoneManager
+                        .getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
                 android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
-                    .build();
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                        .build();
                 generalChannel.setSound(defaultSoundUri, audioAttributes);
                 nm.createNotificationChannel(generalChannel);
             }
@@ -2407,6 +2609,7 @@ public class MainActivity extends BridgeActivity {
                     public void onAudioDevicesAdded(android.media.AudioDeviceInfo[] addedDevices) {
                         handleAudioDevicesChanged();
                     }
+
                     @Override
                     public void onAudioDevicesRemoved(android.media.AudioDeviceInfo[] removedDevices) {
                         handleAudioDevicesChanged();
@@ -2433,14 +2636,16 @@ public class MainActivity extends BridgeActivity {
         runOnUiThread(() -> {
             try {
                 android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                if (am == null) return;
+                if (am == null)
+                    return;
                 boolean hasHeadset = CallManager.isHeadsetConnected(am);
                 boolean prevHas = CallManager.sHasHeadset;
                 CallManager.sHasHeadset = hasHeadset;
 
                 if (hasHeadset && !prevHas) {
                     // Headset plugged in / connected!
-                    // Requirement: Kulaklık takıldığı an varsayılan olarak mikrofon ve hoparlör kulaklığa geçsin.
+                    // Requirement: Kulaklık takıldığı an varsayılan olarak mikrofon ve hoparlör
+                    // kulaklığa geçsin.
                     CallManager.sUserSelectedRoute = null; // Reset user override
                     CallManager.routeAudio(am, "headset");
                     CallManager.dispatchAudioRouteChanged("headset", true, CallManager.sHeadsetName);
@@ -2450,7 +2655,8 @@ public class MainActivity extends BridgeActivity {
                     CallManager.routeAudio(am, "speaker");
                     CallManager.dispatchAudioRouteChanged("speaker", false, "Kulaklık");
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         });
     }
 }

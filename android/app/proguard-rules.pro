@@ -40,3 +40,8 @@
 # Capgo CapacitorUpdater (Self-Hosted OTA Live Updates)
 -keep class ee.forgr.capacitor_updater.** { *; }
 -dontwarn ee.forgr.capacitor_updater.**
+
+# AndroidX WorkManager (Headless Background OTA Worker)
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}

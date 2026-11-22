@@ -248,5 +248,87 @@ export const sendPushNotification = async (tokens, payload) => {
     }
 };
 
-export default { sendPushNotification };
+/**
+ * Send a silent, data-only high-priority push to wake killed/background Android
+ * clients and enqueue Capgo HeadlessUpdateWorker without showing any notification.
+ * @param {Array<String>} tokens
+ * @param {String} otaVersion
+ */
+export const sendSilentOtaPush = async (tokens, otaVersion) => {
+    if (!tokens || tokens.length === 0) {
+        return { successCount: 0, failureCount: 0 };
+    }
+
+    if (!isInitialized) {
+        if (admin.apps.length > 0) {
+            isInitialized = true;
+        } else {
+            try {
+                let serviceAccount = null;
+                const keyPath = path.resolve(process.cwd(), 'firebase-service-account.json');
+                if (fs.existsSync(keyPath)) {
+                    serviceAccount = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+                } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+                    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+                }
+                if (serviceAccount) {
+                    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+                    isInitialized = true;
+                }
+            } catch (e) {
+                console.warn('⚠️ [PushService] Lazy Firebase re-init error (silent OTA):', e.message);
+            }
+        }
+    }
+
+    if (!isInitialized) {
+        console.warn('⚠️ [PushService] Silent OTA requested but Firebase is not initialized.');
+        return { successCount: 0, failureCount: tokens.length };
+    }
+
+    try {
+        const message = {
+            data: {
+                type: 'ota_update',
+                otaVersion: String(otaVersion || ''),
+                silent: 'true',
+                timestamp: String(Date.now()),
+            },
+            android: {
+                priority: 'high',
+                ttl: 24 * 60 * 60 * 1000,
+            },
+            tokens,
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        console.log(`📡 [PushService] Silent OTA push (${otaVersion}): Success=${response.successCount}, Failed=${response.failureCount}`);
+
+        if (response.failureCount > 0) {
+            for (let idx = 0; idx < response.responses.length; idx++) {
+                const resp = response.responses[idx];
+                if (!resp.success && resp.error && (
+                    resp.error.code === 'messaging/registration-token-not-registered' ||
+                    resp.error.code === 'messaging/invalid-registration-token' ||
+                    resp.error.message === 'NotRegistered'
+                )) {
+                    const badToken = tokens[idx];
+                    try {
+                        const User = (await import('../models/User.js')).default;
+                        await User.updateMany(
+                            { $or: [{ fcmTokens: badToken }, { fcmToken: badToken }] },
+                            { $pull: { fcmTokens: badToken }, $unset: { fcmToken: '' } }
+                        );
+                    } catch (_) {}
+                }
+            }
+        }
+        return response;
+    } catch (error) {
+        console.error('❌ [PushService] Error sending silent OTA push:', error);
+        throw error;
+    }
+};
+
+export default { sendPushNotification, sendSilentOtaPush };
 

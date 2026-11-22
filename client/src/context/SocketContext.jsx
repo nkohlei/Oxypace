@@ -201,6 +201,12 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
+        newSocket.on('ota_update_available', () => {
+            if (Capacitor.isNativePlatform()) {
+                window.dispatchEvent(new CustomEvent('oxypace:ota_push'));
+            }
+        });
+
         newSocket.io.on('reconnect', () => {
             setConnected(true);
             syncPresence(true);
