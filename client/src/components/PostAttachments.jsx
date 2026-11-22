@@ -209,7 +209,7 @@ const AudioAttachmentCard = ({ att }) => {
 
             <button
                 type="button"
-                className="pa-audio-play-btn"
+                className="pa-audio-play-btn pa-audio-play-desktop"
                 onClick={togglePlay}
                 aria-label={playing ? 'Duraklat' : 'Oynat'}
             >
@@ -230,60 +230,77 @@ const AudioAttachmentCard = ({ att }) => {
                     </span>
                 </div>
 
-                <div
-                    ref={sliderRef}
-                    className="pa-audio-slider"
-                    role="slider"
-                    tabIndex={0}
-                    aria-label="Ses konumu"
-                    aria-valuemin={0}
-                    aria-valuemax={Math.round(totalDur)}
-                    aria-valuenow={Math.round(currentTime)}
-                    onPointerDown={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        seekFromClientX(e.clientX, false);
-                        const onMove = (ev) => seekFromClientX(ev.clientX, false);
-                        const onUp = (ev) => {
-                            seekFromClientX(ev.clientX, true);
-                            setScrubbingPct(null);
-                            window.removeEventListener('pointermove', onMove);
-                            window.removeEventListener('pointerup', onUp);
-                            window.removeEventListener('pointercancel', onUp);
-                        };
-                        window.addEventListener('pointermove', onMove);
-                        window.addEventListener('pointerup', onUp);
-                        window.addEventListener('pointercancel', onUp);
-                    }}
-                    onKeyDown={(e) => {
-                        if (!audioRef.current || totalDur <= 0) return;
-                        if (e.key === 'ArrowRight') {
-                            e.preventDefault();
-                            const next = Math.min(totalDur, (audioRef.current.currentTime || 0) + 5);
-                            audioRef.current.currentTime = next;
-                            setCurrentTime(next);
-                        } else if (e.key === 'ArrowLeft') {
-                            e.preventDefault();
-                            const next = Math.max(0, (audioRef.current.currentTime || 0) - 5);
-                            audioRef.current.currentTime = next;
-                            setCurrentTime(next);
-                        }
-                    }}
-                >
-                    <div className="pa-audio-track">
-                        <div className="pa-audio-fill" style={{ width: `${pct}%` }} />
-                    </div>
+                <div className="pa-audio-play-row">
+                    <button
+                        type="button"
+                        className="pa-audio-play-btn pa-audio-play-mobile"
+                        onClick={togglePlay}
+                        aria-label={playing ? 'Duraklat' : 'Oynat'}
+                    >
+                        {playing ? (
+                            <Pause size={19} strokeWidth={2.2} fill="currentColor" />
+                        ) : (
+                            <Play size={19} strokeWidth={2.2} fill="currentColor" />
+                        )}
+                    </button>
+
                     <div
-                        className="pa-audio-thumb"
-                        style={{ left: `clamp(5px, ${pct}%, calc(100% - 5px))` }}
-                    />
+                        ref={sliderRef}
+                        className="pa-audio-slider"
+                        role="slider"
+                        tabIndex={0}
+                        aria-label="Ses konumu"
+                        aria-valuemin={0}
+                        aria-valuemax={Math.round(totalDur)}
+                        aria-valuenow={Math.round(currentTime)}
+                        onPointerDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            seekFromClientX(e.clientX, false);
+                            const onMove = (ev) => seekFromClientX(ev.clientX, false);
+                            const onUp = (ev) => {
+                                seekFromClientX(ev.clientX, true);
+                                setScrubbingPct(null);
+                                window.removeEventListener('pointermove', onMove);
+                                window.removeEventListener('pointerup', onUp);
+                                window.removeEventListener('pointercancel', onUp);
+                            };
+                            window.addEventListener('pointermove', onMove);
+                            window.addEventListener('pointerup', onUp);
+                            window.addEventListener('pointercancel', onUp);
+                        }}
+                        onKeyDown={(e) => {
+                            if (!audioRef.current || totalDur <= 0) return;
+                            if (e.key === 'ArrowRight') {
+                                e.preventDefault();
+                                const next = Math.min(totalDur, (audioRef.current.currentTime || 0) + 5);
+                                audioRef.current.currentTime = next;
+                                setCurrentTime(next);
+                            } else if (e.key === 'ArrowLeft') {
+                                e.preventDefault();
+                                const next = Math.max(0, (audioRef.current.currentTime || 0) - 5);
+                                audioRef.current.currentTime = next;
+                                setCurrentTime(next);
+                            }
+                        }}
+                    >
+                        <div className="pa-audio-track">
+                            <div className="pa-audio-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div
+                            className="pa-audio-thumb"
+                            style={{ left: `clamp(5px, ${pct}%, calc(100% - 5px))` }}
+                        />
+                    </div>
                 </div>
 
                 <div className="pa-audio-meta">
-                    <span>
+                    <span className="pa-audio-duration">
                         {formatDuration(currentTime)} / {formatDuration(totalDur)}
                     </span>
-                    {att.size > 0 && <span>{formatFileSize(att.size)}</span>}
+                    {att.size > 0 && (
+                        <span className="pa-audio-size">{formatFileSize(att.size)}</span>
+                    )}
                 </div>
             </div>
 
