@@ -71,11 +71,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                 android.util.Log.d("OxypaceMessaging", "Suppressed notification for non-active account. Active: " + cleanActiveUserId + ", Target: " + trimmedTarget);
                 return;
             }
-            java.util.Set<String> inactiveUserIds = DirectReplyReceiver.getInactiveUserIds(this);
-            if (inactiveUserIds != null && inactiveUserIds.contains(trimmedTarget)) {
-                android.util.Log.d("OxypaceMessaging", "Suppressed notification for inactive background account: " + trimmedTarget);
-                return;
-            }
         }
 
         String type = remoteMessage.getData().get("type");
@@ -1546,11 +1541,14 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
             // 3. If user is logged in (JWT token available in SharedPreferences), sync immediately to backend
             String jwtToken = prefs.getString("jwt_token", null);
-            String serverUrl = prefs.getString("server_url", "https://oxypace.com.tr");
+            String serverUrl = prefs.getString("server_url", "https://api.oxypace.com.tr");
+            final String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr") && !serverUrl.contains("api.oxypace.com.tr"))
+                ? "https://api.oxypace.com.tr"
+                : (serverUrl != null ? serverUrl.replaceAll("/+$", "") : "https://api.oxypace.com.tr");
             if (jwtToken != null && !jwtToken.isEmpty()) {
                 new Thread(() -> {
                     try {
-                        String apiUrl = serverUrl.replaceAll("/+$", "") + "/api/users/fcm-token";
+                        String apiUrl = apiBase + "/api/users/fcm-token";
                         java.net.URL url = new java.net.URL(apiUrl);
                         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                         conn.setRequestMethod("POST");

@@ -87,7 +87,7 @@ function createWindow() {
     desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
       // Automatically select the primary screen/window for sharing
       if (sources.length > 0) {
-        callback({ video: sources[0] });
+        callback({ video: sources[0], audio: 'loopback' });
       } else {
         callback(new Error('No screenshare sources found'));
       }

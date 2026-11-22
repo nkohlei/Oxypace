@@ -490,6 +490,38 @@ public class MainActivity extends BridgeActivity {
             }
             call.resolve();
         }
+
+        @PluginMethod
+        public void readClipboard(PluginCall call) {
+            android.app.Activity act = getActivity();
+            if (act == null) {
+                JSObject ret = new JSObject();
+                ret.put("value", "");
+                call.resolve(ret);
+                return;
+            }
+            act.runOnUiThread(() -> {
+                String clipText = "";
+                try {
+                    android.content.ClipboardManager cm =
+                        (android.content.ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cm != null && cm.hasPrimaryClip()) {
+                        android.content.ClipData clip = cm.getPrimaryClip();
+                        if (clip != null && clip.getItemCount() > 0) {
+                            CharSequence coerced = clip.getItemAt(0).coerceToText(act);
+                            if (coerced != null) {
+                                clipText = coerced.toString();
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    android.util.Log.w("CallManager", "readClipboard warning: " + e.getMessage());
+                }
+                JSObject ret = new JSObject();
+                ret.put("value", clipText);
+                call.resolve(ret);
+            });
+        }
     }
 
     public static volatile boolean isAppForeground = false;
@@ -649,13 +681,22 @@ public class MainActivity extends BridgeActivity {
             // If a valid JWT token was provided, immediately push device FCM token to backend
             if (token != null && !token.trim().isEmpty()) {
                 final Context ctx = getContext();
+                final String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr") && !serverUrl.contains("api.oxypace.com.tr"))
+                    ? "https://api.oxypace.com.tr"
+                    : (serverUrl != null ? serverUrl.replaceAll("/+$", "") : "https://api.oxypace.com.tr");
                 com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful() && task.getResult() != null) {
                             String fcmToken = task.getResult();
+                            try {
+                                ctx.getSharedPreferences(DirectReplyReceiver.PREFS_NAME, Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putString("fcm_token", fcmToken)
+                                    .apply();
+                            } catch (Exception ignored) {}
                             new Thread(() -> {
                                 try {
-                                    String apiUrl = serverUrl.replaceAll("/+$", "") + "/api/users/fcm-token";
+                                    String apiUrl = apiBase + "/api/users/fcm-token";
                                     java.net.URL url = new java.net.URL(apiUrl);
                                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                                     conn.setRequestMethod("POST");
@@ -1054,6 +1095,9 @@ public class MainActivity extends BridgeActivity {
     private android.media.ImageReader imageReader = null;
     private android.os.HandlerThread captureThread = null;
     private android.os.Handler captureHandler = null;
+    private android.media.AudioRecord screenAudioRecord = null;
+    private Thread screenAudioThread = null;
+    private volatile boolean isScreenAudioCapturing = false;
     private long lastFrameTimeMs = 0;
     private int lastScreenCaptureWidth = 540;
     private int lastScreenCaptureHeight = 1200;
@@ -1196,6 +1240,7 @@ public class MainActivity extends BridgeActivity {
             }, captureHandler);
 
             android.util.Log.d("MainActivity", "Screen projection successfully started at " + width + "x" + height);
+            startScreenAudioCapture(mediaProjection);
             return true;
 
         } catch (Exception e) {
@@ -1205,7 +1250,105 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private void startScreenAudioCapture(android.media.projection.MediaProjection projection) {
+        if (projection == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+            return;
+        }
+        try {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.w("MainActivity", "Skipping AudioPlaybackCapture: RECORD_AUDIO not granted");
+                return;
+            }
+            final int sampleRate = 24000;
+            android.media.AudioPlaybackCaptureConfiguration config =
+                new android.media.AudioPlaybackCaptureConfiguration.Builder(projection)
+                    .addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .addMatchingUsage(android.media.AudioAttributes.USAGE_GAME)
+                    .addMatchingUsage(android.media.AudioAttributes.USAGE_UNKNOWN)
+                    .build();
+
+            int minBuf = android.media.AudioRecord.getMinBufferSize(
+                sampleRate,
+                android.media.AudioFormat.CHANNEL_IN_MONO,
+                android.media.AudioFormat.ENCODING_PCM_16BIT
+            );
+            int bufSize = Math.max(minBuf > 0 ? minBuf : 3840, 3840);
+
+            android.media.AudioFormat format = new android.media.AudioFormat.Builder()
+                .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(android.media.AudioFormat.CHANNEL_IN_MONO)
+                .build();
+
+            screenAudioRecord = new android.media.AudioRecord.Builder()
+                .setAudioPlaybackCaptureConfig(config)
+                .setAudioFormat(format)
+                .setBufferSizeInBytes(bufSize)
+                .build();
+
+            if (screenAudioRecord.getState() != android.media.AudioRecord.STATE_INITIALIZED) {
+                android.util.Log.w("MainActivity", "AudioRecord playback capture not initialized");
+                try { screenAudioRecord.release(); } catch (Exception ignored) {}
+                screenAudioRecord = null;
+                return;
+            }
+
+            isScreenAudioCapturing = true;
+            screenAudioRecord.startRecording();
+
+            screenAudioThread = new Thread(() -> {
+                byte[] pcmBuf = new byte[1920]; // 960 samples @ 24kHz = 40ms PCM16
+                while (isScreenAudioCapturing && screenAudioRecord != null) {
+                    try {
+                        int read = screenAudioRecord.read(pcmBuf, 0, pcmBuf.length);
+                        if (read > 0) {
+                            byte[] chunk = (read == pcmBuf.length) ? pcmBuf : java.util.Arrays.copyOf(pcmBuf, read);
+                            String b64 = android.util.Base64.encodeToString(chunk, android.util.Base64.NO_WRAP);
+                            com.getcapacitor.Bridge bridge = getBridgeInstance();
+                            if (bridge != null && bridge.getWebView() != null) {
+                                bridge.getWebView().post(() -> {
+                                    try {
+                                        bridge.getWebView().evaluateJavascript(
+                                            "if (window.onNativeScreenAudio) { window.onNativeScreenAudio('" + b64 + "', " + sampleRate + "); }",
+                                            null
+                                        );
+                                    } catch (Exception ignored) {}
+                                });
+                            }
+                        } else if (read < 0) {
+                            break;
+                        }
+                    } catch (Throwable t) {
+                        break;
+                    }
+                }
+            }, "ScreenAudioCaptureThread");
+            screenAudioThread.start();
+            android.util.Log.d("MainActivity", "AudioPlaybackCapture started for screen share");
+        } catch (Throwable err) {
+            android.util.Log.w("MainActivity", "AudioPlaybackCapture unavailable: " + err.getMessage());
+            isScreenAudioCapturing = false;
+            if (screenAudioRecord != null) {
+                try { screenAudioRecord.release(); } catch (Exception ignored) {}
+                screenAudioRecord = null;
+            }
+        }
+    }
+
     public void stopScreenProjection() {
+        isScreenAudioCapturing = false;
+        try {
+            if (screenAudioThread != null) {
+                screenAudioThread.interrupt();
+                screenAudioThread = null;
+            }
+            if (screenAudioRecord != null) {
+                try { screenAudioRecord.stop(); } catch (Exception ignored) {}
+                try { screenAudioRecord.release(); } catch (Exception ignored) {}
+                screenAudioRecord = null;
+            }
+        } catch (Exception ignored) {}
         try {
             if (virtualDisplay != null) {
                 virtualDisplay.release();
@@ -1510,11 +1653,14 @@ public class MainActivity extends BridgeActivity {
                         prefs.edit().putString("fcm_token", currentToken).apply();
 
                         String jwtToken = prefs.getString("jwt_token", null);
-                        String serverUrl = prefs.getString("server_url", "https://oxypace.com.tr");
+                        String serverUrl = prefs.getString("server_url", "https://api.oxypace.com.tr");
+                        String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr") && !serverUrl.contains("api.oxypace.com.tr"))
+                            ? "https://api.oxypace.com.tr"
+                            : (serverUrl != null ? serverUrl.replaceAll("/+$", "") : "https://api.oxypace.com.tr");
                         if (jwtToken != null && !jwtToken.isEmpty()) {
                             new Thread(() -> {
                                 try {
-                                    String apiUrl = serverUrl.replaceAll("/+$", "") + "/api/users/fcm-token";
+                                    String apiUrl = apiBase + "/api/users/fcm-token";
                                     java.net.URL url = new java.net.URL(apiUrl);
                                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                                     conn.setRequestMethod("POST");

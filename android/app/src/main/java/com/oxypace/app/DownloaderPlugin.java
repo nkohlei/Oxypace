@@ -62,22 +62,66 @@ public class DownloaderPlugin extends Plugin {
             return;
         }
 
-        // Determine MIME type
+        // Determine accurate MIME type from original file extension (NEVER default unknown files to video/mp4!)
         if (mimeType == null || mimeType.isEmpty() || mimeType.equals("*/*")) {
-            String lower = filename.toLowerCase();
-            if (lower.endsWith(".mp4")) mimeType = "video/mp4";
-            else if (lower.endsWith(".mov")) mimeType = "video/quicktime";
-            else if (lower.endsWith(".webm")) mimeType = "video/webm";
-            else if (lower.endsWith(".mkv")) mimeType = "video/x-matroska";
-            else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mimeType = "image/jpeg";
-            else if (lower.endsWith(".png")) mimeType = "image/png";
-            else if (lower.endsWith(".webp")) mimeType = "image/webp";
-            else if (lower.endsWith(".gif")) mimeType = "image/gif";
-            else if (lower.endsWith(".pdf")) mimeType = "application/pdf";
-            else mimeType = "video/mp4";
+            mimeType = resolveMimeType(filename);
         }
 
         downloadMediaDirectly(call, url, filename, mimeType);
+    }
+
+    private static String resolveMimeType(String filename) {
+        if (filename == null) return "application/octet-stream";
+        String lower = filename.toLowerCase().trim();
+        if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) return "video/mp4";
+        if (lower.endsWith(".mov")) return "video/quicktime";
+        if (lower.endsWith(".webm")) return "video/webm";
+        if (lower.endsWith(".mkv")) return "video/x-matroska";
+        if (lower.endsWith(".avi")) return "video/x-msvideo";
+        if (lower.endsWith(".3gp")) return "video/3gpp";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        if (lower.endsWith(".bmp")) return "image/bmp";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        if (lower.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+        if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (lower.endsWith(".doc")) return "application/msword";
+        if (lower.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (lower.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (lower.endsWith(".odt")) return "application/vnd.oasis.opendocument.text";
+        if (lower.endsWith(".ods")) return "application/vnd.oasis.opendocument.spreadsheet";
+        if (lower.endsWith(".odp")) return "application/vnd.oasis.opendocument.presentation";
+        if (lower.endsWith(".rtf")) return "application/rtf";
+        if (lower.endsWith(".txt") || lower.endsWith(".log") || lower.endsWith(".md")) return "text/plain";
+        if (lower.endsWith(".csv")) return "text/csv";
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html";
+        if (lower.endsWith(".json")) return "application/json";
+        if (lower.endsWith(".xml")) return "application/xml";
+        if (lower.endsWith(".zip")) return "application/zip";
+        if (lower.endsWith(".rar")) return "application/vnd.rar";
+        if (lower.endsWith(".7z")) return "application/x-7z-compressed";
+        if (lower.endsWith(".tar")) return "application/x-tar";
+        if (lower.endsWith(".gz")) return "application/gzip";
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".wav")) return "audio/wav";
+        if (lower.endsWith(".ogg") || lower.endsWith(".oga")) return "audio/ogg";
+        if (lower.endsWith(".m4a")) return "audio/mp4";
+        if (lower.endsWith(".aac")) return "audio/aac";
+        if (lower.endsWith(".flac")) return "audio/flac";
+        if (lower.endsWith(".opus")) return "audio/opus";
+        int dotIdx = lower.lastIndexOf('.');
+        if (dotIdx >= 0 && dotIdx < lower.length() - 1) {
+            String ext = lower.substring(dotIdx + 1);
+            String sysMime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+            if (sysMime != null && !sysMime.isEmpty()) {
+                return sysMime;
+            }
+        }
+        return "application/octet-stream";
     }
 
     /**
@@ -101,8 +145,9 @@ public class DownloaderPlugin extends Plugin {
                 ContentResolver resolver = context.getContentResolver();
 
                 String lower = filename.toLowerCase();
-                boolean isVideo = mimeType.startsWith("video/") || lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".webm") || lower.endsWith(".mkv");
-                boolean isImage = mimeType.startsWith("image/") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp") || lower.endsWith(".gif");
+                boolean isVideo = lower.endsWith(".mp4") || lower.endsWith(".m4v") || lower.endsWith(".mov") || lower.endsWith(".webm") || lower.endsWith(".mkv") || lower.endsWith(".avi") || lower.endsWith(".3gp");
+                boolean isMp4Container = lower.endsWith(".mp4") || lower.endsWith(".m4v") || lower.endsWith(".mov");
+                boolean isImage = !isVideo && (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp") || lower.endsWith(".gif") || lower.endsWith(".bmp"));
 
                 File tempDownloadFile = null;
                 HttpURLConnection conn = null;
@@ -177,8 +222,8 @@ public class DownloaderPlugin extends Plugin {
                     in.close();
                     in = null;
 
-                    // Step 2: If video, optimize MP4 container (Faststart + patch creation date to NOW)
-                    if (isVideo && tempDownloadFile.exists() && tempDownloadFile.length() > 64) {
+                    // Step 2: Only optimize genuine MP4/MOV containers (never touch .pptx, .docx, .zip, .pdf, etc.)
+                    if (isMp4Container && tempDownloadFile.exists() && tempDownloadFile.length() > 64) {
                         processAndOptimizeMp4(tempDownloadFile, now);
                     }
 

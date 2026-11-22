@@ -1,6 +1,6 @@
 {
     "name": "oxypace-backend",
-    "version": "2.5.9",
+    "version": "2.6.0",
     "description": "Oxypace - Modern Social & Portal Platform backend",
     "main": "server.js",
     "type": "module",
@@ -44,6 +44,7 @@
         "@capacitor/app": "^8.0.1",
         "@capacitor/browser": "^8.0.3",
         "@capacitor/camera": "^8.0.2",
+        "@capacitor/clipboard": "^8.0.1",
         "@capacitor/device": "^8.0.1",
         "@capacitor/filesystem": "^8.1.2",
         "@capacitor/keyboard": "^8.0.1",

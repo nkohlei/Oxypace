@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.5.9)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.0)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.6.0',
+        versionCode: 260,
+        releaseDate: '22 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Portal Cihaz Bildirimleri, Orijinal Uzantılı İndirme, Ekran Paylaşımı Sesi, Canlı Oda Arayüzü & 3D Dünya Yenilemesi',
+        summary: 'Tek aktif hesapta portal bildirim ayarlarının kesintisiz cihaz bildirimi iletmesi sağlandı. Post eklerinin (.pptx, .docx, .zip vb.) mobilde .mp4 olarak kaydedilmesi sorunu giderilerek orijinal uzantı ve MIME türü korundu. Canlı odalarda Android AudioPlaybackCapture + WebRTC ekran paylaşımı sesi aktarımı, Birlikte İzle yapıştır butonu, masaüstü dikey/mobil yatay sağ üst kontroller, otomatik gizlenme, YouTube nocookie/iframe kurtarma motoru ve Google Earth seviyesinde 3D Dünya haritası yayınlandı.',
+        category: 'feature',
+        apkSize: '40 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Portal Bildirimleri (Tek Aktif Hesap): Aktif hesap doğrulama, legacy kullanıcı filtresi ve 4 KB FCM yük sınırı düzeltmeleriyle seçili portal bildirimlerinin cihaza anında ulaşması',
+            'Orijinal Uzantıyla Dosya İndirme: DownloaderPlugin.java ve downloadHelper.js üzerinde .pptx, .docx, .xlsx, .zip vb. post eklerinin .mp4’e çevrilmeden kendi uzantısıyla indirilmesi',
+            'Canlı Oda Ekran Paylaşımı Sesi: Android AudioPlaybackCapture (24kHz PCM16 → WebAudio MediaStream) ve Web/Desktop ekran sesi yakalama + WebRTC renegotiation iyileştirmesi',
+            'Birlikte İzle & Canlı Oda Arayüzü + 3D Dünya: Çalışan @capacitor/clipboard + yerel Android pano yapıştır butonu, YouTube çok kademeli kurtarma ve Google Earth düzeyinde 3D Dünya küresi'
+        ],
+        changes: [
+            { type: 'Portal Cihaz Bildirimleri', detail: 'portalNotificationService.js, DirectReplyReceiver.java, OxypaceMessagingService.java ve MainActivity.java üzerinde aktif kullanıcı izleme ve kompakt FCM yükü sağlandı.' },
+            { type: 'Orijinal Dosya Uzantıları', detail: 'DownloaderPlugin.java ve downloadHelper.js içinde resolveMimeType / guessMimeTypeFromFilename eklendi, MP4 optimize adımı yalnızca video konteynerleriyle sınırlandı.' },
+            { type: 'Ekran Paylaşımı Sesi', detail: 'MainActivity.java (AudioPlaybackCapture), VoiceContext.jsx (WebAudio bridge + renegotiate) ve desktop/main.js (loopback audio) güncellendi.' },
+            { type: 'Pano Yapıştır, Canlı Oda & 3D Dünya', detail: '@capacitor/clipboard kök projeye eklenerek CallManager.readClipboard yedeği bağlandı; WatchPartyPlayer, VoiceChannel ve EarthCanvas iyileştirildi.' }
+        ],
+        filesModified: 14
+    },
     {
         version: 'v2.5.9',
         versionCode: 259,
         releaseDate: '12 Kasım 2026',
         commitHash: 'HEAD',
-        status: 'active',
+        status: 'stable',
         title: 'Alt Sayfa Paylaşım Deneyimi, Kapak/Paletli Ses Kartları, Orantılı Video Zaman Önizleme & Tam Ekran / Dokunmatik Kararlılığı',
         summary: 'Gönderi paylaşım penceresi Portal katmanına taşınıp masaüstünde ortalanırken mobilde ekranın altından açılan pratik bir sayfaya dönüştürüldü; portal davet penceresi tüm platformlarda ortalanıp siyah/gümüş/beyaz mimari tema ile yenilendi. Ses dosyalarında kapak görseli, kapağa uyumlu hareketli renk paleti, Ses Kaydı / Ses Dosyası ayrımı ve 00:00 hiza hatası düzeltildi. Normal gönderi ve Birlikte İzle videolarına oynatıcı boyutuna orantılı büyüyüp küçülen dokun-sürükle zaman çizelgesi önizlemesi eklendi; canlı odalarda tam ekrandan çıkışta portal menüsüne yönlendirme ve dokunmatik kilitlenme sorunları giderildi.',
         category: 'feature',

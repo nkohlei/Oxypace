@@ -7,11 +7,14 @@ import { useAuth } from '../context/AuthContext';
 import VoiceChatSidebar from './VoiceChatSidebar';
 import { getImageUrl } from '../utils/imageUtils';
 import { Crown, Shield, X, Mic, MicOff, Video, VideoOff, PhoneOff, Settings, Users, MessageCircle, Check, Hand, Volume2, RefreshCw, ChevronUp, ChevronDown, VolumeX, MonitorUp, Link, Clipboard, UserPlus, Radio, Globe, PictureInPicture, Film, Headphones } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Clipboard as CapClipboard } from '@capacitor/clipboard';
 import WatchPartyPlayer from './WatchPartyPlayer';
 import { HlsTesterModal } from './HlsTesterModal';
 import { HlsStreamResolverModalVol2 } from './HlsStreamResolverModalVol2';
 import './VoiceChannel.css';
+
+const CallManager = registerPlugin('CallManager');
 
 const VideoRenderer = ({ track, isLocal, className }) => {
     const videoEl = React.useRef(null);
@@ -227,6 +230,50 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
     const [liveWatchUrl, setLiveWatchUrl] = useState('');
     const [isMobile, setIsMobile] = useState(detectMobileLayout);
     const autoJoinedRef = useRef(false);
+    const watchUrlInputRef = useRef(null);
+
+    const handlePasteToInput = async (setter, inputRef) => {
+        try {
+            if (Capacitor.isNativePlatform()) {
+                const res = await CapClipboard.read();
+                if (res && typeof res.value === 'string' && res.value.trim()) {
+                    setter(res.value.trim());
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn("[ConferenceChannel] CapClipboard paste warning:", err);
+        }
+        try {
+            if (Capacitor.isNativePlatform() && CallManager?.readClipboard) {
+                const nativeRes = await CallManager.readClipboard();
+                if (nativeRes && typeof nativeRes.value === 'string' && nativeRes.value.trim()) {
+                    setter(nativeRes.value.trim());
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn("[ConferenceChannel] Native CallManager clipboard fallback warning:", err);
+        }
+        try {
+            if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                const text = await navigator.clipboard.readText();
+                if (text && typeof text === 'string' && text.trim()) {
+                    setter(text.trim());
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn("[ConferenceChannel] Web clipboard paste error:", err);
+        }
+        try {
+            const el = inputRef?.current;
+            if (el) {
+                el.focus();
+                document.execCommand('paste');
+            }
+        } catch (_) {}
+    };
 
     // Call duration timer
     useEffect(() => {
@@ -856,6 +903,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                     </div>
                     <div className="vc-watch-input-row">
                         <input
+                            ref={watchUrlInputRef}
                             type="text"
                             className="vc-watch-url-input"
                             placeholder="Video veya canlı yayın URL..."
@@ -876,12 +924,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         <button
                             type="button"
                             className="vc-watch-paste-btn"
-                            onClick={async () => {
-                                try {
-                                    const text = await navigator.clipboard.readText();
-                                    if (text) setWatchUrl(text.trim());
-                                } catch (_) {}
-                            }}
+                            onClick={() => handlePasteToInput(setWatchUrl, watchUrlInputRef)}
                             title="Panodan Yapıştır"
                         >
                             <Clipboard size={12} />

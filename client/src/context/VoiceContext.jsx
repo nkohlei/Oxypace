@@ -403,6 +403,8 @@ export const VoiceProvider = ({ children }) => {
     const screenStreamRef = useRef(null);
     const screenCanvasRef = useRef(null);
     const screenImageRef = useRef(null);
+    const screenAudioCtxRef = useRef(null);
+    const pendingRenegotiateRef = useRef(new Set());
     const peerConnectionsRef = useRef(new Map()); // userId -> RTCPeerConnection
     const watchDataChannelsRef = useRef(new Map()); // userId -> RTCDataChannel ('watch-sync')
     const processedWatchCmdIdsRef = useRef(new Set()); // deduplicate P2P + Socket watch commands
@@ -849,6 +851,24 @@ export const VoiceProvider = ({ children }) => {
             // Independent screenshare card
             const effectiveScreenTrack = rTracks.screen || (rState.isScreenSharing && !rState.isCameraOn ? rTracks.video : null);
             if ((rState.isScreenSharing || rTracks.screen) && effectiveScreenTrack && effectiveScreenTrack.readyState !== 'ended') {
+                let remoteScreenAudio = rTracks.screenAudio;
+                if (!remoteScreenAudio || remoteScreenAudio.readyState === 'ended') {
+                    const pc = peerConnectionsRef.current.get(p.userId);
+                    if (pc) {
+                        const screenAudioTransceiver = pc.getTransceivers?.().find(t =>
+                            t.receiver?.track?.kind === 'audio' &&
+                            t.receiver.track.readyState !== 'ended' &&
+                            t.receiver.track !== remoteAudio
+                        );
+                        if (screenAudioTransceiver?.receiver?.track) {
+                            remoteScreenAudio = screenAudioTransceiver.receiver.track;
+                            if (!remoteTracksRef.current.has(p.userId)) {
+                                remoteTracksRef.current.set(p.userId, {});
+                            }
+                            remoteTracksRef.current.get(p.userId).screenAudio = remoteScreenAudio;
+                        }
+                    }
+                }
                 list.push({
                     identity: `${p.userId}-screen`,
                     name: `${p.username} (Ekran)`,
@@ -860,7 +880,7 @@ export const VoiceProvider = ({ children }) => {
                     isScreenSharing: true,
                     isSpeaking: false,
                     videoTrack: null,
-                    audioTrack: rTracks.screenAudio ? makeTrackObject(rTracks.screenAudio) : null,
+                    audioTrack: remoteScreenAudio ? makeTrackObject(remoteScreenAudio) : null,
                     screenShareTrack: makeTrackObject(effectiveScreenTrack),
                 });
             }
@@ -935,9 +955,11 @@ export const VoiceProvider = ({ children }) => {
         if (!pc) return;
         try {
             if (pc.signalingState !== 'stable') {
-                console.log(`[WebRTC] renegotiatePeer postponed for ${targetUserId} because state is ${pc.signalingState}`);
+                pendingRenegotiateRef.current.add(targetUserId);
+                console.log(`[WebRTC] renegotiatePeer queued for ${targetUserId} because state is ${pc.signalingState}`);
                 return;
             }
+            pendingRenegotiateRef.current.delete(targetUserId);
             console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}`);
             const offer = await pc.createOffer();
             const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
@@ -1240,6 +1262,9 @@ export const VoiceProvider = ({ children }) => {
                 console.log(`[WebRTC] Remote track ended: ${event.track.id} (${event.track.kind}) for ${targetUserId}`);
                 if (tracks.screen === event.track) {
                     tracks.screen = null;
+                }
+                if (tracks.screenAudio === event.track) {
+                    tracks.screenAudio = null;
                 }
                 updateParticipantList();
             };
@@ -1959,12 +1984,21 @@ export const VoiceProvider = ({ children }) => {
                 if (offerCollision) {
                     // Polite peer rolled back its own offer to answer remote offer.
                     // Now that remote offer is resolved and answered, re-trigger renegotiation to push local tracks.
+                    pendingRenegotiateRef.current.delete(senderId);
                     setTimeout(() => {
                         const currentPc = peerConnectionsRef.current.get(senderId);
                         if (currentPc && currentPc.signalingState === 'stable') {
                             renegotiatePeer(senderId);
                         }
                     }, 300);
+                } else if (pendingRenegotiateRef.current.has(senderId)) {
+                    pendingRenegotiateRef.current.delete(senderId);
+                    setTimeout(() => {
+                        const currentPc = peerConnectionsRef.current.get(senderId);
+                        if (currentPc && currentPc.signalingState === 'stable') {
+                            renegotiatePeer(senderId);
+                        }
+                    }, 120);
                 }
             } catch (err) {
                 console.error("Error setting video offer from remote:", err);
@@ -1986,6 +2020,15 @@ export const VoiceProvider = ({ children }) => {
                     // Process any ICE candidates that arrived early
                     await processQueuedCandidates(senderId, pc);
                     updateParticipantList();
+                    if (pendingRenegotiateRef.current.has(senderId) && pc.signalingState === 'stable') {
+                        pendingRenegotiateRef.current.delete(senderId);
+                        setTimeout(() => {
+                            const currentPc = peerConnectionsRef.current.get(senderId);
+                            if (currentPc && currentPc.signalingState === 'stable') {
+                                renegotiatePeer(senderId);
+                            }
+                        }, 120);
+                    }
                 } catch (err) {
                     console.error("Error setting video answer from remote:", err);
                 }
@@ -2383,6 +2426,11 @@ export const VoiceProvider = ({ children }) => {
 
     const stopScreenShareAndRevert = useCallback(() => {
         window.onNativeScreenFrame = null;
+        window.onNativeScreenAudio = null;
+        if (screenAudioCtxRef.current) {
+            try { screenAudioCtxRef.current.close(); } catch (_) {}
+            screenAudioCtxRef.current = null;
+        }
         if (Capacitor.isNativePlatform()) {
             CallManager.stopScreenCapture().catch(() => {});
         }
@@ -2500,6 +2548,59 @@ export const VoiceProvider = ({ children }) => {
 
                         if (typeof canvas.captureStream === 'function') {
                             screenStream = canvas.captureStream(25);
+                            try {
+                                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                                if (AudioCtx) {
+                                    if (screenAudioCtxRef.current) {
+                                        try { screenAudioCtxRef.current.close(); } catch (_) {}
+                                    }
+                                    const actx = new AudioCtx({ sampleRate: 24000 });
+                                    screenAudioCtxRef.current = actx;
+                                    const dest = actx.createMediaStreamDestination();
+                                    const nativeAudioTrack = dest.stream.getAudioTracks()[0];
+                                    if (nativeAudioTrack) {
+                                        screenStream.addTrack(nativeAudioTrack);
+                                    }
+                                    if (actx.state === 'suspended') {
+                                        actx.resume().catch(() => {});
+                                    }
+                                    let nextPlayTime = 0;
+                                    window.onNativeScreenAudio = (base64Pcm, sr = 24000) => {
+                                        try {
+                                            if (!screenAudioCtxRef.current) return;
+                                            if (actx.state === 'suspended') {
+                                                actx.resume().catch(() => {});
+                                            }
+                                            const binStr = atob(base64Pcm);
+                                            const len = binStr.length;
+                                            if (len < 2) return;
+                                            const bytes = new Uint8Array(len);
+                                            for (let i = 0; i < len; i++) {
+                                                bytes[i] = binStr.charCodeAt(i);
+                                            }
+                                            const sampleCount = Math.floor(len / 2);
+                                            const pcm16 = new Int16Array(bytes.buffer, 0, sampleCount);
+                                            const audioBuf = actx.createBuffer(1, sampleCount, sr || 24000);
+                                            const ch = audioBuf.getChannelData(0);
+                                            for (let i = 0; i < sampleCount; i++) {
+                                                ch[i] = pcm16[i] / 32768;
+                                            }
+                                            const srcNode = actx.createBufferSource();
+                                            srcNode.buffer = audioBuf;
+                                            srcNode.connect(dest);
+                                            const now = actx.currentTime;
+                                            if (nextPlayTime < now || nextPlayTime - now > 0.18) {
+                                                nextPlayTime = now + 0.02;
+                                            }
+                                            srcNode.start(nextPlayTime);
+                                            nextPlayTime += audioBuf.duration;
+                                        } catch (_) {}
+                                    };
+                                }
+                            } catch (audioBridgeErr) {
+                                console.warn("[ScreenShare] Native audio bridge error:", audioBridgeErr);
+                            }
+
                             const vTrack = screenStream.getVideoTracks()[0];
                             if (vTrack) {
                                 try {
@@ -2508,6 +2609,11 @@ export const VoiceProvider = ({ children }) => {
                                 const origStop = vTrack.stop.bind(vTrack);
                                 vTrack.stop = () => {
                                     window.onNativeScreenFrame = null;
+                                    window.onNativeScreenAudio = null;
+                                    if (screenAudioCtxRef.current) {
+                                        try { screenAudioCtxRef.current.close(); } catch (_) {}
+                                        screenAudioCtxRef.current = null;
+                                    }
                                     CallManager.stopScreenCapture().catch(() => {});
                                     origStop();
                                 };
@@ -2528,20 +2634,37 @@ export const VoiceProvider = ({ children }) => {
                                 height: { ideal: 1080 },
                                 frameRate: { ideal: 30, max: 60 }
                             },
-                            audio: true
+                            audio: {
+                                echoCancellation: false,
+                                noiseSuppression: false,
+                                autoGainControl: false
+                            },
+                            systemAudio: 'include',
+                            surfaceSwitching: 'include'
                         });
                     } catch (audioOrParamErr) {
-                        console.warn("[ScreenShare] Advanced getDisplayMedia failed, retrying standard constraints:", audioOrParamErr);
+                        console.warn("[ScreenShare] Advanced getDisplayMedia failed, retrying with basic audio+video:", audioOrParamErr);
                         try {
                             screenStream = await navigator.mediaDevices.getDisplayMedia({
-                                video: true
+                                video: true,
+                                audio: true
                             });
-                        } catch (fallbackErr) {
-                            if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'PermissionDeniedError') {
+                        } catch (basicAudioErr) {
+                            if (basicAudioErr.name === 'NotAllowedError' || basicAudioErr.name === 'PermissionDeniedError') {
                                 console.log("[ScreenShare] User cancelled screen share prompt.");
                                 return;
                             }
-                            console.warn("[ScreenShare] Native getDisplayMedia error:", fallbackErr);
+                            try {
+                                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                                    video: true
+                                });
+                            } catch (fallbackErr) {
+                                if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'PermissionDeniedError') {
+                                    console.log("[ScreenShare] User cancelled screen share prompt.");
+                                    return;
+                                }
+                                console.warn("[ScreenShare] Native getDisplayMedia error:", fallbackErr);
+                            }
                         }
                     }
                 }

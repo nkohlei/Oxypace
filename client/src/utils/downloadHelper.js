@@ -196,6 +196,40 @@ const createDownloadProgressToast = (filename) => {
     };
 };
 
+const guessMimeTypeFromFilename = (name) => {
+    const lower = String(name || '').toLowerCase().trim();
+    if (lower.endsWith('.mp4') || lower.endsWith('.m4v')) return 'video/mp4';
+    if (lower.endsWith('.mov')) return 'video/quicktime';
+    if (lower.endsWith('.webm')) return 'video/webm';
+    if (lower.endsWith('.mkv')) return 'video/x-matroska';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.pptx')) return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    if (lower.endsWith('.ppt')) return 'application/vnd.ms-powerpoint';
+    if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+    if (lower.endsWith('.txt') || lower.endsWith('.log') || lower.endsWith('.md')) return 'text/plain';
+    if (lower.endsWith('.csv')) return 'text/csv';
+    if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'text/html';
+    if (lower.endsWith('.json')) return 'application/json';
+    if (lower.endsWith('.zip')) return 'application/zip';
+    if (lower.endsWith('.rar')) return 'application/vnd.rar';
+    if (lower.endsWith('.7z')) return 'application/x-7z-compressed';
+    if (lower.endsWith('.mp3')) return 'audio/mpeg';
+    if (lower.endsWith('.wav')) return 'audio/wav';
+    if (lower.endsWith('.ogg') || lower.endsWith('.oga')) return 'audio/ogg';
+    if (lower.endsWith('.m4a')) return 'audio/mp4';
+    if (lower.endsWith('.aac')) return 'audio/aac';
+    if (lower.endsWith('.flac')) return 'audio/flac';
+    return 'application/octet-stream';
+};
+
 /**
  * Downloads a file on web or native platforms.
  * Shows an adaptive step-by-step 1% to 100% live progress bar toast overlay.
@@ -218,16 +252,25 @@ export const downloadFile = async (url, filename) => {
         cleanFilename = cleanFilename.replace(/[/\\?%*:|"<>]/g, '-').trim();
         if (!cleanFilename) cleanFilename = `oxypace-${Date.now()}`;
 
-        // Ensure proper extension if missing
+        // Ensure proper extension if missing — extract from URL path first before falling back
         if (!cleanFilename.includes('.')) {
-            const urlLower = fullUrl.split('?')[0].toLowerCase();
-            if (urlLower.endsWith('.mp4') || urlLower.includes('.mp4')) cleanFilename += '.mp4';
-            else if (urlLower.endsWith('.pdf') || urlLower.includes('.pdf')) cleanFilename += '.pdf';
-            else if (urlLower.endsWith('.gif') || urlLower.includes('.gif')) cleanFilename += '.gif';
-            else if (urlLower.endsWith('.png') || urlLower.includes('.png')) cleanFilename += '.png';
-            else if (urlLower.endsWith('.webp') || urlLower.includes('.webp')) cleanFilename += '.webp';
-            else cleanFilename += '.jpg';
+            let urlPath = fullUrl.split('?')[0].split('#')[0];
+            try { urlPath = decodeURIComponent(urlPath); } catch (_) {}
+            const extMatch = urlPath.match(/\.([a-z0-9]{1,8})$/i);
+            if (extMatch && extMatch[1]) {
+                cleanFilename += `.${extMatch[1].toLowerCase()}`;
+            } else {
+                const urlLower = urlPath.toLowerCase();
+                if (urlLower.includes('.mp4')) cleanFilename += '.mp4';
+                else if (urlLower.includes('.pdf')) cleanFilename += '.pdf';
+                else if (urlLower.includes('.gif')) cleanFilename += '.gif';
+                else if (urlLower.includes('.png')) cleanFilename += '.png';
+                else if (urlLower.includes('.webp')) cleanFilename += '.webp';
+                else cleanFilename += '.jpg';
+            }
         }
+
+        const resolvedMimeType = guessMimeTypeFromFilename(cleanFilename);
 
         progressToast = createDownloadProgressToast(cleanFilename);
 
@@ -265,6 +308,7 @@ export const downloadFile = async (url, filename) => {
                 await Downloader.downloadFile({
                     url: fullUrl,
                     filename: cleanFilename,
+                    mimeType: resolvedMimeType,
                     isApk: false,
                     title: cleanFilename,
                     description: 'Dosya indiriliyor...'

@@ -62,7 +62,16 @@ public class DirectReplyReceiver extends BroadcastReceiver {
             }
 
             if (inactiveUserIds != null) {
-                editor.putStringSet(KEY_INACTIVE_USER_IDS, inactiveUserIds);
+                java.util.Set<String> sanitizedInactive = new java.util.HashSet<>();
+                for (String id : inactiveUserIds) {
+                    if (id != null && !id.trim().isEmpty()) {
+                        String trimmed = id.trim();
+                        if (resolvedUserId == null || !trimmed.equalsIgnoreCase(resolvedUserId.trim())) {
+                            sanitizedInactive.add(trimmed);
+                        }
+                    }
+                }
+                editor.putStringSet(KEY_INACTIVE_USER_IDS, sanitizedInactive);
             } else if (isUserSwitch && prevUserId != null && !prevUserId.trim().isEmpty()) {
                 java.util.Set<String> existingInactive = new java.util.HashSet<>(getInactiveUserIds(context));
                 existingInactive.add(prevUserId.trim());
@@ -86,9 +95,12 @@ public class DirectReplyReceiver extends BroadcastReceiver {
                 if (prevJwt != null && !prevJwt.trim().isEmpty()) {
                     final String jwtToUnbind = prevJwt.trim();
                     final String fcmToUnbind = storedFcmToken != null ? storedFcmToken.trim() : "";
+                    final String apiBase = resolvedServerUrl.contains("oxypace.com.tr") && !resolvedServerUrl.contains("api.oxypace.com.tr")
+                        ? "https://api.oxypace.com.tr"
+                        : resolvedServerUrl.replaceAll("/+$", "");
                     new Thread(() -> {
                         try {
-                            String apiUrl = resolvedServerUrl.replaceAll("/+$", "") + "/api/users/unbind-fcm-token";
+                            String apiUrl = apiBase + "/api/users/unbind-fcm-token";
                             URL url = new URL(apiUrl);
                             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                             conn.setRequestMethod("POST");

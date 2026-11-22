@@ -22,16 +22,23 @@ function extractPostNotificationDetails(p) {
     const text = rawContent.length > 140 ? rawContent.substring(0, 137) + '...' : rawContent;
 
     let mediaType = 'none';
-    if (p.mediaType === 'pdf' || p.pdfUrl || p.pdfName || p.pdfThumbnailUrl) {
+    const attachments = Array.isArray(p.attachments) ? p.attachments : [];
+    const firstAtt = attachments[0] || null;
+
+    if (p.mediaType === 'pdf' || p.pdfUrl || p.pdfName || p.pdfThumbnailUrl || firstAtt?.kind === 'pdf') {
         mediaType = 'pdf';
-    } else if (p.mediaType === 'video' || p.mediaType === 'videoUrl' || p.videoThumbnail || p.videoUrl) {
+    } else if (p.mediaType === 'video' || p.mediaType === 'videoUrl' || p.videoThumbnail || p.videoUrl || firstAtt?.kind === 'video' || firstAtt?.kind === 'videoUrl') {
         mediaType = 'video';
-    } else if (p.mediaType === 'gif' || p.gifUrl) {
+    } else if (p.mediaType === 'gif' || p.gifUrl || firstAtt?.kind === 'gif') {
         mediaType = 'gif';
-    } else if (p.mediaType === 'youtube' || p.youtubeUrl) {
+    } else if (p.mediaType === 'youtube' || p.youtubeUrl || firstAtt?.kind === 'youtube') {
         mediaType = 'youtube';
-    } else if (p.mediaType === 'image') {
+    } else if (p.mediaType === 'image' || firstAtt?.kind === 'image') {
         mediaType = 'image';
+    } else if (p.mediaType === 'audio' || firstAtt?.kind === 'audio') {
+        mediaType = 'audio';
+    } else if (p.mediaType === 'file' || p.mediaType === 'folder' || firstAtt?.kind === 'file' || firstAtt?.kind === 'folder') {
+        mediaType = 'file';
     } else if (p.media) {
         const firstMedia = Array.isArray(p.media) ? p.media[0] : p.media;
         if (typeof firstMedia === 'string' && firstMedia.trim()) {
@@ -48,13 +55,17 @@ function extractPostNotificationDetails(p) {
         rawMediaUrl = p.pdfThumbnailUrl;
     } else if (p.videoThumbnail) {
         rawMediaUrl = p.videoThumbnail;
+    } else if (firstAtt && (firstAtt.kind === 'image' || firstAtt.kind === 'gif') && firstAtt.url) {
+        rawMediaUrl = firstAtt.url;
+    } else if (firstAtt && firstAtt.thumbnailUrl) {
+        rawMediaUrl = firstAtt.thumbnailUrl;
     } else if (p.media) {
         if (Array.isArray(p.media) && p.media.length > 0) {
             const first = p.media[0];
-            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf)(\?|$)/i.test(first)) {
+            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav)(\?|$)/i.test(first)) {
                 rawMediaUrl = first;
             }
-        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf)(\?|$)/i.test(p.media)) {
+        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav)(\?|$)/i.test(p.media)) {
             rawMediaUrl = p.media;
         }
     } else if (p.linkPreview?.image) {
@@ -75,18 +86,19 @@ function extractPostNotificationDetails(p) {
     let pdfName = '';
     let pdfSize = '';
     if (mediaType === 'pdf') {
-        pdfName = p.pdfName || '';
-        if (!pdfName && p.pdfUrl) {
+        pdfName = p.pdfName || (firstAtt?.kind === 'pdf' ? firstAtt.name : '') || '';
+        if (!pdfName && (p.pdfUrl || firstAtt?.url)) {
             try {
-                pdfName = decodeURIComponent(String(p.pdfUrl).split('/').pop().split('?')[0]);
+                pdfName = decodeURIComponent(String(p.pdfUrl || firstAtt.url).split('/').pop().split('?')[0]);
             } catch (e) {
                 pdfName = 'Doküman.pdf';
             }
         }
         if (!pdfName) pdfName = 'Doküman.pdf';
 
-        if (typeof p.pdfSize === 'number' && p.pdfSize > 0) {
-            pdfSize = (p.pdfSize / (1024 * 1024)).toFixed(2) + ' MB';
+        const rawSize = typeof p.pdfSize === 'number' && p.pdfSize > 0 ? p.pdfSize : (firstAtt?.size || 0);
+        if (typeof rawSize === 'number' && rawSize > 0) {
+            pdfSize = (rawSize / (1024 * 1024)).toFixed(2) + ' MB';
         } else {
             pdfSize = 'PDF';
         }
@@ -96,6 +108,11 @@ function extractPostNotificationDetails(p) {
     if (!snippet) {
         if (mediaType === 'pdf') {
             snippet = `📄 ${pdfName}${pdfSize ? ` (${pdfSize})` : ''}`;
+        } else if (mediaType === 'file') {
+            const fname = firstAtt?.name || 'Dosya';
+            snippet = `📎 ${fname}`;
+        } else if (mediaType === 'audio') {
+            snippet = '🎵 Ses paylaştı';
         } else if (mediaType === 'video') {
             snippet = '🎬 Video paylaştı';
         } else if (mediaType === 'gif') {
@@ -132,8 +149,8 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
         if (!post || !portal) return;
 
         let portalDoc = portal;
-        if (!portalDoc.name || !portalDoc.channels || !portalDoc.members) {
-            portalDoc = await Portal.findById(portal._id || portal).select('name avatar lowResAvatar members channels');
+        if (!portalDoc.name || !portalDoc.channels || !portalDoc.members || !portalDoc.owner) {
+            portalDoc = await Portal.findById(portal._id || portal).select('name avatar lowResAvatar members admins owner channels');
         }
         if (!portalDoc) return;
 
@@ -141,15 +158,23 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
         const authorIdStr = (author?._id || author || post.author?._id || post.author || '').toString();
         const channelIdStr = channelId ? channelId.toString() : '';
 
-        // Determine channel name
+        // Determine channel name and canonical channel IDs for mute matching
         let channelName = 'genel';
+        const channelMatchKeys = new Set();
+        if (channelIdStr) channelMatchKeys.add(channelIdStr);
         if (channelIdStr && Array.isArray(portalDoc.channels)) {
             const ch = portalDoc.channels.find(c => 
                 (c._id && c._id.toString() === channelIdStr) || 
                 c.name === channelIdStr
             );
-            if (ch && ch.name) {
-                channelName = ch.name;
+            if (ch) {
+                if (ch.name) {
+                    channelName = ch.name;
+                    channelMatchKeys.add(ch.name);
+                }
+                if (ch._id) {
+                    channelMatchKeys.add(ch._id.toString());
+                }
             }
         }
 
@@ -176,10 +201,21 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             } catch (e) {}
         }
 
-        // Exclude the post author from receiving their own notification
-        const allMemberIds = (portalDoc.members || [])
-            .map(m => (m?._id || m)?.toString())
-            .filter(id => id && id !== authorIdStr);
+        // Include members, admins, and owner (deduplicated), excluding the post author
+        const memberIdSet = new Set();
+        for (const m of (portalDoc.members || [])) {
+            const id = (m?._id || m)?.toString();
+            if (id && id !== authorIdStr) memberIdSet.add(id);
+        }
+        for (const a of (portalDoc.admins || [])) {
+            const id = (a?._id || a)?.toString();
+            if (id && id !== authorIdStr) memberIdSet.add(id);
+        }
+        if (portalDoc.owner) {
+            const ownerId = (portalDoc.owner?._id || portalDoc.owner)?.toString();
+            if (ownerId && ownerId !== authorIdStr) memberIdSet.add(ownerId);
+        }
+        const allMemberIds = Array.from(memberIdSet);
 
         if (allMemberIds.length === 0) return;
 
@@ -199,14 +235,14 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             console.error('⚠️ [PortalNotificationService] Failed to insert in-app notifications:', notifErr.message);
         }
 
-        // 2. Query members with registered FCM push tokens
+        // 2. Query members with registered FCM push tokens (use $ne: true so legacy docs without isBanned/isDeleted still match)
         const candidateUsers = await User.find({
             _id: { $in: allMemberIds },
-            isBanned: false,
-            isDeleted: false,
+            isBanned: { $ne: true },
+            isDeleted: { $ne: true },
             $or: [
                 { fcmTokens: { $exists: true, $not: { $size: 0 } } },
-                { fcmToken: { $exists: true, $ne: '' } }
+                { fcmToken: { $nin: [null, ''] } }
             ]
         }).select('_id username fcmTokens fcmToken portalNotificationSettings settings');
 
@@ -234,14 +270,14 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                 continue;
             }
 
-            // If user has muted this specific channel:
+            // If user has muted this specific channel (match by channel ID or canonical name):
             const mutedChannels = (pSettings?.mutedChannels || []).map(id => {
                 if (!id) return '';
                 const chId = typeof id === 'object' ? (id._id || id.id || id) : id;
                 return chId?.toString() || '';
             }).filter(Boolean);
 
-            if (channelIdStr && mutedChannels.includes(channelIdStr)) {
+            if (mutedChannels.some(mc => channelMatchKeys.has(mc))) {
                 // Channel is muted by this user, skip device notification
                 continue;
             }
@@ -290,7 +326,7 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             })
                 .sort({ createdAt: -1 })
                 .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar')
-                .populate('post', 'content media mediaType pdfUrl pdfName pdfSize pdfThumbnailUrl videoThumbnail videoUrl createdAt')
+                .populate('post', 'content media mediaType attachments pdfUrl pdfName pdfSize pdfThumbnailUrl videoThumbnail videoUrl createdAt')
                 .lean();
 
             for (const doc of allUnreadDocs) {
@@ -324,43 +360,54 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
             const latestFiveDocs = userUnreadDocs.slice(0, 5).reverse();
             let unreadItemsPayload = [];
 
+            // Keep unreadItems strictly compact so total FCM data payload NEVER exceeds Firebase's 4096-byte hard limit
+            const clampText = (str, maxLen = 85) => {
+                const s = String(str || '').trim();
+                return s.length > maxLen ? s.substring(0, maxLen - 3) + '...' : s;
+            };
+
             if (latestFiveDocs.length > 0) {
                 unreadItemsPayload = latestFiveDocs.map(doc => {
                     const pDoc = doc.post || {};
                     const sDoc = doc.sender || {};
                     const sName = sDoc.profile?.displayName || sDoc.username || authorName;
                     const sUser = sDoc.username || authorUsername || '';
-                    const sAvatarRaw = sDoc.profile?.avatar || sDoc.profile?.lowResAvatar || '';
-                    const sAvatar = sAvatarRaw ? (constructNotifImageUrl(sAvatarRaw) || sAvatarRaw) : '';
                     const details = extractPostNotificationDetails(pDoc);
                     return {
                         postId: (pDoc._id || post._id || '').toString(),
-                        authorName: sName,
-                        authorUsername: sUser,
-                        authorAvatar: sAvatar,
-                        text: details.text,
-                        snippet: details.snippet,
+                        authorName: clampText(sName, 40),
+                        authorUsername: clampText(sUser, 30),
+                        text: clampText(details.text || details.snippet, 85),
                         mediaType: details.mediaType,
-                        postMedia: details.postMedia,
-                        pdfName: details.pdfName,
-                        pdfSize: details.pdfSize,
+                        postMedia: details.postMedia || '',
+                        pdfName: clampText(details.pdfName, 45),
+                        pdfSize: details.pdfSize || '',
                         timestamp: pDoc.createdAt ? new Date(pDoc.createdAt).getTime() : Date.now()
                     };
                 });
             } else {
                 unreadItemsPayload = [{
                     postId: post._id ? post._id.toString() : '',
-                    authorName: authorName,
-                    authorUsername: authorUsername,
-                    authorAvatar: proxiedAuthorAvatar,
-                    text: currentPostDetails.text,
-                    snippet: currentPostDetails.snippet,
+                    authorName: clampText(authorName, 40),
+                    authorUsername: clampText(authorUsername, 30),
+                    text: clampText(currentPostDetails.text || currentPostDetails.snippet, 85),
                     mediaType: currentPostDetails.mediaType,
-                    postMedia: currentPostDetails.postMedia,
-                    pdfName: currentPostDetails.pdfName,
-                    pdfSize: currentPostDetails.pdfSize,
+                    postMedia: currentPostDetails.postMedia || '',
+                    pdfName: clampText(currentPostDetails.pdfName, 45),
+                    pdfSize: currentPostDetails.pdfSize || '',
                     timestamp: Date.now()
                 }];
+            }
+
+            // Enforce hard byte budget (< 1800 bytes for unreadItems) so full FCM data map stays safely under 4KB
+            let unreadItemsJson = JSON.stringify(unreadItemsPayload);
+            while (Buffer.byteLength(unreadItemsJson, 'utf8') > 1800 && unreadItemsPayload.length > 1) {
+                unreadItemsPayload = unreadItemsPayload.slice(1);
+                unreadItemsJson = JSON.stringify(unreadItemsPayload);
+            }
+            if (Buffer.byteLength(unreadItemsJson, 'utf8') > 1800) {
+                unreadItemsPayload = unreadItemsPayload.map(it => ({ ...it, postMedia: '', text: clampText(it.text, 55) }));
+                unreadItemsJson = JSON.stringify(unreadItemsPayload);
             }
 
             sendPushNotification(tokens, {
@@ -388,7 +435,7 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                     pdfName: currentPostDetails.pdfName,
                     pdfSize: currentPostDetails.pdfSize,
                     unreadCount: String(totalUnreadCount),
-                    unreadItems: JSON.stringify(unreadItemsPayload),
+                    unreadItems: unreadItemsJson,
                     route: targetRoute,
                     url: targetRoute
                 }

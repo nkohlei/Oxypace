@@ -415,25 +415,53 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
         return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
-    const handlePasteToInput = async (setter) => {
+    const watchUrlInputRef = useRef(null);
+
+    const handlePasteToInput = async (setter, inputRef) => {
+        // 1. Capacitor Clipboard plugin
         try {
             if (Capacitor.isNativePlatform()) {
                 const res = await CapClipboard.read();
-                if (res && res.value && typeof res.value === 'string') {
+                if (res && typeof res.value === 'string' && res.value.trim()) {
                     setter(res.value.trim());
                     return;
                 }
             }
+        } catch (err) {
+            console.warn("[VoiceChannel] CapClipboard paste warning:", err);
+        }
+        // 2. Native Android ClipboardManager bridge fallback
+        try {
+            if (Capacitor.isNativePlatform() && CallManager?.readClipboard) {
+                const nativeRes = await CallManager.readClipboard();
+                if (nativeRes && typeof nativeRes.value === 'string' && nativeRes.value.trim()) {
+                    setter(nativeRes.value.trim());
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn("[VoiceChannel] Native CallManager clipboard fallback warning:", err);
+        }
+        // 3. Web Clipboard API
+        try {
             if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
                 const text = await navigator.clipboard.readText();
-                if (text && typeof text === 'string') {
+                if (text && typeof text === 'string' && text.trim()) {
                     setter(text.trim());
                     return;
                 }
             }
         } catch (err) {
-            console.warn("[VoiceChannel] Clipboard paste error:", err);
+            console.warn("[VoiceChannel] Web clipboard paste error:", err);
         }
+        // 4. Focus input + execCommand fallback
+        try {
+            const el = inputRef?.current;
+            if (el) {
+                el.focus();
+                document.execCommand('paste');
+            }
+        } catch (_) {}
     };
     useEffect(() => {
         if (window.desktopAPI && window.desktopAPI.onVideoSniffed) {
@@ -1273,6 +1301,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
 
                     <div className="vc-watch-input-row">
                         <input
+                            ref={watchUrlInputRef}
                             type="text"
                             className="vc-watch-url-input"
                             placeholder="Video veya canlı yayın URL..."
@@ -1299,7 +1328,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                         <button
                             type="button"
                             className="vc-watch-paste-btn"
-                            onClick={() => handlePasteToInput(setWatchUrl)}
+                            onClick={() => handlePasteToInput(setWatchUrl, watchUrlInputRef)}
                             title="Panodan Yapıştır"
                         >
                             <Clipboard size={12} />
