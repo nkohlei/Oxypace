@@ -83,10 +83,16 @@ notificationSchema.post('save', async function (doc) {
 
     try {
         const User = mongoose.model('User');
-        const recipient = await User.findById(doc.recipient).select('fcmTokens settings username profile.displayName');
+        const recipient = await User.findById(doc.recipient).select('fcmTokens fcmToken settings username profile.displayName');
         
+        const tokens = (
+            Array.isArray(recipient?.fcmTokens) && recipient.fcmTokens.length > 0
+                ? recipient.fcmTokens
+                : (recipient?.fcmToken ? [recipient.fcmToken] : [])
+        ).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim());
+
         // Skip if user doesn't exist, has no tokens, disabled push notifications, or if it's a silent security event
-        if (!recipient || !recipient.fcmTokens || recipient.fcmTokens.length === 0) return;
+        if (!recipient || tokens.length === 0) return;
         if (recipient.settings?.notifications?.push === false) return;
         if (doc.type === 'security_silent') return;
 
@@ -135,7 +141,7 @@ notificationSchema.post('save', async function (doc) {
         
         const recipientIdStr = doc.recipient ? doc.recipient.toString() : '';
 
-        await sendPushNotification(recipient.fcmTokens, {
+        await sendPushNotification(tokens, {
             title,
             body,
             image: doc.imageUrl,

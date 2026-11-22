@@ -36,12 +36,8 @@ router.post('/fcm-token', protect, async (req, res) => {
         // If this FCM token exists in any other user account (e.g. quick-switched inactive accounts),
         // immediately remove it so inactive accounts NEVER receive push notifications on this device.
         await User.updateMany(
-            { _id: { $ne: userId } },
-            { 
-                $pull: { 
-                    fcmTokens: { $in: [cleanToken, { token: cleanToken }] } 
-                }
-            }
+            { _id: { $ne: userId }, fcmTokens: cleanToken },
+            { $pull: { fcmTokens: cleanToken } }
         );
         await User.updateMany(
             { _id: { $ne: userId }, fcmToken: cleanToken },
@@ -51,10 +47,13 @@ router.post('/fcm-token', protect, async (req, res) => {
         const user = await User.findById(userId);
         if (user) {
             user.fcmToken = cleanToken;
-            if (!user.fcmTokens) user.fcmTokens = [];
-            if (!user.fcmTokens.includes(cleanToken)) {
-                user.fcmTokens.push(cleanToken);
+            const sanitizedTokens = Array.isArray(user.fcmTokens)
+                ? user.fcmTokens.filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim())
+                : [];
+            if (!sanitizedTokens.includes(cleanToken)) {
+                sanitizedTokens.push(cleanToken);
             }
+            user.fcmTokens = sanitizedTokens;
             user.lastActive = new Date();
             await user.save();
             console.log(`📱 [FCM] Device token registered to active user @${user.username}. Disassociated from all other accounts.`);
@@ -78,9 +77,7 @@ router.post('/unbind-fcm-token', protect, async (req, res) => {
             await User.updateOne(
                 { _id: req.user._id },
                 { 
-                    $pull: { 
-                        fcmTokens: { $in: [cleanToken, { token: cleanToken }] }
-                    },
+                    $pull: { fcmTokens: cleanToken },
                     ...(req.user.fcmToken === cleanToken ? { $unset: { fcmToken: 1 } } : {})
                 }
             );
