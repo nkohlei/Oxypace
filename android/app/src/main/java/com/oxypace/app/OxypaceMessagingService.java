@@ -410,8 +410,8 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
             androidx.core.content.pm.ShortcutInfoCompat.Builder scBuilder = new androidx.core.content.pm.ShortcutInfoCompat.Builder(this, shortcutId)
-                .setShortLabel(senderName)
-                .setLongLabel(senderName)
+                .setShortLabel(displaySenderTitle)
+                .setLongLabel(displaySenderTitle)
                 .setPerson(senderPerson)
                 .setIntent(shortcutIntent)
                 .setLongLived(true);

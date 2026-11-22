@@ -1103,7 +1103,7 @@ const Profile = () => {
     };
 
     const handleMessage = () => {
-        if (!profileUser || isOwnProfile) return;
+        if (!profileUser || isOwnProfile || profileUser.canMessage === false) return;
         navigate(`/inbox?user=${profileUser.username}`);
     };
 
@@ -1303,8 +1303,24 @@ const Profile = () => {
                                                 <button
                                                     className="profile-action-btn primary"
                                                     onClick={handleMessage}
-                                                    style={{ minWidth: '80px' }}
+                                                    disabled={profileUser?.canMessage === false}
+                                                    title={
+                                                        profileUser?.canMessage === false
+                                                            ? (profileUser?.dmBlockReason || 'Bu kullanıcı yalnızca arkadaşlarından mesaj kabul ediyor.')
+                                                            : 'Mesaj Gönder'
+                                                    }
+                                                    style={{
+                                                        minWidth: '80px',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '4px',
+                                                        ...(profileUser?.canMessage === false
+                                                            ? { opacity: 0.5, cursor: 'not-allowed' }
+                                                            : {}),
+                                                    }}
                                                 >
+                                                    {profileUser?.canMessage === false && <Lock size={14} />}
                                                     Mesaj
                                                 </button>
                                                 <button

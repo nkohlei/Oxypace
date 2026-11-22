@@ -551,6 +551,13 @@
     color: var(--text-primary) !important;
 }
 
+.forward-user-row.is-restricted,
+.forward-user-row.is-restricted:hover {
+    opacity: 0.52;
+    cursor: not-allowed;
+    background: transparent !important;
+}
+
 [data-theme='light'] .forward-user-row:hover,
 [data-theme='light'] .forward-user-row.selected {
     background: rgba(0, 0, 0, 0.06) !important;

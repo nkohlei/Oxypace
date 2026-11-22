@@ -25,6 +25,7 @@ import {
     Copy,
     Star,
     Forward,
+    Lock,
 } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
 import { copyTextSafely } from '../utils/shareUtils';
@@ -727,6 +728,17 @@ const Inbox = () => {
                 const activeId = selectedUserRef.current?._id ? String(selectedUserRef.current._id) : null;
                 const sanitized = response.data.map((conv) => {
                     if (activeId && String(conv.user?._id) === activeId) {
+                        setSelectedUser((prev) =>
+                            prev && String(prev._id) === activeId
+                                ? {
+                                      ...prev,
+                                      canMessage: conv.user.canMessage,
+                                      dmSettings: conv.user.dmSettings,
+                                      dmBlockReason: conv.user.dmBlockReason,
+                                      isSystemAccount: conv.user.isSystemAccount,
+                                  }
+                                : prev
+                        );
                         return { ...conv, unreadCount: 0 };
                     }
                     return conv;
@@ -795,6 +807,7 @@ const Inbox = () => {
     };
 
     const handleStartNewConversation = (user) => {
+        if (!user || user.canMessage === false || user.isSystemAccount) return;
         setSelectedUser(user);
         setMessages([]);
         fetchMessages(user._id);
@@ -822,7 +835,7 @@ const Inbox = () => {
             const files = Array.from(e.target.files);
             for (const file of files) {
                 if (file.size > 2 * 1024 * 1024 * 1024) {
-                    alert("Dosya boyutu 2 GB'dan büyük olamaz.");
+                    showToast("Dosya boyutu 2 GB'dan büyük olamaz.");
                     return;
                 }
             }
@@ -833,10 +846,11 @@ const Inbox = () => {
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (isGhost) {
-            alert('Hayalet Modu: Salt okunur izleme modundasınız. Mesaj gönderemezsiniz.');
+            showToast('Hayalet Modu: Salt okunur izleme modundasınız. Mesaj gönderemezsiniz.');
             return;
         }
         if ((!newMessage.trim() && media.length === 0) || !selectedUser) return;
+        if (selectedUser.canMessage === false || selectedUser.isSystemAccount) return;
 
         // Clear typing indicator instantly on send
         if (socket && selectedUser) {
@@ -845,7 +859,7 @@ const Inbox = () => {
         setIsTypingSent(false);
 
         if (!selectedUser._id) {
-            alert('Hata: Kullanıcı ID bulunamadı.');
+            showToast('Hata: Kullanıcı ID bulunamadı.');
             return;
         }
 
@@ -921,7 +935,17 @@ const Inbox = () => {
             } catch (err) {
                 console.error('Failed to send message:', err);
                 setMessages((prev) => prev.filter((msg) => msg._id !== optimisticId));
-                alert('Mesaj gönderilemedi.');
+                if (err?.response?.status === 403) {
+                    const reason =
+                        err.response?.data?.message ||
+                        'Bu kullanıcıya mesaj gönderilemiyor.';
+                    setSelectedUser((prev) =>
+                        prev ? { ...prev, canMessage: false, dmBlockReason: reason } : prev
+                    );
+                    showToast(reason);
+                } else {
+                    showToast(err?.response?.data?.message || 'Mesaj gönderilemedi.');
+                }
             }
         };
 
@@ -1810,6 +1834,11 @@ const Inbox = () => {
                                 <div className="system-no-reply-notice">
                                     <Ban size={16} />
                                     <span>Bu kullanıcıya şu anda mesaj gönderilemiyor.</span>
+                                </div>
+                            ) : selectedUser.canMessage === false ? (
+                                <div className="system-no-reply-notice">
+                                    <Lock size={16} />
+                                    <span>{selectedUser.dmBlockReason || 'Bu kullanıcıya yalnızca arkadaşları doğrudan mesaj gönderebilir.'}</span>
                                 </div>
                             ) : (
                                 <form onSubmit={handleSendMessage} className="message-form">

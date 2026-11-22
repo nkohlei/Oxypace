@@ -17,6 +17,7 @@ import { pubClient } from '../sockets/redisAdapter.js';
 import { enrollInTanitimPortal } from '../utils/portalAutoEnroll.js';
 import { validateProfileFields } from '../utils/profanityFilter.js';
 import logActivity from '../utils/auditLogger.js';
+import { computeDmAccess } from '../utils/dmPrivacy.js';
 
 const router = express.Router();
 
@@ -777,7 +778,7 @@ router.get('/search', protect, async (req, res) => {
             'settings.privacy.searchVisibility': { $ne: false }, // Exclude hidden users
             $or: orConditions,
         })
-            .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
+            .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge isSystemAccount settings.privacy.dmSettings followers following')
             .limit(50);
 
         // Intelligent ranking: exact matches at top, followed by prefix and similar matches
@@ -801,7 +802,22 @@ router.get('/search', protect, async (req, res) => {
             return score(bUser, bName) - score(aUser, aName);
         });
 
-        res.json(users.slice(0, 30));
+        const sanitizedResults = users.slice(0, 30).map((u) => {
+            const dmAccess = computeDmAccess(u, req.user);
+            return {
+                _id: u._id,
+                username: u.username,
+                profile: u.profile,
+                verificationBadge: u.verificationBadge,
+                customBadge: u.customBadge,
+                isSystemAccount: Boolean(u.isSystemAccount),
+                dmSettings: dmAccess.dmSettings,
+                canMessage: dmAccess.canMessage,
+                dmBlockReason: dmAccess.dmBlockReason,
+            };
+        });
+
+        res.json(sanitizedResults);
     } catch (error) {
         console.error('Search users error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -1071,6 +1087,8 @@ router.get('/:username', optionalProtect, async (req, res) => {
 
         userObj.friendCount = friendIds.length;
 
+        const dmAccess = computeDmAccess(user, req.user);
+
         // ─── PRIVATE ACCOUNT GATE ────────────────────────────────────────────────
         // If the account is private AND the viewer is not the owner AND not a friend,
         // return only the minimal public surface. Nothing else leaks.
@@ -1095,7 +1113,11 @@ router.get('/:username', optionalProtect, async (req, res) => {
                 isFollowing: userObj.isFollowing || false,
                 hasRequested: userObj.hasRequested || false,
                 isFriend: false,
-                settings: { privacy: { isPrivate: true } },
+                isSystemAccount: Boolean(user.isSystemAccount),
+                dmSettings: dmAccess.dmSettings,
+                canMessage: dmAccess.canMessage,
+                dmBlockReason: dmAccess.dmBlockReason,
+                settings: { privacy: { isPrivate: true, dmSettings: dmAccess.dmSettings } },
                 portals: [],
                 portalsHidden: true,
                 mutualFriends: [],
@@ -1170,6 +1192,10 @@ router.get('/:username', optionalProtect, async (req, res) => {
             });
             userObj.portalsHidden = false;
         }
+
+        userObj.dmSettings = dmAccess.dmSettings;
+        userObj.canMessage = dmAccess.canMessage;
+        userObj.dmBlockReason = dmAccess.dmBlockReason;
 
         delete userObj.joinedPortals;
         delete userObj.followers;

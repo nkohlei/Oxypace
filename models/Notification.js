@@ -141,6 +141,14 @@ notificationSchema.post('save', async function (doc) {
         
         const recipientIdStr = doc.recipient ? doc.recipient.toString() : '';
 
+        // Format DM sender once as "Display Name (@username)" and omit separate senderUsername
+        // so installed v2.6.0 Android MessagingStyle shortcuts match senderPerson cleanly
+        // without rendering a duplicate top header line.
+        const formattedMessageSender =
+            senderUsername && senderName && senderUsername.toLowerCase() !== senderName.toLowerCase()
+                ? `${senderName} (@${senderUsername})`
+                : (senderName || (senderUsername ? `@${senderUsername}` : 'Oxypace'));
+
         await sendPushNotification(tokens, {
             title,
             body,
@@ -154,8 +162,8 @@ notificationSchema.post('save', async function (doc) {
                 portalId: doc.portal ? doc.portal.toString() : '',
                 channelId: doc.channel ? doc.channel.toString() : '',
                 senderId: doc.sender ? doc.sender.toString() : '',
-                senderName: senderName,
-                senderUsername: senderUsername,
+                senderName: doc.type === 'message' ? formattedMessageSender : senderName,
+                senderUsername: doc.type === 'message' ? '' : senderUsername,
                 senderAvatar: senderAvatar,
                 notificationId: doc._id.toString()
             }

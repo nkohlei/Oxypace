@@ -9,6 +9,7 @@ import {
     Share2,
     Send,
     Mail,
+    Lock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -107,6 +108,7 @@ const ShareModal = ({ postId, onClose }) => {
 
     const toggleUserSelection = (userObj) => {
         if (!userObj?._id) return;
+        if (userObj.canMessage === false || userObj.isSystemAccount) return;
         setSelectedUsers((prev) => {
             const exists = prev.some((u) => u._id === userObj._id);
             if (exists) return prev.filter((u) => u._id !== userObj._id);
@@ -272,22 +274,45 @@ const ShareModal = ({ postId, onClose }) => {
                         ) : (
                             listToRender.map((u) => {
                                 const isSelected = selectedUsers.some((s) => s._id === u._id);
+                                const isRestricted = u.canMessage === false || u.isSystemAccount;
                                 const displayName =
                                     u.profile?.displayName || u.profile?.fullName || u.username;
                                 return (
                                     <button
                                         key={u._id}
                                         type="button"
+                                        disabled={isRestricted}
                                         className={`share-user-chip ${isSelected ? 'selected' : ''}`}
                                         onClick={() => toggleUserSelection(u)}
-                                        title={displayName}
+                                        title={isRestricted ? (u.dmBlockReason || 'Mesaj gönderilemiyor') : displayName}
+                                        style={isRestricted ? { opacity: 0.48, cursor: 'not-allowed' } : undefined}
                                     >
-                                        <span className="share-user-avatar-ring">
+                                        <span className="share-user-avatar-ring" style={{ position: 'relative' }}>
                                             <img
                                                 src={getImageUrl(u.profile?.avatar)}
                                                 alt={u.username || 'Kullanıcı'}
                                                 className="share-user-avatar"
                                             />
+                                            {isRestricted && (
+                                                <span
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: -2,
+                                                        bottom: -2,
+                                                        width: '18px',
+                                                        height: '18px',
+                                                        borderRadius: '50%',
+                                                        backgroundColor: '#18181b',
+                                                        border: '1px solid rgba(255,255,255,0.2)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#a1a1aa',
+                                                    }}
+                                                >
+                                                    <Lock size={10} />
+                                                </span>
+                                            )}
                                         </span>
                                         <span className="share-user-name">{displayName}</span>
                                     </button>

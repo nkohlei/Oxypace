@@ -23,6 +23,7 @@ import {
     Play,
     Trash2,
     Info,
+    Lock,
 } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import UserBadges from './UserBadges';
@@ -482,6 +483,7 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
     const [selectedIds, setSelectedIds] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
     const [sending, setSending] = useState(false);
+    const [errorBanner, setErrorBanner] = useState('');
 
     useEffect(() => {
         const q = query.trim();
@@ -522,7 +524,9 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
         });
     }, [conversations, searchResults, query]);
 
-    const toggleSelect = (uid) => {
+    const toggleSelect = (userObj) => {
+        if (!userObj?._id || userObj.canMessage === false || userObj.isSystemAccount) return;
+        const uid = String(userObj._id);
         setSelectedIds((prev) =>
             prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
         );
@@ -531,6 +535,7 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
     const handleSendForward = async () => {
         if (selectedIds.length === 0 || sending) return;
         setSending(true);
+        setErrorBanner('');
         try {
             const list = Array.isArray(messagesToForward) ? messagesToForward : [messagesToForward];
             for (const msg of list) {
@@ -543,7 +548,7 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
             onClose();
         } catch (err) {
             console.error('Forward failed:', err);
-            alert(err?.response?.data?.message || 'Mesaj iletilemedi.');
+            setErrorBanner(err?.response?.data?.message || 'Mesaj iletilemedi.');
         } finally {
             setSending(false);
         }
@@ -563,6 +568,22 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
                 </div>
 
                 <div className="chat-modal-body">
+                    {errorBanner && (
+                        <div
+                            role="alert"
+                            style={{
+                                marginBottom: '10px',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.14)',
+                                border: '1px solid rgba(239, 68, 68, 0.35)',
+                                color: '#fca5a5',
+                                fontSize: '0.82rem',
+                            }}
+                        >
+                            {errorBanner}
+                        </div>
+                    )}
                     <div className="forward-search-box">
                         <Search size={15} />
                         <input
@@ -580,13 +601,21 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
                         ) : (
                             candidates.map((u) => {
                                 const uid = String(u._id);
-                                const checked = selectedIds.includes(uid);
+                                const isRestricted = u.canMessage === false || u.isSystemAccount;
+                                const checked = !isRestricted && selectedIds.includes(uid);
+                                const restrictedLabel =
+                                    u.dmSettings === 'friends'
+                                        ? 'Sadece arkadaşları'
+                                        : 'Mesajlara kapalı';
                                 return (
                                     <button
                                         key={uid}
                                         type="button"
-                                        className={`forward-user-row ${checked ? 'selected' : ''}`}
-                                        onClick={() => toggleSelect(uid)}
+                                        disabled={isRestricted}
+                                        aria-disabled={isRestricted ? 'true' : 'false'}
+                                        title={isRestricted ? (u.dmBlockReason || 'Mesaj gönderilemiyor') : undefined}
+                                        className={`forward-user-row ${checked ? 'selected' : ''} ${isRestricted ? 'is-restricted' : ''}`}
+                                        onClick={() => toggleSelect(u)}
                                     >
                                         <UserAvatar
                                             src={u.profile?.lowResAvatar || u.profile?.avatar}
@@ -599,9 +628,25 @@ export const ForwardMessageModal = ({ messagesToForward, conversations, currentU
                                             </span>
                                             <span className="forward-user-handle">@{u.username}</span>
                                         </div>
-                                        <span className={`forward-check ${checked ? 'checked' : ''}`}>
-                                            {checked && <Check size={13} strokeWidth={3} />}
-                                        </span>
+                                        {isRestricted ? (
+                                            <span
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    fontSize: '0.72rem',
+                                                    color: 'var(--text-tertiary)',
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                <Lock size={12} />
+                                                <span>{restrictedLabel}</span>
+                                            </span>
+                                        ) : (
+                                            <span className={`forward-check ${checked ? 'checked' : ''}`}>
+                                                {checked && <Check size={13} strokeWidth={3} />}
+                                            </span>
+                                        )}
                                     </button>
                                 );
                             })

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from './UserBadges';
-import { X } from 'lucide-react';
+import { X, Lock } from 'lucide-react';
 
 const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -295,83 +295,117 @@ const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
                             Aranıyor...
                         </div>
                     ) : results.length > 0 ? (
-                        results.map((user) => (
-                            <div
-                                key={user._id}
-                                onClick={() => onSelectUser(user)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    transition: 'background 0.2s',
-                                    backgroundColor: 'transparent',
-                                }}
-                                onMouseEnter={(e) =>
-                                    (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')
-                                }
-                                onMouseLeave={(e) =>
-                                    (e.currentTarget.style.backgroundColor = 'transparent')
-                                }
-                            >
-                                <div style={{ position: 'relative' }}>
-                                    {user.profile?.avatar ? (
-                                        <img
-                                            src={getImageUrl(user.profile.avatar)}
-                                            alt={user.username}
-                                            style={{
-                                                width: '40px',
-                                                height: '40px',
-                                                borderRadius: '50%',
-                                                objectFit: 'cover',
-                                            }}
-                                        />
-                                    ) : (
+                        results.map((user) => {
+                            const isRestricted = user.canMessage === false || user.isSystemAccount;
+                            const restrictedLabel =
+                                user.dmSettings === 'friends'
+                                    ? 'Sadece arkadaşları'
+                                    : 'Mesajlara kapalı';
+
+                            return (
+                                <div
+                                    key={user._id}
+                                    aria-disabled={isRestricted ? 'true' : 'false'}
+                                    title={isRestricted ? (user.dmBlockReason || 'Mesaj gönderilemiyor') : undefined}
+                                    onClick={() => {
+                                        if (!isRestricted) onSelectUser(user);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        cursor: isRestricted ? 'not-allowed' : 'pointer',
+                                        opacity: isRestricted ? 0.55 : 1,
+                                        transition: 'background 0.2s',
+                                        backgroundColor: 'transparent',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isRestricted) {
+                                            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) =>
+                                        (e.currentTarget.style.backgroundColor = 'transparent')
+                                    }
+                                >
+                                    <div style={{ position: 'relative' }}>
+                                        {user.profile?.avatar ? (
+                                            <img
+                                                src={getImageUrl(user.profile.avatar)}
+                                                alt={user.username}
+                                                style={{
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    borderRadius: '50%',
+                                                    objectFit: 'cover',
+                                                }}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    borderRadius: '50%',
+                                                    backgroundColor: 'var(--primary-cyan)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 'bold',
+                                                    color: '#000',
+                                                }}
+                                            >
+                                                {user.username[0].toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                         <div
                                             style={{
-                                                width: '40px',
-                                                height: '40px',
-                                                borderRadius: '50%',
-                                                backgroundColor: 'var(--primary-cyan)',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontWeight: 'bold',
-                                                color: '#000',
+                                                gap: '4px',
                                             }}
                                         >
-                                            {user.username[0].toUpperCase()}
+                                            <span
+                                                style={{
+                                                    fontWeight: '600',
+                                                    color: 'var(--text-primary)',
+                                                }}
+                                            >
+                                                {user.profile?.displayName || user.username}
+                                                <UserBadges user={user} size={14} />
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                        }}
-                                    >
                                         <span
-                                            style={{
-                                                fontWeight: '600',
-                                                color: 'var(--text-primary)',
-                                            }}
+                                            style={{ fontSize: '13px', color: 'var(--text-secondary)' }}
                                         >
-                                            {user.profile?.displayName || user.username}
-                                            <UserBadges user={user} size={14} />
+                                            @{user.username}
                                         </span>
                                     </div>
-                                    <span
-                                        style={{ fontSize: '13px', color: 'var(--text-secondary)' }}
-                                    >
-                                        @{user.username}
-                                    </span>
+                                    {isRestricted && (
+                                        <span
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                fontSize: '11px',
+                                                color: 'var(--text-tertiary)',
+                                                backgroundColor: 'var(--bg-input)',
+                                                border: '1px solid var(--border-subtle)',
+                                                borderRadius: '999px',
+                                                padding: '3px 8px',
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <Lock size={11} />
+                                            <span>{restrictedLabel}</span>
+                                        </span>
+                                    )}
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     ) : (
                         <div
                             style={{

@@ -14,6 +14,7 @@ import r2 from '../config/r2.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generatePdfThumbnail } from '../utils/pdfHelper.js';
 import logActivity from '../utils/auditLogger.js';
+import { computeDmAccess } from '../utils/dmPrivacy.js';
 
 const router = express.Router();
 
@@ -359,6 +360,7 @@ router.post('/:id/forward', protect, mongoIdValidation('id'), async (req, res) =
         for (const recipientId of uniqueRecipients) {
             const recipient = await User.findById(recipientId);
             if (!recipient || recipient.isDeleted || recipient.isSystemAccount) continue;
+            if (!computeDmAccess(recipient, req.user).canMessage) continue;
 
             const blocked = await ChatPreference.exists({
                 $or: [
@@ -754,8 +756,8 @@ router.get('/conversations', protect, async (req, res) => {
                 $and: [{ $or: [{ expiresAt: null }, { expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }] }],
             })
                 .sort({ createdAt: -1 })
-                .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
-                .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted')
+                .populate('sender', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted isSystemAccount settings.privacy.dmSettings followers following')
+                .populate('recipient', 'username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge createdAt isDeleted isSystemAccount settings.privacy.dmSettings followers following')
                 .populate({
                     path: 'sharedPost',
                     populate: [
@@ -806,8 +808,17 @@ router.get('/conversations', protect, async (req, res) => {
             }
 
             if (!conversationsMap.has(otherUserId)) {
+                const dmAccess = computeDmAccess(otherUser, req.user);
+                const otherUserObj = otherUser.toObject ? otherUser.toObject() : { ...otherUser };
+                delete otherUserObj.followers;
+                delete otherUserObj.following;
+                delete otherUserObj.settings;
+                otherUserObj.dmSettings = dmAccess.dmSettings;
+                otherUserObj.canMessage = dmAccess.canMessage;
+                otherUserObj.dmBlockReason = dmAccess.dmBlockReason;
+
                 conversationsMap.set(otherUserId, {
-                    user: otherUser,
+                    user: otherUserObj,
                     lastMessage: msg,
                     unreadCount: 0,
                     preferences: formatChatPreference(pref),
