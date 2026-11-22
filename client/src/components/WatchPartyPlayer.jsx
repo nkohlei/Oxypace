@@ -3973,7 +3973,7 @@ export const GlobalWatchPartyWrapper = () => {
         display: 'block',
         visibility: 'visible',
         opacity: 1,
-        zIndex: 55,
+        zIndex: 45,
         overflow: 'hidden',
         borderRadius: isCarouselDocked ? '12px' : '16px',
         pointerEvents: 'auto',

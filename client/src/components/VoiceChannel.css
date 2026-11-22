@@ -699,15 +699,15 @@ html.has-3button-nav .vc-controls {
     color: #0f172a;
 }
 
-/* Top Right controls — horizontal 4-button row at top-right */
+/* Top Right controls — vertical column on desktop, horizontal row on mobile */
 .vc-top-right-controls {
     position: absolute;
     top: max(18px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px));
     right: max(18px, calc(env(safe-area-inset-right, 0px) + 18px));
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     z-index: 1200;
     transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
 }
@@ -796,6 +796,8 @@ html.has-3button-nav .vc-controls {
 .vc-container.vc-has-watchparty .vc-mobile-back-btn,
 .vc-container.vc-has-watchparty .vc-lobby-back-btn,
 .vc-container.vc-has-watchparty .vc-settings-dropdown,
+.vc-container.vc-has-watchparty .vc-volume-dropdown-container,
+.vc-container.vc-has-watchparty .vc-watch-popover,
 .vc-container.vc-has-watchparty .voice-chat-sidebar,
 .vc-container.vc-has-watchparty .vc-lobby {
     pointer-events: auto !important;
@@ -830,7 +832,7 @@ html.has-3button-nav .vc-controls {
         left: 0 !important;
         width: 100vw !important;
         height: 100dvh !important;
-        z-index: 50 !important;
+        z-index: 60 !important;
         margin: 0 !important;
         padding: 0 !important;
         background: transparent !important;
@@ -1090,7 +1092,7 @@ html.has-3button-nav .vc-controls {
         left: 0;
         right: 0;
         bottom: 0;
-        z-index: 50 !important;
+        z-index: 60 !important;
         padding-top: var(--safe-area-top, 0px);
         background: transparent !important;
         pointer-events: none !important;
@@ -1103,8 +1105,20 @@ html.has-3button-nav .vc-controls {
     .vc-mobile-back-btn,
     .vc-lobby-back-btn,
     .vc-settings-dropdown,
+    .vc-volume-dropdown-container,
+    .vc-watch-popover,
+    .vc-more-dropdown,
     .voice-chat-sidebar {
         pointer-events: auto !important;
+    }
+    .vc-top-right-controls {
+        position: absolute !important;
+        top: max(10px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 8px)) !important;
+        right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px)) !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        z-index: 1200 !important;
     }
     .layout-spotlight .vc-carousel {
         bottom: 12px !important;
@@ -1258,11 +1272,12 @@ html.has-3button-nav .vc-controls {
     height: 100% !important;
 }
 
-/* Chat & Invite Sidebar — always right-aligned */
+/* Chat & Invite Sidebar — right-aligned next to vertical desktop buttons, below row on mobile */
 .voice-chat-sidebar {
     width: 300px !important;
     left: auto !important;
-    right: max(18px, calc(env(safe-area-inset-right, 0px) + 18px)) !important;
+    right: 74px !important;
+    top: max(18px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) !important;
     z-index: 1400 !important;
 }
 
@@ -1272,6 +1287,20 @@ html.has-3button-nav .vc-controls {
         max-width: calc(100vw - 24px) !important;
         left: auto !important;
         right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px)) !important;
+        top: calc(max(16px, calc(var(--safe-area-top, var(--system-top-height, env(safe-area-inset-top, 0px))) + 14px)) + 48px) !important;
+        z-index: 1450 !important;
+    }
+}
+
+@media (max-width: 960px) and (orientation: landscape), (max-height: 520px) {
+    .voice-chat-sidebar {
+        width: min(296px, calc(100vw - 24px)) !important;
+        max-width: calc(100vw - 24px) !important;
+        left: auto !important;
+        right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px)) !important;
+        top: 52px !important;
+        bottom: 62px !important;
+        max-height: calc(100dvh - 114px) !important;
         z-index: 1450 !important;
     }
 }
@@ -1502,11 +1531,11 @@ html.has-3button-nav .vc-controls {
     transform: translateY(1px) !important;
 }
 
-/* Minimal Volume & Audio Output Dropdown (Right-aligned below top-right volume button) */
+/* Minimal Volume & Audio Output Dropdown (Left of vertical bar on desktop, below button on mobile) */
 .vc-volume-dropdown-container {
     position: absolute;
-    top: calc(100% + 10px);
-    right: -44px;
+    top: 0;
+    right: calc(100% + 10px);
     width: min(232px, calc(100vw - 28px));
     padding: 10px;
     display: flex;
@@ -1519,6 +1548,13 @@ html.has-3button-nav .vc-controls {
     z-index: 1500 !important;
     box-sizing: border-box;
     pointer-events: auto !important;
+}
+
+@media (max-width: 768px), (max-width: 960px) and (orientation: landscape), (max-height: 520px) {
+    .vc-volume-dropdown-container {
+        top: calc(100% + 10px);
+        right: -40px;
+    }
 }
 
 [data-theme='light'] .vc-volume-dropdown-container {
@@ -2289,7 +2325,7 @@ html.has-3button-nav .vc-watch-popover {
     transform: translate(-50%, 14px) !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 960px) and (orientation: landscape), (max-height: 520px) {
     .vc-controls.vc-controls-idle {
         opacity: 0 !important;
         visibility: hidden !important;
