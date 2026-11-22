@@ -10,7 +10,9 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import { configurePassport } from './config/passport.js';
 import { initializeSocket } from './sockets/index.js';
@@ -844,11 +846,62 @@ httpServer.listen(PORT, async () => {
             console.error('⚠️ Boot DB connect failed:', err.message);
         }
 
-        // Run background worker tasks (Bots & Cron & Tanitim Setup & DB Repair & ChangeStreams) ONLY on primary cluster instance (Instance 0)
-        // This prevents 4x parallel duplicate scraping, socket spam, memory spikes, and database race conditions.
-        const isPrimaryInstance = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
-        if (isPrimaryInstance) {
-            console.log('👑 Primary Cluster Worker (Instance 0): Starting News Bot, ChangeStreams & System Cron Jobs...');
+        // Atomic MongoDB lease-based Cluster Leader Election:
+        // PM2 cluster reloads can report identical NODE_APP_INSTANCE across workers, so we elect
+        // exactly ONE active leader via MongoDB atomic lease to own News Bots, ChangeStreams, and Cron Jobs.
+        const workerId = `${os.hostname()}-${process.pid}-${process.env.pm_id ?? 'single'}`;
+        const LEADER_LOCK_ID = 'oxypace_primary_worker';
+        const LEASE_DURATION_MS = 60 * 1000;
+        const HEARTBEAT_INTERVAL_MS = 20 * 1000;
+        let isPrimaryLeader = false;
+        let primaryTasksStarted = false;
+
+        const tryAcquireOrRenewLeaderLease = async () => {
+            try {
+                if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+                    return false;
+                }
+                const now = new Date();
+                const expiresAt = new Date(now.getTime() + LEASE_DURATION_MS);
+                const col = mongoose.connection.db.collection('cluster_locks');
+                const result = await col.findOneAndUpdate(
+                    {
+                        _id: LEADER_LOCK_ID,
+                        $or: [
+                            { owner: workerId },
+                            { expiresAt: { $lte: now } }
+                        ]
+                    },
+                    {
+                        $set: {
+                            owner: workerId,
+                            expiresAt,
+                            updatedAt: now,
+                            pid: process.pid,
+                            pmId: process.env.pm_id ?? null
+                        },
+                        $setOnInsert: {
+                            createdAt: now
+                        }
+                    },
+                    { upsert: true, returnDocument: 'after' }
+                );
+                const doc = result?.value !== undefined ? result.value : result;
+                return Boolean(doc && doc.owner === workerId);
+            } catch (err) {
+                if (err?.code === 11000) {
+                    // Simultaneous upsert race lost cleanly to another worker
+                    return false;
+                }
+                console.warn('⚠️ Leader lease check error:', err.message);
+                return false;
+            }
+        };
+
+        const startPrimaryTasksOnce = async () => {
+            if (primaryTasksStarted) return;
+            primaryTasksStarted = true;
+            console.log(`👑 Primary Cluster Leader Elected (workerId=${workerId}, pid=${process.pid}, pm_id=${process.env.pm_id ?? 'N/A'})`);
             setupChangeStreams(io);
             try {
                 await repairUserFriendships();
@@ -862,10 +915,11 @@ httpServer.listen(PORT, async () => {
             } catch (seedErr) {
                 console.error('⚠️ seedTanitimPortalOnBoot error:', seedErr.message);
             }
-            startBotLoop(io);
+            startBotLoop(io, () => isPrimaryLeader);
 
             // Keep-Alive Cron Job
             cron.schedule('*/10 * * * *', async () => {
+                if (!isPrimaryLeader) return;
                 try {
                     const port = process.env.PORT || 5000;
                     await axios.get(`http://127.0.0.1:${port}/api/health`);
@@ -876,9 +930,42 @@ httpServer.listen(PORT, async () => {
 
             // Expired Tourist Admin Cleanup Cron Job (Runs every minute)
             cron.schedule('* * * * *', async () => {
+                if (!isPrimaryLeader) return;
                 await cleanupExpiredTouristAdmins();
             });
-        }
+        };
+
+        const evaluateLeadership = async () => {
+            const acquired = await tryAcquireOrRenewLeaderLease();
+            if (acquired && !isPrimaryLeader) {
+                isPrimaryLeader = true;
+                await startPrimaryTasksOnce();
+            } else if (!acquired && isPrimaryLeader) {
+                isPrimaryLeader = false;
+                console.warn(`⚠️ Lost primary cluster leadership (${workerId})`);
+            }
+        };
+
+        await evaluateLeadership();
+        setInterval(() => {
+            evaluateLeadership().catch(() => {});
+        }, HEARTBEAT_INTERVAL_MS);
+
+        const releaseLeaderLeaseOnExit = async () => {
+            if (!isPrimaryLeader) return;
+            isPrimaryLeader = false;
+            try {
+                if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+                    await mongoose.connection.db.collection('cluster_locks').deleteOne({
+                        _id: LEADER_LOCK_ID,
+                        owner: workerId
+                    });
+                }
+            } catch (_) {}
+        };
+
+        process.once('SIGINT', () => { releaseLeaderLeaseOnExit().finally(() => process.exit(0)); });
+        process.once('SIGTERM', () => { releaseLeaderLeaseOnExit().finally(() => process.exit(0)); });
     });
 
 export default app;

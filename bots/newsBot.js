@@ -17,7 +17,10 @@ const parser = new Parser({
     timeout: 15000
 });
 
-const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes
+const DEFAULT_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 Minutes fallback
+const SCHEDULER_TICK_MS = 60 * 1000; // Check due bots every 1 minute
+let schedulerTimer = null;
+let isCycleRunning = false;
 
 export const BOT_CONFIGS = [
     {
@@ -67,8 +70,9 @@ export const BOT_CONFIGS = [
             avatar: ''
         },
         feeds: [
-            'https://www.espn.com/espn/rss/news',
-            'https://feeds.bbci.co.uk/sport/rss.xml'
+            'https://feeds.bbci.co.uk/sport/rss.xml',
+            'https://www.theguardian.com/sport/rss',
+            'https://www.skysports.com/rss/12040'
         ]
     },
     {
@@ -103,9 +107,9 @@ export const BOT_CONFIGS = [
             avatar: '/uploads/cinema_bot_avatar.png'
         },
         feeds: [
-            'https://collider.com/feed/',
             'https://deadline.com/feed/',
-            'https://variety.com/feed/'
+            'https://variety.com/feed/',
+            'https://www.hollywoodreporter.com/feed/'
         ]
     }
 ];
@@ -407,7 +411,7 @@ export async function discoverRssFeed(inputUrl) {
 }
 
 // Safe feed fetcher with auto discovery fallback
-export async function fetchFeedSafely(url) {
+export async function fetchFeedSafely(url, { allowDiscovery = false } = {}) {
     const rawUrl = (url || '').trim();
     if (!rawUrl) throw new Error('Geçersiz besleme bağlantısı.');
 
@@ -422,7 +426,12 @@ export async function fetchFeedSafely(url) {
         lastError = err;
     }
 
-    // Try auto-discovery
+    const looksLikeDirectFeed = /(\/feed\/?|\/rss\/?|\.xml|\.rss|feedburner)/i.test(rawUrl);
+    if (!allowDiscovery && looksLikeDirectFeed) {
+        throw lastError || new Error(`Besleme okunamadı (${rawUrl})`);
+    }
+
+    // Try auto-discovery for website URLs or explicit discovery requests
     try {
         const discovered = await discoverRssFeed(rawUrl);
         if (discovered && discovered.feedUrl) {
@@ -644,17 +653,27 @@ export const processItem = async (item, { user, config, portal, channel, io }) =
 export const checkNewsForBot = async (botContext) => {
     const { user, config, portal, channel, feeds, io } = botContext;
     let deployedPost = null;
+    let anyFeedSucceeded = false;
+    let lastFeedError = '';
 
-    for (const url of feeds) {
+    const startIdx = feeds.length > 1 ? ((config?.stats?.totalPosts || 0) % feeds.length) : 0;
+
+    for (let offset = 0; offset < feeds.length; offset++) {
+        const url = feeds[(startIdx + offset) % feeds.length];
         try {
             console.log(`📡 [${user.username}] Scanning: ${url}`);
             const { feed, resolvedUrl } = await fetchFeedSafely(url);
+            anyFeedSucceeded = true;
 
-            if (resolvedUrl !== url && config && Array.isArray(config.feeds) && !config.feeds.includes(resolvedUrl)) {
+            const normResolved = (resolvedUrl || '').replace(/\/+$/, '');
+            const existingNormalized = Array.isArray(config?.feeds)
+                ? config.feeds.map(f => String(f).trim().replace(/\/+$/, ''))
+                : [];
+            if (resolvedUrl && resolvedUrl !== url && config && Array.isArray(config.feeds) && !existingNormalized.includes(normResolved)) {
                 config.feeds.push(resolvedUrl);
                 await config.save().catch(() => {});
             }
-            
+
             if (!feed.items || feed.items.length === 0) {
                 console.warn(`⚠️ [${user.username}] Feed is empty: ${url}`);
                 continue;
@@ -675,7 +694,7 @@ export const checkNewsForBot = async (botContext) => {
                 });
             }
 
-            itemsToProcess = itemsToProcess.slice(0, 5).reverse();
+            itemsToProcess = itemsToProcess.slice(0, 12).reverse();
 
             for (const item of itemsToProcess) {
                 const res = await processItem(item, {
@@ -695,20 +714,17 @@ export const checkNewsForBot = async (botContext) => {
 
         } catch (error) {
             console.error(`⚠️ [${user.username}] Failed fetching feed (${url}):`, error.message);
-            if (config) {
-                config.stats = config.stats || {};
-                config.stats.lastRunAt = new Date();
-                config.stats.lastError = error.message;
-                await config.save().catch(() => {});
-            }
+            lastFeedError = error.message || 'Besleme okunamadı';
         }
     }
 
     if (config) {
         config.stats = config.stats || {};
         config.stats.lastRunAt = new Date();
-        if (deployedPost) {
+        if (deployedPost || anyFeedSucceeded) {
             config.stats.lastError = '';
+        } else if (lastFeedError) {
+            config.stats.lastError = lastFeedError;
         }
         await config.save().catch(() => {});
     }
@@ -780,8 +796,8 @@ export async function runSingleBot(botConfigIdOrBotId, ioInstance = null) {
     };
 }
 
-// Master loop for automatic background scraping
-export default async function startBotLoop(io) {
+// Master loop for automatic background scraping (respects each bot's configured intervalMinutes)
+export default async function startBotLoop(io, isLeaderFn = () => true) {
     globalIo = io;
     console.log('🤖 Starting Elite Multi-News Bot Service (Turkish)...');
 
@@ -798,19 +814,30 @@ export default async function startBotLoop(io) {
     await ensureBotAccountsExist();
 
     const runScrapeCycle = async () => {
-        console.log(`🕒 [${new Date().toLocaleTimeString()}] Starting Bot Scrape Cycle...`);
+        if (typeof isLeaderFn === 'function' && !isLeaderFn()) return;
+        if (isCycleRunning) return;
+        isCycleRunning = true;
 
         try {
-            let botConfigs = await BotConfig.find().populate('bot');
+            const botConfigs = await BotConfig.find().populate('bot');
+            const nowMs = Date.now();
 
             for (const dConfig of botConfigs) {
+                if (typeof isLeaderFn === 'function' && !isLeaderFn()) break;
                 try {
                     if (!dConfig.bot) continue;
-                    if (dConfig.bot.isBanned) continue;
+                    if (dConfig.bot.isBanned || dConfig.bot.isDeleted) continue;
                     if (dConfig.isActive === false) continue; // Respect paused bots!
 
                     const feeds = dConfig.feeds || [];
                     if (feeds.length === 0) continue;
+
+                    const intervalMin = Math.max(1, Number(dConfig.intervalMinutes) || (DEFAULT_CHECK_INTERVAL_MS / 60000));
+                    const intervalMs = intervalMin * 60 * 1000;
+                    const lastRunMs = dConfig.stats?.lastRunAt ? new Date(dConfig.stats.lastRunAt).getTime() : 0;
+                    if (lastRunMs > 0 && (nowMs - lastRunMs) < intervalMs) {
+                        continue; // Not due yet
+                    }
 
                     let portal = null;
                     if (dConfig.defaultPortal) {
@@ -831,6 +858,7 @@ export default async function startBotLoop(io) {
                     }
                     if (!channel) continue;
 
+                    console.log(`🤖 [${dConfig.bot.username}] Due (interval=${intervalMin}m) -> scanning...`);
                     await checkNewsForBot({
                         user: dConfig.bot,
                         config: dConfig,
@@ -846,9 +874,16 @@ export default async function startBotLoop(io) {
             }
         } catch (dbErr) {
             console.error('❌ Error processing bots scrape cycle:', dbErr.message);
+        } finally {
+            isCycleRunning = false;
         }
     };
 
     await runScrapeCycle();
-    setInterval(runScrapeCycle, CHECK_INTERVAL_MS);
+    if (schedulerTimer) {
+        clearInterval(schedulerTimer);
+    }
+    schedulerTimer = setInterval(() => {
+        runScrapeCycle().catch(err => console.error('❌ Scheduler tick error:', err.message));
+    }, SCHEDULER_TICK_MS);
 }
