@@ -226,6 +226,24 @@ const normalizePlatformUrl = (url) => {
   return trimmed;
 };
 
+const getSafeYouTubeOrigin = () => {
+  if (typeof window === 'undefined') return undefined;
+  const isElectron =
+    !!window.desktopAPI?.isElectron ||
+    (window.navigator?.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1);
+  if (isElectron) {
+    // desktop/main.js rewrites YouTube Referer & Origin headers to https://oxypace.com.tr
+    return 'https://oxypace.com.tr';
+  }
+  const orig = window.location.origin || '';
+  // Never pass https://localhost / http://localhost / capacitor:// / file:// to YouTube IFrame API;
+  // YouTube rejects non-public/mismatched origins with Error 150 / 153.
+  if (!orig.startsWith('https://') || orig.includes('localhost') || orig.includes('127.0.0.1')) {
+    return undefined;
+  }
+  return orig;
+};
+
 const isPlatformUrl = (url) => {
   if (!url) return false;
   const lowerUrl = url.toLowerCase();
@@ -1140,6 +1158,7 @@ const WatchPartyPlayer = () => {
     const isHost = true;
     const isPlatform = isPlatformUrl(watchParty?.url);
     const isYouTube = isYouTubeUrl(watchParty?.url);
+    const youtubeVideoId = isYouTube ? extractYouTubeVideoId(watchParty?.url) : null;
     const normalizedPlatformUrl = isPlatform ? normalizePlatformUrl(watchParty?.url) : (watchParty?.url || '');
     const isStream = isLiveStream(watchParty?.url) && !isPlatform;
     // Platform URLs (YouTube/Vimeo/Twitch/etc.) must NEVER route into the native HLS <video> engine
@@ -1147,6 +1166,8 @@ const WatchPartyPlayer = () => {
     const isNativeVOD = isStream && !isLive;
     const [platformReloadKey, setPlatformReloadKey] = useState(0);
     const [platformError, setPlatformError] = useState(null);
+    // 0: youtube.com (ReactPlayer sync), 1: youtube-nocookie.com (ReactPlayer sync), 2: direct clean embed iframe
+    const [ytFallbackTier, setYtFallbackTier] = useState(0);
     const platformAutoRetryRef = useRef(false);
 
     const triggerReconnect = () => {
@@ -1177,6 +1198,7 @@ const WatchPartyPlayer = () => {
         setIsReady(false);
         setPlatformError(null);
         setPlatformReloadKey(0);
+        setYtFallbackTier(0);
         platformAutoRetryRef.current = false;
         setUseProxy(false);
         setAudioTracks([]);
@@ -1538,13 +1560,19 @@ const WatchPartyPlayer = () => {
     }, [isReady, hasError, watchParty?.isPlaying, watchParty?.url, sendWatchSeek, isStream]);
 
     // Watchdog for YouTube / ReactPlayer initialization:
-    // If YouTube IFrame API fails to fire onReady within 7s (e.g. cold script load or transient stall),
-    // automatically perform one clean remount instead of staying on a black frame.
+    // If YouTube IFrame API fails to fire onReady within 7s (e.g. cold script load, cookie block, or origin stall),
+    // automatically escalate to youtube-nocookie / clean direct iframe instead of staying black.
     useEffect(() => {
         if (!watchParty?.url || isLive || isStream || !isPlatform || isIframePlatform(watchParty?.url)) return;
         if (isReady || platformError) return;
+        if (isYouTube && ytFallbackTier >= 2) return;
 
         const timer = setTimeout(() => {
+            if (isYouTube && youtubeVideoId && ytFallbackTier < 2) {
+                console.warn(`[WatchPartyPlayer] YouTube tier ${ytFallbackTier} timed out after 7s, escalating to tier ${ytFallbackTier + 1}...`);
+                setYtFallbackTier((t) => Math.min(2, t + 1));
+                return;
+            }
             if (!platformAutoRetryRef.current) {
                 platformAutoRetryRef.current = true;
                 console.warn('[WatchPartyPlayer] Platform player did not signal ready in 7s, remounting cleanly...');
@@ -1553,7 +1581,7 @@ const WatchPartyPlayer = () => {
         }, 7000);
 
         return () => clearTimeout(timer);
-    }, [watchParty?.url, isLive, isStream, isPlatform, isReady, platformError, platformReloadKey]);
+    }, [watchParty?.url, isLive, isStream, isPlatform, isYouTube, youtubeVideoId, ytFallbackTier, isReady, platformError, platformReloadKey]);
 
     // Standard Video Synchronization (only for non-live files)
     useEffect(() => {
@@ -3547,11 +3575,32 @@ const WatchPartyPlayer = () => {
                                  referrerPolicy="strict-origin-when-cross-origin"
                              />
                           ) : isPlatform ? (
+                            isYouTube && youtubeVideoId && ytFallbackTier >= 2 ? (
+                              <iframe
+                                  key={`yt-direct-${youtubeVideoId}-${platformReloadKey}`}
+                                  src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=${watchParty.isPlaying ? 1 : 0}&playsinline=1&rel=0&modestbranding=1${Math.floor(watchParty.currentTime || 0) > 1 ? `&start=${Math.floor(watchParty.currentTime || 0)}` : ''}`}
+                                  width="100%"
+                                  height="100%"
+                                  frameBorder="0"
+                                  allowFullScreen
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  referrerPolicy="strict-origin-when-cross-origin"
+                                  style={{ border: 'none', background: '#000', width: '100%', height: '100%', display: 'block' }}
+                                  onLoad={() => {
+                                      setIsReady(true);
+                                      setPlatformError(null);
+                                  }}
+                              />
+                            ) : (
                             <>
                               <ReactPlayer
-                                  key={`${normalizedPlatformUrl}-${platformReloadKey}`}
+                                  key={`${normalizedPlatformUrl}-t${ytFallbackTier}-${platformReloadKey}`}
                                   ref={playerRef}
-                                  url={normalizedPlatformUrl}
+                                  url={
+                                      isYouTube && youtubeVideoId && ytFallbackTier === 1
+                                          ? `https://www.youtube-nocookie.com/watch?v=${youtubeVideoId}`
+                                          : normalizedPlatformUrl
+                                  }
                                   playing={!!watchParty.isPlaying}
                                   volume={volume}
                                   muted={localMuted}
@@ -3560,10 +3609,20 @@ const WatchPartyPlayer = () => {
                                   width="100%"
                                   height="100%"
                                   onError={(e) => {
-                                      console.warn("ReactPlayer error logged:", e);
-                                      if (e === 101 || e === 150) {
-                                          setPlatformError('Bu YouTube videosunun sahibi başka sitelerde oynatılmasını (embed) engellemiş.');
-                                      } else if (e === 100) {
+                                      console.warn(`[WatchPartyPlayer] ReactPlayer error (tier ${ytFallbackTier}):`, e);
+                                      // YouTube error 101 / 150 / 152 / 153 / 5 is frequently triggered by
+                                      // third-party cookie blocking, logged-out sessions, or origin/Referer mismatches
+                                      // (e.g. Android WebView https://localhost or strict privacy browsers) — NOT always
+                                      // an actual owner embed block. Escalate automatically through nocookie -> direct iframe.
+                                      const isRecoverableYouTubeEmbedErr =
+                                          isYouTube && youtubeVideoId && (e === 101 || e === 150 || e === 152 || e === 153 || e === 5);
+                                      if (isRecoverableYouTubeEmbedErr && ytFallbackTier < 2) {
+                                          setIsReady(false);
+                                          setPlatformError(null);
+                                          setYtFallbackTier((t) => Math.min(2, t + 1));
+                                          return;
+                                      }
+                                      if (e === 100) {
                                           setPlatformError('Video bulunamadı veya gizli olarak ayarlanmış.');
                                       } else if (e === 2) {
                                           setPlatformError('Geçersiz video bağlantısı.');
@@ -3574,6 +3633,14 @@ const WatchPartyPlayer = () => {
                                   onReady={() => {
                                       setIsReady(true);
                                       setPlatformError(null);
+                                      try {
+                                          const internal = playerRef.current?.getInternalPlayer?.();
+                                          const iframeEl = internal?.getIframe?.();
+                                          if (iframeEl) {
+                                              iframeEl.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+                                              iframeEl.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+                                          }
+                                      } catch (_) {}
                                   }}
                                   onPlay={handlePlay}
                                   onPause={handlePause}
@@ -3587,7 +3654,7 @@ const WatchPartyPlayer = () => {
                                               rel: 0,
                                               modestbranding: 1,
                                               disablekb: 0,
-                                              origin: typeof window !== 'undefined' ? window.location.origin : undefined
+                                              origin: getSafeYouTubeOrigin()
                                           }
                                       }
                                   }}
@@ -3607,6 +3674,7 @@ const WatchPartyPlayer = () => {
                                           onClick={() => {
                                               setPlatformError(null);
                                               setIsReady(false);
+                                              setYtFallbackTier(0);
                                               setPlatformReloadKey((k) => k + 1);
                                           }}
                                       >
@@ -3616,6 +3684,7 @@ const WatchPartyPlayer = () => {
                                   </div>
                               )}
                             </>
+                            )
                         ) : (
                             <VideoPlayer
                                 src={isPlayableExternalUrl(watchParty?.url) ? (isStream ? getProxiedUrl(watchParty.url) : watchParty.url) : getImageUrl(watchParty?.url)}
