@@ -28,8 +28,14 @@ public class DirectReplyReceiver extends BroadcastReceiver {
     public static final String KEY_SERVER_URL = "server_url";
     public static final String KEY_CURRENT_USER_ID = "current_user_id";
     public static final String KEY_INACTIVE_USER_IDS = "inactive_user_ids";
+    public static final String KEY_CURRENT_USER_NAME = "current_user_name";
+    public static final String KEY_CURRENT_USER_AVATAR = "current_user_avatar";
 
     public static void saveAuthCredentials(Context context, String token, String serverUrl, String userId, java.util.Set<String> inactiveUserIds) {
+        saveAuthCredentials(context, token, serverUrl, userId, inactiveUserIds, null, null);
+    }
+
+    public static void saveAuthCredentials(Context context, String token, String serverUrl, String userId, java.util.Set<String> inactiveUserIds, String userName, String userAvatar) {
         if (context == null) return;
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -57,8 +63,16 @@ public class DirectReplyReceiver extends BroadcastReceiver {
 
             if (!isLogout) {
                 editor.putString(KEY_CURRENT_USER_ID, resolvedUserId);
+                if (userName != null && !userName.trim().isEmpty()) {
+                    editor.putString(KEY_CURRENT_USER_NAME, userName.trim());
+                }
+                if (userAvatar != null) {
+                    editor.putString(KEY_CURRENT_USER_AVATAR, userAvatar.trim());
+                }
             } else {
                 editor.remove(KEY_CURRENT_USER_ID);
+                editor.remove(KEY_CURRENT_USER_NAME);
+                editor.remove(KEY_CURRENT_USER_AVATAR);
             }
 
             if (inactiveUserIds != null) {
@@ -156,6 +170,26 @@ public class DirectReplyReceiver extends BroadcastReceiver {
         return null;
     }
 
+    public static String getActiveUserName(Context context) {
+        if (context == null) return "Ben";
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String uName = prefs.getString(KEY_CURRENT_USER_NAME, null);
+            if (uName != null && !uName.trim().isEmpty()) return uName.trim();
+        } catch (Exception ignored) {}
+        return "Ben";
+    }
+
+    public static String getActiveUserAvatar(Context context) {
+        if (context == null) return "";
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String uAvatar = prefs.getString(KEY_CURRENT_USER_AVATAR, "");
+            return uAvatar != null ? uAvatar.trim() : "";
+        } catch (Exception ignored) {}
+        return "";
+    }
+
     public static String extractUserIdFromJwt(String jwt) {
         if (jwt == null || jwt.trim().isEmpty()) return null;
         try {
@@ -188,88 +222,36 @@ public class DirectReplyReceiver extends BroadcastReceiver {
 
         if (recipientId == null || recipientId.isEmpty()) return;
 
-        // 1. Immediately update notification state with the sent message
-        updateNotificationWithSentReply(context, notificationId, senderName, senderAvatar, recipientId, messageContent);
+        final BroadcastReceiver.PendingResult pendingResult = goAsync();
+        final Context appCtx = context.getApplicationContext();
 
-        // 2. Perform asynchronous HTTP POST request to /api/messages
+        // Update notification silently (preserving prior incoming messages + own avatar)
+        // and send message to backend on background thread.
         new Thread(() -> {
-            sendMessageToBackend(context, recipientId, messageContent);
+            try {
+                OxypaceMessagingService.appendReplyAndUpdateNotification(
+                    appCtx, recipientId, senderName, senderAvatar, notificationId, messageContent
+                );
+                sendMessageToBackend(appCtx, recipientId, messageContent);
+            } finally {
+                if (pendingResult != null) {
+                    try { pendingResult.finish(); } catch (Exception ignored) {}
+                }
+            }
         }).start();
-    }
-
-    private void updateNotificationWithSentReply(
-        Context context,
-        int notificationId,
-        String senderName,
-        String senderAvatar,
-        String recipientId,
-        String replyText
-    ) {
-        try {
-            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm == null) return;
-
-            String channelId = "oxypace_messages_v2";
-
-            Person userPerson = new Person.Builder()
-                .setName("Ben")
-                .build();
-
-            Person senderPerson = new Person.Builder()
-                .setName(senderName != null ? senderName : "Oxypace")
-                .setKey(recipientId)
-                .build();
-
-            NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
-                .setConversationTitle(senderName)
-                .setGroupConversation(false);
-
-            // Add our sent message so the thread is visible
-            style.addMessage(replyText, System.currentTimeMillis(), userPerson);
-
-            // Build a contentIntent so tapping the updated notification opens the correct chat screen
-            String route = "/inbox/" + recipientId;
-            Intent openIntent = new Intent(context, MainActivity.class);
-            openIntent.setAction("OPEN_ROUTE");
-            openIntent.putExtra("route", route);
-            openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            android.app.PendingIntent contentPi = android.app.PendingIntent.getActivity(
-                context,
-                notificationId,
-                openIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
-            );
-
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setStyle(style)
-                .setShowWhen(true)
-                .setWhen(System.currentTimeMillis())
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setAutoCancel(true)
-                .setContentIntent(contentPi);  // ← tap opens the chat after reply
-
-            nm.notify(notificationId, builder.build());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private void sendMessageToBackend(Context context, String recipientId, String content) {
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             String token = prefs.getString(KEY_JWT_TOKEN, "");
-            String serverUrl = prefs.getString(KEY_SERVER_URL, "https://oxypace.com.tr");
+            String serverUrl = prefs.getString(KEY_SERVER_URL, "https://api.oxypace.com.tr");
 
-            if (serverUrl == null || serverUrl.isEmpty()) {
-                serverUrl = "https://oxypace.com.tr";
-            }
-            if (serverUrl.endsWith("/")) {
-                serverUrl = serverUrl.substring(0, serverUrl.length() - 1);
-            }
+            String apiBase = (serverUrl != null && serverUrl.contains("oxypace.com.tr") && !serverUrl.contains("api.oxypace.com.tr"))
+                ? "https://api.oxypace.com.tr"
+                : (serverUrl != null && !serverUrl.trim().isEmpty() ? serverUrl.trim().replaceAll("/+$", "") : "https://api.oxypace.com.tr");
 
-            URL url = new URL(serverUrl + "/api/messages");
+            URL url = new URL(apiBase + "/api/messages");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

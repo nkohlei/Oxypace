@@ -1,6 +1,16 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useGlobalStore } from '../store/useGlobalStore';
+import { getImageUrl } from '../utils/imageUtils';
+import { getActiveOtaVersion } from '../utils/otaUpdater';
+
+const resolveAbsAvatarUrl = (raw) => {
+    if (!raw) return '';
+    const resolved = getImageUrl(raw);
+    if (!resolved) return '';
+    if (resolved.startsWith('http://') || resolved.startsWith('https://')) return resolved;
+    return `https://api.oxypace.com.tr${resolved.startsWith('/') ? '' : '/'}${resolved}`;
+};
 
 const AuthContext = createContext();
 
@@ -138,6 +148,8 @@ export const AuthProvider = ({ children }) => {
                     token,
                     serverUrl: prodServerUrl,
                     userId: activeUid,
+                    userName: user?.profile?.displayName || user?.username || '',
+                    userAvatar: resolveAbsAvatarUrl(user?.profile?.lowResAvatar || user?.profile?.avatar),
                     inactiveUserIds: getInactiveAccountIds(activeUid)
                 }).catch(() => {});
             }
@@ -150,11 +162,13 @@ export const AuthProvider = ({ children }) => {
                     token: '',
                     serverUrl: prodServerUrl,
                     userId: '',
+                    userName: '',
+                    userAvatar: '',
                     inactiveUserIds: getInactiveAccountIds('')
                 }).catch(() => {});
             }
         }
-    }, [token, user?._id]);
+    }, [token, user?._id, user?.profile?.avatar, user?.profile?.lowResAvatar, user?.profile?.displayName]);
 
     useEffect(() => {
         if (user && user._id) {
@@ -193,14 +207,16 @@ export const AuthProvider = ({ children }) => {
             // Auto-sync client app version and platform for admin tracking
             try {
                 if (Capacitor.isNativePlatform()) {
-                    import('@capacitor/app').then(({ App: CapApp }) => {
-                        CapApp.getInfo().then(info => {
-                            axios.post('/api/users/sync-version', {
-                                appVersion: info.version,
-                                versionCode: parseInt(info.build, 10),
-                                platform: 'android'
-                            }, { headers: { Authorization: `Bearer ${authToken}` } }).catch(() => {});
-                        }).catch(() => {});
+                    Promise.all([
+                        import('@capacitor/app').then(({ App: CapApp }) => CapApp.getInfo()).catch(() => null),
+                        getActiveOtaVersion().catch(() => null),
+                    ]).then(([info, otaVersion]) => {
+                        axios.post('/api/users/sync-version', {
+                            appVersion: info?.version || '2.6.2',
+                            versionCode: info?.build ? parseInt(info.build, 10) : 262,
+                            platform: 'android',
+                            ...(otaVersion ? { otaVersion } : {}),
+                        }, { headers: { Authorization: `Bearer ${authToken}` } }).catch(() => {});
                     }).catch(() => {});
                 } else {
                     axios.post('/api/users/sync-version', {
@@ -242,6 +258,8 @@ export const AuthProvider = ({ children }) => {
                 token: newToken,
                 serverUrl: 'https://oxypace.com.tr',
                 userId: activeUid,
+                userName: userData?.profile?.displayName || userData?.username || '',
+                userAvatar: resolveAbsAvatarUrl(userData?.profile?.lowResAvatar || userData?.profile?.avatar),
                 inactiveUserIds: getInactiveAccountIds(activeUid)
             }).catch(() => {});
         }
@@ -301,6 +319,8 @@ export const AuthProvider = ({ children }) => {
                 token: target.token,
                 serverUrl: 'https://oxypace.com.tr',
                 userId: nextUid,
+                userName: target?.profile?.displayName || target?.username || '',
+                userAvatar: resolveAbsAvatarUrl(target?.profile?.avatar),
                 inactiveUserIds: getInactiveAccountIds(nextUid)
             }).catch(() => {});
         }
@@ -399,6 +419,8 @@ export const AuthProvider = ({ children }) => {
                 token: '',
                 serverUrl: 'https://oxypace.com.tr',
                 userId: '',
+                userName: '',
+                userAvatar: '',
                 inactiveUserIds: getInactiveAccountIds('')
             }).catch(() => {});
         }

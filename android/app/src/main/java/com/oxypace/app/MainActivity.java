@@ -664,6 +664,8 @@ public class MainActivity extends BridgeActivity {
             String token = call.getString("token", "");
             String serverUrl = call.getString("serverUrl", "https://oxypace.com.tr");
             String userId = call.getString("userId", null);
+            String userName = call.getString("userName", "");
+            String userAvatar = call.getString("userAvatar", "");
             com.getcapacitor.JSArray inactiveArr = call.getArray("inactiveUserIds");
             java.util.Set<String> inactiveSet = new java.util.HashSet<>();
             if (inactiveArr != null) {
@@ -676,7 +678,7 @@ public class MainActivity extends BridgeActivity {
                     }
                 } catch (Exception ignored) {}
             }
-            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId, inactiveSet);
+            DirectReplyReceiver.saveAuthCredentials(getContext(), token, serverUrl, userId, inactiveSet, userName, userAvatar);
 
             // If a valid JWT token was provided, immediately push device FCM token to backend
             if (token != null && !token.trim().isEmpty()) {

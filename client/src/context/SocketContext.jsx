@@ -100,14 +100,16 @@ export const SocketProvider = ({ children }) => {
             // Emit version sync via socket
             try {
                 if (Capacitor.isNativePlatform()) {
-                    import('@capacitor/app').then(({ App: CapApp }) => {
-                        CapApp.getInfo().then(info => {
-                            newSocket.emit('sync_app_version', {
-                                appVersion: info.version,
-                                versionCode: parseInt(info.build, 10),
-                                platform: 'android'
-                            });
-                        }).catch(() => {});
+                    Promise.all([
+                        import('@capacitor/app').then(({ App: CapApp }) => CapApp.getInfo()).catch(() => null),
+                        import('../utils/otaUpdater').then(({ getActiveOtaVersion }) => getActiveOtaVersion()).catch(() => null),
+                    ]).then(([info, otaVersion]) => {
+                        newSocket.emit('sync_app_version', {
+                            appVersion: info?.version || '2.6.2',
+                            versionCode: info?.build ? parseInt(info.build, 10) : 262,
+                            platform: 'android',
+                            ...(otaVersion ? { otaVersion } : {}),
+                        });
                     }).catch(() => {});
                 } else {
                     newSocket.emit('sync_app_version', {

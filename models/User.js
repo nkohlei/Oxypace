@@ -290,6 +290,14 @@ const userSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        otaVersion: {
+            type: String,
+            default: null,
+        },
+        lastOtaSyncAt: {
+            type: Date,
+            default: null,
+        },
         registeredDevices: [
             {
                 deviceId: {

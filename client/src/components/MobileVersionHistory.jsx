@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.1)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.2)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.6.2',
+        versionCode: 262,
+        releaseDate: '23 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'Uzantıya Özel Bildirim Kartları, Sessiz & Avatarlı Mesaj Yanıtlama, Otomatik OTA Güncelleyici & Sürüm Takip Paneli',
+        summary: '.docx, .mp3, .pptx, .xlsx, .zip, kod dosyaları ve klasör paylaşımlarının PDF olarak algılanması tamamen giderilerek her dosya uzantısına özel ikon ve renkte bildirim kartları geliştirildi. Portal yeni gönderi bildirimleri tekil hale getirilirken DM bildirimlerinde 6 mesaja kadar akıllı birikme sağlandı; bildirimden yanıt verildiğinde ses çalınmadan önceki mesajlar korunup kullanıcının kendi avatarı eklendi. Ön plana dönüşte otomatik OTA güncelleme ve Yönetici Paneli Mobil Sürüm & OTA Takip ekranı devreye alındı.',
+        category: 'feature',
+        apkSize: '41 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'Uzantıya Özel Bildirim Tasarımı: .docx (Word), .pptx (PowerPoint), .xlsx (Excel), .zip/.rar (Arşiv), kod, klasör, .mp3 (Müzik) ve .pdf dosyaları için özgün kart/ikon tasarımları',
+            'Sessiz & Geçmiş Korumalı Satır İçi Yanıtlama: Bildirimden yanıt gönderildiğinde tekrar bildirim sesi çalmaması, önceki mesajların görünür kalması ve kendi dairesel avatarımızın gösterilmesi',
+            'Otomatik OTA Güncelleyici: Uygulama açılışı ve ön plana dönüşte arka planda sessiz canlı güncelleme (canlı çağrıyı kesmeden uygulama) + tek komutluk npm run ota:release akışı',
+            'Yönetici Sürüm & OTA Takip Paneli: Hangi kullanıcının hangi APK ve canlı OTA sürümünü kullandığını canlı istatistik ve filtrelerle izleme'
+        ],
+        changes: [
+            { type: 'Dosya Türü & Uzantı Algılama', detail: 'portalNotificationService.js içinde attachment kind önceliği düzeltilip fileName, fileExt, fileSize ve folderFileCount alanları eklendi.' },
+            { type: 'Android Bildirim & Yanıtlama', detail: 'OxypaceMessagingService.java, DirectReplyReceiver.java ve MainActivity.java üzerinde createMinimalFileCardBitmap, MAX_DM_ACCUMULATED=6 ve sessiz appendReplyAndUpdateNotification uygulandı.' },
+            { type: 'Otomatik OTA Yaşam Döngüsü', detail: 'otaUpdater.js, config/appVersion.js ve scripts/release-ota.js ile sessiz ön plan OTA kontrolü ve canlı çağrı koruması eklendi.' },
+            { type: 'Admin Sürüm & OTA Takibi', detail: 'User.js (otaVersion), routes/admin.js (/api/admin/app-versions), MobileAppAdoptionPanel.jsx ve AdminDashboard.jsx güncellendi.' }
+        ],
+        filesModified: 16
+    },
     {
         version: 'v2.6.1',
         versionCode: 261,
         releaseDate: '22 Kasım 2026',
         commitHash: 'HEAD',
-        status: 'active',
+        status: 'stable',
         title: 'Cihaz Bildirimi Tasarımı, Özel Müzik/Ses Bildirim Kartı, Silinen Bildirimlerin Birikmemesi & Canlı OTA Güncelleyici',
         summary: 'Portal cihaz bildirimlerinde yazarın görünen adı ile @kullanıcı adı yan yana hizalandı ve bildirim alt kenarına temiz boşluk eklendi. Bildirim çekmecesinden silinen mesaj veya portal post bildirimlerinin okundu sayılmadan bir sonraki bildirimde tekrar birikmesi engellendi. Müzik ve ses dosyaları için özel dalga/kapak tasarımlı bildirim kartı ile mobilde ince ses oynatıcı görünümü eklendi; kendi sunucumuz üzerinden canlı arayüz güncellemesi sağlayan @capgo/capacitor-updater entegre edildi.',
         category: 'feature',

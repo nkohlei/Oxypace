@@ -284,14 +284,18 @@ export const initializeSocket = (io) => {
         socket.on('sync_app_version', async (payload) => {
             const userId = socket.data?.userId || userSockets.get(socket.id);
             if (!userId || !payload) return;
-            const { appVersion, versionCode, platform } = payload;
+            const { appVersion, versionCode, platform, otaVersion } = payload;
             try {
                 const update = {
                     lastAppSyncAt: new Date(),
                     appPlatform: platform || 'web'
                 };
                 if (appVersion) update.appVersion = String(appVersion).trim();
-                if (typeof versionCode === 'number') update.versionCode = versionCode;
+                if (typeof versionCode === 'number' && !Number.isNaN(versionCode)) update.versionCode = versionCode;
+                if (otaVersion && typeof otaVersion === 'string' && otaVersion.trim()) {
+                    update.otaVersion = otaVersion.trim();
+                    update.lastOtaSyncAt = new Date();
+                }
                 await User.findByIdAndUpdate(userId, { $set: update });
             } catch (err) {
                 console.warn('sync_app_version socket error:', err.message);

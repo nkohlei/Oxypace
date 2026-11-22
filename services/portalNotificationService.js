@@ -27,6 +27,48 @@ function formatAudioSize(bytes) {
     return `${Math.max(1, Math.round(num / 1024))} KB`;
 }
 
+const FILE_SNIPPET_MAP = {
+    doc: '📝',
+    docx: '📝',
+    odt: '📝',
+    rtf: '📝',
+    ppt: '📽️',
+    pptx: '📽️',
+    ppsx: '📽️',
+    odp: '📽️',
+    xls: '📊',
+    xlsx: '📊',
+    xlsm: '📊',
+    ods: '📊',
+    csv: '📊',
+    zip: '🗜️',
+    rar: '🗜️',
+    '7z': '🗜️',
+    tar: '🗜️',
+    gz: '🗜️',
+    js: '💻',
+    jsx: '💻',
+    ts: '💻',
+    tsx: '💻',
+    py: '💻',
+    html: '💻',
+    htm: '💻',
+    css: '💻',
+    json: '💻',
+    xml: '💻',
+    txt: '📄',
+    md: '📄',
+};
+
+function parseExtFromString(str) {
+    if (!str) return '';
+    const clean = String(str).split('?')[0].split('#')[0].trim();
+    const lastDot = clean.lastIndexOf('.');
+    if (lastDot < 0 || lastDot === clean.length - 1) return '';
+    const ext = clean.slice(lastDot + 1).toLowerCase();
+    return /^[a-z0-9]{1,8}$/.test(ext) ? ext : '';
+}
+
 /**
  * Helper to extract clean notification details from a Post document
  */
@@ -39,6 +81,10 @@ function extractPostNotificationDetails(p) {
             postMedia: '',
             pdfName: '',
             pdfSize: '',
+            fileName: '',
+            fileExt: '',
+            fileSize: '',
+            folderFileCount: '',
             audioName: '',
             audioDuration: '',
             audioSize: '',
@@ -54,28 +100,28 @@ function extractPostNotificationDetails(p) {
     const attachments = Array.isArray(p.attachments) ? p.attachments : [];
     const firstAtt = attachments[0] || null;
 
-    if (p.mediaType === 'pdf' || p.pdfUrl || p.pdfName || p.pdfThumbnailUrl || firstAtt?.kind === 'pdf') {
+    const VALID_KINDS = new Set(['pdf', 'audio', 'video', 'videoUrl', 'gif', 'youtube', 'image', 'file', 'folder']);
+    if (firstAtt?.kind && VALID_KINDS.has(firstAtt.kind)) {
+        mediaType = firstAtt.kind === 'videoUrl' ? 'video' : firstAtt.kind;
+    } else if (p.mediaType && VALID_KINDS.has(p.mediaType)) {
+        mediaType = p.mediaType === 'videoUrl' ? 'video' : p.mediaType;
+    } else if (p.pdfUrl || p.pdfThumbnailUrl || (p.pdfName && String(p.pdfName).toLowerCase().endsWith('.pdf'))) {
         mediaType = 'pdf';
-    } else if (p.mediaType === 'audio' || firstAtt?.kind === 'audio') {
-        mediaType = 'audio';
-    } else if (p.mediaType === 'video' || p.mediaType === 'videoUrl' || p.videoThumbnail || p.videoUrl || firstAtt?.kind === 'video' || firstAtt?.kind === 'videoUrl') {
+    } else if (p.videoThumbnail || p.videoUrl) {
         mediaType = 'video';
-    } else if (p.mediaType === 'gif' || p.gifUrl || firstAtt?.kind === 'gif') {
+    } else if (p.gifUrl) {
         mediaType = 'gif';
-    } else if (p.mediaType === 'youtube' || p.youtubeUrl || firstAtt?.kind === 'youtube') {
+    } else if (p.youtubeUrl) {
         mediaType = 'youtube';
-    } else if (p.mediaType === 'image' || firstAtt?.kind === 'image') {
-        mediaType = 'image';
-    } else if (p.mediaType === 'file' || p.mediaType === 'folder' || firstAtt?.kind === 'file' || firstAtt?.kind === 'folder') {
-        mediaType = 'file';
     } else if (p.media) {
         const firstMedia = Array.isArray(p.media) ? p.media[0] : p.media;
         if (typeof firstMedia === 'string' && firstMedia.trim()) {
             const lower = firstMedia.toLowerCase();
-            if (lower.endsWith('.pdf')) mediaType = 'pdf';
+            if (/\.pdf(\?|$)/i.test(lower)) mediaType = 'pdf';
             else if (/\.(mp3|wav|m4a|ogg|webm|flac|aac)(\?|$)/i.test(lower)) mediaType = 'audio';
-            else if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) mediaType = 'video';
-            else if (lower.endsWith('.gif')) mediaType = 'gif';
+            else if (/\.(mp4|mov|mkv|avi)(\?|$)/i.test(lower)) mediaType = 'video';
+            else if (/\.gif(\?|$)/i.test(lower)) mediaType = 'gif';
+            else if (/\.(docx?|pptx?|ppsx|odp|odt|rtf|xlsx?|xlsm|ods|csv|zip|rar|7z|tar|gz|txt|md|html?|css|jsx?|tsx?|py|json|xml)(\?|$)/i.test(lower)) mediaType = 'file';
             else mediaType = 'image';
         }
     }
@@ -83,8 +129,10 @@ function extractPostNotificationDetails(p) {
     let rawMediaUrl = '';
     if (mediaType === 'audio') {
         rawMediaUrl = firstAtt?.coverUrl || firstAtt?.thumbnailUrl || '';
-    } else if (p.pdfThumbnailUrl) {
-        rawMediaUrl = p.pdfThumbnailUrl;
+    } else if (mediaType === 'pdf') {
+        rawMediaUrl = p.pdfThumbnailUrl || firstAtt?.thumbnailUrl || '';
+    } else if (mediaType === 'file' || mediaType === 'folder') {
+        rawMediaUrl = '';
     } else if (p.videoThumbnail) {
         rawMediaUrl = p.videoThumbnail;
     } else if (firstAtt && (firstAtt.kind === 'image' || firstAtt.kind === 'gif') && firstAtt.url) {
@@ -94,17 +142,17 @@ function extractPostNotificationDetails(p) {
     } else if (p.media) {
         if (Array.isArray(p.media) && p.media.length > 0) {
             const first = p.media[0];
-            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav|m4a|ogg|flac|aac)(\?|$)/i.test(first)) {
+            if (typeof first === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|7z|mp3|wav|m4a|ogg|flac|aac)(\?|$)/i.test(first)) {
                 rawMediaUrl = first;
             }
-        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|mp3|wav|m4a|ogg|flac|aac)(\?|$)/i.test(p.media)) {
+        } else if (typeof p.media === 'string' && !/\.(mp4|webm|mov|pdf|pptx?|docx?|xlsx?|zip|rar|7z|mp3|wav|m4a|ogg|flac|aac)(\?|$)/i.test(p.media)) {
             rawMediaUrl = p.media;
         }
     } else if (p.linkPreview?.image) {
         rawMediaUrl = p.linkPreview.image;
     } else if (p.gifUrl) {
         rawMediaUrl = p.gifUrl;
-    } else if (p.youtubeUrl || (p.mediaType === 'youtube' && typeof p.media === 'string')) {
+    } else if (p.youtubeUrl || (mediaType === 'youtube' && typeof p.media === 'string')) {
         const ytSource = p.youtubeUrl || p.media;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = String(ytSource).match(regExp);
@@ -130,9 +178,28 @@ function extractPostNotificationDetails(p) {
 
         const rawSize = typeof p.pdfSize === 'number' && p.pdfSize > 0 ? p.pdfSize : (firstAtt?.size || 0);
         if (typeof rawSize === 'number' && rawSize > 0) {
-            pdfSize = (rawSize / (1024 * 1024)).toFixed(2) + ' MB';
+            pdfSize = formatAudioSize(rawSize);
         } else {
             pdfSize = 'PDF';
+        }
+    }
+
+    let fileName = '';
+    let fileExt = '';
+    let fileSize = '';
+    let folderFileCount = '';
+    if (mediaType === 'file' || mediaType === 'folder') {
+        fileName = String(
+            firstAtt?.folderName || firstAtt?.name || p.pdfName || (mediaType === 'folder' ? 'Klasör' : 'Dosya')
+        ).trim();
+        fileExt = mediaType === 'folder'
+            ? 'folder'
+            : (String(firstAtt?.ext || '').replace(/^\./, '').toLowerCase() || parseExtFromString(fileName) || parseExtFromString(firstAtt?.url));
+        const rawBytes = Number(firstAtt?.size) || Number(p.pdfSize) || 0;
+        fileSize = formatAudioSize(rawBytes);
+        if (mediaType === 'folder') {
+            const cnt = Number(firstAtt?.fileCount) || (Array.isArray(firstAtt?.folderFiles) ? firstAtt.folderFiles.length : 0);
+            if (cnt > 0) folderFileCount = String(cnt);
         }
     }
 
@@ -142,26 +209,32 @@ function extractPostNotificationDetails(p) {
     let isVoiceRecording = false;
     let audioColor = '';
     if (mediaType === 'audio') {
-        const rawAudioName = String(firstAtt?.name || '').trim();
+        const rawAudioName = String(firstAtt?.name || p.pdfName || '').trim();
         isVoiceRecording = Boolean(
             firstAtt?.isVoiceRecording || /^ses-kaydi-\d+/i.test(rawAudioName)
         );
         const strippedName = rawAudioName.replace(/\.(mp3|wav|m4a|ogg|webm|flac|aac)$/i, '').trim();
         audioName = isVoiceRecording ? 'Ses Kaydı' : (strippedName || 'Ses Dosyası');
         audioDuration = formatAudioDuration(firstAtt?.duration);
-        audioSize = formatAudioSize(firstAtt?.size);
+        audioSize = formatAudioSize(firstAtt?.size || p.pdfSize);
         audioColor = Array.isArray(firstAtt?.palette) && firstAtt.palette[0]
             ? String(firstAtt.palette[0]).trim()
             : '';
+        fileExt = String(firstAtt?.ext || '').replace(/^\./, '').toLowerCase() || parseExtFromString(rawAudioName) || parseExtFromString(firstAtt?.url) || 'mp3';
+        fileName = rawAudioName || audioName;
+        fileSize = audioSize;
     }
 
     let snippet = text;
     if (!snippet) {
         if (mediaType === 'pdf') {
             snippet = `📄 ${pdfName}${pdfSize ? ` (${pdfSize})` : ''}`;
+        } else if (mediaType === 'folder') {
+            const countTxt = folderFileCount ? `${folderFileCount} dosya` : 'Klasör';
+            snippet = `📁 ${fileName} (${countTxt}${fileSize ? ` • ${fileSize}` : ''})`;
         } else if (mediaType === 'file') {
-            const fname = firstAtt?.name || 'Dosya';
-            snippet = `📎 ${fname}`;
+            const emoji = FILE_SNIPPET_MAP[fileExt] || '📎';
+            snippet = `${emoji} ${fileName}${fileSize ? ` (${fileSize})` : ''}`;
         } else if (mediaType === 'audio') {
             snippet = isVoiceRecording
                 ? `🎙️ Ses Kaydı${audioDuration ? ` (${audioDuration})` : ''}`
@@ -170,6 +243,8 @@ function extractPostNotificationDetails(p) {
             snippet = '🎬 Video paylaştı';
         } else if (mediaType === 'gif') {
             snippet = '👾 GIF paylaştı';
+        } else if (mediaType === 'youtube') {
+            snippet = '▶️ YouTube videosu paylaştı';
         } else if (mediaType === 'image') {
             snippet = '🖼️ Görsel paylaştı';
         } else {
@@ -184,6 +259,10 @@ function extractPostNotificationDetails(p) {
         postMedia,
         pdfName,
         pdfSize,
+        fileName,
+        fileExt,
+        fileSize,
+        folderFileCount,
         audioName,
         audioDuration,
         audioSize,
@@ -440,6 +519,10 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                         postMedia: details.postMedia || '',
                         pdfName: clampText(details.pdfName, 45),
                         pdfSize: details.pdfSize || '',
+                        fileName: clampText(details.fileName, 55),
+                        fileExt: details.fileExt || '',
+                        fileSize: details.fileSize || '',
+                        folderFileCount: details.folderFileCount || '',
                         audioName: clampText(details.audioName, 45),
                         audioDuration: details.audioDuration || '',
                         audioSize: details.audioSize || '',
@@ -458,6 +541,10 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                     postMedia: currentPostDetails.postMedia || '',
                     pdfName: clampText(currentPostDetails.pdfName, 45),
                     pdfSize: currentPostDetails.pdfSize || '',
+                    fileName: clampText(currentPostDetails.fileName, 55),
+                    fileExt: currentPostDetails.fileExt || '',
+                    fileSize: currentPostDetails.fileSize || '',
+                    folderFileCount: currentPostDetails.folderFileCount || '',
                     audioName: clampText(currentPostDetails.audioName, 45),
                     audioDuration: currentPostDetails.audioDuration || '',
                     audioSize: currentPostDetails.audioSize || '',
@@ -502,6 +589,10 @@ export async function sendPortalPostNotifications({ post, portal, channelId, aut
                     postMedia: currentPostDetails.postMedia,
                     pdfName: currentPostDetails.pdfName,
                     pdfSize: currentPostDetails.pdfSize,
+                    fileName: currentPostDetails.fileName,
+                    fileExt: currentPostDetails.fileExt,
+                    fileSize: currentPostDetails.fileSize,
+                    folderFileCount: currentPostDetails.folderFileCount,
                     audioName: currentPostDetails.audioName,
                     audioDuration: currentPostDetails.audioDuration,
                     audioSize: currentPostDetails.audioSize,

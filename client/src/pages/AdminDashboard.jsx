@@ -13,6 +13,7 @@ import UserAvatar from '../components/UserAvatar';
 import ImageCropper from '../components/ImageCropper';
 import MobileDesignShowcase from '../components/MobileDesignShowcase';
 import MobileVersionHistory from '../components/MobileVersionHistory';
+import MobileAppAdoptionPanel from '../components/MobileAppAdoptionPanel';
 import { uploadFile } from '../utils/uploadUtils';
 import './AdminDashboard.css';
 
@@ -4420,7 +4421,7 @@ const AdminDashboard = () => {
     };
 
     const handleSendUpdatePrompt = async (userId, username) => {
-        if (!window.confirm(`@${username} kullanıcısına v2.5.5 sürüm güncellemesi sistem mesajı ve bildirimi gönderilsin mi?`)) return;
+        if (!window.confirm(`@${username} kullanıcısına v2.6.2 sürüm güncellemesi sistem mesajı ve bildirimi gönderilsin mi?`)) return;
         try {
             const { data } = await axios.post('/api/admin/users/send-update-prompt', { userId });
             alert(data.message || 'Güncelleme mesajı gönderildi.');
@@ -4430,9 +4431,9 @@ const AdminDashboard = () => {
     };
 
     const handleBroadcastUpdatePrompt = async () => {
-        if (!window.confirm("Mobil uygulaması v2.5.5'ten eski olan TÜM kullanıcılara sistem güncelleme bildirimi ve mesajı gönderilsin mi?")) return;
+        if (!window.confirm("Mobil uygulaması v2.6.2'den eski olan TÜM kullanıcılara sistem güncelleme bildirimi ve mesajı gönderilsin mi?")) return;
         try {
-            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 256 });
+            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 262 });
             alert(data.message || 'Tüm eski sürümlü kullanıcılara güncelleme bildirimi gönderildi.');
         } catch (err) {
             alert(err.response?.data?.message || err.message);
@@ -6265,6 +6266,10 @@ const AdminDashboard = () => {
                     ) : (
                         <>
                             {getModuleAccess('mobile-versions').access === 'view' && renderViewModeBanner('Mobil Sürüm Günlüğü')}
+                            <MobileAppAdoptionPanel
+                                onSendUpdatePrompt={handleSendUpdatePrompt}
+                                onBroadcastUpdatePrompt={handleBroadcastUpdatePrompt}
+                            />
                             <MobileVersionHistory />
                         </>
                     )
@@ -7670,15 +7675,15 @@ const AdminDashboard = () => {
                                                 <span className="user-stat-label" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📱 Uygulama Sürümü</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                                     {user.appPlatform === 'android' ? (
-                                                        user.versionCode >= 261 ? (
-                                                            <span style={{ color: '#4ade80', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        user.versionCode >= 262 ? (
+                                                            <span style={{ color: '#4ade80', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
-                                                                Android v{user.appVersion || '2.6.1'} (Güncel)
+                                                                Android v{user.appVersion || '2.6.2'} (Güncel){user.otaVersion ? ` • OTA: ${user.otaVersion}` : ''}
                                                             </span>
                                                         ) : (
-                                                            <span style={{ color: '#f87171', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <span style={{ color: '#f87171', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
-                                                                Android {user.appVersion ? `v${user.appVersion}` : 'Eski'} (Güncelleme Gerekli)
+                                                                Android {user.appVersion ? `v${user.appVersion}` : 'Eski'} (Güncelleme Gerekli){user.otaVersion ? ` • OTA: ${user.otaVersion}` : ''}
                                                             </span>
                                                         )
                                                     ) : (
@@ -7688,7 +7693,7 @@ const AdminDashboard = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 259) && (
+                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 262) && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleSendUpdatePrompt(user._id, user.username)}

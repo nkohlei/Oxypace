@@ -19,6 +19,7 @@ import Post from '../models/Post.js';
 import Portal from '../models/Portal.js';
 import ActivityLog from '../models/ActivityLog.js';
 import logActivity from '../utils/auditLogger.js';
+import { APP_VERSION_CONFIG } from '../config/appVersion.js';
 
 const router = express.Router();
 
@@ -186,7 +187,7 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
                 typeFilter.appPlatform = 'android';
                 typeFilter.isDeleted = { $ne: true };
                 typeFilter.$or = [
-                    { versionCode: { $lt: 261 } },
+                    { versionCode: { $lt: APP_VERSION_CONFIG.versionCode } },
                     { versionCode: null },
                     { versionCode: 0 }
                 ];
@@ -202,7 +203,7 @@ router.get('/users', protect, requirePermission('canManageUsers'), async (req, r
         }
 
         const users = await User.find(query)
-            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals isDeleted deletedAt deletionReason status appVersion versionCode appPlatform lastAppSyncAt')
+            .select('username email profile verificationBadge customBadge isVerified isAdmin isBot isBanned banReason banExpiresAt isShadowbanned lastIP registeredDevices followerCount followingCount postCount isTouristAdmin touristAdminExpiresAt touristAdminPermissions assignedBy createdAt lastActive recoveryStatus joinedPortals isDeleted deletedAt deletionReason status appVersion versionCode otaVersion appPlatform lastAppSyncAt lastOtaSyncAt')
             .populate('joinedPortals', 'name avatar members channels')
             .sort({ createdAt: -1 })
             .limit(100)
@@ -3051,9 +3052,9 @@ router.post('/broadcast-announcement', protect, requirePermission('canSendNotifi
 // @access  Private/Admin
 router.post('/users/send-update-prompt', protect, requirePermission('canManageUsers'), async (req, res) => {
     try {
-        const { userId, minVersionCode = 261, customMessage } = req.body;
+        const { userId, minVersionCode = APP_VERSION_CONFIG.versionCode, customMessage } = req.body;
         const io = req.app.get('io');
-        const defaultMsg = customMessage || 'Oxypace v2.6.1 yayınlandı! Yenilenen cihaz bildirimleri (isim + @kullanıcı adı, müzik kartı, alt boşluk ve birikme düzeltmesi), mobil kompakt ses kartı ve canlı OTA güncelleyici için lütfen uygulamanızı güncelleyin.';
+        const defaultMsg = customMessage || `Oxypace v${APP_VERSION_CONFIG.latestVersion} yayınlandı! ${APP_VERSION_CONFIG.changelog}`;
 
         let targetUsers = [];
         if (userId) {
@@ -3098,10 +3099,10 @@ router.post('/users/send-update-prompt', protect, requirePermission('canManageUs
                     createdAt: new Date()
                 });
                 io.to(uIdStr).emit('prompt_app_update', {
-                    latestVersion: '2.6.1',
-                    versionCode: 261,
+                    latestVersion: APP_VERSION_CONFIG.latestVersion,
+                    versionCode: APP_VERSION_CONFIG.versionCode,
                     changelog: defaultMsg,
-                    downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk'
+                    downloadUrl: APP_VERSION_CONFIG.downloadUrl
                 });
             });
         }
@@ -3139,6 +3140,94 @@ router.post('/users/send-update-prompt', protect, requirePermission('canManageUs
     } catch (err) {
         console.error('send-update-prompt error:', err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// @route   GET /api/admin/app-versions
+// @desc    Get mobile APK & live OTA adoption telemetry across all non-deleted users
+// @access  Private/Admin
+router.get('/app-versions', protect, requirePermission('canManageUsers'), async (req, res) => {
+    try {
+        const users = await User.find({
+            isDeleted: { $ne: true },
+            isBot: { $ne: true }
+        })
+            .select('username profile.displayName profile.avatar profile.lowResAvatar appPlatform appVersion versionCode otaVersion lastAppSyncAt lastOtaSyncAt lastActive')
+            .sort({ lastAppSyncAt: -1, lastActive: -1 })
+            .lean();
+
+        let totalAndroid = 0;
+        let upToDateApk = 0;
+        let outdatedApk = 0;
+        let upToDateOta = 0;
+        let totalWeb = 0;
+        const versionCounts = new Map();
+
+        const formattedUsers = users.map((u) => {
+            const platform = u.appPlatform || 'web';
+            const versionCode = Number(u.versionCode) || 0;
+            const appVersion = u.appVersion || (platform === 'web' ? 'Web' : null);
+            const otaVersion = u.otaVersion || null;
+            const isAndroid = platform === 'android';
+            const isApkUpToDate = isAndroid && versionCode >= APP_VERSION_CONFIG.versionCode;
+            const isOtaUpToDate = isAndroid && otaVersion === APP_VERSION_CONFIG.otaVersion;
+
+            if (isAndroid) {
+                totalAndroid += 1;
+                if (isApkUpToDate) {
+                    upToDateApk += 1;
+                } else {
+                    outdatedApk += 1;
+                }
+                if (isOtaUpToDate) {
+                    upToDateOta += 1;
+                }
+                const key = appVersion ? `v${appVersion} (${versionCode})` : 'Bilinmiyor';
+                versionCounts.set(key, {
+                    label: key,
+                    versionCode,
+                    count: (versionCounts.get(key)?.count || 0) + 1
+                });
+            } else {
+                totalWeb += 1;
+            }
+
+            return {
+                _id: u._id,
+                username: u.username,
+                displayName: u.profile?.displayName || u.username,
+                avatar: u.profile?.lowResAvatar || u.profile?.avatar || '',
+                appPlatform: platform,
+                appVersion,
+                versionCode,
+                otaVersion,
+                lastAppSyncAt: u.lastAppSyncAt || u.lastActive || null,
+                lastOtaSyncAt: u.lastOtaSyncAt || null,
+                isApkUpToDate,
+                isOtaUpToDate,
+            };
+        });
+
+        const versionBreakdown = Array.from(versionCounts.values()).sort(
+            (a, b) => (b.versionCode || 0) - (a.versionCode || 0)
+        );
+
+        res.json({
+            latest: APP_VERSION_CONFIG,
+            summary: {
+                totalUsers: formattedUsers.length,
+                totalAndroid,
+                upToDateApk,
+                outdatedApk,
+                upToDateOta,
+                totalWeb,
+                versionBreakdown,
+            },
+            users: formattedUsers,
+        });
+    } catch (err) {
+        console.error('app-versions error:', err);
+        res.status(500).json({ message: 'Mobil sürüm istatistikleri alınamadı.' });
     }
 });
 

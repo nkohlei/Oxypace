@@ -842,16 +842,20 @@ router.get('/devices', protect, async (req, res) => {
 // @access  Private
 router.post('/sync-version', protect, async (req, res) => {
     try {
-        const { appVersion, versionCode, platform } = req.body;
+        const { appVersion, versionCode, platform, otaVersion } = req.body;
         const updateData = {
             appPlatform: platform || 'web',
             lastAppSyncAt: new Date()
         };
         if (appVersion) updateData.appVersion = String(appVersion).trim();
-        if (typeof versionCode === 'number') updateData.versionCode = versionCode;
+        if (typeof versionCode === 'number' && !Number.isNaN(versionCode)) updateData.versionCode = versionCode;
+        if (otaVersion && typeof otaVersion === 'string' && otaVersion.trim()) {
+            updateData.otaVersion = otaVersion.trim();
+            updateData.lastOtaSyncAt = new Date();
+        }
 
         const user = await User.findByIdAndUpdate(req.user._id, { $set: updateData }, { new: true })
-            .select('appVersion versionCode appPlatform lastAppSyncAt');
+            .select('appVersion versionCode otaVersion appPlatform lastAppSyncAt lastOtaSyncAt');
         res.json({ success: true, user });
     } catch (err) {
         console.error('sync-version error:', err);
