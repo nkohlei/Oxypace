@@ -125,7 +125,7 @@ const MobileAppAdoptionPanel = ({ onSendUpdatePrompt, onBroadcastUpdatePrompt })
                             Kullanıcı Mobil Sürüm &amp; OTA Takibi
                         </h3>
                         <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94a3b8' }}>
-                            Hedef APK: <strong style={{ color: '#e2e8f0' }}>v{latest.latestVersion || '2.6.2'}</strong> ({latest.versionCode || 262}) • Hedef OTA: <strong style={{ color: '#38bdf8' }}>{latest.otaVersion || '2.6.2-ota.1'}</strong>
+                            Hedef APK: <strong style={{ color: '#e2e8f0' }}>v{latest.latestVersion || '2.6.3'}</strong> ({latest.versionCode || 263}) • Hedef OTA: <strong style={{ color: '#38bdf8' }}>{latest.otaVersion || '2.6.3-ota.1'}</strong>
                         </p>
                     </div>
                 </div>
@@ -264,9 +264,9 @@ const MobileAppAdoptionPanel = ({ onSendUpdatePrompt, onBroadcastUpdatePrompt })
                                 fontSize: '11px',
                                 padding: '4px 10px',
                                 borderRadius: '999px',
-                                background: item.versionCode >= (latest.versionCode || 262) ? 'rgba(34,197,94,0.14)' : 'rgba(255,255,255,0.06)',
+                                background: item.versionCode >= (latest.versionCode || 263) ? 'rgba(34,197,94,0.14)' : 'rgba(255,255,255,0.06)',
                                 border: '1px solid rgba(255,255,255,0.12)',
-                                color: item.versionCode >= (latest.versionCode || 262) ? '#86efac' : '#cbd5e1',
+                                color: item.versionCode >= (latest.versionCode || 263) ? '#86efac' : '#cbd5e1',
                                 fontWeight: 600,
                             }}
                         >

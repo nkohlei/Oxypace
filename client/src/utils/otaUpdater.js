@@ -7,27 +7,100 @@ import axios from 'axios';
 // @capgo/capacitor-updater (which remains in root package.json for Android).
 const CapacitorUpdater = registerPlugin('CapacitorUpdater');
 
-export const CURRENT_OTA_VERSION = '2.6.2-ota.1';
+export const CURRENT_OTA_VERSION = '2.6.3-ota.1';
 
 let otaInitialized = false;
 let otaCheckInFlight = false;
 let lastOtaCheckAt = 0;
 const OTA_THROTTLE_MS = 60 * 1000;
 
-export async function getActiveOtaVersion() {
-    if (!Capacitor.isNativePlatform()) return null;
+async function getActiveBundleInfo() {
+    if (!Capacitor.isNativePlatform()) {
+        return { version: CURRENT_OTA_VERSION, isOtaBundle: false };
+    }
     try {
         const state = await CapacitorUpdater.current().catch(() => null);
+        const activeId = state?.bundle?.id;
         const activeVer = state?.bundle?.version;
-        if (activeVer && activeVer !== 'builtin') {
-            return String(activeVer);
+        if (activeId && activeId !== 'builtin' && activeVer && activeVer !== 'builtin') {
+            return { version: String(activeVer), isOtaBundle: true };
         }
     } catch (_) {}
-    try {
-        return localStorage.getItem('oxypace_ota_version') || CURRENT_OTA_VERSION;
-    } catch (_) {
-        return CURRENT_OTA_VERSION;
+    return { version: CURRENT_OTA_VERSION, isOtaBundle: false };
+}
+
+export async function getActiveOtaVersion() {
+    if (!Capacitor.isNativePlatform()) return null;
+    const info = await getActiveBundleInfo();
+    return info.version;
+}
+
+export async function getVersionSummary() {
+    if (!Capacitor.isNativePlatform()) {
+        return {
+            platform: 'web',
+            appVersion: '2.6.3',
+            versionCode: 0,
+            otaVersion: CURRENT_OTA_VERSION,
+            isOtaBundle: false,
+        };
     }
+    const [appInfo, bundleInfo] = await Promise.all([
+        CapacitorApp.getInfo().catch(() => null),
+        getActiveBundleInfo(),
+    ]);
+    return {
+        platform: 'android',
+        appVersion: appInfo?.version || '2.6.3',
+        versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 263,
+        otaVersion: bundleInfo.version,
+        isOtaBundle: bundleInfo.isOtaBundle,
+    };
+}
+
+function showOtaUpdatedToast(versionText) {
+    if (typeof document === 'undefined' || !versionText) return;
+    try {
+        const existing = document.getElementById('oxypace-ota-toast');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+        const el = document.createElement('div');
+        el.id = 'oxypace-ota-toast';
+        el.textContent = `Oxypace güncellendi (v${versionText})`;
+        Object.assign(el.style, {
+            position: 'fixed',
+            top: 'max(18px, env(safe-area-inset-top, 18px))',
+            left: '50%',
+            transform: 'translateX(-50%) translateY(-16px)',
+            background: 'rgba(18, 20, 26, 0.94)',
+            color: '#f8fafc',
+            border: '1px solid rgba(56, 189, 248, 0.45)',
+            borderRadius: '999px',
+            padding: '10px 18px',
+            fontSize: '13px',
+            fontWeight: '600',
+            letterSpacing: '0.01em',
+            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(10px)',
+            zIndex: '999999',
+            opacity: '0',
+            transition: 'opacity 0.25s ease, transform 0.25s ease',
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+        });
+        document.body.appendChild(el);
+        requestAnimationFrame(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateX(-50%) translateY(0)';
+        });
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateX(-50%) translateY(-12px)';
+            setTimeout(() => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 300);
+        }, 4200);
+    } catch (_) {}
 }
 
 function isVoiceCallActive() {
@@ -46,8 +119,8 @@ async function reportOtaVersionToServer(otaVersion) {
         await axios.post(
             '/api/users/sync-version',
             {
-                appVersion: appInfo?.version || '2.6.2',
-                versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 262,
+                appVersion: appInfo?.version || '2.6.3',
+                versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 263,
                 platform: 'android',
                 otaVersion: String(otaVersion),
             },
@@ -59,9 +132,16 @@ async function reportOtaVersionToServer(otaVersion) {
 let otaPushListenerRegistered = false;
 
 export async function checkAndApplyOtaUpdate(force = false) {
-    if (!Capacitor.isNativePlatform() || otaCheckInFlight) return;
+    if (!Capacitor.isNativePlatform()) {
+        return { status: 'skipped', message: 'Web platformu' };
+    }
+    if (otaCheckInFlight) {
+        return { status: 'downloading', message: 'Kontrol devam ediyor...' };
+    }
     const now = Date.now();
-    if (!force && now - lastOtaCheckAt < OTA_THROTTLE_MS) return;
+    if (!force && now - lastOtaCheckAt < OTA_THROTTLE_MS) {
+        return { status: 'skipped', message: 'Yakın zamanda kontrol edildi' };
+    }
 
     otaCheckInFlight = true;
     lastOtaCheckAt = now;
@@ -74,18 +154,20 @@ export async function checkAndApplyOtaUpdate(force = false) {
             CapacitorUpdater.list().catch(() => null),
         ]);
 
-        if (!data?.otaVersion || !data?.otaBundleUrl) return;
+        if (!data?.otaVersion || !data?.otaBundleUrl) {
+            return { status: 'up_to_date', version: currentOtaVer };
+        }
 
-        const nativeVerCode = Number(appInfo?.build || 262);
-        const minNativeCode = Number(data.otaMinNativeVersionCode || 262);
+        const nativeVerCode = Number(appInfo?.build || 263);
+        const minNativeCode = Number(data.otaMinNativeVersionCode || 263);
         const minSupportedNative = Number(data.minSupportedVersionCode || 0);
 
         if (nativeVerCode < minNativeCode || nativeVerCode < minSupportedNative) {
-            return;
+            return { status: 'skipped', message: 'APK güncellemesi gerekli' };
         }
 
         if (String(data.otaVersion) === String(currentOtaVer)) {
-            return;
+            return { status: 'up_to_date', version: currentOtaVer };
         }
 
         const existingBundles = Array.isArray(listRes?.bundles) ? listRes.bundles : [];
@@ -93,7 +175,7 @@ export async function checkAndApplyOtaUpdate(force = false) {
 
         if (matchedBundle?.status === 'downloading') {
             console.log(`[OTA] Native background download already in progress for ${data.otaVersion}`);
-            return;
+            return { status: 'downloading', version: String(data.otaVersion) };
         }
 
         let targetBundle = null;
@@ -101,10 +183,15 @@ export async function checkAndApplyOtaUpdate(force = false) {
             console.log(`[OTA] Using already-downloaded background bundle ${data.otaVersion}`);
             targetBundle = matchedBundle;
         } else {
+            if (!data.otaChecksum) {
+                console.warn('[OTA] Skipping download: server did not return otaChecksum');
+                return { status: 'error', message: 'Checksum eksik' };
+            }
             console.log(`[OTA] Downloading live bundle ${data.otaVersion} from ${data.otaBundleUrl}...`);
             targetBundle = await CapacitorUpdater.download({
                 url: data.otaBundleUrl,
                 version: String(data.otaVersion),
+                checksum: String(data.otaChecksum),
             });
         }
 
@@ -112,15 +199,21 @@ export async function checkAndApplyOtaUpdate(force = false) {
             localStorage.setItem('oxypace_ota_version', String(data.otaVersion));
             await reportOtaVersionToServer(data.otaVersion);
             if (isVoiceCallActive()) {
+                localStorage.setItem('oxypace_pending_ota_toast', String(data.otaVersion));
                 await CapacitorUpdater.next(targetBundle);
                 console.log(`[OTA] Queued bundle ${data.otaVersion} for next restart (active call protected).`);
+                return { status: 'queued', version: String(data.otaVersion) };
             } else {
+                localStorage.setItem('oxypace_pending_ota_toast', String(data.otaVersion));
                 await CapacitorUpdater.set(targetBundle);
                 console.log(`[OTA] Applied live bundle ${data.otaVersion} cleanly.`);
+                return { status: 'applied', version: String(data.otaVersion) };
             }
         }
+        return { status: 'up_to_date', version: currentOtaVer };
     } catch (err) {
         console.warn('[OTA] Live update check skipped/failed:', err?.message || err);
+        return { status: 'error', message: err?.message || 'Kontrol başarısız' };
     } finally {
         otaCheckInFlight = false;
     }
@@ -141,12 +234,25 @@ export async function initOtaUpdater() {
         console.warn('[OTA] notifyAppReady error:', err?.message || err);
     }
 
-    // Immediately report active/headless-installed OTA bundle version to server
+    // Report active/headless-installed OTA bundle version and notify user if freshly updated
     try {
-        const activeVer = await getActiveOtaVersion();
-        if (activeVer) {
-            localStorage.setItem('oxypace_ota_version', String(activeVer));
-            reportOtaVersionToServer(activeVer);
+        const bundleInfo = await getActiveBundleInfo();
+        if (bundleInfo?.version) {
+            localStorage.setItem('oxypace_ota_version', String(bundleInfo.version));
+            reportOtaVersionToServer(bundleInfo.version);
+
+            const pendingToast = localStorage.getItem('oxypace_pending_ota_toast');
+            const lastSeenOta = localStorage.getItem('oxypace_last_seen_ota');
+            if (
+                pendingToast === bundleInfo.version ||
+                (bundleInfo.isOtaBundle && lastSeenOta !== bundleInfo.version)
+            ) {
+                localStorage.removeItem('oxypace_pending_ota_toast');
+                localStorage.setItem('oxypace_last_seen_ota', bundleInfo.version);
+                setTimeout(() => showOtaUpdatedToast(bundleInfo.version), 900);
+            } else if (!bundleInfo.isOtaBundle) {
+                localStorage.setItem('oxypace_last_seen_ota', bundleInfo.version);
+            }
         }
     } catch (_) {}
 

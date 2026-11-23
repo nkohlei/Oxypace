@@ -12,6 +12,8 @@ import Navbar from '../components/Navbar';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import { getImageUrl } from '../utils/imageUtils';
+import { Capacitor } from '@capacitor/core';
+import { getVersionSummary, checkAndApplyOtaUpdate } from '../utils/otaUpdater';
 import '../components/InfoPage.css';
 import './Settings.css';
 
@@ -51,6 +53,38 @@ const Settings = () => {
     const [liveRoomQuality, setLiveRoomQuality] = useState(() => {
         return localStorage.getItem('oxypace_call_quality') || 'saver';
     });
+    const [versionInfo, setVersionInfo] = useState({
+        platform: Capacitor.isNativePlatform() ? 'android' : 'web',
+        appVersion: '2.6.3',
+        otaVersion: '2.6.3-ota.1',
+    });
+    const [otaCheckState, setOtaCheckState] = useState({ checking: false, label: '' });
+
+    useEffect(() => {
+        let mounted = true;
+        getVersionSummary().then((summary) => {
+            if (mounted && summary) setVersionInfo(summary);
+        }).catch(() => {});
+        return () => { mounted = false; };
+    }, []);
+
+    const handleManualOtaCheck = async () => {
+        if (otaCheckState.checking) return;
+        setOtaCheckState({ checking: true, label: 'Kontrol ediliyor...' });
+        const res = await checkAndApplyOtaUpdate(true);
+        if (res?.status === 'up_to_date') {
+            setOtaCheckState({ checking: false, label: 'Güncel ✓' });
+        } else if (res?.status === 'downloading') {
+            setOtaCheckState({ checking: false, label: 'İndiriliyor...' });
+        } else if (res?.status === 'applied' || res?.status === 'queued') {
+            setOtaCheckState({ checking: false, label: 'Güncelleme uygulanıyor...' });
+        } else {
+            setOtaCheckState({ checking: false, label: res?.message || 'Denetlendi' });
+        }
+        getVersionSummary().then((summary) => {
+            if (summary) setVersionInfo(summary);
+        }).catch(() => {});
+    };
 
     const handleLiveRoomQualityChange = (mode) => {
         setLiveRoomQuality(mode);
@@ -783,6 +817,41 @@ const Settings = () => {
 
                 <div className="settings-footer-info" style={{ marginTop: 'auto', paddingTop: '24px' }}>
                     <p>&copy; 2026 Oxypace</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', marginTop: '4px' }}>
+                        {versionInfo.platform === 'android'
+                            ? `Android v${versionInfo.appVersion} • OTA: ${versionInfo.otaVersion}`
+                            : `Web v${versionInfo.appVersion}`}
+                    </p>
+                    {Capacitor.isNativePlatform() && (
+                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <button
+                                type="button"
+                                onClick={handleManualOtaCheck}
+                                disabled={otaCheckState.checking}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                                    background: 'rgba(56, 189, 248, 0.12)',
+                                    color: '#38bdf8',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    cursor: otaCheckState.checking ? 'wait' : 'pointer',
+                                }}
+                            >
+                                <RefreshCw size={13} />
+                                {otaCheckState.checking ? 'Denetleniyor...' : 'Güncelleme Denetle'}
+                            </button>
+                            {otaCheckState.label && (
+                                <span style={{ fontSize: '11.5px', color: '#86efac', fontWeight: 500 }}>
+                                    {otaCheckState.label}
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

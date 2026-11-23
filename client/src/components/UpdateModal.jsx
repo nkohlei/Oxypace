@@ -7,8 +7,8 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { useSocket } from '../context/SocketContext';
 
 // Fallback APK version (used only if CapacitorApp.getInfo() fails)
-const CURRENT_VERSION = '2.6.2';
-const CURRENT_VERSION_CODE = 262;
+const CURRENT_VERSION = '2.6.3';
+const CURRENT_VERSION_CODE = 263;
 
 /**
  * Compares two semver strings. Returns true if remote > local.

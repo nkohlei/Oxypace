@@ -27,15 +27,41 @@ import {
 import './MobileVersionHistory.css';
 
 // --------------------------------------------------------------------------
-// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.2)
+// TÜM MOBİL DERLEME VE SÜRÜM GEÇMİŞİ VERİTABANI (v2.0.0 -> v2.6.3)
 // --------------------------------------------------------------------------
 export const MOBILE_VERSIONS_DATA = [
+    {
+        version: 'v2.6.3',
+        versionCode: 263,
+        releaseDate: '23 Kasım 2026',
+        commitHash: 'HEAD',
+        status: 'active',
+        title: 'SHA-256 Doğrulamalı Arka Plan OTA, Görünür Sürüm Takibi, Anlık UI Senkronizasyonu, Orijinal Video Kalitesi, Sıralı Ses/MediaSession & HEIC Desteği',
+        summary: 'Capgo CapacitorUpdater v8.54.2 için SHA-256 checksum desteği sunucuya ve istemciye entegre edilerek arka planda sessiz OTA indirmelerinin sorunsuz uygulanması sağlandı. Güncelleme tamamlandığında kullanıcıya görünür toast bildirimi ve Ayarlar ekranında sürüm + manuel kontrol eklendi. Portal üyelikleri/postları/profilleri için gerçek zamanlı senkronizasyon, videolarda gerçek orijinal kalite seçimi, çoklu seslerde sıralı oynatma + kilit ekranı kontrolü ve .heic/.heif görsel desteği dahil edildi.',
+        category: 'feature',
+        apkSize: '43 MB',
+        targetSdk: 'Android 14+ (API 34-36)',
+        architecture: 'arm64-v8a / universal',
+        highlights: [
+            'SHA-256 Checksum Doğrulamalı OTA & Görünür Bildirim: bundle.zip SHA-256 doğrulaması, Ayarlar sürüm/OTA satırı, Güncelleme Denetle butonu ve güncelleme sonrası açılışta bilgi bildirimi',
+            'Anlık UI Senkronizasyonu: Portal katılma/ayrılma, yeni gönderiler, profil ve portal düzenlemelerinin sayfayı kapatıp açmadan anında güncellenmesi',
+            'Gerçek Orijinal Video Kalitesi: Mobilde otomatik 720p seçildiğinde bile gerçek orijinal çözünürlüğün ve tüm alt kademelerin eksiksiz listelenmesi',
+            'Tekil/Sıralı Ses Oynatma & MediaSession + HEIC Desteği: Çoklu ses postlarında sıradaki sese otomatik geçiş, kilit ekranı/bildirim kontrolleri ve .heic/.heif yükleme/görüntüleme'
+        ],
+        changes: [
+            { type: 'OTA Checksum & UI', detail: 'server.js (/api/app/version otaChecksum, /api/app/ota-check checksum), otaUpdater.js ve Settings.jsx güncellendi.' },
+            { type: 'Gerçek Zamanlı Akış', detail: 'routes/portals.js, routes/users.js, utils/videoTranscoder.js, AuthContext.jsx, useRealtimeSync.js, PortalSidebar.jsx, Portal.jsx ve Profile.jsx güncellendi.' },
+            { type: 'Video & Ses Oynatıcı', detail: 'VideoPlayer.jsx, audioPlaybackManager.js, PostAttachments.jsx ve AudioRecorderPopover.jsx yenilendi.' },
+            { type: 'HEIC/HEIF Desteği', detail: 'utils/heicConverter.js, middleware/upload.js, routes/media.js, heicHelper.js ve tüm medya seçiciler güncellendi.' }
+        ],
+        filesModified: 27
+    },
     {
         version: 'v2.6.2',
         versionCode: 262,
         releaseDate: '23 Kasım 2026',
         commitHash: 'HEAD',
-        status: 'active',
+        status: 'stable',
         title: 'Uzantıya Özel Bildirim Kartları, Sessiz & Avatarlı Mesaj Yanıtlama, Otomatik OTA Güncelleyici & Sürüm Takip Paneli',
         summary: '.docx, .mp3, .pptx, .xlsx, .zip, kod dosyaları ve klasör paylaşımlarının PDF olarak algılanması tamamen giderilerek her dosya uzantısına özel ikon ve renkte bildirim kartları geliştirildi. Portal yeni gönderi bildirimleri tekil hale getirilirken DM bildirimlerinde 6 mesaja kadar akıllı birikme sağlandı; bildirimden yanıt verildiğinde ses çalınmadan önceki mesajlar korunup kullanıcının kendi avatarı eklendi. Ön plana dönüşte otomatik OTA güncelleme ve Yönetici Paneli Mobil Sürüm & OTA Takip ekranı devreye alındı.',
         category: 'feature',

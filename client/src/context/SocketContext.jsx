@@ -106,8 +106,8 @@ export const SocketProvider = ({ children }) => {
                         getActiveOtaVersion().catch(() => null),
                     ]).then(([info, otaVersion]) => {
                         newSocket.emit('sync_app_version', {
-                            appVersion: info?.version || '2.6.2',
-                            versionCode: info?.build ? parseInt(info.build, 10) : 262,
+                            appVersion: info?.version || '2.6.3',
+                            versionCode: info?.build ? parseInt(info.build, 10) : 263,
                             platform: 'android',
                             ...(otaVersion ? { otaVersion } : {}),
                         });

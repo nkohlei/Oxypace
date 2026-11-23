@@ -481,9 +481,44 @@ app.get('/downloads/bundle.zip', (req, res) => {
     return res.status(404).json({ error: 'Bundle file not found' });
 });
 
+let cachedBundleChecksum = null;
+
+function getOtaBundleChecksum() {
+    const candidates = [
+        path.join(__dirname, 'public', 'downloads', 'bundle.zip'),
+        path.join(__dirname, 'client', 'public', 'downloads', 'bundle.zip')
+    ];
+    for (const file of candidates) {
+        if (fs.existsSync(file)) {
+            const stat = fs.statSync(file);
+            if (
+                cachedBundleChecksum &&
+                cachedBundleChecksum.file === file &&
+                cachedBundleChecksum.size === stat.size &&
+                cachedBundleChecksum.mtimeMs === stat.mtimeMs
+            ) {
+                return cachedBundleChecksum.sha256;
+            }
+            const sha256 = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+            cachedBundleChecksum = {
+                file,
+                size: stat.size,
+                mtimeMs: stat.mtimeMs,
+                sha256,
+            };
+            return sha256;
+        }
+    }
+    return '';
+}
+
 // App version check endpoint (public) - used by clients on startup/resume for APK & OTA checks
 app.get('/api/app/version', (req, res) => {
-    res.json(APP_VERSION_CONFIG);
+    const otaChecksum = getOtaBundleChecksum();
+    res.json({
+        ...APP_VERSION_CONFIG,
+        otaChecksum,
+    });
 });
 
 // Capgo CapacitorUpdater native & HeadlessUpdateWorker check endpoint
@@ -513,9 +548,15 @@ app.post('/api/app/ota-check', (req, res) => {
         return res.json({ kind: 'up_to_date', message: 'Builtin bundle already matches latest OTA' });
     }
 
+    const checksum = getOtaBundleChecksum();
+    if (!checksum) {
+        return res.json({ kind: 'up_to_date', message: 'OTA bundle checksum unavailable' });
+    }
+
     return res.json({
         version: latestOta,
         url: APP_VERSION_CONFIG.otaBundleUrl,
+        checksum,
     });
 });
 

@@ -4421,7 +4421,7 @@ const AdminDashboard = () => {
     };
 
     const handleSendUpdatePrompt = async (userId, username) => {
-        if (!window.confirm(`@${username} kullanıcısına v2.6.2 sürüm güncellemesi sistem mesajı ve bildirimi gönderilsin mi?`)) return;
+        if (!window.confirm(`@${username} kullanıcısına v2.6.3 sürüm güncellemesi sistem mesajı ve bildirimi gönderilsin mi?`)) return;
         try {
             const { data } = await axios.post('/api/admin/users/send-update-prompt', { userId });
             alert(data.message || 'Güncelleme mesajı gönderildi.');
@@ -4431,9 +4431,9 @@ const AdminDashboard = () => {
     };
 
     const handleBroadcastUpdatePrompt = async () => {
-        if (!window.confirm("Mobil uygulaması v2.6.2'den eski olan TÜM kullanıcılara sistem güncelleme bildirimi ve mesajı gönderilsin mi?")) return;
+        if (!window.confirm("Mobil uygulaması v2.6.3'ten eski olan TÜM kullanıcılara sistem güncelleme bildirimi ve mesajı gönderilsin mi?")) return;
         try {
-            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 262 });
+            const { data } = await axios.post('/api/admin/users/send-update-prompt', { minVersionCode: 263 });
             alert(data.message || 'Tüm eski sürümlü kullanıcılara güncelleme bildirimi gönderildi.');
         } catch (err) {
             alert(err.response?.data?.message || err.message);
@@ -7675,10 +7675,10 @@ const AdminDashboard = () => {
                                                 <span className="user-stat-label" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📱 Uygulama Sürümü</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                                     {user.appPlatform === 'android' ? (
-                                                        user.versionCode >= 262 ? (
+                                                        user.versionCode >= 263 ? (
                                                             <span style={{ color: '#4ade80', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
-                                                                Android v{user.appVersion || '2.6.2'} (Güncel){user.otaVersion ? ` • OTA: ${user.otaVersion}` : ''}
+                                                                Android v{user.appVersion || '2.6.3'} (Güncel){user.otaVersion ? ` • OTA: ${user.otaVersion}` : ''}
                                                             </span>
                                                         ) : (
                                                             <span style={{ color: '#f87171', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -7693,7 +7693,7 @@ const AdminDashboard = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 262) && (
+                                            {user.appPlatform === 'android' && (!user.versionCode || user.versionCode < 263) && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleSendUpdatePrompt(user._id, user.username)}
