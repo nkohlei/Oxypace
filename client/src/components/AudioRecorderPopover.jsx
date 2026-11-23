@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, Square, Pause, Play, RotateCcw, Check, FolderOpen } from 'lucide-react';
 import { formatDuration, formatFileSize } from '../utils/mediaAttachments';
+import audioPlaybackManager from '../utils/audioPlaybackManager';
 import './AudioRecorderPopover.css';
 
 const pickSupportedAudioMime = () => {
@@ -374,6 +375,7 @@ const AudioRecorderPopover = ({ isOpen, onClose, onAttach }) => {
                                 <audio
                                     ref={previewAudioRef}
                                     src={recordedData.url}
+                                    onPlay={(e) => audioPlaybackManager.pauseAllExcept(e.currentTarget)}
                                     onTimeUpdate={(e) => setPlaybackSec(e.target.currentTime || 0)}
                                     onEnded={() => {
                                         setIsPlaying(false);

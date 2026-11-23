@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFileForBrowser } from '../utils/heicHelper';
 import './CreatePortalModal.css';
 
 const CreatePortalModal = ({ onClose }) => {
@@ -218,13 +219,18 @@ const CreatePortalModal = ({ onClose }) => {
                                     <input 
                                         type="file" 
                                         id="banner-file-input" 
-                                        accept="image/*" 
+                                        accept="image/*,.heic,.heif,image/heic,image/heif" 
                                         style={{ display: 'none' }} 
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                setBannerFile(file);
-                                                setBannerPreview(URL.createObjectURL(file));
+                                        onChange={async (e) => {
+                                            const rawFile = e.target.files[0];
+                                            if (rawFile) {
+                                                try {
+                                                    const file = await normalizeImageFileForBrowser(rawFile);
+                                                    setBannerFile(file);
+                                                    setBannerPreview(URL.createObjectURL(file));
+                                                } catch (err) {
+                                                    setError(err?.message || 'HEIC görseli dönüştürülemedi.');
+                                                }
                                             }
                                         }}
                                     />
@@ -249,13 +255,18 @@ const CreatePortalModal = ({ onClose }) => {
                                         <input 
                                             type="file" 
                                             id="avatar-file-input" 
-                                            accept="image/*" 
+                                            accept="image/*,.heic,.heif,image/heic,image/heif" 
                                             style={{ display: 'none' }} 
-                                            onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                    setAvatarFile(file);
-                                                    setAvatarPreview(URL.createObjectURL(file));
+                                            onChange={async (e) => {
+                                                const rawFile = e.target.files[0];
+                                                if (rawFile) {
+                                                    try {
+                                                        const file = await normalizeImageFileForBrowser(rawFile);
+                                                        setAvatarFile(file);
+                                                        setAvatarPreview(URL.createObjectURL(file));
+                                                    } catch (err) {
+                                                        setError(err?.message || 'HEIC görseli dönüştürülemedi.');
+                                                    }
                                                 }
                                             }}
                                         />

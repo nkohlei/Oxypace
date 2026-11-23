@@ -43,7 +43,7 @@ function inferAttachmentKind(keyOrName = '', declaredMime = '', declaredKind = '
 
     if (ext === 'pdf' || mime === 'application/pdf') return 'pdf';
     if (ext === 'gif' || mime === 'image/gif') return 'gif';
-    if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'heic', 'svg'].includes(ext) || mime.startsWith('image/')) return 'image';
+    if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'heic', 'heif', 'svg'].includes(ext) || mime.startsWith('image/')) return 'image';
     if (['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi', 'flv', '3gp', 'wmv'].includes(ext) || mime.startsWith('video/')) return 'video';
     if (['mp3', 'wav', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'flac', 'weba', 'amr', 'wma'].includes(ext) || mime.startsWith('audio/')) return 'audio';
     return 'file';

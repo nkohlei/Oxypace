@@ -21,6 +21,24 @@ import { computeDmAccess } from '../utils/dmPrivacy.js';
 
 const router = express.Router();
 
+function emitUserProfileUpdated(userDoc) {
+    if (!global.io || !userDoc?._id) return;
+    const payload = {
+        _id: userDoc._id,
+        username: userDoc.username,
+        profile: {
+            displayName: userDoc.profile?.displayName,
+            bio: userDoc.profile?.bio,
+            avatar: userDoc.profile?.avatar,
+            lowResAvatar: userDoc.profile?.lowResAvatar,
+            coverImage: userDoc.profile?.coverImage,
+        },
+        updatedAt: new Date().toISOString(),
+    };
+    global.io.emit('user:profile_updated', payload);
+    global.io.to(`user:${userDoc._id.toString()}`).emit('user:profile_updated', payload);
+}
+
 // @route   POST /api/users/fcm-token
 // @desc    Save/update the device FCM push notification token for the logged-in user
 // @access  Private
@@ -684,6 +702,7 @@ router.put('/me', protect, profileValidation, async (req, res) => {
         }
 
         await user.save();
+        emitUserProfileUpdated(user);
 
         const newProfile = {
             username: user.username,
@@ -1260,6 +1279,7 @@ router.post(
             user.profile.avatarHistory.push({ url: result.original, changedAt: new Date(), changedBy: req.user._id });
 
             await user.save();
+            emitUserProfileUpdated(user);
 
             logActivity({
                 user: user._id,
@@ -1322,6 +1342,7 @@ router.post(
             user.profile.bannerHistory.push({ url: newCoverUrl, changedAt: new Date(), changedBy: req.user._id });
 
             await user.save();
+            emitUserProfileUpdated(user);
 
             logActivity({
                 user: user._id,

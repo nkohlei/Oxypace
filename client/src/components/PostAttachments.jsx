@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
     Play,
     Pause,
@@ -22,6 +22,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { downloadFile as nativeDownloadFile } from '../utils/downloadHelper';
 import { formatDuration, formatFileSize, extractYouTubeInfo } from '../utils/mediaAttachments';
 import { extractPaletteFromImageSource } from '../utils/audioMetadata';
+import audioPlaybackManager from '../utils/audioPlaybackManager';
 import VideoPlayer from './VideoPlayer';
 import PostImageGallery from './PostImageGallery';
 import './PostAttachments.css';
@@ -97,7 +98,17 @@ const InlineYouTubeFacade = ({ url, youtubeId }) => {
     );
 };
 
-const AudioAttachmentCard = ({ att }) => {
+const AudioAttachmentCard = ({
+    att,
+    trackId,
+    artistName,
+    albumTitle,
+    artworkUrl,
+    onEndedNext,
+    onNext,
+    onPrev,
+    registerPlayHandler,
+}) => {
     const audioRef = useRef(null);
     const sliderRef = useRef(null);
     const [playing, setPlaying] = useState(false);
@@ -112,6 +123,15 @@ const AudioAttachmentCard = ({ att }) => {
 
     const src = getImageUrl(att.url);
     const resolvedCover = !isVoiceRecording && att.coverUrl ? getImageUrl(att.coverUrl) : '';
+    const displayTitle = att.name || (isVoiceRecording ? 'Ses Kaydı' : 'Ses Dosyası');
+    const resolvedArtwork = resolvedCover || artworkUrl || '';
+
+    const onNextRef = useRef(onNext);
+    const onPrevRef = useRef(onPrev);
+    const onEndedNextRef = useRef(onEndedNext);
+    onNextRef.current = onNext;
+    onPrevRef.current = onPrev;
+    onEndedNextRef.current = onEndedNext;
 
     const [palette, setPalette] = useState(() =>
         !isVoiceRecording && Array.isArray(att.palette) ? att.palette.filter(Boolean).slice(0, 3) : []
@@ -136,15 +156,41 @@ const AudioAttachmentCard = ({ att }) => {
         setPalette([]);
     }, [isVoiceRecording, resolvedCover, att.palette]);
 
+    const startPlayback = useCallback(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        audioPlaybackManager.pauseAllExcept(el);
+        el.play().catch(() => {});
+    }, []);
+
+    const pausePlayback = useCallback(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        el.pause();
+    }, []);
+
+    useEffect(() => {
+        if (typeof registerPlayHandler === 'function') {
+            registerPlayHandler(startPlayback);
+            return () => registerPlayHandler(null);
+        }
+    }, [registerPlayHandler, startPlayback]);
+
+    useEffect(() => {
+        const el = audioRef.current;
+        return () => {
+            audioPlaybackManager.unregister(trackId, el);
+        };
+    }, [trackId]);
+
     const togglePlay = (e) => {
         e.stopPropagation();
         const el = audioRef.current;
         if (!el) return;
         if (playing) {
-            el.pause();
-            setPlaying(false);
+            pausePlayback();
         } else {
-            el.play().then(() => setPlaying(true)).catch(() => {});
+            startPlayback();
         }
     };
 
@@ -194,10 +240,36 @@ const AudioAttachmentCard = ({ att }) => {
                     const d = e.currentTarget.duration;
                     if (Number.isFinite(d) && d > 0) setDuration(d);
                 }}
-                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
-                onEnded={() => {
+                onPlay={(e) => {
+                    const el = e.currentTarget;
+                    setPlaying(true);
+                    audioPlaybackManager.notifyPlay(trackId, el, {
+                        metadata: {
+                            title: displayTitle,
+                            artist: artistName || 'Oxypace',
+                            album: albumTitle || 'Oxypace Ses',
+                            artwork: resolvedArtwork || undefined,
+                        },
+                        onPlay: startPlayback,
+                        onPause: pausePlayback,
+                        onNext: onNextRef.current ? () => onNextRef.current?.() : undefined,
+                        onPrev: onPrevRef.current ? () => onPrevRef.current?.() : undefined,
+                        onExternalPause: () => setPlaying(false),
+                    });
+                }}
+                onPause={(e) => {
+                    setPlaying(false);
+                    audioPlaybackManager.notifyPause(trackId, e.currentTarget);
+                }}
+                onTimeUpdate={(e) => {
+                    setCurrentTime(e.currentTarget.currentTime || 0);
+                    audioPlaybackManager.updatePositionState(e.currentTarget);
+                }}
+                onEnded={(e) => {
                     setPlaying(false);
                     setCurrentTime(0);
+                    audioPlaybackManager.notifyEnded(trackId, e.currentTarget);
+                    onEndedNextRef.current?.();
                 }}
             />
 
@@ -444,6 +516,7 @@ const PostAttachments = ({
     onCopyVideoId,
     copiedVideoId = false,
 }) => {
+    const audioPlayHandlersRef = useRef({});
     const attachments = Array.isArray(post?.attachments) ? post.attachments : [];
     if (attachments.length === 0) return null;
 
@@ -517,9 +590,29 @@ const PostAttachments = ({
             ))}
 
             {/* Audio Players */}
-            {audioItems.map((aud, idx) => (
-                <AudioAttachmentCard key={`aud-${idx}`} att={aud} />
-            ))}
+            {audioItems.map((aud, idx) => {
+                const trackId = `post-${post?._id || 'att'}-aud-${idx}`;
+                const artistName = post?.author?.profile?.displayName || post?.author?.username || 'Oxypace';
+                const albumTitle = post?.portal?.name ? `${post.portal.name} • Oxypace` : 'Oxypace';
+                const authorAvatar = post?.author?.profile?.avatar ? getImageUrl(post.author.profile.avatar) : '';
+                return (
+                    <AudioAttachmentCard
+                        key={`aud-${idx}`}
+                        att={aud}
+                        trackId={trackId}
+                        artistName={artistName}
+                        albumTitle={albumTitle}
+                        artworkUrl={authorAvatar}
+                        onNext={idx < audioItems.length - 1 ? () => audioPlayHandlersRef.current[idx + 1]?.() : undefined}
+                        onPrev={idx > 0 ? () => audioPlayHandlersRef.current[idx - 1]?.() : undefined}
+                        onEndedNext={idx < audioItems.length - 1 ? () => audioPlayHandlersRef.current[idx + 1]?.() : undefined}
+                        registerPlayHandler={(fn) => {
+                            if (fn) audioPlayHandlersRef.current[idx] = fn;
+                            else delete audioPlayHandlersRef.current[idx];
+                        }}
+                    />
+                );
+            })}
 
             {/* PDF Cards */}
             {pdfItems.map((pdf, idx) => (

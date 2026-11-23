@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { X, FileText, FolderOpen, Upload } from 'lucide-react';
 import { buildFolderZipArchive } from '../utils/folderZip';
 import { MAX_FILE_SIZE_LABEL } from '../utils/mediaAttachments';
+import { normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import './FileFolderPickerModal.css';
 
 const traverseDroppedEntry = async (entry, basePath = '') => {
@@ -42,13 +43,18 @@ const FileFolderPickerModal = ({ isOpen, onClose, onFilesSelected, onFolderPacka
 
     if (!isOpen) return null;
 
-    const handleFilesChange = (e) => {
+    const handleFilesChange = async (e) => {
         const list = Array.from(e.target.files || []);
         e.target.value = '';
         if (list.length === 0) return;
         setErrorMsg('');
-        onFilesSelected?.(list);
-        onClose?.();
+        try {
+            const normalized = await normalizeImageFilesForBrowser(list);
+            onFilesSelected?.(normalized);
+            onClose?.();
+        } catch (err) {
+            setErrorMsg(err?.message || 'HEIC görseli dönüştürülemedi.');
+        }
     };
 
     const handleFolderChange = async (e) => {
@@ -96,8 +102,13 @@ const FileFolderPickerModal = ({ isOpen, onClose, onFilesSelected, onFolderPacka
 
         const droppedFiles = Array.from(e.dataTransfer?.files || []);
         if (droppedFiles.length > 0) {
-            onFilesSelected?.(droppedFiles);
-            onClose?.();
+            try {
+                const normalized = await normalizeImageFilesForBrowser(droppedFiles);
+                onFilesSelected?.(normalized);
+                onClose?.();
+            } catch (err) {
+                setErrorMsg(err?.message || 'HEIC görseli dönüştürülemedi.');
+            }
         }
     };
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { getImageUrl } from '../utils/imageUtils';
 import { preloadImage } from '../utils/preloadUtils';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFileForBrowser, normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 import { useUploadStore } from '../store/useUploadStore';
 
@@ -51,7 +52,7 @@ import './Profile.css';
 const Profile = () => {
     const { username } = useParams();
     const navigate = useNavigate();
-    const { user: currentUser, updateUser } = useAuth();
+    const { user: currentUser, updateUser, syncPortalMembership } = useAuth();
     const isOwnProfile = !username || (currentUser && currentUser.username === username);
     const { socket, connected } = useSocket();
     const [profileUser, setProfileUser] = useState(() => {
@@ -79,6 +80,84 @@ const Profile = () => {
             };
         }
     }, [socket, connected]);
+
+    // Sync own profile state when currentUser updates (avatar/cover/bio/portals)
+    useEffect(() => {
+        if (isOwnProfile && currentUser) {
+            setProfileUser((prev) => prev ? {
+                ...prev,
+                username: currentUser.username,
+                profile: { ...(prev.profile || {}), ...(currentUser.profile || {}) },
+                joinedPortals: currentUser.joinedPortals || prev.joinedPortals,
+                portals: currentUser.portals || prev.portals,
+            } : currentUser);
+        }
+    }, [isOwnProfile, currentUser]);
+
+    // Real-time user & portal profile updates from socket bridge
+    useEffect(() => {
+        const handleUserUpdated = (e) => {
+            const detail = e.detail;
+            if (!detail?._id) return;
+            const targetIdStr = String(detail._id);
+
+            setProfileUser((prev) => {
+                const currentPid = prev?._id || (isOwnProfile ? currentUser?._id : null);
+                if (!prev || !currentPid || String(currentPid) !== targetIdStr) return prev;
+                return {
+                    ...prev,
+                    ...(detail.username ? { username: detail.username } : {}),
+                    profile: {
+                        ...(prev.profile || {}),
+                        ...(detail.profile || {}),
+                    }
+                };
+            });
+
+            setUserPosts((prev) => prev.map((p) => {
+                const authorId = p.author?._id || p.author?.id || p.author;
+                if (String(authorId) === targetIdStr && typeof p.author === 'object' && p.author !== null) {
+                    return {
+                        ...p,
+                        author: {
+                            ...p.author,
+                            ...(detail.username ? { username: detail.username } : {}),
+                            profile: {
+                                ...(p.author.profile || {}),
+                                ...(detail.profile || {}),
+                            }
+                        }
+                    };
+                }
+                return p;
+            }));
+        };
+
+        const handlePortalUpdated = (e) => {
+            const portalPayload = e.detail;
+            if (!portalPayload?._id) return;
+            const pidStr = String(portalPayload._id);
+            setProfileUser((prev) => {
+                if (!prev) return prev;
+                const patchList = (list) => Array.isArray(list)
+                    ? list.map((p) => ((p?._id || p)?.toString() === pidStr && typeof p === 'object' ? { ...p, ...portalPayload } : p))
+                    : list;
+                return {
+                    ...prev,
+                    portals: patchList(prev.portals),
+                    joinedPortals: patchList(prev.joinedPortals),
+                    mutualPortals: patchList(prev.mutualPortals),
+                };
+            });
+        };
+
+        window.addEventListener('oxypace:user_updated', handleUserUpdated);
+        window.addEventListener('oxypace:portal_updated', handlePortalUpdated);
+        return () => {
+            window.removeEventListener('oxypace:user_updated', handleUserUpdated);
+            window.removeEventListener('oxypace:portal_updated', handlePortalUpdated);
+        };
+    }, [isOwnProfile, currentUser?._id]);
     const [showReportModal, setShowReportModal] = useState(false);
     const [selectedPortalForInfo, setSelectedPortalForInfo] = useState(null);
     const [formData, setFormData] = useState(() => ({
@@ -254,17 +333,7 @@ const Profile = () => {
             });
 
             if (currentUser) {
-                const updatedJoined = (currentUser.joinedPortals || []).filter(
-                    (p) => (p._id || p).toString() !== portalId.toString()
-                );
-                const updatedPortals = (currentUser.portals || []).filter(
-                    (p) => (p._id || p).toString() !== portalId.toString()
-                );
-                updateUser({
-                    ...currentUser,
-                    joinedPortals: updatedJoined,
-                    portals: updatedPortals,
-                });
+                syncPortalMembership?.(portalId, 'left');
             }
 
             setConfirmLeavePortal(null);
@@ -748,10 +817,17 @@ const Profile = () => {
         });
     }, []);
 
-    const handleComposeGallerySelect = (e) => {
+    const handleComposeGallerySelect = async (e) => {
         const files = Array.from(e.target.files || []);
         e.target.value = '';
-        if (files.length > 0) appendComposeFiles(files);
+        if (files.length > 0) {
+            try {
+                const normalized = await normalizeImageFilesForBrowser(files);
+                appendComposeFiles(normalized);
+            } catch (err) {
+                setError(err?.message || 'HEIC görseli dönüştürülemedi.');
+            }
+        }
     };
 
     const handleComposeCameraCapture = (file) => {
@@ -915,12 +991,21 @@ const Profile = () => {
         }
     };
 
-    const handleAvatarSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const handleAvatarSelect = async (e) => {
+        const rawFile = e.target.files[0];
+        e.target.value = ''; // Reset input
+        if (!rawFile) return;
 
-        if (file.size > 10 * 1024 * 1024) {
+        if (rawFile.size > 10 * 1024 * 1024) {
             setError("Dosya boyutu 10MB'dan küçük olmalıdır.");
+            return;
+        }
+
+        let file = rawFile;
+        try {
+            file = await normalizeImageFileForBrowser(rawFile);
+        } catch (err) {
+            setError(err?.message || 'HEIC görseli dönüştürülemedi.');
             return;
         }
 
@@ -931,15 +1016,23 @@ const Profile = () => {
             setCropperMode('avatar');
         };
         reader.readAsDataURL(file);
-        e.target.value = ''; // Reset input
     };
 
-    const handleCoverSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const handleCoverSelect = async (e) => {
+        const rawFile = e.target.files[0];
+        e.target.value = ''; // Reset input
+        if (!rawFile) return;
 
-        if (file.size > 15 * 1024 * 1024) {
+        if (rawFile.size > 15 * 1024 * 1024) {
             setError("Kapak resmi 15MB'dan küçük olmalıdır.");
+            return;
+        }
+
+        let file = rawFile;
+        try {
+            file = await normalizeImageFileForBrowser(rawFile);
+        } catch (err) {
+            setError(err?.message || 'HEIC görseli dönüştürülemedi.');
             return;
         }
 
@@ -950,7 +1043,6 @@ const Profile = () => {
             setCropperMode('cover');
         };
         reader.readAsDataURL(file);
-        e.target.value = ''; // Reset input
     };
 
     const handleCropComplete = async (result) => {
@@ -1268,7 +1360,7 @@ const Profile = () => {
                                     ref={coverInputRef}
                                     onChange={handleCoverSelect}
                                     style={{ display: 'none' }}
-                                    accept="image/*"
+                                    accept="image/*,.heic,.heif,image/heic,image/heif"
                                 />
                             </div>
                             <div className="profile-avatar-wrapper">
@@ -1291,7 +1383,7 @@ const Profile = () => {
                                     ref={avatarInputRef}
                                     onChange={handleAvatarSelect}
                                     style={{ display: 'none' }}
-                                    accept="image/*"
+                                    accept="image/*,.heic,.heif,image/heic,image/heif"
                                 />
 
                                 <div className="profile-top-right-actions">
@@ -1707,7 +1799,7 @@ const Profile = () => {
                                                                             <input
                                                                                 ref={composeGalleryInputRef}
                                                                                 type="file"
-                                                                                accept="image/*,video/*,.gif"
+                                                                                accept="image/*,video/*,.gif,.heic,.heif,image/heic,image/heif"
                                                                                 multiple
                                                                                 onChange={handleComposeGallerySelect}
                                                                                 style={{ display: 'none' }}

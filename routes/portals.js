@@ -16,6 +16,77 @@ import { invalidatePortalRuleCache } from '../sockets/voiceHandler.js';
 import logActivity from '../utils/auditLogger.js';
 import ActivityLog from '../models/ActivityLog.js';
 
+function buildCompactPortalPayload(portalDoc) {
+    if (!portalDoc) return null;
+    const obj = typeof portalDoc.toObject === 'function' ? portalDoc.toObject() : portalDoc;
+    return {
+        _id: obj._id,
+        name: obj.name,
+        description: obj.description,
+        privacy: obj.privacy,
+        avatar: obj.avatar,
+        lowResAvatar: obj.lowResAvatar,
+        banner: obj.banner,
+        owner: obj.owner,
+        admins: obj.admins,
+        members: obj.members,
+        allowedUsers: obj.allowedUsers,
+        channels: obj.channels,
+        verificationBadge: obj.verificationBadge,
+        customBadge: obj.customBadge,
+        isOfficial: obj.isOfficial,
+        isReadOnly: obj.isReadOnly,
+        isNSFW: obj.isNSFW,
+        liveRoomSettings: obj.liveRoomSettings,
+        location: obj.location,
+        showOnMap: obj.showOnMap,
+        memberCount: Array.isArray(obj.members) ? obj.members.length : obj.memberCount,
+        updatedAt: new Date().toISOString(),
+    };
+}
+
+function emitPortalSync(portalDoc) {
+    if (!global.io || !portalDoc?._id) return;
+    const payload = buildCompactPortalPayload(portalDoc);
+    if (!payload) return;
+    const portalIdStr = portalDoc._id.toString();
+    global.io.emit('portal:updated', payload);
+    global.io.to(`portal:${portalIdStr}`).emit('portal:updated', payload);
+}
+
+function emitPortalMembership(userId, portalDoc, action) {
+    if (!global.io || !userId || !portalDoc?._id) return;
+    const portalIdStr = portalDoc._id.toString();
+    const userIdStr = userId.toString();
+    const compactPortal = {
+        _id: portalDoc._id,
+        name: portalDoc.name,
+        avatar: portalDoc.avatar,
+        lowResAvatar: portalDoc.lowResAvatar,
+        privacy: portalDoc.privacy,
+        verificationBadge: portalDoc.verificationBadge,
+        customBadge: portalDoc.customBadge,
+        isOfficial: portalDoc.isOfficial,
+    };
+    const eventPayload = {
+        userId: userIdStr,
+        portalId: portalIdStr,
+        action,
+        portal: compactPortal,
+        memberCount: Array.isArray(portalDoc.members) ? portalDoc.members.length : undefined,
+        updatedAt: new Date().toISOString(),
+    };
+    global.io.to(`user:${userIdStr}`).emit('portal:membership_changed', eventPayload);
+    global.io.to(`portal:${portalIdStr}`).emit('portal:membership_changed', eventPayload);
+    global.io.emit('portal:updated', {
+        _id: portalDoc._id,
+        memberCount: Array.isArray(portalDoc.members) ? portalDoc.members.length : undefined,
+        members: portalDoc.members,
+        admins: portalDoc.admins,
+        updatedAt: eventPayload.updatedAt,
+    });
+}
+
 /**
  * Foolproof channel query and filter generator for a portal.
  * Guarantees that:
@@ -127,6 +198,8 @@ router.post('/', protect, async (req, res) => {
         await User.findByIdAndUpdate(req.user._id, {
             $addToSet: { joinedPortals: portal._id },
         });
+
+        emitPortalMembership(req.user._id, portal, 'joined');
 
         logActivity({
             user: req.user._id,
@@ -843,6 +916,8 @@ router.post('/:id/join', protect, mongoIdValidation('id'), async (req, res) => {
             $addToSet: { joinedPortals: portal._id },
         });
 
+        emitPortalMembership(req.user._id, portal, 'joined');
+
         logActivity({
             user: req.user,
             action: 'PORTAL_JOIN',
@@ -888,6 +963,8 @@ router.post('/:id/leave', protect, mongoIdValidation('id'), async (req, res) => 
         await User.findByIdAndUpdate(req.user._id, {
             $pull: { joinedPortals: portal._id },
         });
+
+        emitPortalMembership(req.user._id, portal, 'left');
 
         logActivity({
             user: req.user,
@@ -974,6 +1051,8 @@ router.put('/:id', protect, mongoIdValidation('id'), async (req, res) => {
         await portal.populate('owner', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');
         await portal.populate('allowedUsers', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');
 
+        emitPortalSync(portal);
+
         res.json(portal);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -1019,6 +1098,8 @@ router.post('/:id/avatar', protect, mongoIdValidation('id'), upload.single('avat
 
         await portal.save();
         await portal.populate('owner', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');
+
+        emitPortalSync(portal);
 
         logActivity({
             user: req.user._id,
@@ -1073,6 +1154,8 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
 
         await portal.save();
         await portal.populate('owner', 'username profile.displayName profile.avatar isDeleted');
+
+        emitPortalSync(portal);
 
         logActivity({
             user: req.user._id,
@@ -1138,6 +1221,7 @@ router.post('/:id/channels', protect, mongoIdValidation('id'), async (req, res) 
 
         portal.channels.push(channelData);
         await portal.save();
+        emitPortalSync(portal);
 
         logActivity({
             user: req.user,
@@ -1177,6 +1261,7 @@ router.delete('/:id/channels/:channelId', protect, mongoIdValidation('id'), mong
             (ch) => ch._id.toString() !== req.params.channelId
         );
         await portal.save();
+        emitPortalSync(portal);
 
         logActivity({
             user: req.user,
@@ -1235,6 +1320,7 @@ router.put('/:id/channels/reorder', protect, mongoIdValidation('id'), async (req
         }
 
         await portal.save();
+        emitPortalSync(portal);
         res.json(portal.channels);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -1318,6 +1404,7 @@ router.put('/:id/channels/:channelId', protect, mongoIdValidation('id'), mongoId
         }
 
         await portal.save();
+        emitPortalSync(portal);
         res.json(portal.channels);
     } catch (error) {
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -1354,6 +1441,7 @@ router.post('/:id/roles', protect, mongoIdValidation('id'), async (req, res) => 
         }
 
         await portal.save();
+        emitPortalSync(portal);
         // Return full member details to look reactive
         await portal.populate('admins', 'username profile.displayName profile.avatar profile.lowResAvatar isDeleted');
         res.json(portal.admins);
@@ -1401,6 +1489,8 @@ router.post('/:id/kick', protect, mongoIdValidation('id'), async (req, res) => {
         await User.findByIdAndUpdate(userId, {
             $pull: { joinedPortals: portal._id },
         });
+
+        emitPortalMembership(userId, portal, 'left');
 
         res.json({ message: 'User kicked', userId });
     } catch (error) {
@@ -1708,6 +1798,8 @@ router.post('/:id/approve-member', protect, async (req, res) => {
         await User.findByIdAndUpdate(userId, {
             $addToSet: { joinedPortals: portal._id },
         });
+
+        emitPortalMembership(userId, portal, 'joined');
 
         res.json({ message: 'Üyelik isteği onaylandı', userId });
     } catch (error) {

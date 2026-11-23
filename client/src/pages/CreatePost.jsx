@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Image, Camera, Mic, FolderOpen, ClipboardPaste } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import { useUploadStore } from '../store/useUploadStore';
 import {
     MAX_POST_ATTACHMENTS,
@@ -88,11 +89,17 @@ const CreatePost = () => {
         });
     }, []);
 
-    const handleGalleryFileChange = (e) => {
+    const handleGalleryFileChange = async (e) => {
         const files = Array.from(e.target.files || []);
         e.target.value = '';
         if (files.length > 0) {
-            appendFilesToDrafts(files);
+            try {
+                const normalized = await normalizeImageFilesForBrowser(files);
+                appendFilesToDrafts(normalized);
+            } catch (err) {
+                console.error('HEIC conversion failed:', err);
+                setError(err?.message || 'HEIC görseli dönüştürülemedi.');
+            }
         }
     };
 
@@ -377,7 +384,7 @@ const CreatePost = () => {
                                 <input
                                     type="file"
                                     ref={galleryInputRef}
-                                    accept="image/*,video/*,.gif"
+                                    accept="image/*,video/*,.gif,.heic,.heif,image/heic,image/heif"
                                     onChange={handleGalleryFileChange}
                                     style={{ display: 'none' }}
                                     disabled={isSubmitting}

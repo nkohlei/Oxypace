@@ -82,7 +82,7 @@ export const categorizeFile = (file) => {
     if (ext === '.gif' || mime === 'image/gif') {
         return { kind: 'gif', ext, mimeType: mime || 'image/gif', badge: 'GIF' };
     }
-    if (['.jpg', '.jpeg', '.png', '.webp', '.avif', '.bmp', '.heic'].includes(ext) || (mime.startsWith('image/') && !mime.includes('svg'))) {
+    if (['.jpg', '.jpeg', '.png', '.webp', '.avif', '.bmp', '.heic', '.heif'].includes(ext) || (mime.startsWith('image/') && !mime.includes('svg'))) {
         return { kind: 'image', ext, mimeType: mime || 'image/jpeg', badge: bareExt };
     }
     if (['.mp4', '.webm', '.mov', '.m4v', '.mkv', '.avi', '.flv', '.3gp', '.wmv'].includes(ext) || mime.startsWith('video/')) {

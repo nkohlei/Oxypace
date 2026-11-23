@@ -5,6 +5,7 @@ import fs from 'fs';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import r2 from '../config/r2.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
+import { isHeicBuffer, isHeicFile, convertHeicBufferToJpeg } from '../utils/heicConverter.js';
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2GB standard limit
 
@@ -90,6 +91,16 @@ function verifyMagicBytes(buffer, mimetype = '') {
         return { valid: false, reason: 'File does not match WebP signature' };
     }
 
+    if (
+        safeMime === 'image/heic' ||
+        safeMime === 'image/heif' ||
+        safeMime === 'image/heic-sequence' ||
+        safeMime === 'image/heif-sequence'
+    ) {
+        if (isHeicBuffer(buffer)) return { valid: true };
+        return { valid: false, reason: 'File does not match HEIC/HEIF signature' };
+    }
+
     if (mimetype === 'application/pdf') {
         // %PDF-
         const sig = buffer.slice(0, 5).toString('ascii');
@@ -154,6 +165,21 @@ async function processAndUploadFile(req, file) {
     if (!magicCheck.valid) {
         console.warn(`[Upload] Magic byte mismatch for file "${file.originalname}" (${file.mimetype}): ${magicCheck.reason}`);
         throw new Error(`Invalid file content: ${magicCheck.reason}`);
+    }
+
+    // Auto-convert HEIC/HEIF images to high-quality JPEG for universal compatibility
+    if (isHeicFile(file)) {
+        try {
+            const jpegBuffer = await convertHeicBufferToJpeg(file.buffer, 95);
+            const parsedName = path.parse(file.originalname || 'image.heic');
+            file.buffer = jpegBuffer;
+            file.mimetype = 'image/jpeg';
+            file.size = jpegBuffer.length;
+            file.originalname = `${parsedName.name || 'image'}.jpg`;
+        } catch (heicErr) {
+            console.error('[Upload Middleware] HEIC conversion failed:', heicErr.message);
+            throw new Error('HEIC görseli dönüştürülemedi.');
+        }
     }
 
     const isImage = file.mimetype.startsWith('image/') && !file.mimetype.includes('gif');

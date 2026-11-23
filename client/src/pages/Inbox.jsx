@@ -28,6 +28,7 @@ import {
     Lock,
 } from 'lucide-react';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import { copyTextSafely } from '../utils/shareUtils';
 
 import { useAuth } from '../context/AuthContext';
@@ -829,17 +830,23 @@ const Inbox = () => {
         }
     };
 
-    const handleFileSelect = (e) => {
+    const handleFileSelect = async (e) => {
         if (isGhost) return;
         if (e.target.files && e.target.files.length > 0) {
-            const files = Array.from(e.target.files);
-            for (const file of files) {
+            const rawFiles = Array.from(e.target.files);
+            e.target.value = '';
+            for (const file of rawFiles) {
                 if (file.size > 2 * 1024 * 1024 * 1024) {
                     showToast("Dosya boyutu 2 GB'dan büyük olamaz.");
                     return;
                 }
             }
-            setMedia((prev) => [...prev, ...files]);
+            try {
+                const files = await normalizeImageFilesForBrowser(rawFiles);
+                setMedia((prev) => [...prev, ...files]);
+            } catch (err) {
+                showToast(err?.message || 'HEIC görseli dönüştürülemedi.');
+            }
         }
     };
 
@@ -1992,7 +1999,7 @@ const Inbox = () => {
                                             type="file"
                                             ref={fileInputRef}
                                             style={{ display: 'none' }}
-                                            accept="image/*"
+                                            accept="image/*,.heic,.heif,image/heic,image/heif"
                                             multiple
                                             onChange={handleFileSelect}
                                         />

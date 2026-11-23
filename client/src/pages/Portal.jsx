@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from '
 import axios from 'axios';
 import Lenis from 'lenis';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
 import { useUploadStore } from '../store/useUploadStore';
 
@@ -58,7 +59,7 @@ const Portal = () => {
     const urlChannel = searchParams.get('channel');
     const urlPost = searchParams.get('post');
     const lastAppliedUrlChannelRef = useRef(null);
-    const { user, token, updateUser, loading: authLoading } = useAuth();
+    const { user, token, updateUser, syncPortalInUser, syncPortalMembership, loading: authLoading } = useAuth();
     const { socket, connected } = useSocket();
     const navigate = useNavigate();
     const uiContext = useUI();
@@ -353,6 +354,10 @@ const Portal = () => {
     }, [id, location.state?.sharedTrigger]);
 
     const activeChannelObj = portal?.channels?.find((c) => String(c._id) === String(currentChannel));
+    const portalRef = useRef(portal);
+    const activeChannelObjRef = useRef(activeChannelObj);
+    portalRef.current = portal;
+    activeChannelObjRef.current = activeChannelObj;
     const isImageChannel = activeChannelObj?.type === 'image';
     const isVoiceChannel = activeChannelObj?.type === 'voice' || activeChannelObj?.type === 'conference';
     const isVoiceChannelActive = isVoiceChannel && (!isMobileView || mobileChannelOpen);
@@ -376,19 +381,16 @@ const Portal = () => {
     useEffect(() => {
         if (!socket || !connected || !id) return;
 
-        // Join Portal Room
-        socket.emit('join_portal', id);
-        console.log(`🔌 Joining portal room: ${id}`);
+        const joinRooms = () => {
+            socket.emit('join_portal', id);
+            socket.emit('get_online_users');
+            if (currentChannel) {
+                socket.emit('join_channel', currentChannel);
+            }
+        };
 
-        // Portal odasına katılınca online listesini de tazele — bu sayede portal
-        // sayfası açılır açılmaz doğru çevrimiçi sayısı görüntülenir.
-        socket.emit('get_online_users');
-
-        // Join Channel Room if present
-        if (currentChannel) {
-            socket.emit('join_channel', currentChannel);
-            console.log(`🔌 Joining channel room: ${currentChannel}`);
-        }
+        joinRooms();
+        socket.on('connect', joinRooms);
 
         // --- STRICT CONTEXT FILTERING ---
         // We listen here (within the component lifecycle) instead of globally
@@ -396,14 +398,16 @@ const Portal = () => {
 
         const handleNewPost = (newPost) => {
             // BEGİNSE: The "Doorman" check
+            const latestPortal = portalRef.current;
+            const latestChannelObj = activeChannelObjRef.current;
             const newPostPortalId = newPost.portal?._id || newPost.portal;
             const newPostChannelId = newPost.channel?._id || newPost.channel;
             const isTargetPortal = String(newPostPortalId) === String(id);
-            const isOnlyChannel = portal?.channels?.length === 1;
+            const isOnlyChannel = latestPortal?.channels?.length === 1;
             const isTargetChannel = String(newPostChannelId) === String(currentChannel) ||
                 (String(newPostChannelId || 'general') === String(currentChannel || 'general')) ||
                 isOnlyChannel ||
-                (activeChannelObj && (String(newPostChannelId) === String(activeChannelObj.name) || String(newPostChannelId) === String(activeChannelObj._id)));
+                (latestChannelObj && (String(newPostChannelId) === String(latestChannelObj.name) || String(newPostChannelId) === String(latestChannelObj._id)));
 
             if (isTargetPortal && isTargetChannel) {
                 console.log('✅ Realtime Post Accepted for this view');
@@ -412,7 +416,7 @@ const Portal = () => {
                     const chKey = String(currentChannel);
                     setChannelPostCounts((prev) => ({
                         ...prev,
-                        [chKey]: (prev[chKey] !== undefined ? prev[chKey] : (activeChannelObj?.postCount || 0)) + 1
+                        [chKey]: (prev[chKey] !== undefined ? prev[chKey] : (latestChannelObj?.postCount || 0)) + 1
                     }));
                 }
                 setPosts((prev) => {
@@ -514,20 +518,113 @@ const Portal = () => {
             });
         };
 
+        const handlePortalUpdatedRealtime = (portalPayload) => {
+            if (!portalPayload?._id || String(portalPayload._id) !== String(id)) return;
+            setPortal((prev) => {
+                if (!prev) return portalPayload;
+                const merged = {
+                    ...prev,
+                    ...portalPayload,
+                    channels: Array.isArray(portalPayload.channels) && portalPayload.channels.length > 0
+                        ? portalPayload.channels
+                        : prev.channels,
+                };
+                try {
+                    sessionStorage.setItem(`oxypace_portal_cache_${id}`, JSON.stringify(merged));
+                    localStorage.setItem(`oxypace_portal_cache_${id}`, JSON.stringify(merged));
+                } catch (_) {}
+                return merged;
+            });
+            setPosts((prev) => prev.map((p) => {
+                const pPortalId = p.portal?._id || p.portal;
+                if (String(pPortalId) === String(portalPayload._id) && typeof p.portal === 'object' && p.portal !== null) {
+                    return {
+                        ...p,
+                        portal: {
+                            ...p.portal,
+                            ...(portalPayload.name !== undefined ? { name: portalPayload.name } : {}),
+                            ...(portalPayload.avatar !== undefined ? { avatar: portalPayload.avatar } : {}),
+                            ...(portalPayload.lowResAvatar !== undefined ? { lowResAvatar: portalPayload.lowResAvatar } : {}),
+                        }
+                    };
+                }
+                return p;
+            }));
+        };
+
+        const handleUserUpdatedRealtime = (userPayload) => {
+            const targetUid = userPayload?._id;
+            if (!targetUid) return;
+            const targetUidStr = String(targetUid);
+
+            setPosts((prev) => prev.map((p) => {
+                const authorId = p.author?._id || p.author?.id || p.author;
+                if (String(authorId) === targetUidStr && typeof p.author === 'object' && p.author !== null) {
+                    return {
+                        ...p,
+                        author: {
+                            ...p.author,
+                            ...(userPayload.username ? { username: userPayload.username } : {}),
+                            profile: {
+                                ...(p.author.profile || {}),
+                                ...(userPayload.profile || {}),
+                            }
+                        }
+                    };
+                }
+                return p;
+            }));
+
+            setPortal((prev) => {
+                if (!prev) return prev;
+                const patchPerson = (person) => {
+                    if (!person || typeof person !== 'object') return person;
+                    const pid = person._id || person.id;
+                    if (String(pid) !== targetUidStr) return person;
+                    return {
+                        ...person,
+                        ...(userPayload.username ? { username: userPayload.username } : {}),
+                        profile: {
+                            ...(person.profile || {}),
+                            ...(userPayload.profile || {}),
+                        }
+                    };
+                };
+                return {
+                    ...prev,
+                    owner: patchPerson(prev.owner),
+                    admins: Array.isArray(prev.admins) ? prev.admins.map(patchPerson) : prev.admins,
+                    members: Array.isArray(prev.members) ? prev.members.map(patchPerson) : prev.members,
+                };
+            });
+        };
+
+        const onLocalPortalUpdated = (e) => handlePortalUpdatedRealtime(e.detail);
+        const onLocalUserUpdated = (e) => handleUserUpdatedRealtime(e.detail);
+
         socket.on('post:created', handleNewPost);
         socket.on('post:updated', handleUpdatePost);
         socket.on('post:deleted', handleRealtimePostDeleted);
         socket.on('user_status_change', handleUserStatusChange);
         socket.on('portal_typing_update', handlePortalTypingUpdate);
+        window.addEventListener('oxypace:portal_updated', onLocalPortalUpdated);
+        window.addEventListener('oxypace:user_updated', onLocalUserUpdated);
 
         return () => {
+            socket.off('connect', joinRooms);
+            if (currentChannel) {
+                socket.emit('leave_channel', currentChannel);
+            }
+            socket.emit('leave_portal', id);
             socket.off('post:created', handleNewPost);
             socket.off('post:updated', handleUpdatePost);
             socket.off('post:deleted', handleRealtimePostDeleted);
             socket.off('user_status_change', handleUserStatusChange);
             socket.off('portal_typing_update', handlePortalTypingUpdate);
+            window.removeEventListener('oxypace:portal_updated', onLocalPortalUpdated);
+            window.removeEventListener('oxypace:user_updated', onLocalUserUpdated);
         };
-    }, [socket, connected, id, currentChannel, user?._id]);
+    }, [socket, connected, id, currentChannel, user?._id, setPosts]);
 
 
 
@@ -685,11 +782,17 @@ const Portal = () => {
         });
     }, [isImageChannel, triggerToast]);
 
-    const handleGallerySelect = (e) => {
+    const handleGallerySelect = async (e) => {
         const files = Array.from(e.target.files || []);
         e.target.value = '';
         if (files.length === 0) return;
-        appendComposerFiles(files);
+        try {
+            const normalized = await normalizeImageFilesForBrowser(files);
+            appendComposerFiles(normalized);
+        } catch (err) {
+            console.error('HEIC conversion failed:', err);
+            triggerToast(err?.message || 'HEIC görseli dönüştürülemedi.', 'error');
+        }
         setShowPlusMenu(false);
     };
 
@@ -1452,16 +1555,7 @@ const Portal = () => {
             const res = await axios.post(`/api/portals/${id}/join`, {}, config);
             if (res.data.status === 'joined') {
                 setIsMember(true);
-                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
-                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
-                const updatedJoined = [...currentJoined.filter(p => (p?._id || p)?.toString() !== id.toString()), portal];
-                const updatedPortals = [...currentPortals.filter(p => (p?._id || p)?.toString() !== id.toString()), portal];
-                const updatedUser = {
-                    ...user,
-                    joinedPortals: updatedJoined,
-                    portals: updatedPortals,
-                };
-                updateUser(updatedUser);
+                syncPortalMembership?.(portal || id, 'joined');
                 setPortal((prev) => ({ ...prev, members: [...(prev.members || []), user._id] }));
                 // Fetch posts now that we are a member
                 fetchChannelPosts();
@@ -1481,14 +1575,7 @@ const Portal = () => {
         try {
             await axios.post(`/api/portals/${id}/leave`);
             setIsMember(false);
-            const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
-            const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
-            const updatedUser = {
-                ...user,
-                joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== id.toString()),
-                portals: currentPortals.filter((p) => (p?._id || p)?.toString() !== id.toString()),
-            };
-            updateUser(updatedUser);
+            syncPortalMembership?.(id, 'left');
             navigate('/');
         } catch (err) {
             console.error('Leave failed', err);
@@ -2130,7 +2217,7 @@ const Portal = () => {
                                                                         ref={galleryInputRef}
                                                                         onChange={handleGallerySelect}
                                                                         style={{ display: 'none' }}
-                                                                        accept={isImageChannel ? 'image/*,.gif' : 'image/*,video/*,.gif'}
+                                                                        accept={isImageChannel ? 'image/*,.gif,.heic,.heif,image/heic,image/heif' : 'image/*,video/*,.gif,.heic,.heif,image/heic,image/heif'}
                                                                         multiple
                                                                     />
 
@@ -2419,6 +2506,7 @@ const Portal = () => {
                         onClose={() => setEditing(false)}
                         onUpdate={(updatedPortal) => {
                             setPortal(updatedPortal);
+                            syncPortalInUser?.(updatedPortal);
                         }}
                     />
                 </Suspense>

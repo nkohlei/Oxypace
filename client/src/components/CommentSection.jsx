@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFileForBrowser } from '../utils/heicHelper';
 
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -71,16 +72,21 @@ const CommentSection = ({ postId }) => {
         }
     };
 
-    const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024 * 1024) {
+    const handleFileSelect = async (e) => {
+        const rawFile = e.target.files[0];
+        if (rawFile) {
+            if (rawFile.size > 2 * 1024 * 1024 * 1024) {
                 // 2GB limit
                 alert("Dosya boyutu 2 GB'dan küçük olmalı.");
                 return;
             }
-            setSelectedFile(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            try {
+                const file = await normalizeImageFileForBrowser(rawFile);
+                setSelectedFile(file);
+                setPreviewUrl(URL.createObjectURL(file));
+            } catch (err) {
+                alert(err?.message || 'HEIC görseli dönüştürülemedi.');
+            }
         }
     };
 
@@ -558,7 +564,7 @@ const CommentSection = ({ postId }) => {
                                 {/* Image Upload Button (Inside Input Box) */}
                                 <input
                                     type="file"
-                                    accept="image/*,video/*"
+                                    accept="image/*,video/*,.heic,.heif,image/heic,image/heif"
                                     style={{ display: 'none' }}
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import { uploadFile } from '../utils/uploadUtils';
+import { normalizeImageFileForBrowser } from '../utils/heicHelper';
 import ImageCropper from './ImageCropper';
 import PortalBadges from './PortalBadges';
 import LocationMapPicker from './LocationMapPicker';
@@ -656,10 +657,20 @@ const PortalSettingsModal = ({
     };
 
 
-    const handleFileSelect = (e, target) => {
+    const handleFileSelect = async (e, target) => {
         if (!isOwner) return;
-        const file = e.target.files[0];
-        if (!file) return;
+        const rawFile = e.target.files[0];
+        e.target.value = ''; // Reset input
+        if (!rawFile) return;
+
+        let file = rawFile;
+        try {
+            file = await normalizeImageFileForBrowser(rawFile);
+        } catch (err) {
+            console.error('HEIC dönüştürme hatası:', err);
+            alert(err?.message || 'HEIC görseli dönüştürülemedi.');
+            return;
+        }
 
         setSelectedFile(file);
         const reader = new FileReader();
@@ -668,7 +679,6 @@ const PortalSettingsModal = ({
             setCropperMode(target === 'avatar' ? 'avatar' : 'banner');
         };
         reader.readAsDataURL(file);
-        e.target.value = ''; // Reset input
     };
 
     const handleCropComplete = async (result) => {
@@ -1103,14 +1113,14 @@ const PortalSettingsModal = ({
                                 ref={bannerRef}
                                 onChange={(e) => handleFileSelect(e, 'banner')}
                                 hidden
-                                accept="image/*"
+                                accept="image/*,.heic,.heif,image/heic,image/heif"
                             />
                             <input
                                 type="file"
                                 ref={avatarRef}
                                 onChange={(e) => handleFileSelect(e, 'avatar')}
                                 hidden
-                                accept="image/*"
+                                accept="image/*,.heic,.heif,image/heic,image/heif"
                             />
 
                             <div className="form-group">

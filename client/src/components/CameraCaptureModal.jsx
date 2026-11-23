@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, SwitchCamera, Mic, MicOff, RotateCcw, Check, Camera, Video, FolderOpen } from 'lucide-react';
 import { formatDuration, formatFileSize } from '../utils/mediaAttachments';
+import { normalizeImageFileForBrowser } from '../utils/heicHelper';
 import './CameraCaptureModal.css';
 
 const pickSupportedVideoMime = () => {
@@ -306,12 +307,18 @@ const CameraCaptureModal = ({ isOpen, onClose, onCapture }) => {
         onClose?.();
     };
 
-    const handleNativeFallbackFile = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const handleNativeFallbackFile = async (e) => {
+        const rawFile = e.target.files?.[0];
+        if (!rawFile) return;
         e.target.value = '';
         stopStream();
-        onCapture?.(file);
+        try {
+            const file = await normalizeImageFileForBrowser(rawFile);
+            onCapture?.(file);
+        } catch (err) {
+            console.error('HEIC kamera dönüştürme hatası:', err);
+            onCapture?.(rawFile);
+        }
         onClose?.();
     };
 
@@ -324,7 +331,7 @@ const CameraCaptureModal = ({ isOpen, onClose, onCapture }) => {
                 <input
                     ref={nativePhotoFallbackRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.heif,image/heic,image/heif"
                     capture="environment"
                     style={{ display: 'none' }}
                     onChange={handleNativeFallbackFile}

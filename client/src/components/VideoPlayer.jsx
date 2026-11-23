@@ -600,7 +600,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const natShortSide = (natH && natW) ? Math.min(natH, natW) : (natH || natW || 0);
 
   const knownOriginalHeight = Number(originalHeight) || 0;
-  const effectiveOriginalHeight = knownOriginalHeight || natShortSide || probedOriginalHeight || 0;
 
   // 2160p (4K): explicitly present
   const has2160 = !!raw2160;
@@ -626,16 +625,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const has144 = !!raw144;
   const src144 = raw144 || '';
 
-  let maxResolution = effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : '1080p';
-  if (!effectiveOriginalHeight) {
-    if (has2160) maxResolution = '2160p';
-    else if (has1440) maxResolution = '1440p';
-    else if (has1080) maxResolution = '1080p';
-    else if (has720) maxResolution = '720p';
-    else if (has360) maxResolution = '360p';
-    else if (has144) maxResolution = '144p';
-  }
-
+  // Standard transcoded tiers below/alongside original
   const isSlowConnection = () => {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (conn) {
@@ -717,10 +707,29 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     { value: '144',  label: '144p',  height: 144,  has: has144,  src: src144  },
   ].filter(t => t.has && t.src);
 
+  // Only treat naturalDimensions as the ORIGINAL height if original is actually playing or no transcoded tiers exist.
+  // Otherwise (e.g. mobile auto-playing 720p), natShortSide reflects the transcoded tier and must never hide higher qualities.
+  const trueOriginalHeight =
+    knownOriginalHeight ||
+    probedOriginalHeight ||
+    ((qualityMode === 'original' || standardTiers.length === 0) ? natShortSide : 0);
+
+  const effectiveOriginalHeight = trueOriginalHeight || 0;
+
+  let maxResolution = effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : '1080p';
+  if (!effectiveOriginalHeight) {
+    if (has2160) maxResolution = '2160p';
+    else if (has1440) maxResolution = '1440p';
+    else if (has1080) maxResolution = '1080p';
+    else if (has720) maxResolution = '720p';
+    else if (has360) maxResolution = '360p';
+    else if (has144) maxResolution = '144p';
+  }
+
   const availableQualities = [{ value: 'auto', label: 'Oto' }];
 
   if (srcOriginal) {
-    const topLabel = effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : 'En Yüksek';
+    const topLabel = effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : 'Orijinal';
     availableQualities.push({
       value: 'original',
       label: topLabel,
@@ -732,7 +741,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     .filter(t => {
       // Don't duplicate if pointing to identical file as original
       if (srcOriginal && isSameVideoUrl(t.src, srcOriginal)) return false;
-      // All quality rungs strictly below the original video height MUST be shown
+      // Only hide standard rungs at or above the TRUE original height (avoid hiding higher rungs when mobile plays 720p)
       if (effectiveOriginalHeight && t.height >= effectiveOriginalHeight) return false;
       return true;
     })
@@ -740,9 +749,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       availableQualities.push({ value: t.value, label: t.label, src: t.src });
     });
 
-  // Probe metadata on menu open for legacy posts with no stored dimensions
+  // Probe original metadata proactively once player is active or menu opens so the true original height is known
   useEffect(() => {
-    if (!isQualityMenuOpen || knownOriginalHeight || probedOriginalHeight || !srcOriginal) return;
+    if (knownOriginalHeight || probedOriginalHeight || !srcOriginal) return;
+    if (!isQualityMenuOpen && !hasStartedPlayback && !duration) return;
     let cancelled = false;
     const probe = document.createElement('video');
     probe.preload = 'metadata';
@@ -763,7 +773,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       cancelled = true;
       cleanup();
     };
-  }, [isQualityMenuOpen, knownOriginalHeight, probedOriginalHeight, srcOriginal]);
+  }, [isQualityMenuOpen, hasStartedPlayback, duration, knownOriginalHeight, probedOriginalHeight, srcOriginal]);
 
   // --- Helpers ---
   const getActiveEl  = () => (activeVideoRef.current === 'A' ? videoRefA : videoRefB).current;
@@ -983,7 +993,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     
     let mode = 'auto';
     if (pref === 'performance') {
-      if (has2160) mode = '2160';
+      if (srcOriginal) mode = 'original';
+      else if (has2160) mode = '2160';
+      else if (has1440) mode = '1440';
       else if (has1080) mode = '1080';
       else if (has720) mode = '720';
       else if (has360) mode = '360';
@@ -993,12 +1005,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       else if (has360) mode = '360';
       else if (has1080) mode = '1080';
       else if (has144) mode = '144';
+      else if (has1440) mode = '1440';
       else if (has2160) mode = '2160';
     } else if (pref === 'lowest') {
       if (has144) mode = '144';
       else if (has360) mode = '360';
       else if (has720) mode = '720';
       else if (has1080) mode = '1080';
+      else if (has1440) mode = '1440';
       else if (has2160) mode = '2160';
     } else {
       mode = 'auto';
@@ -1007,12 +1021,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     setQualityMode(mode);
     
     let targetSrc = '';
-    if      (mode === '2160') targetSrc = src2160;
-    else if (mode === '1080') targetSrc = src1080;
-    else if (mode === '720')  targetSrc = src720;
-    else if (mode === '360')  targetSrc = src360;
-    else if (mode === '144')  targetSrc = src144;
-    else                      targetSrc = getBestSrc();
+    if      (mode === 'original') targetSrc = srcOriginal;
+    else if (mode === '2160')     targetSrc = src2160;
+    else if (mode === '1440')     targetSrc = src1440;
+    else if (mode === '1080')     targetSrc = src1080;
+    else if (mode === '720')      targetSrc = src720;
+    else if (mode === '360')      targetSrc = src360;
+    else if (mode === '144')      targetSrc = src144;
+    else                          targetSrc = getBestSrc();
     
     const activeEl = getActiveEl();
     if (activeEl && targetSrc) {
@@ -1028,7 +1044,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         setVideoSource(activeEl, targetSrc);
       }
     }
-  }, [user?.settings?.video?.playbackQuality, has2160, has1080, has720, has360, has144, src2160, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
+  }, [user?.settings?.video?.playbackQuality, has2160, has1440, has1080, has720, has360, has144, srcOriginal, src2160, src1440, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
 
   // Sync mute & playbackRate to both elements imperatively
   useEffect(() => {
@@ -2124,7 +2140,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
                   onClick={e => { e.stopPropagation(); setIsQualityMenuOpen(v => !v); setIsSettingsOpen(false); }}
                   title="Video Kalitesi"
                 >
-                  {qualityMode === 'auto' ? 'Oto' : (qualityMode === 'original' ? (effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : 'Oto') : `${qualityMode}p`)}
+                  {qualityMode === 'auto' ? 'Oto' : (qualityMode === 'original' ? (effectiveOriginalHeight ? `${effectiveOriginalHeight}p` : 'Orijinal') : `${qualityMode}p`)}
                 </button>
 
                 <button

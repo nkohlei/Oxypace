@@ -134,41 +134,44 @@ export const AuthProvider = ({ children }) => {
         } catch (_) {}
     };
 
-    // Set axios default header & sync with native Android for notification direct replies & multi-account isolation
+    // Fetch fresh user profile on token change
     useEffect(() => {
-        const prodServerUrl = 'https://oxypace.com.tr';
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             try {
                 document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Lax`;
             } catch (_) {}
-            if (Capacitor.isNativePlatform()) {
-                const activeUid = user?._id ? String(user._id) : '';
-                AuthSync.syncAuth({
-                    token,
-                    serverUrl: prodServerUrl,
-                    userId: activeUid,
-                    userName: user?.profile?.displayName || user?.username || '',
-                    userAvatar: resolveAbsAvatarUrl(user?.profile?.lowResAvatar || user?.profile?.avatar),
-                    inactiveUserIds: getInactiveAccountIds(activeUid)
-                }).catch(() => {});
-            }
-            // Always fetch fresh user profile in background (Stale-While-Revalidate)
             fetchUser(token);
         } else {
             setLoading(false);
-            if (Capacitor.isNativePlatform()) {
-                AuthSync.syncAuth({
-                    token: '',
-                    serverUrl: prodServerUrl,
-                    userId: '',
-                    userName: '',
-                    userAvatar: '',
-                    inactiveUserIds: getInactiveAccountIds('')
-                }).catch(() => {});
-            }
         }
-    }, [token, user?._id, user?.profile?.avatar, user?.profile?.lowResAvatar, user?.profile?.displayName]);
+    }, [token]);
+
+    // Sync active session metadata with native Android (never re-fetch user profile here)
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return;
+        const prodServerUrl = 'https://oxypace.com.tr';
+        if (token) {
+            const activeUid = user?._id ? String(user._id) : '';
+            AuthSync.syncAuth({
+                token,
+                serverUrl: prodServerUrl,
+                userId: activeUid,
+                userName: user?.profile?.displayName || user?.username || '',
+                userAvatar: resolveAbsAvatarUrl(user?.profile?.lowResAvatar || user?.profile?.avatar),
+                inactiveUserIds: getInactiveAccountIds(activeUid)
+            }).catch(() => {});
+        } else {
+            AuthSync.syncAuth({
+                token: '',
+                serverUrl: prodServerUrl,
+                userId: '',
+                userName: '',
+                userAvatar: '',
+                inactiveUserIds: getInactiveAccountIds('')
+            }).catch(() => {});
+        }
+    }, [token, user?._id, user?.username, user?.profile?.avatar, user?.profile?.lowResAvatar, user?.profile?.displayName]);
 
     useEffect(() => {
         if (user && user._id) {
@@ -428,21 +431,89 @@ export const AuthProvider = ({ children }) => {
         useGlobalStore.getState().resetStore();
     };
 
-    const updateUser = (userData) => {
+    const updateUser = (userDataOrUpdater) => {
         setUser(prevUser => {
-            if (!prevUser) return userData;
-            const localKey = userData?._id ? `isSecurityConfigured_${userData._id}` : (prevUser?._id ? `isSecurityConfigured_${prevUser._id}` : null);
+            const nextPatch = typeof userDataOrUpdater === 'function'
+                ? userDataOrUpdater(prevUser)
+                : userDataOrUpdater;
+            if (!nextPatch) return prevUser;
+            if (!prevUser) return nextPatch;
+
+            const localKey = nextPatch?._id
+                ? `isSecurityConfigured_${nextPatch._id}`
+                : (prevUser?._id ? `isSecurityConfigured_${prevUser._id}` : null);
             const isLocalConfigured = localKey ? localStorage.getItem(localKey) === 'true' : false;
-            
+
             const prevConfigured = prevUser.securityQuestionsConfigured || isLocalConfigured;
-            const newConfigured = userData?.securityQuestionsConfigured !== undefined 
-                ? userData.securityQuestionsConfigured 
+            const newConfigured = nextPatch?.securityQuestionsConfigured !== undefined
+                ? nextPatch.securityQuestionsConfigured
                 : prevConfigured;
 
             const updated = {
                 ...prevUser,
-                ...userData,
+                ...nextPatch,
                 securityQuestionsConfigured: newConfigured
+            };
+            try {
+                localStorage.setItem('user', JSON.stringify(updated));
+            } catch (_) {}
+            return updated;
+        });
+    };
+
+    const refreshUser = async () => {
+        if (!token) return null;
+        return await fetchUser(token);
+    };
+
+    const syncPortalInUser = (portalPayload) => {
+        if (!portalPayload?._id) return;
+        const pid = String(portalPayload._id);
+        setUser((prevUser) => {
+            if (!prevUser) return prevUser;
+            const updateEntry = (entry) => {
+                if (!entry) return entry;
+                const entryId = (entry._id || entry)?.toString();
+                if (entryId !== pid) return entry;
+                const base = typeof entry === 'object' ? entry : { _id: pid };
+                return { ...base, ...portalPayload };
+            };
+            const updated = {
+                ...prevUser,
+                joinedPortals: Array.isArray(prevUser.joinedPortals) ? prevUser.joinedPortals.map(updateEntry) : prevUser.joinedPortals,
+                portals: Array.isArray(prevUser.portals) ? prevUser.portals.map(updateEntry) : prevUser.portals,
+            };
+            try {
+                localStorage.setItem('user', JSON.stringify(updated));
+            } catch (_) {}
+            return updated;
+        });
+    };
+
+    const syncPortalMembership = (portalOrId, action = 'joined') => {
+        if (!portalOrId) return;
+        const pid = typeof portalOrId === 'object' ? String(portalOrId._id || '') : String(portalOrId);
+        if (!pid) return;
+        const portalObj = typeof portalOrId === 'object' ? portalOrId : { _id: pid };
+
+        setUser((prevUser) => {
+            if (!prevUser) return prevUser;
+            const mergeList = (list) => {
+                const arr = Array.isArray(list) ? list : [];
+                const filtered = arr.filter((p) => (p?._id || p)?.toString() !== pid);
+                if (action === 'left' || action === 'removed' || action === 'kicked') {
+                    return filtered;
+                }
+                const existing = arr.find((p) => (p?._id || p)?.toString() === pid);
+                const merged = existing && typeof existing === 'object'
+                    ? { ...existing, ...portalObj }
+                    : portalObj;
+                return [...filtered, merged];
+            };
+            const updated = {
+                ...prevUser,
+                joinedPortals: mergeList(prevUser.joinedPortals),
+                portals: mergeList(prevUser.portals),
             };
             try {
                 localStorage.setItem('user', JSON.stringify(updated));
@@ -497,6 +568,9 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUser,
+        refreshUser,
+        syncPortalInUser,
+        syncPortalMembership,
         savedAccounts,
         switchAccount,
         addAndSwitchAccount,

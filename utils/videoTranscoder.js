@@ -407,6 +407,15 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
 
         if (global.io && updatedPost) {
             global.io.emit('post:updated', updatedPost);
+            if (updatedPost.portal) {
+                const portalRoomId = updatedPost.portal._id
+                    ? updatedPost.portal._id.toString()
+                    : updatedPost.portal.toString();
+                global.io.to(`portal:${portalRoomId}`).emit('post:updated', updatedPost);
+                if (updatedPost.channel) {
+                    global.io.to(`channel:${portalRoomId}:${updatedPost.channel}`).emit('post:updated', updatedPost);
+                }
+            }
         }
 
         console.log(`[VideoTranscoder] 🏁 Pipeline complete for post ${postId}`);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -13,7 +13,7 @@ import { MessageSquare, Compass, Plus, Save, ArrowUpDown } from 'lucide-react';
 import './PortalSidebar.css';
 
 const PortalSidebar = () => {
-    const { user, isAuthenticated, updateUser } = useAuth();
+    const { user, isAuthenticated, updateUser, refreshUser } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
     const unreadPostsByPortal = useGlobalStore(state => state.unreadPostsByPortal);
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
@@ -26,9 +26,11 @@ const PortalSidebar = () => {
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [failedThumbnails, setFailedThumbnails] = useState({});
+    const orderedPortalsRef = useRef([]);
+    const hydratedMissingPortalsRef = useRef(new Set());
 
-    const handlePortalImageError = (portalId) => {
-        setFailedThumbnails(prev => ({ ...prev, [portalId]: true }));
+    const handlePortalImageError = (portalId, srcKey) => {
+        setFailedThumbnails(prev => ({ ...prev, [portalId]: srcKey || true }));
     };
     
     const unreadNotificationItems = useGlobalStore(state => state.unreadNotificationItems) || [];
@@ -91,6 +93,7 @@ const PortalSidebar = () => {
     useEffect(() => {
         // Collect and merge portals from both user.portals and user.joinedPortals
         const portalMap = new Map();
+        const missingIds = [];
         const addPortal = (p) => {
             if (!p) return;
             const pid = (p._id || p)?.toString();
@@ -98,6 +101,8 @@ const PortalSidebar = () => {
             if (typeof p === 'object' && p.name) {
                 const existing = portalMap.get(pid);
                 portalMap.set(pid, { ...(existing || {}), ...p });
+            } else if (!hydratedMissingPortalsRef.current.has(pid)) {
+                missingIds.push(pid);
             }
         };
 
@@ -108,27 +113,35 @@ const PortalSidebar = () => {
             user.portals.forEach(addPortal);
         }
 
+        if (missingIds.length > 0 && typeof refreshUser === 'function') {
+            missingIds.forEach((pid) => hydratedMissingPortalsRef.current.add(pid));
+            refreshUser().catch(() => {});
+        }
+
         const filtered = Array.from(portalMap.values());
         if (filtered.length > 0 || (user && (user.portals || user.joinedPortals))) {
-            const currentIdsSorted = [...orderedPortals].map(p => (p._id || p)?.toString()).sort().join(',');
+            const prevOrdered = orderedPortalsRef.current || [];
+            const currentIdsSorted = [...prevOrdered].map(p => (p._id || p)?.toString()).sort().join(',');
             const newIdsSorted = filtered.map(p => (p._id || p)?.toString()).sort().join(',');
-            
+
             if (currentIdsSorted !== newIdsSorted) {
                 // Keep current order, append new portals at the end, remove unjoined ones
-                const existingOrdered = orderedPortals
+                const existingOrdered = prevOrdered
                     .filter(op => portalMap.has((op._id || op)?.toString()))
                     .map(op => portalMap.get((op._id || op)?.toString()) || op);
-                
+
                 const existingIds = new Set(existingOrdered.map(p => (p._id || p)?.toString()));
                 const newlyAdded = filtered.filter(p => !existingIds.has((p._id || p)?.toString()));
-                
-                setOrderedPortals([...existingOrdered, ...newlyAdded]);
+                const nextOrdered = [...existingOrdered, ...newlyAdded];
+                orderedPortalsRef.current = nextOrdered;
+                setOrderedPortals(nextOrdered);
             } else {
-                const updated = orderedPortals.map(op => {
+                const updated = prevOrdered.map(op => {
                     const latest = filtered.find(fp => (fp._id || fp)?.toString() === (op._id || op)?.toString());
                     return latest ? latest : op;
                 });
-                if (JSON.stringify(orderedPortals) !== JSON.stringify(updated)) {
+                if (JSON.stringify(prevOrdered) !== JSON.stringify(updated)) {
+                    orderedPortalsRef.current = updated;
                     setOrderedPortals(updated);
                 }
             }
@@ -137,7 +150,7 @@ const PortalSidebar = () => {
             fetchUnreadMessagesCount();
             preloadPortals(filtered);
         }
-    }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount, orderedPortals]);
+    }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount, refreshUser]);
 
     useEffect(() => {
         // Sync unread counts on navigation
@@ -307,7 +320,7 @@ const PortalSidebar = () => {
                                                 src={
                                                     (/\.gif($|\?)/i.test(portal.avatar))
                                                         ? getImageUrl(portal.avatar, 'original')
-                                                        : getImageUrl(portal.lowResAvatar || portal.avatar, failedThumbnails[portal._id] ? 'original' : 'thumbnail')
+                                                        : getImageUrl(portal.lowResAvatar || portal.avatar, failedThumbnails[portal._id] === (portal.lowResAvatar || portal.avatar) ? 'original' : 'thumbnail')
                                                 } 
                                                 alt={portal.name} 
                                                 draggable="false" 
@@ -315,7 +328,7 @@ const PortalSidebar = () => {
                                                 decoding="async"
                                                 fetchpriority="high"
                                                 style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
-                                                onError={() => handlePortalImageError(portal._id)}
+                                                onError={() => handlePortalImageError(portal._id, portal.lowResAvatar || portal.avatar)}
                                             />
                                         ) : (
                                             <span>{portal.name.substring(0, 2).toUpperCase()}</span>

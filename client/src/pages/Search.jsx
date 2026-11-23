@@ -13,7 +13,7 @@ import PortalInfoModal from '../components/PortalInfoModal';
 import './Search.css';
 
 const Search = () => {
-    const { user, updateUser } = useAuth(); // Auth context
+    const { user, syncPortalMembership } = useAuth(); // Auth context
     const [query, setQuery] = useState('');
     const [userResults, setUserResults] = useState([]);
     const [portalResults, setPortalResults] = useState(() => {
@@ -113,15 +113,9 @@ const Search = () => {
                     return p;
                 })
             );
-            if (user && updateUser && res.data.status !== 'requested') {
+            if (user && syncPortalMembership && res.data.status !== 'requested') {
                 const targetPortal = portalResults.find((p) => p._id === portalId) || { _id: portalId };
-                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
-                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
-                updateUser({
-                    ...user,
-                    joinedPortals: [...currentJoined.filter((p) => (p?._id || p)?.toString() !== portalId.toString()), targetPortal],
-                    portals: [...currentPortals.filter((p) => (p?._id || p)?.toString() !== portalId.toString()), targetPortal],
-                });
+                syncPortalMembership(targetPortal, 'joined');
             }
         } catch (err) {
             console.error('Join failed:', err);
@@ -153,14 +147,8 @@ const Search = () => {
                     return p;
                 })
             );
-            if (user && updateUser) {
-                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
-                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
-                updateUser({
-                    ...user,
-                    joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== portalId.toString()),
-                    portals: currentPortals.filter((p) => (p?._id || p)?.toString() !== portalId.toString()),
-                });
+            if (user && syncPortalMembership) {
+                syncPortalMembership(portalId, 'left');
             }
         } catch (err) {
             console.error('Leave failed:', err);

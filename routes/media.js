@@ -12,6 +12,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logActivity from '../utils/auditLogger.js';
+import {
+    isHeicBuffer,
+    isHeicFile,
+    convertHeicBufferToJpeg,
+} from '../utils/heicConverter.js';
 
 import Post from '../models/Post.js';
 
@@ -149,7 +154,7 @@ async function streamToBuffer(readableStream) {
 }
 
 const RENDITION_WIDTHS = new Set([80, 100, 160, 300, 320, 480, 640, 720, 800, 1080]);
-const RENDITION_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
+const RENDITION_EXT_RE = /\.(jpe?g|png|webp|gif|heic|heif)$/i;
 const RENDITION_SKIP_RE = /-(thumbnail|medium|lowres|-w\d+)\.webp$/i;
 
 function isEtagMatch(clientEtag, serverEtag) {
@@ -177,7 +182,11 @@ async function ensureRendition(originalKey, width, bucketName) {
     try {
         const getCmd = new GetObjectCommand({ Bucket: bucketName, Key: originalKey });
         const r2Resp = await r2.send(getCmd);
-        const originalBuf = await streamToBuffer(r2Resp.Body);
+        let originalBuf = await streamToBuffer(r2Resp.Body);
+
+        if (isHeicFile(originalKey) || isHeicBuffer(originalBuf)) {
+            originalBuf = await convertHeicBufferToJpeg(originalBuf, 92);
+        }
 
         const sharpInst = sharp(originalBuf, { failOnError: false, animated: false });
         const meta = await sharpInst.metadata();
@@ -295,6 +304,46 @@ router.post('/presigned-url', auth, async (req, res) => {
     } catch (error) {
         console.error('Presigned URL Generation Error:', error);
         res.status(500).json({ message: 'Failed to generate upload URL' });
+    }
+});
+
+const heicUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 },
+});
+
+/**
+ * @route   POST /api/media/convert-heic
+ * @desc    Convert a HEIC/HEIF image into browser-friendly JPEG for preview/crop/upload
+ * @access  Private
+ */
+router.post('/convert-heic', auth, (req, res, next) => {
+    heicUpload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ message: `Yükleme hatası: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ message: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            return res.status(400).json({ message: 'Dönüştürülecek dosya bulunamadı.' });
+        }
+
+        const isHeic = isHeicFile(req.file);
+        const jpegBuffer = isHeic
+            ? await convertHeicBufferToJpeg(req.file.buffer, 92)
+            : await sharp(req.file.buffer).rotate().jpeg({ quality: 92, mozjpeg: true }).toBuffer();
+
+        res.set('Content-Type', 'image/jpeg');
+        res.set('Content-Length', jpegBuffer.length);
+        res.set('Cache-Control', 'no-store');
+        return res.send(jpegBuffer);
+    } catch (error) {
+        console.error('[HEIC Convert] Failed:', error.message);
+        return res.status(422).json({ message: 'HEIC görseli dönüştürülemedi.' });
     }
 });
 
@@ -1157,10 +1206,46 @@ router.get('/*', async (req, res) => {
             return res.status(304).end();
         }
 
-        const contentType = response.ContentType || 'image/jpeg';
+        const rawContentType = response.ContentType || 'image/jpeg';
+        let contentType = rawContentType;
         const contentLength = response.ContentLength;
 
         const ext = path.extname(targetKey || '').toLowerCase();
+        const isHeicAsset = ext === '.heic' || ext === '.heif'
+            || rawContentType.toLowerCase().includes('heic')
+            || rawContentType.toLowerCase().includes('heif');
+
+        if (isHeicAsset) {
+            try {
+                const rawBuf = await streamToBuffer(response.Body);
+                const jpegBuf = await convertHeicBufferToJpeg(rawBuf, 92);
+                contentType = 'image/jpeg';
+                if (jpegBuf.length <= 8 * 1024 * 1024) {
+                    setCachedMedia(targetKey, {
+                        buffer: jpegBuf,
+                        contentType,
+                        contentLength: jpegBuf.length,
+                        etag
+                    });
+                }
+                res.removeHeader('set-cookie');
+                res.removeHeader('Set-Cookie');
+                res.set('Content-Type', contentType);
+                res.set('X-Content-Type-Options', 'nosniff');
+                res.set('ETag', etag);
+                res.set('Cache-Control', ccValue);
+                res.set('Netlify-CDN-Cache-Control', cdnValue);
+                res.set('CDN-Cache-Control', cdnValue);
+                res.set('Access-Control-Allow-Origin', '*');
+                res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+                res.set('Content-Length', jpegBuf.length);
+                res.set('X-Cache', 'HEIC-CONVERT');
+                return res.send(jpegBuf);
+            } catch (heicErr) {
+                console.warn('HEIC on-the-fly conversion failed:', heicErr.message);
+                return res.status(422).json({ message: 'HEIC image could not be converted' });
+            }
+        }
         const isActiveWebDoc = ['.html', '.htm', '.xhtml', '.js', '.mjs', '.hta', '.swf'].includes(ext)
             || contentType.toLowerCase().includes('html')
             || contentType.toLowerCase().includes('javascript');
