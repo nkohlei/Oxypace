@@ -642,10 +642,10 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
 
         // WhatsApp MessagingStyle Configuration:
-        // Use groupConversation=true once the user replies so Android/HyperOS always renders
-        // the incoming sender's name & avatar alongside the user's own reply row.
+        // Use groupConversation=true AND a conversationTitle distinct from senderPerson's name once replied,
+        // otherwise Android/OneUI/HyperOS collapses the incoming message's sender username!
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(userPerson)
-            .setConversationTitle(displaySenderTitle)
+            .setConversationTitle(hasSelfReply ? (displaySenderTitle + " • Oxypace") : displaySenderTitle)
             .setGroupConversation(hasSelfReply);
 
         synchronized (list) {
@@ -721,7 +721,7 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setDefaults(NotificationCompat.DEFAULT_ALL);
 
-        if (shortcutId != null) {
+        if (shortcutId != null && !hasSelfReply) {
             builder.setShortcutId(shortcutId);
         }
 
@@ -814,10 +814,10 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         }
         androidx.core.app.Person selfPerson = selfBuilder.build();
 
-        // Keep groupConversation=true so Android/HyperOS ALWAYS renders partnerPerson's sender name
-        // on incoming messages right alongside the user's own reply row + avatar.
+        // Keep groupConversation=true with a conversationTitle distinct from partnerPerson's name
+        // and omit setShortcutId so Android/OneUI/HyperOS NEVER hides partnerPerson's sender name.
         NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(selfPerson)
-            .setConversationTitle(displayTitle)
+            .setConversationTitle(displayTitle + " • Oxypace")
             .setGroupConversation(true);
 
         synchronized (list) {
@@ -892,7 +892,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setContentTitle(displayTitle)
             .setContentText("Sen: " + replyText)
             .setStyle(style)
-            .setShortcutId(shortcutId)
             .setAutoCancel(true)
             .setSilent(true)
             .setOnlyAlertOnce(true)
@@ -1323,32 +1322,14 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
         boolean isAccumulated = itemsToDisplay.size() > 1;
         String latestSummaryText = "";
+        android.graphics.Bitmap expandedRichBitmap = null;
+        String expandedAuthorLabel = "";
+        String expandedFullText = "";
 
         if (!isAccumulated) {
-            // SINGLE UNREAD POST:
-            // Show Author (@username) + Post Description clearly in Message 1,
-            // and if there is a PDF or Media, attach a clean minimal card/preview in Message 2 below it.
             PortalPostItem item = itemsToDisplay.get(0);
             String authorLabel = formatAuthorLabel(item.authorName, item.authorUsername);
-
-            android.graphics.Bitmap authorBmp = null;
-            if (!item.authorAvatar.isEmpty()) {
-                android.graphics.Bitmap rawAuthor = fetchBitmapFromUrl(item.authorAvatar);
-                if (rawAuthor != null) authorBmp = createCircularAvatar(rawAuthor);
-            }
-            if (authorBmp == null) {
-                authorBmp = createInitialAvatar(item.authorName);
-            }
-
-            androidx.core.app.Person.Builder authorBuilder = new androidx.core.app.Person.Builder()
-                .setName(authorLabel)
-                .setKey("author_" + (item.authorUsername.isEmpty() ? item.authorName : item.authorUsername));
-            if (authorBmp != null) {
-                authorBuilder.setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(authorBmp));
-            } else if (portalIconCompat != null) {
-                authorBuilder.setIcon(portalIconCompat);
-            }
-            androidx.core.app.Person authorPerson = authorBuilder.build();
+            expandedAuthorLabel = authorLabel;
 
             String fallbackText = item.text;
             if (fallbackText.isEmpty()) {
@@ -1377,29 +1358,26 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                     fallbackText = "Yeni bir paylaşım yaptı";
                 }
             }
+            expandedFullText = !item.text.isEmpty() ? item.text : fallbackText;
             latestSummaryText = authorLabel + ": " + fallbackText;
 
-            android.net.Uri attachmentUri = null;
-            String attachmentMime = "image/png";
-
+            android.graphics.Bitmap visualContentBmp = null;
             if ("pdf".equalsIgnoreCase(item.mediaType)) {
                 android.graphics.Bitmap pageThumb = null;
                 if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
                     pageThumb = fetchBitmapFromUrl(item.postMedia);
                 }
-                android.graphics.Bitmap pdfCardBmp = createMinimalPdfCardBitmap(
+                visualContentBmp = createMinimalPdfCardBitmap(
                     pageThumb,
                     item.pdfName.isEmpty() ? "Doküman.pdf" : item.pdfName,
                     item.pdfSize.isEmpty() ? "PDF" : item.pdfSize
                 );
-                attachmentUri = saveBitmapToContentUri(pdfCardBmp, "portal_pdf_" + channelKey);
-                attachmentMime = "image/png";
             } else if ("audio".equalsIgnoreCase(item.mediaType)) {
                 android.graphics.Bitmap coverThumb = null;
                 if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
                     coverThumb = fetchBitmapFromUrl(item.postMedia);
                 }
-                android.graphics.Bitmap audioCardBmp = createMinimalAudioCardBitmap(
+                visualContentBmp = createMinimalAudioCardBitmap(
                     coverThumb,
                     item.audioName,
                     item.audioDuration,
@@ -1407,48 +1385,28 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
                     item.isVoiceRecording,
                     item.audioColor
                 );
-                attachmentUri = saveBitmapToContentUri(audioCardBmp, "portal_audio_" + channelKey);
-                attachmentMime = "image/png";
             } else if ("file".equalsIgnoreCase(item.mediaType) || "folder".equalsIgnoreCase(item.mediaType)) {
-                android.graphics.Bitmap fileCardBmp = createMinimalFileCardBitmap(
+                visualContentBmp = createMinimalFileCardBitmap(
                     item.fileName,
                     item.fileExt,
                     item.fileSize,
                     "folder".equalsIgnoreCase(item.mediaType),
                     item.folderFileCount
                 );
-                attachmentUri = saveBitmapToContentUri(fileCardBmp, "portal_file_" + channelKey);
-                attachmentMime = "image/png";
             } else if (!item.postMedia.isEmpty() && !item.postMedia.equalsIgnoreCase(portalAvatar)) {
                 android.graphics.Bitmap rawMedia = fetchBitmapFromUrl(item.postMedia);
                 if (rawMedia != null) {
                     boolean isVid = "video".equalsIgnoreCase(item.mediaType) || "youtube".equalsIgnoreCase(item.mediaType);
-                    android.graphics.Bitmap compactMedia = createCompactMediaPreviewBitmap(rawMedia, isVid);
-                    attachmentUri = saveBitmapToContentUri(compactMedia, "portal_media_" + channelKey);
-                    attachmentMime = "image/png";
+                    visualContentBmp = createCompactMediaPreviewBitmap(rawMedia, isVid);
                 }
             }
 
-            // If post has description text (or has no visual attachment), add the text message first
-            // so the post description is ALWAYS visible above the attachment!
-            if (!item.text.isEmpty() || attachmentUri == null) {
-                NotificationCompat.MessagingStyle.Message textMsg = new NotificationCompat.MessagingStyle.Message(
-                    !item.text.isEmpty() ? item.text : fallbackText,
-                    item.timestamp,
-                    authorPerson
+            if (visualContentBmp != null) {
+                expandedRichBitmap = createRichPostNotificationBitmap(
+                    authorLabel,
+                    !item.text.isEmpty() ? item.text : "",
+                    visualContentBmp
                 );
-                style.addMessage(textMsg);
-            }
-
-            // If post has a visual attachment, add it cleanly below
-            if (attachmentUri != null) {
-                NotificationCompat.MessagingStyle.Message mediaMsg = new NotificationCompat.MessagingStyle.Message(
-                    fallbackText,
-                    item.timestamp + 1,
-                    authorPerson
-                );
-                mediaMsg.setData(attachmentMime, attachmentUri);
-                style.addMessage(mediaMsg);
             }
         } else {
             // ACCUMULATED UNREAD POSTS (itemsToDisplay.size() > 1, capped at MAX_VISIBLE_PORTAL_POSTS = 5):
@@ -1520,8 +1478,6 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
         int smallIcon = getSafeSmallIcon();
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, notifChannelId)
             .setSmallIcon(smallIcon)
-            .setShortcutId(shortcutId)
-            .setStyle(style)
             .setContentTitle(headerTitle)
             .setContentText(latestSummaryText)
             .setNumber(totalUnreadCount)
@@ -1529,9 +1485,31 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             .setContentIntent(pi)
             .setDeleteIntent(createDismissPendingIntent(this, "portal_post", channelKey, notifId + 200000))
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setCategory(NotificationCompat.CATEGORY_SOCIAL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(NotificationCompat.DEFAULT_ALL);
+
+        if (!isAccumulated) {
+            if (expandedRichBitmap != null) {
+                builder.setStyle(
+                    new NotificationCompat.BigPictureStyle()
+                        .bigPicture(expandedRichBitmap)
+                        .bigLargeIcon((android.graphics.Bitmap) null)
+                        .setBigContentTitle(headerTitle)
+                        .setSummaryText(expandedAuthorLabel)
+                );
+            } else {
+                builder.setStyle(
+                    new NotificationCompat.BigTextStyle()
+                        .setBigContentTitle(headerTitle)
+                        .setSummaryText(expandedAuthorLabel)
+                        .bigText(expandedAuthorLabel + "\n" + expandedFullText)
+                );
+            }
+        } else {
+            builder.setShortcutId(shortcutId);
+            builder.setStyle(style);
+        }
 
         if (portalAvatarBitmap != null) {
             builder.setLargeIcon(portalAvatarBitmap);
@@ -2093,26 +2071,26 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
 
     private static android.graphics.Bitmap createCompactMediaPreviewBitmap(android.graphics.Bitmap rawBmp, boolean isVideo) {
         if (rawBmp == null) return null;
-        int maxW = 540;
-        int maxH = 270;
+        int maxW = 1080;
+        int maxH = 640;
         int w = rawBmp.getWidth();
         int h = rawBmp.getHeight();
         if (w <= 0 || h <= 0) return rawBmp;
 
         float scale = Math.min((float) maxW / w, (float) maxH / h);
-        int targetW = Math.max(120, Math.round(w * scale));
-        int targetH = Math.max(80, Math.round(h * scale));
-        int topPad = 6;
-        int bottomPad = 24;
+        int targetW = Math.max(240, Math.round(w * scale));
+        int targetH = Math.max(140, Math.round(h * scale));
+        int topPad = 8;
+        int bottomPad = 16;
 
         android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(
             targetW, targetH + topPad + bottomPad, android.graphics.Bitmap.Config.ARGB_8888
         );
         android.graphics.Canvas canvas = new android.graphics.Canvas(out);
-        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
         android.graphics.RectF rect = new android.graphics.RectF(0f, topPad, targetW, topPad + targetH);
         android.graphics.Path path = new android.graphics.Path();
-        path.addRoundRect(rect, 18f, 18f, android.graphics.Path.Direction.CW);
+        path.addRoundRect(rect, 22f, 22f, android.graphics.Path.Direction.CW);
         canvas.save();
         canvas.clipPath(path);
         canvas.drawBitmap(rawBmp, new android.graphics.Rect(0, 0, w, h), rect, paint);
@@ -2121,16 +2099,114 @@ public class OxypaceMessagingService extends FirebaseMessagingService {
             float vcx = targetW / 2f;
             float vcy = topPad + targetH / 2f;
             paint.setColor(0xAA000000);
-            canvas.drawCircle(vcx, vcy, 34f, paint);
+            canvas.drawCircle(vcx, vcy, 46f, paint);
             android.graphics.Path playTri = new android.graphics.Path();
-            playTri.moveTo(vcx - 9f, vcy - 14f);
-            playTri.lineTo(vcx + 15f, vcy);
-            playTri.lineTo(vcx - 9f, vcy + 14f);
+            playTri.moveTo(vcx - 12f, vcy - 18f);
+            playTri.lineTo(vcx + 20f, vcy);
+            playTri.lineTo(vcx - 12f, vcy + 18f);
             playTri.close();
             paint.setColor(0xFFFFFFFF);
             canvas.drawPath(playTri, paint);
         }
         canvas.restore();
+        return out;
+    }
+
+    /**
+     * Composes a spacious 1080px-wide BigPicture notification canvas showing author label,
+     * wrapped post description (if present), and the full media/document/audio card cleanly.
+     */
+    private static android.graphics.Bitmap createRichPostNotificationBitmap(
+        String authorLabel,
+        String postText,
+        android.graphics.Bitmap contentBmp
+    ) {
+        if (contentBmp == null) return null;
+        final int canvasW = 1080;
+        final int padX = 28;
+        final int padTop = 24;
+        final int padBottom = 28;
+        final int innerW = canvasW - (padX * 2);
+
+        String cleanAuthor = (authorLabel != null && !authorLabel.trim().isEmpty()) ? authorLabel.trim() : "Oxypace";
+        String cleanText = (postText != null) ? postText.trim() : "";
+
+        android.text.TextPaint authorPaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        authorPaint.setColor(0xFF94A3B8);
+        authorPaint.setTextSize(26f);
+        authorPaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+
+        android.text.TextPaint bodyPaint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        bodyPaint.setColor(0xFFF8FAFC);
+        bodyPaint.setTextSize(30f);
+
+        float textBlockH = 0f;
+        android.text.StaticLayout bodyLayout = null;
+        if (!cleanText.isEmpty()) {
+            android.text.StaticLayout fullLayout;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                fullLayout = android.text.StaticLayout.Builder
+                    .obtain(cleanText, 0, cleanText.length(), bodyPaint, innerW)
+                    .setMaxLines(6)
+                    .setEllipsize(android.text.TextUtils.TruncateAt.END)
+                    .setLineSpacing(6f, 1.0f)
+                    .build();
+            } else {
+                fullLayout = new android.text.StaticLayout(
+                    cleanText, bodyPaint, innerW, android.text.Layout.Alignment.ALIGN_NORMAL, 1.15f, 4f, false
+                );
+            }
+            bodyLayout = fullLayout;
+            textBlockH = 38f + bodyLayout.getHeight() + 18f;
+        }
+
+        int srcW = Math.max(1, contentBmp.getWidth());
+        int srcH = Math.max(1, contentBmp.getHeight());
+        float scale = Math.min((float) innerW / srcW, 640f / srcH);
+        // Scale crisp cards smoothly up to full inner width without distorting tiny icons
+        int drawW = Math.max(200, Math.round(srcW * scale));
+        int drawH = Math.max(100, Math.round(srcH * scale));
+        int drawLeft = Math.round((canvasW - drawW) / 2f);
+
+        int totalH = Math.round(padTop + textBlockH + drawH + padBottom);
+        android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(
+            canvasW, totalH, android.graphics.Bitmap.Config.ARGB_8888
+        );
+        android.graphics.Canvas canvas = new android.graphics.Canvas(out);
+        android.graphics.Paint bgPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        bgPaint.setColor(0xFF12151C);
+        android.graphics.RectF bgRect = new android.graphics.RectF(4f, 4f, canvasW - 4f, totalH - 4f);
+        canvas.drawRoundRect(bgRect, 24f, 24f, bgPaint);
+
+        android.graphics.Paint borderPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        borderPaint.setStyle(android.graphics.Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(2f);
+        borderPaint.setColor(0x22FFFFFF);
+        canvas.drawRoundRect(bgRect, 24f, 24f, borderPaint);
+
+        float cursorY = padTop;
+        if (bodyLayout != null) {
+            CharSequence ellipAuthor = android.text.TextUtils.ellipsize(
+                cleanAuthor, authorPaint, innerW, android.text.TextUtils.TruncateAt.END
+            );
+            canvas.drawText(ellipAuthor.toString(), padX, cursorY + 26f, authorPaint);
+            cursorY += 38f;
+            canvas.save();
+            canvas.translate(padX, cursorY);
+            bodyLayout.draw(canvas);
+            canvas.restore();
+            cursorY += bodyLayout.getHeight() + 18f;
+        }
+
+        android.graphics.Paint imgPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
+        android.graphics.RectF dstRect = new android.graphics.RectF(drawLeft, cursorY, drawLeft + drawW, cursorY + drawH);
+        android.graphics.Path imgClip = new android.graphics.Path();
+        imgClip.addRoundRect(dstRect, 18f, 18f, android.graphics.Path.Direction.CW);
+        canvas.save();
+        canvas.clipPath(imgClip);
+        canvas.drawBitmap(contentBmp, new android.graphics.Rect(0, 0, srcW, srcH), dstRect, imgPaint);
+        canvas.restore();
+
         return out;
     }
 

@@ -918,14 +918,15 @@ export const VoiceProvider = ({ children }) => {
         }
     }, []);
 
-    // Initialize device listener
+    // Initialize device listener only while inside an active voice room so Bluetooth A2DP is never disturbed on startup
     useEffect(() => {
+        if (!activeRoom) return;
         enumerateDevices();
         navigator.mediaDevices?.addEventListener('devicechange', enumerateDevices);
         return () => {
             navigator.mediaDevices?.removeEventListener('devicechange', enumerateDevices);
         };
-    }, [enumerateDevices]);
+    }, [activeRoom, enumerateDevices]);
 
     // Handle Native Android Headset & Speaker Route Change Events
     useEffect(() => {

@@ -136,6 +136,14 @@
             android:stopWithTask="true"
             android:foregroundServiceType="microphone|camera|mediaProjection" />
 
+        <!-- Foreground Service for background audio post playback & lockscreen media controls -->
+        <service
+            android:name=".MediaPlaybackService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="true"
+            android:foregroundServiceType="mediaPlayback" />
+
     </application>
 
     <!-- Permissions -->
@@ -154,6 +162,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Required for ringtone vibration and waking screen on incoming calls -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />

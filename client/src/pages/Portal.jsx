@@ -404,9 +404,13 @@ const Portal = () => {
             const newPostChannelId = newPost.channel?._id || newPost.channel;
             const isTargetPortal = String(newPostPortalId) === String(id);
             const isOnlyChannel = latestPortal?.channels?.length === 1;
+            const firstCh = latestPortal?.channels?.[0];
+            const isPrimaryChannel = Boolean(firstCh && String(currentChannel) === String(firstCh._id));
+            const normCh = String(newPostChannelId || 'general').toLowerCase();
             const isTargetChannel = String(newPostChannelId) === String(currentChannel) ||
                 (String(newPostChannelId || 'general') === String(currentChannel || 'general')) ||
                 isOnlyChannel ||
+                (isPrimaryChannel && (normCh === 'general' || normCh === 'genel' || normCh === String(firstCh.name || '').toLowerCase() || String(newPostChannelId) === String(firstCh._id))) ||
                 (latestChannelObj && (String(newPostChannelId) === String(latestChannelObj.name) || String(newPostChannelId) === String(latestChannelObj._id)));
 
             if (isTargetPortal && isTargetChannel) {

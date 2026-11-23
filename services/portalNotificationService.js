@@ -94,7 +94,7 @@ function extractPostNotificationDetails(p) {
     }
 
     const rawContent = (p.content || '').replace(/\s+/g, ' ').trim();
-    const text = rawContent.length > 140 ? rawContent.substring(0, 137) + '...' : rawContent;
+    const text = rawContent.length > 360 ? rawContent.substring(0, 357) + '...' : rawContent;
 
     let mediaType = 'none';
     const attachments = Array.isArray(p.attachments) ? p.attachments : [];

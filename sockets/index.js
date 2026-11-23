@@ -213,6 +213,7 @@ export const initializeSocket = (io) => {
 
             userSockets.set(socket.id, strUserId);
             socket.join(strUserId);
+            socket.join(`user:${strUserId}`);
 
             let userDoc = null;
             try {

@@ -1645,6 +1645,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeMediaPreloader.class);
         registerPlugin(ScreenOrientationManager.class);
         registerPlugin(ShareTargetManager.class);
+        registerPlugin(MediaControlsPlugin.class);
         super.onCreate(savedInstanceState);
         bridgeInstance = getBridge();
         OtaBackgroundScheduler.schedulePeriodicChecks(getApplicationContext());
@@ -2210,9 +2211,9 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         isAppForeground = false;
-        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+        if (CallManager.isInCall || MediaPlaybackService.isActive || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
                 && isInPictureInPictureMode())) {
-            // Keep WebView and Camera/WebRTC active in background when in a call or PiP
+            // Keep WebView and Camera/WebRTC/Audio playback active in background
             scheduleWebViewKeepAlivePulses();
         }
     }
@@ -2220,9 +2221,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onStop() {
         super.onStop();
-        if (CallManager.isInCall || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+        if (CallManager.isInCall || MediaPlaybackService.isActive || (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
                 && isInPictureInPictureMode())) {
-            // Keep WebView and Camera/WebRTC active in background when in a call or when
+            // Keep WebView and Camera/WebRTC/Audio playback active in background or when
             // PiP X button hides the window
             scheduleWebViewKeepAlivePulses();
         }
@@ -2603,6 +2604,10 @@ public class MainActivity extends BridgeActivity {
     private void setupAudioDeviceMonitoring() {
         try {
             android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                // Record initial headset state before registering callbacks so launch never triggers a false plug-in route switch
+                CallManager.sHasHeadset = CallManager.isHeadsetConnected(am);
+            }
             if (am != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                 am.registerAudioDeviceCallback(new android.media.AudioDeviceCallback() {
                     @Override
@@ -2643,20 +2648,69 @@ public class MainActivity extends BridgeActivity {
                 CallManager.sHasHeadset = hasHeadset;
 
                 if (hasHeadset && !prevHas) {
-                    // Headset plugged in / connected!
-                    // Requirement: Kulaklık takıldığı an varsayılan olarak mikrofon ve hoparlör
-                    // kulaklığa geçsin.
-                    CallManager.sUserSelectedRoute = null; // Reset user override
-                    CallManager.routeAudio(am, "headset");
+                    CallManager.sUserSelectedRoute = null;
+                    if (CallManager.isInCall) {
+                        CallManager.routeAudio(am, "headset");
+                    }
                     CallManager.dispatchAudioRouteChanged("headset", true, CallManager.sHeadsetName);
                 } else if (!hasHeadset && prevHas) {
-                    // Headset unplugged / disconnected! Fall back to speaker
                     CallManager.sUserSelectedRoute = null;
-                    CallManager.routeAudio(am, "speaker");
+                    if (CallManager.isInCall) {
+                        CallManager.routeAudio(am, "speaker");
+                    }
                     CallManager.dispatchAudioRouteChanged("speaker", false, "Kulaklık");
                 }
             } catch (Exception ignored) {
             }
         });
+    }
+
+    @CapacitorPlugin(name = "MediaControls")
+    public static class MediaControlsPlugin extends Plugin {
+        @PluginMethod
+        public void update(PluginCall call) {
+            try {
+                android.content.Context ctx = getContext();
+                if (ctx == null) {
+                    call.resolve();
+                    return;
+                }
+                android.content.Intent intent = new android.content.Intent(ctx, MediaPlaybackService.class);
+                intent.setAction(MediaPlaybackService.ACTION_UPDATE);
+                intent.putExtra("title", call.getString("title", "Ses Dosyası"));
+                intent.putExtra("artist", call.getString("artist", "Oxypace"));
+                intent.putExtra("album", call.getString("album", "Oxypace Ses"));
+                intent.putExtra("artworkUrl", call.getString("artworkUrl", ""));
+                intent.putExtra("isPlaying", Boolean.TRUE.equals(call.getBoolean("isPlaying", true)));
+                intent.putExtra("hasNext", Boolean.TRUE.equals(call.getBoolean("hasNext", false)));
+                intent.putExtra("hasPrev", Boolean.TRUE.equals(call.getBoolean("hasPrev", false)));
+                Long dur = call.getLong("durationMs", 0L);
+                Long pos = call.getLong("positionMs", 0L);
+                intent.putExtra("durationMs", dur != null ? dur : 0L);
+                intent.putExtra("positionMs", pos != null ? pos : 0L);
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && Boolean.TRUE.equals(call.getBoolean("isPlaying", true))) {
+                    ctx.startForegroundService(intent);
+                } else {
+                    ctx.startService(intent);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("MediaControlsPlugin", "update error: " + e.getMessage());
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void clear(PluginCall call) {
+            try {
+                android.content.Context ctx = getContext();
+                if (ctx != null) {
+                    android.content.Intent intent = new android.content.Intent(ctx, MediaPlaybackService.class);
+                    intent.setAction(MediaPlaybackService.ACTION_STOP);
+                    ctx.startService(intent);
+                }
+            } catch (Exception ignored) {}
+            call.resolve();
+        }
     }
 }

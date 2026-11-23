@@ -9,7 +9,7 @@ import PortalBadges from './PortalBadges';
 import './PromotedPortalCard.css';
 
 const PromotedPortalCard = ({ portal }) => {
-    const { user, updateUser } = useAuth();
+    const { user, syncPortalMembership } = useAuth();
     const navigate = useNavigate();
 
     // +18 NSFW safety guarantee: never render NSFW portals
@@ -49,15 +49,7 @@ const PromotedPortalCard = ({ portal }) => {
                 setIsMember(true);
                 setMemberCount((prev) => prev + 1);
                 // Optimistically update joinedPortals in user context
-                if (user && updateUser) {
-                    const currentJoined = user.joinedPortals || [];
-                    if (!currentJoined.some(p => (p._id || p).toString() === portal._id.toString())) {
-                        updateUser({
-                            joinedPortals: [...currentJoined, portal],
-                            portals: [...(user.portals || []), portal]
-                        });
-                    }
-                }
+                syncPortalMembership?.(portal, 'joined');
             }
         } catch (err) {
             const message = err.response?.data?.message || 'İşlem başarısız oldu.';

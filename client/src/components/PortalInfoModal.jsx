@@ -18,7 +18,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
     const touchCurrentY = useRef(0);
 
     const navigate = useNavigate();
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, syncPortalMembership } = useAuth();
 
     useEffect(() => {
         if (portal) {
@@ -84,15 +84,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
         setLeaving(true);
         try {
             await axios.post(`/api/portals/${currentPortalId}/leave`);
-            if (user && updateUser) {
-                const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
-                const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
-                updateUser({
-                    ...user,
-                    joinedPortals: currentJoined.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()),
-                    portals: currentPortals.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()),
-                });
-            }
+            syncPortalMembership?.(currentPortalId, 'left');
             if (onLeave) {
                 onLeave(currentPortalId);
             }
@@ -117,15 +109,7 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
         try {
             const res = await axios.post(`/api/portals/${currentPortalId}/join`);
             if (res.data.status === 'joined') {
-                if (user && updateUser) {
-                    const currentJoined = Array.isArray(user?.joinedPortals) ? user.joinedPortals : [];
-                    const currentPortals = Array.isArray(user?.portals) ? user.portals : [];
-                    updateUser({
-                        ...user,
-                        joinedPortals: [...currentJoined.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()), portalData],
-                        portals: [...currentPortals.filter((p) => (p?._id || p)?.toString() !== currentPortalId.toString()), portalData],
-                    });
-                }
+                syncPortalMembership?.(portalData || currentPortalId, 'joined');
                 setPortalData((prev) => ({
                     ...prev,
                     isMember: true,

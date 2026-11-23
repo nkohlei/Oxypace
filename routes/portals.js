@@ -76,6 +76,7 @@ function emitPortalMembership(userId, portalDoc, action) {
         memberCount: Array.isArray(portalDoc.members) ? portalDoc.members.length : undefined,
         updatedAt: new Date().toISOString(),
     };
+    global.io.to(userIdStr).emit('portal:membership_changed', eventPayload);
     global.io.to(`user:${userIdStr}`).emit('portal:membership_changed', eventPayload);
     global.io.to(`portal:${portalIdStr}`).emit('portal:membership_changed', eventPayload);
     global.io.emit('portal:updated', {

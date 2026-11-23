@@ -1,3 +1,6 @@
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+const MediaControls = registerPlugin('MediaControls');
 const listeners = new Set();
 
 class AudioPlaybackManager {
@@ -5,6 +8,55 @@ class AudioPlaybackManager {
         this.activeId = null;
         this.activeElement = null;
         this.activeControls = null;
+        this.lastNativeSyncAt = 0;
+        this.clearTimer = null;
+        this._initNativeActionListener();
+    }
+
+    _initNativeActionListener() {
+        if (typeof window === 'undefined' || this._nativeListenerAttached) return;
+        this._nativeListenerAttached = true;
+        window.addEventListener('oxypace:native_media_action', (e) => {
+            const detail = e?.detail || {};
+            const action = detail.action;
+            if (!action) return;
+
+            if (action === 'play') {
+                if (typeof this.activeControls?.onPlay === 'function') {
+                    this.activeControls.onPlay();
+                } else if (this.activeElement) {
+                    this.activeElement.play().catch(() => {});
+                }
+            } else if (action === 'pause') {
+                if (typeof this.activeControls?.onPause === 'function') {
+                    this.activeControls.onPause();
+                } else if (this.activeElement) {
+                    this.activeElement.pause();
+                }
+            } else if (action === 'toggle') {
+                if (this.activeElement && !this.activeElement.paused) {
+                    this.activeControls?.onPause?.() || this.activeElement.pause();
+                } else {
+                    this.activeControls?.onPlay?.() || this.activeElement?.play()?.catch(() => {});
+                }
+            } else if (action === 'next') {
+                this.activeControls?.onNext?.();
+            } else if (action === 'prev') {
+                this.activeControls?.onPrev?.();
+            } else if (action === 'seek') {
+                const pos = Number(detail.position);
+                if (this.activeElement && Number.isFinite(pos) && pos >= 0) {
+                    this.activeElement.currentTime = pos;
+                    this.updatePositionState(this.activeElement);
+                }
+            } else if (action === 'stop') {
+                if (typeof this.activeControls?.onPause === 'function') {
+                    this.activeControls.onPause();
+                } else if (this.activeElement) {
+                    this.activeElement.pause();
+                }
+            }
+        });
     }
 
     subscribe(fn) {
@@ -22,6 +74,40 @@ class AudioPlaybackManager {
                 fn(snapshot);
             } catch (_) {}
         });
+    }
+
+    _syncNativeControls(isPlayingNow, force = false) {
+        if (!Capacitor.isNativePlatform()) return;
+        const now = Date.now();
+        if (!force && now - this.lastNativeSyncAt < 950) return;
+        this.lastNativeSyncAt = now;
+
+        const el = this.activeElement;
+        const controls = this.activeControls || {};
+        const metadata = controls.metadata || {};
+        const durationSec = el && Number.isFinite(el.duration) && el.duration > 0 ? el.duration : 0;
+        const posSec = el && Number.isFinite(el.currentTime) && el.currentTime >= 0 ? el.currentTime : 0;
+
+        try {
+            MediaControls.update({
+                title: metadata.title || 'Ses Dosyası',
+                artist: metadata.artist || 'Oxypace',
+                album: metadata.album || 'Oxypace Ses',
+                artworkUrl: metadata.artwork || '',
+                isPlaying: Boolean(isPlayingNow),
+                hasNext: typeof controls.onNext === 'function',
+                hasPrev: typeof controls.onPrev === 'function',
+                durationMs: Math.round(durationSec * 1000),
+                positionMs: Math.round(posSec * 1000),
+            }).catch(() => {});
+        } catch (_) {}
+    }
+
+    _clearNativeControls() {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            MediaControls.clear().catch(() => {});
+        } catch (_) {}
     }
 
     pauseAllExcept(targetEl = null) {
@@ -49,18 +135,24 @@ class AudioPlaybackManager {
     }
 
     notifyPlay(id, el, controls = {}) {
+        if (this.clearTimer) {
+            clearTimeout(this.clearTimer);
+            this.clearTimer = null;
+        }
         this.pauseAllExcept(el);
         this.activeId = id;
         this.activeElement = el;
         this.activeControls = controls;
         this._syncMediaSession(controls.metadata || {}, 'playing');
         this.updatePositionState(el);
+        this._syncNativeControls(true, true);
         this._notifyListeners();
     }
 
     notifyPause(id, el) {
         if (this.activeElement === el || this.activeId === id) {
             this._setMediaPlaybackState('paused');
+            this._syncNativeControls(false, true);
             this._notifyListeners();
         }
     }
@@ -69,6 +161,14 @@ class AudioPlaybackManager {
         if (this.activeElement === el || this.activeId === id) {
             this._setMediaPlaybackState('none');
             this._notifyListeners();
+            if (this.clearTimer) clearTimeout(this.clearTimer);
+            // Delay slightly so sequential multi-audio auto-next keeps the foreground service alive seamlessly
+            this.clearTimer = setTimeout(() => {
+                this.clearTimer = null;
+                if (!this.activeElement || this.activeElement.paused || this.activeElement.ended) {
+                    this._clearNativeControls();
+                }
+            }, 400);
         }
     }
 
@@ -79,13 +179,18 @@ class AudioPlaybackManager {
             this.activeControls = null;
             this._setMediaPlaybackState('none');
             this._clearMediaSessionHandlers();
+            this._clearNativeControls();
             this._notifyListeners();
         }
     }
 
     updatePositionState(el) {
-        if (!el || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+        if (!el) return;
         if (this.activeElement !== el) return;
+        if (!el.paused) {
+            this._syncNativeControls(true, false);
+        }
+        if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
         try {
             if (typeof navigator.mediaSession.setPositionState === 'function') {
                 const duration = Number(el.duration);

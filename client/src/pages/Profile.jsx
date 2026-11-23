@@ -67,19 +67,35 @@ const Profile = () => {
         }
         return null;
     });
+    const profileUserRef = useRef(profileUser);
+    profileUserRef.current = profileUser;
     const [editing, setEditing] = useState(false);
 
     useEffect(() => {
         if (socket && connected) {
+            const handleCreatePost = (newPost) => {
+                if (!newPost?._id) return;
+                const targetProfileId = profileUserRef.current?._id || (isOwnProfile ? currentUser?._id : null);
+                const postAuthorId = newPost.author?._id || newPost.author?.id || newPost.author;
+                if (!targetProfileId || !postAuthorId || String(postAuthorId) !== String(targetProfileId)) return;
+                setUserPosts((prev) => {
+                    if (prev.some((p) => String(p._id) === String(newPost._id))) return prev;
+                    return [newPost, ...prev];
+                });
+            };
             const handleUpdatePost = (updatedPost) => {
                 setUserPosts((prev) => prev.map(p => p._id === updatedPost._id ? updatedPost : p));
             };
+            socket.on('post:created', handleCreatePost);
+            socket.on('newPost', handleCreatePost);
             socket.on('post:updated', handleUpdatePost);
             return () => {
+                socket.off('post:created', handleCreatePost);
+                socket.off('newPost', handleCreatePost);
                 socket.off('post:updated', handleUpdatePost);
             };
         }
-    }, [socket, connected]);
+    }, [socket, connected, isOwnProfile, currentUser?._id]);
 
     // Sync own profile state when currentUser updates (avatar/cover/bio/portals)
     useEffect(() => {

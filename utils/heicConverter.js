@@ -55,6 +55,43 @@ export function isHeicFile(fileOrName, mimetype = '') {
     return false;
 }
 
+/**
+ * Decode full HEIC/HEIF image using libheif's heif-convert CLI (reconstructs tiled grids accurately).
+ * @param {Buffer} buffer
+ * @param {number} [quality=95]
+ * @returns {Promise<Buffer>}
+ */
+async function convertViaHeifConvert(buffer, quality = 95) {
+    const tmpId = crypto.randomBytes(8).toString('hex');
+    const tmpDir = os.tmpdir();
+    const inPath = path.join(tmpDir, `heic-in-${tmpId}.heic`);
+    const outPath = path.join(tmpDir, `heic-out-${tmpId}.jpg`);
+
+    try {
+        await fs.writeFile(inPath, buffer);
+        await execFileAsync('heif-convert', ['-q', String(quality), inPath, outPath], { timeout: 30000 });
+
+        try {
+            return await fs.readFile(outPath);
+        } catch (_) {
+            // Multi-image HEIC files may emit heic-out-<id>-1.jpg
+            const altPath = outPath.replace(/\.jpg$/, '-1.jpg');
+            return await fs.readFile(altPath);
+        }
+    } finally {
+        await fs.unlink(inPath).catch(() => {});
+        try {
+            const entries = await fs.readdir(tmpDir);
+            const prefix = `heic-out-${tmpId}`;
+            await Promise.all(
+                entries
+                    .filter((name) => name.startsWith(prefix))
+                    .map((name) => fs.unlink(path.join(tmpDir, name)).catch(() => {}))
+            );
+        } catch (_) {}
+    }
+}
+
 async function convertViaFfmpeg(buffer, format = 'jpg', quality = 92) {
     if (!ffmpegStatic) {
         throw new Error('ffmpeg-static binary not available for HEIC fallback');
@@ -79,46 +116,56 @@ async function convertViaFfmpeg(buffer, format = 'jpg', quality = 92) {
 
 /**
  * Convert a HEIC/HEIF buffer into a high-quality auto-oriented JPEG buffer.
- * Uses sharp (libheif) first and falls back to ffmpeg-static if needed.
+ * Uses heif-convert (full HEIC grid + libde265) first, then sharp, then ffmpeg-static.
  * @param {Buffer} buffer
  * @param {number} [quality=92]
  * @returns {Promise<Buffer>}
  */
 export async function convertHeicBufferToJpeg(buffer, quality = 92) {
     try {
-        return await sharp(buffer)
-            .rotate()
-            .jpeg({ quality, mozjpeg: true })
-            .toBuffer();
-    } catch (sharpErr) {
+        const rawJpg = await convertViaHeifConvert(buffer, Math.max(quality, 95));
+        return await sharp(rawJpg).rotate().jpeg({ quality, mozjpeg: true }).toBuffer();
+    } catch (heifErr) {
         try {
-            const rawJpg = await convertViaFfmpeg(buffer, 'jpg', quality);
-            return await sharp(rawJpg).rotate().jpeg({ quality, mozjpeg: true }).toBuffer();
-        } catch (ffmpegErr) {
-            throw new Error(`HEIC to JPEG conversion failed: ${sharpErr.message}; fallback: ${ffmpegErr.message}`);
+            return await sharp(buffer)
+                .rotate()
+                .jpeg({ quality, mozjpeg: true })
+                .toBuffer();
+        } catch (sharpErr) {
+            try {
+                const rawJpg = await convertViaFfmpeg(buffer, 'jpg', quality);
+                return await sharp(rawJpg).rotate().jpeg({ quality, mozjpeg: true }).toBuffer();
+            } catch (ffmpegErr) {
+                throw new Error(`HEIC to JPEG conversion failed: heif-convert=${heifErr.message}; sharp=${sharpErr.message}; ffmpeg=${ffmpegErr.message}`);
+            }
         }
     }
 }
 
 /**
  * Convert a HEIC/HEIF buffer into a WebP buffer.
- * Uses sharp (libheif) first and falls back to ffmpeg-static if needed.
+ * Uses heif-convert (full HEIC grid + libde265) first, then sharp, then ffmpeg-static.
  * @param {Buffer} buffer
  * @param {number} [quality=90]
  * @returns {Promise<Buffer>}
  */
 export async function convertHeicBufferToWebp(buffer, quality = 90) {
     try {
-        return await sharp(buffer)
-            .rotate()
-            .webp({ quality })
-            .toBuffer();
-    } catch (sharpErr) {
+        const rawJpg = await convertViaHeifConvert(buffer, 95);
+        return await sharp(rawJpg).rotate().webp({ quality }).toBuffer();
+    } catch (heifErr) {
         try {
-            const rawJpg = await convertViaFfmpeg(buffer, 'jpg', 95);
-            return await sharp(rawJpg).rotate().webp({ quality }).toBuffer();
-        } catch (ffmpegErr) {
-            throw new Error(`HEIC to WebP conversion failed: ${sharpErr.message}; fallback: ${ffmpegErr.message}`);
+            return await sharp(buffer)
+                .rotate()
+                .webp({ quality })
+                .toBuffer();
+        } catch (sharpErr) {
+            try {
+                const rawJpg = await convertViaFfmpeg(buffer, 'jpg', 95);
+                return await sharp(rawJpg).rotate().webp({ quality }).toBuffer();
+            } catch (ffmpegErr) {
+                throw new Error(`HEIC to WebP conversion failed: heif-convert=${heifErr.message}; sharp=${sharpErr.message}; ffmpeg=${ffmpegErr.message}`);
+            }
         }
     }
 }

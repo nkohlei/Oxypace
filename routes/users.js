@@ -36,6 +36,7 @@ function emitUserProfileUpdated(userDoc) {
         updatedAt: new Date().toISOString(),
     };
     global.io.emit('user:profile_updated', payload);
+    global.io.to(userDoc._id.toString()).emit('user:profile_updated', payload);
     global.io.to(`user:${userDoc._id.toString()}`).emit('user:profile_updated', payload);
 }
 

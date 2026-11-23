@@ -36,7 +36,7 @@ import {
 import './TanitimShowcase.css';
 
 const TanitimShowcase = () => {
-    const { user, updateUser } = useAuth();
+    const { user, syncPortalMembership } = useAuth();
     const navigate = useNavigate();
 
     const [globalPortal, setGlobalPortal] = useState(null);
@@ -102,14 +102,8 @@ const TanitimShowcase = () => {
             }
             setTopPortals((prev) => prev.map(updateItem));
 
-            if (!isReq && user && updateUser) {
-                const currentJoined = user.joinedPortals || [];
-                if (!currentJoined.some(p => (p._id || p).toString() === portal._id.toString())) {
-                    updateUser({
-                        joinedPortals: [...currentJoined, portal],
-                        portals: [...(user.portals || []), portal]
-                    });
-                }
+            if (!isReq) {
+                syncPortalMembership?.(portal, 'joined');
             }
         } catch (err) {
             console.error('Join error:', err);
