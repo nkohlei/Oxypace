@@ -419,7 +419,7 @@ app.post('/api/webhook/deploy', express.json(), (req, res) => {
     isDeploying = true;
     // Arka planda git fetch + reset ve pm2 reload çalıştır
     setTimeout(() => {
-        const deployCmd = 'OLD_HEAD=$(git rev-parse HEAD) && git fetch --depth=1 origin main && git reset --hard origin/main && git gc --prune=now --quiet && if ! git diff --quiet $OLD_HEAD HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi && (pm2 reload oxypace-backend || pm2 restart all)';
+        const deployCmd = 'mkdir -p /tmp/oxypace-dl-backup && cp -f public/downloads/oxypace.apk public/downloads/bundle.zip /tmp/oxypace-dl-backup/ 2>/dev/null || true && OLD_HEAD=$(git rev-parse HEAD) && git fetch --depth=1 origin main && git reset --hard origin/main && mkdir -p public/downloads && cp -f /tmp/oxypace-dl-backup/* public/downloads/ 2>/dev/null || true && rm -rf /tmp/oxypace-dl-backup && git gc --prune=now --quiet && if ! git diff --quiet $OLD_HEAD HEAD -- package.json; then NODE_OPTIONS="--max-old-space-size=256" npm install --omit=dev --no-audit --no-fund; fi && (pm2 reload oxypace-backend || pm2 restart all)';
         exec(deployCmd, { cwd: '/home/ubuntu/app', env: process.env }, (err, stdout, stderr) => {
             isDeploying = false;
             if (err) {
@@ -441,7 +441,7 @@ app.get('/loaderio-246e78c59963b4c65ec8883b750b2d5c.txt', (req, res) => {
 });
 
 // Direct APK Download Endpoint - serves latest compiled release APK with no-cache headers
-app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
+app.get(['/downloads/oxypace.apk', '/download/apk', /^\/downloads\/oxypace-v?[\d.]+\.apk$/], (req, res) => {
     const candidates = [
         path.join(__dirname, 'public', 'downloads', 'oxypace.apk'),
         path.join(__dirname, 'client', 'public', 'downloads', 'oxypace.apk'),
@@ -450,9 +450,10 @@ app.get(['/downloads/oxypace.apk', '/download/apk'], (req, res) => {
     for (const file of candidates) {
         if (fs.existsSync(file)) {
             const stat = fs.statSync(file);
+            const apkVersion = (typeof APP_VERSION_CONFIG !== 'undefined' && APP_VERSION_CONFIG?.latestVersion) ? APP_VERSION_CONFIG.latestVersion : '2.6.3';
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
             res.setHeader('Content-Length', stat.size);
-            res.setHeader('Content-Disposition', 'attachment; filename="oxypace.apk"');
+            res.setHeader('Content-Disposition', `attachment; filename="oxypace-${apkVersion}.apk"`);
             res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');

@@ -81,7 +81,7 @@ const UpdateModal = () => {
     }, []);
 
     const handleDownload = async () => {
-        const downloadUrl = info?.downloadUrl || 'https://oxypace.com.tr/downloads/oxypace.apk';
+        const downloadUrl = info?.downloadUrl || 'https://api.oxypace.com.tr/downloads/oxypace.apk';
 
         setDownloading(true);
         setProgress(0);
@@ -136,13 +136,13 @@ const UpdateModal = () => {
     };
 
     const handleOpenInChrome = () => {
-        const downloadUrl = info?.downloadUrl || 'https://oxypace.com.tr/downloads/oxypace.apk';
+        const downloadUrl = info?.downloadUrl || 'https://api.oxypace.com.tr/downloads/oxypace.apk';
         window.open(downloadUrl, '_system');
     };
 
     if (!show) return null;
 
-    const downloadUrl = info?.downloadUrl || 'https://oxypace.com.tr/downloads/oxypace.apk';
+    const downloadUrl = info?.downloadUrl || 'https://api.oxypace.com.tr/downloads/oxypace.apk';
 
     return (
         <div className="update-modal-overlay">

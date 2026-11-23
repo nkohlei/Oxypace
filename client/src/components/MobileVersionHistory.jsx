@@ -1490,7 +1490,7 @@ ${v.changes.map((c) => `- [${c.type.toUpperCase()}] ${c.text}`).join('\n')}
 
                     <div className="mvh-header-actions">
                         <a
-                            href="/oxypace.apk"
+                            href="https://api.oxypace.com.tr/downloads/oxypace.apk"
                             download="oxypace.apk"
                             className="mvh-btn-primary"
                             title="En son kararlı derlemeyi cihazınıza indirin"

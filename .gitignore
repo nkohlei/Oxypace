@@ -49,3 +49,9 @@ client/src/blog_app/
 stream-resolver/node_modules/
 stream-resolver/logs/
 stream-resolver/.env
+
+# Release binaries (uploaded directly to OCI, never committed to git)
+public/downloads/*.apk
+public/downloads/*.zip
+client/public/downloads/*.apk
+client/public/downloads/*.zip

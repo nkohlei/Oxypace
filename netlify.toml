@@ -58,6 +58,12 @@
   status = 302
   force = true
 
+[[redirects]]
+  from = "/oxypace.apk"
+  to = "https://api.oxypace.com.tr/downloads/oxypace.apk"
+  status = 302
+  force = true
+
 # ── OG Bot Proxy (Bot preview için) ──────────────
 [[redirects]]
   from = "/post/*"
