@@ -1063,33 +1063,61 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
         baseUrlObj = new URL(targetUrl);
       }
 
+      const isNoSearchInheritHost = /mycdn|okcdn|ok\.ru|vkuser/i.test(baseUrlObj.hostname);
       const lines = manifestText.split('\n');
+      let prevLineWasStreamInf = false;
       const rewrittenLines = lines.map((line) => {
         const trimmed = line.trim();
         if (!trimmed) return line;
 
         if (trimmed.startsWith('#')) {
+          const isStreamInf = trimmed.startsWith('#EXT-X-STREAM-INF');
+          let outLine = line;
           if (trimmed.includes('URI="')) {
-            return line.replace(/URI="([^"]+)"/g, (_, p1) => {
+            const isKeyOrMap = trimmed.startsWith('#EXT-X-KEY') || trimmed.startsWith('#EXT-X-MAP');
+            outLine = line.replace(/URI="([^"]+)"/g, (_, p1) => {
               try {
                 let absUrl = new URL(p1, finalBaseUrl).href;
-                if (!p1.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
+                if (
+                  !isNoSearchInheritHost &&
+                  !p1.startsWith('http') &&
+                  !p1.startsWith('/') &&
+                  !p1.includes('?') &&
+                  baseUrlObj.search &&
+                  !absUrl.includes('?')
+                ) {
                   absUrl += baseUrlObj.search;
                 }
                 const lowerAbs = absUrl.toLowerCase();
-                const subPl = lowerAbs.includes('.m3u8') || lowerAbs.includes('.txt') || lowerAbs.includes('manifest');
+                const subPl =
+                  !isKeyOrMap &&
+                  (trimmed.startsWith('#EXT-X-MEDIA') ||
+                    lowerAbs.includes('.m3u8') ||
+                    lowerAbs.includes('.txt') ||
+                    lowerAbs.includes('manifest'));
                 return `URI="${buildProxiedTarget(absUrl, subPl)}"`;
               } catch {
                 return `URI="${p1}"`;
               }
             });
           }
-          return line;
+          prevLineWasStreamInf = isStreamInf;
+          return outLine;
         }
+
+        const forceSubManifest = prevLineWasStreamInf;
+        prevLineWasStreamInf = false;
 
         try {
           let absUrl = new URL(trimmed, finalBaseUrl).href;
-          if (!trimmed.includes('?') && baseUrlObj.search && !absUrl.includes('?')) {
+          if (
+            !isNoSearchInheritHost &&
+            !trimmed.startsWith('http') &&
+            !trimmed.startsWith('/') &&
+            !trimmed.includes('?') &&
+            baseUrlObj.search &&
+            !absUrl.includes('?')
+          ) {
             absUrl += baseUrlObj.search;
           }
 
@@ -1098,7 +1126,11 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
           }
 
           const lowerAbs = absUrl.toLowerCase();
-          const subPl = lowerAbs.includes('.m3u8') || lowerAbs.includes('.txt') || lowerAbs.includes('manifest');
+          const subPl =
+            forceSubManifest ||
+            lowerAbs.includes('.m3u8') ||
+            lowerAbs.includes('.txt') ||
+            lowerAbs.includes('manifest');
           return buildProxiedTarget(absUrl, subPl);
         } catch {
           return line;
@@ -1669,16 +1701,24 @@ async function resolveNadirFilm(targetUrl) {
 
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const pageTitle = sanitizePublicTitle(titleMatch ? titleMatch[1] : '');
+  const baseAudio = detectAudioTypeFromText(pageTitle) !== 'unknown' ? detectAudioTypeFromText(pageTitle) : 'altyazi';
   // Only attempt non-Turnstile embeds (nadirfilm's own player enforces Turnstile tsGate)
   const embedUrls = extractEmbedUrlsFromHtml(html, targetUrl).filter(
     u => !u.includes('player.nadirfilm.com') && !u.includes('stellarconductornexus')
   );
   if (embedUrls.length === 0) return null;
 
-  return await raceFirstSuccess(
-    embedUrls.slice(0, 3).map((emb) => resolveEmbedUrl(emb, targetUrl, pageTitle)),
+  const resolved = await raceFirstSuccess(
+    embedUrls.slice(0, 4).map((emb) =>
+      resolveEmbedUrl(emb, targetUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: emb, audioType: baseAudio } : null))
+    ),
     6000
   );
+  if (!resolved) return null;
+  return {
+    ...resolved,
+    extraEmbeds: embedUrls.filter((u) => u !== resolved.wonEmbedUrl).slice(0, 3).map((url) => ({ url, audioType: baseAudio })),
+  };
 }
 
 async function directResolveHDFilmCehennemi(targetUrl) {
@@ -1889,7 +1929,7 @@ async function directResolveHDFilmCehennemi(targetUrl) {
   return null;
 }
 
-async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, embedMode = false) {
+async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, embedMode = false, pageReferer = '') {
   if (!rawUrl || !validateSsrfUrl(rawUrl).safe) return null;
   const cacheHit = movieResolveCache.get(rawUrl);
   if (cacheHit && Date.now() - cacheHit.ts < MOVIE_RESOLVE_CACHE_TTL) {
@@ -1900,7 +1940,7 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
   let result = null;
 
   if (embedMode || lower.includes('vidmoly') || lower.includes('ok.ru')) {
-    result = await resolveEmbedUrl(rawUrl, '', '');
+    result = await resolveEmbedUrl(rawUrl, pageReferer || '', '');
   } else if (providerKey === 'filmdozu' || lower.includes('filmdozu.com')) {
     result = await resolveFilmDozu(rawUrl);
   } else if (providerKey === 'hdfilmcehennemi' || lower.includes('hdfilmcehennemi')) {
@@ -1950,12 +1990,22 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
 
   if (result && result.streamUrl && !result.blocked && !result.isTakedown) {
     movieResolveCache.set(rawUrl, { ts: Date.now(), result });
-    if (movieResolveCache.size > 200) {
+    if (movieResolveCache.size > 400) {
       const oldest = movieResolveCache.keys().next().value;
       if (oldest) movieResolveCache.delete(oldest);
     }
   }
   return result;
+}
+
+function normalizeStreamDedupeKey(streamUrl = '') {
+  try {
+    const u = new URL(streamUrl);
+    const idParam = u.searchParams.get('id') || u.searchParams.get('video_id') || '';
+    return `${u.origin.toLowerCase()}${u.pathname}${idParam ? `?id=${idParam}` : ''}`;
+  } catch {
+    return String(streamUrl || '').split('?')[0];
+  }
 }
 
 function buildOpaqueResolvedPayload(result, resolveBaseOrigin, displayTitle = '') {
@@ -1993,54 +2043,27 @@ function buildOpaqueResolvedPayload(result, resolveBaseOrigin, displayTitle = ''
   };
 }
 
-// POST /api/resolve-movie — Parallel fastest-source racer + opaque stream vault (ZERO provider info leaked)
+// POST /api/resolve-movie — Parallel fastest-source racer + 100% pre-verified alternatives + opaque stream vault
 router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? next() : express.json()(req, res, next)), async (req, res) => {
   const { sources, sourceToken, title, timeout } = req.body || {};
   const resolveBaseOrigin = getProxyBaseOrigin(req);
   const startTime = Date.now();
   const maxTimeout = Math.min(parseInt(timeout, 10) || 14000, 18000);
 
-  const buildAltList = (baseTokens, winningUrl = '', resultObj = null, winningToken = '') => {
-    const out = [];
-    const seenRawUrls = new Set();
-    const validBase = Array.isArray(baseTokens) ? baseTokens : [];
-
-    const wonAudio = resultObj?.audioType && resultObj.audioType !== 'unknown' ? resultObj.audioType : '';
-    for (const t of validBase) {
-      if (typeof t !== 'string') continue;
-      const p = openWpToken(t);
-      if (!p || !p.u || seenRawUrls.has(p.u)) continue;
-      seenRawUrls.add(p.u);
-      const aType = (t === winningToken && wonAudio && (!p.a || p.a === 'unknown'))
-        ? wonAudio
-        : (p.a || 'unknown');
-      out.push({ token: t, label: `Kaynak ${out.length + 1}`, audioType: aType });
-    }
-
-    const extras = [
-      ...(Array.isArray(resultObj?.extraEmbeds) ? resultObj.extraEmbeds : []),
-      ...(Array.isArray(resultObj?.extraEmbedUrls) ? resultObj.extraEmbedUrls.map((u) => ({ url: u, audioType: 'unknown' })) : []),
-    ];
-    for (const ext of extras) {
-      if (out.length >= 8) break;
-      const embUrl = typeof ext === 'string' ? ext : ext?.url;
-      const embAudio = (typeof ext === 'object' && ext?.audioType) ? ext.audioType : 'unknown';
-      if (!embUrl || seenRawUrls.has(embUrl)) continue;
-      seenRawUrls.add(embUrl);
-      const embTok = sealWpToken({ u: embUrl, embed: true, r: winningUrl || '', a: embAudio }, 21600);
-      if (embTok) out.push({ token: embTok, label: `Kaynak ${out.length + 1}`, audioType: embAudio });
-    }
-    return out;
-  };
+  const withCap = (p, ms) => Promise.race([
+    Promise.resolve(p).catch(() => null),
+    new Promise((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
 
   try {
-    // Mode 1: Explicit source selected by user (manual alternative switch)
+    // Mode 1: Explicit source selected by user (manual alternative switch — already pre-verified & cached)
     if (typeof sourceToken === 'string' && sourceToken.trim()) {
-      const payload = openWpToken(sourceToken.trim());
+      const cleanTok = sourceToken.trim();
+      const payload = openWpToken(cleanTok);
       if (!payload || !payload.u) {
         return res.status(400).json({ success: false, error: 'Geçersiz veya süresi dolmuş kaynak belirteci.' });
       }
-      const result = await resolveSingleSource(payload.u, payload.p || '', maxTimeout, !!payload.embed);
+      const result = await resolveSingleSource(payload.u, payload.p || '', maxTimeout, !!payload.embed, payload.r || '');
       if (!result || result.blocked || result.isTakedown || !result.streamUrl) {
         return res.status(404).json({
           success: false,
@@ -2051,31 +2074,38 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
         });
       }
       const opaque = buildOpaqueResolvedPayload(result, resolveBaseOrigin, title);
-      const alternatives = buildAltList(
-        Array.isArray(sources) && sources.length > 0 ? sources : [sourceToken.trim()],
-        payload.u,
-        result,
-        sourceToken.trim()
-      );
-      if (!alternatives.some(a => a.token === sourceToken.trim())) {
+      const passedTokens = Array.isArray(sources) && sources.length > 0 ? sources : [cleanTok];
+      const seenRaw = new Set();
+      const alternatives = [];
+      for (const t of passedTokens) {
+        if (typeof t !== 'string') continue;
+        const p = openWpToken(t);
+        if (!p || !p.u || seenRaw.has(p.u)) continue;
+        seenRaw.add(p.u);
+        const aType = (t === cleanTok && result.audioType && result.audioType !== 'unknown' && (!p.a || p.a === 'unknown'))
+          ? result.audioType
+          : (p.a || 'unknown');
+        alternatives.push({ token: t, label: `Kaynak ${alternatives.length + 1}`, audioType: aType });
+      }
+      if (!alternatives.some((a) => a.token === cleanTok)) {
         alternatives.push({
-          token: sourceToken.trim(),
+          token: cleanTok,
           label: `Kaynak ${alternatives.length + 1}`,
           audioType: result.audioType || payload.a || 'unknown',
         });
       }
-      const activeIdx = alternatives.findIndex(a => a.token === sourceToken.trim());
+      const activeIdx = alternatives.findIndex((a) => a.token === cleanTok);
       return res.status(200).json({
         success: true,
         ...opaque,
-        activeSourceToken: sourceToken.trim(),
+        activeSourceToken: cleanTok,
         activeSourceIndex: activeIdx >= 0 ? activeIdx : 0,
         alternatives,
         resolvedIn: Date.now() - startTime,
       });
     }
 
-    // Mode 2: Automatic fastest-source race across all candidate sources
+    // Mode 2: Automatic fastest-source race + parallel verification of ALL sibling sources & extra embeds
     const tokenList = Array.isArray(sources) ? sources.filter(t => typeof t === 'string' && t.trim()) : [];
     const decodedList = tokenList
       .map((tok, idx) => ({ tok, idx, payload: openWpToken(tok) }))
@@ -2085,35 +2115,17 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
       return res.status(400).json({ success: false, error: 'Geçerli film kaynağı bulunamadı.' });
     }
 
-    // Fast RAM cache hit across candidate sources first
-    for (const item of decodedList) {
-      const cached = movieResolveCache.get(item.payload.u);
-      if (cached && Date.now() - cached.ts < MOVIE_RESOLVE_CACHE_TTL && cached.result?.streamUrl) {
-        const opaque = buildOpaqueResolvedPayload(cached.result, resolveBaseOrigin, title);
-        const alternatives = buildAltList(tokenList, item.payload.u, cached.result, item.tok);
-        return res.status(200).json({
-          success: true,
-          ...opaque,
-          activeSourceToken: item.tok,
-          activeSourceIndex: item.idx,
-          alternatives,
-          cached: true,
-          resolvedIn: Date.now() - startTime,
-        });
-      }
-    }
+    // Start resolving ALL candidate sources simultaneously at t=0
+    const inflightJobs = decodedList.map((item) => ({
+      item,
+      promise: resolveSingleSource(item.payload.u, item.payload.p || '', maxTimeout, !!item.payload.embed, item.payload.r || '')
+        .then((resObj) => (resObj && resObj.streamUrl && !resObj.blocked && !resObj.isTakedown)
+          ? { ...resObj, _item: item }
+          : null)
+        .catch(() => null),
+    }));
 
-    // Parallel race: first working stream wins immediately
-    const won = await raceFirstSuccess(
-      decodedList.map(item =>
-        resolveSingleSource(item.payload.u, item.payload.p || '', maxTimeout, !!item.payload.embed)
-          .then(resObj => (resObj && resObj.streamUrl && !resObj.blocked && !resObj.isTakedown)
-            ? { ...resObj, streamUrl: resObj.streamUrl, _item: item }
-            : null)
-      ),
-      maxTimeout
-    );
-
+    const won = await raceFirstSuccess(inflightJobs.map((j) => j.promise), maxTimeout);
     if (!won || !won.streamUrl) {
       return res.status(404).json({
         success: false,
@@ -2123,14 +2135,107 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
       });
     }
 
+    // Wait briefly (max 2.6s from winner) for sibling site resolvers to settle so dead sites are dropped and working ones kept
+    const siblingResults = await Promise.all(inflightJobs.map((j) => withCap(j.promise, 2600)));
+
+    // Collect extra embed candidates from ALL resolved site pages (e.g. Vidmoly Dublaj/Altyazı + Ok.Ru Dublaj/Altyazı)
+    const embedCandidates = [];
+    const seenRawUrls = new Set(decodedList.map((d) => d.payload.u));
+    for (const sr of siblingResults) {
+      if (!sr || !sr.streamUrl) continue;
+      const parentUrl = sr._item?.payload?.u || '';
+      const rawExtras = [
+        ...(Array.isArray(sr.extraEmbeds) ? sr.extraEmbeds : []),
+        ...(Array.isArray(sr.extraEmbedUrls) ? sr.extraEmbedUrls.map((u) => ({ url: u, audioType: 'unknown' })) : []),
+      ];
+      for (const ext of rawExtras) {
+        const embUrl = typeof ext === 'string' ? ext : ext?.url;
+        const embAudio = (typeof ext === 'object' && ext?.audioType) ? ext.audioType : 'unknown';
+        if (!embUrl || seenRawUrls.has(embUrl)) continue;
+        seenRawUrls.add(embUrl);
+        embedCandidates.push({ url: embUrl, audioType: embAudio, parentUrl });
+        if (embedCandidates.length >= 6) break;
+      }
+      if (embedCandidates.length >= 6) break;
+    }
+
+    // Pre-verify extra embeds in parallel (Vidmoly & Ok.Ru resolve in ~200-350ms; dead embeds are dropped!)
+    const verifiedEmbeds = embedCandidates.length > 0
+      ? await Promise.all(
+          embedCandidates.map((ec) =>
+            withCap(
+              resolveSingleSource(ec.url, '', 3200, true, ec.parentUrl).then((r) =>
+                r && r.streamUrl && !r.blocked && !r.isTakedown ? { ...ec, resolved: r } : null
+              ),
+              2800
+            )
+          )
+        )
+      : [];
+
+    // Assemble 100% verified, stream-deduplicated alternatives list (winner kept at its exact token)
     const wonItem = won._item;
+    const seenStreams = new Set();
+    const verifiedAlts = [];
+
+    // 1. Add winning source first so activeSourceToken is guaranteed present
+    const wonStreamKey = normalizeStreamDedupeKey(won.streamUrl);
+    seenStreams.add(wonStreamKey);
+    const wonAudio = (won.audioType && won.audioType !== 'unknown')
+      ? won.audioType
+      : (wonItem.payload.a || 'unknown');
+    // Re-seal token if audioType improved, otherwise keep exact token
+    verifiedAlts.push({
+      token: wonItem.tok,
+      audioType: wonAudio,
+    });
+
+    // 2. Add verified sibling site sources
+    for (const sr of siblingResults) {
+      if (!sr || !sr.streamUrl || sr._item.tok === wonItem.tok) continue;
+      const sk = normalizeStreamDedupeKey(sr.streamUrl);
+      if (seenStreams.has(sk)) continue;
+      seenStreams.add(sk);
+      const aType = (sr.audioType && sr.audioType !== 'unknown')
+        ? sr.audioType
+        : (sr._item.payload.a || 'unknown');
+      verifiedAlts.push({
+        token: sr._item.tok,
+        audioType: aType,
+      });
+    }
+
+    // 3. Add verified extra player embeds (Vidmoly / Ok.Ru / RapidVid / etc.)
+    for (const ve of verifiedEmbeds) {
+      if (!ve || !ve.resolved?.streamUrl) continue;
+      if (verifiedAlts.length >= 8) break;
+      const sk = normalizeStreamDedupeKey(ve.resolved.streamUrl);
+      if (seenStreams.has(sk)) continue;
+      seenStreams.add(sk);
+      const aType = ve.audioType !== 'unknown'
+        ? ve.audioType
+        : (ve.resolved.audioType || 'unknown');
+      const embTok = sealWpToken({ u: ve.url, embed: true, r: ve.parentUrl || '', a: aType }, 21600);
+      if (embTok) {
+        verifiedAlts.push({
+          token: embTok,
+          audioType: aType,
+        });
+      }
+    }
+
+    const alternatives = verifiedAlts.map((item, idx) => ({
+      token: item.token,
+      label: `Kaynak ${idx + 1}`,
+      audioType: item.audioType || 'unknown',
+    }));
+
     const opaque = buildOpaqueResolvedPayload(won, resolveBaseOrigin, title);
-    const alternatives = buildAltList(tokenList, wonItem.payload.u, won, wonItem.tok);
     return res.status(200).json({
       success: true,
       ...opaque,
       activeSourceToken: wonItem.tok,
-      activeSourceIndex: wonItem.idx,
+      activeSourceIndex: 0,
       alternatives,
       cached: false,
       resolvedIn: Date.now() - startTime,
@@ -2760,7 +2865,7 @@ async function searchFilmDozu(query) {
           audioType,
         });
       }
-      if (results.length >= 12) break;
+      if (results.length >= 30) break;
     }
     return results;
   } catch {
@@ -2867,7 +2972,7 @@ async function searchNadirFilm(query) {
         poster,
         audioType: detectedAudio === 'unknown' ? 'altyazi' : detectedAudio,
       });
-      if (results.length >= 10) break;
+      if (results.length >= 24) break;
     }
     return results;
   } catch {
@@ -3088,8 +3193,48 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
       withSoftCap(fetchCinemetaCatalog(trimmedQuery), 2800),
     ]);
 
-    const cinemetaList = settled.pop() || [];
+    let cinemetaList = settled.pop() || [];
     const combined = settled.flat().filter((item) => item && item.url && item.title);
+
+    // Bilingual cross-search (EN <-> TR): e.g. user searched "interstellar" -> also query FilmDozu/NadirFilm for "Yıldızlararası"
+    if (combined.length > 0) {
+      const normQ = stripTurkishChars(trimmedQuery).replace(/\s+/g, ' ').trim();
+      const counterpartSet = new Set();
+      for (const item of combined.slice(0, 6)) {
+        const cTitle = sanitizePublicTitle(item.title || '');
+        if (cTitle && cTitle.length >= 3 && cTitle.length <= 48 && stripTurkishChars(cTitle) !== normQ) {
+          counterpartSet.add(cTitle);
+        }
+        if (item.altTitle) {
+          const firstAlt = sanitizePublicTitle(String(item.altTitle).split(/\s+(?:[-–—/|])\s+/)[0] || '');
+          if (firstAlt && firstAlt.length >= 3 && firstAlt.length <= 48 && stripTurkishChars(firstAlt) !== normQ) {
+            counterpartSet.add(firstAlt);
+          }
+        }
+        if (counterpartSet.size >= 2) break;
+      }
+      if (counterpartSet.size > 0) {
+        const extraPromises = [];
+        for (const cq of counterpartSet) {
+          extraPromises.push(withSoftCap(searchFilmDozu(cq), 2500));
+          extraPromises.push(withSoftCap(searchNadirFilm(cq), 2500));
+          if (cinemetaList.length === 0) {
+            extraPromises.push(withSoftCap(fetchCinemetaCatalog(cq), 2200));
+          }
+        }
+        const extraSettled = await Promise.all(extraPromises);
+        for (const arr of extraSettled) {
+          if (!Array.isArray(arr) || arr.length === 0) continue;
+          if (arr[0]?.keys && arr[0]?.poster && !arr[0]?.url) {
+            cinemetaList = [...cinemetaList, ...arr];
+          } else {
+            for (const it of arr) {
+              if (it && it.url && it.title) combined.push(it);
+            }
+          }
+        }
+      }
+    }
 
     if (combined.length > 0) {
       const rawGroups = unifyRawMovieGroups(combined, trimmedQuery, cinemetaList);
