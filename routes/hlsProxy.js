@@ -605,7 +605,7 @@ function shouldKeepDirectMediaUrl(urlStr) {
 }
 
 // Shared media proxy core (used by both /api/proxy and opaque /api/wp-stream + /api/wp-seg)
-async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false, forceImage = false, fallbackImages = [], fallbackTitle = '' }) {
+async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false, forceImage = false, disableImageMode = false, fallbackImages = [], fallbackTitle = '' }) {
   if (!targetUrl) {
     return res.status(400).json({ error: 'Missing target URL' });
   }
@@ -733,14 +733,12 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
 
     const lowerUrl = targetUrl.toLowerCase();
     const isPosterOrImage =
-      Boolean(forceImage) ||
-      lowerUrl.endsWith('.webp') ||
-      lowerUrl.endsWith('.jpg') ||
-      lowerUrl.endsWith('.jpeg') ||
-      lowerUrl.endsWith('.png') ||
-      lowerUrl.endsWith('.avif') ||
-      lowerUrl.includes('/images/thumb/poster/') ||
-      lowerUrl.includes('/poster/');
+      !disableImageMode &&
+      (Boolean(forceImage) ||
+        lowerUrl.includes('/images/thumb/poster/') ||
+        lowerUrl.includes('/poster/') ||
+        lowerUrl.includes('/assets/img/') ||
+        lowerUrl.includes('/wp-content/uploads/'));
 
     const isSubtitleFile =
       !forceImage &&
@@ -756,7 +754,6 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
       if (u.includes('filmmakinesi')) return 'https://filmmakinesi.to/';
       if (u.includes('filmdozu')) return 'https://filmdozu.com/';
       if (u.includes('nadirfilm')) return 'https://www.nadirfilm.com/';
-      if (u.includes('webteizle')) return 'https://webteizle.info/';
       if (u.includes('kultfilmler')) return 'https://kultfilmler.net/';
       return '';
     };
@@ -1215,6 +1212,7 @@ router.get('/wp-asset/:token', proxyLimiter, async (req, res) => {
     origin: payload.o || '',
     opaqueMode: true,
     forceImage: true,
+    disableImageMode: false,
     fallbackImages: Array.isArray(payload.alts) ? payload.alts : [],
     fallbackTitle: payload.t || '',
   });
@@ -1231,6 +1229,7 @@ router.get(['/wp-stream/:token', '/wp-seg/:token'], proxyLimiter, async (req, re
     referer: payload.r || '',
     origin: payload.o || '',
     opaqueMode: true,
+    disableImageMode: true,
   });
 });
 
@@ -1244,6 +1243,7 @@ router.get('/wp-sub/:token', proxyLimiter, async (req, res) => {
     referer: payload.r || '',
     origin: payload.o || '',
     opaqueMode: true,
+    disableImageMode: true,
   });
 });
 
@@ -1662,96 +1662,6 @@ async function resolveKultFilmler(targetUrl) {
   };
 }
 
-async function resolveWebteizle(targetUrl) {
-  const start = Date.now();
-  let watchUrl = targetUrl;
-  let html = await fastHttpFetchText(watchUrl, { Referer: 'https://webteizle.info/' }, 4500);
-  if (!html) html = await fetchWithCurl(watchUrl, ['Referer: https://webteizle.info/'], 4);
-  if (!html || isBlockedOrChallenge(html)) return { blocked: true };
-
-  if (watchUrl.includes('/hakkinda/')) {
-    const izleMatch = html.match(/href="(\/izle\/[^"]+)"/i);
-    if (!izleMatch || !izleMatch[1]) return null;
-    watchUrl = `https://webteizle.info${izleMatch[1]}`;
-    html = await fastHttpFetchText(watchUrl, { Referer: targetUrl }, 4500);
-    if (!html || isBlockedOrChallenge(html)) return { blocked: true };
-  }
-
-  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  const pageTitle = sanitizePublicTitle(titleMatch ? titleMatch[1] : '');
-  const watchAudio = watchUrl.includes('/dublaj/') ? 'dublaj' : (watchUrl.includes('/altyazi/') ? 'altyazi' : detectAudioTypeFromText(pageTitle));
-  const idMatch = html.match(/data-id=["'](\d+)["']/);
-  if (idMatch && idMatch[1]) {
-    const fid = idMatch[1];
-    const embedCandidates = [];
-    const seenCand = new Set();
-    for (const dil of ['1', '0']) {
-      try {
-        const ra = await fetch('https://webteizle.info/ajax/dataAlternatif3.asp', {
-          method: 'POST',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': watchUrl,
-            'Origin': 'https://webteizle.info',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          },
-          body: new URLSearchParams({ filmid: fid, dil, s: '', b: '', bot: '0' }).toString(),
-          signal: AbortSignal.timeout(3000),
-        });
-        if (ra.status === 403) continue;
-        if (ra.ok) {
-          const json = await ra.json().catch(() => null);
-          if (json && Array.isArray(json.data)) {
-            for (const item of json.data.slice(0, 3)) {
-              if (!item?.id) continue;
-              const re = await fetch('https://webteizle.info/ajax/dataEmbed.asp', {
-                method: 'POST',
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                  'Referer': watchUrl,
-                  'Origin': 'https://webteizle.info',
-                  'X-Requested-With': 'XMLHttpRequest',
-                  'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                },
-                body: new URLSearchParams({ id: String(item.id) }).toString(),
-                signal: AbortSignal.timeout(3000),
-              });
-              if (re.ok) {
-                const embHtml = await re.text();
-                const hintAudio = detectAudioTypeFromText(`${item.baslik || ''} ${item.title || ''} ${item.name || ''} ${embHtml}`);
-                const resolvedHint = hintAudio !== 'unknown' ? hintAudio : watchAudio;
-                for (const embUrl of extractEmbedUrlsFromHtml(embHtml, watchUrl)) {
-                  if (!seenCand.has(embUrl)) {
-                    seenCand.add(embUrl);
-                    embedCandidates.push({ url: embUrl, audioType: resolvedHint });
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-    }
-    if (embedCandidates.length > 0) {
-      const resolved = await raceFirstSuccess(
-        embedCandidates.slice(0, 4).map((c) =>
-          resolveEmbedUrl(c.url, watchUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: c.url, audioType: c.audioType } : null))
-        ),
-        7000
-      );
-      if (resolved) {
-        return {
-          ...resolved,
-          extraEmbeds: embedCandidates.filter((c) => c.url !== resolved.wonEmbedUrl).slice(0, 4),
-          elapsed: Date.now() - start,
-        };
-      }
-    }
-  }
-  return null;
-}
-
 async function resolveNadirFilm(targetUrl) {
   let html = await fastHttpFetchText(targetUrl, { Referer: 'https://www.nadirfilm.com/' }, 4500);
   if (!html) html = await fetchWithCurl(targetUrl, ['Referer: https://www.nadirfilm.com/'], 4);
@@ -1997,8 +1907,6 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
     result = await directResolveHDFilmCehennemi(rawUrl);
   } else if (providerKey === 'kultfilmler' || lower.includes('kultfilmler.net')) {
     result = await resolveKultFilmler(rawUrl);
-  } else if (providerKey === 'webteizle' || lower.includes('webteizle.info')) {
-    result = await resolveWebteizle(rawUrl);
   } else if (providerKey === 'nadirfilm' || lower.includes('nadirfilm.com')) {
     result = await resolveNadirFilm(rawUrl);
   } else if (fastResolve) {
@@ -2008,13 +1916,13 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
   }
 
   // Fallback to microservice Playwright ONLY if not explicitly blocked / takedown
-  if (!result && fastResolve && !embedMode && !lower.includes('filmdozu') && !lower.includes('hdfilmcehennemi') && !lower.includes('nadirfilm') && !lower.includes('webteizle')) {
+  if (!result && fastResolve && !embedMode && !lower.includes('filmdozu') && !lower.includes('hdfilmcehennemi') && !lower.includes('nadirfilm')) {
     try {
       result = await fastResolve(rawUrl, { timeout: Math.min(timeoutMs, 9000) });
     } catch {}
   }
 
-  if (!result && !embedMode && !result?.blocked && !lower.includes('nadirfilm') && !lower.includes('hdfilmcehennemi') && !lower.includes('webteizle')) {
+  if (!result && !embedMode && !result?.blocked && !lower.includes('nadirfilm') && !lower.includes('hdfilmcehennemi')) {
     const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
     const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
     try {
@@ -2395,7 +2303,6 @@ const SOURCE_PRIORITY = {
   hdfilmcehennemi: 80,
   filmmakinesi: 75,
   kultfilmler: 70,
-  webteizle: 40,
   nadirfilm: 30,
 };
 
@@ -2405,7 +2312,6 @@ const SOURCE_REFERER = {
   hdfilmcehennemi: 'https://www.hdfilmcehennemi.nl/',
   filmmakinesi: 'https://filmmakinesi.to/',
   kultfilmler: 'https://kultfilmler.net/',
-  webteizle: 'https://webteizle.info/',
   nadirfilm: 'https://www.nadirfilm.com/',
 };
 
@@ -2548,7 +2454,6 @@ function scorePosterQuality(src) {
   const p = src.providerKey;
   if (p === 'filmdozu') return 100;
   if (p === 'nadirfilm') return 90;
-  if (p === 'webteizle') return 85;
   if (p === 'kultfilmler') return 75;
   if (p === 'filmmakinesi') return 70;
   if (p === 'hdfilmcehennemi') return 60;
@@ -2971,64 +2876,7 @@ async function searchNadirFilm(query) {
 }
 
 /**
- * 4. Webteizle doğrudan arama (windows-1254 encoding uyumlu)
- */
-async function searchWebteizle(query) {
-  try {
-    const targetUrl = `https://webteizle.info/filtre?a=${encodeURIComponent(query)}`;
-    const res = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://webteizle.info/',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return [];
-    const buf = Buffer.from(await res.arrayBuffer());
-    const html = new TextDecoder('windows-1254').decode(buf);
-    if (!html || isBlockedOrChallenge(html)) return [];
-
-    const results = [];
-    const seen = new Set();
-    const cardRegex = /<div[^>]+class="[^"]*card\s+golgever[^"]*"[^>]*>([\s\S]*?)<div class="extra/gi;
-    let m;
-    while ((m = cardRegex.exec(html)) !== null) {
-      const block = m[1];
-      const hrefMatch = block.match(/href="(\/izle\/[^"]+)"/i) || block.match(/href="(\/hakkinda\/[^"]+)"/i);
-      const nameMatch = block.match(/<div class="filmname">([^<]+)<\/div>/i) || block.match(/title="([^"]+)"/i);
-      const posterMatch = block.match(/data-src="([^"]+)"/i) || block.match(/<img[^>]+src="([^"]+)"/i);
-      if (!hrefMatch || !nameMatch) continue;
-      const fullUrl = `https://webteizle.info${hrefMatch[1].trim()}`;
-      if (seen.has(fullUrl)) continue;
-      seen.add(fullUrl);
-      let poster = posterMatch ? posterMatch[1].trim() : null;
-      if (poster && poster.startsWith('data:')) poster = null;
-      if (poster && !poster.startsWith('http')) {
-        poster = `https://webteizle.info${poster.startsWith('/') ? '' : '/'}${poster}`;
-      }
-      const cleanName = decodeHtmlEntities(nameMatch[1].replace(/\u00a0|&nbsp;/gi, ' ').trim());
-      const urlAudio = fullUrl.includes('/dublaj/') ? 'dublaj' : (fullUrl.includes('/altyazi/') ? 'altyazi' : 'unknown');
-      const blockAudio = detectAudioTypeFromText(`${block} ${cleanName}`);
-      const audioType = blockAudio === 'dual' ? 'dual' : (urlAudio !== 'unknown' ? urlAudio : blockAudio);
-
-      results.push({
-        providerKey: 'webteizle',
-        title: cleanName,
-        url: fullUrl,
-        poster,
-        audioType,
-      });
-      if (results.length >= 10) break;
-    }
-    return results;
-  } catch {
-    return [];
-  }
-}
-
-/**
- * 5. HDFilmCehennemi doğrudan arama (fast-fail on OCI datacenter block when no valid key/proxy)
+ * 4. HDFilmCehennemi doğrudan arama (fast-fail on OCI datacenter block when no valid key/proxy)
  */
 async function searchHDFilmCehennemi(query) {
   try {
@@ -3223,7 +3071,7 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     });
   }
 
-  // 2. 7 Film Kaynağı + Cover Metadata Eşzamanlı Hızlı Arama (max 4.5s soft cap)
+  // 2. 6 Film Kaynağı + Cover Metadata Eşzamanlı Hızlı Arama (max 4.5s soft cap)
   const withSoftCap = (p, ms = 4500) => Promise.race([
     p.catch(() => []),
     new Promise((resolve) => setTimeout(() => resolve([]), ms)),
@@ -3234,7 +3082,6 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
       withSoftCap(searchFilmDozu(trimmedQuery), 4500),
       withSoftCap(searchFullHDFilm(trimmedQuery), 4500),
       withSoftCap(searchNadirFilm(trimmedQuery), 4500),
-      withSoftCap(searchWebteizle(trimmedQuery), 4500),
       withSoftCap(searchHDFilmCehennemi(trimmedQuery), 4500),
       withSoftCap(searchFilmMakinesi(trimmedQuery), 4500),
       withSoftCap(searchKultFilmler(trimmedQuery), 4500),

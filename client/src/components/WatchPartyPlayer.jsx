@@ -92,8 +92,20 @@ const isDash = (url) => {
   return cleanUrl.endsWith('.mpd') || target.includes('.mpd') || target.includes('/dash/');
 };
 
+const isDirectNativeWpVideo = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  return url.includes('/api/wp-stream/') && (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.m4v') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.mkv')
+  );
+};
+
 const isLiveStream = (url) => {
-  return isHls(url) || isDash(url);
+  return isHls(url) || isDash(url) || isDirectNativeWpVideo(url);
 };
 
 const isPlayableExternalUrl = (url) => {
@@ -1025,6 +1037,13 @@ const WatchPartyPlayer = () => {
             setIsSourceMenuOpen(false);
             return;
         }
+        const wasPlaying = Boolean(
+            watchParty?.isPlaying ||
+            isNativePlaying ||
+            (videoRef.current && !videoRef.current.paused) ||
+            hasError
+        );
+        const resumeTime = videoRef.current?.currentTime || currentTime || watchParty?.currentTime || 0;
         setIsSwitchingSource(true);
         setSourceSwitchError('');
         try {
@@ -1037,7 +1056,6 @@ const WatchPartyPlayer = () => {
 
             if (resp.data?.success && resp.data?.playableStreamUrl) {
                 const nextStream = getProxiedUrl(resp.data.playableStreamUrl);
-                const resumeTime = videoRef.current?.currentTime || currentTime || 0;
                 const nextAlts = Array.isArray(resp.data.alternatives) && resp.data.alternatives.length > 0
                     ? resp.data.alternatives
                     : altSources;
@@ -1050,9 +1068,9 @@ const WatchPartyPlayer = () => {
                     watchParty?.title || resp.data.pageTitle || '',
                     {
                         alternatives: nextAlts,
-                        activeSourceToken: alt.token,
+                        activeSourceToken: resp.data.activeSourceToken || alt.token,
                         startTime: resumeTime,
-                        autoPlay: !!watchParty?.isPlaying,
+                        autoPlay: wasPlaying || resumeTime < 2,
                     }
                 );
             } else {
@@ -1350,7 +1368,12 @@ const WatchPartyPlayer = () => {
         }
     }, [watchParty?.url, isLive, isStream]);
 
-    // Cleanup timers and player instances on unmount
+    const watchPartyRef = useRef(watchParty);
+    useEffect(() => {
+        watchPartyRef.current = watchParty;
+    }, [watchParty]);
+
+    // Clean up timers and player instances on unmount
     useEffect(() => {
         return () => {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
@@ -1375,13 +1398,15 @@ const WatchPartyPlayer = () => {
             rawUrl.includes('trt.com');
         const needsNormalizedProxy = useProxy || isKnownCorsRestricted || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/') || rawUrl.includes('/api/wp-stream/');
         const streamUrl = needsNormalizedProxy ? getProxiedUrl(rawUrl) : rawUrl;
-        const urlIsHls = isHls(rawUrl) || watchParty.isLive;
-        const urlIsDash = isDash(rawUrl);
+        const urlIsDirectMp4 = isDirectNativeWpVideo(rawUrl);
+        const urlIsHls = !urlIsDirectMp4 && (isHls(rawUrl) || watchParty.isLive);
+        const urlIsDash = !urlIsDirectMp4 && isDash(rawUrl);
 
         const getLiveExpectedTime = () => {
-            const base = typeof watchParty?.currentTime === 'number' ? watchParty.currentTime : 0;
-            if (watchParty?.isPlaying && !watchParty?.isLive) {
-                const ref = watchParty.serverTimestamp || watchParty.lastUpdated;
+            const wp = watchPartyRef.current;
+            const base = typeof wp?.currentTime === 'number' ? wp.currentTime : 0;
+            if (wp?.isPlaying && !wp?.isLive) {
+                const ref = wp.serverTimestamp || wp.lastUpdated;
                 if (ref) {
                     return base + Math.max(0, (getServerNow() - ref) / 1000);
                 }
@@ -1389,7 +1414,7 @@ const WatchPartyPlayer = () => {
             return base;
         };
 
-        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy}, isLive: ${isLive})`);
+        console.log(`[WatchPartyPlayer] Initializing stream. URL: ${streamUrl} (useProxy: ${useProxy}, isLive: ${isLive}, mp4: ${urlIsDirectMp4})`);
 
         if (hlsInstanceRef.current) {
             hlsInstanceRef.current.destroy();
@@ -1399,7 +1424,14 @@ const WatchPartyPlayer = () => {
             dashPlayerRef.current.destroy();
             dashPlayerRef.current = null;
         }
+        // Flush any previous MSE / <video> pipeline so switched alternative streams never stall
+        try {
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+        } catch (_) {}
 
+        let hasAlignedInitialSeek = false;
         const markReadyAndAlign = () => {
             setIsReady(true);
             try {
@@ -1409,16 +1441,17 @@ const WatchPartyPlayer = () => {
                 if ('webkitPreservesPitch' in video) video.webkitPreservesPitch = true;
                 if ('mozPreservesPitch' in video) video.mozPreservesPitch = true;
             } catch (_) {}
-            if (isNativeVOD) {
+            if (isNativeVOD && !hasAlignedInitialSeek) {
+                hasAlignedInitialSeek = true;
                 const liveTarget = getLiveExpectedTime();
-                if (liveTarget > 0.3 && Math.abs((video.currentTime || 0) - liveTarget) > 0.4) {
+                if (liveTarget > 0.3 && Math.abs((video.currentTime || 0) - liveTarget) > 1.0) {
                     try {
                         lastProgrammaticSeekTimeRef.current = liveTarget;
                         video.currentTime = liveTarget;
                     } catch (_) {}
                 }
             }
-            if (watchParty?.isPlaying) {
+            if (watchPartyRef.current?.isPlaying && video.paused) {
                 safePlay(video);
             }
             if (requestWatchSync) {
@@ -1426,12 +1459,26 @@ const WatchPartyPlayer = () => {
             }
         };
 
+        const onCanPlayPlayGuard = () => {
+            if (watchPartyRef.current?.isPlaying && video.paused && !video.seeking) {
+                safePlay(video);
+            }
+        };
+
         video.addEventListener('loadedmetadata', markReadyAndAlign, { once: true });
         video.addEventListener('canplay', markReadyAndAlign, { once: true });
+        video.addEventListener('canplay', onCanPlayPlayGuard);
 
         const initPlayer = async () => {
             try {
-                if (urlIsHls || !urlIsDash) {
+                if (urlIsDirectMp4) {
+                    video.src = streamUrl;
+                    video.load();
+                    video.onerror = () => {
+                        console.error('Direct MP4 playback error on switched source');
+                        triggerReconnect();
+                    };
+                } else if (urlIsHls || !urlIsDash) {
                     const Hls = await loadHls();
                     const canUseHlsJs = Hls && Hls.isSupported();
 
@@ -1572,6 +1619,9 @@ const WatchPartyPlayer = () => {
 
                         hls.on(Hls.Events.FRAG_BUFFERED, () => {
                             setIsReady(true);
+                            if (watchPartyRef.current?.isPlaying && video && video.paused && !video.seeking) {
+                                safePlay(video);
+                            }
                         });
 
                         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -1638,6 +1688,7 @@ const WatchPartyPlayer = () => {
         return () => {
             video.removeEventListener('loadedmetadata', markReadyAndAlign);
             video.removeEventListener('canplay', markReadyAndAlign);
+            video.removeEventListener('canplay', onCanPlayPlayGuard);
             if (hlsInstanceRef.current) {
                 hlsInstanceRef.current.destroy();
                 hlsInstanceRef.current = null;
