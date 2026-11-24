@@ -1988,11 +1988,16 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
     } catch {}
   }
 
-  if (result && result.streamUrl && !result.blocked && !result.isTakedown) {
-    movieResolveCache.set(rawUrl, { ts: Date.now(), result });
-    if (movieResolveCache.size > 400) {
-      const oldest = movieResolveCache.keys().next().value;
-      if (oldest) movieResolveCache.delete(oldest);
+  if (result && result.streamUrl) {
+    if (!validateSsrfUrl(result.streamUrl).safe) {
+      return null;
+    }
+    if (!result.blocked && !result.isTakedown) {
+      movieResolveCache.set(rawUrl, { ts: Date.now(), result });
+      if (movieResolveCache.size > 400) {
+        const oldest = movieResolveCache.keys().next().value;
+        if (oldest) movieResolveCache.delete(oldest);
+      }
     }
   }
   return result;
@@ -2747,7 +2752,11 @@ function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
     g.sources = filtered.slice(0, 6);
     g.topPriority = g.sources[0]?.priority || 0;
     const tNorm = stripTurkishChars(g.title);
-    g.queryScore = tNorm === normQuery ? 100 : (tNorm.startsWith(normQuery) ? 60 : (tNorm.includes(normQuery) ? 30 : 0));
+    const altNorm = stripTurkishChars(g.altTitle || '');
+    const exactMatch = tNorm === normQuery || altNorm === normQuery || g.allKeys.has(normQuery);
+    const startsMatch = tNorm.startsWith(normQuery) || (altNorm && altNorm.startsWith(normQuery));
+    const includesMatch = tNorm.includes(normQuery) || (altNorm && altNorm.includes(normQuery));
+    g.queryScore = exactMatch ? 120 : (startsMatch ? 60 : (includesMatch ? 30 : 0));
 
     // Order cover posters: fast direct hosts first, Cinemeta fallback/boost for Tor-only hosts
     g.posters.sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -3196,9 +3205,20 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     let cinemetaList = settled.pop() || [];
     const combined = settled.flat().filter((item) => item && item.url && item.title);
 
-    // Bilingual cross-search (EN <-> TR): e.g. user searched "interstellar" -> also query FilmDozu/NadirFilm for "Yıldızlararası"
+    // Bilingual cross-search (EN <-> TR): enrich existing Phase-1 movies with counterpart sources without polluting unrelated results
     if (combined.length > 0) {
       const normQ = stripTurkishChars(trimmedQuery).replace(/\s+/g, ' ').trim();
+      const phase1KeySet = new Set();
+      for (const item of combined) {
+        for (const k of normalizeMovieTitleParts(item.title).keys) phase1KeySet.add(k);
+        if (item.altTitle) {
+          for (const seg of String(item.altTitle).split(/\s+(?:[-–—/|])\s+/)) {
+            for (const k of normalizeMovieTitleParts(seg).keys) {
+              if (k.length >= 4) phase1KeySet.add(k);
+            }
+          }
+        }
+      }
       const counterpartSet = new Set();
       for (const item of combined.slice(0, 6)) {
         const cTitle = sanitizePublicTitle(item.title || '');
@@ -3229,7 +3249,11 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
             cinemetaList = [...cinemetaList, ...arr];
           } else {
             for (const it of arr) {
-              if (it && it.url && it.title) combined.push(it);
+              if (!it || !it.url || !it.title) continue;
+              const itKeys = normalizeMovieTitleParts(it.title).keys;
+              if (itKeys.some((k) => phase1KeySet.has(k))) {
+                combined.push(it);
+              }
             }
           }
         }
