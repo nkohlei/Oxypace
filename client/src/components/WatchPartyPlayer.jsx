@@ -1085,7 +1085,7 @@ const WatchPartyPlayer = () => {
 
     // Mobile Unified Audio & Subtitle Modal
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
-    const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
+    const [unifiedTab, setUnifiedTab] = useState('audio'); // 'audio' | 'subs'
     const unifiedMenuRef = useRef(null);
     const popoverContentRef = useRef(null);
     const [popoverPos, setPopoverPos] = useState({ isMobile: true });
@@ -1124,8 +1124,6 @@ const WatchPartyPlayer = () => {
     useEffect(() => {
         if (audioTracks.length > 0 && unifiedTab !== 'subs') {
             setUnifiedTab('audio');
-        } else if (audioTracks.length === 0 && unifiedTab === 'audio') {
-            setUnifiedTab('subs');
         }
     }, [audioTracks.length]);
 
@@ -3116,18 +3114,11 @@ const WatchPartyPlayer = () => {
                                 title="Ses ve Altyazı Seçenekleri"
                                 aria-label="Ses ve Altyazı Seçenekleri"
                             >
-                                {audioTracks.length > 0 ? (
-                                    <div className="native-unified-btn-icons">
-                                        <Headphones size={13} />
-                                        <span className="native-unified-icon-slash">/</span>
-                                        <Languages size={13} />
-                                    </div>
-                                ) : (
-                                    <div className="native-unified-btn-icons">
-                                        <Languages size={14} />
-                                        <span>Altyazı</span>
-                                    </div>
-                                )}
+                                <div className="native-unified-btn-icons">
+                                    <Headphones size={13} />
+                                    <span className="native-unified-icon-slash">/</span>
+                                    <Languages size={13} />
+                                </div>
                             </button>
                         </div>
                     )}
@@ -3153,16 +3144,14 @@ const WatchPartyPlayer = () => {
                             >
                                 <div className="native-unified-popover-header">
                                     <div className="native-unified-tabs">
-                                        {audioTracks.length > 0 && (
-                                            <button
-                                                type="button"
-                                                className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
-                                                onClick={() => setUnifiedTab('audio')}
-                                            >
-                                                <Headphones size={12} />
-                                                <span>Ses</span>
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            className={`native-unified-tab-btn ${unifiedTab === 'audio' ? 'active' : ''}`}
+                                            onClick={() => setUnifiedTab('audio')}
+                                        >
+                                            <Headphones size={12} />
+                                            <span>Ses</span>
+                                        </button>
                                         <button
                                             type="button"
                                             className={`native-unified-tab-btn ${unifiedTab === 'subs' ? 'active' : ''}`}
@@ -3183,26 +3172,45 @@ const WatchPartyPlayer = () => {
                                 </div>
 
                                 <div className="native-unified-popover-body custom-scrollbar">
-                                    {unifiedTab === 'audio' && audioTracks.length > 0 && (
+                                    {unifiedTab === 'audio' && (
                                         <div className="native-track-dropdown-list">
-                                            {audioTracks.map((track, i) => {
-                                                const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
-                                                return (
-                                                    <button
-                                                        key={`pop-aud-${track.id}-${i}`}
-                                                        className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
-                                                        onClick={() => {
-                                                            handleSelectAudioTrack(track.id !== undefined ? track.id : i);
-                                                            setIsUnifiedMenuOpen(false);
-                                                        }}
-                                                    >
-                                                        <span className="native-track-item-check">
-                                                            {isSelected ? <Check size={13} /> : null}
-                                                        </span>
-                                                        <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
-                                                    </button>
-                                                );
-                                            })}
+                                            {audioTracks.length > 0 ? (
+                                                audioTracks.map((track, i) => {
+                                                    const isSelected = currentAudioTrack === track.id || currentAudioTrack === i;
+                                                    return (
+                                                        <button
+                                                            key={`pop-aud-${track.id}-${i}`}
+                                                            className={`native-track-dropdown-item ${isSelected ? 'active' : ''}`}
+                                                            onClick={() => {
+                                                                handleSelectAudioTrack(track.id !== undefined ? track.id : i);
+                                                                setIsUnifiedMenuOpen(false);
+                                                            }}
+                                                        >
+                                                            <span className="native-track-item-check">
+                                                                {isSelected ? <Check size={13} /> : null}
+                                                            </span>
+                                                            <span className="native-track-item-name">{formatAudioLabel(track, i)}</span>
+                                                        </button>
+                                                    );
+                                                })
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="native-track-dropdown-item active"
+                                                    onClick={() => setIsUnifiedMenuOpen(false)}
+                                                >
+                                                    <span className="native-track-item-check">
+                                                        <Check size={13} />
+                                                    </span>
+                                                    <span className="native-track-item-name">
+                                                        {altSources[activeAltIndex]?.audioType === 'dublaj'
+                                                            ? 'Türkçe Dublaj (Varsayılan)'
+                                                            : altSources[activeAltIndex]?.audioType === 'altyazi'
+                                                                ? 'Orijinal Ses (Varsayılan)'
+                                                                : 'Varsayılan Ses (Ana Dil)'}
+                                                    </span>
+                                                </button>
+                                            )}
                                         </div>
                                     )}
 
