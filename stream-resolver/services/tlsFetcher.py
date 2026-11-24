@@ -33,33 +33,38 @@ def _build_env_proxy():
     return {"http": raw, "https": raw}
 
 
-def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None):
+def fetch_url(url, referer=None, use_proxy=True, method="GET", data=None, binary=False):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8' if binary else 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
     }
     if referer:
         headers['Referer'] = referer
-    if '?do=' in url or 'getVideo' in url:
-        headers['X-Requested-With'] = 'XMLHttpRequest'
-    elif 'hdfilmcehennemi' in url:
-        headers['x-requested-with'] = 'fetch'
-        headers['Accept'] = 'application/json, text/plain, */*'
-        if not headers.get('Referer'):
-            headers['Referer'] = 'https://www.hdfilmcehennemi.nl/'
+    if not binary:
+        if '?do=' in url or 'getVideo' in url:
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+        elif 'hdfilmcehennemi' in url:
+            headers['x-requested-with'] = 'fetch'
+            headers['Accept'] = 'application/json, text/plain, */*'
+            if not headers.get('Referer'):
+                headers['Referer'] = 'https://www.hdfilmcehennemi.nl/'
 
     def _try_request(proxies, timeout_sec):
         try:
-            if method == "POST" or '?do=' in url:
+            if method == "POST" or (not binary and '?do=' in url):
                 r = requests.post(url, impersonate="chrome124", headers=headers, data=data, proxies=proxies, timeout=timeout_sec)
             else:
                 r = requests.get(url, impersonate="chrome124", headers=headers, proxies=proxies, timeout=timeout_sec)
-            if r.status_code == 200 and len(r.text) > 0:
-                return r.text
+            if r.status_code == 200:
+                if binary:
+                    if len(r.content) >= 250:
+                        return r.content
+                elif len(r.text) > 0:
+                    return r.text
         except Exception:
             pass
-        return ""
+        return b"" if binary else ""
 
     # 1. Configured PROXY_SERVER (residential/TR proxy if set in .env)
     env_proxies = _build_env_proxy() if use_proxy else None
@@ -85,6 +90,11 @@ if __name__ == "__main__":
 
     target = sys.argv[1]
     ref = sys.argv[2] if len(sys.argv) > 2 else ""
-    method = sys.argv[3] if len(sys.argv) > 3 else ("POST" if "?do=" in target else "GET")
-    content = fetch_url(target, ref, method=method)
-    sys.stdout.write(content)
+    if len(sys.argv) > 3 and sys.argv[3] == "--binary":
+        content = fetch_url(target, ref, binary=True)
+        if isinstance(content, (bytes, bytearray)) and len(content) > 0:
+            sys.stdout.buffer.write(content)
+    else:
+        method = sys.argv[3] if len(sys.argv) > 3 else ("POST" if "?do=" in target else "GET")
+        content = fetch_url(target, ref, method=method)
+        sys.stdout.write(content)

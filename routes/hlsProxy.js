@@ -151,6 +151,39 @@ function fetchWithTlsImpersonator(url, referer = '') {
   });
 }
 
+// Binary image fetch via Python curl_cffi Chrome 124 TLS + Tor (bypasses Cloudflare 444/403 on poster CDNs)
+function fetchBinaryWithTlsImpersonator(url, referer = '', timeoutMs = 11000) {
+  if (!validateSsrfUrl(url).safe) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const pyBin = resolveTlsPythonBin();
+    if (!pyBin) return resolve(null);
+    const scriptPath = path.join(__dirname, '../stream-resolver/services/tlsFetcher.py');
+    const child = spawn(pyBin, [scriptPath, url, referer || '', '--binary']);
+    const chunks = [];
+    let settled = false;
+    const finish = (val) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(val);
+    };
+    const timer = setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch {}
+      finish(null);
+    }, timeoutMs);
+    child.stdout.on('data', (c) => chunks.push(c));
+    child.on('error', () => finish(null));
+    child.on('close', (code) => {
+      if (code === 0 && chunks.length > 0) {
+        const buf = Buffer.concat(chunks);
+        finish(isValidImageBuffer(buf) ? buf : null);
+      } else {
+        finish(null);
+      }
+    });
+  });
+}
+
 function isBlockedOrChallenge(text) {
   if (!text || typeof text !== 'string') return true;
   if (text.length < 300) return true;
@@ -349,20 +382,25 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8, expectImag
     } catch {}
   }
 
-  // Known HTTP 444 CDN on Linux OCI datacenter IPs -> skip wasted direct attempt and go straight to Tor
-  const skipDirectOnLinux = process.platform === 'linux' && url.includes('img.fullhdfilmizlesene.now');
-  if (!skipDirectOnLinux) {
+  // Known HTTP 444 + Cloudflare-403 CDN on Linux OCI -> go straight to Chrome TLS impersonator over Tor
+  const skipPlainCurlOnLinux = process.platform === 'linux' && url.includes('img.fullhdfilmizlesene.now');
+  if (!skipPlainCurlOnLinux) {
     try {
       const directBuf = await runCurl({ useTor: false });
       if (isAcceptable(directBuf)) return directBuf;
     } catch {}
+
+    if (await isTorReachable()) {
+      try {
+        const torBuf = await runCurl({ useTor: true });
+        if (isAcceptable(torBuf)) return torBuf;
+      } catch {}
+    }
   }
 
-  if (await isTorReachable()) {
-    try {
-      const torBuf = await runCurl({ useTor: true });
-      if (isAcceptable(torBuf)) return torBuf;
-    } catch {}
+  if (expectImage) {
+    const tlsBuf = await fetchBinaryWithTlsImpersonator(url, referer, Math.max(10000, timeoutSec * 1000));
+    if (isValidImageBuffer(tlsBuf)) return tlsBuf;
   }
 
   return null;
@@ -567,7 +605,7 @@ function shouldKeepDirectMediaUrl(urlStr) {
 }
 
 // Shared media proxy core (used by both /api/proxy and opaque /api/wp-stream + /api/wp-seg)
-async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false, forceImage = false, fallbackImages = [] }) {
+async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false, forceImage = false, fallbackImages = [], fallbackTitle = '' }) {
   if (!targetUrl) {
     return res.status(400).json({ error: 'Missing target URL' });
   }
@@ -787,6 +825,27 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
             break;
           }
         }
+      }
+
+      if (!validImgBuf && fallbackTitle) {
+        try {
+          const fallbackMetas = await fetchCinemetaCatalog(fallbackTitle);
+          for (const meta of fallbackMetas.slice(0, 2)) {
+            if (!meta?.poster || !validateSsrfUrl(meta.poster).safe) continue;
+            const cRes = await safeFetch(meta.poster, {
+              headers: { 'User-Agent': headers['User-Agent'], 'Accept': 'image/*,*/*;q=0.8' },
+              cache: 'no-store',
+              signal: AbortSignal.timeout(3500),
+            }).catch(() => null);
+            if (cRes && cRes.ok) {
+              const cBuf = Buffer.from(await cRes.arrayBuffer());
+              if (isValidImageBuffer(cBuf)) {
+                validImgBuf = cBuf;
+                break;
+              }
+            }
+          }
+        } catch {}
       }
 
       if (!validImgBuf) {
@@ -1157,6 +1216,7 @@ router.get('/wp-asset/:token', proxyLimiter, async (req, res) => {
     opaqueMode: true,
     forceImage: true,
     fallbackImages: Array.isArray(payload.alts) ? payload.alts : [],
+    fallbackTitle: payload.t || '',
   });
 });
 
@@ -2397,6 +2457,11 @@ function normalizeMovieTitleParts(title = '') {
     }
     str = str
       .replace(/\b(bolum|kisim)\b/g, 'part')
+      .replace(/\bpart\s+one\b/g, 'part 1')
+      .replace(/\bpart\s+two\b/g, 'part 2')
+      .replace(/\bpart\s+three\b/g, 'part 3')
+      .replace(/\bpart\s+four\b/g, 'part 4')
+      .replace(/\b(\d+)\s+part\b/g, 'part $1')
       .replace(/\bii\b/g, '2')
       .replace(/\biii\b/g, '3')
       .replace(/\biv\b/g, '4')
@@ -2433,6 +2498,17 @@ function normalizeMovieTitleParts(title = '') {
           if (withoutSeq.length >= 3) keySet.add(withoutSeq);
           const upToSeq = toks.slice(0, i + 1).join(' ');
           if (upToSeq.length >= 3) keySet.add(upToSeq);
+        }
+      }
+      // Conservative Turkish word synonym normalization for multi-word titles (e.g. Kızıl Başlık vs Kırmızı Başlığın)
+      if (toks.length >= 3) {
+        const synStr = normStr
+          .replace(/\bkirmizi\b/g, 'kizil')
+          .replace(/\bbasligin\b/g, 'baslik')
+          .replace(/\buzun\s+cadilar\s+bayrami\b/g, 'the long halloween')
+          .replace(/\bbitmeyen\s+cadilar\s+bayrami\b/g, 'the long halloween');
+        if (synStr !== normStr && synStr.length >= 4) {
+          keySet.add(normOne(synStr));
         }
       }
     }
@@ -2534,6 +2610,9 @@ function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
         target.posters.push(pObj);
       }
     }
+    if (!target.altTitle && other.altTitle) {
+      target.altTitle = other.altTitle;
+    }
     if (scoreDisplayTitleQuality(other.title) > scoreDisplayTitleQuality(target.title)) {
       target.title = other.title;
     }
@@ -2544,7 +2623,24 @@ function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
     if (!item || !item.url || !item.title) continue;
     const cleanTitle = sanitizePublicTitle(item.title);
     if (!cleanTitle) continue;
-    const { fullKey, keys } = normalizeMovieTitleParts(cleanTitle);
+    const { fullKey, keys: baseKeys } = normalizeMovieTitleParts(cleanTitle);
+    const keySet = new Set(baseKeys);
+
+    let firstAlt = '';
+    if (item.altTitle && typeof item.altTitle === 'string') {
+      const cleanTokenWordCount = fullKey.split(' ').filter(Boolean).length;
+      const altSegments = item.altTitle.split(/\s+(?:[-–—/|])\s+/).map((x) => sanitizePublicTitle(x)).filter((x) => x && x.length >= 4);
+      for (const seg of altSegments) {
+        if (!firstAlt && /[a-zA-Z]/.test(seg)) firstAlt = seg;
+        const { keys: altKeys } = normalizeMovieTitleParts(seg);
+        for (const ak of altKeys) {
+          if (ak.length >= 4 && !(cleanTokenWordCount >= 2 && !ak.includes(' '))) {
+            keySet.add(ak);
+          }
+        }
+      }
+    }
+    const keys = Array.from(keySet);
 
     const matchedSet = new Set();
     for (const k of keys) {
@@ -2575,6 +2671,7 @@ function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
         canonicalKey: fullKey || cleanTitle.toLowerCase(),
         allKeys: new Set(keys),
         title: cleanTitle,
+        altTitle: firstAlt || '',
         posters: posterObj ? [posterObj] : [],
         sources: [srcEntry],
         urlSet: new Set([item.url]),
@@ -2590,6 +2687,9 @@ function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
       for (const k of keys) {
         target.allKeys.add(k);
         keyToGroup.set(k, target);
+      }
+      if (!target.altTitle && firstAlt) {
+        target.altTitle = firstAlt;
       }
       if (!target.urlSet.has(item.url)) {
         target.urlSet.add(item.url);
@@ -2661,6 +2761,7 @@ function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
     canonicalKey: g.canonicalKey,
     id: crypto.createHash('sha1').update(g.canonicalKey).digest('hex').slice(0, 12),
     title: g.title,
+    altTitle: g.altTitle || '',
     bestPoster: g.posters[0]?.u || null,
     posterReferer: g.posters[0]?.r || SOURCE_REFERER[g.sources[0]?.providerKey] || '',
     posterAlts: g.posters.slice(1, 4).map((p) => ({ u: p.u, r: p.r || '' })),
@@ -2672,7 +2773,7 @@ function sealUnifiedMovieResults(rawGroups, proxyBaseOrigin) {
   return rawGroups.map((g) => {
     let sealedPoster = null;
     if (g.bestPoster && /^https?:\/\//i.test(g.bestPoster)) {
-      const pPayload = { u: g.bestPoster, r: g.posterReferer || '' };
+      const pPayload = { u: g.bestPoster, r: g.posterReferer || '', t: g.altTitle || g.title };
       if (Array.isArray(g.posterAlts) && g.posterAlts.length > 0) {
         pPayload.alts = g.posterAlts;
       }
@@ -2781,6 +2882,7 @@ async function searchFullHDFilm(query) {
         const block = match[1];
         const linkMatch = block.match(/href="(https:\/\/www\.fullhdfilmizlesene\.now\/film\/[^"]+)"/i);
         const titleMatch = block.match(/<span class="film-title">([^<]+)<\/span>/i) || block.match(/class="tt"[^>]*>([^<]+)<\/a>/i);
+        const ktMatch = block.match(/<span class="kt">([^<]+)<\/span>/i);
         const posterMatch = block.match(/srcset="(https:\/\/img\.fullhdfilmizlesene\.now\/poster\/[^\s"]+)/i) ||
                             block.match(/data-src="([^"]+)"/i) ||
                             block.match(/src="([^"]+)"/i);
@@ -2788,14 +2890,16 @@ async function searchFullHDFilm(query) {
           let poster = posterMatch ? posterMatch[1] : null;
           if (poster && poster.startsWith('data:')) poster = null;
           const cleanTitle = decodeHtmlEntities(titleMatch[1].trim());
+          const altTitle = ktMatch ? decodeHtmlEntities(ktMatch[1].trim()) : '';
           const audioType = /trz-dual/i.test(block)
             ? 'dual'
-            : (/trz-dublaj/i.test(block)
+            : (/trz-(?:dublaj|du\b)/i.test(block)
                 ? 'dublaj'
-                : (/trz-altyazi/i.test(block) ? 'altyazi' : detectAudioTypeFromText(`${block} ${cleanTitle}`)));
+                : (/trz-(?:altyazi|ay\b)/i.test(block) ? 'altyazi' : detectAudioTypeFromText(`${block} ${cleanTitle}`)));
           list.push({
             providerKey: 'fullhdfilmizlesene',
             title: cleanTitle,
+            altTitle,
             url: linkMatch[1],
             poster,
             audioType,
