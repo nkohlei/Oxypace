@@ -130,6 +130,13 @@
 
 @media (min-width: 769px) {
     .vc-hero {
+        padding-left: 48px !important;
+        padding-right: 48px !important;
+        box-sizing: border-box;
+    }
+
+    .vc-carousel + .vc-hero {
+        padding-left: 0 !important;
         padding-right: 80px !important;
     }
 }

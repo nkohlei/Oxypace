@@ -632,9 +632,9 @@ const ChannelSidebar = ({
             .sidebar-toggle-btn {
                 position: absolute;
                 right: -24px;
-                top: 8px;
+                top: 18px;
                 width: 24px;
-                height: 140px;
+                height: 130px;
                 background: rgba(18, 18, 24, 0.75) !important;
                 backdrop-filter: blur(16px) saturate(180%);
                 -webkit-backdrop-filter: blur(16px) saturate(180%);
