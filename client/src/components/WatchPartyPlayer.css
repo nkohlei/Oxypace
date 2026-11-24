@@ -175,37 +175,48 @@
 }
 
 .wp-alt-sources-popover {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 162px;
+    position: fixed;
+    min-width: 196px;
     background: rgba(16, 16, 22, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 10px;
-    padding: 5px;
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
-    z-index: 150;
+    padding: 6px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.82);
+    z-index: 99999;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
 }
 
 .wp-alt-sources-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #71717a;
+    color: #9ca3af;
     padding: 4px 8px 3px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.wp-alt-sources-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    opacity: 0.75;
+    font-weight: 500;
 }
 
 .wp-alt-sources-list {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    max-height: 220px;
+    max-height: 240px;
     overflow-y: auto;
 }
 
@@ -213,7 +224,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
     padding: 6px 9px;
     background: transparent;
@@ -225,6 +236,51 @@
     cursor: pointer;
     text-align: left;
     transition: background 0.12s ease, color 0.12s ease;
+}
+
+.wp-alt-source-name {
+    white-space: nowrap;
+}
+
+.wp-alt-source-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.wp-source-audio-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1;
+}
+
+.wp-source-audio-badge.is-dub {
+    background: rgba(56, 189, 248, 0.14);
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.wp-source-audio-badge.is-sub {
+    background: rgba(168, 85, 247, 0.14);
+    color: #d8b4fe;
+    border: 1px solid rgba(168, 85, 247, 0.28);
+}
+
+.wp-source-audio-badge.is-dual {
+    background: rgba(52, 211, 153, 0.14);
+    color: #6ee7b7;
+    border: 1px solid rgba(52, 211, 153, 0.28);
+}
+
+.wp-alt-sources-single-note {
+    padding: 4px 8px 2px;
+    font-size: 10.5px;
+    color: #71717a;
 }
 
 .wp-alt-source-item:hover:not(:disabled) {

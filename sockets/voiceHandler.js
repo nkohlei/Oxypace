@@ -1093,6 +1093,7 @@ export const initializeVoiceHandler = (io) => {
                 ? subtitles.slice(0, MAX_SHARED_SUBTITLES).filter((s) => s && typeof s === 'object')
                 : [];
 
+            const VALID_ALT_AUDIO_TYPES = new Set(['dublaj', 'altyazi', 'dual', 'unknown']);
             const cleanAlternatives = Array.isArray(alternatives)
                 ? alternatives
                     .slice(0, 10)
@@ -1100,6 +1101,7 @@ export const initializeVoiceHandler = (io) => {
                     .map((a, idx) => ({
                         token: clampString(a.token, 1024),
                         label: clampString(a.label || `Kaynak ${idx + 1}`, 32),
+                        audioType: VALID_ALT_AUDIO_TYPES.has(a.audioType) ? a.audioType : 'unknown',
                     }))
                 : [];
 

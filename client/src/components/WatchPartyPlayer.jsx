@@ -446,7 +446,7 @@ const WatchPartyPlayer = () => {
         }
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         controlsTimeoutRef.current = setTimeout(() => {
-            if (!isUnifiedMenuOpenRef.current) {
+            if (!isUnifiedMenuOpenRef.current && !isSourceMenuOpenRef.current) {
                 setControlsVisible(false);
             }
         }, 3400); // %25 reduced auto-hide duration
@@ -940,11 +940,17 @@ const WatchPartyPlayer = () => {
         }
     };
 
-    // Alternative Source Switcher (Opaque Kaynak 1, Kaynak 2...)
+    // Alternative Source Switcher (Opaque Kaynak 1, Kaynak 2... + Dublaj / Altyazı icon indicators)
     const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
     const [isSwitchingSource, setIsSwitchingSource] = useState(false);
     const [sourceSwitchError, setSourceSwitchError] = useState('');
+    const [sourcePopoverPos, setSourcePopoverPos] = useState({ top: 48, right: 56 });
     const sourceMenuRef = useRef(null);
+    const sourcePopoverRef = useRef(null);
+    const isSourceMenuOpenRef = useRef(false);
+    useEffect(() => {
+        isSourceMenuOpenRef.current = isSourceMenuOpen;
+    }, [isSourceMenuOpen]);
 
     const altSources = Array.isArray(watchParty?.alternatives) ? watchParty.alternatives : [];
     const activeAltIndex = Math.max(
@@ -952,16 +958,60 @@ const WatchPartyPlayer = () => {
         altSources.findIndex((a) => a?.token && a.token === watchParty?.activeSourceToken)
     );
 
+    const updateSourcePopoverPos = useCallback(() => {
+        if (!sourceMenuRef.current) return;
+        const rect = sourceMenuRef.current.getBoundingClientRect();
+        setSourcePopoverPos({
+            top: Math.round(rect.bottom + 8),
+            right: Math.max(12, Math.round(window.innerWidth - rect.right)),
+        });
+    }, []);
+
     useEffect(() => {
         if (!isSourceMenuOpen) return;
+        updateSourcePopoverPos();
         const onDocClick = (e) => {
-            if (sourceMenuRef.current && !sourceMenuRef.current.contains(e.target)) {
+            const inTrigger = sourceMenuRef.current && sourceMenuRef.current.contains(e.target);
+            const inPopover = sourcePopoverRef.current && sourcePopoverRef.current.contains(e.target);
+            if (!inTrigger && !inPopover) {
                 setIsSourceMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', onDocClick);
-        return () => document.removeEventListener('mousedown', onDocClick);
-    }, [isSourceMenuOpen]);
+        window.addEventListener('resize', updateSourcePopoverPos);
+        window.addEventListener('scroll', updateSourcePopoverPos, true);
+        return () => {
+            document.removeEventListener('mousedown', onDocClick);
+            window.removeEventListener('resize', updateSourcePopoverPos);
+            window.removeEventListener('scroll', updateSourcePopoverPos, true);
+        };
+    }, [isSourceMenuOpen, updateSourcePopoverPos]);
+
+    const renderSourceAudioBadge = (audioType) => {
+        if (audioType === 'dublaj') {
+            return (
+                <span className="wp-source-audio-badge is-dub" title="Türkçe Dublaj" aria-label="Türkçe Dublaj">
+                    <Headphones size={12} />
+                </span>
+            );
+        }
+        if (audioType === 'altyazi') {
+            return (
+                <span className="wp-source-audio-badge is-sub" title="Türkçe Altyazılı" aria-label="Türkçe Altyazılı">
+                    <Languages size={12} />
+                </span>
+            );
+        }
+        if (audioType === 'dual') {
+            return (
+                <span className="wp-source-audio-badge is-dual" title="Dublaj & Altyazılı" aria-label="Dublaj ve Altyazılı">
+                    <Headphones size={11} />
+                    <Languages size={11} />
+                </span>
+            );
+        }
+        return null;
+    };
 
     useEffect(() => {
         setIsSourceMenuOpen(false);
@@ -2889,6 +2939,7 @@ const WatchPartyPlayer = () => {
                                 >
                                     <Layers size={12} />
                                     <span>{isSwitchingSource ? 'Yükleniyor...' : (alt.label || `Kaynak ${idx + 1}`)}</span>
+                                    {renderSourceAudioBadge(alt.audioType)}
                                 </button>
                             );
                         })}
@@ -2919,8 +2970,8 @@ const WatchPartyPlayer = () => {
                     {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {/* Alternatif Kaynak Seçici (Minimal Popover Menu) */}
-                    {isNativeVOD && altSources.length > 1 && (
+                    {/* Alternatif Kaynak Seçici (Altyazı & Dublaj Butonunun Solunda) */}
+                    {isNativeVOD && altSources.length >= 1 && (
                         <div className="watch-party-header-track-container" ref={sourceMenuRef}>
                             <button
                                 type="button"
@@ -2929,7 +2980,11 @@ const WatchPartyPlayer = () => {
                                     e.stopPropagation();
                                     setIsUnifiedMenuOpen(false);
                                     setSourceSwitchError('');
-                                    setIsSourceMenuOpen((prev) => !prev);
+                                    setIsSourceMenuOpen((prev) => {
+                                        const next = !prev;
+                                        if (next) setTimeout(updateSourcePopoverPos, 0);
+                                        return next;
+                                    });
                                     triggerControlsTemporary();
                                 }}
                                 title="Alternatif Yayın Kaynakları"
@@ -2938,13 +2993,29 @@ const WatchPartyPlayer = () => {
                                 <div className="native-unified-btn-icons">
                                     <Layers size={13} />
                                     <span>{isSwitchingSource ? 'Değişiyor...' : (altSources[activeAltIndex]?.label || `Kaynak ${activeAltIndex + 1}`)}</span>
+                                    {!isSwitchingSource && renderSourceAudioBadge(altSources[activeAltIndex]?.audioType)}
                                 </div>
                             </button>
 
-                            {isSourceMenuOpen && (
-                                <div className="wp-alt-sources-popover" onClick={(e) => e.stopPropagation()}>
-                                    <div className="wp-alt-sources-header">Alternatif Kaynaklar</div>
-                                    <div className="wp-alt-sources-list">
+                            {isSourceMenuOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+                                <div
+                                    ref={sourcePopoverRef}
+                                    className="wp-alt-sources-popover"
+                                    style={{
+                                        top: `${sourcePopoverPos.top}px`,
+                                        right: `${sourcePopoverPos.right}px`,
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="wp-alt-sources-header">
+                                        <span>Alternatif Kaynaklar</span>
+                                        <span className="wp-alt-sources-legend" title="Kulaklık: Dublaj • Dil: Altyazı">
+                                            <Headphones size={10} />
+                                            <span>/</span>
+                                            <Languages size={10} />
+                                        </span>
+                                    </div>
+                                    <div className="wp-alt-sources-list custom-scrollbar">
                                         {altSources.map((alt, idx) => {
                                             const isSelected = alt.token === watchParty?.activeSourceToken || (!watchParty?.activeSourceToken && idx === 0);
                                             return (
@@ -2955,16 +3026,23 @@ const WatchPartyPlayer = () => {
                                                     className={`wp-alt-source-item ${isSelected ? 'active' : ''}`}
                                                     onClick={() => handleSwitchAlternativeSource(alt)}
                                                 >
-                                                    <span>{alt.label || `Kaynak ${idx + 1}`}</span>
-                                                    {isSelected && <Check size={12} />}
+                                                    <span className="wp-alt-source-name">{alt.label || `Kaynak ${idx + 1}`}</span>
+                                                    <span className="wp-alt-source-meta">
+                                                        {renderSourceAudioBadge(alt.audioType)}
+                                                        {isSelected && <Check size={12} />}
+                                                    </span>
                                                 </button>
                                             );
                                         })}
                                     </div>
+                                    {altSources.length === 1 && (
+                                        <div className="wp-alt-sources-single-note">Başka alternatif kaynak bulunmuyor</div>
+                                    )}
                                     {sourceSwitchError && (
                                         <div className="wp-alt-sources-err">{sourceSwitchError}</div>
                                     )}
-                                </div>
+                                </div>,
+                                document.body
                             )}
                         </div>
                     )}
@@ -2976,6 +3054,7 @@ const WatchPartyPlayer = () => {
                                 className={`watch-party-header-track-btn glass-btn ${isUnifiedMenuOpen ? 'active' : ''}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    setIsSourceMenuOpen(false);
                                     setIsUnifiedMenuOpen(prev => {
                                         const next = !prev;
                                         if (next) setTimeout(updatePopoverPos, 0);

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import axios from 'axios';
 import {
   X, Film, Play, Link2, AlertCircle, CheckCircle2,
-  Clipboard, ArrowRight, Search, Layers, ChevronDown, Zap
+  Clipboard, ArrowRight, Search
 } from 'lucide-react';
 import './HlsStreamResolverModalVol2.css';
 
@@ -25,7 +25,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchError, setSearchError] = useState(null);
-  const [openAltCardId, setOpenAltCardId] = useState(null);
 
   // Resolver state
   const [url, setUrl] = useState('');
@@ -46,17 +45,9 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       setResolvedData(null);
       setErrorMsg(null);
       setSearchError(null);
-      setOpenAltCardId(null);
       if (timerRef.current) clearInterval(timerRef.current);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!openAltCardId) return;
-    const handleOutside = () => setOpenAltCardId(null);
-    window.addEventListener('click', handleOutside);
-    return () => window.removeEventListener('click', handleOutside);
-  }, [openAltCardId]);
 
   if (!isOpen) return null;
 
@@ -79,7 +70,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     setSelectedMovie(null);
     setResolvedData(null);
     setErrorMsg(null);
-    setOpenAltCardId(null);
 
     try {
       const response = await axios.get(`/api/search-movies?q=${encodeURIComponent(q)}`, {
@@ -127,7 +117,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
       return;
     }
 
-    setOpenAltCardId(null);
     setIsResolving(true);
     setErrorMsg(null);
     setResolvedData(null);
@@ -471,8 +460,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 <div className="vol2-results-grid">
                   {searchResults.map((movie, idx) => {
                     const cardId = movie.id || `${idx}`;
-                    const sources = Array.isArray(movie.sources) ? movie.sources : [];
-                    const isAltOpen = openAltCardId === cardId;
 
                     return (
                       <div
@@ -500,53 +487,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                             <Film size={26} strokeWidth={1.5} />
                             <span className="vol2-fallback-text">{movie.title}</span>
                           </div>
-
-                          {/* Minimal Alternative Sources Trigger (Top-Right) */}
-                          {sources.length > 1 && (
-                            <div
-                              className="vol2-alt-wrap"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                className={`vol2-alt-trigger-btn ${isAltOpen ? 'active' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenAltCardId(isAltOpen ? null : cardId);
-                                }}
-                                title="Alternatif Kaynaklar"
-                              >
-                                <Layers size={10} />
-                                <span>{sources.length} Kaynak</span>
-                                <ChevronDown size={10} />
-                              </button>
-
-                              {isAltOpen && (
-                                <div className="vol2-alt-menu" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    type="button"
-                                    className="vol2-alt-menu-item auto"
-                                    onClick={() => startResolveMovie(movie, null)}
-                                  >
-                                    <Zap size={11} />
-                                    <span>En Hızlı (Oto)</span>
-                                  </button>
-                                  <div className="vol2-alt-menu-divider" />
-                                  {sources.map((src, sIdx) => (
-                                    <button
-                                      key={src.token}
-                                      type="button"
-                                      className="vol2-alt-menu-item"
-                                      onClick={() => startResolveMovie(movie, src)}
-                                    >
-                                      <Play size={10} fill="currentColor" />
-                                      <span>{src.label || `Kaynak ${sIdx + 1}`}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
 
                           <div className="vol2-card-hover-overlay">
                             <div className="vol2-card-play-btn">

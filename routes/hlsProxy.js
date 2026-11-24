@@ -271,21 +271,54 @@ async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   return '';
 }
 
-// Direct curl fetch for binary data (images/posters)
-async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
+function isValidImageBuffer(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 250) return false;
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true;
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true;
+  // GIF: GIF8
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return true;
+  // WebP: RIFF....WEBP
+  if (buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP') return true;
+  // AVIF / HEIF ISO BMFF: ....ftyp
+  if (buf.length >= 12 && buf.subarray(4, 8).toString('ascii') === 'ftyp') return true;
+  return false;
+}
+
+function detectImageMime(buf, fallbackUrl = '') {
+  if (Buffer.isBuffer(buf) && buf.length >= 12) {
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
+    if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return 'image/gif';
+    if (buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
+    if (buf.subarray(4, 8).toString('ascii') === 'ftyp') return 'image/avif';
+  }
+  const lower = String(fallbackUrl || '').toLowerCase().split('?')[0];
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.avif')) return 'image/avif';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  return 'image/webp';
+}
+
+// Direct curl fetch for binary data (images/posters/subtitles) with Tor & proxy fallback
+async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8, expectImage = false) {
   if (!validateSsrfUrl(url).safe) return null;
-  const runCurl = (useTor = false) => new Promise((resolve, reject) => {
+  const runCurl = ({ useTor = false, proxyUrl = '' } = {}) => new Promise((resolve, reject) => {
     const args = [
       '-s',
       '-L',
-      '--max-time', String(timeoutSec),
+      '--max-time', String(useTor ? timeoutSec + 2 : timeoutSec),
       '--proto', '=http,https',
       '--proto-redir', '=http,https',
       '--max-redirs', '5',
       '--max-filesize', String(25 * 1024 * 1024),
       '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     ];
-    if (useTor) args.push('--socks5-hostname', '127.0.0.1:9050');
+    if (expectImage) args.push('-f');
+    if (proxyUrl) args.push('-x', proxyUrl);
+    else if (useTor) args.push('--socks5-hostname', '127.0.0.1:9050');
     if (referer) args.push('-H', `Referer: ${referer}`);
     args.push(url);
 
@@ -302,19 +335,35 @@ async function fetchBinaryWithCurl(url, referer = '', timeoutSec = 8) {
     });
   });
 
-  try {
-    const directBuf = await runCurl(false);
-    if (directBuf && directBuf.length > 0 && !isBlockedOrChallenge(directBuf.toString('utf8', 0, 500))) {
-      return directBuf;
-    }
-  } catch (directErr) {}
+  const isAcceptable = (buf) => {
+    if (!buf || buf.length < 10) return false;
+    if (expectImage) return isValidImageBuffer(buf);
+    return !isBlockedOrChallenge(buf.toString('utf8', 0, 500));
+  };
 
-  try {
-    const torBuf = await runCurl(true);
-    if (torBuf && torBuf.length > 0 && !isBlockedOrChallenge(torBuf.toString('utf8', 0, 500))) {
-      return torBuf;
-    }
-  } catch (torErr) {}
+  const envProxy = buildEnvProxyUrl();
+  if (envProxy) {
+    try {
+      const pBuf = await runCurl({ proxyUrl: envProxy });
+      if (isAcceptable(pBuf)) return pBuf;
+    } catch {}
+  }
+
+  // Known HTTP 444 CDN on Linux OCI datacenter IPs -> skip wasted direct attempt and go straight to Tor
+  const skipDirectOnLinux = process.platform === 'linux' && url.includes('img.fullhdfilmizlesene.now');
+  if (!skipDirectOnLinux) {
+    try {
+      const directBuf = await runCurl({ useTor: false });
+      if (isAcceptable(directBuf)) return directBuf;
+    } catch {}
+  }
+
+  if (await isTorReachable()) {
+    try {
+      const torBuf = await runCurl({ useTor: true });
+      if (isAcceptable(torBuf)) return torBuf;
+    } catch {}
+  }
 
   return null;
 }
@@ -518,7 +567,7 @@ function shouldKeepDirectMediaUrl(urlStr) {
 }
 
 // Shared media proxy core (used by both /api/proxy and opaque /api/wp-stream + /api/wp-seg)
-async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false }) {
+async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false, forceImage = false, fallbackImages = [] }) {
   if (!targetUrl) {
     return res.status(400).json({ error: 'Missing target URL' });
   }
@@ -634,7 +683,7 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
     const headers = {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept': '*/*',
+      'Accept': forceImage ? 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8' : '*/*',
       'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
     };
     if (refererHeader) headers['Referer'] = refererHeader;
@@ -644,70 +693,168 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
       headers['Range'] = req.headers.range;
     }
 
-    let response = await safeFetch(targetUrl, {
-      headers,
-      cache: 'no-store',
-    });
-
     const lowerUrl = targetUrl.toLowerCase();
-    const isPosterOrImage = 
-      lowerUrl.endsWith('.webp') || 
-      lowerUrl.endsWith('.jpg') || 
-      lowerUrl.endsWith('.jpeg') || 
-      lowerUrl.endsWith('.png') || 
+    const isPosterOrImage =
+      Boolean(forceImage) ||
+      lowerUrl.endsWith('.webp') ||
+      lowerUrl.endsWith('.jpg') ||
+      lowerUrl.endsWith('.jpeg') ||
+      lowerUrl.endsWith('.png') ||
       lowerUrl.endsWith('.avif') ||
-      lowerUrl.includes('/images/thumb/poster/') || 
+      lowerUrl.includes('/images/thumb/poster/') ||
       lowerUrl.includes('/poster/');
 
-    const isSubtitleFile = 
-      lowerUrl.endsWith('.vtt') || 
-      lowerUrl.endsWith('.srt') || 
-      lowerUrl.includes('/vtt/') || 
-      lowerUrl.includes('/subtitles/');
+    const isSubtitleFile =
+      !forceImage &&
+      (lowerUrl.endsWith('.vtt') ||
+        lowerUrl.endsWith('.srt') ||
+        lowerUrl.includes('/vtt/') ||
+        lowerUrl.includes('/subtitles/'));
+
+    const inferPosterReferer = (u, defaultRef = '') => {
+      if (defaultRef) return defaultRef;
+      if (u.includes('hdfilmcehennemi')) return 'https://www.hdfilmcehennemi.nl/';
+      if (u.includes('fullhdfilmizlesene')) return 'https://www.fullhdfilmizlesene.now/';
+      if (u.includes('filmmakinesi')) return 'https://filmmakinesi.to/';
+      if (u.includes('filmdozu')) return 'https://filmdozu.com/';
+      if (u.includes('nadirfilm')) return 'https://www.nadirfilm.com/';
+      if (u.includes('webteizle')) return 'https://webteizle.info/';
+      if (u.includes('kultfilmler')) return 'https://kultfilmler.net/';
+      return '';
+    };
+
+    let response = null;
+    try {
+      const skipDirectImgFetch = isPosterOrImage && process.platform === 'linux' && targetUrl.includes('img.fullhdfilmizlesene.now');
+      if (skipDirectImgFetch) {
+        response = { ok: false, status: 444 };
+      } else {
+        response = await safeFetch(targetUrl, {
+          headers,
+          cache: 'no-store',
+          signal: AbortSignal.timeout(isPosterOrImage ? 6000 : 15000),
+        });
+      }
+    } catch {
+      response = { ok: false, status: 502 };
+    }
+
+    // Bulletproof cover poster pipeline: direct -> Tor/curl -> fallbackImages -> ScraperAPI
+    if (isPosterOrImage) {
+      let validImgBuf = null;
+      if (response && response.ok) {
+        try {
+          const directBuf = Buffer.from(await response.arrayBuffer());
+          if (isValidImageBuffer(directBuf)) validImgBuf = directBuf;
+        } catch {}
+      }
+
+      if (!validImgBuf) {
+        const posterRef = inferPosterReferer(targetUrl, refererHeader);
+        validImgBuf = await fetchBinaryWithCurl(targetUrl, posterRef, 8, true);
+      }
+
+      if (!validImgBuf && Array.isArray(fallbackImages) && fallbackImages.length > 0) {
+        for (const fb of fallbackImages) {
+          const fbUrl = typeof fb === 'string' ? fb : fb?.u;
+          const fbRef = inferPosterReferer(fbUrl || '', typeof fb === 'object' ? (fb?.r || '') : '');
+          if (!fbUrl || !validateSsrfUrl(fbUrl).safe) continue;
+          try {
+            const skipDirectFb = process.platform === 'linux' && fbUrl.includes('img.fullhdfilmizlesene.now');
+            if (!skipDirectFb) {
+              const fbHdrs = {
+                'User-Agent': headers['User-Agent'],
+                'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+              };
+              if (fbRef) fbHdrs['Referer'] = fbRef;
+              const fbRes = await safeFetch(fbUrl, {
+                headers: fbHdrs,
+                cache: 'no-store',
+                signal: AbortSignal.timeout(4500),
+              });
+              if (fbRes.ok) {
+                const fbBuf = Buffer.from(await fbRes.arrayBuffer());
+                if (isValidImageBuffer(fbBuf)) {
+                  validImgBuf = fbBuf;
+                  break;
+                }
+              }
+            }
+          } catch {}
+          const fbCurlBuf = await fetchBinaryWithCurl(fbUrl, fbRef, 6, true);
+          if (isValidImageBuffer(fbCurlBuf)) {
+            validImgBuf = fbCurlBuf;
+            break;
+          }
+        }
+      }
+
+      if (!validImgBuf) {
+        const apiKey = getValidScraperApiKey();
+        if (apiKey) {
+          try {
+            const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+            const sRes = await fetch(sApiUrl, { cache: 'no-store', signal: AbortSignal.timeout(7000) });
+            if (sRes.ok) {
+              const sBuf = Buffer.from(await sRes.arrayBuffer());
+              if (isValidImageBuffer(sBuf)) validImgBuf = sBuf;
+            } else if (sRes.status === 401 || sRes.status === 403) {
+              exhaustedScraperKeys.add(apiKey);
+            }
+          } catch {}
+        }
+      }
+
+      if (validImgBuf) {
+        const mime = detectImageMime(validImgBuf, targetUrl);
+        const cacheEntry = {
+          buffer: validImgBuf,
+          contentType: mime,
+          cacheControl: 'public, max-age=86400',
+        };
+        if (canUseRamCache && cacheKey) {
+          setCachedProxyEntry(cacheKey, cacheEntry, 24 * 60 * 60 * 1000);
+        }
+        const allowedCorsOrigin = resolveProxyCorsOrigin(req.headers.origin) || '*';
+        res.setHeader('Content-Type', mime);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Access-Control-Allow-Origin', allowedCorsOrigin);
+        res.setHeader('Content-Length', String(validImgBuf.length));
+        finishInflight(cacheEntry);
+        return res.status(200).end(validImgBuf);
+      }
+
+      const TRANSPARENT_1PX_WEBP = Buffer.from('UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AA/v3V84AAA', 'base64');
+      res.setHeader('Content-Type', 'image/webp');
+      res.setHeader('Cache-Control', 'public, max-age=120');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      finishInflight(null);
+      return res.status(200).end(TRANSPARENT_1PX_WEBP);
+    }
 
     if (!response.ok && (response.status === 403 || response.status === 404)) {
-      if (isPosterOrImage || isSubtitleFile) {
+      if (isSubtitleFile) {
         try {
-          let posterReferer = refererHeader;
-          if (!posterReferer) {
-            if (targetUrl.includes('hdfilmcehennemi')) posterReferer = 'https://www.hdfilmcehennemi.nl/';
-            else if (targetUrl.includes('fullhdfilmizlesene')) posterReferer = 'https://www.fullhdfilmizlesene.now/';
-            else if (targetUrl.includes('filmmakinesi')) posterReferer = 'https://filmmakinesi.to/';
-            else if (targetUrl.includes('filmdozu')) posterReferer = 'https://filmdozu.com/';
-            else if (targetUrl.includes('nadirfilm')) posterReferer = 'https://www.nadirfilm.com/';
-            else if (targetUrl.includes('webteizle')) posterReferer = 'https://webteizle.info/';
-          }
-          const buf = await fetchBinaryWithCurl(targetUrl, posterReferer, 8);
+          const posterReferer = inferPosterReferer(targetUrl, refererHeader);
+          const buf = await fetchBinaryWithCurl(targetUrl, posterReferer, 8, false);
           if (buf && buf.length > 10) {
-            if (isSubtitleFile) {
-              res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
-              res.setHeader('Access-Control-Allow-Origin', '*');
-              res.setHeader('Cache-Control', 'public, max-age=86400');
-              finishInflight(null);
-              return res.end(buf);
-            }
-            const mime = lowerUrl.endsWith('.png') ? 'image/png' :
-                         lowerUrl.endsWith('.avif') ? 'image/avif' :
-                         (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) ? 'image/jpeg' :
-                         'image/webp';
-            res.setHeader('Content-Type', mime);
+            res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+            res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Cache-Control', 'public, max-age=86400');
             finishInflight(null);
             return res.end(buf);
           }
-          if (isSubtitleFile) {
-            try {
-              const tlsText = await fetchWithTlsImpersonator(targetUrl, posterReferer);
-              if (tlsText && tlsText.length > 10 && !isBlockedOrChallenge(tlsText)) {
-                res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
-                res.setHeader('Access-Control-Allow-Origin', '*');
-                res.setHeader('Cache-Control', 'public, max-age=86400');
-                finishInflight(null);
-                return res.end(tlsText);
-              }
-            } catch (tlsErr) {}
-          }
-        } catch (curlErr) {
+          try {
+            const tlsText = await fetchWithTlsImpersonator(targetUrl, posterReferer);
+            if (tlsText && tlsText.length > 10 && !isBlockedOrChallenge(tlsText)) {
+              res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+              finishInflight(null);
+              return res.end(tlsText);
+            }
+          } catch {}
+        } catch {
           const apiKey = getValidScraperApiKey();
           if (apiKey) {
             try {
@@ -718,7 +865,7 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
               } else if (sRes.status === 401 || sRes.status === 403) {
                 exhaustedScraperKeys.add(apiKey);
               }
-            } catch (e) {}
+            } catch {}
           }
         }
       }
@@ -762,36 +909,12 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
       }
     }
 
-    if (!response.ok && isPosterOrImage) {
-      const apiKey = getValidScraperApiKey();
-      if (apiKey) {
-        try {
-          const sApiUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-          const sRes = await fetch(sApiUrl, { cache: 'no-store' });
-          if (sRes.ok) {
-            response = sRes;
-          } else if (sRes.status === 401 || sRes.status === 403) {
-            exhaustedScraperKeys.add(apiKey);
-          }
-        } catch (e) {}
-      }
-    }
-
     if (!response.ok) {
-      if (isPosterOrImage) {
-        const TRANSPARENT_1PX_WEBP = Buffer.from('UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AA/v3V84AAA', 'base64');
-        res.setHeader('Content-Type', 'image/webp');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        finishInflight(null);
-        return res.status(200).end(TRANSPARENT_1PX_WEBP);
-      }
-
-      const isMediaChunk = 
-        lowerUrl.includes('.ts') || 
-        lowerUrl.includes('.m4s') || 
-        lowerUrl.endsWith('.mp4') || 
-        lowerUrl.includes('.aac') || 
+      const isMediaChunk =
+        lowerUrl.includes('.ts') ||
+        lowerUrl.includes('.m4s') ||
+        lowerUrl.endsWith('.mp4') ||
+        lowerUrl.includes('.aac') ||
         lowerUrl.includes('/segment') ||
         lowerUrl.includes('/fragment');
 
@@ -1032,6 +1155,8 @@ router.get('/wp-asset/:token', proxyLimiter, async (req, res) => {
     referer: payload.r || '',
     origin: payload.o || '',
     opaqueMode: true,
+    forceImage: true,
+    fallbackImages: Array.isArray(payload.alts) ? payload.alts : [],
   });
 });
 
@@ -1392,22 +1517,53 @@ async function resolveFilmDozu(targetUrl) {
 
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const pageTitle = sanitizePublicTitle(titleMatch ? titleMatch[1] : '');
-  const embedUrls = extractEmbedUrlsFromHtml(html, targetUrl);
-  if (embedUrls.length === 0) return null;
 
-  const topEmbeds = embedUrls.slice(0, 4);
+  const embedEntries = [];
+  const seenEmbed = new Set();
+  const pushEntry = (rawUrl, audioType = 'unknown') => {
+    if (!rawUrl || typeof rawUrl !== 'string') return;
+    let u = decodeHtmlEntities(rawUrl.trim());
+    if (u.startsWith('//')) u = 'https:' + u;
+    if (!u.startsWith('http')) {
+      try { u = new URL(u, targetUrl).href; } catch { return; }
+    }
+    const lower = u.toLowerCase();
+    if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('google') || lower.includes('doubleclick')) return;
+    if (!seenEmbed.has(u)) {
+      seenEmbed.add(u);
+      embedEntries.push({ url: u, audioType: audioType || 'unknown' });
+    }
+  };
+
+  // Extract FilmDozu's source selector buttons (include Dublaj / Altyazı / Dual label!)
+  for (const [, embRaw, btnInner] of html.matchAll(/<button[^>]*onclick=["']loadSource\(\s*['"]([^'"]+)['"][^)]*\)["'][^>]*>([\s\S]*?)<\/button>/gi)) {
+    const cleanBtnLabel = decodeHtmlEntities(btnInner.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+    const aType = detectAudioTypeFromText(cleanBtnLabel);
+    pushEntry(embRaw, aType);
+  }
+
+  for (const emb of extractEmbedUrlsFromHtml(html, targetUrl)) {
+    pushEntry(emb, detectAudioTypeFromText(pageTitle));
+  }
+
+  if (embedEntries.length === 0) return null;
+
+  const topEmbeds = embedEntries.slice(0, 4);
   const resolved = await raceFirstSuccess(
-    topEmbeds.map((emb, idx) =>
-      resolveEmbedUrl(emb, targetUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: emb, wonIdx: idx } : null))
+    topEmbeds.map((entry, idx) =>
+      resolveEmbedUrl(entry.url, targetUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: entry.url, audioType: entry.audioType, wonIdx: idx } : null))
     ),
     8500
   );
   if (!resolved) return null;
 
-  const extraEmbedUrls = embedUrls.filter((u) => u !== resolved.wonEmbedUrl).slice(0, 4);
+  const extraEmbeds = embedEntries
+    .filter((e) => e.url !== resolved.wonEmbedUrl)
+    .slice(0, 5)
+    .map((e) => ({ url: e.url, audioType: e.audioType }));
   return {
     ...resolved,
-    extraEmbedUrls,
+    extraEmbeds,
     elapsed: Date.now() - start,
   };
 }
@@ -1428,19 +1584,20 @@ async function resolveKultFilmler(targetUrl) {
 
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const pageTitle = sanitizePublicTitle(titleMatch ? titleMatch[1] : '');
+  const baseAudio = detectAudioTypeFromText(pageTitle);
   const embedUrls = extractEmbedUrlsFromHtml(html, targetUrl);
   if (embedUrls.length === 0) return null;
 
   const resolved = await raceFirstSuccess(
     embedUrls.slice(0, 4).map((emb) =>
-      resolveEmbedUrl(emb, targetUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: emb } : null))
+      resolveEmbedUrl(emb, targetUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: emb, audioType: baseAudio } : null))
     ),
     8000
   );
   if (!resolved) return null;
   return {
     ...resolved,
-    extraEmbedUrls: embedUrls.filter((u) => u !== resolved.wonEmbedUrl).slice(0, 3),
+    extraEmbeds: embedUrls.filter((u) => u !== resolved.wonEmbedUrl).slice(0, 3).map((url) => ({ url, audioType: baseAudio })),
     elapsed: Date.now() - start,
   };
 }
@@ -1462,10 +1619,12 @@ async function resolveWebteizle(targetUrl) {
 
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const pageTitle = sanitizePublicTitle(titleMatch ? titleMatch[1] : '');
+  const watchAudio = watchUrl.includes('/dublaj/') ? 'dublaj' : (watchUrl.includes('/altyazi/') ? 'altyazi' : detectAudioTypeFromText(pageTitle));
   const idMatch = html.match(/data-id=["'](\d+)["']/);
   if (idMatch && idMatch[1]) {
     const fid = idMatch[1];
     const embedCandidates = [];
+    const seenCand = new Set();
     for (const dil of ['1', '0']) {
       try {
         const ra = await fetch('https://webteizle.info/ajax/dataAlternatif3.asp', {
@@ -1500,7 +1659,14 @@ async function resolveWebteizle(targetUrl) {
               });
               if (re.ok) {
                 const embHtml = await re.text();
-                embedCandidates.push(...extractEmbedUrlsFromHtml(embHtml, watchUrl));
+                const hintAudio = detectAudioTypeFromText(`${item.baslik || ''} ${item.title || ''} ${item.name || ''} ${embHtml}`);
+                const resolvedHint = hintAudio !== 'unknown' ? hintAudio : watchAudio;
+                for (const embUrl of extractEmbedUrlsFromHtml(embHtml, watchUrl)) {
+                  if (!seenCand.has(embUrl)) {
+                    seenCand.add(embUrl);
+                    embedCandidates.push({ url: embUrl, audioType: resolvedHint });
+                  }
+                }
               }
             }
           }
@@ -1509,10 +1675,18 @@ async function resolveWebteizle(targetUrl) {
     }
     if (embedCandidates.length > 0) {
       const resolved = await raceFirstSuccess(
-        embedCandidates.slice(0, 4).map((emb) => resolveEmbedUrl(emb, watchUrl, pageTitle)),
+        embedCandidates.slice(0, 4).map((c) =>
+          resolveEmbedUrl(c.url, watchUrl, pageTitle).then((r) => (r ? { ...r, wonEmbedUrl: c.url, audioType: c.audioType } : null))
+        ),
         7000
       );
-      if (resolved) return { ...resolved, elapsed: Date.now() - start };
+      if (resolved) {
+        return {
+          ...resolved,
+          extraEmbeds: embedCandidates.filter((c) => c.url !== resolved.wonEmbedUrl).slice(0, 4),
+          elapsed: Date.now() - start,
+        };
+      }
     }
   }
   return null;
@@ -1858,18 +2032,35 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
   const startTime = Date.now();
   const maxTimeout = Math.min(parseInt(timeout, 10) || 14000, 18000);
 
-  const buildAltList = (baseTokens, winningUrl = '', extraEmbedUrls = []) => {
-    const validBase = Array.isArray(baseTokens) ? baseTokens.filter(t => typeof t === 'string' && openWpToken(t)?.u) : [];
-    const out = validBase.map((t, i) => ({ token: t, label: `Kaynak ${i + 1}` }));
-    if (Array.isArray(extraEmbedUrls) && out.length < 6) {
-      const existingRaw = new Set(validBase.map(t => openWpToken(t)?.u).filter(Boolean));
-      for (const emb of extraEmbedUrls) {
-        if (out.length >= 6) break;
-        if (!emb || existingRaw.has(emb)) continue;
-        existingRaw.add(emb);
-        const embTok = sealWpToken({ u: emb, embed: true, r: winningUrl || '' }, 21600);
-        if (embTok) out.push({ token: embTok, label: `Kaynak ${out.length + 1}` });
-      }
+  const buildAltList = (baseTokens, winningUrl = '', resultObj = null, winningToken = '') => {
+    const out = [];
+    const seenRawUrls = new Set();
+    const validBase = Array.isArray(baseTokens) ? baseTokens : [];
+
+    const wonAudio = resultObj?.audioType && resultObj.audioType !== 'unknown' ? resultObj.audioType : '';
+    for (const t of validBase) {
+      if (typeof t !== 'string') continue;
+      const p = openWpToken(t);
+      if (!p || !p.u || seenRawUrls.has(p.u)) continue;
+      seenRawUrls.add(p.u);
+      const aType = (t === winningToken && wonAudio && (!p.a || p.a === 'unknown'))
+        ? wonAudio
+        : (p.a || 'unknown');
+      out.push({ token: t, label: `Kaynak ${out.length + 1}`, audioType: aType });
+    }
+
+    const extras = [
+      ...(Array.isArray(resultObj?.extraEmbeds) ? resultObj.extraEmbeds : []),
+      ...(Array.isArray(resultObj?.extraEmbedUrls) ? resultObj.extraEmbedUrls.map((u) => ({ url: u, audioType: 'unknown' })) : []),
+    ];
+    for (const ext of extras) {
+      if (out.length >= 8) break;
+      const embUrl = typeof ext === 'string' ? ext : ext?.url;
+      const embAudio = (typeof ext === 'object' && ext?.audioType) ? ext.audioType : 'unknown';
+      if (!embUrl || seenRawUrls.has(embUrl)) continue;
+      seenRawUrls.add(embUrl);
+      const embTok = sealWpToken({ u: embUrl, embed: true, r: winningUrl || '', a: embAudio }, 21600);
+      if (embTok) out.push({ token: embTok, label: `Kaynak ${out.length + 1}`, audioType: embAudio });
     }
     return out;
   };
@@ -1895,10 +2086,15 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
       const alternatives = buildAltList(
         Array.isArray(sources) && sources.length > 0 ? sources : [sourceToken.trim()],
         payload.u,
-        result.extraEmbedUrls
+        result,
+        sourceToken.trim()
       );
       if (!alternatives.some(a => a.token === sourceToken.trim())) {
-        alternatives.push({ token: sourceToken.trim(), label: `Kaynak ${alternatives.length + 1}` });
+        alternatives.push({
+          token: sourceToken.trim(),
+          label: `Kaynak ${alternatives.length + 1}`,
+          audioType: result.audioType || payload.a || 'unknown',
+        });
       }
       const activeIdx = alternatives.findIndex(a => a.token === sourceToken.trim());
       return res.status(200).json({
@@ -1926,7 +2122,7 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
       const cached = movieResolveCache.get(item.payload.u);
       if (cached && Date.now() - cached.ts < MOVIE_RESOLVE_CACHE_TTL && cached.result?.streamUrl) {
         const opaque = buildOpaqueResolvedPayload(cached.result, resolveBaseOrigin, title);
-        const alternatives = buildAltList(tokenList, item.payload.u, cached.result.extraEmbedUrls);
+        const alternatives = buildAltList(tokenList, item.payload.u, cached.result, item.tok);
         return res.status(200).json({
           success: true,
           ...opaque,
@@ -1961,7 +2157,7 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
 
     const wonItem = won._item;
     const opaque = buildOpaqueResolvedPayload(won, resolveBaseOrigin, title);
-    const alternatives = buildAltList(tokenList, wonItem.payload.u, won.extraEmbedUrls);
+    const alternatives = buildAltList(tokenList, wonItem.payload.u, won, wonItem.tok);
     return res.status(200).json({
       success: true,
       ...opaque,
@@ -2168,36 +2364,106 @@ function stripTurkishChars(str = '') {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function detectAudioTypeFromText(text = '') {
+  const s = stripTurkishChars(String(text || ''));
+  const hasDub = /\b(dublaj|dublajli|tr dublaj|turkce dublaj|turkce ses)\b|trz-dublaj|tag-tr/.test(s);
+  const hasSub = /\b(altyazi|altyazili|turkce altyazi|alt yazi)\b|trz-altyazi|tag-en/.test(s);
+  const hasDual = /\b(dual|dublaj\s*[-–—&+/]\s*altyazi|altyazi\s*[-–—&+/]\s*dublaj)\b|trz-dual/.test(s) || (hasDub && hasSub);
+  if (hasDual) return 'dual';
+  if (hasDub) return 'dublaj';
+  if (hasSub) return 'altyazi';
+  return 'unknown';
+}
+
 function normalizeMovieTitleParts(title = '') {
   const cleanRaw = sanitizePublicTitle(title);
+
   const normOne = (s) => {
     let str = stripTurkishChars(s)
+      .replace(/['’‘`]/g, '')
       .replace(/\(\s*\d{4}\s*\)/g, ' ')
       .replace(/\b(19\d\d|20[0-3]\d)\b/g, ' ')
-      .replace(/[()[\]{}_,.:;!?\\/|\-–—+&'"’‘“”]/g, ' ');
+      .replace(/[()[\]{}_,.:;!?\\/|\-–—+&"]/g, ' ');
     const removeWords = [
       'turkce dublaj', 'turkce altyazili', 'turkce altyazi', 'altyazili',
       'altyazi', 'dublajli', 'dublaj', 'dual', 'tr en', 'full hd', '1080p',
-      '720p', '480p', '4k', 'uhd', 'hd', 'izle', 'filmi', 'film', 'bolum', 'tek parca'
+      '720p', '480p', '4k', 'uhd', 'hd', 'izle', 'filmi', 'film', 'tek parca',
+      'sansursuz', 'unrated', 'extended', 'remastered', 'directors cut',
+      'special edition', 'deluxe edition', 'the movie'
     ];
     for (const w of removeWords) {
       const reg = new RegExp('(?:^|\\s+)' + w + '(?=\\s+|$)', 'gi');
       str = str.replace(reg, ' ');
     }
-    return str.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    str = str
+      .replace(/\b(bolum|kisim)\b/g, 'part')
+      .replace(/\bii\b/g, '2')
+      .replace(/\biii\b/g, '3')
+      .replace(/\biv\b/g, '4')
+      .replace(/\bv\b/g, '5')
+      .replace(/\bvi\b/g, '6')
+      .replace(/\bvii\b/g, '7')
+      .replace(/\bviii\b/g, '8')
+      .replace(/\bix\b/g, '9')
+      .replace(/\bx\b/g, '10');
+    str = str.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    // Strip leading articles repeatedly ("the matrix" -> "matrix")
+    while (/^(?:the|a|an|bir)\s+/.test(str)) {
+      str = str.replace(/^(?:the|a|an|bir)\s+/, '').trim();
+    }
+    return str;
+  };
+
+  const addAliases = (normStr, keySet) => {
+    if (!normStr || normStr.length < 2) return;
+    keySet.add(normStr);
+    const toks = normStr.split(' ').filter(Boolean);
+    if (toks.length >= 2) {
+      const last = toks[toks.length - 1];
+      const prev = toks[toks.length - 2];
+      // "matrix 1" -> "matrix", NEVER "part 1" -> "part"
+      if (last === '1' && !/^(part|vol|volume|chapter|sezon|season)$/.test(prev)) {
+        const dropped1 = toks.slice(0, -1).join(' ');
+        if (dropped1.length >= 2) keySet.add(dropped1);
+      }
+      // Inline sequence digit: "matrix 2 reloaded" -> "matrix reloaded", "matrix 4 resurrections" -> ["matrix 4", "matrix resurrections"]
+      for (let i = 1; i < toks.length - 1; i++) {
+        if (/^[1-9]$/.test(toks[i]) && !/^(part|vol|volume|chapter|sezon|season)$/.test(toks[i - 1])) {
+          const withoutSeq = [...toks.slice(0, i), ...toks.slice(i + 1)].join(' ');
+          if (withoutSeq.length >= 3) keySet.add(withoutSeq);
+          const upToSeq = toks.slice(0, i + 1).join(' ');
+          if (upToSeq.length >= 3) keySet.add(upToSeq);
+        }
+      }
+    }
   };
 
   const fullKey = normOne(cleanRaw);
-  const parts = cleanRaw
-    .split(/\s*(?:[-–—:|/]|\()\s*/)
-    .map((p) => normOne(p))
-    .filter((p) => p.length >= 2);
+  const keySet = new Set();
+  addAliases(fullKey, keySet);
 
-  const keys = [];
-  if (fullKey) keys.push(fullKey);
-  for (const p of parts) {
-    if (!keys.includes(p)) keys.push(p);
+  // Split ONLY on whitespace-surrounded bilingual separators (-, –, —, /, |); NEVER split on ':'
+  const sepParts = cleanRaw.split(/\s+(?:[-–—/|])\s+/).map((p) => p.trim()).filter(Boolean);
+  if (sepParts.length === 2) {
+    const leftNorm = normOne(sepParts[0]);
+    const rightNorm = normOne(sepParts[1]);
+    if (
+      leftNorm.length >= 3 &&
+      rightNorm.length >= 3 &&
+      !/^(part|vol|volume|chapter|sezon|season)\b/.test(rightNorm)
+    ) {
+      const leftWords = new Set(leftNorm.split(' ').filter((w) => w.length >= 3));
+      const rightWords = new Set(rightNorm.split(' ').filter((w) => w.length >= 3));
+      const shared = [...leftWords].filter((w) => rightWords.has(w));
+      // Only treat both halves as independent movie aliases if bilingual (zero shared content words)
+      if (shared.length === 0) {
+        addAliases(leftNorm, keySet);
+        addAliases(rightNorm, keySet);
+      }
+    }
   }
+
+  const keys = Array.from(keySet);
   return { fullKey, keys: keys.length > 0 ? keys : [fullKey || stripTurkishChars(cleanRaw)] };
 }
 
@@ -2206,14 +2472,73 @@ function scorePosterQuality(src) {
   const p = src.providerKey;
   if (p === 'filmdozu') return 100;
   if (p === 'nadirfilm') return 90;
-  if (p === 'webteizle') return 80;
-  if (p === 'fullhdfilmizlesene') return 70;
+  if (p === 'webteizle') return 85;
+  if (p === 'kultfilmler') return 75;
+  if (p === 'filmmakinesi') return 70;
+  if (p === 'hdfilmcehennemi') return 60;
+  if (p === 'fullhdfilmizlesene') return 45;
   return 20;
 }
 
-function unifyRawMovieGroups(combined, query = '') {
-  const groups = [];
+async function fetchCinemetaCatalog(query) {
+  try {
+    const res = await fetch(`https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(query)}.json`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => null);
+    const metas = Array.isArray(data?.metas) ? data.metas.slice(0, 20) : [];
+    return metas
+      .filter((m) => m && m.name && m.poster && /^https?:\/\//i.test(m.poster))
+      .map((m) => ({
+        name: String(m.name),
+        keys: normalizeMovieTitleParts(m.name).keys,
+        poster: String(m.poster),
+        year: String(m.releaseInfo || '').slice(0, 4),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function scoreDisplayTitleQuality(t) {
+  const s = String(t || '').trim();
+  if (!s) return -999;
+  let score = 50;
+  if (/\b1\s*$/.test(s) && !/\bpart\s*1\b/i.test(s)) score -= 25;
+  if (s.includes('-')) score -= 5;
+  if (s === s.toUpperCase() && s.length > 4) score -= 12;
+  if (s.length > 68) score -= 15;
+  score += Math.min(20, s.length * 0.4);
+  return score;
+}
+
+function unifyRawMovieGroups(combined, query = '', cinemetaList = []) {
+  const activeGroups = new Set();
   const keyToGroup = new Map();
+
+  const mergeGroupsInto = (target, other) => {
+    if (!target || !other || target === other) return;
+    for (const s of other.sources) {
+      if (!target.urlSet.has(s.url)) {
+        target.urlSet.add(s.url);
+        target.sources.push(s);
+      }
+    }
+    for (const k of other.allKeys) {
+      target.allKeys.add(k);
+      keyToGroup.set(k, target);
+    }
+    for (const pObj of other.posters) {
+      if (pObj?.u && !target.posters.some((x) => x.u === pObj.u)) {
+        target.posters.push(pObj);
+      }
+    }
+    if (scoreDisplayTitleQuality(other.title) > scoreDisplayTitleQuality(target.title)) {
+      target.title = other.title;
+    }
+    activeGroups.delete(other);
+  };
 
   for (const item of combined) {
     if (!item || !item.url || !item.title) continue;
@@ -2221,58 +2546,84 @@ function unifyRawMovieGroups(combined, query = '') {
     if (!cleanTitle) continue;
     const { fullKey, keys } = normalizeMovieTitleParts(cleanTitle);
 
-    let group = null;
+    const matchedSet = new Set();
     for (const k of keys) {
-      if (keyToGroup.has(k)) {
-        group = keyToGroup.get(k);
-        break;
-      }
+      const g = keyToGroup.get(k);
+      if (g && activeGroups.has(g)) matchedSet.add(g);
     }
 
     const srcPriority = SOURCE_PRIORITY[item.providerKey] || 10;
-    const isDub = /dublaj|dual/i.test(item.title);
+    const itemAudio = item.audioType && item.audioType !== 'unknown'
+      ? item.audioType
+      : detectAudioTypeFromText(`${cleanTitle} ${item.url}`);
+    const isDub = itemAudio === 'dublaj' || itemAudio === 'dual';
     const srcEntry = {
       url: item.url,
       providerKey: item.providerKey || 'ext',
       priority: srcPriority + (isDub ? 2 : 0),
       poster: item.poster || null,
       rawTitle: cleanTitle,
+      audioType: itemAudio,
     };
 
-    if (!group) {
-      group = {
+    const posterObj = item.poster && /^https?:\/\//i.test(item.poster)
+      ? { u: item.poster, r: SOURCE_REFERER[item.providerKey] || '', score: scorePosterQuality(item), p: item.providerKey }
+      : null;
+
+    if (matchedSet.size === 0) {
+      const group = {
         canonicalKey: fullKey || cleanTitle.toLowerCase(),
+        allKeys: new Set(keys),
         title: cleanTitle,
-        bestPoster: item.poster || null,
-        bestPosterScore: item.poster ? scorePosterQuality(item) : -1,
+        posters: posterObj ? [posterObj] : [],
         sources: [srcEntry],
         urlSet: new Set([item.url]),
       };
-      groups.push(group);
+      activeGroups.add(group);
       for (const k of keys) keyToGroup.set(k, group);
     } else {
+      const matched = Array.from(matchedSet);
+      const target = matched[0];
+      for (let i = 1; i < matched.length; i++) {
+        mergeGroupsInto(target, matched[i]);
+      }
       for (const k of keys) {
-        if (!keyToGroup.has(k)) keyToGroup.set(k, group);
+        target.allKeys.add(k);
+        keyToGroup.set(k, target);
       }
-      if (!group.urlSet.has(item.url)) {
-        group.urlSet.add(item.url);
-        group.sources.push(srcEntry);
+      if (!target.urlSet.has(item.url)) {
+        target.urlSet.add(item.url);
+        target.sources.push(srcEntry);
       }
-      if (cleanTitle.length > group.title.length && cleanTitle.length <= 72 && !group.title.includes('-')) {
-        group.title = cleanTitle;
+      if (scoreDisplayTitleQuality(cleanTitle) > scoreDisplayTitleQuality(target.title)) {
+        target.title = cleanTitle;
       }
-      const pScore = scorePosterQuality(item);
-      if (item.poster && pScore > group.bestPosterScore) {
-        group.bestPoster = item.poster;
-        group.bestPosterScore = pScore;
-        group.bestPosterProvider = item.providerKey;
+      if (posterObj && !target.posters.some((x) => x.u === posterObj.u)) {
+        target.posters.push(posterObj);
       }
     }
   }
 
+  // Final compact alphanumeric collision pass (zero duplicates guarantee)
+  const groups = Array.from(activeGroups);
+  const compactMap = new Map();
+  for (const g of groups) {
+    if (!activeGroups.has(g)) continue;
+    const compact = normalizeMovieTitleParts(g.title).fullKey.replace(/\s+/g, '');
+    if (compact.length >= 4) {
+      const existing = compactMap.get(compact);
+      if (existing && existing !== g && activeGroups.has(existing)) {
+        mergeGroupsInto(existing, g);
+      } else {
+        compactMap.set(compact, g);
+      }
+    }
+  }
+
+  const finalGroups = Array.from(activeGroups);
   const normQuery = stripTurkishChars(query).replace(/\s+/g, ' ').trim();
 
-  for (const g of groups) {
+  for (const g of finalGroups) {
     // Keep at most 2 distinct URLs per internal provider (e.g. dublaj + altyazı), sort fastest/most reliable first
     g.sources.sort((a, b) => b.priority - a.priority);
     const perProviderCount = new Map();
@@ -2287,17 +2638,33 @@ function unifyRawMovieGroups(combined, query = '') {
     g.topPriority = g.sources[0]?.priority || 0;
     const tNorm = stripTurkishChars(g.title);
     g.queryScore = tNorm === normQuery ? 100 : (tNorm.startsWith(normQuery) ? 60 : (tNorm.includes(normQuery) ? 30 : 0));
+
+    // Order cover posters: fast direct hosts first, Cinemeta fallback/boost for Tor-only hosts
+    g.posters.sort((a, b) => (b.score || 0) - (a.score || 0));
+    if (Array.isArray(cinemetaList) && cinemetaList.length > 0) {
+      const cinMatch = cinemetaList.find((m) => m.keys.some((k) => g.allKeys.has(k)));
+      if (cinMatch && cinMatch.poster && !g.posters.some((x) => x.u === cinMatch.poster)) {
+        const hasFastDirectPoster = g.posters.some((p) => p.p !== 'fullhdfilmizlesene');
+        if (hasFastDirectPoster) {
+          g.posters.push({ u: cinMatch.poster, r: '', score: 55, p: 'meta' });
+        } else {
+          // Put fast CDN cover poster before HTTP-444 Tor-only poster, keeping Tor poster as fallback
+          g.posters.unshift({ u: cinMatch.poster, r: '', score: 80, p: 'meta' });
+        }
+      }
+    }
   }
 
-  groups.sort((a, b) => (b.queryScore - a.queryScore) || (b.topPriority - a.topPriority) || (b.sources.length - a.sources.length));
+  finalGroups.sort((a, b) => (b.queryScore - a.queryScore) || (b.topPriority - a.topPriority) || (b.sources.length - a.sources.length));
 
-  return groups.map((g) => ({
+  return finalGroups.map((g) => ({
     canonicalKey: g.canonicalKey,
     id: crypto.createHash('sha1').update(g.canonicalKey).digest('hex').slice(0, 12),
     title: g.title,
-    bestPoster: g.bestPoster,
-    posterReferer: SOURCE_REFERER[g.bestPosterProvider || g.sources[0]?.providerKey] || '',
-    sources: g.sources.map((s) => ({ u: s.url, p: s.providerKey })),
+    bestPoster: g.posters[0]?.u || null,
+    posterReferer: g.posters[0]?.r || SOURCE_REFERER[g.sources[0]?.providerKey] || '',
+    posterAlts: g.posters.slice(1, 4).map((p) => ({ u: p.u, r: p.r || '' })),
+    sources: g.sources.map((s) => ({ u: s.url, p: s.providerKey, a: s.audioType || 'unknown' })),
   }));
 }
 
@@ -2305,13 +2672,18 @@ function sealUnifiedMovieResults(rawGroups, proxyBaseOrigin) {
   return rawGroups.map((g) => {
     let sealedPoster = null;
     if (g.bestPoster && /^https?:\/\//i.test(g.bestPoster)) {
-      const pTok = sealWpToken({ u: g.bestPoster, r: g.posterReferer || '' }, 86400);
+      const pPayload = { u: g.bestPoster, r: g.posterReferer || '' };
+      if (Array.isArray(g.posterAlts) && g.posterAlts.length > 0) {
+        pPayload.alts = g.posterAlts;
+      }
+      const pTok = sealWpToken(pPayload, 86400);
       if (pTok) sealedPoster = `${proxyBaseOrigin}/api/wp-asset/${pTok}`;
     }
     const sealedSources = g.sources
       .map((s, idx) => {
-        const tok = sealWpToken({ u: s.u, p: s.p }, 21600);
-        return tok ? { token: tok, label: `Kaynak ${idx + 1}` } : null;
+        const audioType = s.a || 'unknown';
+        const tok = sealWpToken({ u: s.u, p: s.p, a: audioType }, 21600);
+        return tok ? { token: tok, label: `Kaynak ${idx + 1}`, audioType } : null;
       })
       .filter(Boolean);
     return {
@@ -2369,12 +2741,17 @@ async function searchFilmDozu(query) {
 
       const titleTagMatch = block.match(/<h[2345][^>]*>([^<]+)<\/h[2345]>/i) || block.match(/class="[^"]*title[^"]*"[^>]*>([^<]+)</i);
       const title = decodeHtmlEntities((titleTagMatch?.[1] || altTitle || '').trim());
+      const hasTr = /tag-tr/i.test(block);
+      const hasEn = /tag-en/i.test(block);
+      const audioType = (hasTr && hasEn) ? 'dual' : (hasTr ? 'dublaj' : (hasEn ? 'altyazi' : detectAudioTypeFromText(`${block} ${title}`)));
+
       if (title) {
         results.push({
           providerKey: 'filmdozu',
           title,
           url: fullUrl,
           poster,
+          audioType,
         });
       }
       if (results.length >= 12) break;
@@ -2410,11 +2787,18 @@ async function searchFullHDFilm(query) {
         if (linkMatch && titleMatch) {
           let poster = posterMatch ? posterMatch[1] : null;
           if (poster && poster.startsWith('data:')) poster = null;
+          const cleanTitle = decodeHtmlEntities(titleMatch[1].trim());
+          const audioType = /trz-dual/i.test(block)
+            ? 'dual'
+            : (/trz-dublaj/i.test(block)
+                ? 'dublaj'
+                : (/trz-altyazi/i.test(block) ? 'altyazi' : detectAudioTypeFromText(`${block} ${cleanTitle}`)));
           list.push({
             providerKey: 'fullhdfilmizlesene',
-            title: decodeHtmlEntities(titleMatch[1].trim()),
+            title: cleanTitle,
             url: linkMatch[1],
             poster,
+            audioType,
           });
         }
       }
@@ -2465,11 +2849,14 @@ async function searchNadirFilm(query) {
       let poster = imgMatch ? imgMatch[1] : null;
       if (poster && poster.startsWith('data:')) poster = null;
 
+      const cleanTitle = decodeHtmlEntities(aMatch[2].trim());
+      const detectedAudio = detectAudioTypeFromText(`${block} ${cleanTitle} ${url}`);
       results.push({
         providerKey: 'nadirfilm',
-        title: decodeHtmlEntities(aMatch[2].trim()),
+        title: cleanTitle,
         url,
         poster,
+        audioType: detectedAudio === 'unknown' ? 'altyazi' : detectedAudio,
       });
       if (results.length >= 10) break;
     }
@@ -2517,11 +2904,16 @@ async function searchWebteizle(query) {
         poster = `https://webteizle.info${poster.startsWith('/') ? '' : '/'}${poster}`;
       }
       const cleanName = decodeHtmlEntities(nameMatch[1].replace(/\u00a0|&nbsp;/gi, ' ').trim());
+      const urlAudio = fullUrl.includes('/dublaj/') ? 'dublaj' : (fullUrl.includes('/altyazi/') ? 'altyazi' : 'unknown');
+      const blockAudio = detectAudioTypeFromText(`${block} ${cleanName}`);
+      const audioType = blockAudio === 'dual' ? 'dual' : (urlAudio !== 'unknown' ? urlAudio : blockAudio);
+
       results.push({
         providerKey: 'webteizle',
         title: cleanName,
         url: fullUrl,
         poster,
+        audioType,
       });
       if (results.length >= 10) break;
     }
@@ -2599,11 +2991,13 @@ async function searchHDFilmCehennemi(query) {
           if (finalPoster && !finalPoster.startsWith('http')) {
             finalPoster = `https://www.hdfilmcehennemi.nl${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
           }
+          const decodedTitle = decodeHtmlEntities(rawTitle);
           results.push({
             providerKey: 'hdfilmcehennemi',
-            title: decodeHtmlEntities(rawTitle),
+            title: decodedTitle,
             url: finalUrl,
             poster: finalPoster,
+            audioType: detectAudioTypeFromText(`${itemHtml} ${decodedTitle}`),
           });
         }
       }
@@ -2632,19 +3026,22 @@ async function searchFilmMakinesi(query) {
     }
     if (!html || isBlockedOrChallenge(html)) return [];
     const results = [];
-    const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"/gi;
+    const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"([\s\S]*?)<\/a>/gi;
     let match;
     while ((match = itemRegex.exec(html)) !== null) {
       const href = match[1];
       const title = match[2];
       const poster = match[3];
+      const tail = match[4] || '';
       const fullUrl = href.startsWith('http') ? href : `https://filmmakinesi.to${href.startsWith('/') ? '' : '/'}${href}`;
       const fullPoster = poster.startsWith('http') ? poster : `https://filmmakinesi.to${poster.startsWith('/') ? '' : '/'}${poster}`;
+      const cleanTitle = decodeHtmlEntities(title.trim());
       results.push({
         providerKey: 'filmmakinesi',
-        title: decodeHtmlEntities(title.trim()),
+        title: cleanTitle,
         url: fullUrl,
         poster: fullPoster,
+        audioType: detectAudioTypeFromText(`${tail} ${cleanTitle}`),
       });
     }
     return results.slice(0, 8);
@@ -2682,11 +3079,13 @@ async function searchKultFilmler(query) {
       const imgMatch = block.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i);
       let poster = imgMatch ? imgMatch[1] : null;
       if (poster && poster.startsWith('data:')) poster = null;
+      const cleanTitle = decodeHtmlEntities(aMatch[2].trim());
       results.push({
         providerKey: 'kultfilmler',
-        title: decodeHtmlEntities(aMatch[2].trim()),
+        title: cleanTitle,
         url,
         poster,
+        audioType: detectAudioTypeFromText(`${block} ${cleanTitle}`),
       });
       if (results.length >= 8) break;
     }
@@ -2720,7 +3119,7 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     });
   }
 
-  // 2. 7 Film Kaynağında Eşzamanlı Hızlı Arama (her kaynak max 4.5s soft cap)
+  // 2. 7 Film Kaynağı + Cover Metadata Eşzamanlı Hızlı Arama (max 4.5s soft cap)
   const withSoftCap = (p, ms = 4500) => Promise.race([
     p.catch(() => []),
     new Promise((resolve) => setTimeout(() => resolve([]), ms)),
@@ -2735,12 +3134,14 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
       withSoftCap(searchHDFilmCehennemi(trimmedQuery), 4500),
       withSoftCap(searchFilmMakinesi(trimmedQuery), 4500),
       withSoftCap(searchKultFilmler(trimmedQuery), 4500),
+      withSoftCap(fetchCinemetaCatalog(trimmedQuery), 2800),
     ]);
 
+    const cinemetaList = settled.pop() || [];
     const combined = settled.flat().filter((item) => item && item.url && item.title);
 
     if (combined.length > 0) {
-      const rawGroups = unifyRawMovieGroups(combined, trimmedQuery);
+      const rawGroups = unifyRawMovieGroups(combined, trimmedQuery, cinemetaList);
       inProcessSearchCache.set(cacheKey, { timestamp: Date.now(), rawGroups });
       if (inProcessSearchCache.size > 150) {
         const oldestKey = inProcessSearchCache.keys().next().value;

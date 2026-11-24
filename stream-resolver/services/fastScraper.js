@@ -616,9 +616,26 @@ function extractSubtitles(html, baseUrl = '') {
   return subtitles;
 }
 
-function buildResult(streamUrl, embedUrl, targetUrl, type, pageTitle, searchCorpus = '') {
+function detectScraperAudioType(text = '') {
+  const s = String(text || '').toLowerCase()
+    .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+    .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const hasDub = /\b(dublaj|dublajli|tr dublaj|turkce dublaj|turkce ses)\b|trz-dublaj|tag-tr/.test(s);
+  const hasSub = /\b(altyazi|altyazili|turkce altyazi|alt yazi)\b|trz-altyazi|tag-en/.test(s);
+  const hasDual = /\b(dual|dublaj\s*[-–—&+/]\s*altyazi|altyazi\s*[-–—&+/]\s*dublaj)\b|trz-dual/.test(s) || (hasDub && hasSub);
+  if (hasDual) return 'dual';
+  if (hasDub) return 'dublaj';
+  if (hasSub) return 'altyazi';
+  return 'unknown';
+}
+
+function buildResult(streamUrl, embedUrl, targetUrl, type, pageTitle, searchCorpus = '', extraEmbeds = [], audioType = 'unknown') {
   const { referer, origin } = determineRefererAndOrigin(streamUrl, embedUrl, targetUrl);
   const subtitles = extractSubtitles(searchCorpus, embedUrl || targetUrl);
+  const resolvedAudio = audioType && audioType !== 'unknown'
+    ? audioType
+    : detectScraperAudioType(`${targetUrl || ''} ${embedUrl || ''} ${pageTitle || ''}`);
   return {
     streamUrl,
     type: type || (streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8'),
@@ -629,6 +646,8 @@ function buildResult(streamUrl, embedUrl, targetUrl, type, pageTitle, searchCorp
     },
     pageTitle: pageTitle || 'Film / Dizi Akışı',
     subtitles,
+    audioType: resolvedAudio,
+    extraEmbeds: Array.isArray(extraEmbeds) ? extraEmbeds : [],
   };
 }
 
@@ -695,9 +714,10 @@ async function fastResolve(targetUrl, options = {}) {
 
     // 3. Extract Embed iFrames and Players
     const embedQueue = [];
+    const embedMeta = new Map();
     const visitedEmbeds = new Set();
 
-    function addEmbed(u) {
+    function addEmbed(u, audioHint = 'unknown') {
       if (!u || typeof u !== 'string') return;
       let clean = u.replace(/\\\//g, '/').trim();
       if (clean.startsWith('//')) clean = 'https:' + clean;
@@ -707,28 +727,52 @@ async function fastResolve(targetUrl, options = {}) {
       if (!visitedEmbeds.has(clean)) {
         visitedEmbeds.add(clean);
         embedQueue.push(clean);
+        embedMeta.set(clean, { url: clean, audioType: audioHint || 'unknown' });
+      } else if (audioHint && audioHint !== 'unknown') {
+        const existing = embedMeta.get(clean);
+        if (existing && (!existing.audioType || existing.audioType === 'unknown')) {
+          existing.audioType = audioHint;
+        }
       }
     }
+
+    const buildExtraEmbedsFor = (winEmbedUrl) =>
+      embedQueue
+        .filter((u) => u && u !== winEmbedUrl)
+        .slice(0, 4)
+        .map((u) => embedMeta.get(u) || { url: u, audioType: 'unknown' });
 
     // 2.5 Extract Fullhdfilmizlesene specific player sources (scx / atom / rapidvid)
     if (targetUrl.includes('fullhdfilmizlesene')) {
       const rapidMatch = html.match(/https?:\/\/[^\s"'<>\\]*rapidvid[^\s"'<>\\]*/i);
-      if (rapidMatch) addEmbed(rapidMatch[0]);
+      if (rapidMatch) addEmbed(rapidMatch[0], detectScraperAudioType(pageTitle));
 
       const scxMatch = html.match(/var\s+scx\s*=\s*({[\s\S]*?});/);
       if (scxMatch) {
         try {
           const scx = JSON.parse(scxMatch[1]);
           for (const key of Object.keys(scx)) {
-            const sx = scx[key]?.sx;
+            const entry = scx[key];
+            const sx = entry?.sx;
             if (sx) {
-              const allUrls = [...(sx.p || []), ...(sx.t || [])];
-              for (const u of allUrls) {
-                if (typeof u === 'string') {
+              const labelHint = [
+                key,
+                entry?.title,
+                entry?.name,
+                entry?.label,
+                sx?.t_label,
+                sx?.p_label,
+              ].filter(Boolean).join(' ');
+              const keyIdx = html.indexOf(`"${key}"`);
+              const nearbyHtml = keyIdx !== -1 ? html.slice(Math.max(0, keyIdx - 220), Math.min(html.length, keyIdx + 320)) : '';
+              const baseAudio = detectScraperAudioType(`${labelHint} ${nearbyHtml}`);
+
+              const pushScxUrls = (arr, fallbackAudio) => {
+                for (const u of (arr || [])) {
+                  if (typeof u !== 'string') continue;
                   if (u.startsWith('http')) {
-                    addEmbed(u);
+                    addEmbed(u, fallbackAudio);
                   } else {
-                    // Try ROT13 + Base64 decode (Fullhdfilmizlesene Atom Player standard)
                     try {
                       const rot = u.replace(/[a-z]/gi, (s) =>
                         String.fromCharCode(s.charCodeAt(0) + (s.toLowerCase() < 'n' ? 13 : -13))
@@ -736,12 +780,15 @@ async function fastResolve(targetUrl, options = {}) {
                       const dec = Buffer.from(rot, 'base64').toString('utf8');
                       if (dec && dec.startsWith('http')) {
                         logger.info(`[FastScraper] 🔓 Fullhdfilmizlesene ROT13 linki çözüldü: ${dec}`);
-                        addEmbed(dec);
+                        addEmbed(dec, fallbackAudio);
                       }
                     } catch (decErr) {}
                   }
                 }
-              }
+              };
+
+              pushScxUrls(sx.p, baseAudio !== 'unknown' ? baseAudio : detectScraperAudioType(key));
+              pushScxUrls(sx.t, baseAudio !== 'unknown' ? baseAudio : detectScraperAudioType(key));
             }
           }
         } catch (e) {
@@ -774,6 +821,8 @@ async function fastResolve(targetUrl, options = {}) {
 
     // 4. Scan each embed URL
     for (const embedUrl of embedQueue) {
+      const embedAudio = embedMeta.get(embedUrl)?.audioType || 'unknown';
+      const extras = buildExtraEmbedsFor(embedUrl);
       logger.info(`[FastScraper] Embed taranıyor: ${embedUrl}`);
       const embedHtml = await fetchHtmlWithBypass(embedUrl, targetUrl);
       if (!embedHtml) continue;
@@ -782,7 +831,7 @@ async function fastResolve(targetUrl, options = {}) {
       if (embedUrl.includes('rapidvid') || embedHtml.includes('_p8')) {
         const rapidStream = decodeRapidVid(embedHtml);
         if (rapidStream) {
-          return buildResult(rapidStream, embedUrl, targetUrl, rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
+          return buildResult(rapidStream, embedUrl, targetUrl, rapidStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml, extras, embedAudio);
         }
       }
 
@@ -796,11 +845,11 @@ async function fastResolve(targetUrl, options = {}) {
             const foundDirectStream = videoData.securedLink || videoData.videoSource;
             if (foundDirectStream) {
               logger.info(`[FastScraper] 🎯 API üzerinden doğrudan stream bulundu: ${foundDirectStream}`);
-              return buildResult(foundDirectStream, embedUrl, targetUrl, foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, videoDataRaw);
+              return buildResult(foundDirectStream, embedUrl, targetUrl, foundDirectStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, videoDataRaw, extras, embedAudio);
             }
             if (videoData.videoSrc) {
               logger.info(`[FastScraper] 🎯 Nested videoSrc bulundu: ${videoData.videoSrc}`);
-              addEmbed(videoData.videoSrc);
+              addEmbed(videoData.videoSrc, embedAudio);
             }
           }
         } catch (e) {
@@ -811,7 +860,7 @@ async function fastResolve(targetUrl, options = {}) {
       // Check dynamic obfuscation or dc_ encoded stream inside embed (Closeload, Rapidrame, Playmix, HDFilmCehennemi)
       const decodedStream = decodeDynamicObfuscation(embedHtml, embedUrl) || decodeDcFunction(embedHtml);
       if (decodedStream) {
-        return buildResult(decodedStream, embedUrl, targetUrl, decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml);
+        return buildResult(decodedStream, embedUrl, targetUrl, decodedStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, embedHtml, extras, embedAudio);
       }
 
       // Check unpacked JS / Packer eval
@@ -823,11 +872,11 @@ async function fastResolve(targetUrl, options = {}) {
           const vmStream = extractStreamFromUnpackedJs(unpacked, embedHtml);
           if (vmStream) {
             logger.info(`[FastScraper] 🔓 Unpacked VM stream bulundu: ${vmStream}`);
-            return buildResult(vmStream, embedUrl, targetUrl, vmStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+            return buildResult(vmStream, embedUrl, targetUrl, vmStream.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus, extras, embedAudio);
           }
           const unpackedDecoded = decodeDynamicObfuscation(unpacked) || decodeDcFunction(unpacked);
           if (unpackedDecoded) {
-            return buildResult(unpackedDecoded, embedUrl, targetUrl, 'm3u8', pageTitle, searchCorpus);
+            return buildResult(unpackedDecoded, embedUrl, targetUrl, 'm3u8', pageTitle, searchCorpus, extras, embedAudio);
           }
         }
       }
@@ -842,7 +891,7 @@ async function fastResolve(targetUrl, options = {}) {
           const isImage = /\.(jpg|jpeg|png|webp|gif|svg|ico)(\?|$)/i.test(lowerStream);
           if (!streamUrl.includes('google') && !streamUrl.includes('analytics') && !streamUrl.endsWith('.js') && !streamUrl.includes('playmix.uno') && !streamUrl.includes('blank.mp4') && !isSubtitle && !isImage) {
             logger.info(`[FastScraper] ✅ Embed akışı bulundu: ${streamUrl}`);
-            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus, extras, embedAudio);
           }
         }
       }
@@ -854,14 +903,14 @@ async function fastResolve(targetUrl, options = {}) {
         const lowerStream = streamUrl.toLowerCase();
         if (!lowerStream.endsWith('.js') && !lowerStream.endsWith('.vtt')) {
           logger.info(`[FastScraper] ✅ Değişken atamasından akış bulundu: ${streamUrl}`);
-          return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+          return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus, extras, embedAudio);
         }
       }
 
       // Check dynamic iframe.src inside embed scripts (e.g. zipfilmizle / HivePlayer -> fireplayer)
       const jsIfrMatches = [...searchCorpus.matchAll(/iframe\.src\s*=\s*["'](https?:[^"']+)["']/gi)];
       for (const [, src] of jsIfrMatches) {
-        addEmbed(src);
+        addEmbed(src, embedAudio);
       }
 
       // Check JSON sources config e.g. "file": "https://..." (strictly ignoring .vtt, .srt, image subtitles)
@@ -876,7 +925,7 @@ async function fastResolve(targetUrl, options = {}) {
 
           if (!isIgnored) {
             logger.info(`[FastScraper] ✅ JSON config içinden akış bulundu: ${streamUrl}`);
-            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus);
+            return buildResult(streamUrl, embedUrl, targetUrl, streamUrl.endsWith('.mp4') ? 'mp4' : 'm3u8', pageTitle, searchCorpus, extras, embedAudio);
           }
         }
       }
