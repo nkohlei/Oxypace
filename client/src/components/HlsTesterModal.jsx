@@ -3,14 +3,14 @@ import { createPortal } from 'react-dom';
 import { X, Play, Video, Link2, ShieldAlert, Sparkles } from 'lucide-react';
 
 export const REFERER_OPTIONS = [
-  { label: 'Film Makinesi', value: 'https://closeload.filmmakinesi.to/' },
-  { label: 'HD Film Cehennemi', value: 'https://hdfilmcehennemi.mobi/' },
+  { label: 'Otomatik', value: 'auto' },
+  { label: 'Varsayılan', value: 'default' },
   { label: 'Özel / Diğer', value: '' },
 ];
 
 export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
   const [inputUrl, setInputUrl] = useState('');
-  const [selectedReferer, setSelectedReferer] = useState('https://closeload.filmmakinesi.to/');
+  const [selectedReferer, setSelectedReferer] = useState('auto');
   const [customReferer, setCustomReferer] = useState('');
   const [isResolving, setIsResolving] = useState(false);
   const [resolveError, setResolveError] = useState(null);
@@ -18,7 +18,7 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
 
   if (!isOpen) return null;
 
-  const activeRefererValue = selectedReferer === '' ? customReferer : selectedReferer;
+  const activeRefererValue = selectedReferer === '' ? customReferer : '';
 
   const handleTestStream = async (e) => {
     e.preventDefault();
@@ -30,37 +30,24 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
 
     const trimmedUrl = inputUrl.trim();
 
-    // 1. Direct master.txt / .m3u8 URL
+    // 1. Direct master.txt / .m3u8 URL -> backend opaque stream
     if (trimmedUrl.includes('master.txt') || trimmedUrl.includes('.m3u8')) {
-      const ref = activeRefererValue || 'https://closeload.filmmakinesi.to/';
-      const proxiedUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}&referer=${encodeURIComponent(ref)}`;
+      const refParam = activeRefererValue ? `&referer=${encodeURIComponent(activeRefererValue)}` : '';
+      const proxiedUrl = `/api/proxy?url=${encodeURIComponent(trimmedUrl)}${refParam}`;
       setResolvedStreamUrl(proxiedUrl);
       setIsResolving(false);
       return;
     }
 
-    // 2. Client-side resolution for Closeload / embed links
-    if (trimmedUrl.includes('closeload') || trimmedUrl.includes('embed')) {
-      const matchKey = trimmedUrl.match(/embed\/([^/?#]+)/);
-      if (matchKey && matchKey[1]) {
-        const key = matchKey[1];
-        const rawStream = `https://srv12.cdnimages3408.shop/hls/thelordoftherings-2-twotowers-2002-trdualmp4-${key}.mp4/txt/master.txt`;
-        const ref = activeRefererValue || 'https://closeload.filmmakinesi.to/';
-        const proxiedUrl = `/api/proxy?url=${encodeURIComponent(rawStream)}&referer=${encodeURIComponent(ref)}`;
-        setResolvedStreamUrl(proxiedUrl);
-        setIsResolving(false);
-        return;
-      }
-    }
-
-    // 3. Fallback server resolver
+    // 2. Fallback server resolver
     try {
       const res = await fetch(`/api/resolve?url=${encodeURIComponent(trimmedUrl)}`);
       const data = await res.json();
 
       if (data.success && data.streamUrl) {
-        const ref = data.referer || activeRefererValue || 'https://closeload.filmmakinesi.to/';
-        const proxiedUrl = `/api/proxy?url=${encodeURIComponent(data.streamUrl)}&referer=${encodeURIComponent(ref)}`;
+        const ref = data.referer || activeRefererValue || '';
+        const refParam = ref ? `&referer=${encodeURIComponent(ref)}` : '';
+        const proxiedUrl = `/api/proxy?url=${encodeURIComponent(data.streamUrl)}${refParam}`;
         setResolvedStreamUrl(proxiedUrl);
       } else {
         setResolveError(data.error || 'Sayfadan yayın adresi ayıklanamadı.');
@@ -154,7 +141,7 @@ export const HlsTesterModal = ({ isOpen, onClose, onStartWatchParty }) => {
             <input
               type="url"
               required
-              placeholder="https://closeload.filmmakinesi.to/video/embed/... veya master.txt"
+              placeholder="https://... veya akış bağlantısı (m3u8 / master.txt)"
               value={inputUrl}
               onChange={(e) => {
                 setInputUrl(e.target.value);

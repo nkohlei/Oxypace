@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { Capacitor } from '@capacitor/core';
-import { 
-  X, Film, Play, Link2, AlertCircle, CheckCircle2, 
-  Clipboard, ArrowRight, Search, Tv, Layers
+import {
+  X, Film, Play, Link2, AlertCircle, CheckCircle2,
+  Clipboard, ArrowRight, Search, Layers, ChevronDown, Zap
 } from 'lucide-react';
 import './HlsStreamResolverModalVol2.css';
 
@@ -19,19 +18,19 @@ const formatPlayableUrl = (relativeOrAbsoluteUrl) => {
 };
 
 export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty }) => {
-  // Tab state: 'search' (default) | 'manual'
-  const [activeTab, setActiveTab] = useState('search');
+  const [activeTab, setActiveTab] = useState('search'); // 'search' | 'manual'
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchError, setSearchError] = useState(null);
-  const [activeProviderFilter, setActiveProviderFilter] = useState('all'); // 'all' | 'hdfilmcehennemi' | 'fullhdfilmizlesene'
+  const [openAltCardId, setOpenAltCardId] = useState(null);
 
-  // Resolver state (shared between manual URL and search click)
+  // Resolver state
   const [url, setUrl] = useState('');
   const [selectedMovie, setSelectedMovie] = useState(null);
+  const [resolvingModeLabel, setResolvingModeLabel] = useState('');
   const [isResolving, setIsResolving] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [resolvedData, setResolvedData] = useState(null);
@@ -42,13 +41,22 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     if (!isOpen) {
       setUrl('');
       setSelectedMovie(null);
+      setResolvingModeLabel('');
       setIsResolving(false);
       setResolvedData(null);
       setErrorMsg(null);
       setSearchError(null);
+      setOpenAltCardId(null);
       if (timerRef.current) clearInterval(timerRef.current);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!openAltCardId) return;
+    const handleOutside = () => setOpenAltCardId(null);
+    window.addEventListener('click', handleOutside);
+    return () => window.removeEventListener('click', handleOutside);
+  }, [openAltCardId]);
 
   if (!isOpen) return null;
 
@@ -70,15 +78,17 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     setSearchResults([]);
     setSelectedMovie(null);
     setResolvedData(null);
+    setErrorMsg(null);
+    setOpenAltCardId(null);
 
     try {
       const response = await axios.get(`/api/search-movies?q=${encodeURIComponent(q)}`, {
-        timeout: 25000,
+        timeout: 22000,
       });
 
       if (response.data && response.data.success && Array.isArray(response.data.results)) {
         if (response.data.results.length === 0) {
-          setSearchError(`"${q}" için entegre film sitelerinde sonuç bulunamadı. Farklı bir isim deneyebilir veya doğrudan bağlantı yapıştırabilirsiniz.`);
+          setSearchError(`"${q}" için sonuç bulunamadı. Farklı bir isim deneyebilir veya doğrudan bağlantı yapıştırabilirsiniz.`);
         } else {
           setSearchResults(response.data.results);
         }
@@ -88,7 +98,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     } catch (err) {
       let msg = err.response?.data?.error || err.message;
       if (typeof msg === 'string' && (msg.includes('Endpoint bulunamadı') || msg.includes('NOT_FOUND') || msg.includes('404'))) {
-        msg = 'Film arama servisi şu anda güncelleniyor. Lütfen birkaç saniye sonra tekrar deneyin veya film bağlantısını "Link Yapıştır" sekmesinden doğrudan girin.';
+        msg = 'Film arama servisi şu anda güncelleniyor. Lütfen birkaç saniye sonra tekrar deneyin.';
       }
       setSearchError(msg || 'Film arama servisine bağlanılamadı. Lütfen tekrar deneyin.');
     } finally {
@@ -110,14 +120,99 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     }
   };
 
-  // Stream Resolution Logic
-  const startResolveUrl = async (targetUrl, movieMeta = null) => {
-    const trimmedUrl = targetUrl.trim();
-    if (!trimmedUrl) {
-      setErrorMsg('Lütfen geçerli bir film sayfa bağlantısı seçin veya girin.');
+  // Unified Movie Resolution (auto-fastest race OR explicit alternative source token)
+  const startResolveMovie = async (movie, explicitSource = null) => {
+    if (!movie || !Array.isArray(movie.sources) || movie.sources.length === 0) {
+      setErrorMsg('Bu film için geçerli oynatma kaynağı bulunamadı.');
       return;
     }
 
+    setOpenAltCardId(null);
+    setIsResolving(true);
+    setErrorMsg(null);
+    setResolvedData(null);
+    setElapsedMs(0);
+    setSelectedMovie(movie);
+    setResolvingModeLabel(
+      explicitSource?.label
+        ? `${explicitSource.label} üzerinden yayın akışı hazırlanıyor...`
+        : 'En hızlı yayın kaynağı taranıyor ve hazırlanıyor...'
+    );
+
+    const startTime = Date.now();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - startTime);
+    }, 100);
+
+    try {
+      const payload = {
+        title: movie.title,
+        sources: movie.sources.map((s) => s.token),
+        timeout: 14000,
+      };
+      if (explicitSource?.token) {
+        payload.sourceToken = explicitSource.token;
+      }
+
+      const response = await axios.post('/api/resolve-movie', payload, { timeout: 22000 });
+      clearInterval(timerRef.current);
+
+      if (response.data && response.data.success && response.data.playableStreamUrl) {
+        const resData = {
+          ...response.data,
+          playableStreamUrl: formatPlayableUrl(response.data.playableStreamUrl),
+          pageTitle: movie.title || response.data.pageTitle || 'Film Akışı',
+          subtitles: (response.data.subtitles || []).map((s) => ({
+            ...s,
+            playableUrl: formatPlayableUrl(s.playableUrl),
+          })),
+        };
+        setResolvedData(resData);
+
+        if (onStartWatchParty) {
+          setTimeout(() => {
+            onStartWatchParty(
+              resData.playableStreamUrl,
+              false,
+              resData.subtitles || [],
+              resData.pageTitle || movie.title || '',
+              {
+                alternatives: resData.alternatives || movie.sources,
+                activeSourceToken: resData.activeSourceToken || '',
+              }
+            );
+            onClose();
+          }, 300);
+        }
+      } else {
+        setErrorMsg(
+          response.data?.error ||
+            'Bu kaynaktan oynatılabilir video akışı alınamadı. Lütfen alternatif bir kaynağı deneyin.'
+        );
+      }
+    } catch (err) {
+      clearInterval(timerRef.current);
+      const serverErr = err.response?.data?.error || err.message;
+      if (err.response?.status === 404) {
+        setErrorMsg('Bu kaynaktan video akışı alınamadı. Lütfen aşağıdaki alternatif kaynaklardan birini deneyin.');
+      } else if (err.code === 'ECONNABORTED' || err.response?.status === 408) {
+        setErrorMsg('Kaynak yanıt vermedi (zaman aşımı). Lütfen alternatif kaynaklardan birini deneyin.');
+      } else {
+        setErrorMsg(serverErr || 'Yayın hazırlanırken bir hata oluştu. Lütfen tekrar deneyin.');
+      }
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  // Manual Link Resolution
+  const startResolveManualUrl = async (targetUrl) => {
+    const trimmedUrl = targetUrl.trim();
+    if (!trimmedUrl) {
+      setErrorMsg('Lütfen geçerli bir sayfa veya akış bağlantısı girin.');
+      return;
+    }
     if (!validateUrl(trimmedUrl)) {
       setErrorMsg('Lütfen geçerli bir web bağlantısı (http:// veya https://) girin.');
       return;
@@ -127,86 +222,44 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
     setErrorMsg(null);
     setResolvedData(null);
     setElapsedMs(0);
-    setSelectedMovie(movieMeta);
+    setSelectedMovie(null);
+    setResolvingModeLabel('Bağlantı üzerinden yayın akışı hazırlanıyor...');
 
     const startTime = Date.now();
+    if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setElapsedMs(Date.now() - startTime);
     }, 100);
 
     try {
-      // 1. Direct stream URL bypass (.m3u8, .mp4, master.txt)
-      const lower = trimmedUrl.toLowerCase();
-      if (lower.includes('.m3u8') || lower.includes('master.txt') || lower.endsWith('.mp4')) {
-        clearInterval(timerRef.current);
-        const playableUrl = formatPlayableUrl(`/api/proxy?url=${encodeURIComponent(trimmedUrl)}`);
-        const result = {
-          streamUrl: trimmedUrl,
-          playableStreamUrl: playableUrl,
-          type: lower.endsWith('.mp4') ? 'mp4' : 'm3u8',
-          pageTitle: movieMeta?.title || 'Doğrudan Akış Bağlantısı',
-          resolvedIn: Date.now() - startTime,
-        };
-        setResolvedData(result);
-        setIsResolving(false);
-
-        // Auto start in room if triggered from search card
-        if (movieMeta && onStartWatchParty) {
-          setTimeout(() => {
-            onStartWatchParty(playableUrl, false, [], movieMeta?.title || 'Doğrudan Akış');
-            onClose();
-          }, 400);
-        }
-        return;
-      }
-
-      // 2. Call backend Stream Resolver
       const response = await axios.post(
         '/api/resolve-stream',
-        {
-          url: trimmedUrl,
-          timeout: 20000,
-        },
-        { timeout: 23000 }
+        { url: trimmedUrl, timeout: 16000 },
+        { timeout: 22000 }
       );
-
       clearInterval(timerRef.current);
 
-      if (response.data && response.data.success) {
+      if (response.data && response.data.success && response.data.playableStreamUrl) {
         const resData = {
           ...response.data,
           playableStreamUrl: formatPlayableUrl(response.data.playableStreamUrl),
-          pageTitle: movieMeta?.title || response.data.pageTitle
+          subtitles: (response.data.subtitles || []).map((s) => ({
+            ...s,
+            playableUrl: formatPlayableUrl(s.playableUrl),
+          })),
         };
         setResolvedData(resData);
-
-        // Auto start in room if selected directly from search
-        if (movieMeta && onStartWatchParty) {
-          setTimeout(() => {
-            onStartWatchParty(
-              resData.playableStreamUrl,
-              false,
-              resData.subtitles || [],
-              resData.pageTitle || movieMeta?.title || ''
-            );
-            onClose();
-          }, 400);
-        }
       } else {
-        setErrorMsg(
-          response.data?.error ||
-            'Bu kaynaktan oynatılabilir video akışı alınamadı. Lütfen listedeki alternatif bir kaynağı deneyin.'
-        );
+        setErrorMsg(response.data?.error || 'Bu bağlantıdan oynatılabilir akış alınamadı.');
       }
     } catch (err) {
       clearInterval(timerRef.current);
-      const serverErr = err.response?.data?.error || err.message;
       if (err.response?.status === 404) {
-        setErrorMsg('Bu film sayfasında video akışı tespit edilemedi. Lütfen listedeki diğer seçeneği deneyin.');
+        setErrorMsg('Bu sayfada oynatılabilir video akışı bulunamadı.');
       } else if (err.code === 'ECONNABORTED' || err.response?.status === 408) {
-        setErrorMsg('Sayfa yanıt vermedi (zaman aşımı). Lütfen tekrar deneyin.');
+        setErrorMsg('Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.');
       } else {
-        setErrorMsg(serverErr || 'Çözümleme sırasında bir hata oluştu. Lütfen bağlantıyı kontrol edin.');
+        setErrorMsg(err.response?.data?.error || err.message || 'Çözümleme sırasında bir hata oluştu.');
       }
     } finally {
       setIsResolving(false);
@@ -215,12 +268,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
   const handleManualResolveSubmit = (e) => {
     if (e) e.preventDefault();
-    startResolveUrl(url, null);
-  };
-
-  const handleMovieSelect = (movie) => {
-    setUrl(movie.url);
-    startResolveUrl(movie.url, movie);
+    startResolveManualUrl(url);
   };
 
   const handleStartInRoom = () => {
@@ -230,37 +278,20 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         formatPlayableUrl(resolvedData.playableStreamUrl),
         false,
         resolvedData.subtitles || [],
-        resolvedData.pageTitle || selectedMovie?.title || ''
+        resolvedData.pageTitle || selectedMovie?.title || '',
+        {
+          alternatives: resolvedData.alternatives || selectedMovie?.sources || [],
+          activeSourceToken: resolvedData.activeSourceToken || '',
+        }
       );
       onClose();
     }
   };
 
-  const getProviderLogo = (providerKey) => {
-    if (providerKey === 'hdfilmcehennemi') return '/providers/hdfilmcehennemi.png';
-    if (providerKey === 'filmmakinesi') return '/providers/filmmakinesi.png';
-    return '/providers/fullhdfilmizlesene.png';
-  };
-
-  const getSafePosterUrl = (posterUrl, providerKey) => {
-    if (!posterUrl) return null;
-    return posterUrl;
-  };
-
-  // Filtered results by provider
-  const filteredResults = searchResults.filter(item => {
-    if (activeProviderFilter === 'all') return true;
-    return item.providerKey === activeProviderFilter;
-  });
-
-  const hdfCount = searchResults.filter(r => r.providerKey === 'hdfilmcehennemi').length;
-  const fhfCount = searchResults.filter(r => r.providerKey === 'fullhdfilmizlesene').length;
-  const fmCount = searchResults.filter(r => r.providerKey === 'filmmakinesi').length;
-
   const modalContent = (
     <div className="vol2-resolver-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="vol2-resolver-modal" onClick={(e) => e.stopPropagation()}>
-        
+
         {/* Header */}
         <div className="vol2-resolver-header">
           <div className="vol2-header-title-wrap">
@@ -269,8 +300,8 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 className="vol2-header-title">HLS Video Oynatıcı Vol 2</h3>
-                <span className="vol2-header-badge">Entegre Film Arama</span>
+                <h3 className="vol2-header-title">Birlikte Film İzle</h3>
+                <span className="vol2-header-badge">Akıllı Kaynak</span>
               </div>
             </div>
           </div>
@@ -281,19 +312,19 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
 
         {/* Mode Navigation Tabs */}
         <div className="vol2-mode-tabs">
-          <button 
+          <button
             type="button"
             className={`vol2-mode-tab ${activeTab === 'search' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('search'); setErrorMsg(null); }}
+            onClick={() => { setActiveTab('search'); setErrorMsg(null); setResolvedData(null); }}
           >
             <Search size={15} />
-            <span>Film Ara (Önerilen)</span>
+            <span>Film Ara</span>
             <span className="vol2-tab-pill">Hızlı</span>
           </button>
-          <button 
+          <button
             type="button"
             className={`vol2-mode-tab ${activeTab === 'manual' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('manual'); setErrorMsg(null); }}
+            onClick={() => { setActiveTab('manual'); setErrorMsg(null); setResolvedData(null); }}
           >
             <Link2 size={15} />
             <span>Doğrudan Link Yapıştır</span>
@@ -303,7 +334,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         {/* Body */}
         <div className="vol2-resolver-body custom-scrollbar">
 
-          {/* Resolving In-Progress Overlay or Card */}
+          {/* Resolving In-Progress Card */}
           {isResolving && (
             <div className="vol2-resolving-card">
               {selectedMovie?.poster && (
@@ -313,12 +344,12 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 <div className="vol2-loading-header">
                   <span className="vol2-loading-text">
                     <div className="vol2-spinner" />
-                    <strong>{selectedMovie?.title || 'Film Akışı'}</strong> çözümleniyor...
+                    <strong>{selectedMovie?.title || 'Film Akışı'}</strong> hazırlanıyor...
                   </span>
                   <span className="vol2-loading-timer">{(elapsedMs / 1000).toFixed(1)}s</span>
                 </div>
                 <p className="vol2-resolving-sub">
-                  {selectedMovie?.provider ? `${selectedMovie.provider} üzerinden güvenli HLS akışı hazırlanıyor.` : 'Hedef sayfa taranıyor...'}
+                  {resolvingModeLabel || 'Yayın akışı hazırlanıyor...'}
                 </p>
                 <div className="vol2-progress-bar-bg">
                   <div className="vol2-progress-bar-fill" />
@@ -333,9 +364,9 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
               <div className="vol2-result-header">
                 <div className="vol2-result-title-group">
                   <h4 className="vol2-result-title">
-                    {resolvedData.pageTitle || 'Video Akışı Başarıyla Çözümlendi'}
+                    {resolvedData.pageTitle || 'Video Akışı Hazır'}
                   </h4>
-                  <p className="vol2-result-url-sub">{resolvedData.streamUrl}</p>
+                  <p className="vol2-result-url-sub">Güvenli oynatma akışı başlatılmaya hazır</p>
                 </div>
                 <CheckCircle2 size={20} color="#ffffff" style={{ flexShrink: 0 }} />
               </div>
@@ -346,29 +377,43 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 {resolvedData.resolvedIn > 0 && (
                   <span className="vol2-meta-tag">{resolvedData.resolvedIn} ms</span>
                 )}
-                {selectedMovie?.provider && (
-                  <span className="vol2-meta-tag">
-                    {selectedMovie.provider}
-                  </span>
-                )}
               </div>
             </div>
           )}
 
-          {/* Error Message */}
+          {/* Error Message + Quick Alternative Source Picker */}
           {!isResolving && errorMsg && (
-            <div className="vol2-error-box">
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <span>{errorMsg}</span>
+            <div className="vol2-error-box-wrap">
+              <div className="vol2-error-box">
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{errorMsg}</span>
+              </div>
+              {selectedMovie && Array.isArray(selectedMovie.sources) && selectedMovie.sources.length > 0 && (
+                <div className="vol2-error-alt-row">
+                  <span className="vol2-error-alt-label">Alternatif Kaynak Dene:</span>
+                  <div className="vol2-error-alt-btns">
+                    {selectedMovie.sources.map((src, i) => (
+                      <button
+                        key={src.token}
+                        type="button"
+                        className="vol2-error-alt-btn"
+                        onClick={() => startResolveMovie(selectedMovie, src)}
+                      >
+                        <Play size={11} fill="currentColor" />
+                        <span>{src.label || `Kaynak ${i + 1}`}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* TAB 1: FILM ARA */}
           {activeTab === 'search' && !isResolving && !resolvedData && (
             <div className="vol2-search-container">
-              {/* Search Form */}
-              <form 
-                className="vol2-search-bar" 
+              <form
+                className="vol2-search-bar"
                 onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
               >
                 <div className="vol2-search-input-wrap">
@@ -376,7 +421,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                   <input
                     type="text"
                     className="vol2-search-input"
-                    placeholder="Film adı yazın (örn: Inception, Matrix, Kurtlar Vadisi)..."
+                    placeholder="Film adı yazın (örn: Matrix, Batman, Inception)..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -385,8 +430,8 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                     autoFocus
                   />
                   {searchQuery && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="vol2-search-clear-btn"
                       onClick={() => setSearchQuery('')}
                       title="Temizle"
@@ -395,8 +440,8 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                     </button>
                   )}
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="vol2-btn vol2-btn-action vol2-search-btn"
                   disabled={isSearching || !searchQuery.trim()}
                 >
@@ -414,8 +459,6 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 </button>
               </form>
 
-
-              {/* Search Error */}
               {searchError && (
                 <div className="vol2-error-box">
                   <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
@@ -423,69 +466,28 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                 </div>
               )}
 
-              {/* Provider Filter Chips (Siteye Göre Filtrele) */}
+              {/* Unified Search Results Grid (1 card per movie, ZERO provider logos/names) */}
               {searchResults.length > 0 && (
-                <div className="vol2-filter-row">
-                  <span className="vol2-filter-label">Kaynak:</span>
-                  <div className="vol2-filter-chips">
-                    <button
-                      type="button"
-                      className={`vol2-filter-chip ${activeProviderFilter === 'all' ? 'active' : ''}`}
-                      onClick={() => setActiveProviderFilter('all')}
-                    >
-                      Tümü ({searchResults.length})
-                    </button>
-                    {hdfCount > 0 && (
-                      <button
-                        type="button"
-                        className={`vol2-filter-chip hdfilmcehennemi ${activeProviderFilter === 'hdfilmcehennemi' ? 'active' : ''}`}
-                        onClick={() => setActiveProviderFilter('hdfilmcehennemi')}
-                      >
-                        HDFilmCehennemi ({hdfCount})
-                      </button>
-                    )}
-                    {fhfCount > 0 && (
-                      <button
-                        type="button"
-                        className={`vol2-filter-chip fullhdfilmizlesene ${activeProviderFilter === 'fullhdfilmizlesene' ? 'active' : ''}`}
-                        onClick={() => setActiveProviderFilter('fullhdfilmizlesene')}
-                      >
-                        FullHDFilmİzlesene ({fhfCount})
-                      </button>
-                    )}
-                    {fmCount > 0 && (
-                      <button
-                        type="button"
-                        className={`vol2-filter-chip filmmakinesi ${activeProviderFilter === 'filmmakinesi' ? 'active' : ''}`}
-                        onClick={() => setActiveProviderFilter('filmmakinesi')}
-                      >
-                        FilmMakinesi ({fmCount})
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Search Results Grid */}
-              {filteredResults.length > 0 && (
                 <div className="vol2-results-grid">
-                  {filteredResults.map((movie, idx) => {
-                    const safePoster = getSafePosterUrl(movie.poster, movie.providerKey);
+                  {searchResults.map((movie, idx) => {
+                    const cardId = movie.id || `${idx}`;
+                    const sources = Array.isArray(movie.sources) ? movie.sources : [];
+                    const isAltOpen = openAltCardId === cardId;
+
                     return (
-                      <div 
-                        key={`${movie.url}-${idx}`} 
+                      <div
+                        key={cardId}
                         className="vol2-movie-card"
-                        onClick={() => handleMovieSelect(movie)}
-                        title={`${movie.title} (${movie.provider}) - Oynatmak için tıkla`}
+                        onClick={() => startResolveMovie(movie, null)}
+                        title={`${movie.title} — En hızlı kaynaktan oynat`}
                       >
                         <div className="vol2-movie-poster-wrap">
-                          {safePoster ? (
-                            <img 
-                              src={safePoster} 
-                              alt={movie.title} 
+                          {movie.poster ? (
+                            <img
+                              src={movie.poster}
+                              alt={movie.title}
                               className="vol2-movie-poster"
                               loading="lazy"
-                              referrerPolicy="no-referrer"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                                 if (e.currentTarget.nextElementSibling) {
@@ -494,26 +496,64 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                               }}
                             />
                           ) : null}
-                          <div className="vol2-poster-fallback" style={{ display: safePoster ? 'none' : 'flex' }}>
+                          <div className="vol2-poster-fallback" style={{ display: movie.poster ? 'none' : 'flex' }}>
                             <Film size={26} strokeWidth={1.5} />
                             <span className="vol2-fallback-text">{movie.title}</span>
                           </div>
+
+                          {/* Minimal Alternative Sources Trigger (Top-Right) */}
+                          {sources.length > 1 && (
+                            <div
+                              className="vol2-alt-wrap"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                className={`vol2-alt-trigger-btn ${isAltOpen ? 'active' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenAltCardId(isAltOpen ? null : cardId);
+                                }}
+                                title="Alternatif Kaynaklar"
+                              >
+                                <Layers size={10} />
+                                <span>{sources.length} Kaynak</span>
+                                <ChevronDown size={10} />
+                              </button>
+
+                              {isAltOpen && (
+                                <div className="vol2-alt-menu" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className="vol2-alt-menu-item auto"
+                                    onClick={() => startResolveMovie(movie, null)}
+                                  >
+                                    <Zap size={11} />
+                                    <span>En Hızlı (Oto)</span>
+                                  </button>
+                                  <div className="vol2-alt-menu-divider" />
+                                  {sources.map((src, sIdx) => (
+                                    <button
+                                      key={src.token}
+                                      type="button"
+                                      className="vol2-alt-menu-item"
+                                      onClick={() => startResolveMovie(movie, src)}
+                                    >
+                                      <Play size={10} fill="currentColor" />
+                                      <span>{src.label || `Kaynak ${sIdx + 1}`}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div className="vol2-card-hover-overlay">
                             <div className="vol2-card-play-btn">
                               <Play size={16} fill="currentColor" />
                             </div>
                             <span>Oynat</span>
                           </div>
-                        </div>
-
-                        {/* Ek'te verilen etiket (Provider Badge) */}
-                        <div className="vol2-card-provider-badge-wrap">
-                          <img 
-                            src={getProviderLogo(movie.providerKey)} 
-                            alt={movie.provider} 
-                            className="vol2-card-provider-logo"
-                            loading="lazy"
-                          />
                         </div>
 
                         <div className="vol2-movie-details">
@@ -531,11 +571,11 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
           {activeTab === 'manual' && !isResolving && !resolvedData && (
             <div className="vol2-manual-container">
               <p className="vol2-description">
-                Üçüncü taraf film veya dizi sitesi sayfa bağlantısını doğrudan yapıştırın. Sistem akış URL'sini otomatik çözecektir.
+                Video akış bağlantısını (.m3u8, .mp4 veya yayın sayfası linki) doğrudan yapıştırın.
               </p>
 
               <form className="vol2-input-group" onSubmit={handleManualResolveSubmit}>
-                <label className="vol2-input-label">Hedef Sayfa veya Akış Bağlantısı</label>
+                <label className="vol2-input-label">Hedef Yayın veya Akış Bağlantısı</label>
                 <div className={`vol2-input-box ${errorMsg ? 'error' : ''}`}>
                   <div className="vol2-input-icon">
                     <Link2 size={16} />
@@ -543,7 +583,7 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
                   <input
                     type="text"
                     className="vol2-input-field"
-                    placeholder="https://hdfilmcehennemi... veya https://.../master.m3u8"
+                    placeholder="https://... veya https://.../master.m3u8"
                     value={url}
                     onChange={(e) => {
                       setUrl(e.target.value);
@@ -591,11 +631,11 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
               {isResolving ? (
                 <>
                   <div className="vol2-spinner" />
-                  Çözümleniyor...
+                  Hazırlanıyor...
                 </>
               ) : (
                 <>
-                  Kaynağı Çözümle
+                  Kaynağı Hazırla
                   <ArrowRight size={14} />
                 </>
               )}

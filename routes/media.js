@@ -1408,6 +1408,14 @@ router.post('/validate-stream', auth, async (req, res) => {
             } catch (e) {}
         }
 
+        if (targetFetchUrl.includes('/api/wp-stream/')) {
+            return res.json({
+                isLive: false,
+                type: targetFetchUrl.toLowerCase().includes('.mp4') ? 'mp4' : 'hls',
+                streamUrl: url,
+            });
+        }
+
         if (targetFetchUrl.includes('playmix')) {
             reqReferer = 'https://playmix.uno/';
             reqOrigin = 'https://playmix.uno';

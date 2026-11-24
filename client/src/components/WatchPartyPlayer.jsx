@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom';
 import ReactPlayer from 'react-player';
 import { useVoice } from '../context/VoiceContext';
 import { useAuth } from '../context/AuthContext';
-import { X, Volume2, VolumeX, Maximize, Minimize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film, Sliders, Type, MoveVertical } from 'lucide-react';
+import axios from 'axios';
+import { X, Volume2, VolumeX, Maximize, Minimize, Play, Pause, RotateCw, RotateCcw, Headphones, Languages, Check, Upload, AlertCircle, Film, Sliders, Type, MoveVertical, Layers } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
 import VideoPlayer from './VideoPlayer';
 import TimelineScrubPreview from './TimelineScrubPreview';
@@ -72,7 +73,7 @@ const isHls = (url) => {
   if (cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.mkv') || cleanUrl.endsWith('.ogg')) {
     return false;
   }
-  return cleanUrl.endsWith('.m3u8') || target.includes('.m3u8') || target.includes('/hls/') || target.includes('.txt') || target.includes('master.txt') || url.includes('/api/proxy');
+  return cleanUrl.endsWith('.m3u8') || target.includes('.m3u8') || target.includes('/hls/') || target.includes('.txt') || target.includes('master.txt') || url.includes('/api/proxy') || url.includes('/api/wp-stream/');
 };
 
 const isDash = (url) => {
@@ -109,7 +110,7 @@ const isIframePlatform = (url) => {
   const lower = url.toLowerCase();
   return [
     'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com', 
-    'vidmoly', 'fembed', 'feurl', 'vidoza', 'upstream', 
+    'fembed', 'feurl', 'vidoza', 'upstream', 
     'streamtape', 'dood.to', 'doodstream', 'mixdrop', 'voex', 'mega.nz'
   ].some(domain => lower.includes(domain));
 };
@@ -156,10 +157,6 @@ const getEmbedUrl = (url) => {
     if (videoId) {
       return `https://www.tiktok.com/embed/v2/${videoId}`;
     }
-  }
-  if (lowerUrl.includes('vidmoly.me/w/') || lowerUrl.includes('vidmoly.to/w/')) {
-    const code = url.split('/w/')[1]?.split('.')[0];
-    return `https://vidmoly.to/embed-${code}.html`;
   }
   if (lowerUrl.includes('fembed.com/v/') || lowerUrl.includes('feurl.com/v/')) {
     const code = url.split('/v/')[1];
@@ -251,7 +248,7 @@ const isPlatformUrl = (url) => {
     'youtube.com', 'youtu.be', 'youtube-nocookie.com', 'vimeo.com', 'twitch.tv',
     'soundcloud.com', 'facebook.com', 'dailymotion.com',
     'wistia.com', 'ok.ru', 'vk.com', 'my.mail.ru', 'tiktok.com',
-    'vidmoly', 'fembed', 'feurl', 'vidoza', 'upstream',
+    'fembed', 'feurl', 'vidoza', 'upstream',
     'streamtape', 'dood.to', 'doodstream', 'mixdrop', 'voex', 'mega.nz'
   ].some(domain => lowerUrl.includes(domain));
 };
@@ -273,7 +270,7 @@ const getProxiedUrl = (url) => {
   
   const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://api.oxypace.com.tr').replace(/\/$/, '');
   
-  if (url.includes('/api/proxy') || url.includes('/api/media/proxy-hls')) {
+  if (url.includes('/api/proxy') || url.includes('/api/media/proxy-hls') || url.includes('/api/wp-stream/') || url.includes('/api/wp-sub/')) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       if (url.startsWith('https://oxypace.com.tr/api/') || url.startsWith('https://www.oxypace.com.tr/api/') || url.startsWith('https://localhost/api/') || url.startsWith('http://localhost/api/')) {
         const apiIdx = url.indexOf('/api/');
@@ -943,6 +940,81 @@ const WatchPartyPlayer = () => {
         }
     };
 
+    // Alternative Source Switcher (Opaque Kaynak 1, Kaynak 2...)
+    const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
+    const [isSwitchingSource, setIsSwitchingSource] = useState(false);
+    const [sourceSwitchError, setSourceSwitchError] = useState('');
+    const sourceMenuRef = useRef(null);
+
+    const altSources = Array.isArray(watchParty?.alternatives) ? watchParty.alternatives : [];
+    const activeAltIndex = Math.max(
+        0,
+        altSources.findIndex((a) => a?.token && a.token === watchParty?.activeSourceToken)
+    );
+
+    useEffect(() => {
+        if (!isSourceMenuOpen) return;
+        const onDocClick = (e) => {
+            if (sourceMenuRef.current && !sourceMenuRef.current.contains(e.target)) {
+                setIsSourceMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', onDocClick);
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, [isSourceMenuOpen]);
+
+    useEffect(() => {
+        setIsSourceMenuOpen(false);
+        setIsSwitchingSource(false);
+        setSourceSwitchError('');
+    }, [watchParty?.url]);
+
+    const handleSwitchAlternativeSource = async (alt) => {
+        if (!alt?.token || isSwitchingSource) return;
+        if (alt.token === watchParty?.activeSourceToken) {
+            setIsSourceMenuOpen(false);
+            return;
+        }
+        setIsSwitchingSource(true);
+        setSourceSwitchError('');
+        try {
+            const resp = await axios.post('/api/resolve-movie', {
+                sourceToken: alt.token,
+                sources: altSources.map((a) => a.token).filter(Boolean),
+                title: watchParty?.title || '',
+                timeout: 15000,
+            }, { timeout: 22000 });
+
+            if (resp.data?.success && resp.data?.playableStreamUrl) {
+                const nextStream = getProxiedUrl(resp.data.playableStreamUrl);
+                const resumeTime = videoRef.current?.currentTime || currentTime || 0;
+                const nextAlts = Array.isArray(resp.data.alternatives) && resp.data.alternatives.length > 0
+                    ? resp.data.alternatives
+                    : altSources;
+                setHasError(false);
+                setIsSourceMenuOpen(false);
+                await startWatchParty(
+                    nextStream,
+                    false,
+                    resp.data.subtitles || [],
+                    watchParty?.title || resp.data.pageTitle || '',
+                    {
+                        alternatives: nextAlts,
+                        activeSourceToken: alt.token,
+                        startTime: resumeTime,
+                        autoPlay: !!watchParty?.isPlaying,
+                    }
+                );
+            } else {
+                setSourceSwitchError('Bu kaynaktan akış alınamadı.');
+            }
+        } catch (err) {
+            setSourceSwitchError(err.response?.data?.error || 'Alternatif kaynak yüklenemedi.');
+        } finally {
+            setIsSwitchingSource(false);
+        }
+    };
+
     // Mobile Unified Audio & Subtitle Modal
     const [isUnifiedMenuOpen, setIsUnifiedMenuOpen] = useState(false);
     const [unifiedTab, setUnifiedTab] = useState('subs'); // 'audio' | 'subs'
@@ -1250,10 +1322,8 @@ const WatchPartyPlayer = () => {
         const isKnownCorsRestricted = 
             rawUrl.includes('daioncdn.net') || 
             rawUrl.includes('trt.net') || 
-            rawUrl.includes('trt.com') ||
-            rawUrl.includes('playmix') ||
-            rawUrl.includes('rapidvid');
-        const needsNormalizedProxy = useProxy || isKnownCorsRestricted || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/');
+            rawUrl.includes('trt.com');
+        const needsNormalizedProxy = useProxy || isKnownCorsRestricted || rawUrl.startsWith('/') || rawUrl.startsWith('api/') || rawUrl.includes('/api/proxy') || rawUrl.includes('/api/media/') || rawUrl.includes('/api/wp-stream/');
         const streamUrl = needsNormalizedProxy ? getProxiedUrl(rawUrl) : rawUrl;
         const urlIsHls = isHls(rawUrl) || watchParty.isLive;
         const urlIsDash = isDash(rawUrl);
@@ -2802,7 +2872,28 @@ const WatchPartyPlayer = () => {
         return (
             <div className="watch-party-player-wrapper" style={{ padding: '32px', color: '#ff4444', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
                 <span className="watch-party-title" style={{ color: '#ff4444', fontSize: '16px' }}>Oynatma Hatası</span>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '400px' }}>Canlı yayın veya video yüklenemedi. Lütfen bağlantıyı kontrol edin.</p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '400px', margin: 0 }}>
+                    {sourceSwitchError || 'Canlı yayın veya video yüklenemedi. Alternatif bir kaynak seçebilir veya bağlantıyı kontrol edebilirsiniz.'}
+                </p>
+                {altSources.length > 1 && (
+                    <div className="wp-error-alt-sources">
+                        {altSources.map((alt, idx) => {
+                            const isCur = alt.token === watchParty?.activeSourceToken;
+                            return (
+                                <button
+                                    key={alt.token}
+                                    type="button"
+                                    disabled={isSwitchingSource}
+                                    className={`wp-alt-error-btn ${isCur ? 'active' : ''}`}
+                                    onClick={() => handleSwitchAlternativeSource(alt)}
+                                >
+                                    <Layers size={12} />
+                                    <span>{isSwitchingSource ? 'Yükleniyor...' : (alt.label || `Kaynak ${idx + 1}`)}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
                 <button className="watch-party-stop-btn glass-btn danger" style={{ padding: '8px 20px', borderRadius: '8px' }} onClick={stopWatchParty}>Kapat</button>
             </div>
         );
@@ -2828,6 +2919,56 @@ const WatchPartyPlayer = () => {
                     {(isLive || isStream) && !isNativeVOD && <span className="watch-party-live-badge-inline">Canlı</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Alternatif Kaynak Seçici (Minimal Popover Menu) */}
+                    {isNativeVOD && altSources.length > 1 && (
+                        <div className="watch-party-header-track-container" ref={sourceMenuRef}>
+                            <button
+                                type="button"
+                                className={`watch-party-header-track-btn glass-btn ${isSourceMenuOpen ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsUnifiedMenuOpen(false);
+                                    setSourceSwitchError('');
+                                    setIsSourceMenuOpen((prev) => !prev);
+                                    triggerControlsTemporary();
+                                }}
+                                title="Alternatif Yayın Kaynakları"
+                                aria-label="Alternatif Yayın Kaynakları"
+                            >
+                                <div className="native-unified-btn-icons">
+                                    <Layers size={13} />
+                                    <span>{isSwitchingSource ? 'Değişiyor...' : (altSources[activeAltIndex]?.label || `Kaynak ${activeAltIndex + 1}`)}</span>
+                                </div>
+                            </button>
+
+                            {isSourceMenuOpen && (
+                                <div className="wp-alt-sources-popover" onClick={(e) => e.stopPropagation()}>
+                                    <div className="wp-alt-sources-header">Alternatif Kaynaklar</div>
+                                    <div className="wp-alt-sources-list">
+                                        {altSources.map((alt, idx) => {
+                                            const isSelected = alt.token === watchParty?.activeSourceToken || (!watchParty?.activeSourceToken && idx === 0);
+                                            return (
+                                                <button
+                                                    key={alt.token}
+                                                    type="button"
+                                                    disabled={isSwitchingSource}
+                                                    className={`wp-alt-source-item ${isSelected ? 'active' : ''}`}
+                                                    onClick={() => handleSwitchAlternativeSource(alt)}
+                                                >
+                                                    <span>{alt.label || `Kaynak ${idx + 1}`}</span>
+                                                    {isSelected && <Check size={12} />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {sourceSwitchError && (
+                                        <div className="wp-alt-sources-err">{sourceSwitchError}</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Ses ve Altyazı Butonu & Minimal Floating Popover (Üst Bara Yerleştirildi) */}
                     {isNativeVOD && (
                         <div className="watch-party-header-track-container" ref={unifiedMenuRef}>
@@ -3319,12 +3460,11 @@ const WatchPartyPlayer = () => {
                                             || rawUrl.includes('daioncdn.net')
                                             || rawUrl.includes('trt.net')
                                             || rawUrl.includes('trt.com')
-                                            || rawUrl.includes('playmix')
-                                            || rawUrl.includes('rapidvid')
                                             || rawUrl.startsWith('/')
                                             || rawUrl.startsWith('api/')
                                             || rawUrl.includes('/api/proxy')
-                                            || rawUrl.includes('/api/media/');
+                                            || rawUrl.includes('/api/media/')
+                                            || rawUrl.includes('/api/wp-stream/');
                                         return needsProxy ? getProxiedUrl(rawUrl) : rawUrl;
                                     })()}
                                     containerRef={wrapperRef}

@@ -59,24 +59,10 @@ const findWorkingReferer = async (targetUrl) => {
     origin = new URL(targetUrl).origin;
   } catch(e) {}
   
-  const tlds = ['cx', 'life', 'cool', 'live', 'com.tr', 'de', 'be', 'vip', 'website', 'lol', 'cc', 'pro', 'pw', 'today', 'org', 'net', 'co', 'biz', 'info', 'us', 'me', 'tv', 'ws', 'xyz', 'online', 'site', 'store', 'tech', 'link', 'click', 'space', 'club', 'best', 'top', 'icu', 'win', 'bid', 'gdn', 'trade', 'loan', 'download', 'stream', 'date', 'party'];
-  const refererList = [];
-  tlds.forEach(tld => {
-      refererList.push(`https://www.hdfilmcehennemi.${tld}/`);
-      refererList.push(`https://hdfilmcehennemi.${tld}/`);
-  });
-
-  refererList.push(
-      'https://www.filmmodu.org/',
-      'https://filmmodu.org/',
-      'https://www.filmmodu.dev/',
-      'https://fullhdfilmizlesene.pw/',
-      'https://www.fullhdfilmizlesene.pw/',
-      'https://fullhdfilmizlesene.com/',
-      'https://www.fullhdfilmizlesene.com/',
+  const refererList = [
       origin + '/',
       ''
-  );
+  ];
 
   for (const ref of refererList) {
     try {

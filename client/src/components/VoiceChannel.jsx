@@ -1369,7 +1369,7 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
                                 onClick={() => {
                                     const urlVal = watchUrl.trim();
                                     const isStream = urlVal.toLowerCase().includes('.txt') || urlVal.toLowerCase().includes('.m3u8') || urlVal.toLowerCase().includes('/hls/') || urlVal.toLowerCase().includes('manifest');
-                                    window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.hdfilmcehennemi.life/' : urlVal);
+                                    window.desktopAPI.openFilmBrowser((!urlVal || isStream) ? 'https://www.google.com/' : urlVal);
                                     setIsWatchInputOpen(false);
                                 }}
                                 title="Tarayıcıda Aç"
@@ -1458,8 +1458,8 @@ const VoiceChannel = ({ portalId, channelId, channelName, onBack }) => {
             <HlsStreamResolverModalVol2
                 isOpen={isHlsVol2ModalOpen}
                 onClose={() => setIsHlsVol2ModalOpen(false)}
-                onStartWatchParty={(streamUrl, isLive = false, subtitles = [], title = '') => {
-                    startWatchParty(streamUrl, !!isLive, subtitles || [], title || '');
+                onStartWatchParty={(streamUrl, isLive = false, subtitles = [], title = '', extraMeta = {}) => {
+                    startWatchParty(streamUrl, !!isLive, subtitles || [], title || '', extraMeta);
                 }}
             />
         </div>

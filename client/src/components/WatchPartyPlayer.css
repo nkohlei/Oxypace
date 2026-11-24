@@ -174,6 +174,114 @@
     z-index: 120;
 }
 
+.wp-alt-sources-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 162px;
+    background: rgba(16, 16, 22, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.wp-alt-sources-header {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #71717a;
+    padding: 4px 8px 3px;
+}
+
+.wp-alt-sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.wp-alt-source-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 9px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #d4d4d8;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.wp-alt-source-item:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.wp-alt-source-item.active {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.wp-alt-source-item:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.wp-alt-sources-err {
+    padding: 5px 8px 3px;
+    font-size: 10.5px;
+    color: #fca5a5;
+}
+
+.wp-error-alt-sources {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.wp-alt-error-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 11px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #f4f4f5;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.14s ease;
+}
+
+.wp-alt-error-btn:hover:not(:disabled) {
+    background: #ffffff;
+    color: #09090b;
+}
+
+.wp-alt-error-btn.active {
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.16);
+}
+
 .native-unified-btn-icons {
     display: inline-flex;
     align-items: center;

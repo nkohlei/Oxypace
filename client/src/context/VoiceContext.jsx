@@ -3081,7 +3081,7 @@ export const VoiceProvider = ({ children }) => {
         }
     }, [activeRoom, safeEmit]);
 
-    const startWatchParty = useCallback(async (url, isLive = undefined, subtitles = [], title = '') => {
+    const startWatchParty = useCallback(async (url, isLive = undefined, subtitles = [], title = '', extraMeta = {}) => {
         const curRoom = activeRoomRef.current || activeRoom;
         if (curRoom && url) {
             const trimmedUrl = String(url).trim();
@@ -3100,6 +3100,12 @@ export const VoiceProvider = ({ children }) => {
                 lowerUrl.startsWith('rtmp://')
             );
             const resolvedLiveHint = typeof isLive === 'boolean' ? isLive : autoDetectedLive;
+            const cleanMeta = {
+                alternatives: Array.isArray(extraMeta?.alternatives) ? extraMeta.alternatives : undefined,
+                activeSourceToken: typeof extraMeta?.activeSourceToken === 'string' ? extraMeta.activeSourceToken : undefined,
+                startTime: typeof extraMeta?.startTime === 'number' ? extraMeta.startTime : undefined,
+                autoPlay: typeof extraMeta?.autoPlay === 'boolean' ? extraMeta.autoPlay : undefined,
+            };
             try {
                 console.log(`[WatchParty] Requesting stream validation for: ${trimmedUrl} (isLiveHint: ${resolvedLiveHint})`);
                 const response = await axios.post('/api/media/validate-stream', { 
@@ -3109,11 +3115,11 @@ export const VoiceProvider = ({ children }) => {
                 });
                 const validatedLive = response.data.isLive;
                 let streamUrl = response.data.streamUrl || trimmedUrl;
-                if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:') && !streamUrl.startsWith('/api/proxy')) {
+                if (streamUrl && !streamUrl.startsWith('http') && !streamUrl.startsWith('blob:') && !streamUrl.startsWith('/api/proxy') && !streamUrl.startsWith('/api/wp-stream/')) {
                     streamUrl = getImageUrl(streamUrl);
                 }
                 console.log(`[WatchParty] URL validated by server. Final Stream: ${streamUrl}, isLive: ${validatedLive}`);
-                safeEmit('voice:watch-start', { roomName: curRoom.roomName, url: streamUrl, isLive: validatedLive, subtitles, title });
+                safeEmit('voice:watch-start', { roomName: curRoom.roomName, url: streamUrl, isLive: validatedLive, subtitles, title, ...cleanMeta });
             } catch (err) {
                 if (err.response?.status === 403 || err.response?.data?.isForbidden) {
                     const msg = err.response?.data?.message || 'Gizli bir portalda paylaşılan video izlenemez.';
@@ -3122,7 +3128,7 @@ export const VoiceProvider = ({ children }) => {
                 }
                 console.warn('[WatchParty] Validation failed, falling back to local detection:', err);
                 const detectedLive = !isStaticVideo && resolvedLiveHint === true;
-                safeEmit('voice:watch-start', { roomName: curRoom.roomName, url: trimmedUrl, isLive: detectedLive, subtitles, title });
+                safeEmit('voice:watch-start', { roomName: curRoom.roomName, url: trimmedUrl, isLive: detectedLive, subtitles, title, ...cleanMeta });
             }
         }
     }, [activeRoom, safeEmit]);

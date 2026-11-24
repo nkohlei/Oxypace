@@ -1085,7 +1085,7 @@ export const initializeVoiceHandler = (io) => {
         // ─── Watch Party (YouTube / Stream Sync) ───
         socket.on('voice:watch-start', async (payload) => {
             await settle();
-            const { roomName, url, isLive, subtitles, title } = payload || {};
+            const { roomName, url, isLive, subtitles, title, alternatives, activeSourceToken, startTime, autoPlay } = payload || {};
             if (!inRoom(roomName) || !limits.watch()) return;
             if (typeof url !== 'string' || !url.trim() || url.length > MAX_URL_LENGTH) return;
 
@@ -1093,17 +1093,34 @@ export const initializeVoiceHandler = (io) => {
                 ? subtitles.slice(0, MAX_SHARED_SUBTITLES).filter((s) => s && typeof s === 'object')
                 : [];
 
+            const cleanAlternatives = Array.isArray(alternatives)
+                ? alternatives
+                    .slice(0, 10)
+                    .filter((a) => a && typeof a === 'object' && typeof a.token === 'string' && a.token.trim())
+                    .map((a, idx) => ({
+                        token: clampString(a.token, 1024),
+                        label: clampString(a.label || `Kaynak ${idx + 1}`, 32),
+                    }))
+                : [];
+
+            const cleanActiveToken = typeof activeSourceToken === 'string'
+                ? clampString(activeSourceToken, 1024)
+                : '';
+
+            const initialTime = sanitizeTime(startTime);
             const now = Date.now();
             const watchPartyState = normalizeWatchPartyState({
                 roomName,
                 url: url.trim(),
-                isPlaying: false,
-                currentTime: 0,
+                isPlaying: Boolean(autoPlay),
+                currentTime: initialTime !== null ? initialTime : 0,
                 lastUpdated: now,
                 serverTimestamp: now,
                 isLive: !!isLive,
                 subtitles: cleanSubtitles,
                 title: clampString(title, MAX_TITLE_LENGTH),
+                alternatives: cleanAlternatives,
+                activeSourceToken: cleanActiveToken,
                 senderId: myId()
             }, false);
             await withRoomLock(roomName, async () => {
