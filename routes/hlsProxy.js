@@ -215,17 +215,6 @@ function isBlockedOrChallenge(text) {
 async function fetchWithCurl(url, headers = [], timeoutSec = 6) {
   // SSRF / option-injection guard: only public http(s) URLs may ever reach the curl binary
   if (!validateSsrfUrl(url).safe) return '';
-  // 1. For HDFilmCehennemi, direct curl gets 403 on Oracle Cloud datacenter IP.
-  // Use Python TLS Impersonator first (Chrome 124 TLS fingerprint).
-  if (url.includes('hdfilmcehennemi')) {
-    try {
-      const ref = headers.find(h => h.toLowerCase().startsWith('referer:'))?.split(':')?.[1]?.trim() || 'https://www.hdfilmcehennemi.nl/';
-      const tlsHtml = await fetchWithTlsImpersonator(url, ref);
-      if (!isBlockedOrChallenge(tlsHtml)) {
-        return tlsHtml;
-      }
-    } catch (e) {}
-  }
 
   // 1b. Configured PROXY_SERVER via curl (if set in .env)
   const envProxy = buildEnvProxyUrl();
@@ -749,9 +738,7 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
 
     const inferPosterReferer = (u, defaultRef = '') => {
       if (defaultRef) return defaultRef;
-      if (u.includes('hdfilmcehennemi')) return 'https://www.hdfilmcehennemi.nl/';
       if (u.includes('fullhdfilmizlesene')) return 'https://www.fullhdfilmizlesene.now/';
-      if (u.includes('filmmakinesi')) return 'https://filmmakinesi.to/';
       return '';
     };
 
@@ -1596,214 +1583,6 @@ function raceFirstSuccess(promises, timeoutMs = 13000) {
   });
 }
 
-async function directResolveHDFilmCehennemi(targetUrl) {
-  if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.includes('hdfilmcehennemi')) return null;
-  const start = Date.now();
-
-  const isValidHdfResponse = (t) => Boolean(t && t.length > 500 && !isBlockedOrChallenge(t));
-
-  const fetchWithTorOrDirect = async (url, headers = [], timeoutSec = 5) => {
-    const isHdfUrl = url.includes('hdfilmcehennemi.');
-    const isPlaymix = url.includes('playmix.uno');
-    const envProxy = buildEnvProxyUrl();
-    const apiKey = getValidScraperApiKey();
-
-    // 0. Configured PROXY_SERVER (residential/TR proxy if set in .env)
-    if (envProxy) {
-      try {
-        const argsProxy = [
-          '-s', '-L', '-x', envProxy,
-          '--max-time', String(timeoutSec + 2),
-          '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          ...headers.flatMap(h => ['-H', h]),
-          url
-        ];
-        const { stdout } = await execFileAsync(CURL_BIN, argsProxy);
-        if (isValidHdfResponse(stdout)) {
-          return stdout;
-        }
-      } catch (e) {}
-    }
-
-    // Fast-path: on OCI Linux without residential proxy, HDFilmCehennemi blocks datacenter & Tor IPs (403/451).
-    // Only try ScraperAPI if a non-exhausted key exists; otherwise fail fast in milliseconds instead of hanging 20s!
-    if (!(process.platform === 'linux' && isHdfUrl && !isPlaymix)) {
-      try {
-        const fHeaders = {
-          'User-Agent': isPlaymix
-            ? 'Mozilla/5.0'
-            : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        };
-        for (const h of headers) {
-          const idx = h.indexOf(':');
-          if (idx !== -1) fHeaders[h.slice(0, idx).trim()] = h.slice(idx + 1).trim();
-        }
-        const res = await fetch(url, { headers: fHeaders, signal: AbortSignal.timeout(timeoutSec * 1000) });
-        if (res.ok) {
-          const t = await res.text();
-          if (isValidHdfResponse(t)) return t;
-        }
-      } catch (e) {}
-
-      try {
-        const args = [
-          '-s', '-L',
-          '--max-time', String(timeoutSec),
-          '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          ...headers.flatMap(h => ['-H', h]),
-          url
-        ];
-        const { stdout } = await execFileAsync(CURL_BIN, args);
-        if (isValidHdfResponse(stdout)) {
-          return stdout;
-        }
-      } catch (e) {}
-    }
-
-    // ScraperAPI TR fallback (omit keep_headers on HTML fetches so it doesn't stall; fast-mark exhausted on 401/403)
-    if (apiKey) {
-      try {
-        const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&url=${encodeURIComponent(url)}`;
-        const res = await fetch(sUrl, { signal: AbortSignal.timeout(9000) });
-        if (res.status === 401 || res.status === 403) {
-          exhaustedScraperKeys.add(apiKey);
-        } else if (res.ok) {
-          const t = await res.text();
-          if (isValidHdfResponse(t)) return t;
-        }
-      } catch (e) {}
-    }
-
-    return '';
-  };
-
-  try {
-    // Use normal HTML headers for movie detail pages (previously sending x-requested-with: fetch broke HTML responses)
-    const text = await fetchWithTorOrDirect(targetUrl, [
-      'Referer: https://www.hdfilmcehennemi.nl/',
-      'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-    ], 5);
-
-    if (!text) {
-      console.warn('[directResolveHDFilmCehennemi] Blocked or empty response for:', targetUrl);
-      if (process.platform === 'linux' && !buildEnvProxyUrl() && !getValidScraperApiKey()) {
-        return { blocked: true };
-      }
-      return null;
-    }
-
-    let html = text;
-    if (text.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(text.trim());
-        if (parsed.html) html = parsed.html;
-      } catch {}
-    }
-    html = html.replace(/\\"/g, '"').replace(/\\\//g, '/');
-
-    const embedMatches = [
-      ...html.matchAll(/<iframe\b[^>]*\b(?:src|data-src)=["']([^"']+)["']/gi),
-      ...html.matchAll(/data-(?:src|video|url)=["']([^"']*(?:embed|rapidrame|rplayer|playmix|video)[^"']*)["']/gi),
-    ];
-    const embedUrls = [];
-    for (const [, u] of embedMatches) {
-      let clean = u.trim();
-      if (clean.startsWith('//')) clean = 'https:' + clean;
-      if (clean.startsWith('http')) {
-        const idMatch = clean.match(/\/video\/embed\/([^/?#]+)/) || clean.match(/\/embed\/([^/?#]+)/);
-        if (idMatch && idMatch[1]) {
-          const mirror = `https://playmix.uno/video/embed/${idMatch[1]}/`;
-          if (!embedUrls.includes(mirror)) embedUrls.push(mirror);
-        }
-        if (!embedUrls.includes(clean)) {
-          embedUrls.push(clean);
-        }
-      }
-    }
-
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const pageTitle = sanitizePublicTitle(titleMatch ? titleMatch[1] : '');
-    if (embedUrls.length === 0) return null;
-
-    for (const embedUrl of embedUrls) {
-      let embedHost = 'hdfilmcehennemi.mobi';
-      try { embedHost = new URL(embedUrl).hostname; } catch {}
-      const embedHtml = await fetchWithTorOrDirect(embedUrl, [
-        'Referer: https://www.hdfilmcehennemi.nl/',
-        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      ], 5);
-
-      if (!embedHtml) continue;
-
-      const subtitles = [];
-      const subMatches = [...embedHtml.matchAll(/["']file["']\s*:\s*["'](https?:[^"']+\.vtt[^"']*)["']/gi)];
-      for (const [, f] of subMatches) {
-        const cleanSub = f.replace(/\\\//g, '/');
-        const label = detectSubLanguage(cleanSub);
-        if (!subtitles.some(s => s.file === cleanSub)) {
-          subtitles.push({ file: cleanSub, label });
-        }
-      }
-
-      const directMatch = embedHtml.match(/file\s*:\s*["'](https?:\/\/[^"']+\/(?:master\.txt|index\.m3u8|\w+\.m3u8)[^"']*)["']/i);
-      if (directMatch && directMatch[1]) {
-        const streamUrl = directMatch[1];
-        let referer = 'https://hdfilmcehennemi.mobi/';
-        let origin = 'https://hdfilmcehennemi.mobi';
-        if (streamUrl.includes('playmix')) { referer = 'https://playmix.uno/'; origin = 'https://playmix.uno'; }
-        else if (streamUrl.includes('rapidvid')) { referer = 'https://rapidvid.org/'; origin = 'https://rapidvid.org'; }
-        return { streamUrl, pageTitle, headers: { referer, origin }, subtitles, elapsed: Date.now() - start };
-      }
-
-      const jwMatch = embedHtml.match(/sources\s*:\s*\[\s*\{\s*file\s*:\s*([a-zA-Z0-9_$]+)/i) ||
-                      embedHtml.match(/file\s*:\s*([a-zA-Z0-9_$]+)\s*,\s*type\s*:\s*["']hls["']/i);
-      const varName = jwMatch ? jwMatch[1] : null;
-      if (varName) {
-        const scriptTags = [...embedHtml.matchAll(/<script\b(?![^>]*type=["'](?:application\/ld\+json|application\/json)["'])[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
-        for (const s of scriptTags) {
-          if (s.includes(varName) && (s.includes('function') || s.includes('='))) {
-            const sandbox = {
-              atob: (str) => Buffer.from(str, 'base64').toString('binary'),
-              btoa: (str) => Buffer.from(str, 'binary').toString('base64'),
-              Math, String, Array, parseInt, parseFloat, encodeURIComponent, decodeURIComponent,
-              self: { location: { protocol: 'https:', hostname: embedHost } },
-              window: { location: { protocol: 'https:', hostname: embedHost } },
-              document: { location: { protocol: 'https:', hostname: embedHost } },
-              location: { protocol: 'https:', hostname: embedHost },
-            };
-            try {
-              vm.createContext(sandbox);
-              vm.runInContext(s + '\n__stream_res__ = (typeof ' + varName + ' !== "undefined") ? ' + varName + ' : null;', sandbox, { timeout: 1500 });
-              const streamUrl = sandbox.__stream_res__;
-              if (streamUrl && typeof streamUrl === 'string' && streamUrl.startsWith('http')) {
-                let referer = 'https://hdfilmcehennemi.mobi/';
-                let origin = 'https://hdfilmcehennemi.mobi';
-                if (streamUrl.includes('playmix')) { referer = 'https://playmix.uno/'; origin = 'https://playmix.uno'; }
-                else if (streamUrl.includes('rapidvid')) { referer = 'https://rapidvid.org/'; origin = 'https://rapidvid.org'; }
-                return { streamUrl, pageTitle, headers: { referer, origin }, subtitles, elapsed: Date.now() - start };
-              }
-            } catch (e) {}
-          }
-        }
-      }
-
-      const fallbackMatch = embedHtml.match(/(https?:\/\/[^"'\s<>]+\/(?:master\.txt|\w+\.m3u8)[^"'\s<>]*)/i);
-      if (fallbackMatch && fallbackMatch[1]) {
-        const streamUrl = fallbackMatch[1];
-        let referer = 'https://hdfilmcehennemi.mobi/';
-        let origin = 'https://hdfilmcehennemi.mobi';
-        if (streamUrl.includes('playmix')) { referer = 'https://playmix.uno/'; origin = 'https://playmix.uno'; }
-        else if (streamUrl.includes('rapidvid')) { referer = 'https://rapidvid.org/'; origin = 'https://rapidvid.org'; }
-        return { streamUrl, pageTitle, headers: { referer, origin }, subtitles, elapsed: Date.now() - start };
-      }
-    }
-  } catch (err) {
-    console.warn('[directResolveHDFilmCehennemi] Error:', err.message);
-  }
-  return null;
-}
-
 async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, embedMode = false, pageReferer = '') {
   if (!rawUrl || !validateSsrfUrl(rawUrl).safe) return null;
   const cacheHit = movieResolveCache.get(rawUrl);
@@ -1816,8 +1595,6 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
 
   if (embedMode || lower.includes('vidmoly') || lower.includes('ok.ru')) {
     result = await resolveEmbedUrl(rawUrl, pageReferer || '', '');
-  } else if (providerKey === 'hdfilmcehennemi' || lower.includes('hdfilmcehennemi')) {
-    result = await directResolveHDFilmCehennemi(rawUrl);
   } else if (fastResolve) {
     try {
       result = await fastResolve(rawUrl, { timeout: Math.min(timeoutMs, 10000) });
@@ -1825,13 +1602,13 @@ async function resolveSingleSource(rawUrl, providerKey = '', timeoutMs = 12000, 
   }
 
   // Fallback to microservice Playwright ONLY if not explicitly blocked / takedown
-  if (!result && fastResolve && !embedMode && !lower.includes('hdfilmcehennemi')) {
+  if (!result && fastResolve && !embedMode) {
     try {
       result = await fastResolve(rawUrl, { timeout: Math.min(timeoutMs, 9000) });
     } catch {}
   }
 
-  if (!result && !embedMode && !result?.blocked && !lower.includes('hdfilmcehennemi')) {
+  if (!result && !embedMode && !result?.blocked) {
     const resolverUrl = process.env.STREAM_RESOLVER_API_URL || 'http://127.0.0.1:3001';
     const apiKey = process.env.STREAM_RESOLVER_API_KEY || '';
     try {
@@ -2278,14 +2055,10 @@ const SEARCH_CACHE_TTL = 30 * 60 * 1000;
 
 const SOURCE_PRIORITY = {
   fullhdfilmizlesene: 100,
-  hdfilmcehennemi: 90,
-  filmmakinesi: 80,
 };
 
 const SOURCE_REFERER = {
   fullhdfilmizlesene: 'https://www.fullhdfilmizlesene.now/',
-  hdfilmcehennemi: 'https://www.hdfilmcehennemi.nl/',
-  filmmakinesi: 'https://filmmakinesi.to/',
 };
 
 function stripTurkishChars(str = '') {
@@ -2425,9 +2198,7 @@ function normalizeMovieTitleParts(title = '') {
 function scorePosterQuality(src) {
   if (!src?.poster) return -1;
   const p = src.providerKey;
-  if (p === 'filmmakinesi') return 80;
-  if (p === 'hdfilmcehennemi') return 70;
-  if (p === 'fullhdfilmizlesene') return 55;
+  if (p === 'fullhdfilmizlesene') return 80;
   return 20;
 }
 
@@ -2739,143 +2510,6 @@ async function searchFullHDFilm(query) {
   return [];
 }
 
-/**
- * 2. HDFilmCehennemi doğrudan arama (fast-fail on OCI datacenter block when no valid key/proxy)
- */
-async function searchHDFilmCehennemi(query) {
-  try {
-    const targetUrl = `https://www.hdfilmcehennemi.nl/search/?q=${encodeURIComponent(query)}`;
-    let raw = '';
-    const apiKey = getValidScraperApiKey();
-    const envProxy = buildEnvProxyUrl();
-
-    // Fast-fail on Linux OCI when direct/Tor are blocked and neither PROXY_SERVER nor active ScraperAPI exists
-    if (process.platform === 'linux' && !envProxy && !apiKey) {
-      return [];
-    }
-
-    if (envProxy) {
-      raw = await fetchWithCurl(
-        targetUrl,
-        [
-          'Referer: https://www.hdfilmcehennemi.nl/',
-          'x-requested-with: fetch',
-          'Accept: application/json, text/plain, */*',
-        ],
-        5
-      );
-    } else if (process.platform !== 'linux') {
-      try {
-        const fRes = await fetch(targetUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': 'https://www.hdfilmcehennemi.nl/',
-            'x-requested-with': 'fetch',
-            'Accept': 'application/json, text/plain, */*',
-          },
-          signal: AbortSignal.timeout(3500),
-        });
-        if (fRes.ok) raw = await fRes.text();
-      } catch {}
-    }
-
-    if ((!raw || !raw.startsWith('{')) && apiKey) {
-      try {
-        const sUrl = `https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&keep_headers=true&url=${encodeURIComponent(targetUrl)}`;
-        const sRes = await fetch(sUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': 'https://www.hdfilmcehennemi.nl/',
-            'x-requested-with': 'fetch',
-            'Accept': 'application/json, text/plain, */*',
-          },
-          signal: AbortSignal.timeout(4500),
-        });
-        if (sRes.status === 401 || sRes.status === 403) {
-          exhaustedScraperKeys.add(apiKey);
-        } else if (sRes.ok) {
-          raw = await sRes.text();
-        }
-      } catch {}
-    }
-
-    if (!raw || !raw.startsWith('{')) return [];
-    const json = JSON.parse(raw);
-    const results = [];
-    if (json && Array.isArray(json.results)) {
-      for (const itemHtml of json.results) {
-        const urlMatch = itemHtml.match(/href="([^"]+)"/);
-        const titleMatch = itemHtml.match(/<h4 class="title">([^<]+)<\/h4>/i) || itemHtml.match(/alt="([^"]+)"/);
-        const posterMatch = itemHtml.match(/src="([^"]+)"/);
-        if (urlMatch && urlMatch[1]) {
-          const rawTitle = titleMatch ? titleMatch[1].trim() : 'Film';
-          let finalUrl = urlMatch[1].trim();
-          if (!finalUrl.startsWith('http')) {
-            finalUrl = `https://www.hdfilmcehennemi.nl${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
-          }
-          let finalPoster = posterMatch ? posterMatch[1].trim() : null;
-          if (finalPoster && !finalPoster.startsWith('http')) {
-            finalPoster = `https://www.hdfilmcehennemi.nl${finalPoster.startsWith('/') ? '' : '/'}${finalPoster}`;
-          }
-          const decodedTitle = decodeHtmlEntities(rawTitle);
-          results.push({
-            providerKey: 'hdfilmcehennemi',
-            title: decodedTitle,
-            url: finalUrl,
-            poster: finalPoster,
-            audioType: detectAudioTypeFromText(`${itemHtml} ${decodedTitle}`),
-          });
-        }
-      }
-    }
-    return results.slice(0, 20);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * 3. FilmMakinesi doğrudan arama
- */
-async function searchFilmMakinesi(query) {
-  try {
-    const targetUrl = `https://filmmakinesi.to/arama/?s=${encodeURIComponent(query)}`;
-    let html = await fastHttpFetchText(targetUrl, {}, 3000);
-    if (!html && buildEnvProxyUrl()) {
-      html = await fetchWithCurl(targetUrl, ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'], 3);
-    }
-    if (!html && getValidScraperApiKey()) {
-      const apiKey = getValidScraperApiKey();
-      const sRes = await fetch(`https://api.scraperapi.com/?api_key=${apiKey}&country_code=tr&url=${encodeURIComponent(targetUrl)}`, { signal: AbortSignal.timeout(4500) });
-      if (sRes.status === 401 || sRes.status === 403) exhaustedScraperKeys.add(apiKey);
-      else if (sRes.ok) html = await sRes.text();
-    }
-    if (!html || isBlockedOrChallenge(html)) return [];
-    const results = [];
-    const itemRegex = /<a[^>]+class="item"[^>]+href="([^"]+)"[^>]+data-title="([^"]+)"[\s\S]*?<img[^>]+src="([^"]+)"([\s\S]*?)<\/a>/gi;
-    let match;
-    while ((match = itemRegex.exec(html)) !== null) {
-      const href = match[1];
-      const title = match[2];
-      const poster = match[3];
-      const tail = match[4] || '';
-      const fullUrl = href.startsWith('http') ? href : `https://filmmakinesi.to${href.startsWith('/') ? '' : '/'}${href}`;
-      const fullPoster = poster.startsWith('http') ? poster : `https://filmmakinesi.to${poster.startsWith('/') ? '' : '/'}${poster}`;
-      const cleanTitle = decodeHtmlEntities(title.trim());
-      results.push({
-        providerKey: 'filmmakinesi',
-        title: cleanTitle,
-        url: fullUrl,
-        poster: fullPoster,
-        audioType: detectAudioTypeFromText(`${tail} ${cleanTitle}`),
-      });
-    }
-    return results.slice(0, 20);
-  } catch {
-    return [];
-  }
-}
-
 // GET/POST /api/search-movies and /search-movies
 router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
   const query = req.query.q || req.body?.query || req.body?.q || '';
@@ -2900,7 +2534,7 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
     });
   }
 
-  // 2. 3 Film Kaynağı + Cover Metadata Eşzamanlı Hızlı Arama (max 4.5s soft cap)
+  // 2. FullHDFilmİzlesene + Cover Metadata Eşzamanlı Hızlı Arama (max 4.5s soft cap)
   const withSoftCap = (p, ms = 4500) => Promise.race([
     p.catch(() => []),
     new Promise((resolve) => setTimeout(() => resolve([]), ms)),
@@ -2909,28 +2543,15 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
   try {
     const settled = await Promise.all([
       withSoftCap(searchFullHDFilm(trimmedQuery), 4500),
-      withSoftCap(searchHDFilmCehennemi(trimmedQuery), 4500),
-      withSoftCap(searchFilmMakinesi(trimmedQuery), 4500),
       withSoftCap(fetchCinemetaCatalog(trimmedQuery), 2800),
     ]);
 
     let cinemetaList = settled.pop() || [];
     const combined = settled.flat().filter((item) => item && item.url && item.title);
 
-    // Bilingual cross-search (EN <-> TR): enrich existing Phase-1 movies with counterpart sources without polluting unrelated results
-    if (combined.length > 0) {
+    // Cover fallback for Turkish search terms when Cinemeta returned nothing for the TR query
+    if (combined.length > 0 && cinemetaList.length === 0) {
       const normQ = stripTurkishChars(trimmedQuery).replace(/\s+/g, ' ').trim();
-      const phase1KeySet = new Set();
-      for (const item of combined) {
-        for (const k of normalizeMovieTitleParts(item.title).keys) phase1KeySet.add(k);
-        if (item.altTitle) {
-          for (const seg of String(item.altTitle).split(/\s+(?:[-–—/|])\s+/)) {
-            for (const k of normalizeMovieTitleParts(seg).keys) {
-              if (k.length >= 4) phase1KeySet.add(k);
-            }
-          }
-        }
-      }
       const counterpartSet = new Set();
       for (const item of combined.slice(0, 6)) {
         const cTitle = sanitizePublicTitle(item.title || '');
@@ -2946,27 +2567,12 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
         if (counterpartSet.size >= 2) break;
       }
       if (counterpartSet.size > 0) {
-        const extraPromises = [];
-        for (const cq of counterpartSet) {
-          extraPromises.push(withSoftCap(searchHDFilmCehennemi(cq), 2500));
-          extraPromises.push(withSoftCap(searchFilmMakinesi(cq), 2500));
-          if (cinemetaList.length === 0) {
-            extraPromises.push(withSoftCap(fetchCinemetaCatalog(cq), 2200));
-          }
-        }
-        const extraSettled = await Promise.all(extraPromises);
+        const extraSettled = await Promise.all(
+          [...counterpartSet].map((cq) => withSoftCap(fetchCinemetaCatalog(cq), 2200))
+        );
         for (const arr of extraSettled) {
-          if (!Array.isArray(arr) || arr.length === 0) continue;
-          if (arr[0]?.keys && arr[0]?.poster && !arr[0]?.url) {
+          if (Array.isArray(arr) && arr.length > 0) {
             cinemetaList = [...cinemetaList, ...arr];
-          } else {
-            for (const it of arr) {
-              if (!it || !it.url || !it.title) continue;
-              const itKeys = normalizeMovieTitleParts(it.title).keys;
-              if (itKeys.some((k) => phase1KeySet.has(k))) {
-                combined.push(it);
-              }
-            }
           }
         }
       }
