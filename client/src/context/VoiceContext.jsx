@@ -1697,12 +1697,14 @@ export const VoiceProvider = ({ children }) => {
                 const normalizedIncomingUrl = normalizeUrl(data.watchParty.url);
                 const incomingTs = data.watchParty.serverTimestamp || data.serverNow || getServerNow();
                 setWatchParty(prev => {
-                    // Never roll back active Watch Party state with older voice:participants snapshots
-                    if (prev && prev.url === normalizedIncomingUrl && incomingTs > 0 && (prev.serverTimestamp || 0) > incomingTs + 250) {
+                    if (prev && prev.url === normalizedIncomingUrl) {
                         return {
                             ...prev,
+                            title: prev.title || data.watchParty.title,
                             alternatives: (Array.isArray(prev.alternatives) && prev.alternatives.length > 0) ? prev.alternatives : data.watchParty.alternatives,
                             subtitles: (Array.isArray(prev.subtitles) && prev.subtitles.length > 0) ? prev.subtitles : data.watchParty.subtitles,
+                            sharedSubtitles: (Array.isArray(prev.sharedSubtitles) && prev.sharedSubtitles.length > 0) ? prev.sharedSubtitles : data.watchParty.sharedSubtitles,
+                            activeSubtitle: prev.activeSubtitle || data.watchParty.activeSubtitle,
                         };
                     }
                     return {
@@ -1970,9 +1972,13 @@ export const VoiceProvider = ({ children }) => {
             });
             setWatchParty(prev => {
                 if (!prev) return null;
+                const nextUrl = url ? normalizeWpUrl(url) : prev.url;
+                if (prev.url === nextUrl && prev.serverTimestamp && canonicalTs < prev.serverTimestamp - 500) {
+                    return prev;
+                }
                 return {
                     ...prev,
-                    url: url ? normalizeWpUrl(url) : prev.url,
+                    url: nextUrl,
                     currentTime: typeof currentTime === 'number' ? currentTime : prev.currentTime,
                     isPlaying: typeof isPlaying === 'boolean' ? isPlaying : prev.isPlaying,
                     isLive: typeof isLive === 'boolean' ? isLive : prev.isLive,
@@ -3411,11 +3417,11 @@ export const VoiceProvider = ({ children }) => {
     }, [activeRoom, safeEmit, getServerNow, user, broadcastWatchDataChannel, dispatchWatchImperative]);
 
     const requestWatchSync = useCallback(() => {
-        const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;
+        const roomName = activeRoomRef.current?.roomName || activeRoom?.roomName;
         if (roomName) {
             safeEmit('voice:watch-request-sync', { roomName });
         }
-    }, [activeRoom, watchParty, safeEmit]);
+    }, [activeRoom, safeEmit]);
 
     const sendWatchSubtitle = useCallback((subtitle) => {
         const roomName = activeRoom?.roomName || activeRoomRef.current?.roomName || watchParty?.roomName;

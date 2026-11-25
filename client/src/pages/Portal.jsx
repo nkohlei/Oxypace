@@ -472,6 +472,7 @@ const Portal = () => {
             setPortal((prev) => {
                 if (!prev) return prev;
                 const activeTime = lastActive || new Date();
+                let changed = false;
 
                 // Update owner lastActive if matched
                 let updatedOwner = prev.owner;
@@ -479,6 +480,7 @@ const Portal = () => {
                     const ownerId = prev.owner._id || prev.owner.id || prev.owner;
                     if (String(ownerId) === String(userId) && typeof prev.owner === 'object') {
                         updatedOwner = { ...prev.owner, lastActive: activeTime };
+                        changed = true;
                     }
                 }
 
@@ -488,6 +490,7 @@ const Portal = () => {
                     updatedAdmins = prev.admins.map(admin => {
                         const adminId = admin._id || admin.id || admin;
                         if (String(adminId) === String(userId) && typeof admin === 'object' && admin !== null) {
+                            changed = true;
                             return { ...admin, lastActive: activeTime };
                         }
                         return admin;
@@ -500,12 +503,14 @@ const Portal = () => {
                     updatedMembers = prev.members.map((member) => {
                         const memberId = member._id || member.id || member;
                         if (String(memberId) === String(userId) && typeof member === 'object' && member !== null) {
+                            changed = true;
                             return { ...member, lastActive: activeTime };
                         }
                         return member;
                     });
                 }
 
+                if (!changed) return prev;
                 return { ...prev, owner: updatedOwner, admins: updatedAdmins, members: updatedMembers };
             });
         };

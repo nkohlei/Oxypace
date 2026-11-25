@@ -289,11 +289,13 @@ const saveWatchParty = async (roomName, wp) => {
 /** Atomic (per worker) read-modify-write of the watch party. Returns the new state or null if none exists. */
 const mutateWatchParty = (roomName, mutator) =>
     withRoomLock(roomName, async () => {
-        const current = await loadWatchParty(roomName);
+        const current = await loadWatchParty(roomName, false);
         if (!current) return null;
-        const next = mutator({ ...current }) || current;
-        await saveWatchParty(roomName, next);
-        return next;
+        const next = mutator({ ...current });
+        if (next === null) return current;
+        const toSave = next || current;
+        await saveWatchParty(roomName, toSave);
+        return toSave;
     });
 
 // ─── Chat history (shared across workers) ───────────────────────────────────
@@ -1167,7 +1169,7 @@ export const initializeVoiceHandler = (io) => {
 
                 // Persist to Redis asynchronously (monotonic timestamp guard prevents out-of-order overwrites)
                 const updated = await mutateWatchParty(roomName, (wp) => {
-                    if (wp.serverTimestamp && wp.serverTimestamp > now) return wp;
+                    if (wp.serverTimestamp && wp.serverTimestamp > now) return null;
                     apply(wp, time);
                     wp.lastUpdated = now;
                     wp.serverTimestamp = now;
