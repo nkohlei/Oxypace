@@ -593,6 +593,23 @@ function shouldKeepDirectMediaUrl(urlStr) {
   return false;
 }
 
+function sendMaybeGzip(req, res, statusCode, headersObj, buf, allowGzip = false) {
+  let outBuf = buf;
+  const outHeaders = { ...headersObj };
+  if (allowGzip && Buffer.isBuffer(buf) && buf.length > 2048 && /\bgzip\b/i.test(req.headers['accept-encoding'] || '')) {
+    try {
+      outBuf = zlib.gzipSync(buf, { level: 4 });
+      outHeaders['Content-Encoding'] = 'gzip';
+      outHeaders['Vary'] = 'Accept-Encoding';
+    } catch {
+      outBuf = buf;
+    }
+  }
+  outHeaders['Content-Length'] = String(outBuf.length);
+  res.set(outHeaders);
+  return res.status(statusCode).send(outBuf);
+}
+
 // Shared media proxy core (used by both /api/proxy and opaque /api/wp-stream + /api/wp-seg)
 async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '', opaqueMode = false, forceImage = false, disableImageMode = false, fallbackImages = [], fallbackTitle = '' }) {
   if (!targetUrl) {
@@ -617,12 +634,11 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Content-Type': cached.contentType,
         'Cache-Control': cached.cacheControl,
-        'Content-Length': String(cached.buffer.length),
         'X-Proxy-Cache': 'HIT',
       };
       if (allowedCorsOrigin) hitHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;
-      res.set(hitHeaders);
-      return res.status(200).send(cached.buffer);
+      const isCachedPlaylist = cached.contentType === 'application/x-mpegURL' || cached.contentType.includes('mpegurl');
+      return sendMaybeGzip(req, res, 200, hitHeaders, cached.buffer, isCachedPlaylist);
     }
 
     const inflight = PROXY_INFLIGHT.get(cacheKey);
@@ -635,12 +651,11 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Content-Type': shared.contentType,
             'Cache-Control': shared.cacheControl,
-            'Content-Length': String(shared.buffer.length),
             'X-Proxy-Cache': 'COALESCE',
           };
           if (allowedCorsOrigin) sharedHeaders['Access-Control-Allow-Origin'] = allowedCorsOrigin;
-          res.set(sharedHeaders);
-          return res.status(200).send(shared.buffer);
+          const isSharedPlaylist = shared.contentType === 'application/x-mpegURL' || shared.contentType.includes('mpegurl');
+          return sendMaybeGzip(req, res, 200, sharedHeaders, shared.buffer, isSharedPlaylist);
         }
       } catch {
         // Fall through to normal fetch if in-flight failed
@@ -751,7 +766,7 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
         response = await safeFetch(targetUrl, {
           headers,
           cache: 'no-store',
-          signal: AbortSignal.timeout(isPosterOrImage ? 6000 : 15000),
+          signal: AbortSignal.timeout(isPosterOrImage ? 6000 : 30000),
         });
       }
     } catch {
@@ -986,15 +1001,19 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
         lowerUrl.includes('.txt') ||
         upstreamType.includes('mpegurl') ||
         upstreamType.includes('m3u8');
-      const STREAM_THRESHOLD_BYTES = 8 * 1024 * 1024;
-      if (!looksLikePlaylist && !isPosterOrImage && !isSubtitleFile && response.body && declaredLength > STREAM_THRESHOLD_BYTES) {
+      const STREAM_THRESHOLD_BYTES = 512 * 1024;
+      if (!looksLikePlaylist && !isPosterOrImage && !isSubtitleFile && response.body && (declaredLength === 0 || declaredLength > STREAM_THRESHOLD_BYTES)) {
+        let streamContentType = upstreamType || 'application/octet-stream';
+        if (disableImageMode && (streamContentType.startsWith('image/') || streamContentType.startsWith('text/'))) {
+          streamContentType = 'video/mp2t';
+        }
         const streamHeaders = {
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Content-Type': upstreamType || 'application/octet-stream',
-          'Content-Length': String(declaredLength),
+          'Content-Type': streamContentType,
           'Accept-Ranges': response.headers.get('Accept-Ranges') || 'bytes',
           'Cache-Control': 'public, max-age=86400, immutable',
         };
+        if (declaredLength > 0) streamHeaders['Content-Length'] = String(declaredLength);
         if (response.headers.get('Content-Range')) streamHeaders['Content-Range'] = response.headers.get('Content-Range');
         const streamCors = resolveProxyCorsOrigin(req.headers.origin);
         if (streamCors) streamHeaders['Access-Control-Allow-Origin'] = streamCors;
@@ -1023,10 +1042,13 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
 
     const buildProxiedTarget = (absUrl, isSubManifest = false) => {
       if (opaqueMode) {
-        const tok = sealWpToken({ u: absUrl, r: refererHeader, o: originHeader }, 21600);
+        const tokenPayload = { u: absUrl };
+        if (refererHeader) tokenPayload.r = refererHeader;
+        if (originHeader) tokenPayload.o = originHeader;
+        const tok = sealWpToken(tokenPayload, 21600);
         return isSubManifest
-          ? `${proxyBaseOrigin}/api/wp-stream/${tok}.m3u8`
-          : `${proxyBaseOrigin}/api/wp-seg/${tok}`;
+          ? `/api/wp-stream/${tok}.m3u8`
+          : `/api/wp-seg/${tok}`;
       }
       let proxied = `${proxyBaseOrigin}/api/proxy?url=${encodeURIComponent(absUrl)}`;
       if (refererHeader) proxied += `&referer=${encodeURIComponent(refererHeader)}`;
@@ -1167,7 +1189,6 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
     }
 
     const finalBuf = Buffer.from(responseBody);
-    resHeaders['Content-Length'] = String(finalBuf.length);
 
     if (canUseRamCache && cacheKey && response.status === 200 && finalBuf.length <= MAX_CACHEABLE_SEGMENT_BYTES) {
       const cacheEntry = {
@@ -1176,15 +1197,15 @@ async function serveProxiedMedia(req, res, { targetUrl, referer = '', origin = '
         cacheControl: resHeaders['Cache-Control'] || 'public, max-age=60',
       };
       const isVodPlaylist = isPlaylist && sampleHeader.includes('#EXTM3U');
-      const ttlMs = isPlaylist ? (isVodPlaylist ? 30_000 : 4_000) : 60_000;
+      const isFinishedVod = isVodPlaylist && finalBuf.includes('#EXT-X-ENDLIST');
+      const ttlMs = isPlaylist ? (isFinishedVod ? 300_000 : (isVodPlaylist ? 30_000 : 4_000)) : 60_000;
       setCachedProxyEntry(cacheKey, cacheEntry, ttlMs);
       finishInflight(cacheEntry);
     } else {
       finishInflight(null);
     }
 
-    res.set(resHeaders);
-    return res.status(response.status === 206 ? 206 : 200).send(finalBuf);
+    return sendMaybeGzip(req, res, response.status === 206 ? 206 : 200, resHeaders, finalBuf, isPlaylist);
   } catch (error) {
     finishInflight(null);
     if (error && typeof error.message === 'string' && error.message.startsWith('SSRF_BLOCKED')) {
@@ -1368,6 +1389,7 @@ function detectSubLanguage(fileUrl) {
 }
 
 const movieResolveCache = new Map();
+const prewarmInFlight = new Set();
 const MOVIE_RESOLVE_CACHE_TTL = 15 * 60 * 1000;
 
 function extractEmbedUrlsFromHtml(html, baseUrl = '') {
@@ -1786,10 +1808,12 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
       });
     }
 
-    // Wait briefly (max 2.6s from winner) for sibling site resolvers to settle so dead sites are dropped and working ones kept
-    const siblingResults = await Promise.all(inflightJobs.map((j) => withCap(j.promise, 2600)));
+    // Wait briefly ONLY if multiple sources raced; single-source resolves immediately with 0 wait
+    const siblingResults = decodedList.length <= 1
+      ? [won]
+      : await Promise.all(inflightJobs.map((j) => withCap(j.promise, 2600)));
 
-    // Collect extra embed candidates from ALL resolved site pages (e.g. Vidmoly Dublaj/Altyazı + Ok.Ru Dublaj/Altyazı)
+    // Collect extra embed candidates from resolved site pages (max 3 fast embeds)
     const embedCandidates = [];
     const seenRawUrls = new Set(decodedList.map((d) => d.payload.u));
     for (const sr of siblingResults) {
@@ -1802,23 +1826,23 @@ router.post('/resolve-movie', resolverLimiter, (req, res, next) => (req.body ? n
       for (const ext of rawExtras) {
         const embUrl = typeof ext === 'string' ? ext : ext?.url;
         const embAudio = (typeof ext === 'object' && ext?.audioType) ? ext.audioType : 'unknown';
-        if (!embUrl || seenRawUrls.has(embUrl)) continue;
+        if (!embUrl || seenRawUrls.has(embUrl) || !/vidmoly|ok\.ru|rapidvid/i.test(embUrl)) continue;
         seenRawUrls.add(embUrl);
         embedCandidates.push({ url: embUrl, audioType: embAudio, parentUrl });
-        if (embedCandidates.length >= 6) break;
+        if (embedCandidates.length >= 3) break;
       }
-      if (embedCandidates.length >= 6) break;
+      if (embedCandidates.length >= 3) break;
     }
 
-    // Pre-verify extra embeds in parallel (Vidmoly & Ok.Ru resolve in ~200-350ms; dead embeds are dropped!)
+    // Pre-verify extra embeds in parallel with a tight 1.2s cap so dead embeds never stall playback
     const verifiedEmbeds = embedCandidates.length > 0
       ? await Promise.all(
           embedCandidates.map((ec) =>
             withCap(
-              resolveSingleSource(ec.url, '', 3200, true, ec.parentUrl).then((r) =>
+              resolveSingleSource(ec.url, '', 2200, true, ec.parentUrl).then((r) =>
                 r && r.streamUrl && !r.blocked && !r.isTakedown ? { ...ec, resolved: r } : null
               ),
-              2800
+              1200
             )
           )
         )
@@ -2005,26 +2029,7 @@ router.post('/detect-subtitles', resolverLimiter, (req, res, next) => (req.body 
       subtitles.push({ file, playableUrl, label, kind });
     };
 
-    // 1. Detect embed ID in stream URL e.g. -IYxdhPkkxn2.mp4 or -fgvP8tldQUR.mp4
-    const embedMatch = rawUrl.match(/-([a-zA-Z0-9_-]{8,16})\.mp4/i) || rawUrl.match(/\/embed\/([a-zA-Z0-9_-]{8,16})/i);
-    if (embedMatch && embedMatch[1]) {
-      const embedId = embedMatch[1];
-      const embedUrl = `https://hdfilmcehennemi.mobi/video/embed/${embedId}/`;
-      try {
-        const html = await fetchWithCurl(embedUrl, ['Referer: https://www.hdfilmcehennemi.nl/'], 8);
-        if (html && html.length > 200) {
-          const { extractSubtitles } = require('../stream-resolver/services/fastScraper');
-          if (extractSubtitles) {
-            const found = extractSubtitles(html, 'https://hdfilmcehennemi.mobi/');
-            for (const s of found) {
-              addSub(s.file, s.label, s.kind);
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    // 2. If pageUrl is available and subtitles are still empty, inspect pageUrl
+    // 1. If pageUrl is available and subtitles are still empty, inspect pageUrl
     if (subtitles.length === 0 && pageUrl && pageUrl.startsWith('http')) {
       try {
         const { fastResolve } = require('../stream-resolver/services/fastScraper');
@@ -2586,6 +2591,13 @@ router.all(['/search-movies', '/api/search-movies'], async (req, res) => {
         if (oldestKey) inProcessSearchCache.delete(oldestKey);
       }
       const sealed = sealUnifiedMovieResults(rawGroups, proxyBaseOrigin);
+      const topUrl = rawGroups[0]?.sources?.[0]?.u;
+      if (topUrl && !movieResolveCache.has(topUrl) && !prewarmInFlight.has(topUrl)) {
+        prewarmInFlight.add(topUrl);
+        resolveSingleSource(topUrl, 'fullhdfilmizlesene', 10000, false)
+          .catch(() => null)
+          .finally(() => prewarmInFlight.delete(topUrl));
+      }
       return res.status(200).json({
         success: true,
         query: trimmedQuery,

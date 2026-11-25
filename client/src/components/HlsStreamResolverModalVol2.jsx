@@ -160,19 +160,17 @@ export const HlsStreamResolverModalVol2 = ({ isOpen, onClose, onStartWatchParty 
         setResolvedData(resData);
 
         if (onStartWatchParty) {
-          setTimeout(() => {
-            onStartWatchParty(
-              resData.playableStreamUrl,
-              false,
-              resData.subtitles || [],
-              resData.pageTitle || movie.title || '',
-              {
-                alternatives: resData.alternatives || movie.sources,
-                activeSourceToken: resData.activeSourceToken || '',
-              }
-            );
-            onClose();
-          }, 300);
+          onStartWatchParty(
+            resData.playableStreamUrl,
+            false,
+            resData.subtitles || [],
+            resData.pageTitle || movie.title || '',
+            {
+              alternatives: resData.alternatives || movie.sources,
+              activeSourceToken: resData.activeSourceToken || '',
+            }
+          );
+          onClose();
         }
       } else {
         setErrorMsg(

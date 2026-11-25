@@ -374,7 +374,7 @@ function fetchWithTlsImpersonation(targetUrl, referer = '') {
  * Fetches HTML directly, via TLS Impersonator, or via ScraperAPI if Cloudflare blocked
  */
 async function fetchHtmlWithBypass(targetUrl, referer = '') {
-  const apiKey = process.env.SCRAPER_API_KEY || 'dd731ac1103c696ebe32ad67ba329a0e';
+  const apiKey = process.env.SCRAPER_API_KEY || process.env.SCRAPERAPI_KEY || '';
   const isHdf = targetUrl.includes('hdfilmcehennemi');
   const effectiveReferer = referer || (isHdf ? 'https://www.hdfilmcehennemi.nl/' : '');
 

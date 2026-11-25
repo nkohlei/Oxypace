@@ -1504,11 +1504,13 @@ const WatchPartyPlayer = () => {
                         );
                         const initialStartTime = getLiveExpectedTime();
                         const hls = new Hls({
-                            // Mobile jet-speed startup & RAM optimization
-                            startLevel: isMobile ? 0 : -1,
-                            maxBufferLength: isMobile ? 25 : 60,
-                            maxMaxBufferLength: isMobile ? 45 : 120,
-                            maxBufferSize: isMobile ? (30 * 1024 * 1024) : (60 * 1024 * 1024),
+                            // Instant startup on fastest variant, then immediate ABR upgrade
+                            startLevel: 0,
+                            abrEwmaDefaultEstimate: isMobile ? 1500000 : 4500000,
+                            abrBandWidthUpFactor: 0.75,
+                            maxBufferLength: isMobile ? 20 : 30,
+                            maxMaxBufferLength: isMobile ? 40 : 60,
+                            maxBufferSize: isMobile ? (25 * 1024 * 1024) : (45 * 1024 * 1024),
                             backBufferLength: isMobile ? 10 : 30,
                             maxBufferHole: 0.3,
                             highBufferWatchdogPeriod: 1,
@@ -1521,7 +1523,7 @@ const WatchPartyPlayer = () => {
                             capLevelToPlayerSize: isMobile,
                             nudgeMaxRetry: 8,
                             nudgeOffset: 0.15,
-                            fragLoadingTimeOut: 15000,
+                            fragLoadingTimeOut: 25000,
                             fragLoadingMaxRetry: 6,
                             fragLoadingRetryDelay: 500,
                             fragLoadingMaxRetryTimeout: 32000,
