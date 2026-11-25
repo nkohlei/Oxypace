@@ -101,33 +101,62 @@ const createPlaceholderAudioTrack = () => {
     return null;
 };
 
-// Helper to prioritize universally supported H264/VP8 codecs in SDP and enable high-fidelity stereo Opus audio
-const prioritizeVideoCodec = (sdp) => {
+// Helper to inspect current network speed/saveData hints for low-bandwidth adaptation
+const getNetworkProfile = () => {
+    try {
+        const conn = typeof navigator !== 'undefined'
+            ? (navigator.connection || navigator.mozConnection || navigator.webkitConnection)
+            : null;
+        if (!conn) return { isSlow: false, isVerySlow: false };
+        const eff = String(conn.effectiveType || '').toLowerCase();
+        const dl = Number(conn.downlink);
+        const saveData = Boolean(conn.saveData);
+        const isVerySlow = saveData || eff === 'slow-2g' || eff === '2g' || (Number.isFinite(dl) && dl > 0 && dl < 1.2);
+        const isSlow = isVerySlow || eff === '3g' || (Number.isFinite(dl) && dl > 0 && dl < 3.0);
+        return { isSlow, isVerySlow };
+    } catch {
+        return { isSlow: false, isVerySlow: false };
+    }
+};
+
+// Helper to prioritize universally supported H264/VP8 codecs in SDP and enable network-adaptive Opus audio (FEC + DTX)
+const prioritizeVideoCodec = (sdp, qualityMode = 'saver') => {
     if (!sdp) return sdp;
     let result = sdp;
-    // Optimize audio bitrate and stereo fidelity for Opus so shared media/mic sounds crisp and not like a telephone call
+    const isHigh = qualityMode === 'high';
+    const targetBitrate = isHigh ? 96000 : 36000;
+    const targetStereo = isHigh ? 1 : 0;
+    // Optimize Opus with in-band FEC & DTX silence suppression so voice stays crystal-clear even on low-bandwidth/lossy networks
     if (result.includes('opus/48000')) {
         const opusMatch = result.match(/a=rtpmap:(\d+)\s+opus\/48000/i);
         const opusPt = opusMatch ? opusMatch[1] : null;
         if (opusPt) {
             const fmtpRegex = new RegExp(`(a=fmtp:${opusPt}\\s+[^\\r\\n]*)`, 'i');
+            const applyParam = (fmtp, key, val) => {
+                const re = new RegExp(`(?:^|;\\s*)${key}=[^;\\r\\n]*`, 'i');
+                if (re.test(fmtp)) {
+                    return fmtp.replace(new RegExp(`(${key}=)[^;\\r\\n]*`, 'i'), `$1${val}`);
+                }
+                return `${fmtp};${key}=${val}`;
+            };
             if (fmtpRegex.test(result)) {
                 result = result.replace(fmtpRegex, (match) => {
                     let fmtp = match;
-                    if (!fmtp.includes('minptime=')) fmtp += ';minptime=10';
-                    if (!fmtp.includes('ptime=')) fmtp += ';ptime=20';
-                    if (!fmtp.includes('stereo=')) fmtp += ';stereo=1';
-                    if (!fmtp.includes('sprop-stereo=')) fmtp += ';sprop-stereo=1';
-                    if (!fmtp.includes('maxaveragebitrate=')) fmtp += ';maxaveragebitrate=128000';
-                    if (!fmtp.includes('cbr=')) fmtp += ';cbr=1';
-                    if (!fmtp.includes('useinbandfec=')) fmtp += ';useinbandfec=1';
-                    if (!fmtp.includes('usedtx=')) fmtp += ';usedtx=0';
+                    fmtp = applyParam(fmtp, 'minptime', '10');
+                    fmtp = applyParam(fmtp, 'ptime', '20');
+                    fmtp = applyParam(fmtp, 'stereo', String(targetStereo));
+                    if (isHigh) fmtp = applyParam(fmtp, 'sprop-stereo', '1');
+                    fmtp = applyParam(fmtp, 'maxaveragebitrate', String(targetBitrate));
+                    fmtp = applyParam(fmtp, 'cbr', '0');
+                    fmtp = applyParam(fmtp, 'useinbandfec', '1');
+                    fmtp = applyParam(fmtp, 'usedtx', '1');
                     return fmtp;
                 });
             } else {
+                const stereoPart = isHigh ? 'stereo=1;sprop-stereo=1;' : 'stereo=0;';
                 result = result.replace(
                     new RegExp(`(a=rtpmap:${opusPt}\\s+opus\\/48000[^\\r\\n]*)`, 'i'),
-                    `$1\r\na=fmtp:${opusPt} minptime=10;ptime=20;stereo=1;sprop-stereo=1;maxaveragebitrate=128000;cbr=1;useinbandfec=1;usedtx=0`
+                    `$1\r\na=fmtp:${opusPt} minptime=10;ptime=20;${stereoPart}maxaveragebitrate=${targetBitrate};cbr=0;useinbandfec=1;usedtx=1`
                 );
             }
         }
@@ -318,8 +347,14 @@ export const VoiceProvider = ({ children }) => {
         callQualityModeRef.current = callQualityMode;
     }, [callQualityMode]);
 
-    const updateSendersQuality = useCallback((mode) => {
+    const congestionTierRef = useRef(0);
+    const updateSendersQuality = useCallback((mode, tierOverride = null) => {
         const isSaver = mode === 'saver';
+        const net = getNetworkProfile();
+        const tier = typeof tierOverride === 'number' ? tierOverride : congestionTierRef.current;
+        const peerCount = peerConnectionsRef.current.size;
+        const peerFactor = Math.max(1, Math.min(4, peerCount));
+
         peerConnectionsRef.current.forEach(pc => {
             const senders = pc.getSenders();
             senders.forEach(sender => {
@@ -330,19 +365,45 @@ export const VoiceProvider = ({ children }) => {
                 const isScreen = isVideo && (sender.track === screenTrack || sender.track.label?.toLowerCase().includes('screen'));
 
                 try {
+                    if (isVideo) {
+                        sender.degradationPreference = isScreen
+                            ? 'maintain-resolution'
+                            : (tier >= 1 || net.isSlow ? 'maintain-framerate' : 'balanced');
+                    }
                     const params = sender.getParameters();
                     if (!params.encodings || params.encodings.length === 0) {
                         params.encodings = [{}];
                     }
                     params.encodings.forEach(enc => {
                         if (isScreen) {
-                            enc.maxBitrate = isSaver ? 950000 : 3500000;
-                            enc.maxFramerate = isSaver ? 20 : 30;
+                            const baseScreenBr = isSaver ? 800000 : 2800000;
+                            const stepBr = tier >= 2 || net.isVerySlow ? 450000 : (tier === 1 || net.isSlow ? 650000 : baseScreenBr);
+                            enc.maxBitrate = Math.round(stepBr / (peerFactor > 2 ? 1.35 : 1));
+                            enc.maxFramerate = tier >= 2 || net.isVerySlow ? 12 : (isSaver || tier === 1 ? 20 : 30);
+                            if (tier >= 2 || net.isVerySlow) enc.scaleResolutionDownBy = 1.5;
+                            else delete enc.scaleResolutionDownBy;
                         } else if (isVideo) {
-                            enc.maxBitrate = isSaver ? 550000 : 1800000;
-                            enc.maxFramerate = isSaver ? 24 : 30;
+                            const rawBase = isSaver ? 450000 : 1500000;
+                            let targetBr = rawBase;
+                            let targetFps = isSaver ? 24 : 30;
+                            let scaleDown = 1.0;
+                            if (tier >= 2 || net.isVerySlow) {
+                                targetBr = 110000;
+                                targetFps = 12;
+                                scaleDown = 2.0;
+                            } else if (tier === 1 || net.isSlow) {
+                                targetBr = 220000;
+                                targetFps = 15;
+                                scaleDown = 1.5;
+                            }
+                            enc.maxBitrate = Math.max(85000, Math.round(targetBr / peerFactor));
+                            enc.maxFramerate = targetFps;
+                            if (scaleDown > 1.0) enc.scaleResolutionDownBy = scaleDown;
+                            else delete enc.scaleResolutionDownBy;
                         } else if (isAudio) {
-                            enc.maxBitrate = isSaver ? 48000 : 128000;
+                            enc.maxBitrate = net.isVerySlow ? 24000 : (isSaver ? 36000 : 96000);
+                            enc.priority = 'high';
+                            enc.networkPriority = 'high';
                         }
                     });
                     sender.setParameters(params).catch(() => {});
@@ -414,6 +475,8 @@ export const VoiceProvider = ({ children }) => {
     
     // ICE candidate queue to prevent early candidate addition error before setRemoteDescription completes
     const candidateQueuesRef = useRef(new Map()); // userId -> [RTCIceCandidate]
+    const iceRestartTimersRef = useRef(new Map()); // userId -> timeoutId
+    const lastIceRestartAtRef = useRef(new Map()); // userId -> timestamp ms
 
     // NTP Server Clock Offset Ref (ms)
     const serverOffsetRef = useRef(0);
@@ -951,7 +1014,7 @@ export const VoiceProvider = ({ children }) => {
     }, [enumerateDevices]);
 
     // Renegotiate a specific WebRTC peer connection
-    const renegotiatePeer = useCallback(async (targetUserId) => {
+    const renegotiatePeer = useCallback(async (targetUserId, options = {}) => {
         const pc = peerConnectionsRef.current.get(targetUserId);
         if (!pc) return;
         try {
@@ -961,9 +1024,9 @@ export const VoiceProvider = ({ children }) => {
                 return;
             }
             pendingRenegotiateRef.current.delete(targetUserId);
-            console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}`);
-            const offer = await pc.createOffer();
-            const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+            console.log(`[WebRTC] Starting renegotiation for peer ${targetUserId}${options.iceRestart ? ' (iceRestart)' : ''}`);
+            const offer = await pc.createOffer(options.iceRestart ? { iceRestart: true } : undefined);
+            const prioritizedOffer = prioritizeVideoCodec(offer.sdp, callQualityModeRef.current);
             await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
             const currentRoom = activeRoomRef.current;
             if (currentRoom) {
@@ -978,6 +1041,31 @@ export const VoiceProvider = ({ children }) => {
             console.error(`Renegotiation failed for ${targetUserId}:`, err);
         }
     }, [safeEmit]);
+
+    const triggerIceRestart = useCallback((targetUserId) => {
+        const cleanTarget = String(targetUserId || '');
+        const pc = peerConnectionsRef.current.get(cleanTarget);
+        const curRoom = activeRoomRef.current;
+        if (!pc || !curRoom || pc.signalingState === 'closed' || pc.connectionState === 'closed') return;
+
+        const now = Date.now();
+        const lastAt = lastIceRestartAtRef.current.get(cleanTarget) || 0;
+        if (now - lastAt < 4000) return;
+        lastIceRestartAtRef.current.set(cleanTarget, now);
+
+        const localUid = String(user?._id || '');
+        const isOfferer = localUid ? localUid.localeCompare(cleanTarget) < 0 : true;
+        if (isOfferer && pc.signalingState === 'stable') {
+            console.log(`[WebRTC ICE Restart] Initiating iceRestart offer for ${cleanTarget}`);
+            renegotiatePeer(cleanTarget, { iceRestart: true });
+        } else {
+            console.log(`[WebRTC ICE Restart] Requesting peer ${cleanTarget} to run iceRestart`);
+            safeEmit('voice:ice-restart-request', {
+                roomName: curRoom.roomName,
+                targetUserId: cleanTarget,
+            });
+        }
+    }, [user, renegotiatePeer, safeEmit]);
 
     // Renegotiate all WebRTC connections (e.g. after adding screen share or camera)
     const renegotiateAll = useCallback(async () => {
@@ -1188,7 +1276,7 @@ export const VoiceProvider = ({ children }) => {
                 }
                 console.log(`[WebRTC] onnegotiationneeded triggered for user ${targetUserId}`);
                 const offer = await pc.createOffer();
-                const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+                const prioritizedOffer = prioritizeVideoCodec(offer.sdp, callQualityModeRef.current);
                 await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
                 const currentRoom = activeRoomRef.current;
                 if (currentRoom) {
@@ -1206,17 +1294,47 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
-        // Monitor ICE & Connection State Changes
+        const clearIceTimer = () => {
+            const t = iceRestartTimersRef.current.get(targetUserId);
+            if (t) {
+                clearTimeout(t);
+                iceRestartTimersRef.current.delete(targetUserId);
+            }
+        };
+
+        // Monitor ICE & Connection State Changes with automatic ICE restart recovery
         pc.oniceconnectionstatechange = () => {
-            console.log(`[WebRTC Log] ICE Connection State changed for ${targetUserId}: ${pc.iceConnectionState}`);
+            const state = pc.iceConnectionState;
+            console.log(`[WebRTC Log] ICE Connection State changed for ${targetUserId}: ${state}`);
+            if (state === 'connected' || state === 'completed') {
+                clearIceTimer();
+            } else if (state === 'disconnected') {
+                clearIceTimer();
+                const tid = setTimeout(() => {
+                    iceRestartTimersRef.current.delete(targetUserId);
+                    const livePc = peerConnectionsRef.current.get(targetUserId);
+                    if (livePc && (livePc.iceConnectionState === 'disconnected' || livePc.iceConnectionState === 'failed')) {
+                        triggerIceRestart(targetUserId);
+                    }
+                }, 3500);
+                iceRestartTimersRef.current.set(targetUserId, tid);
+            } else if (state === 'failed') {
+                clearIceTimer();
+                triggerIceRestart(targetUserId);
+            }
         };
 
         pc.onconnectionstatechange = () => {
             console.log(`[WebRTC Log] Peer connection state for ${targetUserId}: ${pc.connectionState}`);
-            if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
+            if (pc.connectionState === 'closed') {
+                clearIceTimer();
                 remoteTracksRef.current.delete(targetUserId);
                 updateParticipantList();
+            } else if (pc.connectionState === 'failed') {
+                clearIceTimer();
+                triggerIceRestart(targetUserId);
             } else if (pc.connectionState === 'connected') {
+                clearIceTimer();
                 updateParticipantList();
             }
         };
@@ -1344,7 +1462,7 @@ export const VoiceProvider = ({ children }) => {
         };
 
         return pc;
-    }, [updateParticipantList, safeEmit, localState]); // activeRoom intentionally removed — callbacks use activeRoomRef.current to avoid stale closures
+    }, [updateParticipantList, safeEmit, triggerIceRestart]); // activeRoom & localState intentionally read via refs to avoid socket teardown on toggles
 
     // Handle joining room and configuring media
     const connectToChannel = useCallback(async (portalId, channelId) => {
@@ -1459,6 +1577,9 @@ export const VoiceProvider = ({ children }) => {
         }
 
         // Close peer connections
+        iceRestartTimersRef.current.forEach(t => clearTimeout(t));
+        iceRestartTimersRef.current.clear();
+        lastIceRestartAtRef.current.clear();
         peerConnectionsRef.current.forEach(pc => pc.close());
         peerConnectionsRef.current.clear();
         watchDataChannelsRef.current.clear();
@@ -1538,6 +1659,12 @@ export const VoiceProvider = ({ children }) => {
             const localUserId = user?._id?.toString();
             for (const uid of Array.from(peerConnectionsRef.current.keys())) {
                 if (!activeUserIds.has(uid) && uid !== localUserId) {
+                    const iceTimer = iceRestartTimersRef.current.get(uid);
+                    if (iceTimer) {
+                        clearTimeout(iceTimer);
+                        iceRestartTimersRef.current.delete(uid);
+                    }
+                    lastIceRestartAtRef.current.delete(uid);
                     try {
                         peerConnectionsRef.current.get(uid)?.close();
                     } catch (e) {}
@@ -1567,10 +1694,22 @@ export const VoiceProvider = ({ children }) => {
                     if (t.startsWith('api/')) return `${apiBase}/${t}`;
                     return t;
                 };
-                setWatchParty({
-                    ...data.watchParty,
-                    url: normalizeUrl(data.watchParty.url),
-                    serverTimestamp: data.watchParty.serverTimestamp || data.serverNow || getServerNow()
+                const normalizedIncomingUrl = normalizeUrl(data.watchParty.url);
+                const incomingTs = data.watchParty.serverTimestamp || data.serverNow || getServerNow();
+                setWatchParty(prev => {
+                    // Never roll back active Watch Party state with older voice:participants snapshots
+                    if (prev && prev.url === normalizedIncomingUrl && incomingTs > 0 && (prev.serverTimestamp || 0) > incomingTs + 250) {
+                        return {
+                            ...prev,
+                            alternatives: (Array.isArray(prev.alternatives) && prev.alternatives.length > 0) ? prev.alternatives : data.watchParty.alternatives,
+                            subtitles: (Array.isArray(prev.subtitles) && prev.subtitles.length > 0) ? prev.subtitles : data.watchParty.subtitles,
+                        };
+                    }
+                    return {
+                        ...data.watchParty,
+                        url: normalizedIncomingUrl,
+                        serverTimestamp: incomingTs
+                    };
                 });
             } else {
                 setWatchParty(null);
@@ -1596,7 +1735,7 @@ export const VoiceProvider = ({ children }) => {
                         try {
                             console.log(`[WebRTC] Creating and sending offer to existing user ${p.userId}`);
                             const offer = await pc.createOffer();
-                            const prioritizedOffer = prioritizeVideoCodec(offer.sdp);
+                            const prioritizedOffer = prioritizeVideoCodec(offer.sdp, callQualityModeRef.current);
                             await pc.setLocalDescription({ type: 'offer', sdp: prioritizedOffer });
                             // Use activeRoomRef.current to always read latest room (not stale closure)
                             const currentRoom = activeRoomRef.current;
@@ -1667,6 +1806,12 @@ export const VoiceProvider = ({ children }) => {
             if (targetId !== user?._id?.toString()) {
                 playInteractionSound('leave');
                 
+                const iceTimer = iceRestartTimersRef.current.get(targetId);
+                if (iceTimer) {
+                    clearTimeout(iceTimer);
+                    iceRestartTimersRef.current.delete(targetId);
+                }
+                lastIceRestartAtRef.current.delete(targetId);
                 // Cleanup connection & tracks
                 if (peerConnectionsRef.current.has(targetId)) {
                     try {
@@ -1967,7 +2112,7 @@ export const VoiceProvider = ({ children }) => {
                 await processQueuedCandidates(senderId, pc);
 
                 const answer = await pc.createAnswer();
-                const prioritizedAnswer = prioritizeVideoCodec(answer.sdp);
+                const prioritizedAnswer = prioritizeVideoCodec(answer.sdp, callQualityModeRef.current);
                 await pc.setLocalDescription({ type: 'answer', sdp: prioritizedAnswer });
                 const currentRoom = activeRoomRef.current;
                 if (currentRoom) {
@@ -2057,16 +2202,88 @@ export const VoiceProvider = ({ children }) => {
             }
         };
 
+        const handleIceRestartRequest = ({ senderId }) => {
+            const targetId = String(senderId || '');
+            const pc = peerConnectionsRef.current.get(targetId);
+            if (!pc) return;
+            const now = Date.now();
+            const lastAt = lastIceRestartAtRef.current.get(targetId) || 0;
+            if (now - lastAt < 4000) return;
+            lastIceRestartAtRef.current.set(targetId, now);
+            console.log(`[WebRTC ICE Restart] Received request from ${targetId}, running iceRestart offer`);
+            renegotiatePeer(targetId, { iceRestart: true });
+        };
+
         socket.on('voice:video-offer', handleVideoOffer);
         socket.on('voice:video-answer', handleVideoAnswer);
         socket.on('voice:new-ice-candidate', handleNewIceCandidate);
+        socket.on('voice:ice-restart-request', handleIceRestartRequest);
 
         return () => {
             socket.off('voice:video-offer', handleVideoOffer);
             socket.off('voice:video-answer', handleVideoAnswer);
             socket.off('voice:new-ice-candidate', handleNewIceCandidate);
+            socket.off('voice:ice-restart-request', handleIceRestartRequest);
         };
     }, [socket, getOrCreatePC, safeEmit, renegotiatePeer, updateParticipantList]);
+
+    // Lightweight 3.5s WebRTC stats congestion monitor: adapts video/screen bitrate cleanly under packet loss or high RTT
+    useEffect(() => {
+        if (!activeRoom) {
+            congestionTierRef.current = 0;
+            return;
+        }
+        let cleanStreak = 0;
+        const interval = setInterval(async () => {
+            if (peerConnectionsRef.current.size === 0) return;
+            let worstLoss = 0;
+            let worstRtt = 0;
+            for (const pc of peerConnectionsRef.current.values()) {
+                if (pc.connectionState !== 'connected' && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+                    continue;
+                }
+                try {
+                    const stats = await pc.getStats();
+                    stats.forEach((report) => {
+                        if (report.type === 'remote-inbound-rtp') {
+                            if (typeof report.fractionLost === 'number') {
+                                worstLoss = Math.max(worstLoss, report.fractionLost);
+                            }
+                            if (typeof report.roundTripTime === 'number') {
+                                worstRtt = Math.max(worstRtt, report.roundTripTime);
+                            }
+                        } else if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
+                            if (typeof report.currentRoundTripTime === 'number') {
+                                worstRtt = Math.max(worstRtt, report.currentRoundTripTime);
+                            }
+                        }
+                    });
+                } catch (_) {}
+            }
+
+            let nextTier = congestionTierRef.current;
+            if (worstLoss > 0.12 || worstRtt > 0.5) {
+                nextTier = 2;
+                cleanStreak = 0;
+            } else if (worstLoss > 0.05 || worstRtt > 0.28) {
+                nextTier = Math.max(nextTier, 1);
+                cleanStreak = 0;
+            } else {
+                cleanStreak += 1;
+                if (cleanStreak >= 2 && nextTier > 0) {
+                    nextTier = Math.max(0, nextTier - 1);
+                    cleanStreak = 0;
+                }
+            }
+
+            if (nextTier !== congestionTierRef.current) {
+                congestionTierRef.current = nextTier;
+                console.log(`[WebRTC ABR] Congestion tier -> ${nextTier} (loss=${(worstLoss * 100).toFixed(1)}%, rtt=${Math.round(worstRtt * 1000)}ms)`);
+                updateSendersQuality(callQualityModeRef.current, nextTier);
+            }
+        }, 3500);
+        return () => clearInterval(interval);
+    }, [activeRoom, updateSendersQuality]);
 
     // Reconnection listener to recover signalling state automatically
     useEffect(() => {
@@ -2221,10 +2438,11 @@ export const VoiceProvider = ({ children }) => {
                                 await audioSender.replaceTrack(newAudioTrack);
                                 const params = audioSender.getParameters();
                                 if (!params.encodings) params.encodings = [{}];
+                                const net = getNetworkProfile();
                                 params.encodings.forEach(enc => {
                                     enc.priority = 'high';
                                     enc.networkPriority = 'high';
-                                    enc.maxBitrate = isSaver ? 48000 : 128000;
+                                    enc.maxBitrate = net.isVerySlow ? 24000 : (isSaver ? 36000 : 96000);
                                     enc.active = true;
                                 });
                                 audioSender.setParameters(params).catch(() => {});
@@ -2303,12 +2521,16 @@ export const VoiceProvider = ({ children }) => {
                     let videoStream;
                     try {
                         const isSaver = callQualityModeRef.current === 'saver';
+                        const net = getNetworkProfile();
+                        const videoConstraints = net.isVerySlow
+                            ? { width: { ideal: 320, max: 480 }, height: { ideal: 240, max: 360 }, frameRate: { ideal: 15, max: 15 } }
+                            : (isSaver || net.isSlow
+                                ? { width: { ideal: 640, max: 854 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 24, max: 24 } }
+                                : { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { ideal: 30, max: 30 } });
                         videoStream = await navigator.mediaDevices.getUserMedia({
                             video: {
                                 facingMode: { ideal: facingMode || 'user' },
-                                width: isSaver ? { ideal: 640, max: 854 } : { ideal: 1280, max: 1280 },
-                                height: isSaver ? { ideal: 480, max: 480 } : { ideal: 720, max: 720 },
-                                frameRate: isSaver ? { ideal: 24, max: 24 } : { ideal: 30, max: 30 }
+                                ...videoConstraints
                             }
                         });
                     } catch (e1) {
@@ -2348,16 +2570,6 @@ export const VoiceProvider = ({ children }) => {
                     if (videoSender) {
                         try {
                             await videoSender.replaceTrack(cameraTrack);
-                            const params = videoSender.getParameters();
-                            if (!params.encodings) params.encodings = [{}];
-                            const isSaver = callQualityModeRef.current === 'saver';
-                            params.encodings.forEach(enc => {
-                                enc.maxBitrate = isSaver ? 550000 : 1800000;
-                                enc.maxFramerate = isSaver ? 24 : 30;
-                                enc.priority = 'high';
-                                enc.networkPriority = 'high';
-                            });
-                            videoSender.setParameters(params).catch(() => {});
                         } catch (e) {
                             console.warn("[WebRTC] replaceTrack error (ON):", e);
                         }
@@ -2373,6 +2585,7 @@ export const VoiceProvider = ({ children }) => {
                 if (needsRenegotiate) {
                     await renegotiateAll();
                 }
+                updateSendersQuality(callQualityModeRef.current);
             }
         } else {
             // Turning camera OFF
@@ -2765,15 +2978,20 @@ export const VoiceProvider = ({ children }) => {
                     try { localStreamRef.current.removeTrack(t); } catch (e) {}
                 });
 
-                // 2. Request new video stream with the new facingMode
+                // 2. Request new video stream with the new facingMode (network & quality aware)
                 let newStream = null;
                 try {
+                    const isSaver = callQualityModeRef.current === 'saver';
+                    const net = getNetworkProfile();
+                    const flipConstraints = net.isVerySlow
+                        ? { width: { ideal: 320, max: 480 }, height: { ideal: 240, max: 360 }, frameRate: { ideal: 15, max: 15 } }
+                        : (isSaver || net.isSlow
+                            ? { width: { ideal: 640, max: 854 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 24, max: 24 } }
+                            : { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { ideal: 30, max: 30 } });
                     newStream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             facingMode: { ideal: newMode },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 },
-                            frameRate: { ideal: 30 }
+                            ...flipConstraints
                         }
                     });
                 } catch (idealErr) {
@@ -2819,12 +3037,13 @@ export const VoiceProvider = ({ children }) => {
                 }
 
                 // 4. Update React participant list so local camera card immediately shows the switched camera
+                updateSendersQuality(callQualityModeRef.current);
                 updateParticipantList();
             } catch (err) {
                 console.error("[WebRTC] Failed to switch camera facingMode:", err);
             }
         }
-    }, [facingMode, localState.isCameraOn, availableDevices, updateParticipantList]);
+    }, [facingMode, localState.isCameraOn, availableDevices, updateParticipantList, updateSendersQuality]);
 
     const setAudioOutput = useCallback(async (deviceIdOrRoute) => {
         if (Capacitor.isNativePlatform()) {
@@ -2866,7 +3085,7 @@ export const VoiceProvider = ({ children }) => {
                         echoCancellation: true,
                         noiseSuppression: true,
                         autoGainControl: true,
-                        channelCount: 2,
+                        channelCount: callQualityModeRef.current === 'high' ? 2 : 1,
                         sampleRate: 48000
                     }
                 });
@@ -2935,12 +3154,14 @@ export const VoiceProvider = ({ children }) => {
         if (!activeRoom || !localState.isCameraOn || !localStreamRef.current) return;
         try {
             console.log(`[WebRTC] Switching camera video input device to: ${deviceId}`);
+            const isSaver = callQualityModeRef.current === 'saver';
+            const net = getNetworkProfile();
             const newStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     deviceId: deviceId ? { exact: deviceId } : undefined,
-                    width: 640,
-                    height: 480,
-                    frameRate: 24
+                    width: net.isVerySlow ? 320 : (isSaver || net.isSlow ? 640 : 1280),
+                    height: net.isVerySlow ? 240 : (isSaver || net.isSlow ? 480 : 720),
+                    frameRate: net.isVerySlow ? 15 : (isSaver || net.isSlow ? 24 : 30)
                 }
             });
             const newVideoTrack = newStream.getVideoTracks()[0];
@@ -2970,11 +3191,12 @@ export const VoiceProvider = ({ children }) => {
                 try { localStreamRef.current.removeTrack(oldVideoTrack); } catch (e) {}
             });
 
+            updateSendersQuality(callQualityModeRef.current);
             updateParticipantList();
         } catch (err) {
             console.error("Failed to switch video input device:", err);
         }
-    }, [activeRoom, localState.isCameraOn, updateParticipantList]);
+    }, [activeRoom, localState.isCameraOn, updateParticipantList, updateSendersQuality]);
 
     // Chat messaging with rapid multi-click debounce
     const lastSentMsgRef = useRef({ text: '', time: 0 });
@@ -3481,16 +3703,28 @@ const AudioTrackPlayer = ({ track, muted, isRemoteMuted, isScreenAudio, volume, 
             el.setSinkId(audioOutputId).catch(() => {});
         }
 
+        let unlockCleanup = null;
+        const removeUnlockListeners = () => {
+            if (unlockCleanup) {
+                unlockCleanup();
+                unlockCleanup = null;
+            }
+        };
+
         const tryPlay = () => {
             if (!el) return;
             const playPromise = el.play();
             if (playPromise !== undefined) {
                 playPromise.catch(err => {
                     console.warn('[WebRTC] Audio autoplay blocked or interrupted, unlocking on next gesture:', err);
+                    removeUnlockListeners();
                     const unlock = () => {
+                        removeUnlockListeners();
                         if (el) {
                             el.play().catch(() => {});
                         }
+                    };
+                    unlockCleanup = () => {
                         window.removeEventListener('click', unlock);
                         window.removeEventListener('touchstart', unlock);
                         window.removeEventListener('keydown', unlock);
@@ -3512,6 +3746,7 @@ const AudioTrackPlayer = ({ track, muted, isRemoteMuted, isScreenAudio, volume, 
 
         return () => {
             track.removeEventListener('unmute', handleUnmute);
+            removeUnlockListeners();
             try {
                 el.pause();
                 el.srcObject = null;

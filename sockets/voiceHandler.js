@@ -1165,8 +1165,9 @@ export const initializeVoiceHandler = (io) => {
                     localWp.serverTimestamp = now;
                 }
 
-                // Persist to Redis asynchronously
+                // Persist to Redis asynchronously (monotonic timestamp guard prevents out-of-order overwrites)
                 const updated = await mutateWatchParty(roomName, (wp) => {
+                    if (wp.serverTimestamp && wp.serverTimestamp > now) return wp;
                     apply(wp, time);
                     wp.lastUpdated = now;
                     wp.serverTimestamp = now;

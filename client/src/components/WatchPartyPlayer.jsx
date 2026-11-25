@@ -546,6 +546,7 @@ const WatchPartyPlayer = () => {
     const syncCorrectionHistoryRef = useRef([]);
     const lastSyncSeekEndedAtRef = useRef(0);
     const lastSyncSeekLatencyRef = useRef(0.25);
+    const hlsStallHistoryRef = useRef([]);
 
     // Audio & Subtitle Track States
     const [audioTracks, setAudioTracks] = useState([]);
@@ -1502,15 +1503,26 @@ const WatchPartyPlayer = () => {
                             (window.navigator?.userAgent && /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent)) ||
                             !!window.Capacitor?.isNativePlatform?.()
                         );
+                        const conn = typeof navigator !== 'undefined'
+                            ? (navigator.connection || navigator.mozConnection || navigator.webkitConnection)
+                            : null;
+                        const effType = String(conn?.effectiveType || '').toLowerCase();
+                        const downlinkMbps = Number(conn?.downlink);
+                        const isSlowNet = Boolean(
+                            conn?.saveData ||
+                            effType === 'slow-2g' || effType === '2g' || effType === '3g' ||
+                            (Number.isFinite(downlinkMbps) && downlinkMbps > 0 && downlinkMbps < 2.5)
+                        );
                         const initialStartTime = getLiveExpectedTime();
                         const hls = new Hls({
-                            // Instant startup on fastest variant, then immediate ABR upgrade
+                            // Network-aware instant startup on fastest variant + smooth ABR step-up
                             startLevel: 0,
-                            abrEwmaDefaultEstimate: isMobile ? 1500000 : 4500000,
-                            abrBandWidthUpFactor: 0.75,
-                            maxBufferLength: isMobile ? 20 : 30,
-                            maxMaxBufferLength: isMobile ? 40 : 60,
-                            maxBufferSize: isMobile ? (25 * 1024 * 1024) : (45 * 1024 * 1024),
+                            abrEwmaDefaultEstimate: isSlowNet ? 550000 : (isMobile ? 1500000 : 4500000),
+                            abrBandWidthFactor: isSlowNet ? 0.75 : 0.9,
+                            abrBandWidthUpFactor: isSlowNet ? 0.6 : 0.75,
+                            maxBufferLength: isSlowNet ? 16 : (isMobile ? 20 : 30),
+                            maxMaxBufferLength: isSlowNet ? 32 : (isMobile ? 40 : 60),
+                            maxBufferSize: isSlowNet ? (20 * 1024 * 1024) : (isMobile ? (25 * 1024 * 1024) : (45 * 1024 * 1024)),
                             backBufferLength: isMobile ? 10 : 30,
                             maxBufferHole: 0.3,
                             highBufferWatchdogPeriod: 1,
@@ -1520,7 +1532,7 @@ const WatchPartyPlayer = () => {
                             startPosition: isLive ? -1 : (initialStartTime > 0 ? initialStartTime : 0),
                             liveSyncDurationCount: isLive ? 3 : undefined,
                             liveMaxLatencyDurationCount: isLive ? 10 : undefined,
-                            capLevelToPlayerSize: isMobile,
+                            capLevelToPlayerSize: isMobile || isSlowNet,
                             nudgeMaxRetry: 8,
                             nudgeOffset: 0.15,
                             fragLoadingTimeOut: 25000,
@@ -1645,6 +1657,15 @@ const WatchPartyPlayer = () => {
                                 }
                             } else if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
                                 try {
+                                    const now = Date.now();
+                                    hlsStallHistoryRef.current = hlsStallHistoryRef.current.filter(t => now - t < 15000);
+                                    hlsStallHistoryRef.current.push(now);
+                                    if (hlsStallHistoryRef.current.length >= 2 && hls.autoLevelEnabled && hls.currentLevel > 0) {
+                                        const lowerLvl = Math.max(0, hls.currentLevel - 1);
+                                        hls.nextAutoLevel = lowerLvl;
+                                        hls.loadLevel = lowerLvl;
+                                        hlsStallHistoryRef.current = [];
+                                    }
                                     hls.startLoad();
                                     if (video && !video.paused) {
                                         video.play().catch(() => {});
@@ -1927,15 +1948,29 @@ const WatchPartyPlayer = () => {
             return;
         }
 
-        // 1. Check parsed cues first (custom uploaded, ready external, or provider vtt)
+        // 1. Check parsed cues first using O(log N) binary search
         if (parsedCuesRef.current && parsedCuesRef.current.length > 0) {
+            const cues = parsedCuesRef.current;
             const fpsMult = getSubFpsMultiplier(subFpsModeRef.current);
             const lookupTime = Math.max(0, (cur - (subOffsetSecRef.current || 0)) * fpsMult);
-            const active = parsedCuesRef.current.find(c => lookupTime >= c.start && lookupTime <= c.end);
-            const text = active ? active.text : '';
-            if (text !== activeCueTextRef.current) {
-                activeCueTextRef.current = text;
-                setActiveCueText(text);
+            let lo = 0;
+            let hi = cues.length - 1;
+            let foundText = '';
+            while (lo <= hi) {
+                const mid = (lo + hi) >>> 1;
+                const c = cues[mid];
+                if (lookupTime < c.start) {
+                    hi = mid - 1;
+                } else if (lookupTime > c.end) {
+                    lo = mid + 1;
+                } else {
+                    foundText = c.text;
+                    break;
+                }
+            }
+            if (foundText !== activeCueTextRef.current) {
+                activeCueTextRef.current = foundText;
+                setActiveCueText(foundText);
             }
             return;
         }
@@ -1980,14 +2015,14 @@ const WatchPartyPlayer = () => {
         setIsNativePlaying(false);
     };
 
-    // High-precision subtitle ticker: Ensures cues sync smoothly at 100ms intervals
-    // even during seek, pauses, micro-rate pacing, or low-frequency browser onTimeUpdate events!
+    // High-precision subtitle ticker: only runs when a subtitle track is active
     useEffect(() => {
+        if (activeSubtitleId === 'off') return;
         const subTicker = setInterval(() => {
             syncCurrentSubtitleCue();
         }, 200);
         return () => clearInterval(subTicker);
-    }, [syncCurrentSubtitleCue]);
+    }, [activeSubtitleId, syncCurrentSubtitleCue]);
 
     // Label formatters for Audio and Subtitles
     const formatAudioLabel = (track, idx, isShort = false) => {
@@ -2091,6 +2126,7 @@ const WatchPartyPlayer = () => {
             }
             i++;
         }
+        cues.sort((a, b) => a.start - b.start);
         return cues;
     };
 
@@ -2651,17 +2687,26 @@ const WatchPartyPlayer = () => {
                 ? detail.serverTimestamp
                 : getServerNow();
 
+            const clampSeekTime = (t) => {
+                const dur = video?.duration;
+                if (Number.isFinite(dur) && dur > 1) {
+                    return Math.max(0, Math.min(dur - 0.4, t));
+                }
+                return Math.max(0, t);
+            };
+
             if (detail.type === 'watch-pause') {
                 if (video && isNativeVOD) {
                     isSyncingRef.current = true;
                     video.pause();
                     video.playbackRate = 1.0;
                     setIsNativePlaying(false);
-                    lastProgrammaticSeekTimeRef.current = baseTime;
-                    if (Math.abs((video.currentTime || 0) - baseTime) > 0.03) {
-                        video.currentTime = baseTime;
+                    const safeBase = clampSeekTime(baseTime);
+                    lastProgrammaticSeekTimeRef.current = safeBase;
+                    if (Math.abs((video.currentTime || 0) - safeBase) > 0.03) {
+                        video.currentTime = safeBase;
                     }
-                    setCurrentTime(baseTime);
+                    setCurrentTime(safeBase);
                     setTimeout(() => {
                         isSyncingRef.current = false;
                     }, 150);
@@ -2673,7 +2718,7 @@ const WatchPartyPlayer = () => {
                 }
             } else if (detail.type === 'watch-play') {
                 const transitSec = Math.max(0, Math.min(2.0, (getServerNow() - refTs) / 1000));
-                const liveTarget = Number((baseTime + transitSec).toFixed(4));
+                const liveTarget = clampSeekTime(Number((baseTime + transitSec).toFixed(4)));
                 if (video && isNativeVOD) {
                     isSyncingRef.current = true;
                     video.playbackRate = 1.0;
@@ -2718,10 +2763,11 @@ const WatchPartyPlayer = () => {
                     setTimeout(() => { isSyncingRef.current = false; }, 250);
                 }
             } else if (detail.type === 'watch-seek') {
-                const transitSec = watchParty?.isPlaying
+                const isCurrentlyPlaying = !!watchPartyRef.current?.isPlaying;
+                const transitSec = isCurrentlyPlaying
                     ? Math.max(0, Math.min(2.0, (getServerNow() - refTs) / 1000))
                     : 0;
-                const liveTarget = Number((baseTime + transitSec).toFixed(4));
+                const liveTarget = clampSeekTime(Number((baseTime + transitSec).toFixed(4)));
                 if (video && isNativeVOD) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = liveTarget;
@@ -2731,7 +2777,7 @@ const WatchPartyPlayer = () => {
                 } else if (stdPlayer && !isStream) {
                     isSyncingRef.current = true;
                     lastProgrammaticSeekTimeRef.current = liveTarget;
-                    stdPlayer.seekTo?.(liveTarget, 'seconds', !!watchParty?.isPlaying);
+                    stdPlayer.seekTo?.(liveTarget, 'seconds', isCurrentlyPlaying);
                     setTimeout(() => { isSyncingRef.current = false; }, 250);
                 }
             }
@@ -2741,7 +2787,7 @@ const WatchPartyPlayer = () => {
         return () => {
             window.removeEventListener('watchparty:imperative-sync', handleImperativeSync);
         };
-    }, [user, isNativeVOD, isStream, watchParty?.isPlaying, getServerNow]);
+    }, [user, isNativeVOD, isStream, getServerNow]);
 
     // Native Video Synchronization Engine (Master Clock Smart Pacer + Lost Loading Time Compensator)
     useEffect(() => {
@@ -2772,7 +2818,10 @@ const WatchPartyPlayer = () => {
         };
         const performCorrectionSeek = (targetTime) => {
             const lead = Math.min(0.8, lastSyncSeekLatencyRef.current || 0.25);
-            const finalTarget = Number((targetTime + lead).toFixed(4));
+            let finalTarget = Number((targetTime + lead).toFixed(4));
+            if (Number.isFinite(video.duration) && video.duration > 1) {
+                finalTarget = Math.max(0, Math.min(video.duration - 0.4, finalTarget));
+            }
             const startedAt = Date.now();
             syncCorrectionHistoryRef.current.push(startedAt);
             lastSyncSeekEndedAtRef.current = startedAt;
@@ -2903,13 +2952,11 @@ const WatchPartyPlayer = () => {
             // 4. If video is currently seeking or waiting for network buffer during playback, wait for recovery
             if (video.seeking || (video.readyState < 2 && isBufferingStall)) return;
 
-            // 5. When Playing: Crystal-clear zero-distortion audio sync
-            // Lock playbackRate strictly at 1.0 to eliminate pitch modulation (incelme/kalınlaşma) and DSP flanger artifacts.
-            if (video.playbackRate !== 1.0) {
-                video.playbackRate = 1.0;
-            }
-
-            const hardSeekThreshold = recentCorrections() >= 2 ? 4.5 : 3.0;
+            // 5. Dual-Stage Low-Bandwidth Sync: gentle 4% pitch-preserved micro-rate nudge for medium drift, hard seek only for large drift
+            const conn = typeof navigator !== 'undefined' ? (navigator.connection || navigator.mozConnection || navigator.webkitConnection) : null;
+            const eff = String(conn?.effectiveType || '').toLowerCase();
+            const isSlowLink = Boolean(conn?.saveData || eff === 'slow-2g' || eff === '2g' || eff === '3g' || (Number(conn?.downlink) > 0 && Number(conn?.downlink) < 2.5));
+            const hardSeekThreshold = (recentCorrections() >= 2 || isSlowLink) ? 5.0 : 3.2;
             const canHardSeek = !playTransitionGuardActive && canCorrectNow();
 
             if (absDrift > hardSeekThreshold && canHardSeek) {
@@ -2919,6 +2966,18 @@ const WatchPartyPlayer = () => {
                 playTransitionGuardTimer = setTimeout(() => {
                     playTransitionGuardActive = false;
                 }, 500);
+            } else if (!isBufferingStall && video.readyState >= 3 && !video.seeking) {
+                if (absDrift > 0.6 && absDrift <= hardSeekThreshold) {
+                    const targetRate = drift > 0 ? 1.04 : 0.96;
+                    if (Math.abs((video.playbackRate || 1.0) - targetRate) > 0.01) {
+                        video.preservesPitch = true;
+                        video.playbackRate = targetRate;
+                    }
+                } else if (absDrift <= 0.25 && video.playbackRate !== 1.0) {
+                    video.playbackRate = 1.0;
+                }
+            } else if (video.playbackRate !== 1.0) {
+                video.playbackRate = 1.0;
             }
         };
 
