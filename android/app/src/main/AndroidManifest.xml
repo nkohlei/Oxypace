@@ -29,18 +29,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             
-            <!-- Deep Linking for Capacitor Google Auth & Web Links -->
-            <intent-filter android:autoVerify="true">
+            <!-- Deep Linking for Capacitor Google Auth & Android App Links -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="oxypace" />
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="oxypace.com.tr" android:pathPrefix="/post/" />
+                <data android:scheme="https" android:host="oxypace.com.tr" android:pathPrefix="/portal/" />
+                <data android:scheme="https" android:host="oxypace.com.tr" android:pathPrefix="/profile/" />
+                <data android:scheme="https" android:host="oxypace.com.tr" android:pathPrefix="/comment/" />
                 <data android:scheme="https" android:host="oxypace.com.tr" android:pathPrefix="/auth/process" />
+                <data android:scheme="https" android:host="www.oxypace.com.tr" android:pathPrefix="/post/" />
+                <data android:scheme="https" android:host="www.oxypace.com.tr" android:pathPrefix="/portal/" />
+                <data android:scheme="https" android:host="www.oxypace.com.tr" android:pathPrefix="/profile/" />
+                <data android:scheme="https" android:host="www.oxypace.com.tr" android:pathPrefix="/comment/" />
+                <data android:scheme="https" android:host="www.oxypace.com.tr" android:pathPrefix="/auth/process" />
             </intent-filter>
 
             <!-- Android System Share Target (Galeri, Dosyalar, Sosyal Medya Paylaş) -->

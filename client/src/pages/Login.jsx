@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { getDeviceInfo } from '../utils/deviceHelper';
+import { consumePendingRedirect } from '../utils/redirectUtils';
 import WarpGridBackground from '../components/WarpGridBackground';
 import './Auth.css';
 
@@ -24,7 +25,7 @@ const Login = ({ isModal = false, onClose = null }) => {
         if (isModal) return;
         const token = localStorage.getItem('token');
         if (token && token !== 'null' && token !== 'undefined') {
-            navigate('/messages', { replace: true });
+            navigate(consumePendingRedirect() || '/messages', { replace: true });
         }
     }, [navigate, isModal]);
 
@@ -168,7 +169,7 @@ const Login = ({ isModal = false, onClose = null }) => {
                 if (onClose) onClose();
             } else {
                 login(response.data.token, response.data.user);
-                navigate('/messages', { replace: true });
+                navigate(consumePendingRedirect() || '/messages', { replace: true });
             }
         } catch (err) {
             if (err.response?.status === 403 && err.response?.data?.isDeleted) {

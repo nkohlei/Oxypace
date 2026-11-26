@@ -1574,15 +1574,11 @@ router.put('/settings', protect, async (req, res) => {
         if (!user.settings) {
             user.settings = {};
         }
-        if (!user.settings.notifications) {
-            user.settings.notifications = {};
-        }
-        if (!user.settings.privacy) {
-            user.settings.privacy = {};
-        }
-        if (!user.settings.video) {
-            user.settings.video = {};
-        }
+
+        const toPlain = (sub) => (sub && typeof sub.toObject === 'function' ? sub.toObject() : (sub || {}));
+        user.settings.notifications = toPlain(user.settings.notifications);
+        user.settings.privacy = toPlain(user.settings.privacy);
+        user.settings.video = toPlain(user.settings.video);
 
         if (notifications) {
             user.settings.notifications = { ...user.settings.notifications, ...notifications };
@@ -1630,8 +1626,21 @@ router.put('/settings', protect, async (req, res) => {
                 }
             }
         }
-        if (video) {
-            user.settings.video = { ...user.settings.video, ...video };
+        if (video && typeof video === 'object') {
+            const nextVideo = { ...user.settings.video };
+            if (['auto', 'performance', 'saver', 'lowest'].includes(video.playbackQuality)) {
+                nextVideo.playbackQuality = video.playbackQuality;
+            }
+            if (['ask', '1080', '720', '360'].includes(video.downloadQuality)) {
+                nextVideo.downloadQuality = video.downloadQuality;
+            }
+            if (['ask', 'mp4', 'original'].includes(video.downloadFormat)) {
+                nextVideo.downloadFormat = video.downloadFormat;
+            }
+            if (video.autoplay === 'on' || video.autoplay === 'off') {
+                nextVideo.autoplay = video.autoplay;
+            }
+            user.settings.video = nextVideo;
             user.markModified('settings.video');
         }
 

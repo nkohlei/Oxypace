@@ -52,6 +52,23 @@ import {
 import './Portal.css';
 
 
+const readFreshReturnFeedContext = (portalId) => {
+    try {
+        const raw = sessionStorage.getItem('oxypace_return_feed_context');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (
+            parsed &&
+            parsed.portalId &&
+            String(parsed.portalId) === String(portalId) &&
+            Date.now() - (parsed.timestamp || 0) < 10 * 60 * 1000
+        ) {
+            return parsed;
+        }
+    } catch (_) {}
+    return null;
+};
+
 const Portal = () => {
     const { id } = useParams();
     const location = useLocation();
@@ -59,6 +76,8 @@ const Portal = () => {
     const urlChannel = searchParams.get('channel');
     const urlPost = searchParams.get('post');
     const lastAppliedUrlChannelRef = useRef(null);
+    const pendingReturnCtxRef = useRef(readFreshReturnFeedContext(id));
+    const shouldPreserveLoadedTailRef = useRef(false);
     const { user, token, updateUser, syncPortalInUser, syncPortalMembership, loading: authLoading } = useAuth();
     const { socket, connected } = useSocket();
     const navigate = useNavigate();
@@ -731,6 +750,8 @@ const Portal = () => {
 
     const handleMobileBackToPortalMenu = useCallback(() => {
         explicitMobileBackRef.current = true;
+        pendingReturnCtxRef.current = null;
+        try { sessionStorage.removeItem('oxypace_return_feed_context'); } catch (_) {}
         clearChannelQueryParams();
         if (setMobileChannelOpen) {
             setMobileChannelOpen(false);
@@ -739,6 +760,8 @@ const Portal = () => {
 
     const handleChannelSelect = (channelId) => {
         explicitMobileBackRef.current = false;
+        pendingReturnCtxRef.current = null;
+        try { sessionStorage.removeItem('oxypace_return_feed_context'); } catch (_) {}
         clearChannelQueryParams();
         setCurrentChannel(channelId);
         setShowScrollTop(false); // Reset scroll button when changing channels
@@ -1161,6 +1184,14 @@ const Portal = () => {
         if (!authLoading && portal && String(portal._id) === String(id) && portal.channels && portal.channels.length > 0) {
             // Check if we need to set a default channel (only if currentChannel is null)
             if (!currentChannel) {
+                const returnChannelId = pendingReturnCtxRef.current?.channelId;
+                if (returnChannelId) {
+                    const returnMatched = portal.channels.find(c => String(c._id) === String(returnChannelId));
+                    if (returnMatched) {
+                        setCurrentChannel(returnMatched._id);
+                        return;
+                    }
+                }
                 if (urlChannel) {
                     const matchedChannel = portal.channels.find(c => String(c._id) === String(urlChannel));
                     if (matchedChannel) {
@@ -1216,10 +1247,11 @@ const Portal = () => {
     }, [id, setMobileChannelOpen]);
 
     // Handle mobileChannelOpen when navigating into Portal:
-    // If URL contains channel or joinVoice, automatically open mobile channel view so the live room / channel displays immediately!
+    // If URL contains channel/joinVoice OR we are returning from PostDetail to the feed, open mobile channel view immediately!
     useLayoutEffect(() => {
         const hasChannelParam = !!urlChannel || searchParams.get('joinVoice') === 'true';
-        if (setMobileChannelOpen && hasChannelParam) {
+        const hasReturnFeed = Boolean(pendingReturnCtxRef.current || readFreshReturnFeedContext(id));
+        if (setMobileChannelOpen && (hasChannelParam || hasReturnFeed)) {
             setMobileChannelOpen(true);
         }
     }, [id, urlChannel, searchParams, setMobileChannelOpen]);
@@ -1246,6 +1278,42 @@ const Portal = () => {
             setActivePortalChannel(null, null);
         };
     }, [id, currentChannel, isMobileView, mobileChannelOpen, urlChannel]);
+
+    // Restore exact feed scroll position / post element when returning from PostDetail
+    useEffect(() => {
+        const ctx = pendingReturnCtxRef.current;
+        if (!ctx || String(ctx.portalId) !== String(id)) return;
+        if (ctx.channelId && currentChannel && String(ctx.channelId) !== String(currentChannel)) return;
+        if (contentLoading || !Array.isArray(posts) || posts.length === 0) return;
+
+        const restoreScroll = () => {
+            const postEl = ctx.postId ? document.getElementById(`post-${ctx.postId}`) : null;
+            if (postEl) {
+                postEl.scrollIntoView({ behavior: 'instant', block: 'center' });
+                return true;
+            }
+            const feedEl = feedRef.current || document.querySelector('.portal-feed-container.discord-feed');
+            if (feedEl && typeof ctx.scrollTop === 'number' && ctx.scrollTop > 0) {
+                feedEl.scrollTop = ctx.scrollTop;
+                return true;
+            }
+            return false;
+        };
+
+        const rafId = requestAnimationFrame(() => {
+            restoreScroll();
+        });
+        const settleTimer = setTimeout(() => {
+            restoreScroll();
+            pendingReturnCtxRef.current = null;
+            try { sessionStorage.removeItem('oxypace_return_feed_context'); } catch (_) {}
+        }, 140);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            clearTimeout(settleTimer);
+        };
+    }, [id, currentChannel, contentLoading, posts]);
 
     // Scroll to specific post when loaded
     useEffect(() => {
@@ -1389,13 +1457,17 @@ const Portal = () => {
 
             let hasCachedPosts = false;
             try {
-                const cached = localStorage.getItem(cacheKey) || sessionStorage.getItem(cacheKey);
+                const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         setPosts(parsed);
                         setContentLoading(false);
                         hasCachedPosts = true;
+                        const returnCtx = pendingReturnCtxRef.current;
+                        if (returnCtx && returnCtx.postId && parsed.length > 10) {
+                            shouldPreserveLoadedTailRef.current = true;
+                        }
                     }
                 }
             } catch (_) { }
@@ -1448,14 +1520,24 @@ const Portal = () => {
                 setPosts(prev => {
                     const existingIds = new Set(prev.map(p => p._id));
                     const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p._id));
-                    return [...prev, ...uniqueNewPosts];
+                    const merged = [...prev, ...uniqueNewPosts];
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 60))); } catch (_) {}
+                    return merged;
                 });
             } else {
-                setPosts(newPosts);
+                let finalPosts = newPosts;
+                if (shouldPreserveLoadedTailRef.current && Array.isArray(postsRef.current) && postsRef.current.length > newPosts.length) {
+                    const freshIds = new Set(newPosts.map(p => String(p._id)));
+                    const olderTail = postsRef.current.filter(p => !freshIds.has(String(p._id)));
+                    finalPosts = [...newPosts, ...olderTail];
+                    shouldPreserveLoadedTailRef.current = false;
+                }
+                setPosts(finalPosts);
                 try {
-                    localStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 20)));
+                    sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 60)));
+                    localStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20)));
                 } catch (_) {
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(newPosts.slice(0, 15))); } catch (__) { }
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20))); } catch (__) { }
                 }
             }
 
@@ -1498,12 +1580,16 @@ const Portal = () => {
 
     // Reset state when ID changes
     useEffect(() => {
+        const returnCtx = readFreshReturnFeedContext(id);
+        pendingReturnCtxRef.current = returnCtx;
+        shouldPreserveLoadedTailRef.current = false;
         setPosts([]);
         setHasMore(true);
         setCurrentChannel(null); // Reset channel to avoid using old portal's channel
         setPortal(null); // Clear portal data to prevent showing old content
         setError('');
-        setMobileChannelOpen(false); // Reset mobile feed state
+        const keepChannelOpen = Boolean(returnCtx || urlChannel || searchParams.get('joinVoice') === 'true');
+        setMobileChannelOpen(keepChannelOpen);
     }, [id]);
 
     const handleDeletePost = useCallback((postId) => {

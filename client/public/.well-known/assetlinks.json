@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.oxypace.app",
+      "sha256_cert_fingerprints": [
+        "28:67:29:9F:C8:9A:B8:AD:C8:5D:0F:80:3A:A3:2A:85:BF:E7:CE:03:FB:D8:DD:28:BF:80:8E:5B:EA:A4:5A:17"
+      ]
+    }
+  }
+]

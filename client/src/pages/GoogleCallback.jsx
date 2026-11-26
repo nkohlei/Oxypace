@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { consumePendingRedirect } from '../utils/redirectUtils';
 
 const GoogleCallback = () => {
     const [searchParams] = useSearchParams();
@@ -20,11 +21,12 @@ const GoogleCallback = () => {
             if (isNewUser) {
                 navigate('/onboarding');
             } else {
+                const pendingRedirect = consumePendingRedirect();
                 const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || navigator.userAgent.includes('Electron'));
                 if (isElectron) {
-                    window.location.href = '#/';
+                    window.location.href = pendingRedirect ? `#${pendingRedirect}` : '#/';
                 } else {
-                    window.location.href = '/messages'; // Direct clean redirect into Portal Messages
+                    window.location.href = pendingRedirect || '/messages';
                 }
             }
         } else {

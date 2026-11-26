@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
+import { consumePendingRedirect } from '../utils/redirectUtils';
 import SEO from '../components/SEO';
 import OxypaceBackground from '../components/OxypaceBackground';
 import MobileWelcomeFlow from '../components/MobileWelcomeFlow';
@@ -54,9 +55,14 @@ export default function Home() {
         },
     ];
 
-    // Oturum açıkken kullanıcı ana sayfaya geldiğinde anında portalına/mesajlarına yönlendir
+    // Oturum açıkken kullanıcı ana sayfaya geldiğinde anında bekleyen yönlendirmeye/portalına/mesajlarına yönlendir
     useEffect(() => {
         if (!loading && user) {
+            const pendingRedirect = consumePendingRedirect();
+            if (pendingRedirect) {
+                navigate(pendingRedirect, { replace: true });
+                return;
+            }
             const topPortal = localStorage.getItem('oxypace_top_portal');
             if (topPortal) {
                 try {

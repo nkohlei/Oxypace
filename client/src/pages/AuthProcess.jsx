@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getDeviceInfo } from '../utils/deviceHelper';
+import { consumePendingRedirect } from '../utils/redirectUtils';
 
 const AuthProcess = () => {
     const [searchParams] = useSearchParams();
@@ -35,7 +36,7 @@ const AuthProcess = () => {
                 if (action === 'login') {
                     sessionStorage.setItem('oxypace_fresh_login', 'true');
                     login(authToken, user);
-                    navigate('/messages', { replace: true });
+                    navigate(consumePendingRedirect() || '/messages', { replace: true });
                 } else if (action === 'onboarding') {
                     // Redirect to onboarding with the pre-token
                     navigate(`/onboarding?preToken=${preToken}`);

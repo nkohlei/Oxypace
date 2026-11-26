@@ -13,6 +13,7 @@ import { BadgeProvider } from './context/BadgeContext';
 import { VoiceProvider } from './context/VoiceContext';
 import { useNavigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
+import { consumePendingRedirect } from './utils/redirectUtils';
 import { ChevronLeft } from 'lucide-react';
 
 
@@ -668,10 +669,30 @@ const AppLayout = () => {
     const showSidebarOnMobile = isLoggedIn && isPortalPage && !mobileChannelOpen;
 
     useLayoutEffect(() => {
+        // Check whether we are returning from PostDetail back into the same portal feed
+        let returningToPortalFeed = false;
+        if (location.pathname.startsWith('/portal/')) {
+            try {
+                const rawCtx = sessionStorage.getItem('oxypace_return_feed_context');
+                if (rawCtx) {
+                    const ctx = JSON.parse(rawCtx);
+                    const pathPortalId = location.pathname.split('/')[2];
+                    if (
+                        ctx &&
+                        ctx.portalId &&
+                        String(ctx.portalId) === String(pathPortalId) &&
+                        Date.now() - (ctx.timestamp || 0) < 10 * 60 * 1000
+                    ) {
+                        returningToPortalFeed = true;
+                    }
+                }
+            } catch (_) {}
+        }
+
         // Reset sidebar state on every route transition
         closeSidebar();
         if (setMobileChannelOpen) {
-            setMobileChannelOpen(false);
+            setMobileChannelOpen(returningToPortalFeed);
         }
 
         // CRITICAL: Synchronously remove the active class from the overlay DOM element.
@@ -699,9 +720,11 @@ const AppLayout = () => {
             document.documentElement.scrollTop = 0;
             document.body.scrollTop = 0;
 
-            // Also reset the content scroll area
-            const scrollArea = document.querySelector('.content-scroll-area');
-            if (scrollArea) scrollArea.scrollTop = 0;
+            // Also reset the content scroll area unless restoring feed scroll position
+            if (!returningToPortalFeed) {
+                const scrollArea = document.querySelector('.content-scroll-area');
+                if (scrollArea) scrollArea.scrollTop = 0;
+            }
 
             // Force a layout reflow to flush the stale guest-mode dimensions
             const appContainer = document.querySelector('.app-container');
@@ -725,9 +748,14 @@ const AppLayout = () => {
         };
     }, [isLoggedIn, location.pathname]);
 
-    // Redirect from '/' directly to user's portal or '/messages' when logged in (both on desktop and mobile)
+    // Redirect from '/' directly to pending redirect, user's portal or '/messages' when logged in
     useEffect(() => {
         if (location.pathname === '/' && isAuthenticated && user) {
+            const pendingRedirect = consumePendingRedirect();
+            if (pendingRedirect) {
+                navigate(pendingRedirect, { replace: true });
+                return;
+            }
             const topPortal = localStorage.getItem('oxypace_top_portal');
             if (topPortal) {
                 try {
@@ -1050,9 +1078,10 @@ function App() {
             initOtaUpdater();
             requestNativePermissions();
 
-            // Handle Deep Linking for Google Auth and general routes
+            // Handle Deep Linking for Google Auth, App Links (https://oxypace.com.tr/...), and custom schemes
             CapacitorApp.addListener('appUrlOpen', (event) => {
-                const url = event.url;
+                const url = event?.url || '';
+                if (!url) return;
                 if (url.includes('oxypace://auth/process')) {
                     try {
                         let token = null;
@@ -1074,6 +1103,17 @@ function App() {
                     } catch (e) {
                         console.error('Custom scheme deep link error:', e);
                     }
+                } else if (url.startsWith('http://') || url.startsWith('https://')) {
+                    try {
+                        const parsed = new URL(url);
+                        const host = (parsed.hostname || '').toLowerCase();
+                        if (host === 'oxypace.com.tr' || host === 'www.oxypace.com.tr') {
+                            const route = `${parsed.pathname || '/'}${parsed.search || ''}`;
+                            safeMobileNavigate(route);
+                        }
+                    } catch (e) {
+                        console.error('HTTPS App Link error:', e);
+                    }
                 }
             });
         }
@@ -1085,6 +1125,23 @@ function App() {
                 const href = anchor.getAttribute('href');
                 if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
                     if (Capacitor.isNativePlatform()) {
+                        try {
+                            const parsed = new URL(href);
+                            const host = (parsed.hostname || '').toLowerCase();
+                            if (
+                                (host === 'oxypace.com.tr' || host === 'www.oxypace.com.tr') &&
+                                (
+                                    parsed.pathname.startsWith('/post/') ||
+                                    parsed.pathname.startsWith('/portal/') ||
+                                    parsed.pathname.startsWith('/profile/') ||
+                                    parsed.pathname.startsWith('/comment/')
+                                )
+                            ) {
+                                e.preventDefault();
+                                safeMobileNavigate(`${parsed.pathname}${parsed.search || ''}`);
+                                return;
+                            }
+                        } catch (_) {}
                         e.preventDefault();
                         // Direct opening via safe native browser (Custom Tabs / SafariViewController)
                         // to avoid disallowed_useragent and other WebView security policy violations.

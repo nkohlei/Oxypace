@@ -374,6 +374,30 @@ const PostDetail = () => {
         setIsMenuOpen(false);
     };
 
+    const handleGoBack = () => {
+        try {
+            const hasReturnCtx = !!sessionStorage.getItem('oxypace_return_feed_context');
+            const hasRouterHistory = typeof window !== 'undefined' && (window.history.state?.idx > 0 || (hasReturnCtx && window.history.length > 1));
+            if (hasRouterHistory) {
+                navigate(-1);
+                return;
+            }
+        } catch (_) {}
+
+        if (post?.portal) {
+            const targetPortalId = typeof post.portal === 'object' ? post.portal._id : post.portal;
+            const targetChannelId = post.channel ? (typeof post.channel === 'object' ? post.channel._id : post.channel) : null;
+            if (targetPortalId) {
+                navigate(
+                    `/portal/${targetPortalId}${targetChannelId ? `?channel=${targetChannelId}&post=${post._id}` : `?post=${post._id}`}`,
+                    { replace: true }
+                );
+                return;
+            }
+        }
+        navigate('/messages', { replace: true });
+    };
+
     const formatDate = (date) => {
         return new Date(date).toLocaleString('tr-TR', {
             day: 'numeric',
@@ -411,7 +435,7 @@ const PostDetail = () => {
                 ) : (
                     <h2>Gönderi bulunamadı</h2>
                 )}
-                <button onClick={() => navigate(-1)}>Geri Dön</button>
+                <button onClick={handleGoBack}>Geri Dön</button>
             </div>
         </div>
     );
@@ -440,7 +464,7 @@ const PostDetail = () => {
             <main className="pd-main-content">
                 <div className="pd-card-container">
                     {/* Back Nav */}
-                    <button className="pd-back-pill" onClick={() => navigate(-1)}>
+                    <button className="pd-back-pill" onClick={handleGoBack}>
                         <ChevronLeft size={18} />
                         <span>Geri</span>
                     </button>

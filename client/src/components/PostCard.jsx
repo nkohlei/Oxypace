@@ -664,7 +664,23 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                             title="Gönderiyi Göster"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/post/${post._id}`);
+                                try {
+                                    const pathMatch = window.location.pathname.match(/^\/portal\/([^/?#]+)/);
+                                    const portalId = pathMatch?.[1] || (typeof post.portal === 'object' ? post.portal?._id : post.portal) || null;
+                                    const channelId = (typeof post.channel === 'object' ? post.channel?._id : post.channel) || null;
+                                    const feedEl = document.querySelector('.portal-feed-container.discord-feed') || document.querySelector('.content-scroll-area');
+                                    sessionStorage.setItem('oxypace_return_feed_context', JSON.stringify({
+                                        pathname: window.location.pathname,
+                                        portalId: portalId ? String(portalId) : null,
+                                        channelId: channelId ? String(channelId) : null,
+                                        postId: String(post._id),
+                                        scrollTop: feedEl ? feedEl.scrollTop : 0,
+                                        timestamp: Date.now(),
+                                    }));
+                                } catch (_) {}
+                                navigate(`/post/${post._id}`, {
+                                    state: { fromFeed: true, postId: String(post._id) },
+                                });
                             }}
                         >
                             <Maximize2 size={16} />

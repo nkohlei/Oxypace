@@ -364,9 +364,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   useEffect(() => {
     const local = localStorage.getItem('video_autoplay');
-    if (local !== null) {
+    if (local === 'on' || local === 'off') {
       setIsAutoplayOff(local === 'off');
-    } else if (user?.settings?.video?.autoplay) {
+    } else if (user?.settings?.video?.autoplay === 'on' || user?.settings?.video?.autoplay === 'off') {
+      localStorage.setItem('video_autoplay', user.settings.video.autoplay);
       setIsAutoplayOff(user.settings.video.autoplay === 'off');
     }
   }, [user?.settings?.video?.autoplay]);

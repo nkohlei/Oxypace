@@ -55,10 +55,12 @@ const Settings = () => {
     });
     const [versionInfo, setVersionInfo] = useState({
         platform: Capacitor.isNativePlatform() ? 'android' : 'web',
-        appVersion: '2.6.3',
-        otaVersion: '2.6.3-ota.1',
+        appVersion: '2.6.4',
+        otaVersion: '2.6.4-ota.1',
     });
     const [otaCheckState, setOtaCheckState] = useState({ checking: false, label: '' });
+    const videoMutationSeqRef = useRef(0);
+    const lastLocalVideoEditRef = useRef(0);
 
     useEffect(() => {
         let mounted = true;
@@ -433,6 +435,7 @@ const Settings = () => {
     };
 
     const fetchSettings = async () => {
+        const startSeq = videoMutationSeqRef.current;
         try {
             const response = await axios.get('/api/users/me');
             if (response.data.user) {
@@ -450,19 +453,32 @@ const Settings = () => {
             if (response.data.settings) {
                 setNotifications((prev) => ({ ...prev, ...response.data.settings.notifications }));
                 setPrivacy((prev) => ({ ...prev, ...response.data.settings.privacy }));
-                if (response.data.settings.video) {
-                    setVideoSettings((prev) => ({ ...prev, ...response.data.settings.video }));
-                    if (response.data.settings.video.playbackQuality) {
-                        localStorage.setItem('video_playback_quality', response.data.settings.video.playbackQuality);
+                const noConcurrentVideoEdit =
+                    videoMutationSeqRef.current === startSeq &&
+                    Date.now() - lastLocalVideoEditRef.current > 1500;
+                if (response.data.settings.video && noConcurrentVideoEdit) {
+                    const remoteVideo = response.data.settings.video;
+                    setVideoSettings((prev) => ({
+                        ...prev,
+                        ...(remoteVideo.playbackQuality ? { playbackQuality: remoteVideo.playbackQuality } : {}),
+                        ...(remoteVideo.downloadQuality ? { downloadQuality: remoteVideo.downloadQuality } : {}),
+                        ...(remoteVideo.downloadFormat ? { downloadFormat: remoteVideo.downloadFormat } : {}),
+                        ...((remoteVideo.autoplay === 'on' || remoteVideo.autoplay === 'off')
+                            ? { autoplay: remoteVideo.autoplay }
+                            : {}),
+                    }));
+                    if (remoteVideo.playbackQuality) {
+                        localStorage.setItem('video_playback_quality', remoteVideo.playbackQuality);
                     }
-                    if (response.data.settings.video.downloadQuality) {
-                        localStorage.setItem('video_download_quality', response.data.settings.video.downloadQuality);
+                    if (remoteVideo.downloadQuality) {
+                        localStorage.setItem('video_download_quality', remoteVideo.downloadQuality);
                     }
-                    if (response.data.settings.video.downloadFormat) {
-                        localStorage.setItem('video_download_format', response.data.settings.video.downloadFormat);
+                    if (remoteVideo.downloadFormat) {
+                        localStorage.setItem('video_download_format', remoteVideo.downloadFormat);
                     }
-                    if (response.data.settings.video.autoplay) {
-                        localStorage.setItem('video_autoplay', response.data.settings.video.autoplay);
+                    if (remoteVideo.autoplay === 'on' || remoteVideo.autoplay === 'off') {
+                        localStorage.setItem('video_autoplay', remoteVideo.autoplay);
+                        window.dispatchEvent(new CustomEvent('video-autoplay-changed', { detail: remoteVideo.autoplay }));
                     }
                 }
             }
@@ -474,6 +490,10 @@ const Settings = () => {
     };
 
     const handleVideoSelectChange = async (setting, value) => {
+        videoMutationSeqRef.current += 1;
+        lastLocalVideoEditRef.current = Date.now();
+        const prevValue = videoSettings[setting];
+
         setVideoSettings((prev) => ({ ...prev, [setting]: value }));
         
         // Save to localStorage for instant client-side sync across all players
@@ -489,22 +509,35 @@ const Settings = () => {
         }
 
         try {
-            await axios.put('/api/users/settings', { video: { [setting]: value } });
+            const res = await axios.put('/api/users/settings', { video: { [setting]: value } });
+            const confirmedVideo = res?.data?.settings?.video || {
+                ...(user?.settings?.video || {}),
+                [setting]: value,
+            };
             if (user) {
                 updateUser({
                     ...user,
                     settings: {
-                        ...user.settings,
-                        video: {
-                            ...(user.settings?.video || {}),
-                            [setting]: value
-                        }
+                        ...(user.settings || {}),
+                        video: confirmedVideo
                     }
                 });
             }
         } catch (error) {
             console.error('Failed to update settings:', error);
-            fetchSettings();
+            if (prevValue !== undefined) {
+                setVideoSettings((prev) => ({ ...prev, [setting]: prevValue }));
+                if (setting === 'playbackQuality') {
+                    localStorage.setItem('video_playback_quality', prevValue);
+                } else if (setting === 'downloadQuality') {
+                    localStorage.setItem('video_download_quality', prevValue);
+                } else if (setting === 'downloadFormat') {
+                    localStorage.setItem('video_download_format', prevValue);
+                } else if (setting === 'autoplay') {
+                    localStorage.setItem('video_autoplay', prevValue);
+                    window.dispatchEvent(new CustomEvent('video-autoplay-changed', { detail: prevValue }));
+                }
+            }
         }
     };
 

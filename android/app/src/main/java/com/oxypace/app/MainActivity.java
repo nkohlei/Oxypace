@@ -2432,8 +2432,7 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        // Check if intent contains deep link Uri (e.g.
-        // oxypace://auth/process?token=...)
+        // Check if intent contains deep link Uri (custom scheme oxypace:// or HTTPS App Link https://oxypace.com.tr/...)
         android.net.Uri data = intent.getData();
         if (data != null) {
             String scheme = data.getScheme();
@@ -2441,26 +2440,51 @@ public class MainActivity extends BridgeActivity {
             String path = data.getPath();
             String query = data.getQuery();
 
+            String targetRoute = null;
             if ("oxypace".equals(scheme)) {
                 String fullPath = "/" + (host != null ? host : "") + (path != null ? path : "");
                 if (query != null && !query.isEmpty()) {
                     fullPath += "?" + query;
                 }
-                final String targetRoute = fullPath;
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                targetRoute = fullPath;
+            } else if (("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
+                    && ("oxypace.com.tr".equalsIgnoreCase(host) || "www.oxypace.com.tr".equalsIgnoreCase(host))) {
+                String normalizedPath = (path != null && !path.isEmpty()) ? path : "/";
+                if (query != null && !query.isEmpty()) {
+                    normalizedPath += "?" + query;
+                }
+                targetRoute = normalizedPath;
+            }
+
+            if (targetRoute != null && !targetRoute.isEmpty()) {
+                this.pendingRoute = targetRoute;
+                this.pendingIsJoinVoice = false;
+                intent.setData(null);
+
+                final String finalDeepRoute = targetRoute;
+                final Runnable dispatchDeepLink = () -> {
                     try {
-                        android.webkit.WebView webView = getBridge().getWebView();
+                        android.webkit.WebView webView = getBridge() != null ? getBridge().getWebView() : null;
                         if (webView != null) {
-                            webView.evaluateJavascript(
-                                    "(function(){ if (window.__oxypaceNavigate) { window.__oxypaceNavigate('"
-                                            + targetRoute.replace("'", "\\'") + "'); } else { window.location.href = '"
-                                            + targetRoute.replace("'", "\\'") + "'; } })();",
-                                    null);
+                            String escaped = finalDeepRoute.replace("'", "\\'");
+                            String script = "(function(){ " +
+                                    "try { " +
+                                    "  sessionStorage.setItem('pending_mobile_route', '" + escaped + "'); " +
+                                    "  if (window.__oxypaceNavigate) { " +
+                                    "    window.__oxypaceNavigate('" + escaped + "'); " +
+                                    "  } " +
+                                    "} catch(e) {} " +
+                                    "})();";
+                            webView.evaluateJavascript(script, null);
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                }, 500);
+                };
+                android.os.Handler deepHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+                deepHandler.postDelayed(dispatchDeepLink, 250);
+                deepHandler.postDelayed(dispatchDeepLink, 800);
+                deepHandler.postDelayed(dispatchDeepLink, 1500);
                 return;
             }
         }

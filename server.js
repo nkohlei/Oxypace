@@ -450,7 +450,7 @@ app.get(['/downloads/oxypace.apk', '/download/apk', /^\/downloads\/oxypace-v?[\d
     for (const file of candidates) {
         if (fs.existsSync(file)) {
             const stat = fs.statSync(file);
-            const apkVersion = (typeof APP_VERSION_CONFIG !== 'undefined' && APP_VERSION_CONFIG?.latestVersion) ? APP_VERSION_CONFIG.latestVersion : '2.6.3';
+            const apkVersion = (typeof APP_VERSION_CONFIG !== 'undefined' && APP_VERSION_CONFIG?.latestVersion) ? APP_VERSION_CONFIG.latestVersion : '2.6.4';
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
             res.setHeader('Content-Length', stat.size);
             res.setHeader('Content-Disposition', `attachment; filename="oxypace-${apkVersion}.apk"`);
@@ -512,6 +512,23 @@ function getOtaBundleChecksum() {
     }
     return '';
 }
+
+// Android Digital Asset Links verification for App Links (https://oxypace.com.tr/post/..., /portal/...)
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    const candidates = [
+        path.join(__dirname, 'client', 'public', '.well-known', 'assetlinks.json'),
+        path.join(__dirname, 'client', 'dist', '.well-known', 'assetlinks.json'),
+        path.join(__dirname, 'dist', '.well-known', 'assetlinks.json'),
+    ];
+    for (const file of candidates) {
+        if (fs.existsSync(file)) {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            return res.sendFile(file);
+        }
+    }
+    return res.status(404).json({ error: 'assetlinks.json not found' });
+});
 
 // App version check endpoint (public) - used by clients on startup/resume for APK & OTA checks
 app.get('/api/app/version', (req, res) => {

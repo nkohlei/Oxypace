@@ -226,7 +226,12 @@ const userSchema = new mongoose.Schema(
                     type: String,
                     enum: ['ask', 'mp4', 'original'],
                     default: 'ask',
-                }
+                },
+                autoplay: {
+                    type: String,
+                    enum: ['on', 'off'],
+                    default: 'on',
+                },
             }
         },
         lastActive: {

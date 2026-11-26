@@ -341,6 +341,13 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json; charset=utf-8"
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
   for = "/r2-media/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
