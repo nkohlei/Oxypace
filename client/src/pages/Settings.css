@@ -222,10 +222,28 @@
     background: rgba(255, 77, 77, 0.03);
 }
 
+.settings-item-row.settings-toggle-row,
+.settings-item-row:has(> .switch),
+.setting-item:has(> .switch) {
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px;
+}
+
+.settings-item-row.settings-toggle-row > .switch,
+.settings-item-row:has(> .switch) > .switch,
+.setting-item:has(> .switch) > .switch {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
 .settings-item-info {
     display: flex;
     flex-direction: column;
     gap: 3px;
+    flex: 1;
+    min-width: 0;
 }
 
 .settings-item-label {
@@ -2157,6 +2175,15 @@ input:checked + .slider::before {
         flex-wrap: wrap !important;
         gap: 10px !important;
         box-sizing: border-box !important;
+    }
+
+    .settings-item-row.settings-toggle-row,
+    .settings-item-row:has(> .switch),
+    .setting-item:has(> .switch) {
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 14px !important;
     }
 
     /* Mobile View Toggle: Placed at the end with highest specificity to guarantee sidebar hides when submenu is open and content hides when on main menu */

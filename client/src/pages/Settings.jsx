@@ -1308,7 +1308,7 @@ const Settings = () => {
                 <h3 className="settings-group-title">Profil Görünürlüğü</h3>
                 <div className="settings-card-stack">
                     {/* 1. Gizli Hesap */}
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Gizli Hesap</span>
                             <span className="settings-item-desc">Profilinizi kilitler. Yalnızca arkadaşlarınız içeriklerinizi görebilir.</span>
@@ -1324,7 +1324,7 @@ const Settings = () => {
                     </div>
 
                     {/* 2. Arama Görünürlüğü */}
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Arama Sonuçlarında Görünme</span>
                             <span className="settings-item-desc">Kapatırsanız, arama sayfasında kullanıcı adınız aratıldığında profiliniz gizlenir.</span>
@@ -1369,7 +1369,7 @@ const Settings = () => {
                 <h3 className="settings-group-title">İletişim & Etkileşim</h3>
                 <div className="settings-card-stack">
                     {/* Çevrimiçi Durumu */}
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Çevrimiçi Durumunu Göster</span>
                             <span className="settings-item-desc">Aktif olduğunuzda diğer kullanıcılara çevrimiçi simgesini gösterir.</span>
@@ -1385,7 +1385,7 @@ const Settings = () => {
                     </div>
 
                     {/* Okundu Bilgisi */}
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Okundu Bilgisi (Sohbet)</span>
                             <span className="settings-item-desc">Mesajları okuduğunuzda karşı tarafa okundu bilgisi iletilmesini kontrol eder.</span>
@@ -1622,7 +1622,7 @@ const Settings = () => {
             <div className="settings-group-container">
                 <h3 className="settings-group-title">Bildirim Kanalları</h3>
                 <div className="settings-card-stack">
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">E-posta Bildirimleri</span>
                             <span className="settings-item-desc">Sistem duyuruları ve önemli etkileşim özetleri e-posta adresinize gönderilir.</span>
@@ -1637,7 +1637,7 @@ const Settings = () => {
                         </label>
                     </div>
 
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Anlık (Push) Bildirimler</span>
                             <span className="settings-item-desc">Tarayıcı veya mobil cihazınıza anlık etkileşim bildirimleri gönderilir.</span>
@@ -1657,7 +1657,7 @@ const Settings = () => {
             <div className="settings-group-container" style={{ marginTop: '24px' }}>
                 <h3 className="settings-group-title">Etkileşim & Hareketler</h3>
                 <div className="settings-card-stack">
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Alıntılar ve Yanıtlar</span>
                             <span className="settings-item-desc">Gönderileriniz alıntılandığında veya yanıtlandığında bildirim alın.</span>
@@ -1672,7 +1672,7 @@ const Settings = () => {
                         </label>
                     </div>
 
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Arkadaşlık İstekleri</span>
                             <span className="settings-item-desc">Yeni bir arkadaşlık isteği aldığınızda haber verilsin.</span>
@@ -1687,7 +1687,7 @@ const Settings = () => {
                         </label>
                     </div>
 
-                    <div className="settings-item-row">
+                    <div className="settings-item-row settings-toggle-row">
                         <div className="settings-item-info">
                             <span className="settings-item-title">Sistem Duyuruları</span>
                             <span className="settings-item-desc">Oxypace yönetimi tarafından yayınlanan genel güncellemeler ve duyurular.</span>
