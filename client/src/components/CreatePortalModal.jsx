@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { X, Check, ImagePlus, Camera, Globe, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { uploadFile } from '../utils/uploadUtils';
 import { normalizeImageFileForBrowser } from '../utils/heicHelper';
@@ -10,7 +11,7 @@ const CreatePortalModal = ({ onClose }) => {
     const { updateUser, user } = useAuth();
     const navigate = useNavigate();
 
-    const [step, setStep] = useState(1); // 1: Basic, 2: Visuals, 3: Settings
+    const [step, setStep] = useState(1); // 1: Temel, 2: Görünüm, 3: Gizlilik
     const [canSubmit, setCanSubmit] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -27,6 +28,9 @@ const CreatePortalModal = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showNameError, setShowNameError] = useState(false);
+
+    const bannerInputRef = useRef(null);
+    const avatarInputRef = useRef(null);
 
     useEffect(() => {
         if (step === 3) {
@@ -107,45 +111,71 @@ const CreatePortalModal = ({ onClose }) => {
     const categories = [
         { id: 'general', name: 'Genel' },
         { id: 'tech', name: 'Teknoloji' },
-        { id: 'art', name: 'Sanat & Tasarım' },
+        { id: 'art', name: 'Sanat' },
         { id: 'game', name: 'Oyun' },
         { id: 'science', name: 'Bilim' },
         { id: 'music', name: 'Müzik' },
     ];
 
+    const stepsMeta = [
+        { num: 1, label: 'Temel' },
+        { num: 2, label: 'Görünüm' },
+        { num: 3, label: 'Gizlilik' },
+    ];
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content advanced-modal" onClick={(e) => e.stopPropagation()}>
-                <button className="close-btn" onClick={onClose} aria-label="Kapat">
-                    &times;
-                </button>
-                <div className="modal-header">
+        <div className="cpm-overlay" onClick={onClose}>
+            <div className="cpm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="cpm-header">
                     <h2>Portal Oluştur</h2>
+                    <button
+                        type="button"
+                        className="cpm-close-btn"
+                        onClick={onClose}
+                        aria-label="Kapat"
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
 
-                <div className="progress-bar">
-                    <div className={`step ${step >= 1 ? 'active' : ''}`}>1</div>
-                    <div className="step-line"></div>
-                    <div className={`step ${step >= 2 ? 'active' : ''}`}>2</div>
-                    <div className="step-line"></div>
-                    <div className={`step ${step >= 3 ? 'active' : ''}`}>3</div>
-                </div>
-
-                {error && <div className="error-message mb-4">{error}</div>}
-
-                <form onSubmit={handleSubmit} className="modal-body">
-                    {/* STEP 1: Basic Info */}
-                    {step === 1 && (
-                        <div className="step-content fade-in">
-                            <h3 className="step-title">Temel Bilgiler</h3>
-                            
-                            <div className="required-info-badge">
-                                <span>💡 <b>Portal Adı</b> alanı zorunludur. Diğer bilgileri isteğe bağlı olarak doldurabilirsiniz.</span>
+                <div className="cpm-stepper">
+                    {stepsMeta.map((s, idx) => {
+                        const isDone = step > s.num;
+                        const isActive = step === s.num;
+                        return (
+                            <div key={s.num} className="cpm-step-item">
+                                <div className={`cpm-step-dot ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}>
+                                    {isDone ? <Check size={13} strokeWidth={2.5} /> : s.num}
+                                </div>
+                                <span className={`cpm-step-label ${isActive || isDone ? 'active' : ''}`}>
+                                    {s.label}
+                                </span>
+                                {idx < stepsMeta.length - 1 && (
+                                    <div className={`cpm-step-line ${isDone ? 'done' : ''}`} />
+                                )}
                             </div>
+                        );
+                    })}
+                </div>
 
-                            <div className="form-group">
-                                <label>Portal Adı <span className="required-badge">Zorunlu</span> <span style={{ fontSize: '11px', color: 'var(--text-secondary, #888)', fontWeight: 'normal' }}>({(formData.name || '').length}/20)</span></label>
+                {error && (
+                    <div className="cpm-error">
+                        <AlertCircle size={15} />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="cpm-body">
+                    {/* STEP 1: Temel Bilgiler */}
+                    {step === 1 && (
+                        <div className="cpm-step-content">
+                            <div className="cpm-field">
+                                <div className="cpm-label-row">
+                                    <label htmlFor="cpm-portal-name">Portal Adı</label>
+                                    <span className="cpm-counter">{(formData.name || '').length}/20</span>
+                                </div>
                                 <input
+                                    id="cpm-portal-name"
                                     type="text"
                                     required
                                     value={formData.name}
@@ -155,74 +185,91 @@ const CreatePortalModal = ({ onClose }) => {
                                             setShowNameError(false);
                                         }
                                     }}
-                                    placeholder="Örn: Yazılım Dünyası"
+                                    placeholder="Örn: Yazılım"
                                     maxLength={20}
                                     autoFocus
+                                    className="cpm-input"
                                 />
                                 {showNameError && !formData.name.trim() && (
-                                    <span className="input-helper-error">⚠️ İlerlemek için lütfen portal adını belirleyin.</span>
+                                    <span className="cpm-field-error">
+                                        <AlertCircle size={13} />
+                                        <span>Portal adı gerekli.</span>
+                                    </span>
                                 )}
                             </div>
 
-                            <div className="form-group">
-                                <label>Kategori</label>
-                                <select
-                                    value={formData.category}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, category: e.target.value })
-                                    }
-                                >
+                            <div className="cpm-field">
+                                <div className="cpm-label-row">
+                                    <label>Kategori</label>
+                                </div>
+                                <div className="cpm-category-grid">
                                     {categories.map((cat) => (
-                                        <option key={cat.id} value={cat.id}>
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            className={`cpm-cat-pill ${formData.category === cat.id ? 'active' : ''}`}
+                                            onClick={() => setFormData({ ...formData, category: cat.id })}
+                                        >
                                             {cat.name}
-                                        </option>
+                                        </button>
                                     ))}
-                                </select>
+                                </div>
                             </div>
 
-                            <div className="form-group">
-                                <label>Açıklama</label>
+                            <div className="cpm-field">
+                                <div className="cpm-label-row">
+                                    <label htmlFor="cpm-portal-desc">Açıklama</label>
+                                    <span className="cpm-optional">İsteğe bağlı</span>
+                                </div>
                                 <textarea
+                                    id="cpm-portal-desc"
                                     value={formData.description}
                                     onChange={(e) =>
                                         setFormData({ ...formData, description: e.target.value })
                                     }
-                                    placeholder="Bu portal ne hakkında?"
+                                    placeholder="Kısa açıklama (isteğe bağlı)"
                                     maxLength={500}
-                                    rows={4}
+                                    rows={3}
+                                    className="cpm-textarea"
                                 />
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 2: Visuals (Avatar & Banner via Local Files) */}
+                    {/* STEP 2: Görünüm */}
                     {step === 2 && (
-                        <div className="step-content fade-in">
-                            <h3 className="step-title">Görünüm Ayarları</h3>
-                            
-                            <div className="visuals-upload-container">
-                                {/* Banner Picker */}
-                                <div 
-                                    className="banner-picker-preview"
-                                    style={{
-                                        backgroundImage: bannerPreview ? `url(${bannerPreview})` : 'none',
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center',
-                                    }}
-                                    onClick={() => document.getElementById('banner-file-input').click()}
+                        <div className="cpm-step-content">
+                            <div className="cpm-visuals">
+                                <div
+                                    className={`cpm-banner-picker ${bannerPreview ? 'has-image' : ''}`}
+                                    style={
+                                        bannerPreview
+                                            ? {
+                                                  backgroundImage: `url(${bannerPreview})`,
+                                                  backgroundSize: 'cover',
+                                                  backgroundPosition: 'center',
+                                              }
+                                            : undefined
+                                    }
+                                    onClick={() => bannerInputRef.current?.click()}
                                 >
-                                    {!bannerPreview && (
-                                        <div className="picker-overlay-text">
-                                            <span>📷 Kapak Görseli Ekle</span>
+                                    {!bannerPreview ? (
+                                        <div className="cpm-picker-placeholder">
+                                            <ImagePlus size={18} />
+                                            <span>Kapak Görseli</span>
+                                        </div>
+                                    ) : (
+                                        <div className="cpm-picker-change-badge">
+                                            <ImagePlus size={14} />
                                         </div>
                                     )}
-                                    <input 
-                                        type="file" 
-                                        id="banner-file-input" 
-                                        accept="image/*,.heic,.heif,image/heic,image/heif" 
-                                        style={{ display: 'none' }} 
+                                    <input
+                                        ref={bannerInputRef}
+                                        type="file"
+                                        accept="image/*,.heic,.heif,image/heic,image/heif"
+                                        style={{ display: 'none' }}
                                         onChange={async (e) => {
-                                            const rawFile = e.target.files[0];
+                                            const rawFile = e.target.files?.[0];
                                             if (rawFile) {
                                                 try {
                                                     const file = await normalizeImageFileForBrowser(rawFile);
@@ -236,106 +283,103 @@ const CreatePortalModal = ({ onClose }) => {
                                     />
                                 </div>
 
-                                {/* Avatar Picker */}
-                                <div className="avatar-picker-wrapper">
-                                    <div 
-                                        className="avatar-picker-preview"
-                                        style={{
-                                            backgroundImage: avatarPreview ? `url(${avatarPreview})` : 'none',
-                                            backgroundSize: 'cover',
-                                            backgroundPosition: 'center',
-                                        }}
-                                        onClick={() => document.getElementById('avatar-file-input').click()}
-                                    >
-                                        {!avatarPreview && (
-                                            <div className="picker-overlay-text-avatar">
-                                                <span>📷</span>
-                                            </div>
-                                        )}
-                                        <input 
-                                            type="file" 
-                                            id="avatar-file-input" 
-                                            accept="image/*,.heic,.heif,image/heic,image/heif" 
-                                            style={{ display: 'none' }} 
-                                            onChange={async (e) => {
-                                                const rawFile = e.target.files[0];
-                                                if (rawFile) {
-                                                    try {
-                                                        const file = await normalizeImageFileForBrowser(rawFile);
-                                                        setAvatarFile(file);
-                                                        setAvatarPreview(URL.createObjectURL(file));
-                                                    } catch (err) {
-                                                        setError(err?.message || 'HEIC görseli dönüştürülemedi.');
-                                                    }
+                                <div
+                                    className={`cpm-avatar-picker ${avatarPreview ? 'has-image' : ''}`}
+                                    style={
+                                        avatarPreview
+                                            ? {
+                                                  backgroundImage: `url(${avatarPreview})`,
+                                                  backgroundSize: 'cover',
+                                                  backgroundPosition: 'center',
+                                              }
+                                            : undefined
+                                    }
+                                    onClick={() => avatarInputRef.current?.click()}
+                                    title="Profil Resmi Seç"
+                                >
+                                    {!avatarPreview && <Camera size={20} />}
+                                    <input
+                                        ref={avatarInputRef}
+                                        type="file"
+                                        accept="image/*,.heic,.heif,image/heic,image/heif"
+                                        style={{ display: 'none' }}
+                                        onChange={async (e) => {
+                                            const rawFile = e.target.files?.[0];
+                                            if (rawFile) {
+                                                try {
+                                                    const file = await normalizeImageFileForBrowser(rawFile);
+                                                    setAvatarFile(file);
+                                                    setAvatarPreview(URL.createObjectURL(file));
+                                                } catch (err) {
+                                                    setError(err?.message || 'HEIC görseli dönüştürülemedi.');
                                                 }
-                                            }}
-                                        />
-                                    </div>
-                                    <span className="avatar-picker-label">Profil Resmi</span>
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="cpm-preview-meta">
+                                    <span className="cpm-preview-name">
+                                        {formData.name.trim() || 'Portal Adı'}
+                                    </span>
+                                    <span className="cpm-preview-hint">Görseller isteğe bağlı</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 3: Privacy */}
+                    {/* STEP 3: Gizlilik */}
                     {step === 3 && (
-                        <div className="step-content fade-in">
-                            <h3 className="step-title">Gizlilik Ayarları</h3>
-                            <div className="privacy-options">
-                                <label
-                                    className={`privacy-card ${formData.privacy === 'public' ? 'selected' : ''}`}
+                        <div className="cpm-step-content">
+                            <div className="cpm-privacy-list">
+                                <button
+                                    type="button"
+                                    className={`cpm-privacy-card ${formData.privacy === 'public' ? 'selected' : ''}`}
+                                    onClick={() => setFormData({ ...formData, privacy: 'public' })}
                                 >
-                                    <input
-                                        type="radio"
-                                        name="privacy"
-                                        value="public"
-                                        checked={formData.privacy === 'public'}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, privacy: e.target.value })
-                                        }
-                                    />
-                                    <div className="privacy-info">
-                                        <span className="p-title">🌍 Herkese Açık</span>
-                                        <span className="p-desc">
-                                            Herkes bu portalı görebilir ve katılabilir.
-                                        </span>
+                                    <div className="cpm-privacy-icon">
+                                        <Globe size={18} />
                                     </div>
-                                </label>
+                                    <div className="cpm-privacy-info">
+                                        <span className="cpm-privacy-title">Herkese Açık</span>
+                                        <span className="cpm-privacy-desc">Herkes görebilir ve katılabilir.</span>
+                                    </div>
+                                    <div className="cpm-privacy-check">
+                                        {formData.privacy === 'public' && <Check size={13} strokeWidth={2.5} />}
+                                    </div>
+                                </button>
 
-                                <label
-                                    className={`privacy-card ${formData.privacy === 'private' ? 'selected' : ''}`}
+                                <button
+                                    type="button"
+                                    className={`cpm-privacy-card ${formData.privacy === 'private' ? 'selected' : ''}`}
+                                    onClick={() => setFormData({ ...formData, privacy: 'private' })}
                                 >
-                                    <input
-                                        type="radio"
-                                        name="privacy"
-                                        value="private"
-                                        checked={formData.privacy === 'private'}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, privacy: e.target.value })
-                                        }
-                                    />
-                                    <div className="privacy-info">
-                                        <span className="p-title">🔒 Gizli</span>
-                                        <span className="p-desc">
-                                            Sadece davet edilenler görebilir ve katılabilir.
-                                        </span>
+                                    <div className="cpm-privacy-icon">
+                                        <Lock size={18} />
                                     </div>
-                                </label>
+                                    <div className="cpm-privacy-info">
+                                        <span className="cpm-privacy-title">Gizli</span>
+                                        <span className="cpm-privacy-desc">Sadece davetle katılım.</span>
+                                    </div>
+                                    <div className="cpm-privacy-check">
+                                        {formData.privacy === 'private' && <Check size={13} strokeWidth={2.5} />}
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    <div className="modal-footer advanced-footer">
+                    <div className="cpm-footer">
                         {step > 1 ? (
                             <button
                                 type="button"
-                                className="btn-secondary"
+                                className="cpm-btn-ghost"
                                 onClick={() => setStep(step - 1)}
                             >
                                 Geri
                             </button>
                         ) : (
-                            <button type="button" className="btn-secondary" onClick={onClose}>
+                            <button type="button" className="cpm-btn-ghost" onClick={onClose}>
                                 İptal
                             </button>
                         )}
@@ -343,14 +387,18 @@ const CreatePortalModal = ({ onClose }) => {
                         {step < 3 ? (
                             <button
                                 type="button"
-                                className="btn-primary"
+                                className="cpm-btn-primary"
                                 onClick={handleNextStep}
                             >
                                 İleri
                             </button>
                         ) : (
-                            <button type="submit" className="btn-primary" disabled={loading || !canSubmit}>
-                                {loading ? 'Oluşturuluyor...' : 'Tamamla & Oluştur'}
+                            <button
+                                type="submit"
+                                className="cpm-btn-primary"
+                                disabled={loading || !canSubmit}
+                            >
+                                {loading ? 'Oluşturuluyor...' : 'Oluştur'}
                             </button>
                         )}
                     </div>
