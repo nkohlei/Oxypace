@@ -165,16 +165,18 @@
   justify-content: center;
 }
 
-/* Primary Tour Button (Brand Blue) */
+/* Primary Tour Button */
 .tour-btn-primary {
-  background: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  box-shadow: none;
 }
 
 .tour-btn-primary:hover {
-  background: #2563eb;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  opacity: 0.9;
+  box-shadow: none;
   transform: translateY(-1px);
 }
 

@@ -78,8 +78,8 @@
 }
 
 .neumorphic-icon-btn.active {
-    color: white;
-    background: var(--primary-color);
+    color: var(--bg-primary);
+    background: var(--text-primary);
     box-shadow: none;
 }
 

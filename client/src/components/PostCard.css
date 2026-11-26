@@ -457,8 +457,8 @@
 }
 
 .post-floating-menu .menu-item:hover {
-    background-color: var(--primary-cyan, #22d3ee) !important;
-    color: #0f172a !important;
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
     transform: translateX(4px) !important;
 }
 
@@ -1294,11 +1294,11 @@
 }
 
 .pdf-download-btn:hover {
-    background: var(--primary-cyan);
-    color: #060913;
-    border-color: var(--primary-cyan);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
     transform: scale(1.1);
-    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+    box-shadow: none;
 }
 
 .pdf-download-btn svg {

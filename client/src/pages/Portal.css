@@ -364,8 +364,8 @@
 }
 
 .discord-layout .plus-menu-item:hover {
-    background-color: var(--primary-cyan);
-    color: #000;
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 .discord-layout .plus-menu-icon {
@@ -509,8 +509,8 @@
 }
 
 .join-btn.primary {
-    background-color: var(--primary-cyan);
-    color: #000;
+    background-color: var(--text-primary);
+    color: var(--bg-primary);
 }
 
 .join-btn.outline,

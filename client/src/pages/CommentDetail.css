@@ -257,11 +257,11 @@
 }
 
 .reply-submit-btn {
-    background: var(--primary-cyan);
+    background: var(--text-primary);
     border: none;
     border-radius: 20px;
     padding: 10px 20px;
-    color: #000;
+    color: var(--bg-primary);
     font-weight: 600;
     font-size: 0.85rem;
     cursor: pointer;

@@ -425,10 +425,16 @@ button,
 
 button:hover,
 .btn:hover {
-  background: linear-gradient(135deg, #38bdf8 0%, #1e4ed8 100%);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: none !important;
+}
+
+[data-theme='light'] button:hover,
+[data-theme='light'] .btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #000000;
 }
 
 button:active,
@@ -437,8 +443,8 @@ button:active,
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
-  color: #fff;
+  background: linear-gradient(180deg, #f5f5f8 0%, #cfd0d8 100%);
+  color: #000000;
   padding: 10px 24px;
   border-radius: 9999px;
   font-weight: 700;
@@ -449,8 +455,19 @@ button:active,
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #7dd3fc 0%, #1d4ed8 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #dcdde4 100%);
+  color: #000000;
   box-shadow: none !important;
+}
+
+[data-theme='light'] .btn-primary {
+  background: #000000;
+  color: #ffffff;
+}
+
+[data-theme='light'] .btn-primary:hover {
+  background: #1a1a1e;
+  color: #ffffff;
 }
 
 /* Inputs — Glassmorphic */
@@ -669,7 +686,7 @@ body.native-app .navbar {
 .sub-header-back-circle:hover {
     background: transparent !important;
     background-color: transparent !important;
-    color: var(--primary-cyan) !important;
+    color: var(--text-primary) !important;
     transform: none !important;
 }
 

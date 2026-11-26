@@ -124,8 +124,8 @@
 }
 
 .create-ticket-trigger {
-    background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
-    color: #ffffff;
+    background: var(--text-primary);
+    color: var(--bg-primary);
     border: none;
     padding: 10px 20px;
     border-radius: 12px;
@@ -136,12 +136,13 @@
     gap: 8px;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+    box-shadow: none;
 }
 
 .create-ticket-trigger:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+    opacity: 0.92;
+    box-shadow: none;
 }
 
 .create-ticket-trigger svg {
@@ -371,8 +372,8 @@
 /* Submit Button */
 .feedback-submit-btn-premium {
     width: 100%;
-    background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
-    color: #ffffff;
+    background: var(--text-primary);
+    color: var(--bg-primary);
     border: none;
     border-radius: 12px;
     padding: 14px;
@@ -389,7 +390,8 @@
 
 .feedback-submit-btn-premium:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+    opacity: 0.92;
+    box-shadow: none;
 }
 
 .feedback-submit-btn-premium svg {

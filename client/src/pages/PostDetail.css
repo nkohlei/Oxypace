@@ -186,8 +186,8 @@
 }
 
 .pd-dropdown-menu .pd-menu-item:hover {
-    background-color: var(--primary-cyan, #22d3ee) !important;
-    color: #0f172a !important;
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
     transform: translateX(4px) !important;
 }
 

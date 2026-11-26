@@ -150,7 +150,8 @@
 }
 
 .ad-cta-button:hover {
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    box-shadow: none;
     transform: scale(1.02);
 }

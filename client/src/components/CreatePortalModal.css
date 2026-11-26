@@ -261,6 +261,7 @@
 }
 
 .cpm-cat-pill:hover {
+    background: rgba(216, 216, 224, 0.1);
     border-color: rgba(216, 216, 224, 0.45);
     color: #ffffff;
 }
@@ -401,6 +402,7 @@
 }
 
 .cpm-privacy-card:hover {
+    background: rgba(216, 216, 224, 0.05);
     border-color: rgba(216, 216, 224, 0.45);
 }
 
@@ -604,6 +606,19 @@
 [data-theme='light'] .cpm-textarea:focus {
     border-color: #000000;
     box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme='light'] .cpm-cat-pill:hover,
+[data-theme='light'] .cpm-cat-pill:hover {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.35);
+    color: #000000;
+}
+
+:root[data-theme='light'] .cpm-privacy-card:hover,
+[data-theme='light'] .cpm-privacy-card:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme='light'] .cpm-cat-pill.active,

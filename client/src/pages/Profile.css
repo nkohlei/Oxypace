@@ -193,8 +193,8 @@
     top: 0;
     right: 0;
     transform: translate(30%, -30%);
-    background: var(--primary-cyan);
-    color: white;
+    background: var(--text-primary);
+    color: var(--bg-primary);
     border: 3px solid #111214;
     padding: 6px;
     width: 28px;
@@ -1138,8 +1138,8 @@
 }
 
 .compose-submit-btn {
-    background: var(--primary-cyan) !important;
-    color: white !important;
+    background: var(--text-primary) !important;
+    color: var(--bg-primary) !important;
     font-size: 13px;
     font-weight: 700;
     padding: 7px 18px !important;
@@ -1153,7 +1153,9 @@
 }
 
 .compose-submit-btn:hover {
-    background: var(--primary-cyan-light) !important;
+    background: var(--text-primary) !important;
+    color: var(--bg-primary) !important;
+    opacity: 0.9;
     box-shadow: none !important;
     transform: translateY(-1px);
 }

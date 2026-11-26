@@ -396,8 +396,8 @@
     border-radius: 12px;
     font-size: 0.9rem;
     font-weight: 600;
-    background: var(--accent, #3b82f6);
-    color: #ffffff;
+    background: var(--text-primary);
+    color: var(--bg-primary);
     border: none;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -407,7 +407,7 @@
 .portal-info-join-btn:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+    box-shadow: none;
 }
 
 .portal-owner-indicator {
