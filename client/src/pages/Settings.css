@@ -48,22 +48,29 @@
 
 /* ── Modern Account Settings Theme Styles ── */
 .settings-main-panel,
-.info-page-content.settings-main-panel {
-    background: #0d0e12 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 20px !important;
+.info-page-content.settings-main-panel,
+.settings-page-wrapper .settings-main-panel {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 :root[data-theme='light'] .settings-main-panel,
 [data-theme='light'] .settings-main-panel {
-    background: #ffffff !important;
-    border-color: rgba(0, 0, 0, 0.1) !important;
+    background: transparent !important;
+    border-color: transparent !important;
 }
 
 .settings-group-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .settings-group-title {
@@ -79,7 +86,7 @@
     background: #13141a !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 16px;
-    padding: 20px;
+    padding: 22px 24px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -196,17 +203,17 @@
 .settings-card-stack {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .settings-item-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: 18px 22px;
     background: var(--bg-card, rgba(255, 255, 255, 0.05));
     border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
-    border-radius: 12px;
+    border-radius: 14px;
     gap: 16px;
 }
 
@@ -305,10 +312,10 @@
 }
 
 .settings-grid-card {
-    padding: 16px;
+    padding: 18px 20px;
     background: var(--bg-card, rgba(255, 255, 255, 0.04));
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-    border-radius: 12px;
+    border-radius: 14px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -1829,8 +1836,11 @@ input:checked + .slider::before {
     padding-top: 0; /* Align directly below the navbar */
 }
 
-.glass-redesign .settings-content-scrollable {
-    padding-top: 0;
+.glass-redesign .settings-content-scrollable,
+.settings-page-wrapper .settings-content-scrollable {
+    padding: 12px 20px 40px 20px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .glass-redesign .settings-section {
@@ -1910,12 +1920,13 @@ input:checked + .slider::before {
 }
 
 .settings-page-wrapper .info-page-content {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border-subtle);
-    border-radius: 24px;
-    padding: 30px;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
     line-height: 1.6;
 }
 
@@ -1996,17 +2007,18 @@ input:checked + .slider::before {
     }
 
     .settings-page-wrapper .info-page-content {
-        border-radius: 14px !important;
-        padding: 16px !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
         margin: 0 !important;
         border: none !important;
         background: transparent !important;
+        box-shadow: none !important;
     }
     
     .settings-page-wrapper .info-page-header {
         height: 52px !important;
         padding: 0 14px !important;
-        margin: 0 0 12px 0 !important;
+        margin: 0 0 8px 0 !important;
         display: flex !important;
         align-items: center !important;
         border-bottom: 1px solid var(--border-subtle) !important;
@@ -2098,19 +2110,33 @@ input:checked + .slider::before {
     }
 
     .settings-page-wrapper .settings-content-scrollable {
-        padding: 0 12px 90px 12px !important;
+        padding: 4px 10px 90px 10px !important;
         width: 100% !important;
         box-sizing: border-box !important;
         overflow-x: hidden !important;
     }
 
-    .settings-card, 
-    .settings-main-panel,
+    .settings-main-panel {
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .settings-card,
     .account-profile-card {
-        padding: 14px !important;
-        border-radius: 14px !important;
+        padding: 18px 16px !important;
+        border-radius: 16px !important;
         box-sizing: border-box !important;
         width: 100% !important;
+    }
+
+    .settings-item-row,
+    .settings-grid-card {
+        padding: 16px !important;
+        border-radius: 14px !important;
     }
 
     .account-profile-header {

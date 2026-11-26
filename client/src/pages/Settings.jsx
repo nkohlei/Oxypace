@@ -908,7 +908,7 @@ const Settings = () => {
         return (
             <main className={`discord-main-content ${activeMenu === 'main' ? 'hidden-on-mobile' : ''}`}>
                 {activeMenu !== 'main' && (
-                    <div className="info-page-header" style={{ padding: '8px 24px 0 24px', marginBottom: '6px' }}>
+                    <div className="info-page-header" style={{ padding: '8px 20px 0 20px', marginBottom: '6px' }}>
                         <div className="title-group">
                             <button 
                                 className="minimal-back-btn" 
@@ -932,8 +932,8 @@ const Settings = () => {
                         </div>
                     </div>
                 )}
-                <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 40px 24px' }}>
-                    <div className={activeMenu !== 'main' ? 'info-page-content settings-main-panel' : ''} style={activeMenu !== 'main' ? { padding: '30px' } : {}}>
+                <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
+                    <div className={activeMenu !== 'main' ? 'settings-main-panel' : ''}>
                         {content}
                     </div>
                 </div>
