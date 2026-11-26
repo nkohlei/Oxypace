@@ -58,6 +58,9 @@
     box-shadow: none !important;
     padding: 0 !important;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
     box-sizing: border-box;
 }
 
@@ -2204,513 +2207,574 @@ input:checked + .slider::before {
     }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════════
-   CANLI ODA "BİRLİKTE İZLE" ALTYAZI GÖRÜNÜM MODÜLÜ (MONOKROM SİYAH & BEYAZ)
-   Sıkı Kurallar: Sadece Siyah/Beyaz Tema, FOTONUN TAM HALİ (2.42:1 Tam Boyut),
-   KESİN DİKDÖRTGEN BUTONLAR (border-radius: 0px), Diğer Ayarlar Temizlendi.
-   ══════════════════════════════════════════════════════════════════════════════ */
-
-.wp-mono-studio {
-    background: #09090b;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 0px !important;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    box-sizing: border-box;
+/* ── Canlı Oda Ayarları (Yayın Kalitesi & Altyazı Görünümü) ── */
+.submenu-content {
     width: 100%;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
-.wp-mono-studio *,
-.wp-mono-studio button,
-.wp-mono-studio input,
-.wp-mono-studio span,
-.wp-mono-studio div {
-    border-radius: 0px !important;
-}
-
-.wp-mono-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding-bottom: 12px;
-}
-
-.wp-mono-title-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    min-width: 240px;
-}
-
-.wp-mono-badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.7);
-    font-family: var(--font-primary, sans-serif);
-    text-transform: uppercase;
-}
-
-.wp-mono-title {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 0.02em;
-}
-
-.wp-mono-desc {
-    margin: 0;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.55);
+.lr-section-desc {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    color: var(--text-secondary, #949ba4);
     line-height: 1.45;
 }
 
-.wp-mono-sync-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    padding: 4px 10px;
-    border-radius: 0px !important;
-    color: #ffffff;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    align-self: center;
+.lr-quality-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.wp-mono-tag-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 0px !important;
-    background: #ffffff;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
-}
-
-/* ─── SİNEMATİK TAM KARE ÖNİZLEME (FOTONUN TAM HALİ - KESİNTİSİZ) ─── */
-.wp-mono-viewport {
-    position: relative;
-    background: #000000;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 0px !important;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+.lr-quality-card {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #181a22;
+    color: var(--text-primary, #ffffff);
+    cursor: pointer;
+    text-align: left;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    transition: background 0.18s ease, border-color 0.18s ease;
 }
 
-.wp-mono-hud {
+.lr-quality-card:hover {
+    background: #1f222d;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.lr-quality-card.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+.lr-quality-card-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 14px;
-    background: rgba(14, 14, 16, 0.98);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 10;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
 }
 
-.wp-mono-hud-info {
+.lr-quality-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+}
+
+.lr-quality-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.lr-rec-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #b5bac1);
+}
+
+.lr-quality-check {
+    color: var(--text-primary, #ffffff);
+    flex-shrink: 0;
+}
+
+.lr-quality-desc {
+    font-size: 12px;
+    color: var(--text-secondary, #949ba4);
+    line-height: 1.4;
+}
+
+.lr-subtitle-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.lr-preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.lr-preview-bar-left {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+}
+
+.lr-preview-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+.lr-saved-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary, #ffffff);
     font-size: 11px;
+    font-weight: 600;
 }
 
-.wp-mono-hud-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 0px !important;
-    background: #ffffff;
-}
-
-.wp-mono-hud-name {
-    font-weight: 700;
-    color: #f4f4f5;
-    letter-spacing: 0.03em;
-}
-
-.wp-mono-hud-actions {
+.lr-preview-bar-actions {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
-/* Tam kare sinema ekranı: 1024x424 en boy oranıyla fotonun tamamı eksiksiz görünür */
-.wp-mono-screen {
+.lr-ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #181a22;
+    color: var(--text-secondary, #b5bac1);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.lr-ghost-btn:hover {
+    background: #222531;
+    color: var(--text-primary, #ffffff);
+}
+
+.lr-ghost-btn.active {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #0d0e12;
+}
+
+.lr-preview-stage {
     position: relative;
     width: 100%;
-    max-width: 940px;
-    margin: 0 auto;
+    max-width: 100%;
     aspect-ratio: 1024 / 424;
-    height: auto !important;
-    background: #000000;
+    border-radius: 12px;
     overflow: hidden;
+    background: #090a0e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     user-select: none;
-    cursor: default;
     container-type: inline-size;
-    border-radius: 0px !important;
+    box-sizing: border-box;
 }
 
-.wp-mono-screen.is-dragging {
+.lr-preview-stage.is-dragging {
     cursor: grabbing !important;
 }
 
-.wp-mono-screen-img {
+.lr-preview-img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     pointer-events: none;
-    filter: brightness(0.98) contrast(1.04);
-    border-radius: 0px !important;
 }
 
-.wp-mono-guides {
+.lr-guides {
     position: absolute;
     inset: 0;
     pointer-events: none;
 }
 
-.wp-mono-guide-line {
+.lr-guide-line {
     position: absolute;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.14);
 }
 
-.wp-mono-guide-line.h-top { top: 33.33%; left: 0; right: 0; height: 1px; }
-.wp-mono-guide-line.h-bottom { top: 66.66%; left: 0; right: 0; height: 1px; }
-.wp-mono-guide-line.v-left { left: 33.33%; top: 0; bottom: 0; width: 1px; }
-.wp-mono-guide-line.v-right { left: 66.66%; top: 0; bottom: 0; width: 1px; }
+.lr-guide-line.h-top { top: 33.33%; left: 0; right: 0; height: 1px; }
+.lr-guide-line.h-bottom { top: 66.66%; left: 0; right: 0; height: 1px; }
+.lr-guide-line.v-left { left: 33.33%; top: 0; bottom: 0; width: 1px; }
+.lr-guide-line.v-right { left: 66.66%; top: 0; bottom: 0; width: 1px; }
 
-.wp-mono-safe-box {
+.lr-safe-box {
     position: absolute;
     inset: 6% 8%;
-    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
     pointer-events: none;
 }
 
-.wp-mono-sub-overlay {
+.lr-sub-overlay {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    width: 90%;
-    max-width: 780px;
+    width: 92%;
+    max-width: 92%;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: grab;
-    z-index: 50;
+    z-index: 10;
     transition: bottom 0.1s ease;
     touch-action: none;
 }
 
-.wp-mono-sub-overlay:hover .wp-mono-sub-box {
-    outline: 1px dashed rgba(255, 255, 255, 0.7);
-    outline-offset: 3px;
-    background: rgba(0, 0, 0, 0.35);
-}
-
-.wp-mono-sub-overlay:hover .wp-mono-drag-badge,
-.wp-mono-sub-overlay.dragging .wp-mono-drag-badge {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.wp-mono-sub-overlay.dragging {
+.lr-sub-overlay.dragging {
     cursor: grabbing !important;
     transition: none !important;
 }
 
-.wp-mono-sub-overlay.dragging .wp-mono-sub-box {
-    outline: 1.5px solid #ffffff;
-    outline-offset: 3px;
-    background: rgba(0, 0, 0, 0.65);
-}
-
-.wp-mono-sub-box {
-    position: relative;
+.lr-sub-box {
     display: inline-flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    padding: 3px 8px;
-    border-radius: 0px !important;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    max-width: 100%;
     transition: background 0.15s ease, outline 0.15s ease;
 }
 
-.wp-mono-drag-badge {
-    opacity: 0;
-    transform: translateY(2px);
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: #000000;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 0px !important;
-    padding: 2px 7px;
-    font-size: 9px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 0.04em;
-    margin-bottom: 2px;
-    pointer-events: none;
-    transition: all 0.15s ease;
-    white-space: nowrap;
+.lr-sub-overlay:hover .lr-sub-box,
+.lr-sub-overlay.dragging .lr-sub-box {
+    outline: 1px dashed rgba(255, 255, 255, 0.65);
+    outline-offset: 2px;
+    background: rgba(0, 0, 0, 0.35);
 }
 
-.wp-mono-sub-text {
+.lr-drag-badge {
+    opacity: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(13, 14, 18, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffffff;
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity 0.15s ease;
+}
+
+.lr-sub-overlay:hover .lr-drag-badge,
+.lr-sub-overlay.dragging .lr-drag-badge {
+    opacity: 1;
+}
+
+.lr-sub-text {
     font-weight: 600;
-    letter-spacing: 0.25px;
     text-align: center;
     word-break: break-word;
     user-select: none;
-    transition: font-size 0.12s ease, color 0.15s ease;
+    max-width: 100%;
 }
 
-.wp-mono-tip {
-    position: absolute;
-    bottom: 6px;
-    left: 8px;
-    right: 8px;
-    pointer-events: none;
-    text-align: center;
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.5);
-    text-shadow: 0 1px 2px #000000;
+.lr-preview-hint {
+    margin: -4px 0 0 0;
+    font-size: 12px;
+    color: var(--text-tertiary, #7a828e);
 }
 
-.wp-mono-saved-toast {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    background: #ffffff;
-    color: #000000;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 6px 10px;
-    letter-spacing: 0.02em;
-    border-radius: 0px !important;
-}
-
-/* ─── PANELLER VE KESİN DİKDÖRTGEN BUTONLAR (SIFIR KAVİS) ─── */
-.wp-mono-grid {
+.lr-controls-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 10px;
-}
-
-.wp-mono-panel {
-    background: #111115;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0px !important;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
     box-sizing: border-box;
 }
 
-.wp-mono-panel-head {
+.lr-control-box {
+    background: #181a22;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.lr-control-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
 }
 
-.wp-mono-panel-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+.lr-control-label {
     font-size: 11px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-tertiary, #949ba4);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
 }
 
-.wp-mono-val-box {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 0px !important;
-    padding: 2px 7px;
-    font-size: 10.5px;
+.lr-val-pill {
+    font-size: 11px;
     font-weight: 700;
-    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary, #ffffff);
 }
 
-.wp-mono-slider {
+.lr-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
     height: 4px;
-    background: rgba(255, 255, 255, 0.18);
-    border-radius: 0px !important;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
     outline: none;
     cursor: pointer;
 }
 
-.wp-mono-slider::-webkit-slider-thumb {
+.lr-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 13px;
-    height: 13px;
-    border-radius: 0px !important;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
     background: #ffffff;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
     cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
     transition: transform 0.12s ease;
 }
 
-.wp-mono-slider::-moz-range-thumb {
-    width: 13px;
-    height: 13px;
-    border-radius: 0px !important;
+.lr-slider::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    border: none;
+    border-radius: 50%;
     background: #ffffff;
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
     cursor: pointer;
 }
 
-.wp-mono-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.15);
+.lr-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
 }
 
-.wp-mono-btn-row {
+.lr-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+}
+
+.lr-pill-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+}
+
+.lr-pill-btn {
+    flex: 1 1 0;
+    min-width: fit-content;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary, #b5bac1);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.15s ease;
+}
+
+.lr-pill-grid .lr-pill-btn {
+    width: 100%;
+    min-width: 0;
+}
+
+.lr-pill-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary, #ffffff);
+}
+
+.lr-pill-btn.active {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #0d0e12;
+    font-weight: 700;
+}
+
+.lr-color-row {
     display: flex;
     align-items: center;
-    gap: 5px;
     flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
 }
 
-/* TAM DİKDÖRTGEN BUTONLAR - KAVİSSİZ (border-radius: 0px !important) */
-.wp-mono-rect-btn {
-    flex: 1;
-    min-width: 44px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    border-radius: 0px !important;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 10.5px;
-    font-weight: 600;
-    padding: 6px 8px;
-    text-align: center;
+.lr-color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.18);
     cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
+    padding: 0;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.lr-color-swatch:hover {
+    transform: scale(1.08);
+}
+
+.lr-color-swatch.active {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px #181a22, 0 0 0 4px rgba(255, 255, 255, 0.85);
+}
+
+.lr-color-custom {
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 5px;
-}
-
-.wp-mono-rect-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.35) !important;
-}
-
-.wp-mono-rect-btn.active {
-    background: #ffffff !important;
-    border-color: #ffffff !important;
-    color: #000000 !important;
-    font-weight: 700;
-}
-
-.wp-mono-swatch {
-    width: 10px;
-    height: 10px;
-    border-radius: 0px !important;
-    border: 1px solid #000000;
-    box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
-    flex-shrink: 0;
-}
-
-/* Seçenek Kart Butonları - Tam Dikdörtgen */
-.wp-mono-choice-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 6px;
-}
-
-.wp-mono-card-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 0px !important;
-    padding: 7px 9px;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.wp-mono-card-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.28) !important;
-}
-
-.wp-mono-card-btn.active {
-    background: #ffffff !important;
-    border-color: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.wp-mono-card-btn.active .wp-mono-card-label {
-    color: #000000 !important;
-}
-
-.wp-mono-card-btn.active .wp-mono-card-sub {
-    color: rgba(0, 0, 0, 0.65) !important;
-}
-
-.wp-mono-card-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #ffffff;
-}
-
-.wp-mono-card-sub {
-    font-size: 9.5px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.wp-mono-input-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 3px;
-}
-
-.wp-mono-input-label {
-    font-size: 10px;
+    color: var(--text-secondary, #b5bac1);
+    font-size: 12px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.55);
-    text-transform: uppercase;
+    cursor: pointer;
 }
 
-.wp-mono-text-input {
-    background: rgba(0, 0, 0, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.16) !important;
-    border-radius: 0px !important;
-    padding: 6px 9px;
-    font-size: 11.5px;
+.lr-color-custom input[type="color"] {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.lr-sample-input {
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+    margin-top: 2px;
+}
+
+:root[data-theme='light'] .lr-quality-card,
+[data-theme='light'] .lr-quality-card,
+:root[data-theme='light'] .lr-control-box,
+[data-theme='light'] .lr-control-box {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme='light'] .lr-quality-card.active,
+[data-theme='light'] .lr-quality-card.active {
+    background: rgba(13, 14, 18, 0.05);
+    border-color: #0d0e12;
+}
+
+:root[data-theme='light'] .lr-rec-pill,
+[data-theme='light'] .lr-val-pill,
+[data-theme='light'] .lr-saved-pill {
+    background: rgba(0, 0, 0, 0.06);
+    color: #0d0e12;
+}
+
+:root[data-theme='light'] .lr-ghost-btn,
+[data-theme='light'] .lr-color-custom {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #334155;
+}
+
+:root[data-theme='light'] .lr-ghost-btn.active,
+[data-theme='light'] .lr-pill-btn.active {
+    background: #0d0e12;
+    border-color: #0d0e12;
     color: #ffffff;
-    outline: none;
-    transition: border-color 0.15s ease;
 }
 
-.wp-mono-text-input:focus {
-    border-color: #ffffff !important;
+:root[data-theme='light'] .lr-pill-btn {
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.03);
+    color: #475569;
+}
+
+:root[data-theme='light'] .lr-slider {
+    background: rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme='light'] .lr-slider::-webkit-slider-thumb {
+    background: #0d0e12;
+}
+
+:root[data-theme='light'] .lr-slider::-moz-range-thumb {
+    background: #0d0e12;
+}
+
+:root[data-theme='light'] .lr-color-swatch {
+    border-color: rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme='light'] .lr-color-swatch.active {
+    border-color: #0d0e12;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #0d0e12;
+}
+
+@media (max-width: 768px) {
+    .lr-controls-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .lr-control-box {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 640px) {
+    .lr-preview-stage {
+        aspect-ratio: 16 / 9;
+    }
+}
+
+@media (max-width: 560px) {
+    .lr-quality-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

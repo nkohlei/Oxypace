@@ -1814,161 +1814,123 @@ const Settings = () => {
 
     const renderLiveRoomsMenu = () => (
         <div className="submenu-content animation-slide-in">
-            {/* CANLI ODA YAYIN VE VERİ TASARRUFU MODÜLÜ */}
-            <div className="settings-group-container" style={{ marginBottom: '24px' }}>
-                <h3 className="settings-group-title">Canlı Oda Kalite & Veri Tasarrufu</h3>
-                <div className="settings-card" style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '16px' }}>
-                    <p className="settings-section-desc" style={{ marginBottom: '14px', color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.5' }}>
-                        Canlı görüntülü odalarda kamera, ekran paylaşımı ve ses akışınızın veri tüketimini yönetin. <b>Veri Tasarrufu Modu</b> internet kotanızı %70 oranında korur, mobil cihazlarda donma ve aşırı ısınmayı önler.
+            {/* Yayın Kalitesi */}
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Yayın Kalitesi</h3>
+                <div className="settings-card">
+                    <p className="settings-section-desc lr-section-desc">
+                        Kamera, ses ve ekran paylaşımı veri tüketimini seçin.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                    <div className="lr-quality-grid">
                         <button
                             type="button"
+                            className={`lr-quality-card ${liveRoomQuality === 'saver' ? 'active' : ''}`}
                             onClick={() => handleLiveRoomQualityChange('saver')}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                gap: '6px',
-                                padding: '14px',
-                                borderRadius: '10px',
-                                border: liveRoomQuality === 'saver' ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.08)',
-                                background: liveRoomQuality === 'saver' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease'
-                            }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                <span style={{ fontWeight: 600, fontSize: '14px', color: liveRoomQuality === 'saver' ? '#4ade80' : '#fff' }}>
-                                    ⚡ Veri Tasarrufu (Varsayılan & Önerilen)
-                                </span>
-                                {liveRoomQuality === 'saver' && <Check size={16} color="#4ade80" />}
+                            <div className="lr-quality-card-head">
+                                <span className="lr-quality-title">Veri Tasarrufu</span>
+                                <div className="lr-quality-meta">
+                                    <span className="lr-rec-pill">Önerilen</span>
+                                    {liveRoomQuality === 'saver' && <Check size={15} className="lr-quality-check" />}
+                                </div>
                             </div>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                                480p kamera, optimize ekran paylaşımı ve ses. Mobil kotanızı %70 korur ve akıcı bağlantı sunar.
-                            </span>
+                            <span className="lr-quality-desc">480p video, optimize ses ve düşük veri.</span>
                         </button>
 
                         <button
                             type="button"
+                            className={`lr-quality-card ${liveRoomQuality === 'high' ? 'active' : ''}`}
                             onClick={() => handleLiveRoomQualityChange('high')}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                gap: '6px',
-                                padding: '14px',
-                                borderRadius: '10px',
-                                border: liveRoomQuality === 'high' ? '1.5px solid #60a5fa' : '1px solid rgba(255,255,255,0.08)',
-                                background: liveRoomQuality === 'high' ? 'rgba(96, 165, 250, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease'
-                            }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                <span style={{ fontWeight: 600, fontSize: '14px', color: liveRoomQuality === 'high' ? '#93c5fd' : '#fff' }}>
-                                    🎬 Yüksek Kalite
-                                </span>
-                                {liveRoomQuality === 'high' && <Check size={16} color="#93c5fd" />}
+                            <div className="lr-quality-card-head">
+                                <span className="lr-quality-title">Yüksek Kalite</span>
+                                {liveRoomQuality === 'high' && <Check size={15} className="lr-quality-check" />}
                             </div>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                                HD 720p 30fps kamera, yüksek bit hızlı ekran paylaşımı (Yüksek internet kotası tüketir).
-                            </span>
+                            <span className="lr-quality-desc">720p 30fps video ve yüksek bit hızı.</span>
                         </button>
                     </div>
                 </div>
             </div>
-            {/* SİYAH BEYAZ, KESKİN DİKDÖRTGEN BUTONLU ALTYAZI GÖRÜNÜM MODÜLÜ */}
-            <div className="wp-mono-studio">
-                <div className="wp-mono-header">
-                    <div className="wp-mono-title-wrap">
-                        <span className="wp-mono-badge">BİRLİKTE İZLE // ALTYAZI KALİBRASYONU</span>
-                        <h4 className="wp-mono-title">Altyazı Görünüm ve Konum Ayarları</h4>
-                        <p className="wp-mono-desc">
-                            Altyazıların boyutunu, dikey konumunu ve kontrastını özelleştirin. Yapılan ayarlar anında tüm canlı odalarınıza yansıtılır.
-                        </p>
-                    </div>
-                    <div className="wp-mono-sync-tag">
-                        <span className="wp-mono-tag-dot" />
-                        <span>OTOMATİK SENKRONİZE</span>
-                    </div>
-                </div>
 
-                {/* SİNEMATİK TAM KARE ÖNİZLEME (MATRIX MORPHEUS SAHNESİ) */}
-                <div className="wp-mono-viewport">
-                    <div className="wp-mono-hud">
-                        <div className="wp-mono-hud-info">
-                            <span className="wp-mono-hud-dot" />
-                            <span className="wp-mono-hud-name">ÖNİZLEME [MATRIX 4K MASTER - 2.42:1 TAM KARE]</span>
+            {/* Altyazı Görünümü */}
+            <div className="settings-group-container" style={{ marginTop: '24px' }}>
+                <h3 className="settings-group-title">Altyazı Görünümü</h3>
+                <div className="settings-card lr-subtitle-card">
+                    <div className="lr-preview-bar">
+                        <div className="lr-preview-bar-left">
+                            <span className="lr-preview-label">Önizleme</span>
+                            {wpSavedNotice && (
+                                <span className="lr-saved-pill">
+                                    <Check size={11} />
+                                    <span>Kaydedildi</span>
+                                </span>
+                            )}
                         </div>
-                        <div className="wp-mono-hud-actions">
+                        <div className="lr-preview-bar-actions">
                             <button
                                 type="button"
-                                className={`wp-mono-rect-btn ${wpGuidesVisible ? 'active' : ''}`}
+                                className={`lr-ghost-btn ${wpGuidesVisible ? 'active' : ''}`}
                                 onClick={() => setWpGuidesVisible(prev => !prev)}
-                                title="Kılavuz Çizgileri Aç/Kapat"
+                                title="Kılavuz çizgilerini aç/kapat"
                             >
-                                <Grid size={12} />
+                                <Grid size={13} />
                                 <span>Kılavuz</span>
                             </button>
                             <button
                                 type="button"
-                                className="wp-mono-rect-btn"
+                                className="lr-ghost-btn"
                                 onClick={handleWpResetDefaults}
-                                title="Varsayılan Ayarlara Dön"
+                                title="Varsayılanlara dön"
                             >
-                                <RotateCcw size={12} />
+                                <RotateCcw size={13} />
                                 <span>Sıfırla</span>
                             </button>
                         </div>
                     </div>
 
-                    {/* Fotonun Tam Halini Gösteren Ekran */}
-                    <div 
-                        className={`wp-mono-screen ${isWpDragging ? 'is-dragging' : ''}`}
+                    <div
+                        className={`lr-preview-stage ${isWpDragging ? 'is-dragging' : ''}`}
                         ref={previewContainerRef}
                     >
-                        <img 
-                            src="/system/matrix-preview.jpg" 
-                            alt="Matrix Morpheus Sahnesi" 
-                            className="wp-mono-screen-img"
+                        <img
+                            src="/system/matrix-preview.jpg"
+                            alt="Altyazı Önizleme"
+                            className="lr-preview-img"
                             draggable={false}
                         />
 
                         {wpGuidesVisible && (
-                            <div className="wp-mono-guides">
-                                <div className="wp-mono-guide-line h-top" />
-                                <div className="wp-mono-guide-line h-bottom" />
-                                <div className="wp-mono-guide-line v-left" />
-                                <div className="wp-mono-guide-line v-right" />
-                                <div className="wp-mono-safe-box" />
+                            <div className="lr-guides">
+                                <div className="lr-guide-line h-top" />
+                                <div className="lr-guide-line h-bottom" />
+                                <div className="lr-guide-line v-left" />
+                                <div className="lr-guide-line v-right" />
+                                <div className="lr-safe-box" />
                             </div>
                         )}
 
-                        <div 
-                            className={`wp-mono-sub-overlay ${isWpDragging ? 'dragging' : ''}`}
+                        <div
+                            className={`lr-sub-overlay ${isWpDragging ? 'dragging' : ''}`}
                             style={{ bottom: `${wpSubBottom}%` }}
                             onMouseDown={handlePreviewSubDragStart}
                             onTouchStart={handlePreviewSubDragStart}
-                            title="Altyazıyı doğrudan görsel üzerinden yukarı veya aşağı sürükleyebilirsiniz"
+                            title="Altyazıyı yukarı veya aşağı sürükleyin"
                         >
-                            <div className="wp-mono-sub-box">
-                                <div className="wp-mono-drag-badge">
+                            <div className="lr-sub-box">
+                                <div className="lr-drag-badge">
                                     <MoveVertical size={10} />
-                                    <span>↕ %{wpSubBottom} DİKEY KONUM</span>
+                                    <span>%{wpSubBottom}</span>
                                 </div>
-                                <div 
-                                    className="wp-mono-sub-text"
+                                <div
+                                    className="lr-sub-text"
                                     style={{
-                                        fontSize: `calc(clamp(13px, 2.4cqw, 24px) * ${wpSubScale})`,
+                                        fontSize: `calc(clamp(12px, 2.3cqw, 22px) * ${wpSubScale})`,
                                         color: wpSubColor,
                                         textShadow: getWpShadowStyle(wpSubShadow),
                                         backgroundColor: getWpBgStyle(wpSubBg),
                                         fontFamily: getWpFontFamily(wpSubFont),
-                                        padding: wpSubBg !== 'none' ? '3px 10px' : '0',
-                                        borderRadius: '0px',
+                                        padding: wpSubBg !== 'none' ? '4px 10px' : '0',
+                                        borderRadius: wpSubBg !== 'none' ? '6px' : '0px',
                                         backdropFilter: wpSubBg === 'blur' ? 'blur(6px)' : 'none',
                                         WebkitBackdropFilter: wpSubBg === 'blur' ? 'blur(6px)' : 'none',
                                         lineHeight: 1.35
@@ -1978,242 +1940,205 @@ const Settings = () => {
                                 </div>
                             </div>
                         </div>
-
-                        <div className="wp-mono-tip">
-                            <span>💡 Altyazıyı doğrudan görsel üzerinden tutarak film alanındaki yüksekliği ayarlayabilirsiniz</span>
-                        </div>
                     </div>
 
-                    {wpSavedNotice && (
-                        <div className="wp-mono-saved-toast">
-                            <Check size={12} />
-                            <span>Tüm canlı odalara anında senkronize edildi</span>
-                        </div>
-                    )}
-                </div>
+                    <p className="lr-preview-hint">Altyazıyı görsel üzerinde yukarı/aşağı sürükleyebilirsiniz.</p>
 
-                {/* SİYAH BEYAZ VE TAM DİKDÖRTGEN BUTONLU AYAR PANELLERİ */}
-                <div className="wp-mono-grid">
-                    {/* Dikey Konum */}
-                    <div className="wp-mono-panel">
-                        <div className="wp-mono-panel-head">
-                            <span className="wp-mono-panel-title">
-                                <MoveVertical size={13} />
-                                Dikey Konum (Yükseklik)
-                            </span>
-                            <span className="wp-mono-val-box">%{wpSubBottom}</span>
-                        </div>
-                        <input 
-                            type="range"
-                            min="2"
-                            max="85"
-                            step="1"
-                            value={wpSubBottom}
-                            onChange={(e) => handleWpBottomChange(parseInt(e.target.value, 10))}
-                            className="wp-mono-slider"
-                        />
-                        <div className="wp-mono-btn-row">
-                            {[
-                                { label: 'Taban', val: 4 },
-                                { label: 'Sinematik', val: 12 },
-                                { label: 'Rahat', val: 22 },
-                                { label: 'Orta', val: 45 },
-                                { label: 'Üst', val: 75 }
-                            ].map(p => (
-                                <button
-                                    key={p.label}
-                                    type="button"
-                                    className={`wp-mono-rect-btn ${Math.abs(wpSubBottom - p.val) <= 2 ? 'active' : ''}`}
-                                    onClick={() => handleWpBottomChange(p.val)}
-                                >
-                                    {p.label} %{p.val}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Yazı Boyutu */}
-                    <div className="wp-mono-panel">
-                        <div className="wp-mono-panel-head">
-                            <span className="wp-mono-panel-title">
-                                <Type size={13} />
-                                Yazı Boyutu (Ölçek)
-                            </span>
-                            <span className="wp-mono-val-box">%{Math.round(wpSubScale * 100)}</span>
-                        </div>
-                        <input 
-                            type="range"
-                            min="0.6"
-                            max="1.8"
-                            step="0.05"
-                            value={wpSubScale}
-                            onChange={(e) => handleWpScaleChange(parseFloat(e.target.value))}
-                            className="wp-mono-slider"
-                        />
-                        <div className="wp-mono-btn-row">
-                            {[
-                                { label: 'Kompakt', scale: 0.8 },
-                                { label: 'Normal', scale: 1.0 },
-                                { label: 'Büyük', scale: 1.25 },
-                                { label: 'Geniş', scale: 1.5 }
-                            ].map(p => (
-                                <button
-                                    key={p.label}
-                                    type="button"
-                                    className={`wp-mono-rect-btn ${Math.abs(wpSubScale - p.scale) < 0.05 ? 'active' : ''}`}
-                                    onClick={() => handleWpScaleChange(p.scale)}
-                                >
-                                    {p.label} (%{Math.round(p.scale * 100)})
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Metin Rengi (ÇEŞİTLİ SİNEMATİK ALTYAZI RENKLERİ) */}
-                    <div className="wp-mono-panel">
-                        <div className="wp-mono-panel-head">
-                            <span className="wp-mono-panel-title">
-                                <Sparkles size={13} />
-                                Metin Rengi
-                            </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span className="wp-mono-val-box" style={{ color: wpSubColor }}>{wpSubColor}</span>
-                                <input 
-                                    type="color" 
-                                    value={wpSubColor.startsWith('#') ? wpSubColor : '#ffffff'}
-                                    onChange={(e) => {
-                                        setWpSubColor(e.target.value);
-                                        triggerWpSync('watchPartySubColor', e.target.value);
-                                    }}
-                                    title="Özel Renk Seç"
-                                    style={{ width: '22px', height: '20px', padding: 0, border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', cursor: 'pointer', borderRadius: '0px' }}
-                                />
+                    <div className="lr-controls-grid">
+                        {/* Dikey Konum */}
+                        <div className="lr-control-box">
+                            <div className="lr-control-head">
+                                <span className="lr-control-label">Dikey Konum</span>
+                                <span className="lr-val-pill">%{wpSubBottom}</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="2"
+                                max="85"
+                                step="1"
+                                value={wpSubBottom}
+                                onChange={(e) => handleWpBottomChange(parseInt(e.target.value, 10))}
+                                className="lr-slider"
+                            />
+                            <div className="lr-pill-row">
+                                {[
+                                    { label: 'Alt', val: 4 },
+                                    { label: 'Normal', val: 12 },
+                                    { label: 'Orta', val: 45 },
+                                    { label: 'Üst', val: 75 }
+                                ].map(p => (
+                                    <button
+                                        key={p.label}
+                                        type="button"
+                                        className={`lr-pill-btn ${Math.abs(wpSubBottom - p.val) <= 2 ? 'active' : ''}`}
+                                        onClick={() => handleWpBottomChange(p.val)}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                        <div className="wp-mono-btn-row">
-                            {[
-                                { name: 'Saf Beyaz', color: '#ffffff' },
-                                { name: 'Sinema Sarısı', color: '#ffe600' },
-                                { name: 'Altın Sarısı', color: '#facc15' },
-                                { name: 'Canlı Yeşil', color: '#22c55e' },
-                                { name: 'Buz Mavisi', color: '#38bdf8' },
-                                { name: 'Açık Turuncu', color: '#fb923c' },
-                                { name: 'Açık Kırmızı', color: '#f87171' },
-                                { name: 'Açık Gri', color: '#d4d4d8' }
-                            ].map(c => (
-                                <button
-                                    key={c.color}
-                                    type="button"
-                                    className={`wp-mono-rect-btn color-item ${wpSubColor.toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
-                                    onClick={() => {
-                                        setWpSubColor(c.color);
-                                        triggerWpSync('watchPartySubColor', c.color);
-                                    }}
-                                >
-                                    <span className="wp-mono-swatch" style={{ background: c.color }} />
-                                    <span>{c.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
 
-                    {/* Kontrast & Gölge Profili */}
-                    <div className="wp-mono-panel">
-                        <div className="wp-mono-panel-head">
-                            <span className="wp-mono-panel-title">
-                                <Sliders size={13} />
-                                Kontrast & Gölge Profili
-                            </span>
+                        {/* Yazı Boyutu */}
+                        <div className="lr-control-box">
+                            <div className="lr-control-head">
+                                <span className="lr-control-label">Yazı Boyutu</span>
+                                <span className="lr-val-pill">%{Math.round(wpSubScale * 100)}</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0.6"
+                                max="1.8"
+                                step="0.05"
+                                value={wpSubScale}
+                                onChange={(e) => handleWpScaleChange(parseFloat(e.target.value))}
+                                className="lr-slider"
+                            />
+                            <div className="lr-pill-row">
+                                {[
+                                    { label: 'Küçük', scale: 0.8 },
+                                    { label: 'Normal', scale: 1.0 },
+                                    { label: 'Büyük', scale: 1.25 },
+                                    { label: 'Çok Büyük', scale: 1.5 }
+                                ].map(p => (
+                                    <button
+                                        key={p.label}
+                                        type="button"
+                                        className={`lr-pill-btn ${Math.abs(wpSubScale - p.scale) < 0.05 ? 'active' : ''}`}
+                                        onClick={() => handleWpScaleChange(p.scale)}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="wp-mono-choice-grid">
-                            {[
-                                { id: 'deep', label: 'Derin Sinematik', desc: 'Doğal sinema gölgesi' },
-                                { id: 'strong', label: 'Ağır Kontur', desc: '360° keskin siyah çerçeve' },
-                                { id: 'glow', label: 'Işıltı Profili', desc: 'Sinematik parlaklık' },
-                                { id: 'clean', label: 'Temiz / Minimal', desc: 'Sade hafif gölge' }
-                            ].map(opt => (
-                                <button
-                                    key={opt.id}
-                                    type="button"
-                                    className={`wp-mono-card-btn ${wpSubShadow === opt.id ? 'active' : ''}`}
-                                    onClick={() => {
-                                        setWpSubShadow(opt.id);
-                                        triggerWpSync('watchPartySubShadow', opt.id);
-                                    }}
-                                >
-                                    <span className="wp-mono-card-label">{opt.label}</span>
-                                    <span className="wp-mono-card-sub">{opt.desc}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
 
-                    {/* Arka Plan / Kutu */}
-                    <div className="wp-mono-panel">
-                        <div className="wp-mono-panel-head">
-                            <span className="wp-mono-panel-title">
-                                <Grid size={13} />
-                                Arka Plan / Kutu
-                            </span>
+                        {/* Metin Rengi */}
+                        <div className="lr-control-box">
+                            <div className="lr-control-head">
+                                <span className="lr-control-label">Metin Rengi</span>
+                                <span className="lr-val-pill">{wpSubColor.toUpperCase()}</span>
+                            </div>
+                            <div className="lr-color-row">
+                                {[
+                                    { name: 'Saf Beyaz', color: '#ffffff' },
+                                    { name: 'Yumuşak Sarı', color: '#f3e08b' },
+                                    { name: 'Sıcak Krem', color: '#efe5d1' },
+                                    { name: 'Açık Gri', color: '#d4d4d8' },
+                                    { name: 'Gümüş', color: '#9ca3af' }
+                                ].map(c => (
+                                    <button
+                                        key={c.color}
+                                        type="button"
+                                        className={`lr-color-swatch ${wpSubColor.toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                                        style={{ backgroundColor: c.color }}
+                                        onClick={() => {
+                                            setWpSubColor(c.color);
+                                            triggerWpSync('watchPartySubColor', c.color);
+                                        }}
+                                        title={c.name}
+                                        aria-label={c.name}
+                                    />
+                                ))}
+                                <label className="lr-color-custom" title="Özel renk seç">
+                                    <span>Özel</span>
+                                    <input
+                                        type="color"
+                                        value={wpSubColor.startsWith('#') ? wpSubColor : '#ffffff'}
+                                        onChange={(e) => {
+                                            setWpSubColor(e.target.value);
+                                            triggerWpSync('watchPartySubColor', e.target.value);
+                                        }}
+                                        aria-label="Özel renk seç"
+                                    />
+                                </label>
+                            </div>
                         </div>
-                        <div className="wp-mono-choice-grid">
-                            {[
-                                { id: 'none', label: 'Şeffaf (Çerçevesiz)', desc: 'Saf sinema görüntüsü' },
-                                { id: 'semi', label: 'Yarı Saydam Siyah', desc: '%65 siyah arka kutu' },
-                                { id: 'blur', label: 'Buzlu Cam Efekti', desc: 'Modern cam gölgesi' },
-                                { id: 'box', label: 'Opak Kutu', desc: '%92 siyah yüksek kontrast' }
-                            ].map(opt => (
-                                <button
-                                    key={opt.id}
-                                    type="button"
-                                    className={`wp-mono-card-btn ${wpSubBg === opt.id ? 'active' : ''}`}
-                                    onClick={() => {
-                                        setWpSubBg(opt.id);
-                                        triggerWpSync('watchPartySubBg', opt.id);
-                                    }}
-                                >
-                                    <span className="wp-mono-card-label">{opt.label}</span>
-                                    <span className="wp-mono-card-sub">{opt.desc}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
 
-                    {/* Yazı Tipi & Test Metni */}
-                    <div className="wp-mono-panel">
-                        <div className="wp-mono-panel-head">
-                            <span className="wp-mono-panel-title">
-                                <Type size={13} />
-                                Yazı Tipi & Test Metni
-                            </span>
+                        {/* Gölge */}
+                        <div className="lr-control-box">
+                            <div className="lr-control-head">
+                                <span className="lr-control-label">Gölge</span>
+                            </div>
+                            <div className="lr-pill-grid">
+                                {[
+                                    { id: 'deep', label: 'Derin' },
+                                    { id: 'strong', label: 'Kontur' },
+                                    { id: 'glow', label: 'Yumuşak' },
+                                    { id: 'clean', label: 'Minimal' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        className={`lr-pill-btn ${wpSubShadow === opt.id ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setWpSubShadow(opt.id);
+                                            triggerWpSync('watchPartySubShadow', opt.id);
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="wp-mono-btn-row">
-                            {[
-                                { id: 'sans', label: 'Modern Sans' },
-                                { id: 'matrix', label: 'Konsol / Mono' },
-                                { id: 'serif', label: 'Klasik Serif' }
-                            ].map(f => (
-                                <button
-                                    key={f.id}
-                                    type="button"
-                                    className={`wp-mono-rect-btn ${wpSubFont === f.id ? 'active' : ''}`}
-                                    onClick={() => {
-                                        setWpSubFont(f.id);
-                                        triggerWpSync('watchPartySubFont', f.id);
-                                    }}
-                                >
-                                    {f.label}
-                                </button>
-                            ))}
+
+                        {/* Arka Plan */}
+                        <div className="lr-control-box">
+                            <div className="lr-control-head">
+                                <span className="lr-control-label">Arka Plan</span>
+                            </div>
+                            <div className="lr-pill-grid">
+                                {[
+                                    { id: 'none', label: 'Şeffaf' },
+                                    { id: 'semi', label: 'Yarı Saydam' },
+                                    { id: 'blur', label: 'Buzlu Cam' },
+                                    { id: 'box', label: 'Opak' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        className={`lr-pill-btn ${wpSubBg === opt.id ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setWpSubBg(opt.id);
+                                            triggerWpSync('watchPartySubBg', opt.id);
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="wp-mono-input-wrap">
-                            <span className="wp-mono-input-label">Önizleme Cümlesi:</span>
-                            <input 
+
+                        {/* Yazı Tipi & Metin */}
+                        <div className="lr-control-box">
+                            <div className="lr-control-head">
+                                <span className="lr-control-label">Yazı Tipi</span>
+                            </div>
+                            <div className="lr-pill-row">
+                                {[
+                                    { id: 'sans', label: 'Sans' },
+                                    { id: 'matrix', label: 'Mono' },
+                                    { id: 'serif', label: 'Serif' }
+                                ].map(f => (
+                                    <button
+                                        key={f.id}
+                                        type="button"
+                                        className={`lr-pill-btn ${wpSubFont === f.id ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setWpSubFont(f.id);
+                                            triggerWpSync('watchPartySubFont', f.id);
+                                        }}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <input
                                 type="text"
                                 value={wpSampleText}
                                 onChange={(e) => setWpSampleText(e.target.value)}
-                                className="wp-mono-text-input"
-                                placeholder="Örnek altyazı..."
+                                className="settings-text-input lr-sample-input"
+                                placeholder="Önizleme metni..."
                             />
                         </div>
                     </div>
