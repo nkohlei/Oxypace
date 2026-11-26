@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { SlidersHorizontal, Globe, UserCheck, Users, Clock } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import { useAuth } from '../context/AuthContext';
@@ -31,7 +32,55 @@ const Search = () => {
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
     const [activeTab, setActiveTab] = useState('portals'); // 'portals' or 'users'
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+    const lastScrollTopRef = useRef(0);
+    const searchDebounceRef = useRef(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const scrollEl = document.querySelector('.content-scroll-area');
+        const getScrollTop = () => {
+            if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
+                return scrollEl.scrollTop;
+            }
+            return window.scrollY || document.documentElement.scrollTop || 0;
+        };
+
+        lastScrollTopRef.current = getScrollTop();
+
+        const handleScroll = () => {
+            const currentTop = getScrollTop();
+            const delta = currentTop - lastScrollTopRef.current;
+
+            if (currentTop <= 16) {
+                setIsHeaderHidden(false);
+            } else if (Math.abs(delta) >= 6) {
+                if (delta > 0 && currentTop > 56) {
+                    setIsHeaderHidden(true);
+                } else if (delta < 0) {
+                    setIsHeaderHidden(false);
+                }
+            }
+
+            lastScrollTopRef.current = currentTop;
+        };
+
+        if (scrollEl) {
+            scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+        }
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            if (scrollEl) {
+                scrollEl.removeEventListener('scroll', handleScroll);
+            }
+            window.removeEventListener('scroll', handleScroll);
+            if (searchDebounceRef.current) {
+                clearTimeout(searchDebounceRef.current);
+            }
+        };
+    }, []);
 
     // Initial load: fetch popular portals
     useEffect(() => {
@@ -159,9 +208,10 @@ const Search = () => {
     const handleInputChange = (e) => {
         const value = e.target.value;
         setQuery(value);
-        // Debounced search
-        const timeoutId = setTimeout(() => handleSearch(value), 300);
-        return () => clearTimeout(timeoutId);
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
+        }
+        searchDebounceRef.current = setTimeout(() => handleSearch(value), 300);
     };
 
     const getDefaultBanner = (portal) => {
@@ -200,7 +250,7 @@ const Search = () => {
             <main className="app-content search-main-content">
                 <div className="search-container">
                     {/* Search Header */}
-                    <div className="search-header">
+                    <div className={`search-header${isHeaderHidden ? ' is-hidden' : ''}`}>
                         <div className="search-controls-row">
                             <div className="search-input-group">
                                 <div className="title-with-back">
@@ -266,42 +316,47 @@ const Search = () => {
                                 </div>
                             </div>
 
-                            <div className="search-tabs-actions">
+                            <div className="search-right-actions">
                                 <button
-                                    className={`search-filter-btn ${activeTab === 'portals' ? 'active' : ''}`}
+                                    type="button"
+                                    className={`search-icon-btn ${isFilterOpen ? 'active' : ''}`}
+                                    onClick={() => setIsFilterOpen((prev) => !prev)}
+                                    title="Filtrele"
+                                    aria-label="Filtrele"
+                                    aria-expanded={isFilterOpen}
+                                >
+                                    <SlidersHorizontal size={18} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className="search-icon-btn"
+                                    onClick={() => navigate('/map')}
+                                    title="Harita"
+                                    aria-label="Harita"
+                                >
+                                    <Globe size={18} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {isFilterOpen && (
+                            <div className="search-filter-bar" role="group" aria-label="Arama filtresi">
+                                <button
+                                    type="button"
+                                    className={`search-filter-chip ${activeTab === 'portals' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('portals')}
                                 >
                                     Portallar
                                 </button>
                                 <button
-                                    className={`search-filter-btn ${activeTab === 'users' ? 'active' : ''}`}
+                                    type="button"
+                                    className={`search-filter-chip ${activeTab === 'users' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('users')}
                                 >
                                     Kişiler
                                 </button>
-                                <button
-                                    className="search-map-btn"
-                                    onClick={() => navigate('/map')}
-                                    title="Harita"
-                                >
-                                    <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="1.8"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    >
-                                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                                        <line x1="8" y1="2" x2="8" y2="18" />
-                                        <line x1="16" y1="6" x2="16" y2="22" />
-                                    </svg>
-                                    <span>Harita</span>
-                                </button>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Loading */}
@@ -322,13 +377,15 @@ const Search = () => {
                                             <p>Portal bulunamadı.</p>
                                         </div>
                                     ) : (
-                                        portalResults.map((portal) => (
+                                        portalResults.map((portal) => {
+                                            const isMember = isUserMemberOfPortal(portal);
+                                            return (
                                             <div
                                                 key={portal._id}
                                                 className="modern-portal-card"
                                                 onClick={() => handlePortalCardClick(portal)}
                                             >
-                                                {/* Banner */}
+                                                {/* Banner + Overlaid Avatar & Title */}
                                                 <div
                                                     className="card-banner"
                                                     style={{
@@ -353,11 +410,8 @@ const Search = () => {
                                                             )}
                                                         </div>
                                                     )}
-                                                </div>
 
-                                                {/* Content */}
-                                                <div className="card-body">
-                                                    <div className="card-head-row">
+                                                    <div className="card-banner-overlay">
                                                         <div className="card-icon-wrapper">
                                                             {portal.avatar ? (
                                                                 <img
@@ -366,8 +420,8 @@ const Search = () => {
                                                                     className="card-icon-img"
                                                                     loading="eager"
                                                                     decoding="async"
-                                                                    width="72"
-                                                                    height="72"
+                                                                    width="38"
+                                                                    height="38"
                                                                 />
                                                             ) : (
                                                                 <div className="card-icon-placeholder">
@@ -380,10 +434,14 @@ const Search = () => {
                                                         <div className="card-title-group">
                                                             <h3 className="card-title">
                                                                 <span className="card-title-text">{portal.name}</span>
-                                                                <PortalBadges portal={portal} size={20} />
+                                                                <PortalBadges portal={portal} size={15} />
                                                             </h3>
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {/* Minimal Content */}
+                                                <div className="card-body">
                                                     <p className="card-desc">
                                                         {portal.description ||
                                                             'Bu topluluk hakkında henüz bir açıklama yok.'}
@@ -392,36 +450,27 @@ const Search = () => {
                                                     <div className="card-footer">
                                                         <div className="card-footer-stats">
                                                             <div className="member-count" title="Üye">
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
-                                                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                                                                    <circle cx="9" cy="7" r="4" />
-                                                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                                                </svg>
+                                                                <Users size={13} />
                                                                 <span>{portal.memberCount || 0}</span>
-                                                            </div>
-                                                            <div className="member-count post-count" title="Gönderi">
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
-                                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                                                </svg>
-                                                                <span>{portal.postCount || 0}</span>
                                                             </div>
                                                         </div>
 
-                                                        {portal.isMember ? (
-                                                            <button
-                                                                className="join-status-btn leave"
-                                                                onClick={(e) => handleLeavePortal(e, portal._id, portal.name)}
-                                                                title="Portaldan Ayrıl"
+                                                        {isMember ? (
+                                                            <span
+                                                                className="member-status-icon"
+                                                                title="Üyesiniz"
+                                                                aria-label="Üyesiniz"
                                                             >
-                                                                Ayrıl
-                                                            </button>
+                                                                <UserCheck size={15} />
+                                                            </span>
                                                         ) : portal.isRequested ? (
                                                             <button
                                                                 className="join-status-btn requested"
                                                                 onClick={(e) => e.stopPropagation()}
+                                                                title="İstek Gönderildi"
                                                             >
-                                                                İstek Gönderildi
+                                                                <Clock size={12} />
+                                                                <span>İstek</span>
                                                             </button>
                                                         ) : (
                                                             <button
@@ -435,14 +484,15 @@ const Search = () => {
                                                                 }
                                                             >
                                                                 {portal.privacy === 'private'
-                                                                    ? 'İstek Gönder'
+                                                                    ? 'İstek'
                                                                     : 'Katıl'}
                                                             </button>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))
+                                            );
+                                        })
                                     )}
                                 </div>
                             )}
@@ -458,10 +508,11 @@ const Search = () => {
                                                 style={{
                                                     marginTop: '10px',
                                                     padding: '8px 16px',
-                                                    background: 'var(--primary-color)',
+                                                    background: 'var(--text-primary)',
                                                     border: 'none',
-                                                    borderRadius: '6px',
-                                                    color: 'white',
+                                                    borderRadius: '8px',
+                                                    color: 'var(--bg-primary)',
+                                                    fontWeight: 600,
                                                     cursor: 'pointer',
                                                 }}
                                             >
