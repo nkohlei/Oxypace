@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { SlidersHorizontal, Globe, UserCheck, Users, Clock } from 'lucide-react';
+import { SlidersHorizontal, Globe, UserCheck, Users, Clock, Lock } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,14 @@ import UserBadges from '../components/UserBadges';
 import PortalBadges from '../components/PortalBadges';
 import PortalInfoModal from '../components/PortalInfoModal';
 import './Search.css';
+
+const getTitleLengthTier = (name = '') => {
+    const len = name.trim().length;
+    if (len <= 10) return 'short';
+    if (len <= 20) return 'medium';
+    if (len <= 32) return 'long';
+    return 'xlarge';
+};
 
 const Search = () => {
     const { user, syncPortalMembership } = useAuth(); // Auth context
@@ -379,13 +387,14 @@ const Search = () => {
                                     ) : (
                                         portalResults.map((portal) => {
                                             const isMember = isUserMemberOfPortal(portal);
+                                            const titleTier = getTitleLengthTier(portal.name);
                                             return (
                                             <div
                                                 key={portal._id}
                                                 className="modern-portal-card"
                                                 onClick={() => handlePortalCardClick(portal)}
                                             >
-                                                {/* Banner + Overlaid Avatar & Title */}
+                                                {/* Slim Banner + Overlaid Avatar, Title & Frameless Corner Badges */}
                                                 <div
                                                     className="card-banner"
                                                     style={{
@@ -394,19 +403,27 @@ const Search = () => {
                                                             : getDefaultBanner(portal),
                                                     }}
                                                 >
-                                                    {(portal.isNSFW || portal.privacy === 'private') && (
+                                                    <div className="card-banner-top-left">
+                                                        <span className="banner-member-count" title="Üye">
+                                                            <Users size={13} strokeWidth={2.2} />
+                                                            <span>{portal.memberCount || 0}</span>
+                                                        </span>
+                                                    </div>
+
+                                                    {(portal.privacy === 'private' || portal.isNSFW || isMember) && (
                                                         <div className="card-banner-top-right">
                                                             {portal.privacy === 'private' && (
-                                                                <span className="oxypace-privacy-pill private" title="Gizli Portal">
-                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                                                    </svg>
-                                                                    <span className="privacy-pill-text">Gizli</span>
+                                                                <span className="banner-privacy-icon" title="Gizli Portal" aria-label="Gizli Portal">
+                                                                    <Lock size={13} strokeWidth={2.3} />
                                                                 </span>
                                                             )}
                                                             {portal.isNSFW && (
-                                                                <span className="nsfw-badge-search">+18</span>
+                                                                <span className="banner-nsfw-tag">+18</span>
+                                                            )}
+                                                            {isMember && (
+                                                                <span className="banner-member-icon" title="Üyesiniz" aria-label="Üyesiniz">
+                                                                    <UserCheck size={15} strokeWidth={2.4} />
+                                                                </span>
                                                             )}
                                                         </div>
                                                     )}
@@ -420,8 +437,8 @@ const Search = () => {
                                                                     className="card-icon-img"
                                                                     loading="eager"
                                                                     decoding="async"
-                                                                    width="38"
-                                                                    height="38"
+                                                                    width="36"
+                                                                    height="36"
                                                                 />
                                                             ) : (
                                                                 <div className="card-icon-placeholder">
@@ -432,44 +449,29 @@ const Search = () => {
                                                             )}
                                                         </div>
                                                         <div className="card-title-group">
-                                                            <h3 className="card-title">
+                                                            <h3 className={`card-title title-${titleTier}`}>
                                                                 <span className="card-title-text">{portal.name}</span>
-                                                                <PortalBadges portal={portal} size={15} />
+                                                                <PortalBadges portal={portal} size={titleTier === 'short' ? 18 : titleTier === 'medium' ? 16 : 14} />
                                                             </h3>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                {/* Minimal Content */}
+                                                {/* Slim Single-Row Description Strip */}
                                                 <div className="card-body">
-                                                    <p className="card-desc">
+                                                    <p className="card-desc" title={portal.description || ''}>
                                                         {portal.description ||
                                                             'Bu topluluk hakkında henüz bir açıklama yok.'}
                                                     </p>
 
-                                                    <div className="card-footer">
-                                                        <div className="card-footer-stats">
-                                                            <div className="member-count" title="Üye">
-                                                                <Users size={13} />
-                                                                <span>{portal.memberCount || 0}</span>
-                                                            </div>
-                                                        </div>
-
-                                                        {isMember ? (
-                                                            <span
-                                                                className="member-status-icon"
-                                                                title="Üyesiniz"
-                                                                aria-label="Üyesiniz"
-                                                            >
-                                                                <UserCheck size={15} />
-                                                            </span>
-                                                        ) : portal.isRequested ? (
+                                                    {!isMember && (
+                                                        portal.isRequested ? (
                                                             <button
                                                                 className="join-status-btn requested"
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 title="İstek Gönderildi"
                                                             >
-                                                                <Clock size={12} />
+                                                                <Clock size={11} />
                                                                 <span>İstek</span>
                                                             </button>
                                                         ) : (
@@ -487,8 +489,8 @@ const Search = () => {
                                                                     ? 'İstek'
                                                                     : 'Katıl'}
                                                             </button>
-                                                        )}
-                                                    </div>
+                                                        )
+                                                    )}
                                                 </div>
                                             </div>
                                             );
