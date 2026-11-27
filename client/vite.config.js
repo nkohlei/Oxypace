@@ -47,6 +47,15 @@ export default defineConfig({
                         if (id.includes('lucide-react')) {
                             return 'lucide';
                         }
+                        if (id.includes('hls.js')) {
+                            return 'hls-player';
+                        }
+                        if (id.includes('react-player') || id.includes('vidstack') || id.includes('@vidstack') || id.includes('media-icons')) {
+                            return 'media-players';
+                        }
+                        if (id.includes('@ffmpeg') || id.includes('gif.js') || id.includes('gifuct-js')) {
+                            return 'media-transcoder';
+                        }
                         if (id.includes('socket.io-client')) {
                             return 'socket';
                         }

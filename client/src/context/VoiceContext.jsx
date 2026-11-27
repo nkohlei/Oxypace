@@ -14,6 +14,7 @@ const VoiceRoomMetaContext = createContext({
     activeRoom: null,
     connectionState: null,
     roomStartTime: null,
+    hasWatchParty: false,
 });
 
 export const useVoice = () => {
@@ -3598,11 +3599,14 @@ export const VoiceProvider = ({ children }) => {
         };
     }, [disconnectFromChannel, toggleMicrophone, toggleCamera, toggleScreenShare, stopScreenShareAndRevert]);
 
+    const hasWatchParty = Boolean(watchParty && watchParty.url);
+
     const roomMetaValue = useMemo(() => ({
         activeRoom,
         connectionState,
         roomStartTime,
-    }), [activeRoom, connectionState, roomStartTime]);
+        hasWatchParty,
+    }), [activeRoom, connectionState, roomStartTime, hasWatchParty]);
 
     const userIdString = user?._id?.toString();
     const consensusRuleValue = activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all';

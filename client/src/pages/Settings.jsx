@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
     Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, 
     Hourglass, ChevronDown, Sliders, Type, MoveVertical, RotateCcw, 
-    Sparkles, Film, Grid, Check, RefreshCw, Tv, Volume2, Shield 
+    Sparkles, Film, Grid, Check, RefreshCw, Tv, Volume2, Shield, Zap 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -14,6 +14,7 @@ import UserBadges from '../components/UserBadges';
 import { getImageUrl } from '../utils/imageUtils';
 import { Capacitor } from '@capacitor/core';
 import { getVersionSummary, checkAndApplyOtaUpdate } from '../utils/otaUpdater';
+import { getPerformanceMode, applyPerformanceMode, detectLowEndDevice } from '../utils/performanceMode';
 import '../components/InfoPage.css';
 import './Settings.css';
 
@@ -53,6 +54,15 @@ const Settings = () => {
     const [liveRoomQuality, setLiveRoomQuality] = useState(() => {
         return localStorage.getItem('oxypace_call_quality') || 'saver';
     });
+    const [perfMode, setPerfMode] = useState(() => getPerformanceMode());
+    const [perfModeApplied, setPerfModeApplied] = useState(() => getPerformanceMode() === 'lite' || (getPerformanceMode() === 'auto' && detectLowEndDevice()));
+    const isLowEndHardwareDetected = detectLowEndDevice();
+
+    const handlePerformanceModeChange = (mode) => {
+        const res = applyPerformanceMode(mode);
+        setPerfMode(res.mode);
+        setPerfModeApplied(res.isLite);
+    };
     const [versionInfo, setVersionInfo] = useState({
         platform: Capacitor.isNativePlatform() ? 'android' : 'web',
         appVersion: '2.6.4',
@@ -798,6 +808,15 @@ const Settings = () => {
                     <span style={{ fontWeight: 500 }}>Canlı Oda Ayarları</span>
                 </div>
 
+                <div
+                    className={`channel-item ${activeMenu === 'performance' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('performance')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'performance' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'performance' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <Zap size={20} />
+                    <span style={{ fontWeight: 500 }}>Performans ve Akıcılık</span>
+                </div>
+
                 <div style={{
                     padding: '24px 8px 8px 8px',
                     color: '#949ba4',
@@ -923,6 +942,10 @@ const Settings = () => {
             case 'live_rooms':
                 title = "Canlı Oda Ayarları";
                 content = renderLiveRoomsMenu();
+                break;
+            case 'performance':
+                title = "Performans ve Akıcılık";
+                content = renderPerformanceMenu();
                 break;
             case 'danger':
                 title = "Tehlikeli Alan";
@@ -1840,6 +1863,47 @@ const Settings = () => {
                             </button>
                         ))}
                     </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderPerformanceMenu = () => (
+        <div className="submenu-content animation-slide-in">
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Grafik ve Animasyon Profili</h3>
+                <div className="settings-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                            Cihaz profili: <strong style={{ color: 'var(--text-primary)' }}>{isLowEndHardwareDetected ? 'Akıcı mod önerilir' : 'Standart donanım'}</strong>
+                        </span>
+                        <span className="lr-rec-pill">
+                            {perfModeApplied ? 'Akıcı Mod Etkin' : 'Tam Efektler Etkin'}
+                        </span>
+                    </div>
+
+                    <div className="segmented-options-group">
+                        {[
+                            { value: 'auto', label: 'Otomatik (Önerilen)' },
+                            { value: 'lite', label: 'Yüksek Akıcılık' },
+                            { value: 'full', label: 'Tam Efektler' }
+                        ].map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                className={`segment-btn ${perfMode === opt.value ? 'active' : ''}`}
+                                onClick={() => handlePerformanceModeChange(opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <ul style={{ margin: '14px 0 0 18px', padding: 0, fontSize: '0.83rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                        <li>Bulanıklık katmanlarını kapatarak GPU yükünü azaltır.</li>
+                        <li>Sürekli dönen/parlayan rozet animasyonlarını durdurur.</li>
+                        <li>Tekil video dekoderiyle bellek kullanımını düşürür.</li>
+                    </ul>
                 </div>
             </div>
         </div>

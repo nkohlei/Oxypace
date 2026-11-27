@@ -6,6 +6,7 @@ import { useGlobalStore } from '../store/useGlobalStore';
 import { getImageUrl } from '../utils/imageUtils';
 import { useAuth } from '../context/AuthContext';
 import { adsConfig } from '../config/ads';
+import { isPerfLiteActive } from '../utils/performanceMode';
 import TimelineScrubPreview from './TimelineScrubPreview';
 import './VideoPlayer.css';
 
@@ -318,9 +319,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const hlsInstanceRef = useRef(null);
 
   // Which video is currently displayed to the user
-  const useSingleVideoMode = !watchParty && typeof window !== 'undefined' && (
-    Capacitor.isNativePlatform() || document.body?.classList?.contains('perf-lite')
-  );
+  const useSingleVideoMode = !watchParty && isPerfLiteActive();
   const activeVideoRef = useRef('A'); // 'A' | 'B' — ref not state to avoid re-render races
   const [activeVideo, setActiveVideo] = useState('A'); // only for styling
 

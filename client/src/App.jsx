@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BadgeProvider } from './context/BadgeContext';
-import { VoiceProvider } from './context/VoiceContext';
+import { VoiceProvider, useActiveVoiceRoom } from './context/VoiceContext';
 import { useNavigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import { consumePendingRedirect } from './utils/redirectUtils';
@@ -73,20 +73,12 @@ const DesktopOverlay = lazyWithRetry(() => import('./pages/DesktopOverlay'));
 const GlobalVideoPIP = lazyWithRetry(() => import('./components/GlobalVideoPIP'));
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { initPerformanceMode } from './utils/performanceMode';
 if (typeof document !== 'undefined') {
-    const isNative = Capacitor.isNativePlatform();
-    if (isNative) {
+    if (Capacitor.isNativePlatform()) {
         document.body.classList.add('native-app');
     }
-    const deviceMem = typeof navigator !== 'undefined' ? Number(navigator.deviceMemory || 0) : 0;
-    const cpuCores = typeof navigator !== 'undefined' ? Number(navigator.hardwareConcurrency || 0) : 0;
-    const isCoarseMobile = typeof window !== 'undefined' && (
-        window.matchMedia?.('(pointer: coarse)')?.matches || window.innerWidth <= 768
-    );
-    const isLowEndHardware = isNative || (deviceMem > 0 && deviceMem <= 4) || (isCoarseMobile && cpuCores > 0 && cpuCores <= 4);
-    if (isLowEndHardware) {
-        document.body.classList.add('perf-lite');
-    }
+    initPerformanceMode();
 }
 if (typeof document !== 'undefined' && Capacitor.isNativePlatform()) {
     try {
@@ -129,15 +121,17 @@ import UserBar from './components/UserBar';
 import ScrollToTop from './components/ScrollToTop';
 import WarpGridBackground from './components/WarpGridBackground';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
-import SecurityQuestionsModal from './components/SecurityQuestionsModal';
+const LazySecurityQuestionsModal = lazyWithRetry(() => import('./components/SecurityQuestionsModal'));
 import './AppLayout.css';
 import InAppBrowser from './components/InAppBrowser';
 import { Browser } from '@capacitor/browser';
 import UpdateModal from './components/UpdateModal';
-import { GlobalWatchPartyWrapper } from './components/WatchPartyPlayer';
-import TourGuide from './components/TourGuide';
-import RegisterDeviceModal from './components/RegisterDeviceModal';
-import QuotePortalModal from './components/QuotePortalModal';
+const LazyGlobalWatchPartyWrapper = lazyWithRetry(() =>
+    import('./components/WatchPartyPlayer').then((m) => ({ default: m.GlobalWatchPartyWrapper }))
+);
+const LazyTourGuide = lazyWithRetry(() => import('./components/TourGuide'));
+const LazyRegisterDeviceModal = lazyWithRetry(() => import('./components/RegisterDeviceModal'));
+const LazyQuotePortalModal = lazyWithRetry(() => import('./components/QuotePortalModal'));
 import { getDeviceInfo } from './utils/deviceHelper';
 import axios from 'axios';
 
@@ -410,6 +404,7 @@ const AppLayout = () => {
     const userId = user?._id;
     const location = useLocation();
     const { socket, connected } = useSocket();
+    const { hasWatchParty } = useActiveVoiceRoom();
 
     const isLoggedIn = isAuthenticated;
 
@@ -808,32 +803,36 @@ const AppLayout = () => {
         <div className={`app-container ${(!isLoggedIn || location.pathname === '/blog') ? 'guest-mode' : ''} ${isCleanLayout ? 'map-page-active' : ''}`}>
             {isLoggedIn && <WarpGridBackground />}
             {showDeviceModal && (
-                <RegisterDeviceModal
-                    isOpen={showDeviceModal}
-                    onClose={() => setShowDeviceModal(false)}
-                    deviceId={currentDeviceInfo.deviceId}
-                    deviceName={currentDeviceInfo.deviceName}
-                    deviceType={currentDeviceInfo.deviceType}
-                    token={token}
-                    onRegistered={() => {
-                        setShowDeviceModal(false);
-                    }}
-                />
+                <Suspense fallback={null}>
+                    <LazyRegisterDeviceModal
+                        isOpen={showDeviceModal}
+                        onClose={() => setShowDeviceModal(false)}
+                        deviceId={currentDeviceInfo.deviceId}
+                        deviceName={currentDeviceInfo.deviceName}
+                        deviceType={currentDeviceInfo.deviceType}
+                        token={token}
+                        onRegistered={() => {
+                            setShowDeviceModal(false);
+                        }}
+                    />
+                </Suspense>
             )}
             {user && user.securityQuestionsConfigured === false && localStorage.getItem(`isSecurityConfigured_${user._id}`) !== 'true' && (
-                <SecurityQuestionsModal 
-                    user={user} 
-                    onCompleted={(questions) => {
-                        if (user._id) {
-                            localStorage.setItem(`isSecurityConfigured_${user._id}`, 'true');
-                        }
-                        updateUser({
-                            ...user,
-                            securityQuestionsConfigured: true,
-                            securityAnswers: questions
-                        });
-                    }} 
-                />
+                <Suspense fallback={null}>
+                    <LazySecurityQuestionsModal 
+                        user={user} 
+                        onCompleted={(questions) => {
+                            if (user._id) {
+                                localStorage.setItem(`isSecurityConfigured_${user._id}`, 'true');
+                            }
+                            updateUser({
+                                ...user,
+                                securityQuestionsConfigured: true,
+                                securityAnswers: questions
+                            });
+                        }} 
+                    />
+                </Suspense>
             )}
             <div className="horizontal-layout-container" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Mobile Overlay */}
@@ -1003,21 +1002,29 @@ const AppLayout = () => {
                 </div>
             </div>
             <InAppBrowser />
-            <GlobalWatchPartyWrapper />
+            {hasWatchParty && (
+                <Suspense fallback={null}>
+                    <LazyGlobalWatchPartyWrapper />
+                </Suspense>
+            )}
             <Suspense fallback={null}>
                 <GlobalVideoPIP />
             </Suspense>
             <UpdateModal />
-            <TourGuide />
+            <Suspense fallback={null}>
+                <LazyTourGuide />
+            </Suspense>
             {sharedContentForModal && isLoggedIn && (
-                <QuotePortalModal
-                    portals={user?.portals || user?.joinedPortals || []}
-                    onSelect={handleSharedPortalSelect}
-                    onClose={() => {
-                        setSharedContentForModal(null);
-                        window.__oxypacePendingChannelShare = null;
-                    }}
-                />
+                <Suspense fallback={null}>
+                    <LazyQuotePortalModal
+                        portals={user?.portals || user?.joinedPortals || []}
+                        onSelect={handleSharedPortalSelect}
+                        onClose={() => {
+                            setSharedContentForModal(null);
+                            window.__oxypacePendingChannelShare = null;
+                        }}
+                    />
+                </Suspense>
             )}
         </div>
     );

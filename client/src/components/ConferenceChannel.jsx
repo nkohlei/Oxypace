@@ -427,6 +427,7 @@ const ConferenceChannel = ({ portalId, channelId, channelName, onBack }) => {
         if (isActiveRoom || !portalId || !channelId) return;
         let isMounted = true;
         const fetchCount = async () => {
+            if (typeof document !== 'undefined' && document.hidden) return;
             try {
                 const res = await axios.get(`/api/voice/rooms/${portalId}/${channelId}/participants?t=${Date.now()}`);
                 if (isMounted && res.data?.participants) setLobbyCount(res.data.participants.length);

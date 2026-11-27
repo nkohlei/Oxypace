@@ -122,6 +122,7 @@ const ChannelSidebar = ({
 
         let isMounted = true;
         const fetchCounts = async () => {
+            if (typeof document !== 'undefined' && document.hidden) return;
             try {
                 const results = await Promise.all(
                     voiceChannels.map(async (ch) => {
