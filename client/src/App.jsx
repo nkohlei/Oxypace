@@ -73,8 +73,22 @@ const DesktopOverlay = lazyWithRetry(() => import('./pages/DesktopOverlay'));
 const GlobalVideoPIP = lazyWithRetry(() => import('./components/GlobalVideoPIP'));
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
+if (typeof document !== 'undefined') {
+    const isNative = Capacitor.isNativePlatform();
+    if (isNative) {
+        document.body.classList.add('native-app');
+    }
+    const deviceMem = typeof navigator !== 'undefined' ? Number(navigator.deviceMemory || 0) : 0;
+    const cpuCores = typeof navigator !== 'undefined' ? Number(navigator.hardwareConcurrency || 0) : 0;
+    const isCoarseMobile = typeof window !== 'undefined' && (
+        window.matchMedia?.('(pointer: coarse)')?.matches || window.innerWidth <= 768
+    );
+    const isLowEndHardware = isNative || (deviceMem > 0 && deviceMem <= 4) || (isCoarseMobile && cpuCores > 0 && cpuCores <= 4);
+    if (isLowEndHardware) {
+        document.body.classList.add('perf-lite');
+    }
+}
 if (typeof document !== 'undefined' && Capacitor.isNativePlatform()) {
-    document.body.classList.add('native-app');
     try {
         const sysPlugin = registerPlugin('SystemBarManager');
         sysPlugin?.getInsets?.().then(res => {

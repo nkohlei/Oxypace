@@ -11,6 +11,8 @@ import './VideoPlayer.css';
 
 const mountedVideos = new Set();
 let scrollTimeout = null;
+let scrollThrottleTimer = null;
+let cachedAutoplayOff = typeof window !== 'undefined' && localStorage.getItem('video_autoplay') === 'off';
 const isElectron = typeof window !== 'undefined' && (
   !!window.desktopAPI?.isElectron || 
   (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1) ||
@@ -100,8 +102,11 @@ const isLiveStreamVideo = (v) => {
 };
 
 const pauseAllOtherVideos = (currentEl) => {
-  if (typeof document === 'undefined') return;
-  document.querySelectorAll('video').forEach((v) => {
+  mountedVideos.forEach((v) => {
+    if (!v || !v.isConnected) {
+      mountedVideos.delete(v);
+      return;
+    }
     if (isLiveStreamVideo(v)) return;
     if (v !== currentEl && !v.paused) {
       // Don't pause a sibling video within the SAME player container during quality swaps
@@ -145,11 +150,19 @@ const isElementVisibleOnScreen = (el, minVisibleRatio = 0.35) => {
 };
 
 const checkCenterVideo = () => {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined' || mountedVideos.size === 0) return;
+
+  // Prune any detached video nodes cleanly before evaluating visibility
+  mountedVideos.forEach(video => {
+    if (!video || !video.isConnected) {
+      mountedVideos.delete(video);
+    }
+  });
+  if (mountedVideos.size === 0) return;
 
   // 0. If document/tab is hidden in background, pause ALL playing videos
   if (document.hidden) {
-    document.querySelectorAll('video').forEach(video => {
+    mountedVideos.forEach(video => {
       if (isLiveStreamVideo(video)) return;
       if (!video.paused) video.pause();
     });
@@ -159,7 +172,7 @@ const checkCenterVideo = () => {
   // If in fullscreen, only allow fullscreen video to play
   const isFs = !!document.fullscreenElement;
   if (isFs) {
-    document.querySelectorAll('video').forEach(video => {
+    mountedVideos.forEach(video => {
       if (isLiveStreamVideo(video)) return;
       const amIFs = document.fullscreenElement.contains(video);
       if (!amIFs && !video.paused) video.pause();
@@ -167,50 +180,48 @@ const checkCenterVideo = () => {
     return;
   }
 
-  // 1. CRITICAL: Pause ANY playing video in DOM that is not sufficiently visible on screen (< 20%)
-  document.querySelectorAll('video').forEach(video => {
+  // 1. Single pass over mountedVideos: pause out-of-view (<20%) videos, track playing / closest-to-center
+  const centerY = window.innerHeight / 2;
+  let currentlyPlaying = null;
+  let closestVideo = null;
+  let minDistance = Infinity;
+
+  mountedVideos.forEach(video => {
     if (isLiveStreamVideo(video)) return;
-    if (!video.paused && !isElementVisibleOnScreen(video, 0.2)) {
-      try {
-        video.pause();
-      } catch (e) {}
+    const isMinVisible = isElementVisibleOnScreen(video, 0.2);
+    if (!isMinVisible) {
+      if (!video.paused) {
+        try {
+          video.pause();
+        } catch (e) {}
+      }
+      return;
+    }
+
+    const isEligible = isElementVisibleOnScreen(video, 0.25);
+    if (!isEligible) return;
+
+    if (!video.paused) {
+      currentlyPlaying = video;
+    } else {
+      const rect = video.getBoundingClientRect();
+      const vCenter = rect.top + rect.height / 2;
+      const distance = Math.abs(vCenter - centerY);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestVideo = video;
+      }
     }
   });
-
-  if (mountedVideos.size === 0) return;
 
   // 2. If any video is actively playing and STILL visible on screen (>= 25%), KEEP it playing
-  // and ensure all other videos are paused.
-  let currentlyPlaying = null;
-  mountedVideos.forEach(video => {
-    if (video && !video.paused && isElementVisibleOnScreen(video, 0.25)) {
-      currentlyPlaying = video;
-    }
-  });
-
   if (currentlyPlaying) {
     pauseAllOtherVideos(currentlyPlaying);
     return;
   }
 
-  // 3. If no video is currently playing, pick the one closest to screen center (that is at least 25% visible)
-  const centerY = window.innerHeight / 2;
-  let closestVideo = null;
-  let minDistance = Infinity;
-
-  mountedVideos.forEach(video => {
-    if (!video || !isElementVisibleOnScreen(video, 0.25)) return;
-    const rect = video.getBoundingClientRect();
-    const vCenter = rect.top + rect.height / 2;
-    const distance = Math.abs(vCenter - centerY);
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestVideo = video;
-    }
-  });
-
-  // Autoplay preference check: If turned off in settings, do NOT auto-start center videos on scroll
-  const isAutoplayOff = typeof window !== 'undefined' && localStorage.getItem('video_autoplay') === 'off';
+  // 3. Autoplay preference check from cached in-memory flag
+  const isAutoplayOff = cachedAutoplayOff;
 
   mountedVideos.forEach(video => {
     if (video === closestVideo) {
@@ -245,8 +256,12 @@ const checkCenterVideo = () => {
 };
 
 const handleGlobalScroll = () => {
-  if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
-  scrollTimeout = requestAnimationFrame(checkCenterVideo);
+  if (scrollThrottleTimer) return;
+  scrollThrottleTimer = setTimeout(() => {
+    scrollThrottleTimer = null;
+    if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
+    scrollTimeout = requestAnimationFrame(checkCenterVideo);
+  }, 150);
 };
 
 if (typeof window !== 'undefined') {
@@ -282,6 +297,7 @@ if (typeof window !== 'undefined') {
 
   // Instant response when user toggles video autoplay in Settings
   window.addEventListener('video-autoplay-changed', (e) => {
+    cachedAutoplayOff = e.detail === 'off';
     if (e.detail === 'off') {
       mountedVideos.forEach(video => {
         if (!video.paused && !video.closest('.watch-party-container')) {
@@ -302,6 +318,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const hlsInstanceRef = useRef(null);
 
   // Which video is currently displayed to the user
+  const useSingleVideoMode = !watchParty && typeof window !== 'undefined' && (
+    Capacitor.isNativePlatform() || document.body?.classList?.contains('perf-lite')
+  );
   const activeVideoRef = useRef('A'); // 'A' | 'B' — ref not state to avoid re-render races
   const [activeVideo, setActiveVideo] = useState('A'); // only for styling
 
@@ -365,9 +384,11 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   useEffect(() => {
     const local = localStorage.getItem('video_autoplay');
     if (local === 'on' || local === 'off') {
+      cachedAutoplayOff = local === 'off';
       setIsAutoplayOff(local === 'off');
     } else if (user?.settings?.video?.autoplay === 'on' || user?.settings?.video?.autoplay === 'off') {
       localStorage.setItem('video_autoplay', user.settings.video.autoplay);
+      cachedAutoplayOff = user.settings.video.autoplay === 'off';
       setIsAutoplayOff(user.settings.video.autoplay === 'off');
     }
   }, [user?.settings?.video?.autoplay]);
@@ -1134,10 +1155,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       el.addEventListener('playing', () => setIsWaiting(false), { once: true });
     };
 
+    if (!inactiveEl || useSingleVideoMode) {
+      applyDirectFallback();
+      return;
+    }
+
     const executeSwap = () => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
       cleanup();
 
+      const oldId = activeVideoRef.current;
       const newId = getInactiveId();
       const liveNow = activeEl.currentTime;
       const drift = liveNow - inactiveEl.currentTime;
@@ -1163,9 +1190,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       activeVideoRef.current = newId;
       setActiveVideo(newId);
 
-      // Pause and mute old active element
+      // Pause, mute, and release hardware buffer on the old element after swap settles
       activeEl.pause();
       activeEl.muted = true;
+      setTimeout(() => {
+        if (activeVideoRef.current !== oldId && activeEl) {
+          try {
+            activeEl.removeAttribute('src');
+            activeEl.load();
+          } catch (_) {}
+        }
+      }, 250);
 
       // Register new active element with scroll-center manager
       mountedVideos.delete(activeEl);
@@ -1405,7 +1440,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
             handleGlobalScroll();
           }
         });
-      }, { threshold: [0.0, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0] });
+      }, { threshold: [0.0, 0.2, 0.35] });
       observer.observe(container);
     }
 
@@ -2000,26 +2035,28 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         onError={activeVideo === 'A' ? handleVideoError : undefined}
       />
 
-      {/* VIDEO B */}
-      <video
-        ref={videoRefB}
-        poster={effectivePoster || undefined}
-        className="native-video-element"
-        style={videoStyle('B')}
-        playsInline loop={!isAdPlaying}
-        preload={activeVideo === 'B' ? "metadata" : "none"}
-        muted={isMuted}
-        crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
-        onClick={handleVideoAreaClick}
-        onTimeUpdate={activeVideo === 'B' ? handleTimeUpdate : undefined}
-        onLoadedMetadata={activeVideo === 'B' ? handleLoadedMetadataActive : undefined}
-        onWaiting={activeVideo === 'B' ? handleWaiting : undefined}
-        onStalled={activeVideo === 'B' ? handleWaiting : undefined}
-        onPlaying={activeVideo === 'B' ? handlePlaying : undefined}
-        onCanPlay={activeVideo === 'B' ? handleCanPlay : undefined}
-        onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
-        onError={activeVideo === 'B' ? handleVideoError : undefined}
-      />
+      {/* VIDEO B (Desktop dual-buffer only; omitted on native/low-end to halve hardware decoder count) */}
+      {!useSingleVideoMode && (
+        <video
+          ref={videoRefB}
+          poster={effectivePoster || undefined}
+          className="native-video-element"
+          style={videoStyle('B')}
+          playsInline loop={!isAdPlaying}
+          preload={activeVideo === 'B' ? "metadata" : "none"}
+          muted={isMuted}
+          crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
+          onClick={handleVideoAreaClick}
+          onTimeUpdate={activeVideo === 'B' ? handleTimeUpdate : undefined}
+          onLoadedMetadata={activeVideo === 'B' ? handleLoadedMetadataActive : undefined}
+          onWaiting={activeVideo === 'B' ? handleWaiting : undefined}
+          onStalled={activeVideo === 'B' ? handleWaiting : undefined}
+          onPlaying={activeVideo === 'B' ? handlePlaying : undefined}
+          onCanPlay={activeVideo === 'B' ? handleCanPlay : undefined}
+          onEnded={activeVideo === 'B' ? handleVideoEnded : undefined}
+          onError={activeVideo === 'B' ? handleVideoError : undefined}
+        />
+      )}
 
       {isAdPlaying && (
         <div className="ad-overlay-container">

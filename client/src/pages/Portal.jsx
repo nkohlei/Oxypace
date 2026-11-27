@@ -2,7 +2,6 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, laz
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import Lenis from 'lenis';
 import { uploadFile } from '../utils/uploadUtils';
 import { normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
@@ -657,9 +656,11 @@ const Portal = () => {
 
 
 
-    // Scroll To Top Logic - 100% High FPS Smooth Animation
+    // Scroll To Top Logic - 0 re-renders during scroll via imperative SVG strokeDashoffset ref
+    const SCROLL_RING_RADIUS = 20;
+    const SCROLL_RING_CIRCUMFERENCE = 2 * Math.PI * SCROLL_RING_RADIUS;
     const [showScrollTop, setShowScrollTop] = useState(false);
-    const [scrollProgress, setScrollProgress] = useState(0);
+    const scrollProgressCircleRef = useRef(null);
     const feedRef = useRef(null);
     const scrollRafRef = useRef(null);
     const animationFrameRef = useRef(null);
@@ -675,12 +676,14 @@ const Portal = () => {
             setShowScrollTop(prev => prev !== shouldShow ? shouldShow : prev);
 
             const scrollHeight = el.scrollHeight - el.clientHeight;
-            if (scrollHeight > 0) {
-                const progress = Math.round((scrollTop / scrollHeight) * 100);
-                setScrollProgress(prev => Math.abs(prev - progress) >= 2 ? progress : prev);
+            if (scrollHeight > 0 && scrollProgressCircleRef.current) {
+                const ratio = Math.min(1, Math.max(0, scrollTop / scrollHeight));
+                scrollProgressCircleRef.current.style.strokeDashoffset = String(
+                    SCROLL_RING_CIRCUMFERENCE * (1 - ratio)
+                );
             }
         });
-    }, []);
+    }, [SCROLL_RING_CIRCUMFERENCE]);
 
     // 100% Guaranteed High-Performance 60-120 FPS Eased Scroll To Top
     const scrollToTop = useCallback((e) => {
@@ -2206,29 +2209,31 @@ const Portal = () => {
                                                                 )}
                                                             </div>
 
-                                                            {/* Scroll To Top Button - Round with progress ring */}
-                                                            {(() => {
-                                                                const radius = 20;
-                                                                const circumference = 2 * Math.PI * radius;
-                                                                const strokeDashoffset = circumference - (scrollProgress / 100) * circumference;
-                                                                return (
-                                                                    <button
-                                                                        className={`floating-scroll-top portal-scroll-top ${showScrollTop ? 'visible' : ''}`}
-                                                                        onClick={scrollToTop}
-                                                                        aria-label="Yukarı Çık"
-                                                                    >
-                                                                        <svg className="progress-ring" width="50" height="50" viewBox="0 0 50 50">
-                                                                            <circle className="progress-ring-track" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" />
-                                                                            <circle className="progress-ring-fill" strokeWidth="3" fill="transparent" r={radius} cx="25" cy="25" style={{ strokeDasharray: circumference, strokeDashoffset }} />
-                                                                        </svg>
-                                                                        <div className="scroll-icon">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                                <path d="m18 15-6-6-6 6" />
-                                                                            </svg>
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })()}
+                                                            {/* Scroll To Top Button - Round with imperative progress ring */}
+                                                            <button
+                                                                className={`floating-scroll-top portal-scroll-top ${showScrollTop ? 'visible' : ''}`}
+                                                                onClick={scrollToTop}
+                                                                aria-label="Yukarı Çık"
+                                                            >
+                                                                <svg className="progress-ring" width="50" height="50" viewBox="0 0 50 50">
+                                                                    <circle className="progress-ring-track" strokeWidth="3" fill="transparent" r={SCROLL_RING_RADIUS} cx="25" cy="25" />
+                                                                    <circle
+                                                                        ref={scrollProgressCircleRef}
+                                                                        className="progress-ring-fill"
+                                                                        strokeWidth="3"
+                                                                        fill="transparent"
+                                                                        r={SCROLL_RING_RADIUS}
+                                                                        cx="25"
+                                                                        cy="25"
+                                                                        style={{ strokeDasharray: SCROLL_RING_CIRCUMFERENCE, strokeDashoffset: SCROLL_RING_CIRCUMFERENCE }}
+                                                                    />
+                                                                </svg>
+                                                                <div className="scroll-icon">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="m18 15-6-6-6 6" />
+                                                                    </svg>
+                                                                </div>
+                                                            </button>
 
                                                             {isTanitimPortal ? null : canCreatePostInPortal ? (
                                                                 <div className="channel-input-area">
