@@ -216,7 +216,7 @@ export const AuthProvider = ({ children }) => {
                     ]).then(([info, otaVersion]) => {
                         axios.post('/api/users/sync-version', {
                             appVersion: info?.version || '2.6.5',
-                            versionCode: info?.build ? parseInt(info.build, 10) : 265,
+                            versionCode: info?.build ? parseInt(info.build, 10) : 266,
                             platform: 'android',
                             ...(otaVersion ? { otaVersion } : {}),
                         }, { headers: { Authorization: `Bearer ${authToken}` } }).catch(() => {});

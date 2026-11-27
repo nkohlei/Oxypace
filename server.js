@@ -79,7 +79,6 @@ if (!mongoUri) {
 
 // Initialize Express app
 const app = express();
-app.use(compression());
 // Enable proxy trust for Vercel/Heroku (fixes HTTP/HTTPS redirect loop)
 app.set('trust proxy', 1);
 
@@ -193,6 +192,10 @@ app.use(compression({
         if (req.headers['x-no-compression']) {
             return false;
         }
+        const url = req.originalUrl || req.url || '';
+        if (url.startsWith('/api/media/') || url.startsWith('/downloads/')) {
+            return false;
+        }
         return compression.filter(req, res);
     }
 }));
@@ -228,30 +231,39 @@ if (!process.env.JWT_SECRET) {
     process.exit(1);
 }
 
-// Session middleware (required for Passport)
+// Session middleware (required for Passport OAuth only — skipped on static/media streams)
 const isProduction = process.env.NODE_ENV === 'production';
-app.use(
-    session({
-        secret: process.env.JWT_SECRET,
-        resave: false,
-        saveUninitialized: false,
-        store: MongoStore.create({
-            mongoUrl: mongoUri,
-            collectionName: 'sessions',
-            ttl: 24 * 60 * 60, // 1 day
-        }),
-        proxy: true, // Required for Vercel/proxies
-        cookie: {
-            secure: isProduction, // Secure only in production (HTTPS)
-            sameSite: isProduction ? 'none' : 'lax', // None required for cross-site auth flows
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        },
-    })
-);
+const sessionMiddleware = session({
+    secret: process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: mongoUri,
+        collectionName: 'sessions',
+        ttl: 24 * 60 * 60, // 1 day
+    }),
+    proxy: true, // Required for Vercel/proxies
+    cookie: {
+        secure: isProduction, // Secure only in production (HTTPS)
+        sameSite: isProduction ? 'none' : 'lax', // None required for cross-site auth flows
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+});
+const passportInitializeMiddleware = passport.initialize();
+const passportSessionMiddleware = passport.session();
 
-// Initialize Passport
-app.use(passport.initialize());
-app.use(passport.session());
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/media/') || req.path.startsWith('/downloads/') || req.path.startsWith('/uploads/')) {
+        return next();
+    }
+    return sessionMiddleware(req, res, (err) => {
+        if (err) return next(err);
+        return passportInitializeMiddleware(req, res, (err2) => {
+            if (err2) return next(err2);
+            return passportSessionMiddleware(req, res, next);
+        });
+    });
+});
 
 // Serve uploaded files with high-performance immutable browser & proxy cache headers
 app.use(

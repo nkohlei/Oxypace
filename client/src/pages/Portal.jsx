@@ -173,6 +173,10 @@ const Portal = () => {
 
     // UI Toggles
     const [showMembers, setShowMembers] = useState(false); // Default to closed as requested
+    const showMembersRef = useRef(false);
+    showMembersRef.current = showMembers;
+    const prevPortalIdRef = useRef(id);
+    const prefetchedInitialPostsRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'info' }); // { show, message, type }
     const [nsfwConfirmed, setNsfwConfirmed] = useState(false); // +18 age gate state
 
@@ -495,6 +499,8 @@ const Portal = () => {
             if (status === 'offline') {
                 setPortalTypingUsers((prev) => prev.filter((u) => String(u.userId) !== String(userId)));
             }
+            // Skip cloning large portal member arrays when MembersSidebar is closed (ChannelSidebar uses OnlineUsersContext)
+            if (!showMembersRef.current) return;
             setPortal((prev) => {
                 if (!prev) return prev;
                 const activeTime = lastActive || new Date();
@@ -1373,6 +1379,19 @@ const Portal = () => {
                 setLoading(false);
             } else {
                 setLoading(true);
+                // Parallel prefetch of initial channel posts so uncached portals load in 1 RTT instead of 2!
+                const initialChHint = pendingReturnCtxRef.current?.channelId || urlChannel || 'general';
+                const authTok = localStorage.getItem('token');
+                const prefetchPromise = axios
+                    .get(`/api/portals/${id}/posts?channel=${encodeURIComponent(initialChHint)}&limit=10`, {
+                        ...(authTok ? { headers: { Authorization: `Bearer ${authTok}` } } : {}),
+                    })
+                    .catch(() => null);
+                prefetchedInitialPostsRef.current = {
+                    portalId: String(id),
+                    channelHint: String(initialChHint),
+                    promise: prefetchPromise,
+                };
             }
             setShowScrollTop(false);
         }
@@ -1510,7 +1529,22 @@ const Portal = () => {
                 url += `&before=${lastPost.createdAt}`;
             }
 
-            const res = await axios.get(url, config);
+            let res = null;
+            const prefetched = prefetchedInitialPostsRef.current;
+            const primaryChId = portalRef.current?.channels?.[0]?._id;
+            if (
+                !isLoadMore &&
+                prefetched &&
+                prefetched.portalId === String(id) &&
+                (prefetched.channelHint === String(currentChannelId) ||
+                    (prefetched.channelHint === 'general' && primaryChId && String(currentChannelId) === String(primaryChId)))
+            ) {
+                prefetchedInitialPostsRef.current = null;
+                res = await prefetched.promise;
+            }
+            if (!res) {
+                res = await axios.get(url, config);
+            }
             const newPosts = res.data;
 
             if (res.headers && res.headers['x-total-count'] !== undefined) {
@@ -1533,7 +1567,7 @@ const Portal = () => {
                     const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p._id));
                     const merged = [...prev, ...uniqueNewPosts];
                     scheduleIdleWrite(() => {
-                        sessionStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 60)));
+                        sessionStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 30)));
                     });
                     return merged;
                 });
@@ -1548,10 +1582,10 @@ const Portal = () => {
                 setPosts(finalPosts);
                 scheduleIdleWrite(() => {
                     try {
-                        sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 60)));
-                        localStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20)));
+                        sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 15)));
+                        localStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 12)));
                     } catch (_) {
-                        try { sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20))); } catch (__) { }
+                        try { sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 10))); } catch (__) { }
                     }
                 });
             }
@@ -1593,18 +1627,61 @@ const Portal = () => {
         if (node) observer.current.observe(node);
     }, [loadingMore, hasMore, fetchChannelPosts]);
 
-    // Reset state when ID changes
+    // Single-batch portal switch hydration (never wipe initial mount cache to null!)
     useEffect(() => {
         const returnCtx = readFreshReturnFeedContext(id);
         pendingReturnCtxRef.current = returnCtx;
-        shouldPreserveLoadedTailRef.current = false;
-        setPosts([]);
-        setHasMore(true);
-        setCurrentChannel(null); // Reset channel to avoid using old portal's channel
-        setPortal(null); // Clear portal data to prevent showing old content
-        setError('');
         const keepChannelOpen = Boolean(returnCtx || urlChannel || searchParams.get('joinVoice') === 'true');
+
+        if (prevPortalIdRef.current === id) {
+            if (keepChannelOpen) setMobileChannelOpen(true);
+            return;
+        }
+        prevPortalIdRef.current = id;
+        shouldPreserveLoadedTailRef.current = false;
+        prefetchedInitialPostsRef.current = null;
+        setHasMore(true);
+        setError('');
         setMobileChannelOpen(keepChannelOpen);
+
+        let hydratedPortal = null;
+        try {
+            const rawPortal = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
+            if (rawPortal) {
+                const parsed = JSON.parse(rawPortal);
+                if (parsed && String(parsed._id) === String(id) && Array.isArray(parsed.channels) && parsed.channels.length > 0) {
+                    hydratedPortal = parsed;
+                }
+            }
+        } catch (_) {}
+
+        if (hydratedPortal) {
+            const targetChId =
+                (returnCtx?.channelId && hydratedPortal.channels.find((c) => String(c._id) === String(returnCtx.channelId))?._id) ||
+                (urlChannel && hydratedPortal.channels.find((c) => String(c._id) === String(urlChannel))?._id) ||
+                hydratedPortal.channels[0]?._id ||
+                null;
+            let hydratedPosts = [];
+            if (targetChId) {
+                try {
+                    const rawPosts = sessionStorage.getItem(`portal_posts_${id}_${targetChId}`) || localStorage.getItem(`portal_posts_${id}_${targetChId}`);
+                    if (rawPosts) {
+                        const parsedPosts = JSON.parse(rawPosts);
+                        if (Array.isArray(parsedPosts)) hydratedPosts = parsedPosts;
+                    }
+                } catch (_) {}
+            }
+            setPortal(hydratedPortal);
+            setCurrentChannel(targetChId);
+            setPosts(hydratedPosts);
+            setLoading(false);
+            setContentLoading(false);
+        } else {
+            setPortal(null);
+            setCurrentChannel(null);
+            setPosts([]);
+            setLoading(true);
+        }
     }, [id]);
 
     const handleDeletePost = useCallback((postId) => {
@@ -1737,6 +1814,53 @@ const Portal = () => {
         const interval = setInterval(updateCountdown, 1000);
         return () => clearInterval(interval);
     }, [suspensionInfo]);
+
+    const handleSidebarEdit = useCallback((tab) => {
+        const targetTab = typeof tab === 'string' ? tab : 'overview';
+        setSettingsTab(targetTab);
+        setEditing(true);
+    }, []);
+
+    const handleOpenPortalInfo = useCallback(() => {
+        setShowPortalInfo(true);
+    }, []);
+
+    const renderedPostsList = useMemo(() => {
+        if (!Array.isArray(posts)) return null;
+        let organicCount = 0;
+        return posts.map((post, index) => {
+            const isBotPost = post.isBot === true || post.author?.isBot === true;
+            if (!isBotPost) {
+                organicCount++;
+            }
+            const showAdAfter = adsConfig.enableAds && !isBotPost && organicCount > 0 && organicCount % 8 === 0;
+            return (
+                <Fragment key={post._id}>
+                    <PostCard
+                        post={post}
+                        priorityMount={index < 2}
+                        onDelete={handleDeletePost}
+                        onPin={handlePin}
+                        onArchive={handleArchivePost}
+                        isAdmin={isAdmin}
+                    />
+                    {index < posts.length - 1 && <div className="post-separator" />}
+                    {showAdAfter && (
+                        <Fragment key={`ad-${post._id}-${index}`}>
+                            {adsConfig.enableAdsterraAds ? (
+                                <AdsterraPostCard />
+                            ) : adsConfig.enableProgrammaticAds ? (
+                                <ExternalAdHolder />
+                            ) : (
+                                <AdPostCard index={Math.floor(organicCount / 8) - 1} />
+                            )}
+                            {index < posts.length - 1 && <div className="post-separator" />}
+                        </Fragment>
+                    )}
+                </Fragment>
+            );
+        });
+    }, [posts, handleDeletePost, handlePin, handleArchivePost, isAdmin]);
 
     // Guest protection: If no token/session, redirect directly to Home (no flash, no lock screen)
     if (!token && !authLoading) {
@@ -1969,15 +2093,11 @@ const Portal = () => {
                         portal={portal}
                         isMember={isMember}
                         canManage={isOwner || isAdmin}
-                        onEdit={(tab) => {
-                            const targetTab = typeof tab === 'string' ? tab : 'overview';
-                            setSettingsTab(targetTab);
-                            setEditing(true);
-                        }}
+                        onEdit={handleSidebarEdit}
                         currentChannel={currentChannel}
                         onChangeChannel={handleChannelSelect}
                         className={`${isSidebarOpen ? 'mobile-open' : ''} ${isMobileView && mobileChannelOpen ? 'mobile-hidden' : ''}`}
-                        onShowPortalInfo={() => setShowPortalInfo(true)}
+                        onShowPortalInfo={handleOpenPortalInfo}
                     />
                 )}
 
@@ -2177,41 +2297,7 @@ const Portal = () => {
                                                                         )}
 
                                                                         {/* Posts List */}
-                                                                        {(() => {
-                                                                            let organicCount = 0;
-                                                                            return Array.isArray(posts) && posts.map((post, index) => {
-                                                                                const isBotPost = post.isBot === true || post.author?.isBot === true;
-                                                                                if (!isBotPost) {
-                                                                                    organicCount++;
-                                                                                }
-                                                                                const showAdAfter = adsConfig.enableAds && !isBotPost && organicCount > 0 && organicCount % 8 === 0;
-                                                                                return (
-                                                                                    <Fragment key={post._id}>
-                                                                                        <PostCard
-                                                                                            key={post._id}
-                                                                                            post={post}
-                                                                                            onDelete={handleDeletePost}
-                                                                                            onPin={handlePin}
-                                                                                            onArchive={handleArchivePost}
-                                                                                            isAdmin={isAdmin}
-                                                                                        />
-                                                                                        {index < posts.length - 1 && <div className="post-separator" />}
-                                                                                        {showAdAfter && (
-                                                                                            <Fragment key={`ad-${post._id}-${index}`}>
-                                                                                                {adsConfig.enableAdsterraAds ? (
-                                                                                                    <AdsterraPostCard />
-                                                                                                ) : adsConfig.enableProgrammaticAds ? (
-                                                                                                    <ExternalAdHolder />
-                                                                                                ) : (
-                                                                                                    <AdPostCard index={Math.floor(organicCount / 8) - 1} />
-                                                                                                )}
-                                                                                                {index < posts.length - 1 && <div className="post-separator" />}
-                                                                                            </Fragment>
-                                                                                        )}
-                                                                                    </Fragment>
-                                                                                );
-                                                                            });
-                                                                        })()}
+                                                                        {renderedPostsList}
 
                                                                         {/* Infinite Scroll Sentinel */}
                                                                         <div ref={lastPostElementRef} style={{ height: '40px', margin: '10px 0', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

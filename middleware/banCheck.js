@@ -59,7 +59,7 @@ export const banCheckMiddleware = async (req, res, next) => {
             const token = req.headers.authorization.split(' ')[1];
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                const user = await User.findById(decoded.id);
+                const user = await User.findById(decoded.id).select('-password');
 
                 if (user && user.isBanned) {
                     // Süreli engel bitiş kontrolü
@@ -79,6 +79,11 @@ export const banCheckMiddleware = async (req, res, next) => {
                             banExpiresAt: user.banExpiresAt,
                         });
                     }
+                }
+
+                if (user) {
+                    req._preloadedAuthUser = user;
+                    req._preloadedAuthDecoded = decoded;
                 }
             } catch (_err) {
                 // Token geçersiz veya süresi dolmuşsa, korumalı rotalardaki auth middleware'i (protect) hatayı ele alacaktır.

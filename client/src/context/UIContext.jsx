@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const UIContext = createContext();
 
@@ -14,7 +14,7 @@ export const UIProvider = ({ children }) => {
     const [mobileChannelOpen, setMobileChannelOpen] = useState(false);
     const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
-    // Track viewport width for mobile detection
+    // Track viewport width for mobile detection without redundant state updates
     useEffect(() => {
         const handleResize = () => {
             const isFullscreen = Boolean(
@@ -32,10 +32,10 @@ export const UIProvider = ({ children }) => {
                 ? shortestSide <= 768
                 : window.innerWidth <= 768;
 
-            setIsMobileView(mobile);
+            setIsMobileView((prev) => (prev === mobile ? prev : mobile));
             // Only reset mobile channel state on genuine desktop viewport transitions — never during fullscreen or mobile rotation
             if (!mobile && !isFullscreen && !isCoarsePointer) {
-                setMobileChannelOpen(false);
+                setMobileChannelOpen((prev) => (prev ? false : prev));
             }
         };
 
@@ -52,16 +52,24 @@ export const UIProvider = ({ children }) => {
         };
     }, []);
 
-    const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-    const closeSidebar = () => setIsSidebarOpen(false);
-    const openSidebar = () => setIsSidebarOpen(true);
+    const toggleSidebar = useCallback(() => setIsSidebarOpen((prev) => !prev), []);
+    const closeSidebar = useCallback(() => setIsSidebarOpen((prev) => (prev ? false : prev)), []);
+    const openSidebar = useCallback(() => setIsSidebarOpen((prev) => (prev ? prev : true)), []);
+
+    const contextValue = useMemo(() => ({
+        isSidebarOpen,
+        toggleSidebar,
+        closeSidebar,
+        openSidebar,
+        isMobileView,
+        mobileChannelOpen,
+        setMobileChannelOpen,
+        isDesktopSidebarCollapsed,
+        setIsDesktopSidebarCollapsed,
+    }), [isSidebarOpen, toggleSidebar, closeSidebar, openSidebar, isMobileView, mobileChannelOpen, isDesktopSidebarCollapsed]);
 
     return (
-        <UIContext.Provider value={{
-            isSidebarOpen, toggleSidebar, closeSidebar, openSidebar,
-            isMobileView, mobileChannelOpen, setMobileChannelOpen,
-            isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed
-        }}>
+        <UIContext.Provider value={contextValue}>
             {children}
         </UIContext.Provider>
     );

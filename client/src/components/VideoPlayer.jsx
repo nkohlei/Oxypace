@@ -333,9 +333,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   const setIsMuted = useGlobalStore(state => state.setIsMuted);
   const isMuted = propMuted !== undefined ? propMuted : globalMuted;
   const volume = propVolume !== undefined ? propVolume : 0.5;
-  const [progress, setProgress] = useState(0);
+  const [, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const progressFillRef = useRef(null);
+  const progressThumbRef = useRef(null);
+  const durationRef = useRef(0);
+  const lastWholeSecRef = useRef(-1);
+  const showControlsRef = useRef(true);
   const [isPaused, setIsPaused] = useState(true);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isAutoplayOff, setIsAutoplayOff] = useState(() => {
@@ -646,12 +651,21 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
     if (isSlowConnection() && (src144 || src360)) return src360 || src144;
 
+    // On Android / low-end devices (perf-lite), start at 360p for <150ms instant first-frame startup & zero decoder stutter
+    if (isPerfLiteActive()) {
+      if (src360) return src360;
+      if (src720) return src720;
+      if (src144) return src144;
+      if (src1080) return src1080;
+      return srcOriginal || src1440 || src2160;
+    }
+
     // Mobile hardware decoder optimization: 720p delivers crystal clarity with zero frame drops or memory lockups
     if (isMobile) {
       if (src720) return src720;
+      if (src360) return src360;
       if (src1080) return src1080;
       if (src1440) return src1440;
-      if (src360) return src360;
       if (src144) return src144;
       return srcOriginal || src2160;
     }
@@ -1360,27 +1374,27 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     return () => conn.removeEventListener('change', onChange);
   }, [qualityMode, getBestSrc, initiateQualitySwap]);
 
-  // ─── Periodic upgrade check ───────────────────────────────────────────
+  // ─── Periodic upgrade check (active playback only) ────────────────────
   useEffect(() => {
-    if (qualityMode !== 'auto') return;
+    if (qualityMode !== 'auto' || isPaused || isPerfLiteActive()) return;
     const id = setInterval(() => {
       if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       if (isSlowConnection()) return;
       const next = getBestSrc();
       const activeEl = getActiveEl();
-      if (activeEl && next !== activeEl.src && next !== activeEl.currentSrc) {
-        console.log('[VideoPlayer] Auto: network recovered → upgrading quality');
+      if (activeEl && !activeEl.paused && next !== activeEl.src && next !== activeEl.currentSrc) {
         initiateQualitySwap(next);
       }
-    }, 8000);
+    }, 10000);
     return () => clearInterval(id);
-  }, [qualityMode, getBestSrc, initiateQualitySwap]);
+  }, [qualityMode, isPaused, getBestSrc, initiateQualitySwap]);
 
-  // ─── Progress stall detector ──────────────────────────────────────────
+  // ─── Progress stall detector (active playback only) ───────────────────
   useEffect(() => {
-    if (qualityMode !== 'auto') return;
+    if (qualityMode !== 'auto' || isPaused) return;
     let lastTime = 0;
     let lastCheck = Date.now();
+    const pollMs = isPerfLiteActive() ? 1500 : 600;
     const id = setInterval(() => {
       if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       const video = getActiveEl();
@@ -1390,17 +1404,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       const now = Date.now();
       const elapsed = (now - lastCheck) / 1000;
       const diff = video.currentTime - lastTime;
-      if (elapsed > 0.5 && diff < 0.1) {
+      if (elapsed > 0.8 && diff < 0.1) {
         const lowestSrc = src144 || src360;
         if (lowestSrc && video.src !== lowestSrc && video.currentSrc !== lowestSrc) {
-          console.log('[VideoPlayer] Auto: progress stall → emergency swap to lowest');
           initiateQualitySwap(lowestSrc);
         }
       }
       lastTime = video.currentTime; lastCheck = now;
-    }, 500);
+    }, pollMs);
     return () => clearInterval(id);
-  }, [qualityMode, src144, src360, initiateQualitySwap]);
+  }, [qualityMode, isPaused, src144, src360, initiateQualitySwap]);
 
   // ─── Register active video with scroll manager & Intersection Observer ───
   useEffect(() => {
@@ -1509,12 +1522,38 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
   }, [isAdPlaying, skipAd]);
 
-  // ─── Event handlers ───────────────────────────────────────────────────
+  showControlsRef.current = showControls;
+
+  // ─── Event handlers (Imperative progress bar + 1Hz throttled time text = 0 playback re-render jank) ───
+  const applyImperativeProgress = useCallback((cur, tot) => {
+    if (!tot || tot <= 0) return;
+    const pct = Math.max(0, Math.min(100, (cur / tot) * 100));
+    if (progressFillRef.current) {
+      progressFillRef.current.style.width = `${pct}%`;
+    }
+    if (progressThumbRef.current) {
+      progressThumbRef.current.style.left = `clamp(5px, ${pct}%, calc(100% - 5px))`;
+    }
+  }, []);
+
   const handleTimeUpdate = useCallback(() => {
     const el = getActiveEl(); if (!el) return;
-    const cur = el.currentTime; const tot = el.duration;
-    setCurrentTime(cur);
-    if (tot > 0) { setDuration(tot); setProgress((cur / tot) * 100); }
+    const cur = el.currentTime || 0;
+    const tot = el.duration || 0;
+
+    if (tot > 0) {
+      applyImperativeProgress(cur, tot);
+      if (Math.abs(tot - durationRef.current) > 0.25) {
+        durationRef.current = tot;
+        setDuration(tot);
+      }
+    }
+
+    const wholeSec = Math.floor(cur);
+    if ((showControlsRef.current || isAdPlaying) && wholeSec !== lastWholeSecRef.current) {
+      lastWholeSecRef.current = wholeSec;
+      setCurrentTime(cur);
+    }
 
     if (isAdPlaying) {
       if (cur >= 5) {
@@ -1524,7 +1563,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         setAdCountdown(Math.ceil(5 - cur));
       }
     }
-  }, [activeVideo, isAdPlaying]);
+  }, [activeVideo, isAdPlaying, applyImperativeProgress]);
 
   const handleLoadedMetadataActive = useCallback(() => {
     const el = getActiveEl(); if (!el) return;
@@ -1595,10 +1634,16 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       return;
     }
 
-    // 1st click: If controls are currently hidden, first click ONLY reveals the controls!
+    // 1st click: If controls are currently hidden, first click reveals the controls cleanly
     if (!showControls) {
+      const el = getActiveEl();
+      if (el && Number.isFinite(el.currentTime)) {
+        lastWholeSecRef.current = Math.floor(el.currentTime);
+        setCurrentTime(el.currentTime);
+        if (el.duration > 0) applyImperativeProgress(el.currentTime, el.duration);
+      }
       setShowControls(true);
-      startControlsTimeout(2000);
+      startControlsTimeout(2500);
       return;
     }
 
@@ -1974,12 +2019,14 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         </div>
       )}
 
-      {/* Ambient backdrop for zero-black letterboxing & deep atmospheric diffusion */}
-      <div
-        className="native-player-backdrop"
-        style={effectivePoster ? { backgroundImage: `url(${effectivePoster})` } : undefined}
-        aria-hidden="true"
-      />
+      {/* Ambient backdrop skipped under perf-lite to eliminate 36px Gaussian blur GPU cost */}
+      {!useSingleVideoMode && (
+        <div
+          className="native-player-backdrop"
+          style={effectivePoster ? { backgroundImage: `url(${effectivePoster})` } : undefined}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Mandatory Cover Poster: stays locked until playback actively starts */}
       {!hasStartedPlayback && (
@@ -2087,6 +2134,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           duration={duration}
           previewSrc={src360 || src144 || srcOriginal || resolveVideoUrl(src)}
           containerRef={containerRef}
+          fillRef={progressFillRef}
+          thumbRef={progressThumbRef}
           disabled={isAdPlaying}
           formatTime={formatTime}
           onScrubStart={() => setShowControls(true)}

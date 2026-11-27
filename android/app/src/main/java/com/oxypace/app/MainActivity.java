@@ -1768,9 +1768,9 @@ public class MainActivity extends BridgeActivity {
         android.webkit.WebView webView = getBridge().getWebView();
 
         if (webView != null) {
-            // Explicitly force hardware acceleration on WebView for 60/120fps smooth
-            // scrolling
-            webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+            // Use LAYER_TYPE_NONE on a hardware-accelerated Window so Chromium renders
+            // directly without an extra full-screen offscreen FBO texture blit & VRAM allocation
+            webView.setLayerType(android.view.View.LAYER_TYPE_NONE, null);
 
             android.webkit.WebSettings settings = webView.getSettings();
             settings.setJavaScriptEnabled(true);

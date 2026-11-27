@@ -9,11 +9,15 @@ export const protect = async (req, res, next) => {
             // Get token from header
             token = req.headers.authorization.split(' ')[1];
 
-            // Verify token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            // Verify token (reuse same-request preloaded user from banCheckMiddleware when matching)
+            const decoded = (req._preloadedAuthDecoded && req._preloadedAuthUser)
+                ? req._preloadedAuthDecoded
+                : jwt.verify(token, process.env.JWT_SECRET);
 
             // Get user from token
-            req.user = await User.findById(decoded.id).select('-password');
+            req.user = (req._preloadedAuthUser && String(req._preloadedAuthUser._id) === String(decoded.id))
+                ? req._preloadedAuthUser
+                : await User.findById(decoded.id).select('-password');
 
             if (!req.user) {
                 return res.status(401).json({ message: 'User not found' });
@@ -83,8 +87,12 @@ export const optionalProtect = async (req, res, next) => {
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
             token = req.headers.authorization.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = await User.findById(decoded.id).select('-password');
+            const decoded = (req._preloadedAuthDecoded && req._preloadedAuthUser)
+                ? req._preloadedAuthDecoded
+                : jwt.verify(token, process.env.JWT_SECRET);
+            req.user = (req._preloadedAuthUser && String(req._preloadedAuthUser._id) === String(decoded.id))
+                ? req._preloadedAuthUser
+                : await User.findById(decoded.id).select('-password');
 
             if (req.user) {
                 // Token invalidation check for optional auth as well

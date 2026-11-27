@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { shouldShowTranslation } from '../utils/languageUtils';
 import { Link, useNavigate } from 'react-router-dom';
@@ -28,15 +28,18 @@ import PromotedPortalCard from './PromotedPortalCard';
 import PostAttachments from './PostAttachments';
 import { extractYouTubeInfo } from '../utils/mediaAttachments';
 
-// Mounts <VideoPlayer> only when near/in viewport; unmounts off-screen instances while locking exact layout height
-const LazyVideoSlot = ({ poster, ...videoProps }) => {
+// Mounts <VideoPlayer> only when near/in viewport; only top feed cards mount eagerly so channel open stays instant
+const LazyVideoSlot = ({ poster, eagerMount = false, ...videoProps }) => {
     const slotRef = useRef(null);
-    const [isNearViewport, setIsNearViewport] = useState(true);
-    const heightRef = useRef(260);
+    const [isNearViewport, setIsNearViewport] = useState(Boolean(eagerMount));
+    const heightRef = useRef(240);
 
     useEffect(() => {
         const node = slotRef.current;
-        if (!node || typeof IntersectionObserver === 'undefined') return;
+        if (!node || typeof IntersectionObserver === 'undefined') {
+            setIsNearViewport(true);
+            return;
+        }
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -48,7 +51,7 @@ const LazyVideoSlot = ({ poster, ...videoProps }) => {
                 }
                 setIsNearViewport((prev) => (prev === near ? prev : near));
             },
-            { rootMargin: '550px 0px', threshold: 0 }
+            { rootMargin: '300px 0px', threshold: 0 }
         );
 
         observer.observe(node);
@@ -168,13 +171,15 @@ const YouTubeFacade = ({ media }) => {
 };
 
 
-const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
+const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin, priorityMount = false }) => {
     const { user, updateUser, token: authContextToken } = useAuth(); // Destructure updateUser and token
 
     const navigate = useNavigate();
 
 
-    const [saved, setSaved] = useState(false);
+    const [saved, setSaved] = useState(() =>
+        Boolean(user?.savedPosts?.some((id) => String(id) === String(post._id)))
+    );
     const [showMenu, setShowMenu] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const moreBtnRef = useRef(null);
@@ -259,14 +264,14 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
 
     const isOwnPost = user?._id === author._id;
 
-    // Optimized: Check saved status from AuthContext
-    useEffect(() => {
-        if (user && user.savedPosts) {
-            // Robust comparison
-            const isSaved = user.savedPosts.some((id) => String(id) === String(post._id));
-            setSaved(isSaved);
+    const lastSyncedPostIdRef = useRef(post._id);
+    if (lastSyncedPostIdRef.current !== post._id) {
+        lastSyncedPostIdRef.current = post._id;
+        const nextSaved = Boolean(user?.savedPosts?.some((id) => String(id) === String(post._id)));
+        if (nextSaved !== saved) {
+            setSaved(nextSaved);
         }
-    }, [user, post._id]);
+    }
 
     const formatDate = (date) => {
         const now = new Date();
@@ -565,9 +570,72 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
         };
     }, [showMenu]);
 
+    const firstContentUrl = useMemo(() => extractFirstUrl(post.content), [post.content]);
+    const canTranslateContent = useMemo(
+        () => Boolean(post.content && shouldShowTranslation(post.content)),
+        [post.content]
+    );
+    const renderedPostBody = useMemo(() => {
+        const contentStr = isTranslated && translatedText ? translatedText : post.content;
+        if (!contentStr) return null;
+
+        if (contentStr.length <= MAX_LENGTH) {
+            return linkifyText(contentStr, firstContentUrl);
+        }
+
+        if (isExpanded) {
+            return (
+                <>
+                    {linkifyText(contentStr, firstContentUrl)}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                        className="read-more-btn"
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary-cyan)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            marginLeft: '4px',
+                            fontWeight: 600,
+                            fontSize: '0.95em'
+                        }}
+                    >
+                        daha az gör
+                    </button>
+                </>
+            );
+        }
+
+        const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH, firstContentUrl);
+        return (
+            <>
+                {elements}
+                {isTruncated && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+                        className="read-more-btn"
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary-cyan)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            marginLeft: '4px',
+                            fontWeight: 600,
+                            fontSize: '0.95em'
+                        }}
+                    >
+                        devamını gör
+                    </button>
+                )}
+            </>
+        );
+    }, [isTranslated, translatedText, post.content, isExpanded, firstContentUrl]);
+
     const handleMouseLeave = () => {
         // Desktop: Close menu when cursor leaves the post card
-        if (window.innerWidth > 768) {
+        if (window.innerWidth > 768 && showMenu) {
             setShowMenu(false);
         }
     };
@@ -877,67 +945,9 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                 {Boolean((isTranslated && translatedText) || (post.content && post.content.trim())) && (
                     <div className="post-content-text">
                         <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            {(() => {
-                                const contentStr = isTranslated && translatedText ? translatedText : post.content;
-                                if (!contentStr) return null;
-                                const firstUrl = extractFirstUrl(post.content);
-
-                                if (contentStr.length <= MAX_LENGTH) {
-                                    return linkifyText(contentStr, firstUrl);
-                                }
-
-                                if (isExpanded) {
-                                    return (
-                                        <>
-                                            {linkifyText(contentStr, firstUrl)}
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                                                className="read-more-btn"
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--primary-cyan)',
-                                                    cursor: 'pointer',
-                                                    padding: 0,
-                                                    marginLeft: '4px',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.95em'
-                                                }}
-                                            >
-                                                daha az gör
-                                            </button>
-                                        </>
-                                    );
-                                }
-
-                                const { elements, isTruncated } = truncateAndLinkifyText(contentStr, MAX_LENGTH, firstUrl);
-
-                                return (
-                                    <>
-                                        {elements}
-                                        {isTruncated && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-                                                className="read-more-btn"
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--primary-cyan)',
-                                                    cursor: 'pointer',
-                                                    padding: 0,
-                                                    marginLeft: '4px',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.95em'
-                                                }}
-                                            >
-                                                devamını gör
-                                            </button>
-                                        )}
-                                    </>
-                                );
-                            })()}
+                            {renderedPostBody}
                         </p>
-                        {post.content && shouldShowTranslation(post.content) && (
+                        {canTranslateContent && (
                             <span
                                 role="button"
                                 tabIndex={0}
@@ -973,12 +983,11 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                 {(() => {
                     if (post.promotedPortal) return null;
                     if (post.mediaType === 'videoUrl' || post.mediaType === 'youtube') return null;
-                    const firstUrl = extractFirstUrl(post.content);
-                    if (firstUrl) {
-                        const isYt = Boolean(extractYouTubeInfo(firstUrl));
+                    if (firstContentUrl) {
+                        const isYt = Boolean(extractYouTubeInfo(firstContentUrl));
                         const hasYtEmbed = post.attachments?.some((a) => a.kind === 'youtube');
                         if (isYt && hasYtEmbed) return null;
-                        return <LinkPreview url={firstUrl} postId={post._id} />;
+                        return <LinkPreview url={firstContentUrl} postId={post._id} />;
                     }
                     return null;
                 })()}
@@ -1067,6 +1076,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                             {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
                                 <>
                                     <LazyVideoSlot
+                                        eagerMount={priorityMount}
                                         src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)}
                                         poster={post.videoThumbnail ? getImageUrl(post.videoThumbnail) : null}
                                         qualities={post.videoQualities}

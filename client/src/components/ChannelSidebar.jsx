@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUI } from '../context/UIContext';
@@ -70,41 +70,48 @@ const ChannelSidebar = ({
         return id ? String(id) : null;
     };
 
-    // Gerçek çevrimiçi sayımı: sadece bu portalın kayıtlı üyeleri (sahip + adminler + üyeler)
-    const portalMemberIds = new Set();
+    const isHiddenOnMobile = Boolean(className && className.includes('mobile-hidden'));
 
-    const ownerId = extractId(portal?.owner);
-    if (ownerId) portalMemberIds.add(ownerId);
+    const { onlineCount, totalMemberCount } = useMemo(() => {
+        if (isHiddenOnMobile) {
+            return {
+                onlineCount: 0,
+                totalMemberCount: portal?.memberCount || portal?.membersCount || (portal?.members || []).length || 0,
+            };
+        }
 
-    (portal?.admins || []).forEach(a => {
-        const aId = extractId(a);
-        if (aId) portalMemberIds.add(aId);
-    });
-    (portal?.members || []).forEach(m => {
-        const mId = extractId(m);
-        if (mId) portalMemberIds.add(mId);
-    });
+        const portalMemberIds = new Set();
+        const ownerId = extractId(portal?.owner);
+        if (ownerId) portalMemberIds.add(ownerId);
 
-    // onlineUsers → SocketContext'ten gelen, sunucunun getOnlineUsers event'iyle güncellenen liste
-    const onlineSet = new Set((onlineUsers || []).map(id => String(id)));
+        (portal?.admins || []).forEach((a) => {
+            const aId = extractId(a);
+            if (aId) portalMemberIds.add(aId);
+        });
+        (portal?.members || []).forEach((m) => {
+            const mId = extractId(m);
+            if (mId) portalMemberIds.add(mId);
+        });
 
-    // Optimistik varlık: Kullanıcı bu portala bakıyorsa, join henüz sunucuya
-    // ulaşmamış olsa bile kendisini online olarak say.
-    // Socket timing sorunlarını (Chrome açılış, uyku sonrası) kullanıcıya hissettirmez.
-    const currentUserId = user?._id ? String(user._id) : null;
-    const showMyOnline = user?.settings?.privacy?.showOnlineStatus !== false;
-    if (currentUserId && portalMemberIds.has(currentUserId) && showMyOnline) {
-        onlineSet.add(currentUserId);
-    } else if (currentUserId && !showMyOnline) {
-        onlineSet.delete(currentUserId);
-    }
+        const onlineSet = new Set((onlineUsers || []).map((id) => String(id)));
+        const currentUserId = user?._id ? String(user._id) : null;
+        const showMyOnline = user?.settings?.privacy?.showOnlineStatus !== false;
+        if (currentUserId && portalMemberIds.has(currentUserId) && showMyOnline) {
+            onlineSet.add(currentUserId);
+        } else if (currentUserId && !showMyOnline) {
+            onlineSet.delete(currentUserId);
+        }
 
-    let onlineCount = 0;
-    portalMemberIds.forEach(id => {
-        if (onlineSet.has(id)) onlineCount++;
-    });
+        let count = 0;
+        portalMemberIds.forEach((id) => {
+            if (onlineSet.has(id)) count++;
+        });
 
-    const totalMemberCount = portalMemberIds.size || portal?.membersCount || (portal?.members || []).length || 0;
+        return {
+            onlineCount: count,
+            totalMemberCount: portalMemberIds.size || portal?.memberCount || portal?.membersCount || (portal?.members || []).length || 0,
+        };
+    }, [isHiddenOnMobile, portal?.owner, portal?.admins, portal?.members, portal?.memberCount, portal?.membersCount, onlineUsers, user?._id, user?.settings?.privacy?.showOnlineStatus]);
 
     // Clear unread count for the active channel
     useEffect(() => {
@@ -115,7 +122,7 @@ const ChannelSidebar = ({
 
     // Canlı sesli / görüntülü odaların aktif katılımcı sayılarını çek ve güncelle
     useEffect(() => {
-        if (!portal?._id || !portal?.channels?.length) return;
+        if (isHiddenOnMobile || !portal?._id || !portal?.channels?.length) return;
 
         const voiceChannels = portal.channels.filter(ch => ch.type === 'voice' || ch.type === 'conference');
         if (voiceChannels.length === 0) return;
@@ -156,7 +163,7 @@ const ChannelSidebar = ({
             isMounted = false;
             clearInterval(interval);
         };
-    }, [portal?._id, portal?.channels]);
+    }, [isHiddenOnMobile, portal?._id, portal?.channels]);
 
     // Socket üzerinden anlık kanal katılımcı sayısı güncellemelerini dinle
     useEffect(() => {
@@ -975,4 +982,4 @@ const ChannelSidebar = ({
     );
 };
 
-export default ChannelSidebar;
+export default memo(ChannelSidebar);

@@ -900,9 +900,42 @@ body.perf-lite[data-theme='light'] {
   --glass-bg: rgba(255, 255, 255, 0.96);
 }
 
-body.perf-lite * {
+html body.perf-lite *,
+html body.perf-lite *::before,
+html body.perf-lite *::after,
+html body.perf-lite .navbar,
+html body.perf-lite .navbar-scrolled,
+html body.perf-lite .post-floating-menu,
+html body.perf-lite .portal-plus-menu-portal,
+html body.perf-lite .pd-dropdown-menu,
+html body.perf-lite .portal-info-modal-overlay,
+html body.perf-lite .portal-settings-modal-overlay,
+html body.perf-lite .profile-image-modal-overlay,
+html body.perf-lite .native-player-container .processing-badge-minimal,
+html body.perf-lite .native-player-container .processing-info-tooltip,
+html body.perf-lite .native-center-play-btn,
+html body.perf-lite .native-center-play-overlay,
+html body.perf-lite .native-mute-toggle,
+html body.perf-lite .vc-controls-bar,
+html body.perf-lite .vc-header,
+html body.perf-lite .settings-mobile-header,
+html body.perf-lite .mobile-sidebar-overlay {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+html body.perf-lite .gallery-blur-backdrop,
+html body.perf-lite .native-player-backdrop {
+  display: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+html body.perf-lite .gallery-image.is-loading-blur {
+  filter: none !important;
+  -webkit-filter: none !important;
+  transform: none !important;
+  transition: opacity 0.15s ease !important;
 }
 
 /* Crisp opaque fallbacks for floating controls & menus without blur */

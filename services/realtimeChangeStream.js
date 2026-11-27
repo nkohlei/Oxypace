@@ -93,12 +93,24 @@ export const setupChangeStreams = (io) => {
         }
 
         if (userStream) {
+            const PUBLIC_PROFILE_PREFIXES = ['username', 'profile', 'verificationBadge', 'customBadge', 'isDeleted'];
             userStream.on('change', (change) => {
                 if (change.operationType === 'update') {
+                    const updatedFields = change.updateDescription?.updatedFields || {};
+                    const changedKeys = Object.keys(updatedFields);
+                    const hasPublicProfileChange = changedKeys.some((k) =>
+                        PUBLIC_PROFILE_PREFIXES.some((prefix) => k === prefix || k.startsWith(`${prefix}.`))
+                    );
+                    if (!hasPublicProfileChange) return;
+
+                    const doc = change.fullDocument;
                     io.emit('global:user_updated', {
                         _id: change.documentKey._id,
-                        updatedFields: change.updateDescription?.updatedFields,
-                        fullDocument: change.fullDocument
+                        ...(doc?.username !== undefined ? { username: doc.username } : {}),
+                        ...(doc?.profile !== undefined ? { profile: doc.profile } : {}),
+                        ...(doc?.verificationBadge !== undefined ? { verificationBadge: doc.verificationBadge } : {}),
+                        ...(doc?.customBadge !== undefined ? { customBadge: doc.customBadge } : {}),
+                        ...(doc?.isDeleted !== undefined ? { isDeleted: doc.isDeleted } : {}),
                     });
                 }
             });

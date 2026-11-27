@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useOnlineUsers } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
@@ -339,4 +339,4 @@ const MembersSidebar = ({ members = [], onClose }) => {
     );
 };
 
-export default MembersSidebar;
+export default memo(MembersSidebar);

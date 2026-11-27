@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
@@ -17,6 +17,10 @@ import GhostModeBar from './GhostModeBar';
 import AddAccountModal from './AddAccountModal';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useUploadStore } from '../store/useUploadStore';
+
+let cachedNavbarCountsUserId = null;
+let cachedNavbarCountsFetchedAt = 0;
+let cachedAdminPendingCount = 0;
 
 const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false }) => {
     const location = useLocation();
@@ -90,7 +94,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const [showMenu, setShowMenu] = useState(false);
     const unreadCount = useGlobalStore((state) => state.unreadNotificationsCount);
     const setUnreadCount = useGlobalStore((state) => state.setUnreadNotificationsCount);
-    const [adminPendingCount, setAdminPendingCount] = useState(0);
+    const [adminPendingCount, setAdminPendingCount] = useState(cachedAdminPendingCount);
     const [hidden, setHidden] = useState(false);
     const menuRef = useRef(null);
     const lastScrollY = useRef(0);
@@ -132,9 +136,17 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         return () => window.removeEventListener('scroll', handleScroll, { capture: true });
     }, [location.pathname, user]);
 
-    // Fetch initial unread count
+    // Fetch initial unread count with 60s cross-route throttle (live updates arrive via Socket.IO)
     useEffect(() => {
-        if (user) {
+        if (user?._id) {
+            const uidStr = String(user._id);
+            const now = Date.now();
+            if (cachedNavbarCountsUserId === uidStr && now - cachedNavbarCountsFetchedAt < 60000) {
+                return;
+            }
+            cachedNavbarCountsUserId = uidStr;
+            cachedNavbarCountsFetchedAt = now;
+
             const fetchUnreadCount = async () => {
                 try {
                     const response = await axios.get('/api/notifications?limit=1');
@@ -145,12 +157,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             };
             fetchUnreadCount();
 
-            // Fetch admin pending items if admin or tourist admin
             if (user.isAdmin || user.isTouristAdmin) {
                 const fetchAdminCount = async () => {
                     try {
                         const response = await axios.get('/api/admin/pending-count');
-                        setAdminPendingCount(response.data.count || 0);
+                        const nextCount = response.data.count || 0;
+                        cachedAdminPendingCount = nextCount;
+                        setAdminPendingCount(nextCount);
                     } catch (error) {
                         console.error('Fetch admin pending count error:', error);
                     }
@@ -158,7 +171,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                 fetchAdminCount();
             }
         }
-    }, [user]);
+    }, [user?._id, user?.isAdmin, user?.isTouristAdmin, setUnreadCount]);
 
     // Listen for real-time notifications
     useEffect(() => {
@@ -576,4 +589,4 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     );
 };
 
-export default Navbar;
+export default memo(Navbar);

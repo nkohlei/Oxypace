@@ -50,37 +50,61 @@ const TweetVideo = ({ src, poster }) => {
  * For Twitter/X: renders a tweet-styled card with author info, text, media
  * For other sites: renders a generic OG-based preview card
  */
+const LINK_PREVIEW_CACHE = new Map();
+const MAX_LINK_PREVIEW_CACHE = 300;
+
 const LinkPreview = ({ url, postId }) => {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const normalizedUrl = url ? (url.startsWith('http') ? url : `https://${url}`) : '';
+    const cachedEntry = normalizedUrl ? LINK_PREVIEW_CACHE.get(normalizedUrl) : undefined;
+
+    const [data, setData] = useState(cachedEntry && !cachedEntry.error ? cachedEntry.data : null);
+    const [loading, setLoading] = useState(cachedEntry === undefined);
+    const [error, setError] = useState(Boolean(cachedEntry?.error));
 
     useEffect(() => {
+        if (!normalizedUrl) {
+            setLoading(false);
+            return;
+        }
+        const hit = LINK_PREVIEW_CACHE.get(normalizedUrl);
+        if (hit !== undefined) {
+            setData(hit.error ? null : hit.data);
+            setError(Boolean(hit.error));
+            setLoading(false);
+            return;
+        }
+
+        let cancelled = false;
         const fetchPreview = async () => {
             try {
-                let targetUrl = url;
-                if (!targetUrl.startsWith('http')) {
-                    targetUrl = `https://${targetUrl}`;
-                }
-
-                const response = await axios.get(`/api/preview?url=${encodeURIComponent(targetUrl)}&postId=${postId || ''}&refresh=true&t=${Date.now()}`);
+                const response = await axios.get(`/api/preview?url=${encodeURIComponent(normalizedUrl)}&postId=${postId || ''}`);
                 if (response.data && (response.data.title || response.data.type === 'tweet')) {
-                    setData(response.data);
+                    if (LINK_PREVIEW_CACHE.size >= MAX_LINK_PREVIEW_CACHE) {
+                        const oldest = LINK_PREVIEW_CACHE.keys().next().value;
+                        if (oldest) LINK_PREVIEW_CACHE.delete(oldest);
+                    }
+                    LINK_PREVIEW_CACHE.set(normalizedUrl, { data: response.data, error: false });
+                    if (!cancelled) {
+                        setData(response.data);
+                        setError(false);
+                    }
                 } else {
-                    setError(true);
+                    LINK_PREVIEW_CACHE.set(normalizedUrl, { data: null, error: true });
+                    if (!cancelled) setError(true);
                 }
             } catch (err) {
-                console.error('Failed to fetch link preview:', err);
-                setError(true);
+                LINK_PREVIEW_CACHE.set(normalizedUrl, { data: null, error: true });
+                if (!cancelled) setError(true);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
 
-        if (url) {
-            fetchPreview();
-        }
-    }, [url]);
+        fetchPreview();
+        return () => {
+            cancelled = true;
+        };
+    }, [normalizedUrl, postId]);
 
     useEffect(() => {
         if (data && data.type === 'tweet') {

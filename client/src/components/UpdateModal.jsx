@@ -8,7 +8,7 @@ import { useSocket } from '../context/SocketContext';
 
 // Fallback APK version (used only if CapacitorApp.getInfo() fails)
 const CURRENT_VERSION = '2.6.5';
-const CURRENT_VERSION_CODE = 265;
+const CURRENT_VERSION_CODE = 266;
 
 /**
  * Compares two semver strings. Returns true if remote > local.
@@ -52,17 +52,25 @@ const UpdateModal = () => {
         const checkVersion = async () => {
             try {
                 let localVer = CURRENT_VERSION;
+                let localCode = CURRENT_VERSION_CODE;
                 try {
                     const appInfo = await CapacitorApp.getInfo();
                     if (appInfo?.version) {
                         localVer = appInfo.version;
+                    }
+                    if (appInfo?.build) {
+                        const parsedBuild = parseInt(appInfo.build, 10);
+                        if (!isNaN(parsedBuild) && parsedBuild > 0) {
+                            localCode = parsedBuild;
+                        }
                     }
                 } catch (e) {
                     console.warn('[UpdateModal] Could not get native app info, using fallback:', e);
                 }
 
                 const { data } = await axios.get('/api/app/version');
-                if (isNewerVersion(data?.latestVersion, localVer)) {
+                const remoteCode = Number(data?.versionCode || 0);
+                if (isNewerVersion(data?.latestVersion, localVer) || (remoteCode > 0 && remoteCode > localCode)) {
                     setInfo(data);
                     setShow(true);
                 }

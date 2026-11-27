@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, ChevronRight, ZoomIn, Image, Sparkles, CheckCircle2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
+import { isPerfLiteActive } from '../utils/performanceMode';
 import './PostImageGallery.css';
 
 export const PostImageGallery = ({ media, isOptimistic = false }) => {
@@ -228,6 +229,8 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
         }
     };
 
+    const perfLite = isPerfLiteActive();
+
     return (
         <div
             className={`gallery-single-image-wrapper ${isLoaded ? 'is-loaded' : 'is-loading'}`}
@@ -235,22 +238,23 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
             onClick={(e) => isLoaded && onOpenLightbox(0, e)}
             title={isLoaded ? 'Görseli büyüt' : undefined}
         >
-            {/* Ambient progressive blur backdrop: eliminates pure black box */}
-            <div
-                className="gallery-blur-backdrop"
-                style={{ backgroundImage: `url(${resolvedUrl})` }}
-                aria-hidden="true"
-            />
+            {/* Ambient progressive blur backdrop skipped on perf-lite to save mobile GPU fill-rate */}
+            {!perfLite && (
+                <div
+                    className="gallery-blur-backdrop"
+                    style={{ backgroundImage: `url(${resolvedUrl})` }}
+                    aria-hidden="true"
+                />
+            )}
 
             <img
                 ref={imgRef}
                 src={resolvedUrl}
                 alt="Gönderi görseli"
-                loading="eager"
+                loading="lazy"
                 decoding="async"
-                fetchpriority="high"
                 onLoad={handleLoad}
-                className={`gallery-image single-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
+                className={`gallery-image single-img ${isLoaded || perfLite ? 'loaded' : 'is-loading-blur'}`}
             />
             {isLoaded && (
                 <div className="gallery-zoom-hint">
@@ -268,6 +272,7 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const imgRef = useRef(null);
     const resolvedUrl = getImageUrl(imgUrl, 'feed');
+    const perfLite = isPerfLiteActive();
 
     useEffect(() => {
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
@@ -281,22 +286,22 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
             onClick={(e) => isLoaded && onOpenLightbox(index, e)}
             title={isLoaded ? 'Görseli büyütmek için tıkla' : undefined}
         >
-            {/* Ambient progressive blur backdrop: eliminates pure black box */}
-            <div
-                className="gallery-blur-backdrop"
-                style={{ backgroundImage: isLoaded ? `url(${resolvedUrl})` : 'none' }}
-                aria-hidden="true"
-            />
+            {!perfLite && (
+                <div
+                    className="gallery-blur-backdrop"
+                    style={{ backgroundImage: isLoaded ? `url(${resolvedUrl})` : 'none' }}
+                    aria-hidden="true"
+                />
+            )}
 
             <img
                 ref={imgRef}
                 src={resolvedUrl}
                 alt={`Görsel ${index + 1}`}
-                loading={index === 0 ? "eager" : "lazy"}
+                loading="lazy"
                 decoding="async"
-                fetchpriority={index === 0 ? "high" : "low"}
                 onLoad={() => setIsLoaded(true)}
-                className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
+                className={`gallery-image slide-img ${isLoaded || perfLite ? 'loaded' : 'is-loading-blur'}`}
             />
         </div>
     );

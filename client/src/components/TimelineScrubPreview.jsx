@@ -19,6 +19,8 @@ const TimelineScrubPreview = ({
     bufferedPct = 0,
     previewSrc = '',
     containerRef = null,
+    fillRef = null,
+    thumbRef = null,
     isLive = false,
     disabled = false,
     formatTime = defaultFormatTime,
@@ -402,10 +404,12 @@ const TimelineScrubPreview = ({
                     />
                 )}
                 <div
+                    ref={fillRef}
                     className="native-progress-fill"
                     style={{ width: `${activePct}%` }}
                 />
                 <div
+                    ref={thumbRef}
                     className="native-progress-thumb"
                     style={{ left: `clamp(5px, ${activePct}%, calc(100% - 5px))` }}
                 />

@@ -29,8 +29,6 @@ function buildCompactPortalPayload(portalDoc) {
         banner: obj.banner,
         owner: obj.owner,
         admins: obj.admins,
-        members: obj.members,
-        allowedUsers: obj.allowedUsers,
         channels: obj.channels,
         verificationBadge: obj.verificationBadge,
         customBadge: obj.customBadge,
@@ -49,9 +47,7 @@ function emitPortalSync(portalDoc) {
     if (!global.io || !portalDoc?._id) return;
     const payload = buildCompactPortalPayload(portalDoc);
     if (!payload) return;
-    const portalIdStr = portalDoc._id.toString();
     global.io.emit('portal:updated', payload);
-    global.io.to(`portal:${portalIdStr}`).emit('portal:updated', payload);
 }
 
 function emitPortalMembership(userId, portalDoc, action) {
@@ -82,7 +78,6 @@ function emitPortalMembership(userId, portalDoc, action) {
     global.io.emit('portal:updated', {
         _id: portalDoc._id,
         memberCount: Array.isArray(portalDoc.members) ? portalDoc.members.length : undefined,
-        members: portalDoc.members,
         admins: portalDoc.admins,
         updatedAt: eventPayload.updatedAt,
     });
@@ -656,27 +651,42 @@ router.get('/:id', optionalProtect, mongoIdValidation('id'), async (req, res) =>
             );
         }
 
-        // Fetch accurate post count for the portal
-        const postCount = await Post.countDocuments({ portal: portal._id, isArchived: { $ne: true } });
-        portalObj.postCount = postCount;
+        // Single-pass aggregation for portal + per-channel post counts (replaces 1 + N countDocuments scans)
+        const channelGroups = await Post.aggregate([
+            { $match: { portal: portal._id, isArchived: { $ne: true } } },
+            { $group: { _id: '$channel', count: { $sum: 1 } } }
+        ]);
 
-        // Fetch channel post counts accurately using the unified channel filter logic
-        if (portalObj.channels && Array.isArray(portalObj.channels)) {
-            const channelCounts = await Promise.all(
-                portalObj.channels.map(async (ch) => {
-                    const resolved = getPortalChannelFilter(portal, ch._id.toString());
-                    if (!resolved) return 0;
-                    return await Post.countDocuments({
-                        portal: portal._id,
-                        isArchived: { $ne: true },
-                        channel: resolved.filter
-                    });
-                })
-            );
+        let totalPortalPosts = 0;
+        const rawChannelMap = new Map();
+        for (const row of channelGroups) {
+            const c = row.count || 0;
+            totalPortalPosts += c;
+            const key = row._id == null ? '' : String(row._id);
+            rawChannelMap.set(key, (rawChannelMap.get(key) || 0) + c);
+        }
+        portalObj.postCount = totalPortalPosts;
+
+        if (portalObj.channels && Array.isArray(portalObj.channels) && portalObj.channels.length > 0) {
+            let secondarySum = 0;
+            const computedCounts = portalObj.channels.map((ch, idx) => {
+                if (idx === 0) return 0; // Primary channel computed as remainder below
+                const chIdStr = String(ch._id);
+                const chNameLower = String(ch.name || '').toLowerCase();
+                let count = 0;
+                for (const [k, v] of rawChannelMap.entries()) {
+                    if (k === chIdStr || (chNameLower && k.toLowerCase() === chNameLower)) {
+                        count += v;
+                    }
+                }
+                secondarySum += count;
+                return count;
+            });
+            computedCounts[0] = Math.max(0, totalPortalPosts - secondarySum);
 
             portalObj.channels = portalObj.channels.map((ch, idx) => {
                 const chObj = ch && ch.toObject ? ch.toObject() : { ...ch };
-                chObj.postCount = channelCounts[idx] || 0;
+                chObj.postCount = computedCounts[idx] || 0;
                 return chObj;
             });
         }

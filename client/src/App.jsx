@@ -41,6 +41,27 @@ const lazyWithRetry = (componentImport) =>
         }
     });
 
+// Preload core navigation chunks during idle time so tab switches never show a PageLoader flash
+let coreChunksPreloaded = false;
+const warmCoreRouteChunks = () => {
+    if (coreChunksPreloaded || typeof window === 'undefined') return;
+    coreChunksPreloaded = true;
+    const loadCore = () => {
+        import('./pages/Portal').catch(() => {});
+        import('./pages/Inbox').catch(() => {});
+        import('./pages/Search').catch(() => {});
+        import('./pages/Profile').catch(() => {});
+        import('./pages/Notifications').catch(() => {});
+        import('./pages/Settings').catch(() => {});
+        import('./pages/PostDetail').catch(() => {});
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(loadCore, { timeout: 2000 });
+    } else {
+        setTimeout(loadCore, 900);
+    }
+};
+
 // Lazy load pages for better performance
 const Login = lazyWithRetry(() => import('./pages/Login'));
 const Register = lazyWithRetry(() => import('./pages/Register'));
@@ -685,6 +706,7 @@ const AppLayout = () => {
         prevIsLoggedInRef.current = isLoggedIn;
 
         if (isLoggedIn && !isBlogPage) {
+            warmCoreRouteChunks();
             document.documentElement.classList.add('discord-layout-active');
             document.body.classList.add('discord-layout-active');
 
@@ -742,7 +764,7 @@ const AppLayout = () => {
 
         // Reset sidebar state on every route transition
         closeSidebar();
-        if (setMobileChannelOpen) {
+        if (setMobileChannelOpen && location.pathname.startsWith('/portal/')) {
             setMobileChannelOpen(returningToPortalFeed);
         }
 

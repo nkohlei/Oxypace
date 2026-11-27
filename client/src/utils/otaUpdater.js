@@ -7,7 +7,7 @@ import axios from 'axios';
 // @capgo/capacitor-updater (which remains in root package.json for Android).
 const CapacitorUpdater = registerPlugin('CapacitorUpdater');
 
-export const CURRENT_OTA_VERSION = '2.6.5-ota.1';
+export const CURRENT_OTA_VERSION = '2.6.5-ota.2';
 
 let otaInitialized = false;
 let otaCheckInFlight = false;
@@ -52,7 +52,7 @@ export async function getVersionSummary() {
     return {
         platform: 'android',
         appVersion: appInfo?.version || '2.6.5',
-        versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 265,
+        versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 266,
         otaVersion: bundleInfo.version,
         isOtaBundle: bundleInfo.isOtaBundle,
     };
@@ -120,7 +120,7 @@ async function reportOtaVersionToServer(otaVersion) {
             '/api/users/sync-version',
             {
                 appVersion: appInfo?.version || '2.6.5',
-                versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 265,
+                versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 266,
                 platform: 'android',
                 otaVersion: String(otaVersion),
             },
@@ -158,8 +158,8 @@ export async function checkAndApplyOtaUpdate(force = false) {
             return { status: 'up_to_date', version: currentOtaVer };
         }
 
-        const nativeVerCode = Number(appInfo?.build || 265);
-        const minNativeCode = Number(data.otaMinNativeVersionCode || 265);
+        const nativeVerCode = Number(appInfo?.build || 266);
+        const minNativeCode = Number(data.otaMinNativeVersionCode || 266);
         const minSupportedNative = Number(data.minSupportedVersionCode || 0);
 
         if (nativeVerCode < minNativeCode || nativeVerCode < minSupportedNative) {
