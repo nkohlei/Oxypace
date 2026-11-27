@@ -657,10 +657,13 @@ const Inbox = () => {
             return undefined;
         }
 
+        let rafId = null;
+        let throttleTimer = null;
+
         const updateFloatingDate = () => {
             const dividers = container.querySelectorAll('.chat-date-divider');
             if (dividers.length === 0) {
-                setActiveFloatingDate('');
+                setActiveFloatingDate((prev) => (prev === '' ? prev : ''));
                 return;
             }
 
@@ -680,19 +683,26 @@ const Inbox = () => {
                 }
             });
 
-            if (anyDividerVisible) {
-                setActiveFloatingDate('');
-            } else {
-                setActiveFloatingDate(lastAboveHeader);
-            }
+            const nextDate = anyDividerVisible ? '' : lastAboveHeader;
+            setActiveFloatingDate((prev) => (prev === nextDate ? prev : nextDate));
         };
 
-        container.addEventListener('scroll', updateFloatingDate, { passive: true });
-        const rafId = requestAnimationFrame(updateFloatingDate);
+        const handleDateScroll = () => {
+            if (throttleTimer) return;
+            throttleTimer = setTimeout(() => {
+                throttleTimer = null;
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(updateFloatingDate);
+            }, 120);
+        };
+
+        container.addEventListener('scroll', handleDateScroll, { passive: true });
+        rafId = requestAnimationFrame(updateFloatingDate);
 
         return () => {
-            cancelAnimationFrame(rafId);
-            container.removeEventListener('scroll', updateFloatingDate);
+            if (throttleTimer) clearTimeout(throttleTimer);
+            if (rafId) cancelAnimationFrame(rafId);
+            container.removeEventListener('scroll', handleDateScroll);
         };
     }, [messages, selectedUser?._id, chatScrollReady]);
 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useVoice } from '../context/VoiceContext';
+import { useActiveVoiceRoom } from '../context/VoiceContext';
 
 const RoomTimer = ({ startedAt, style = {}, className = "" }) => {
     // roomDuration removed from VoiceContext (was causing 1s re-renders of entire context tree).
     // We now compute elapsed locally — RoomTimer only re-renders itself.
-    const { roomStartTime } = useVoice() || {};
+    const { roomStartTime } = useActiveVoiceRoom() || {};
     const [elapsed, setElapsed] = useState('00:00');
 
     useEffect(() => {

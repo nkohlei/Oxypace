@@ -19,7 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { preloadImage, preloadUsers } from '../utils/preloadUtils';
 import { useUI } from '../context/UIContext';
-import { useVoice } from '../context/VoiceContext';
+import { useActiveVoiceRoom } from '../context/VoiceContext';
 const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
 const PortalNotifications = lazy(() => import('../components/PortalNotifications'));
 import AdUnit from '../components/AdUnit';
@@ -82,7 +82,7 @@ const Portal = () => {
     const navigate = useNavigate();
     const uiContext = useUI();
     const { isSidebarOpen, closeSidebar, isMobileView, mobileChannelOpen, setMobileChannelOpen } = uiContext || {};
-    const { activeRoom } = useVoice();
+    const { activeRoom } = useActiveVoiceRoom();
     const explicitMobileBackRef = useRef(false);
     const isDesktopSidebarCollapsed = uiContext?.isDesktopSidebarCollapsed || false;
     const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');

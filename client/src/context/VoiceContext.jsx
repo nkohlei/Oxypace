@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useRef, useState, useEffect } from 'react';
+import { createContext, useContext, useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import { ConnectionState } from 'livekit-client';
@@ -10,12 +10,19 @@ import { useGlobalStore } from '../store/useGlobalStore';
 const CallManager = registerPlugin('CallManager');
 
 const VoiceContext = createContext();
+const VoiceRoomMetaContext = createContext({
+    activeRoom: null,
+    connectionState: null,
+    roomStartTime: null,
+});
 
 export const useVoice = () => {
     const context = useContext(VoiceContext);
     if (!context) throw new Error('useVoice must be used within VoiceProvider');
     return context;
 };
+
+export const useActiveVoiceRoom = () => useContext(VoiceRoomMetaContext);
 
 // WebRTC ICE configuration (STUN + free public TURN servers for mobile carrier NAT traversal)
 const iceServers = [
@@ -3591,8 +3598,17 @@ export const VoiceProvider = ({ children }) => {
         };
     }, [disconnectFromChannel, toggleMicrophone, toggleCamera, toggleScreenShare, stopScreenShareAndRevert]);
 
-    const value = {
-        room: { localParticipant: { identity: user?._id?.toString() } },
+    const roomMetaValue = useMemo(() => ({
+        activeRoom,
+        connectionState,
+        roomStartTime,
+    }), [activeRoom, connectionState, roomStartTime]);
+
+    const userIdString = user?._id?.toString();
+    const consensusRuleValue = activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all';
+
+    const value = useMemo(() => ({
+        room: { localParticipant: { identity: userIdString } },
         activeRoom,
         connectionState,
         participants,
@@ -3645,20 +3661,77 @@ export const VoiceProvider = ({ children }) => {
         setScreenVolume,
         callQualityMode,
         setCallQualityMode,
-        consensusRule: activeRoom?.consensusRule || watchStopVoteStatus?.rule || 'all',
+        consensusRule: consensusRuleValue,
         socket
-    };
+    }), [
+        userIdString,
+        activeRoom,
+        connectionState,
+        participants,
+        roomStartTime,
+        errorMsg,
+        localState,
+        chatMessages,
+        connectToChannel,
+        disconnectFromChannel,
+        toggleMicrophone,
+        toggleCamera,
+        toggleScreenShare,
+        sendChatMessage,
+        grantSpeak,
+        revokeSpeak,
+        pinnedParticipant,
+        setPinnedParticipant,
+        availableDevices,
+        facingMode,
+        toggleFacingMode,
+        setAudioOutput,
+        setAudioInput,
+        setVideoInput,
+        toggleDeafen,
+        enumerateDevices,
+        selectedAudioInput,
+        selectedAudioOutput,
+        selectedVideoInput,
+        nativeAudioRoute,
+        watchParty,
+        startWatchParty,
+        stopWatchParty,
+        watchStopVoteStatus,
+        sendWatchStopVote,
+        sendWatchStopCancel,
+        sendWatchPlay,
+        sendWatchPause,
+        sendWatchSeek,
+        requestWatchSync,
+        sendWatchSubtitle,
+        getServerNow,
+        isChatOpen,
+        setIsChatOpen,
+        unreadCount,
+        setUnreadCount,
+        userVolume,
+        setUserVolume,
+        screenVolumes,
+        setScreenVolume,
+        callQualityMode,
+        setCallQualityMode,
+        consensusRuleValue,
+        socket
+    ]);
 
     return (
         <VoiceContext.Provider value={value}>
-            {children}
-            <GlobalAudioRenderer 
-                participants={participants} 
-                isDeafened={localState.isDeafened} 
-                userVolume={userVolume} 
-                screenVolumes={screenVolumes}
-                audioOutputId={selectedAudioOutput}
-            />
+            <VoiceRoomMetaContext.Provider value={roomMetaValue}>
+                {children}
+                <GlobalAudioRenderer 
+                    participants={participants} 
+                    isDeafened={localState.isDeafened} 
+                    userVolume={userVolume} 
+                    screenVolumes={screenVolumes}
+                    audioOutputId={selectedAudioOutput}
+                />
+            </VoiceRoomMetaContext.Provider>
         </VoiceContext.Provider>
     );
 };

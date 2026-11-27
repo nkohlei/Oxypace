@@ -28,6 +28,46 @@ import PromotedPortalCard from './PromotedPortalCard';
 import PostAttachments from './PostAttachments';
 import { extractYouTubeInfo } from '../utils/mediaAttachments';
 
+// Mounts <VideoPlayer> only when near/in viewport; unmounts off-screen instances while locking exact layout height
+const LazyVideoSlot = ({ poster, ...videoProps }) => {
+    const slotRef = useRef(null);
+    const [isNearViewport, setIsNearViewport] = useState(true);
+    const heightRef = useRef(260);
+
+    useEffect(() => {
+        const node = slotRef.current;
+        if (!node || typeof IntersectionObserver === 'undefined') return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (!entry) return;
+                const near = entry.isIntersecting;
+                if (!near && node.offsetHeight > 60) {
+                    heightRef.current = node.offsetHeight;
+                }
+                setIsNearViewport((prev) => (prev === near ? prev : near));
+            },
+            { rootMargin: '550px 0px', threshold: 0 }
+        );
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div ref={slotRef} style={!isNearViewport ? { minHeight: `${heightRef.current}px` } : undefined}>
+            {isNearViewport ? (
+                <VideoPlayer poster={poster} {...videoProps} />
+            ) : (
+                <div className="lazy-video-placeholder" style={{ height: `${heightRef.current}px` }}>
+                    {poster && <img src={poster} alt="" loading="lazy" decoding="async" />}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // Lightweight YouTube facade — loads iframe only on click
 const YouTubeFacade = ({ media }) => {
     const [showIframe, setShowIframe] = useState(false);
@@ -1026,7 +1066,7 @@ const PostCard = ({ post, onDelete, onUnsave, onPin, onArchive, isAdmin }) => {
                         <div style={{ position: 'relative', width: '100%', maxWidth: '650px' }}>
                             {post.mediaType === 'video' || post.mediaType === 'videoUrl' ? (
                                 <>
-                                    <VideoPlayer
+                                    <LazyVideoSlot
                                         src={post.mediaType === 'videoUrl' ? post.media : getImageUrl(post.media)}
                                         poster={post.videoThumbnail ? getImageUrl(post.videoThumbnail) : null}
                                         qualities={post.videoQualities}

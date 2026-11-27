@@ -8,7 +8,7 @@ import PortalBadges from './PortalBadges';
 import UserBar from './UserBar';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { useVoice } from '../context/VoiceContext';
-import { useSocket } from '../context/SocketContext';
+import { useSocket, useOnlineUsers } from '../context/SocketContext';
 import RoomTimer from './RoomTimer';
 
 import { getImageUrl } from '../utils/imageUtils';
@@ -36,7 +36,8 @@ const ChannelSidebar = ({
     const unreadPostsByChannel = useGlobalStore(state => state.unreadPostsByChannel);
     const clearUnreadForChannel = useGlobalStore(state => state.clearUnreadForChannel);
     const { roomStartTime, activeRoom, participants } = useVoice();
-    const { socket, onlineUsers } = useSocket();
+    const { socket } = useSocket();
+    const onlineUsers = useOnlineUsers();
     const [voiceCounts, setVoiceCounts] = useState({});
     const [activeStatTooltip, setActiveStatTooltip] = useState(null);
     const statTooltipTimeoutRef = useRef(null);

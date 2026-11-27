@@ -7,7 +7,7 @@ import axios from 'axios';
 // @capgo/capacitor-updater (which remains in root package.json for Android).
 const CapacitorUpdater = registerPlugin('CapacitorUpdater');
 
-export const CURRENT_OTA_VERSION = '2.6.4-ota.2';
+export const CURRENT_OTA_VERSION = '2.6.4-ota.3';
 
 let otaInitialized = false;
 let otaCheckInFlight = false;

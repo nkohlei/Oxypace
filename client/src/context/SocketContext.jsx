@@ -8,6 +8,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { getActiveOtaVersion } from '../utils/otaUpdater';
 
 const SocketContext = createContext();
+const OnlineUsersContext = createContext([]);
 
 export const useSocket = () => {
     const context = useContext(SocketContext);
@@ -16,6 +17,8 @@ export const useSocket = () => {
     }
     return context;
 };
+
+export const useOnlineUsers = () => useContext(OnlineUsersContext);
 
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
@@ -362,11 +365,16 @@ export const SocketProvider = ({ children }) => {
         return Array.from(set);
     }, [onlineUsers, user?._id, user?.settings?.privacy?.showOnlineStatus, connected]);
 
-    const value = {
+    const socketValue = useMemo(() => ({
         socket,
         connected,
-        onlineUsers: effectiveOnlineUsers,
-    };
+    }), [socket, connected]);
 
-    return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
+    return (
+        <SocketContext.Provider value={socketValue}>
+            <OnlineUsersContext.Provider value={effectiveOnlineUsers}>
+                {children}
+            </OnlineUsersContext.Provider>
+        </SocketContext.Provider>
+    );
 };

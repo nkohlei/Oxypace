@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSocket } from '../context/SocketContext';
+import { useOnlineUsers } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
 import UserBadges from './UserBadges';
 
 const MembersSidebar = ({ members = [], onClose }) => {
-    const { onlineUsers } = useSocket();
+    const onlineUsers = useOnlineUsers();
     const { user: currentUser } = useAuth();
     const [, setTick] = useState(0);
 

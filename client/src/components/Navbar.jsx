@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
 import { useUI } from '../context/UIContext';
-import { useVoice } from '../context/VoiceContext';
+import { useActiveVoiceRoom } from '../context/VoiceContext';
 import { ConnectionState } from 'livekit-client';
 import './Navbar.css';
 import UserAvatar from './UserAvatar';
@@ -27,7 +27,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
     const { isDark, toggleTheme } = useTheme();
     const { socket } = useSocket();
     const { toggleSidebar, isMobileView, setMobileChannelOpen } = useUI() || {};
-    const { activeRoom, connectionState } = useVoice();
+    const { activeRoom, connectionState } = useActiveVoiceRoom();
     const isVoiceConnected = connectionState === ConnectionState.Connected;
     const isLiveRoomActive = isVoiceConnected && !!activeRoom;
     const roomDisplayName = activeRoom?.channelName || activeRoom?.roomName || 'Canlı Oda';
