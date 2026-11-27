@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,9 +35,31 @@ if (fs.existsSync(tempZipPath)) {
 }
 
 try {
-    // Use native Windows tar.exe for fast, reliable zip archive creation without file lock collisions
-    const tarCmd = `tar.exe -a -c -f "${tempZipPath}" -C "${distMobileDir}" .`;
-    execSync(tarCmd, { stdio: 'inherit' });
+    // Build a strict POSIX-compliant ZIP with forward slashes and NO "./" root entry.
+    // Windows tar.exe emits a "./" root entry that @capgo/capacitor-updater v8 rejects
+    // with "Path escapes base directory: ./" during unzip.
+    const pyZipScript = [
+        'import os, sys, zipfile',
+        'src = os.path.abspath(sys.argv[1])',
+        'dst = os.path.abspath(sys.argv[2])',
+        'count = 0',
+        'with zipfile.ZipFile(dst, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:',
+        '    for root, dirs, files in os.walk(src):',
+        '        dirs.sort()',
+        '        files.sort()',
+        '        for fname in files:',
+        '            full_path = os.path.join(root, fname)',
+        '            rel_path = os.path.relpath(full_path, src).replace(os.sep, "/")',
+        '            if not rel_path or rel_path == "." or rel_path.startswith("./") or rel_path.startswith("/") or ".." in rel_path.split("/"):',
+        '                continue',
+        '            zf.write(full_path, rel_path)',
+        '            count += 1',
+        'print(f"Packed {count} clean POSIX entries into {dst}")',
+    ].join('\n');
+
+    execFileSync('python', ['-c', pyZipScript, distMobileDir, tempZipPath], {
+        stdio: 'inherit',
+    });
 
     if (!fs.existsSync(tempZipPath)) {
         throw new Error('bundle.zip was not created');
