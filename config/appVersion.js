@@ -1,16 +1,16 @@
 export const APP_VERSION_CONFIG = {
-    latestVersion: '2.6.4',
-    versionCode: 264,
-    minSupportedVersionCode: 264,
-    otaVersion: '2.6.4-ota.4',
-    builtinOtaVersion: '2.6.4-ota.1',
+    latestVersion: '2.6.5',
+    versionCode: 265,
+    minSupportedVersionCode: 265,
+    otaVersion: '2.6.5-ota.1',
+    builtinOtaVersion: '2.6.5-ota.1',
     otaBundleUrl: 'https://api.oxypace.com.tr/downloads/bundle.zip',
-    otaMinNativeVersionCode: 264,
+    otaMinNativeVersionCode: 265,
     downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
     fallbackDownloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
     forceUpdate: true,
     changelog:
-        'Oxypace 2.6.4: Gönderi detayından dönüşte akış konumu koruma, Android App Links ile dışarıdan paylaşılan gönderi linklerinin doğrudan uygulamada açılması, giriş sonrası hedef gönderiye yönlendirme, Video Ayarları otomatik oynatma kalıcılığı düzeltmesi ve yenilenen Keşfet arayüzü.',
+        'Oxypace 2.6.5: Düşük/orta segment Android cihazlar için jet hızında performans güncellemesi — WebView IO blokajları ve 30 sn donma sorunu giderildi, GPU ön-raster bellek yükü kaldırıldı, medya ön-yükleme fırtınası ve ana iş parçacığı takılmaları temizlendi.',
 };
 
 export default APP_VERSION_CONFIG;

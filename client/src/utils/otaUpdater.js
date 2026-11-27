@@ -7,7 +7,7 @@ import axios from 'axios';
 // @capgo/capacitor-updater (which remains in root package.json for Android).
 const CapacitorUpdater = registerPlugin('CapacitorUpdater');
 
-export const CURRENT_OTA_VERSION = '2.6.4-ota.4';
+export const CURRENT_OTA_VERSION = '2.6.5-ota.1';
 
 let otaInitialized = false;
 let otaCheckInFlight = false;
@@ -39,7 +39,7 @@ export async function getVersionSummary() {
     if (!Capacitor.isNativePlatform()) {
         return {
             platform: 'web',
-            appVersion: '2.6.4',
+            appVersion: '2.6.5',
             versionCode: 0,
             otaVersion: CURRENT_OTA_VERSION,
             isOtaBundle: false,
@@ -51,8 +51,8 @@ export async function getVersionSummary() {
     ]);
     return {
         platform: 'android',
-        appVersion: appInfo?.version || '2.6.4',
-        versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 264,
+        appVersion: appInfo?.version || '2.6.5',
+        versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 265,
         otaVersion: bundleInfo.version,
         isOtaBundle: bundleInfo.isOtaBundle,
     };
@@ -119,8 +119,8 @@ async function reportOtaVersionToServer(otaVersion) {
         await axios.post(
             '/api/users/sync-version',
             {
-                appVersion: appInfo?.version || '2.6.3',
-                versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 263,
+                appVersion: appInfo?.version || '2.6.5',
+                versionCode: appInfo?.build ? parseInt(appInfo.build, 10) : 265,
                 platform: 'android',
                 otaVersion: String(otaVersion),
             },
@@ -158,8 +158,8 @@ export async function checkAndApplyOtaUpdate(force = false) {
             return { status: 'up_to_date', version: currentOtaVer };
         }
 
-        const nativeVerCode = Number(appInfo?.build || 263);
-        const minNativeCode = Number(data.otaMinNativeVersionCode || 263);
+        const nativeVerCode = Number(appInfo?.build || 265);
+        const minNativeCode = Number(data.otaMinNativeVersionCode || 265);
         const minSupportedNative = Number(data.minSupportedVersionCode || 0);
 
         if (nativeVerCode < minNativeCode || nativeVerCode < minSupportedNative) {

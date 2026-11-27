@@ -28,6 +28,7 @@ const PortalSidebar = () => {
     const [failedThumbnails, setFailedThumbnails] = useState({});
     const orderedPortalsRef = useRef([]);
     const hydratedMissingPortalsRef = useRef(new Set());
+    const lastUnreadSyncRef = useRef(0);
 
     const handlePortalImageError = (portalId, srcKey) => {
         setFailedThumbnails(prev => ({ ...prev, [portalId]: srcKey || true }));
@@ -140,14 +141,30 @@ const PortalSidebar = () => {
                     const latest = filtered.find(fp => (fp._id || fp)?.toString() === (op._id || op)?.toString());
                     return latest ? latest : op;
                 });
-                if (JSON.stringify(prevOrdered) !== JSON.stringify(updated)) {
+                const hasChanged =
+                    prevOrdered.length !== updated.length ||
+                    prevOrdered.some((op, i) => {
+                        const np = updated[i];
+                        return (
+                            (op?._id || op)?.toString() !== (np?._id || np)?.toString() ||
+                            op?.name !== np?.name ||
+                            op?.avatar !== np?.avatar ||
+                            op?.coverImage !== np?.coverImage ||
+                            op?.banner !== np?.banner
+                        );
+                    });
+                if (hasChanged) {
                     orderedPortalsRef.current = updated;
                     setOrderedPortals(updated);
                 }
             }
-            // Sync unread counts from server to ensure offline accuracy
-            syncUnreadCounts();
-            fetchUnreadMessagesCount();
+            // Throttle unread counts sync to avoid redundant API bursts on frequent state refreshes
+            const now = Date.now();
+            if (now - lastUnreadSyncRef.current > 15000) {
+                lastUnreadSyncRef.current = now;
+                syncUnreadCounts();
+                fetchUnreadMessagesCount();
+            }
             preloadPortals(filtered);
         }
     }, [user?.portals, user?.joinedPortals, syncUnreadCounts, fetchUnreadMessagesCount, refreshUser]);

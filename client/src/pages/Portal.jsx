@@ -51,6 +51,14 @@ import {
 import './Portal.css';
 
 
+const scheduleIdleWrite = (fn) => {
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => { try { fn(); } catch (_) {} }, { timeout: 1500 });
+    } else {
+        setTimeout(() => { try { fn(); } catch (_) {} }, 50);
+    }
+};
+
 const readFreshReturnFeedContext = (portalId) => {
     try {
         const raw = sessionStorage.getItem('oxypace_return_feed_context');
@@ -1374,20 +1382,20 @@ const Portal = () => {
             try {
                 const res = await axios.get(`/api/portals/${id}`);
                 setPortal(res.data);
-                try {
-                    const serialized = JSON.stringify(res.data);
+                scheduleIdleWrite(() => {
+                    const slimMembers =
+                        Array.isArray(res.data?.members) &&
+                        user?._id &&
+                        res.data.members.some((m) => String(m?._id || m) === String(user._id))
+                            ? [user._id]
+                            : [];
+                    const serialized = JSON.stringify({ ...res.data, members: slimMembers });
                     sessionStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
                     localStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
-                } catch (_) { }
+                });
                 if (res.data?.avatar) preloadImage(res.data.avatar, 'original');
                 const b = res.data?.coverImage || res.data?.banner;
                 if (b) preloadImage(b, 'original');
-                const allMembers = [
-                    res.data.owner,
-                    ...(res.data.admins || []),
-                    ...(res.data.members || [])
-                ].filter(Boolean);
-                preloadUsers(allMembers);
                 setEditFormData({
                     name: res.data.name,
                     description: res.data.description || '',
@@ -1524,7 +1532,9 @@ const Portal = () => {
                     const existingIds = new Set(prev.map(p => p._id));
                     const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p._id));
                     const merged = [...prev, ...uniqueNewPosts];
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 60))); } catch (_) {}
+                    scheduleIdleWrite(() => {
+                        sessionStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 60)));
+                    });
                     return merged;
                 });
             } else {
@@ -1536,12 +1546,14 @@ const Portal = () => {
                     shouldPreserveLoadedTailRef.current = false;
                 }
                 setPosts(finalPosts);
-                try {
-                    sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 60)));
-                    localStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20)));
-                } catch (_) {
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20))); } catch (__) { }
-                }
+                scheduleIdleWrite(() => {
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 60)));
+                        localStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20)));
+                    } catch (_) {
+                        try { sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 20))); } catch (__) { }
+                    }
+                });
             }
 
             setError('');

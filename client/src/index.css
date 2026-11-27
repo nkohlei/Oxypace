@@ -964,6 +964,34 @@ body.perf-lite .post-card {
   box-shadow: none !important;
 }
 
+/* Jet-speed zero-delay taps, popups, dropdowns and scrolling under perf-lite */
+body.perf-lite button,
+body.perf-lite a,
+body.perf-lite [role="button"],
+body.perf-lite .channel-item,
+body.perf-lite .portal-icon-wrapper,
+body.perf-lite .modern-portal-card {
+  touch-action: manipulation;
+}
+
+body.perf-lite .modal-overlay,
+body.perf-lite .modal-content,
+body.perf-lite .profile-edit-modal-overlay,
+body.perf-lite .post-floating-menu,
+body.perf-lite .pd-dropdown-menu,
+body.perf-lite .portal-plus-menu-portal,
+body.perf-lite .context-menu,
+body.perf-lite .dropdown-menu {
+  animation: none !important;
+  transition: none !important;
+}
+
+body.perf-lite *,
+body.perf-lite *::before,
+body.perf-lite *::after {
+  scroll-behavior: auto !important;
+}
+
 /* ================================================================
    PHASE 2: OFFSCREEN LAYOUT/PAINT VIRTUALIZATION & VIDEO PLACEHOLDER
    ================================================================ */

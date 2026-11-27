@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import Hls from 'hls.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './TimelineScrubPreview.css';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -52,27 +51,23 @@ const TimelineScrubPreview = ({
     const [frameReady, setFrameReady] = useState(false);
     const [frameBlocked, setFrameBlocked] = useState(false);
 
-    // Track displayed player dimensions so preview box scales identically from feed -> fullscreen
-    useEffect(() => {
+    // Lazily measure displayed player dimensions on scrub interaction instead of eager mount ResizeObserver
+    const measureDimensions = useCallback(() => {
         const measureEl = containerRef?.current || trackRef.current?.parentElement;
-        if (!measureEl || typeof ResizeObserver === 'undefined') return;
-
-        const updateSize = () => {
+        if (measureEl) {
             const rect = measureEl.getBoundingClientRect();
-            const tRect = trackRef.current?.getBoundingClientRect();
             if (rect.width > 0 && rect.height > 0) {
-                setPlayerBox({ width: rect.width, height: rect.height });
+                setPlayerBox((prev) =>
+                    Math.abs(prev.width - rect.width) > 1 || Math.abs(prev.height - rect.height) > 1
+                        ? { width: rect.width, height: rect.height }
+                        : prev
+                );
             }
-            if (tRect && tRect.width > 0) {
-                setTrackWidth(tRect.width);
-            }
-        };
-
-        updateSize();
-        const ro = new ResizeObserver(updateSize);
-        ro.observe(measureEl);
-        if (trackRef.current) ro.observe(trackRef.current);
-        return () => ro.disconnect();
+        }
+        const tRect = trackRef.current?.getBoundingClientRect();
+        if (tRect && tRect.width > 0) {
+            setTrackWidth((prev) => (Math.abs(prev - tRect.width) > 1 ? tRect.width : prev));
+        }
     }, [containerRef]);
 
     // Reset probe state when media source changes
@@ -117,6 +112,7 @@ const TimelineScrubPreview = ({
 
         loadedSrcRef.current = previewSrc;
         probeReadyRef.current = false;
+        let cancelled = false;
         const lower = previewSrc.toLowerCase();
         const isHls = lower.includes('.m3u8');
 
@@ -151,23 +147,35 @@ const TimelineScrubPreview = ({
         vid.addEventListener('seeked', handleSeeked);
         vid.addEventListener('error', handleError);
 
-        if (isHls && Hls.isSupported()) {
-            const hls = new Hls({
-                autoStartLoad: true,
-                maxBufferLength: 6,
-                maxMaxBufferLength: 10,
-                startLevel: 0,
-                capLevelToPlayerSize: true,
-                enableWorker: false,
-            });
-            hlsRef.current = hls;
-            hls.loadSource(previewSrc);
-            hls.attachMedia(vid);
-            hls.on(Hls.Events.ERROR, (_, data) => {
-                if (data?.fatal) {
-                    setFrameBlocked(true);
+        if (isHls) {
+            (async () => {
+                try {
+                    const mod = await import('hls.js');
+                    const HlsLib = mod.default || mod;
+                    if (cancelled || !HlsLib || !HlsLib.isSupported?.()) {
+                        if (!cancelled) setFrameBlocked(true);
+                        return;
+                    }
+                    const hls = new HlsLib({
+                        autoStartLoad: true,
+                        maxBufferLength: 6,
+                        maxMaxBufferLength: 10,
+                        startLevel: 0,
+                        capLevelToPlayerSize: true,
+                        enableWorker: false,
+                    });
+                    hlsRef.current = hls;
+                    hls.loadSource(previewSrc);
+                    hls.attachMedia(vid);
+                    hls.on(HlsLib.Events.ERROR, (_, data) => {
+                        if (data?.fatal) {
+                            setFrameBlocked(true);
+                        }
+                    });
+                } catch (_) {
+                    if (!cancelled) setFrameBlocked(true);
                 }
-            });
+            })();
         } else {
             vid.src = previewSrc;
             try {
@@ -176,9 +184,16 @@ const TimelineScrubPreview = ({
         }
 
         return () => {
+            cancelled = true;
             vid.removeEventListener('loadedmetadata', handleLoadedMetadata);
             vid.removeEventListener('seeked', handleSeeked);
             vid.removeEventListener('error', handleError);
+            if (hlsRef.current) {
+                try {
+                    hlsRef.current.destroy();
+                } catch (_) {}
+                hlsRef.current = null;
+            }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasActivatedProbe, previewSrc, isLive, frameBlocked]);
@@ -239,6 +254,7 @@ const TimelineScrubPreview = ({
 
     const updatePreviewPoint = (clientX, dragging) => {
         if (isLive || duration <= 0 || disabled) return;
+        measureDimensions();
         if (!hasActivatedProbe && previewSrc) setHasActivatedProbe(true);
         const { ratio, time } = getPointFromClientX(clientX);
         setPreviewState({ visible: true, dragging, ratio, time });

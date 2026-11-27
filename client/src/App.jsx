@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 const isElectron = typeof window !== 'undefined' && (!!window.desktopAPI?.isElectron || (window.navigator && window.navigator.userAgent && window.navigator.userAgent.indexOf('Electron') !== -1));
@@ -677,6 +677,48 @@ const AppLayout = () => {
     // Sidebar visible on Portal Selection screen (when channel feed is NOT open)
     const showSidebarOnMobile = isLoggedIn && isPortalPage && !mobileChannelOpen;
 
+    const prevIsLoggedInRef = useRef(isLoggedIn);
+
+    useLayoutEffect(() => {
+        const root = document.getElementById('root');
+        const authChanged = prevIsLoggedInRef.current !== isLoggedIn;
+        prevIsLoggedInRef.current = isLoggedIn;
+
+        if (isLoggedIn && !isBlogPage) {
+            document.documentElement.classList.add('discord-layout-active');
+            document.body.classList.add('discord-layout-active');
+
+            if (root && root.style.height !== '100dvh') {
+                root.style.height = '100dvh';
+                root.style.maxHeight = '100dvh';
+                root.style.overflow = 'hidden';
+            }
+
+            if (authChanged) {
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                const appContainer = document.querySelector('.app-container');
+                if (appContainer) {
+                    void appContainer.offsetHeight; // Force reflow only when switching guest -> logged-in layout
+                }
+            }
+        } else {
+            document.documentElement.classList.remove('discord-layout-active');
+            document.body.classList.remove('discord-layout-active');
+
+            if (root) {
+                root.style.height = '';
+                root.style.maxHeight = '';
+                root.style.overflow = '';
+            }
+        }
+        return () => {
+            document.documentElement.classList.remove('discord-layout-active');
+            document.body.classList.remove('discord-layout-active');
+        };
+    }, [isLoggedIn, isBlogPage]);
+
     useLayoutEffect(() => {
         // Check whether we are returning from PostDetail back into the same portal feed
         let returningToPortalFeed = false;
@@ -704,58 +746,16 @@ const AppLayout = () => {
             setMobileChannelOpen(returningToPortalFeed);
         }
 
-        // CRITICAL: Synchronously remove the active class from the overlay DOM element.
-        // React state updates (closeSidebar) are batched and may apply after the next
-        // paint, leaving a visible backdrop flash. Direct DOM manipulation is instant.
         const overlay = document.querySelector('.mobile-sidebar-overlay');
         if (overlay) {
             overlay.classList.remove('active');
         }
 
-        const root = document.getElementById('root');
-        if (isLoggedIn && !isBlogPage) {
-            document.documentElement.classList.add('discord-layout-active');
-            document.body.classList.add('discord-layout-active');
-
-            // CRITICAL: Force-reset #root to 100vh to flush the stale guest-mode height.
-            if (root) {
-                root.style.height = '100dvh';
-                root.style.maxHeight = '100dvh';
-                root.style.overflow = 'hidden';
-            }
-
-            // Reset browser scroll accumulated during guest-mode
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-
-            // Also reset the content scroll area unless restoring feed scroll position
-            if (!returningToPortalFeed) {
-                const scrollArea = document.querySelector('.content-scroll-area');
-                if (scrollArea) scrollArea.scrollTop = 0;
-            }
-
-            // Force a layout reflow to flush the stale guest-mode dimensions
-            const appContainer = document.querySelector('.app-container');
-            if (appContainer) {
-                void appContainer.offsetHeight; // Force reflow
-            }
-        } else {
-            document.documentElement.classList.remove('discord-layout-active');
-            document.body.classList.remove('discord-layout-active');
-
-            // Clear forced inline styles so guest/blog pages can scroll freely
-            if (root) {
-                root.style.height = '';
-                root.style.maxHeight = '';
-                root.style.overflow = '';
-            }
+        if (isLoggedIn && !isBlogPage && !returningToPortalFeed) {
+            const scrollArea = document.querySelector('.content-scroll-area');
+            if (scrollArea) scrollArea.scrollTop = 0;
         }
-        return () => {
-            document.documentElement.classList.remove('discord-layout-active');
-            document.body.classList.remove('discord-layout-active');
-        };
-    }, [isLoggedIn, location.pathname]);
+    }, [location.pathname, isLoggedIn, isBlogPage]);
 
     // Redirect from '/' directly to pending redirect, user's portal or '/messages' when logged in
     useEffect(() => {
@@ -1095,9 +1095,13 @@ import { initOtaUpdater } from './utils/otaUpdater';
 
 function App() {
     useEffect(() => {
+        let startupTimer = null;
         if (Capacitor.isNativePlatform()) {
-            initOtaUpdater();
-            requestNativePermissions();
+            // Defer non-critical native startup work so initial mount & first taps stay unblocked
+            startupTimer = setTimeout(() => {
+                initOtaUpdater();
+                requestNativePermissions();
+            }, 1500);
 
             // Handle Deep Linking for Google Auth, App Links (https://oxypace.com.tr/...), and custom schemes
             CapacitorApp.addListener('appUrlOpen', (event) => {
@@ -1181,6 +1185,7 @@ function App() {
         };
         document.addEventListener('contextmenu', handleContextMenu);
         return () => {
+            if (startupTimer) clearTimeout(startupTimer);
             document.removeEventListener('click', handleExternalLinks);
             document.removeEventListener('contextmenu', handleContextMenu);
         };

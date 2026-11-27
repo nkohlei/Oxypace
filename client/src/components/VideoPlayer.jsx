@@ -409,7 +409,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
   // Dynamic fallback frame extraction if poster is not provided by backend/props
   const handleCaptureFrame = useCallback((videoEl) => {
-    if (poster || derivedPoster || !videoEl) return;
+    if (poster || derivedPoster || !videoEl || isPerfLiteActive()) return;
     try {
       const width = videoEl.videoWidth;
       const height = videoEl.videoHeight;
@@ -756,10 +756,9 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       availableQualities.push({ value: t.value, label: t.label, src: t.src });
     });
 
-  // Probe original metadata proactively once player is active or menu opens so the true original height is known
+  // Probe original metadata lazily only when user actually opens the quality menu
   useEffect(() => {
-    if (knownOriginalHeight || probedOriginalHeight || !srcOriginal) return;
-    if (!isQualityMenuOpen && !hasStartedPlayback && !duration) return;
+    if (!isQualityMenuOpen || knownOriginalHeight || probedOriginalHeight || !srcOriginal) return;
     let cancelled = false;
     const probe = document.createElement('video');
     probe.preload = 'metadata';
@@ -780,7 +779,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       cancelled = true;
       cleanup();
     };
-  }, [isQualityMenuOpen, hasStartedPlayback, duration, knownOriginalHeight, probedOriginalHeight, srcOriginal]);
+  }, [isQualityMenuOpen, knownOriginalHeight, probedOriginalHeight, srcOriginal]);
 
   // --- Helpers ---
   const getActiveEl  = () => (activeVideoRef.current === 'A' ? videoRefA : videoRefB).current;

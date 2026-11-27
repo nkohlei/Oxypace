@@ -450,7 +450,7 @@ app.get(['/downloads/oxypace.apk', '/download/apk', /^\/downloads\/oxypace-v?[\d
     for (const file of candidates) {
         if (fs.existsSync(file)) {
             const stat = fs.statSync(file);
-            const apkVersion = (typeof APP_VERSION_CONFIG !== 'undefined' && APP_VERSION_CONFIG?.latestVersion) ? APP_VERSION_CONFIG.latestVersion : '2.6.4';
+            const apkVersion = (typeof APP_VERSION_CONFIG !== 'undefined' && APP_VERSION_CONFIG?.latestVersion) ? APP_VERSION_CONFIG.latestVersion : '2.6.5';
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
             res.setHeader('Content-Length', stat.size);
             res.setHeader('Content-Disposition', `attachment; filename="oxypace-${apkVersion}.apk"`);

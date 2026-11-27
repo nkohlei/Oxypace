@@ -789,7 +789,8 @@ public class MainActivity extends BridgeActivity {
             com.getcapacitor.JSArray urls = call.getArray("urls");
             if (urls != null) {
                 Context ctx = getContext();
-                for (int i = 0; i < urls.length(); i++) {
+                int limit = Math.min(urls.length(), 4);
+                for (int i = 0; i < limit; i++) {
                     try {
                         String url = urls.getString(i);
                         if (url != null && !url.trim().isEmpty()) {
@@ -855,8 +856,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     public static class NativeMediaCacheManager {
-        private static final long MAX_CACHE_SIZE_BYTES = 500L * 1024L * 1024L; // 500 MB max disk cache
-        private static final ExecutorService sWorkerPool = Executors.newFixedThreadPool(6);
+        private static final long MAX_CACHE_SIZE_BYTES = 120L * 1024L * 1024L; // 120 MB bounded disk cache
+        private static final ExecutorService sWorkerPool = Executors.newFixedThreadPool(2, r -> {
+            Thread t = new Thread(r, "oxypace-media-bg");
+            t.setPriority(Thread.MIN_PRIORITY);
+            t.setDaemon(true);
+            return t;
+        });
         private static File sCacheDir = null;
 
         public static synchronized void init(Context context) {
@@ -886,19 +892,17 @@ public class MainActivity extends BridgeActivity {
         public static boolean isMediaUrl(String url) {
             if (url == null)
                 return false;
-            String lower = url.toLowerCase();
-            // Video streaming requires HTTP 206 range requests; bypass to standard stream
-            // pipeline
-            if (lower.contains(".mp4") || lower.contains(".m3u8") || lower.contains(".mpd") || lower.contains(".ts")) {
+            String clean = url.toLowerCase().split("\\?")[0];
+            if (clean.contains(".mp4") || clean.contains(".m3u8") || clean.contains(".mpd")
+                    || clean.contains(".ts") || clean.contains(".webm") || clean.contains(".mov")
+                    || clean.contains(".mkv") || clean.contains(".mp3") || clean.contains(".wav")
+                    || clean.contains(".ogg") || clean.contains(".json") || clean.contains(".js")
+                    || clean.contains(".css")) {
                 return false;
             }
-            if (lower.contains("/api/media/") || lower.contains("/r2-media/") || lower.contains("/uploads/")
-                    || lower.contains(".r2.dev/")) {
-                return true;
-            }
-            return lower.endsWith(".webp") || lower.endsWith(".png") || lower.endsWith(".jpg") ||
-                    lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".svg")
-                    || lower.endsWith(".ico");
+            return clean.endsWith(".webp") || clean.endsWith(".png") || clean.endsWith(".jpg")
+                    || clean.endsWith(".jpeg") || clean.endsWith(".gif") || clean.endsWith(".svg")
+                    || clean.endsWith(".ico") || clean.endsWith(".avif");
         }
 
         public static String guessMimeType(String url) {
@@ -915,6 +919,8 @@ public class MainActivity extends BridgeActivity {
                 return "image/svg+xml";
             if (clean.endsWith(".ico"))
                 return "image/x-icon";
+            if (clean.endsWith(".avif"))
+                return "image/avif";
             return "image/webp";
         }
 
@@ -938,10 +944,11 @@ public class MainActivity extends BridgeActivity {
             String key = getCacheKey(urlStr);
             File cachedFile = new File(sCacheDir, key);
 
-            // 1. INSTANT DISK CACHE HIT (0.2ms zero-latency rendering)
+            // Serve ONLY instant disk cache HITs. Cache MISS returns null immediately so
+            // Chromium's parallel HTTP/2 C++ network stack fetches asynchronously without
+            // blocking the WebView IO thread.
             if (cachedFile.exists() && cachedFile.length() > 0) {
                 try {
-                    cachedFile.setLastModified(System.currentTimeMillis());
                     String mimeType = guessMimeType(urlStr);
                     Map<String, String> respHeaders = new HashMap<>();
                     respHeaders.put("Access-Control-Allow-Origin", "*");
@@ -951,52 +958,6 @@ public class MainActivity extends BridgeActivity {
                             new FileInputStream(cachedFile));
                 } catch (Exception ignored) {
                 }
-            }
-
-            // 2. DISK CACHE MISS: Fetch on Chromium worker thread and save to disk
-            try {
-                URL targetUrl = new URL(urlStr);
-                HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(12000);
-                conn.setInstanceFollowRedirects(true);
-                conn.setRequestProperty("User-Agent", "OxypaceAndroid/2.4.9 (HighPerformanceCache)");
-                conn.setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
-
-                int statusCode = conn.getResponseCode();
-                if (statusCode >= 200 && statusCode < 300) {
-                    File tmpFile = new File(sCacheDir, key + ".tmp");
-                    try (InputStream in = conn.getInputStream();
-                            FileOutputStream out = new FileOutputStream(tmpFile)) {
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        while ((bytesRead = in.read(buffer)) != -1) {
-                            out.write(buffer, 0, bytesRead);
-                        }
-                    }
-
-                    if (tmpFile.exists() && tmpFile.length() > 0) {
-                        tmpFile.renameTo(cachedFile);
-                    }
-
-                    String contentType = conn.getContentType();
-                    if (contentType == null || contentType.isEmpty() || contentType.contains("text/html")) {
-                        contentType = guessMimeType(urlStr);
-                    }
-
-                    Map<String, String> respHeaders = new HashMap<>();
-                    respHeaders.put("Access-Control-Allow-Origin", "*");
-                    respHeaders.put("Cache-Control", "public, max-age=31536000, immutable");
-                    respHeaders.put("X-Oxypace-Native-Cache", "MISS-FETCHED");
-
-                    if (cachedFile.exists() && cachedFile.length() > 0) {
-                        return new android.webkit.WebResourceResponse(contentType, "UTF-8", 200, "OK", respHeaders,
-                                new FileInputStream(cachedFile));
-                    }
-                }
-                conn.disconnect();
-            } catch (Exception ignored) {
             }
 
             return null;
@@ -1019,10 +980,10 @@ public class MainActivity extends BridgeActivity {
                     URL targetUrl = new URL(urlStr);
                     HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
                     conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(4000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(3500);
+                    conn.setReadTimeout(5000);
                     conn.setInstanceFollowRedirects(true);
-                    conn.setRequestProperty("User-Agent", "OxypaceAndroid/2.4.9 (ProactivePreloader)");
+                    conn.setRequestProperty("User-Agent", "OxypaceAndroid/2.6.5 (ProactivePreloader)");
 
                     if (conn.getResponseCode() == 200) {
                         File tmpFile = new File(sCacheDir, key + ".tmp");
@@ -1552,6 +1513,11 @@ public class MainActivity extends BridgeActivity {
     private static MainActivity activityInstance = null;
     private String pendingRoute = null;
     private boolean pendingIsJoinVoice = false;
+    private int lastAppliedStatusDp = -1;
+    private int lastAppliedBottomDp = -1;
+    private Boolean lastAppliedIs3Btn = null;
+    private static Boolean sCachedIs3Btn = null;
+    private static long sLastNavCheckMs = 0L;
 
     public static com.getcapacitor.Bridge getBridgeInstance() {
         return bridgeInstance;
@@ -1652,35 +1618,9 @@ public class MainActivity extends BridgeActivity {
         handleShareIntent(getIntent());
 
         // Dynamically detect system navigation bar mode (3-button vs gesture
-        // navigation) and safe-areas
+        // navigation) and safe-areas via WindowInsetsListener (avoids per-frame OnGlobalLayoutListener storms)
         try {
             android.view.View decorView = getWindow().getDecorView();
-            decorView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-                try {
-                    WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
-                    if (insets != null) {
-                        float density = getResources().getDisplayMetrics().density;
-                        if (density <= 0)
-                            density = 1.0f;
-
-                        Insets statusInsets = insets.getInsets(
-                                WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
-                        float statusDp = statusInsets.top / density;
-                        sStatusBarTopDp = Math.max(statusDp, 0f);
-
-                        Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-                        float navDp = navInsets.bottom / density;
-
-                        boolean is3Btn = is3ButtonNavigation(this, navDp);
-                        sNavBarBottomDp = is3Btn ? Math.max(navDp, 48.0f) : (navDp > 0 ? navDp : 0f);
-                        sIs3ButtonNav = is3Btn;
-
-                        applyInsetsToWebView();
-                    }
-                } catch (Exception ignored) {
-                }
-            });
-
             ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
                 try {
                     float density = getResources().getDisplayMetrics().density;
@@ -1845,12 +1785,11 @@ public class MainActivity extends BridgeActivity {
             settings.setLoadsImagesAutomatically(true);
             settings.setBlockNetworkImage(false);
 
-            // High-performance rendering & cache flags (Instagram / Twitter style)
+            // High-performance rendering flags (avoid offscreen GPU VRAM exhaustion on low-end devices)
             try {
                 settings.setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH);
-                settings.setEnableSmoothTransition(true);
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                    settings.setOffscreenPreRaster(true);
+                    settings.setOffscreenPreRaster(false);
                 }
             } catch (Exception ignored) {
             }
@@ -1918,7 +1857,10 @@ public class MainActivity extends BridgeActivity {
                 @Override
                 public void onPageFinished(android.webkit.WebView view, String url) {
                     super.onPageFinished(view, url);
-                    // Ensure system navigation safe-area insets are applied to DOM
+                    // Ensure system navigation safe-area insets are applied to newly loaded DOM
+                    lastAppliedStatusDp = -1;
+                    lastAppliedBottomDp = -1;
+                    lastAppliedIs3Btn = null;
                     applyInsetsToWebView();
 
                     // Automatically extract auth token and user id from WebView localStorage
@@ -1995,48 +1937,66 @@ public class MainActivity extends BridgeActivity {
     public static boolean is3ButtonNavigation(android.content.Context context, float navDp) {
         if (context == null)
             return false;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (sCachedIs3Btn != null && (now - sLastNavCheckMs) < 5000L) {
+            return sCachedIs3Btn;
+        }
         try {
             android.content.ContentResolver cr = context.getContentResolver();
+            Boolean resolved = null;
 
             // 1. Samsung OneUI: navigation_bar_gesture_while_hidden
             int samsungGesture = Settings.Global.getInt(cr, "navigation_bar_gesture_while_hidden", -1);
             if (samsungGesture == 0)
-                return true;
-            if (samsungGesture == 1)
-                return false;
+                resolved = true;
+            else if (samsungGesture == 1)
+                resolved = false;
 
             // 2. Xiaomi MIUI / HyperOS: force_fsg_nav_bar
-            int miuiFsg = Settings.Global.getInt(cr, "force_fsg_nav_bar", -1);
-            if (miuiFsg == 0)
-                return true;
-            if (miuiFsg == 1)
-                return false;
+            if (resolved == null) {
+                int miuiFsg = Settings.Global.getInt(cr, "force_fsg_nav_bar", -1);
+                if (miuiFsg == 0)
+                    resolved = true;
+                else if (miuiFsg == 1)
+                    resolved = false;
+            }
 
             // 3. Vivo / Funtouch: navigation_gesture_on
-            int vivoGesture = Settings.Secure.getInt(cr, "navigation_gesture_on", -1);
-            if (vivoGesture == 0)
-                return true;
-            if (vivoGesture == 1)
-                return false;
+            if (resolved == null) {
+                int vivoGesture = Settings.Secure.getInt(cr, "navigation_gesture_on", -1);
+                if (vivoGesture == 0)
+                    resolved = true;
+                else if (vivoGesture == 1)
+                    resolved = false;
+            }
 
             // 4. Huawei / Honor: navigationbar_is_min
-            int huaweiNav = Settings.System.getInt(cr, "navigationbar_is_min", -1);
-            if (huaweiNav == 0)
-                return true;
-            if (huaweiNav == 1)
-                return false;
+            if (resolved == null) {
+                int huaweiNav = Settings.System.getInt(cr, "navigationbar_is_min", -1);
+                if (huaweiNav == 0)
+                    resolved = true;
+                else if (huaweiNav == 1)
+                    resolved = false;
+            }
 
             // 5. AOSP Standard: navigation_mode (0 = 3 button, 1 = 2 button, 2 = gesture)
-            int aospMode = Settings.Secure.getInt(cr, "navigation_mode", -1);
-            if (aospMode == 0 || aospMode == 1)
-                return true;
-            if (aospMode == 2)
-                return false;
+            if (resolved == null) {
+                int aospMode = Settings.Secure.getInt(cr, "navigation_mode", -1);
+                if (aospMode == 0 || aospMode == 1)
+                    resolved = true;
+                else if (aospMode == 2)
+                    resolved = false;
+            }
+
+            if (resolved != null) {
+                sCachedIs3Btn = resolved;
+                sLastNavCheckMs = now;
+                return resolved;
+            }
         } catch (Exception ignored) {
         }
 
         // Fallback: If bottom nav insets are >= 40dp, it is definitely a 3-button bar
-        // (gesture bar is <= 20dp or 0dp)
         return navDp >= 40.0f;
     }
 
@@ -2049,6 +2009,15 @@ public class MainActivity extends BridgeActivity {
                     final int statusDp = Math.round(sStatusBarTopDp);
                     final boolean is3Btn = sIs3ButtonNav;
                     final int effectiveBottomDp = is3Btn ? Math.max(navDp, 48) : navDp;
+                    if (statusDp == lastAppliedStatusDp
+                            && effectiveBottomDp == lastAppliedBottomDp
+                            && Boolean.valueOf(is3Btn).equals(lastAppliedIs3Btn)) {
+                        return;
+                    }
+                    lastAppliedStatusDp = statusDp;
+                    lastAppliedBottomDp = effectiveBottomDp;
+                    lastAppliedIs3Btn = is3Btn;
+
                     String script = "(function() {" +
                             "  try {" +
                             "    var doc = document.documentElement;" +

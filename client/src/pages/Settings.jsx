@@ -65,8 +65,8 @@ const Settings = () => {
     };
     const [versionInfo, setVersionInfo] = useState({
         platform: Capacitor.isNativePlatform() ? 'android' : 'web',
-        appVersion: '2.6.4',
-        otaVersion: '2.6.4-ota.1',
+        appVersion: '2.6.5',
+        otaVersion: '2.6.5-ota.1',
     });
     const [otaCheckState, setOtaCheckState] = useState({ checking: false, label: '' });
     const videoMutationSeqRef = useRef(0);

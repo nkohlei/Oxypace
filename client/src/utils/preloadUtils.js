@@ -1,17 +1,13 @@
 import { getImageUrl } from './imageUtils';
-import { registerPlugin, Capacitor } from '@capacitor/core';
-
-const NativeMediaPreloader = (typeof window !== 'undefined' && Capacitor?.isNativePlatform && Capacitor.isNativePlatform())
-    ? registerPlugin('NativeMediaPreloader')
-    : null;
+import { isPerfLiteActive } from './performanceMode';
 
 const preloadedSet = new Set();
 const MAX_PRELOAD_ITEMS = 1500;
 
-// High-speed queue management with HTTP/2 concurrent pipeline
+// Queue management with bounded concurrency
 const PRELOAD_QUEUE = [];
 let activePreloads = 0;
-const MAX_CONCURRENT_PRELOADS = 8;
+const MAX_CONCURRENT_PRELOADS = 3;
 
 function processQueue() {
     while (activePreloads < MAX_CONCURRENT_PRELOADS && PRELOAD_QUEUE.length > 0) {
@@ -40,10 +36,11 @@ function processQueue() {
 }
 
 /**
- * Preload an image URL into browser & native disk cache with optional priority ('high' | 'low').
+ * Preload an image URL into browser cache with optional priority ('high' | 'low').
+ * Disabled under perf-lite (Android / low-end devices) to avoid bandwidth and decode contention.
  */
 export const preloadImage = (url, sizeType = 'original', priority = 'low') => {
-    if (!url || typeof window === 'undefined') return;
+    if (!url || typeof window === 'undefined' || isPerfLiteActive()) return;
     const resolved = getImageUrl(url, sizeType);
     if (!resolved || preloadedSet.has(resolved)) return;
 
@@ -52,11 +49,6 @@ export const preloadImage = (url, sizeType = 'original', priority = 'low') => {
         if (first) preloadedSet.delete(first);
     }
     preloadedSet.add(resolved);
-
-    // If on native platform, proactively send to native background worker pool
-    if (NativeMediaPreloader && priority === 'high') {
-        NativeMediaPreloader.preloadUrls({ urls: [resolved] }).catch(() => {});
-    }
 
     // If high priority (e.g. above-the-fold first items), insert at head of queue
     if (priority === 'high') {
@@ -71,7 +63,7 @@ export const preloadImage = (url, sizeType = 'original', priority = 'low') => {
  * Preload multiple image URLs into browser cache.
  */
 export const preloadImages = (urls = [], sizeType = 'original', priority = 'low') => {
-    if (!Array.isArray(urls) || typeof window === 'undefined') return;
+    if (!Array.isArray(urls) || typeof window === 'undefined' || isPerfLiteActive()) return;
     urls.forEach((u) => preloadImage(u, sizeType, priority));
 };
 
@@ -79,7 +71,7 @@ export const preloadImages = (urls = [], sizeType = 'original', priority = 'low'
  * Preload portal avatars and banners into memory cache.
  */
 export const preloadPortals = (portals = []) => {
-    if (!Array.isArray(portals) || typeof window === 'undefined') return;
+    if (!Array.isArray(portals) || typeof window === 'undefined' || isPerfLiteActive()) return;
     portals.slice(0, 25).forEach((p) => {
         if (!p) return;
         const avatar = p.lowResAvatar || p.avatar;
@@ -97,7 +89,7 @@ export const preloadPortals = (portals = []) => {
  * Preload user avatars and custom badge icons.
  */
 export const preloadUsers = (users = []) => {
-    if (!Array.isArray(users) || typeof window === 'undefined') return;
+    if (!Array.isArray(users) || typeof window === 'undefined' || isPerfLiteActive()) return;
     users.slice(0, 30).forEach((u) => {
         if (!u) return;
         const avatar = u.profile?.lowResAvatar || u.profile?.avatar || u.avatar;
@@ -111,42 +103,10 @@ export const preloadUsers = (users = []) => {
 };
 
 /**
- * Preload post feeds (Author avatar, badge, and first post image)
- * Guarantees images show up synchronously with page render (0ms pop-in).
+ * Preload post feeds (Author avatar, badge, and first post image) in desktop/full mode.
  */
 export const preloadPosts = (posts = []) => {
-    if (!Array.isArray(posts) || typeof window === 'undefined') return;
-
-    // Fast-path batch dispatch to Native Android background thread pool
-    if (NativeMediaPreloader) {
-        const batchUrls = [];
-        posts.slice(0, 12).forEach((post) => {
-            if (!post) return;
-            const author = post.author;
-            if (author) {
-                const avatar = author.profile?.lowResAvatar || author.profile?.avatar || author.avatar;
-                if (avatar) {
-                    const r = getImageUrl(avatar, 'thumbnail');
-                    if (r) batchUrls.push(r);
-                }
-                if (author.customBadge?.url) {
-                    const r = getImageUrl(author.customBadge.url, 'original');
-                    if (r) batchUrls.push(r);
-                }
-            }
-            const media = post.media || (Array.isArray(post.mediaUrls) ? post.mediaUrls[0] : null);
-            if (media && typeof media === 'string') {
-                const clean = media.split('?')[0].split('#')[0].toLowerCase();
-                if (/\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(clean)) {
-                    const r = getImageUrl(media, 'feed');
-                    if (r) batchUrls.push(r);
-                }
-            }
-        });
-        if (batchUrls.length > 0) {
-            NativeMediaPreloader.preloadUrls({ urls: batchUrls }).catch(() => {});
-        }
-    }
+    if (!Array.isArray(posts) || typeof window === 'undefined' || isPerfLiteActive()) return;
 
     posts.slice(0, 15).forEach((post, idx) => {
         if (!post) return;
