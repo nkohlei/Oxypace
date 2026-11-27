@@ -358,15 +358,15 @@ const TimelineScrubPreview = ({
             onPointerLeave={handlePointerLeaveHover}
             onClick={(e) => e.stopPropagation()}
         >
-            {/* Hidden lightweight frame extractor */}
+            {/* Hidden lightweight frame extractor (metadata-only preload to avoid stealing active playback bandwidth) */}
             {hasActivatedProbe && previewSrc && !isLive && !frameBlocked && (
                 <video
                     ref={probeVideoRef}
                     className="tsp-probe-video"
                     muted
                     playsInline
-                    preload="auto"
-                    crossOrigin="anonymous"
+                    preload="metadata"
+                    crossOrigin={previewSrc.startsWith('http') && !previewSrc.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev') ? undefined : 'anonymous'}
                 />
             )}
 

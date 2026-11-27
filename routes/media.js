@@ -978,48 +978,40 @@ router.get('/*', async (req, res) => {
 
         const range = req.headers.range;
 
-        // A. Video/Audio or Range Requests (Must be proxied for HTTP 206)
+        // A. Video/Audio or Range Requests (Single-RTT R2 streaming for HTTP 206 — zero extra HeadObject roundtrip)
         if (range) {
             try {
-                let totalSize = 0;
+                const ext = (filePath.split('?')[0].split('.').pop() || '').toLowerCase();
                 let detContentType = 'video/mp4';
+                if (['mp4', 'mov', 'm4v'].includes(ext)) detContentType = 'video/mp4';
+                else if (ext === 'webm') detContentType = 'video/webm';
+                else if (ext === 'ogg' || ext === 'oga' || ext === 'opus') detContentType = 'video/ogg';
+                else if (ext === 'mp3') detContentType = 'audio/mpeg';
+                else if (ext === 'wav') detContentType = 'audio/wav';
+                else if (ext === 'm4a' || ext === 'aac') detContentType = 'audio/mp4';
+
                 const cachedMeta = getVideoMetadata(filePath);
+                const parts = range.replace(/bytes=/i, '').split('-');
+                const reqStart = parseInt(parts[0], 10);
+                const hasValidStart = Number.isFinite(reqStart) && reqStart >= 0;
 
-                if (cachedMeta) {
-                    totalSize = cachedMeta.totalSize;
-                    detContentType = cachedMeta.contentType;
-                } else {
-                    const headCommand = new HeadObjectCommand({ Bucket: bucketName, Key: filePath });
-                    const headResponse = await r2.send(headCommand);
-                    totalSize = headResponse.ContentLength;
-
-                    detContentType = headResponse.ContentType || 'video/mp4';
-                    const ext = filePath.split('.').pop().toLowerCase();
-                    if (['mp4', 'mov', 'm4v'].includes(ext)) detContentType = 'video/mp4';
-                    else if (ext === 'webm') detContentType = 'video/webm';
-                    else if (ext === 'ogg') detContentType = 'video/ogg';
-
-                    setVideoMetadata(filePath, totalSize, detContentType);
-                }
-
-                const parts = range.replace(/bytes=/, "").split("-");
-                const start = parseInt(parts[0], 10);
-                const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
-
-                if (start >= totalSize) {
-                    res.status(416).set('Content-Range', `bytes */${totalSize}`).send();
+                if (cachedMeta && hasValidStart && reqStart >= cachedMeta.totalSize) {
+                    res.status(416).set('Content-Range', `bytes */${cachedMeta.totalSize}`).send();
                     return;
                 }
 
-                const chunksize = (end - start) + 1;
+                const normalizedRange = hasValidStart
+                    ? `bytes=${reqStart}-${parts[1] ? parseInt(parts[1], 10) : ''}`
+                    : range;
+
                 const getCommand = new GetObjectCommand({
                     Bucket: bucketName,
                     Key: filePath,
-                    Range: `bytes=${start}-${end}`
+                    Range: normalizedRange,
                 });
 
                 const response = await r2.send(getCommand);
-                
+
                 // Fast cleanup: when client seeks or closes request, abort upstream R2 connection immediately
                 req.on('close', () => {
                     try {
@@ -1027,23 +1019,67 @@ router.get('/*', async (req, res) => {
                     } catch (_) {}
                 });
 
+                if (response.ContentType && !['application/octet-stream', 'binary/octet-stream'].includes(response.ContentType)) {
+                    detContentType = response.ContentType;
+                }
+
+                // Parse exact byte range & total object size directly from R2 GetObject ContentRange ("bytes start-end/total")
+                let start = hasValidStart ? reqStart : 0;
+                let totalSize = cachedMeta?.totalSize || 0;
+                let end = parts[1] ? parseInt(parts[1], 10) : 0;
+
+                if (response.ContentRange) {
+                    const crMatch = String(response.ContentRange).match(/bytes\s+(\d+)-(\d+)\/(\d+|\*)/i);
+                    if (crMatch) {
+                        start = parseInt(crMatch[1], 10);
+                        end = parseInt(crMatch[2], 10);
+                        if (crMatch[3] !== '*') {
+                            totalSize = parseInt(crMatch[3], 10);
+                        }
+                    }
+                }
+
+                const chunksize = response.ContentLength || (end >= start ? (end - start) + 1 : 0);
+                if (!totalSize && chunksize) {
+                    totalSize = start + chunksize;
+                }
+                if (!end && chunksize) {
+                    end = start + chunksize - 1;
+                }
+
+                if (totalSize > 0) {
+                    setVideoMetadata(filePath, totalSize, detContentType);
+                }
+
                 res.writeHead(206, {
-                    'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+                    'Content-Range': `bytes ${start}-${end}/${totalSize || '*'}`,
                     'Accept-Ranges': 'bytes',
-                    'Content-Length': chunksize,
+                    ...(chunksize ? { 'Content-Length': chunksize } : {}),
                     'Content-Type': detContentType,
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges, Content-Length',
                     'Cross-Origin-Resource-Policy': 'cross-origin',
                     'Cache-Control': 'public, max-age=31536000, immutable',
                     'Vary': 'Range',
-                    'Connection': 'keep-alive'
+                    'Connection': 'keep-alive',
                 });
 
                 return response.Body.pipe(res);
-            } catch (headError) {
-                if (headError.name === 'NotFound' || headError.name === 'NoSuchKey') return res.status(404).json({ message: 'File not found' });
-                throw headError;
+            } catch (rangeError) {
+                if (rangeError.name === 'InvalidRange' || rangeError.$metadata?.httpStatusCode === 416) {
+                    try {
+                        const headResp = await r2.send(new HeadObjectCommand({ Bucket: bucketName, Key: filePath }));
+                        res.status(416).set('Content-Range', `bytes */${headResp.ContentLength || 0}`).send();
+                        return;
+                    } catch (_) {
+                        return res.status(416).send();
+                    }
+                }
+                if (rangeError.name === 'NotFound' || rangeError.name === 'NoSuchKey') {
+                    setNegativeCache(filePath);
+                    return res.status(404).json({ message: 'File not found' });
+                }
+                throw rangeError;
             }
         }
 

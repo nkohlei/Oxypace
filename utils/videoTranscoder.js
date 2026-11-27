@@ -80,6 +80,8 @@ function transcodeQuality({ inputPath, outputPath, scaleFilter, crf, maxrate, bu
                 '-crf', String(crf || 23),
                 '-maxrate', maxrate,
                 '-bufsize', bufsize,
+                '-g', '48',
+                '-keyint_min', '24',
                 '-c:a', 'aac',
                 '-b:a', audioBitrate || '96k',
                 '-ar', '44100',
@@ -182,10 +184,30 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
         const srcLongSide  = (srcWidth && srcHeight) ? Math.max(srcWidth, srcHeight) : 0;
         const maxLabel     = `${srcShortSide || 720}p`;
 
-        // ── Step 4: Upload original immediately → guarantee playback from t=0 ─
+        // ── Step 4: Remux original with +faststart (moves moov atom to byte 0) & upload ─
         const keyOriginal = `${folder}/video_original_${postId}.mp4`;
+        let uploadOriginalPath = localInputPath;
+        const faststartOrigPath = path.join(process.cwd(), 'temp_media', `faststart-orig-${postId}.mp4`);
+        try {
+            fs.mkdirSync(path.dirname(faststartOrigPath), { recursive: true });
+            const remuxed = await new Promise((resolve) => {
+                ffmpeg(localInputPath)
+                    .outputOptions(['-c', 'copy', '-movflags', '+faststart'])
+                    .output(faststartOrigPath)
+                    .on('end', () => resolve(true))
+                    .on('error', () => resolve(false))
+                    .run();
+            });
+            if (remuxed && fs.existsSync(faststartOrigPath) && fs.statSync(faststartOrigPath).size > 0) {
+                uploadOriginalPath = faststartOrigPath;
+            }
+        } catch (_) {}
+
         console.log(`[VideoTranscoder] Uploading original (${maxLabel}) via stream → ${keyOriginal}`);
-        await uploadFileToR2(localInputPath, keyOriginal, bucketName);
+        await uploadFileToR2(uploadOriginalPath, keyOriginal, bucketName);
+        if (uploadOriginalPath === faststartOrigPath) {
+            safeUnlink(faststartOrigPath);
+        }
         const urlOriginal = constructProxiedUrl(keyOriginal);
 
         // Write original to DB right away — video is playable via videoUrl even if transcode crashes
@@ -246,9 +268,18 @@ export async function transcodeVideoInBackground(postId, mediaKey) {
             { targetH: 144,  label: '144p',  field: 'p144',  rootField: 'video144',  crf: 26, maxrate: '320k',  bufsize: '640k',   audioBitrate: '64k'   }
         ];
 
-        // MUST transcode to all quality ladder rungs strictly below the video's original height!
-        const jobs = qualityLadder.filter(q => q.targetH < srcShortSide);
-        console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued for ${maxLabel} source (strictly below ${srcShortSide}p)`);
+        // Transcode all quality rungs below original height, PLUS matching height if source bitrate is bloated (>1.35x target VBV maxrate) or non-H.264
+        const inputSizeBytes = fs.statSync(localInputPath).size || 0;
+        const srcBitrateKbps = duration > 0 ? Math.round((inputSizeBytes * 8) / duration / 1000) : 0;
+        const jobs = qualityLadder.filter(q => {
+            if (q.targetH < srcShortSide) return true;
+            if (q.targetH === srcShortSide) {
+                const maxKbps = parseInt(q.maxrate, 10) || 2200;
+                return !isH264 || srcBitrateKbps > maxKbps * 1.35;
+            }
+            return false;
+        });
+        console.log(`[VideoTranscoder] ${jobs.length} transcode jobs queued for ${maxLabel} source (${srcBitrateKbps} kbps)`);
 
         const finalQualities = { ...initialQualities };
         let lastUpdatedProgress = 0;

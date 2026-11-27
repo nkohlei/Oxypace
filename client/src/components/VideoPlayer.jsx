@@ -351,6 +351,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   });
   const [derivedPoster, setDerivedPoster] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
+  const [isInViewport, setIsInViewport] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
   const [probedOriginalHeight, setProbedOriginalHeight] = useState(0);
 
@@ -647,53 +648,94 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     return false;
   };
 
+  const isSameVideoUrl = (a, b) => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    try {
+      return new URL(a, window.location.href).href === new URL(b, window.location.href).href;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Detect whether 720p/1080p are genuinely VBV-transcoded faststart files vs raw uncapped camera originals
+  const hasTranscoded720 = Boolean(src720 && (!srcOriginal || !isSameVideoUrl(src720, srcOriginal)));
+  const hasTranscoded1080 = Boolean(src1080 && (!srcOriginal || !isSameVideoUrl(src1080, srcOriginal)));
+
   const getBestSrc = useCallback(() => {
     const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
     if (isSlowConnection() && (src144 || src360)) return src360 || src144;
 
-    // On Android / low-end devices (perf-lite), start at 360p for <150ms instant first-frame startup & zero decoder stutter
+    // On Android / low-end devices (perf-lite), start at VBV-capped 360p (or transcoded 720p) for instant startup & zero mid-video stalls
     if (isPerfLiteActive()) {
       if (src360) return src360;
-      if (src720) return src720;
+      if (hasTranscoded720) return src720;
       if (src144) return src144;
+      if (src720) return src720;
       if (src1080) return src1080;
       return srcOriginal || src1440 || src2160;
     }
 
-    // Mobile hardware decoder optimization: 720p delivers crystal clarity with zero frame drops or memory lockups
+    // Mobile web hardware decoder optimization: prefer VBV-transcoded 720p / 360p over bloated raw camera uploads
     if (isMobile) {
-      if (src720) return src720;
+      if (hasTranscoded720) return src720;
       if (src360) return src360;
-      if (src1080) return src1080;
-      if (src1440) return src1440;
+      if (src720) return src720;
+      if (hasTranscoded1080) return src1080;
       if (src144) return src144;
-      return srcOriginal || src2160;
+      return src1080 || srcOriginal || src1440 || src2160;
     }
 
-    // Desktop feed optimization: 1440p / 1080p preferred for smooth playback
-    if (src1440) return src1440;
+    // Desktop feed optimization: 1080p / 720p faststart streams start 2-4x faster than 1440p/4K raw files
     if (src1080) return src1080;
     if (src720) return src720;
-    if (src2160) return src2160;
+    if (src1440) return src1440;
     if (src360) return src360;
+    if (src2160) return src2160;
     if (src144) return src144;
     return srcOriginal;
-  }, [src144, src360, src720, src1080, src1440, src2160, srcOriginal]);
+  }, [src144, src360, src720, src1080, src1440, src2160, srcOriginal, hasTranscoded720, hasTranscoded1080]);
 
   const getPreferredSrc = useCallback(() => {
     const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
+    const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+
     if (pref === 'performance') {
-      if (srcOriginal) return srcOriginal;
-      if (src2160) return src2160;
+      // On mobile / perf-lite, avoid auto-picking 60MB 4K or uncapped 30MB raw camera files in feed;
+      // prefer crisp VBV-transcoded HD (720p/1080p) while keeping 'Orijinal' / '2160p' selectable in the quality menu.
+      if (isPerfLiteActive()) {
+        if (hasTranscoded720) return src720;
+        if (hasTranscoded1080) return src1080;
+        if (src360) return src360;
+        if (src720) return src720;
+        if (src1080) return src1080;
+        return srcOriginal || src1440 || src2160;
+      }
+      if (isMobile) {
+        if (hasTranscoded1080) return src1080;
+        if (hasTranscoded720) return src720;
+        if (src720) return src720;
+        if (src1080) return src1080;
+        if (src360) return src360;
+        return srcOriginal || src1440 || src2160;
+      }
       if (src1440) return src1440;
       if (src1080) return src1080;
+      if (src2160) return src2160;
       if (src720) return src720;
-      if (src360) return src360;
-      if (src144) return src144;
-      return srcOriginal;
+      if (srcOriginal) return srcOriginal;
+      return src360 || src144;
     } else if (pref === 'saver') {
-      if (src720) return src720;
+      if (isPerfLiteActive()) {
+        if (src360) return src360;
+        if (hasTranscoded720) return src720;
+        if (src144) return src144;
+        if (src720) return src720;
+        return src1080 || srcOriginal;
+      }
+      if (hasTranscoded720) return src720;
       if (src360) return src360;
+      if (src720) return src720;
       if (src144) return src144;
       if (src1080) return src1080;
       if (src1440) return src1440;
@@ -707,17 +749,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       return src2160 || srcOriginal;
     }
     return getBestSrc();
-  }, [user, src2160, src1440, src1080, src720, src360, src144, srcOriginal, getBestSrc]);
-
-  const isSameVideoUrl = (a, b) => {
-    if (!a || !b) return false;
-    if (a === b) return true;
-    try {
-      return new URL(a, window.location.href).href === new URL(b, window.location.href).href;
-    } catch (_) {
-      return false;
-    }
-  };
+  }, [user?.settings?.video?.playbackQuality, src2160, src1440, src1080, src720, src360, src144, srcOriginal, hasTranscoded720, hasTranscoded1080, getBestSrc]);
 
   const standardTiers = [
     { value: '2160', label: '2160p', height: 2160, has: has2160, src: src2160 },
@@ -995,76 +1027,33 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     };
   }, []);
 
-  // Initialise video A with the preferred quality src immediately
+  // Single unified source initializer & settings sync (prevents double el.load() race on mount)
   useEffect(() => {
-    const el = videoRefA.current;
-    if (!el) return;
-
     setIsAdPlaying(false);
-    const preferredSrc = getPreferredSrc();
-    if (preferredSrc) {
-      setVideoSource(el, preferredSrc);
-    }
-  }, [src, videoUrl, getPreferredSrc, setVideoSource]);
+    const targetSrc = getPreferredSrc();
+    if (!targetSrc) return;
 
-  // Sync user quality preferences when settings change
-  useEffect(() => {
     const pref = user?.settings?.video?.playbackQuality || localStorage.getItem('video_playback_quality') || 'auto';
-    
-    let mode = 'auto';
-    if (pref === 'performance') {
-      if (srcOriginal) mode = 'original';
-      else if (has2160) mode = '2160';
-      else if (has1440) mode = '1440';
-      else if (has1080) mode = '1080';
-      else if (has720) mode = '720';
-      else if (has360) mode = '360';
-      else if (has144) mode = '144';
-    } else if (pref === 'saver') {
-      if (has720) mode = '720';
-      else if (has360) mode = '360';
-      else if (has1080) mode = '1080';
-      else if (has144) mode = '144';
-      else if (has1440) mode = '1440';
-      else if (has2160) mode = '2160';
-    } else if (pref === 'lowest') {
-      if (has144) mode = '144';
-      else if (has360) mode = '360';
-      else if (has720) mode = '720';
-      else if (has1080) mode = '1080';
-      else if (has1440) mode = '1440';
-      else if (has2160) mode = '2160';
-    } else {
-      mode = 'auto';
+    let nextMode = 'auto';
+    if (pref !== 'auto') {
+      if (src144 && isSameVideoUrl(targetSrc, src144)) nextMode = '144';
+      else if (src360 && isSameVideoUrl(targetSrc, src360)) nextMode = '360';
+      else if (src720 && isSameVideoUrl(targetSrc, src720) && (!srcOriginal || !isSameVideoUrl(src720, srcOriginal))) nextMode = '720';
+      else if (src1080 && isSameVideoUrl(targetSrc, src1080) && (!srcOriginal || !isSameVideoUrl(src1080, srcOriginal))) nextMode = '1080';
+      else if (src1440 && isSameVideoUrl(targetSrc, src1440)) nextMode = '1440';
+      else if (src2160 && isSameVideoUrl(targetSrc, src2160)) nextMode = '2160';
+      else if (srcOriginal && isSameVideoUrl(targetSrc, srcOriginal)) nextMode = 'original';
     }
-    
-    setQualityMode(mode);
-    
-    let targetSrc = '';
-    if      (mode === 'original') targetSrc = srcOriginal;
-    else if (mode === '2160')     targetSrc = src2160;
-    else if (mode === '1440')     targetSrc = src1440;
-    else if (mode === '1080')     targetSrc = src1080;
-    else if (mode === '720')      targetSrc = src720;
-    else if (mode === '360')      targetSrc = src360;
-    else if (mode === '144')      targetSrc = src144;
-    else                          targetSrc = getBestSrc();
-    
-    const activeEl = getActiveEl();
-    if (activeEl && targetSrc) {
-      let isSame = false;
-      try {
-        const activeUrl = new URL(activeEl.currentSrc || activeEl.src, window.location.href).href;
-        const targetUrl = new URL(targetSrc, window.location.href).href;
-        if (activeUrl === targetUrl) isSame = true;
-      } catch (_) {
-        if (activeEl.src === targetSrc || activeEl.currentSrc === targetSrc) isSame = true;
-      }
-      if (!isSame) {
-        setVideoSource(activeEl, targetSrc);
-      }
+    setQualityMode(nextMode);
+
+    // Don't interrupt an active manual quality selection
+    if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
+
+    const activeEl = getActiveEl() || videoRefA.current;
+    if (activeEl && !isSameVideoUrl(activeEl.currentSrc || activeEl.src, targetSrc)) {
+      setVideoSource(activeEl, targetSrc);
     }
-  }, [user?.settings?.video?.playbackQuality, has2160, has1440, has1080, has720, has360, has144, srcOriginal, src2160, src1440, src1080, src720, src360, src144, getBestSrc, setVideoSource]);
+  }, [src, videoUrl, user?.settings?.video?.playbackQuality, getPreferredSrc, setVideoSource, src144, src360, src720, src1080, src1440, src2160, srcOriginal]);
 
   // Sync mute & playbackRate to both elements imperatively
   useEffect(() => {
@@ -1090,7 +1079,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   // Swapped instantly upon frame availability (seeked/canplay) with exact live timestamp
   // synchronization to completely eliminate backwards drift.
   // ─────────────────────────────────────────────────────────────────────────
-  const initiateQualitySwap = useCallback((newSrc) => {
+  const initiateQualitySwap = useCallback((newSrc, { isManual = false } = {}) => {
     const activeEl   = getActiveEl();
     const inactiveEl = getInactiveEl();
     if (!activeEl || !newSrc) return;
@@ -1106,6 +1095,12 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     }
     if (isAlreadyPlaying) return;
 
+    // In single-video mode (mobile / perf-lite), NEVER destroy the active buffer for automatic swaps!
+    // Resetting el.src mid-playback throws away all buffered bytes and causes multi-second rebuffering.
+    if ((!inactiveEl || useSingleVideoMode) && !isManual) {
+      return;
+    }
+
     // Cancel any previous swap in flight so latest choice applies immediately
     if (cleanupSwapRef.current) {
       cleanupSwapRef.current();
@@ -1116,7 +1111,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     swapPendingRef.current = true;
 
     const wasPlaying = !activeEl.paused;
-    console.log(`[VideoPlayer] Fast swap to ${newSrc} (swap #${swapId}, wasPlaying=${wasPlaying})`);
+    console.log(`[VideoPlayer] Fast swap to ${newSrc} (swap #${swapId}, wasPlaying=${wasPlaying}, manual=${isManual})`);
 
     let isCleanedUp = false;
     let safetyTimeout = null;
@@ -1142,7 +1137,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     };
     cleanupSwapRef.current = cleanup;
 
-    // Direct fallback if dual-buffer fails, stalls, or is unsupported
+    // Direct fallback (used ONLY when user explicitly picked a quality in single-video mode or manual fallback)
     const applyDirectFallback = () => {
       cleanup();
       const el = getActiveEl();
@@ -1257,14 +1252,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
 
     const onError = (err) => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
-      console.warn('[VideoPlayer] Quality swap inactive element error, falling back to direct swap:', err);
-      applyDirectFallback();
+      console.warn('[VideoPlayer] Quality swap inactive element error:', err);
+      if (isManual) {
+        applyDirectFallback();
+      } else {
+        cleanup();
+        try {
+          inactiveEl.removeAttribute('src');
+          inactiveEl.load();
+        } catch (_) {}
+      }
     };
-
-    if (!inactiveEl) {
-      applyDirectFallback();
-      return;
-    }
 
     // Prepare inactive element: keep muted during background preparation
     inactiveEl.muted = true;
@@ -1284,45 +1282,59 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
       setVideoSource(inactiveEl, newSrc);
     }
 
-    // Fast safety timeout: if inactiveEl doesn't reach readyState >= 2 within 1200ms, fallback to direct swap
+    // Safety timeout: never interrupt activeEl on automatic background swaps
     safetyTimeout = setTimeout(() => {
       if (isCleanedUp || swapIdRef.current !== swapId) return;
-      console.warn('[VideoPlayer] Swap safety timeout (1200ms) reached.');
       if (inactiveEl.readyState >= 2) {
         executeSwap();
-      } else {
+      } else if (isManual) {
         applyDirectFallback();
+      } else {
+        cleanup();
+        try {
+          inactiveEl.pause();
+          inactiveEl.removeAttribute('src');
+          inactiveEl.load();
+        } catch (_) {}
       }
-    }, 1200);
-  }, [isMuted, volume, playbackRate, setVideoSource]);
+    }, 5000);
+  }, [isMuted, volume, playbackRate, setVideoSource, useSingleVideoMode]);
+
+  const autoDowngradeTimerRef = useRef(null);
 
   // ─── Auto-quality stall handling ────────────────────────────────────────
   const handleWaiting = useCallback(() => {
     if (waitingTimerRef.current) clearTimeout(waitingTimerRef.current);
-
     waitingTimerRef.current = setTimeout(() => {
-      setIsWaiting(true);
       const activeEl = getActiveEl();
-      if (!activeEl || activeEl.paused) return;
+      if (activeEl && !activeEl.paused && activeEl.readyState < 3) {
+        setIsWaiting(true);
+      }
+    }, 550);
 
-      // Don't auto-downgrade if user manually selected a quality recently
+    // Only attempt dual-buffer background downgrade on desktop after sustained 3.5s stall
+    if (useSingleVideoMode || qualityMode !== 'auto') return;
+    if (autoDowngradeTimerRef.current) clearTimeout(autoDowngradeTimerRef.current);
+    autoDowngradeTimerRef.current = setTimeout(() => {
+      const activeEl = getActiveEl();
+      if (!activeEl || activeEl.paused || activeEl.readyState >= 3) return;
       if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
 
-      if (qualityMode === 'auto') {
-        // Drop straight to lowest quality for instant continuous playback
-        const lowestSrc = src144 || src360 || src;
-        if (lowestSrc && activeEl.src !== lowestSrc && activeEl.currentSrc !== lowestSrc) {
-          console.log('[VideoPlayer] Auto: stall → dropping to lowest quality immediately');
-          initiateQualitySwap(lowestSrc);
-        }
+      const lowestSrc = src360 || src144 || src;
+      if (lowestSrc && !isSameVideoUrl(activeEl.currentSrc || activeEl.src, lowestSrc)) {
+        initiateQualitySwap(lowestSrc, { isManual: false });
       }
-    }, 600);
-  }, [qualityMode, src144, src360, src, initiateQualitySwap]);
+    }, 3500);
+  }, [qualityMode, useSingleVideoMode, src144, src360, src, initiateQualitySwap]);
 
   const handleCanPlay = useCallback(() => {
     if (waitingTimerRef.current) { 
       clearTimeout(waitingTimerRef.current); 
       waitingTimerRef.current = null; 
+    }
+    if (autoDowngradeTimerRef.current) {
+      clearTimeout(autoDowngradeTimerRef.current);
+      autoDowngradeTimerRef.current = null;
     }
     setIsWaiting(false);
     handleGlobalScroll();
@@ -1332,6 +1344,10 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (waitingTimerRef.current) { 
       clearTimeout(waitingTimerRef.current); 
       waitingTimerRef.current = null; 
+    }
+    if (autoDowngradeTimerRef.current) {
+      clearTimeout(autoDowngradeTimerRef.current);
+      autoDowngradeTimerRef.current = null;
     }
     setIsWaiting(false);
     setIsPaused(false);
@@ -1354,66 +1370,83 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     else if (mode === '144')      targetSrc = src144;
     else                          targetSrc = getBestSrc();
 
-    if (targetSrc) initiateQualitySwap(targetSrc);
+    if (targetSrc) initiateQualitySwap(targetSrc, { isManual: true });
   }, [srcOriginal, src144, src360, src720, src1080, src1440, src2160, getBestSrc, initiateQualitySwap]);
 
   // ─── Network change listeners ─────────────────────────────────────────
   useEffect(() => {
-    if (qualityMode !== 'auto') return;
+    if (qualityMode !== 'auto' || useSingleVideoMode) return;
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (!conn) return;
     const onChange = () => {
       if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       const next = getBestSrc();
       const activeEl = getActiveEl();
-      if (activeEl && next !== activeEl.src && next !== activeEl.currentSrc) {
-        initiateQualitySwap(next);
+      if (activeEl && !isSameVideoUrl(activeEl.currentSrc || activeEl.src, next)) {
+        initiateQualitySwap(next, { isManual: false });
       }
     };
     conn.addEventListener('change', onChange);
     return () => conn.removeEventListener('change', onChange);
-  }, [qualityMode, getBestSrc, initiateQualitySwap]);
+  }, [qualityMode, useSingleVideoMode, getBestSrc, initiateQualitySwap]);
 
-  // ─── Periodic upgrade check (active playback only) ────────────────────
+  // ─── Periodic upgrade check (desktop dual-buffer active playback only) ───
   useEffect(() => {
-    if (qualityMode !== 'auto' || isPaused || isPerfLiteActive()) return;
+    if (qualityMode !== 'auto' || isPaused || useSingleVideoMode || isPerfLiteActive()) return;
     const id = setInterval(() => {
-      if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
+      if (Date.now() - lastManualQualityChangeRef.current < 12000) return;
       if (isSlowConnection()) return;
       const next = getBestSrc();
       const activeEl = getActiveEl();
-      if (activeEl && !activeEl.paused && next !== activeEl.src && next !== activeEl.currentSrc) {
-        initiateQualitySwap(next);
+      if (activeEl && !activeEl.paused && activeEl.readyState >= 4 && !isSameVideoUrl(activeEl.currentSrc || activeEl.src, next)) {
+        initiateQualitySwap(next, { isManual: false });
       }
-    }, 10000);
+    }, 15000);
     return () => clearInterval(id);
-  }, [qualityMode, isPaused, getBestSrc, initiateQualitySwap]);
+  }, [qualityMode, isPaused, useSingleVideoMode, getBestSrc, initiateQualitySwap]);
 
-  // ─── Progress stall detector (active playback only) ───────────────────
+  // ─── Progress stall detector (desktop dual-buffer only; handles loop wrap-around) ───
   useEffect(() => {
-    if (qualityMode !== 'auto' || isPaused) return;
+    if (qualityMode !== 'auto' || isPaused || useSingleVideoMode) return;
     let lastTime = 0;
     let lastCheck = Date.now();
-    const pollMs = isPerfLiteActive() ? 1500 : 600;
+    let stalledCount = 0;
     const id = setInterval(() => {
       if (Date.now() - lastManualQualityChangeRef.current < 8000) return;
       const video = getActiveEl();
       if (!video || video.paused || video.ended) {
-        lastCheck = Date.now(); lastTime = video?.currentTime ?? 0; return;
+        stalledCount = 0;
+        lastCheck = Date.now();
+        lastTime = video?.currentTime ?? 0;
+        return;
+      }
+      // Loop wrap-around or backward seek: never treat negative diff as a stall!
+      if (video.currentTime < lastTime) {
+        stalledCount = 0;
+        lastTime = video.currentTime;
+        lastCheck = Date.now();
+        return;
       }
       const now = Date.now();
       const elapsed = (now - lastCheck) / 1000;
       const diff = video.currentTime - lastTime;
-      if (elapsed > 0.8 && diff < 0.1) {
-        const lowestSrc = src144 || src360;
-        if (lowestSrc && video.src !== lowestSrc && video.currentSrc !== lowestSrc) {
-          initiateQualitySwap(lowestSrc);
+      if (elapsed > 0.9 && diff < 0.08) {
+        stalledCount++;
+        if (stalledCount >= 3) {
+          stalledCount = 0;
+          const lowestSrc = src360 || src144;
+          if (lowestSrc && !isSameVideoUrl(video.currentSrc || video.src, lowestSrc)) {
+            initiateQualitySwap(lowestSrc, { isManual: false });
+          }
         }
+      } else {
+        stalledCount = 0;
       }
-      lastTime = video.currentTime; lastCheck = now;
-    }, pollMs);
+      lastTime = video.currentTime;
+      lastCheck = now;
+    }, 1000);
     return () => clearInterval(id);
-  }, [qualityMode, isPaused, src144, src360, initiateQualitySwap]);
+  }, [qualityMode, isPaused, useSingleVideoMode, src144, src360, initiateQualitySwap]);
 
   // ─── Register active video with scroll manager & Intersection Observer ───
   useEffect(() => {
@@ -1437,6 +1470,8 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (container && typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
+          const nearOrVisible = entry.isIntersecting;
+          setIsInViewport(prev => (prev === nearOrVisible ? prev : nearOrVisible));
           if (!entry.isIntersecting || entry.intersectionRatio < 0.2) {
             // Pauses immediately when it goes out of view or below 20% visible
             const containerVideos = container.querySelectorAll('video');
@@ -1451,7 +1486,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
             handleGlobalScroll();
           }
         });
-      }, { threshold: [0.0, 0.2, 0.35] });
+      }, { rootMargin: '120px 0px', threshold: [0.0, 0.2, 0.35] });
       observer.observe(container);
     }
 
@@ -1480,6 +1515,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   useEffect(() => () => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     if (waitingTimerRef.current)    clearTimeout(waitingTimerRef.current);
+    if (autoDowngradeTimerRef.current) clearTimeout(autoDowngradeTimerRef.current);
   }, []);
 
   // ─── Controls auto-hide (Equal 2s timeout for both playing and paused states) ───────────────────
@@ -1519,8 +1555,18 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (isAdPlaying) {
       console.warn("Pre-roll ad video failed to load, bypassing ad.");
       skipAd();
+      return;
     }
-  }, [isAdPlaying, skipAd]);
+    const el = getActiveEl();
+    if (!el) return;
+    const current = el.currentSrc || el.src || '';
+    const fallbacks = [src360, src720, src144, srcOriginal].filter(Boolean);
+    const nextFallback = fallbacks.find((candidate) => !isSameVideoUrl(current, candidate));
+    if (nextFallback) {
+      console.warn('[VideoPlayer] Active stream error, recovering via fallback tier:', nextFallback);
+      setVideoSource(el, nextFallback);
+    }
+  }, [isAdPlaying, skipAd, src360, src720, src144, srcOriginal, setVideoSource]);
 
   showControlsRef.current = showControls;
 
@@ -2066,7 +2112,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         className="native-video-element"
         style={videoStyle('A')}
         playsInline loop={!isAdPlaying}
-        preload={activeVideo === 'A' ? "metadata" : "none"}
+        preload={activeVideo === 'A' ? (isInViewport ? "auto" : "metadata") : "none"}
         muted={isMuted}
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoAreaClick}
@@ -2088,7 +2134,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           className="native-video-element"
           style={videoStyle('B')}
           playsInline loop={!isAdPlaying}
-          preload={activeVideo === 'B' ? "metadata" : "none"}
+          preload={activeVideo === 'B' ? (isInViewport ? "auto" : "metadata") : "none"}
           muted={isMuted}
           crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
           onClick={handleVideoAreaClick}
