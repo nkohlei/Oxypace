@@ -12,28 +12,35 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
     const [portalData, setPortalData] = useState(portal || {});
     const [leaving, setLeaving] = useState(false);
     const [joining, setJoining] = useState(false);
-    const [dragOffset, setDragOffset] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
+    const sheetRef = useRef(null);
+    const isDraggingRef = useRef(false);
     const touchStartY = useRef(0);
     const touchCurrentY = useRef(0);
 
     const navigate = useNavigate();
-    const { user, updateUser, syncPortalMembership } = useAuth();
+    const { user, syncPortalMembership } = useAuth();
 
     useEffect(() => {
         if (portal) {
             setPortalData(portal);
         }
+        // Only fetch full portal details when essential fields are missing (avoids redundant GET on every modal open)
+        const needsDetails = Boolean(
+            portal?._id && (
+                !portal.createdAt ||
+                (portal.membersCount === undefined && !Array.isArray(portal.members))
+            )
+        );
+        if (!needsDetails) return;
+
         let isMounted = true;
-        if (portal?._id) {
-            axios.get(`/api/portals/${portal._id}`)
-                .then((res) => {
-                    if (isMounted && res.data) {
-                        setPortalData((prev) => ({ ...prev, ...res.data }));
-                    }
-                })
-                .catch(() => {});
-        }
+        axios.get(`/api/portals/${portal._id}`)
+            .then((res) => {
+                if (isMounted && res.data) {
+                    setPortalData((prev) => ({ ...prev, ...res.data }));
+                }
+            })
+            .catch(() => {});
         return () => {
             isMounted = false;
         };
@@ -133,29 +140,33 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
     const handleTouchStart = (e) => {
         touchStartY.current = e.touches[0].clientY;
         touchCurrentY.current = e.touches[0].clientY;
-        setIsDragging(true);
+        isDraggingRef.current = true;
+        if (sheetRef.current) {
+            sheetRef.current.style.transition = 'none';
+        }
     };
 
     const handleTouchMove = (e) => {
-        if (!isDragging) return;
+        if (!isDraggingRef.current) return;
         const currentY = e.touches[0].clientY;
         touchCurrentY.current = currentY;
         const diffY = currentY - touchStartY.current;
-        if (diffY > 0) {
-            setDragOffset(diffY);
-        } else {
-            setDragOffset(0);
+        if (sheetRef.current) {
+            sheetRef.current.style.transform = diffY > 0 ? `translateY(${diffY}px)` : '';
         }
     };
 
     const handleTouchEnd = () => {
-        if (!isDragging) return;
-        setIsDragging(false);
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
         const diffY = touchCurrentY.current - touchStartY.current;
+        if (sheetRef.current) {
+            sheetRef.current.style.transition = 'transform 0.2s ease-out';
+            sheetRef.current.style.transform = '';
+        }
         if (diffY > 100) {
             onClose();
         }
-        setDragOffset(0);
     };
 
     const formattedDate = portalData.createdAt
@@ -208,15 +219,49 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
 
     const privacyInfo = getPrivacyInfo();
 
+    const bannerSrc = portalData.coverImage
+        ? getImageUrl(portalData.coverImage)
+        : portalData.banner
+            ? getImageUrl(portalData.banner)
+            : null;
+    const avatarSrc = portalData.avatar
+        ? (/\.gif($|\?)/i.test(portalData.avatar)
+            ? getImageUrl(portalData.avatar, 'original')
+            : getImageUrl(portalData.lowResAvatar || portalData.avatar, 'medium'))
+        : null;
+
     const content = (
         <div className="portal-info-container">
-            <div className="portal-info-banner">
-                <img 
-                    src={portalData.coverImage ? getImageUrl(portalData.coverImage) : portalData.banner ? getImageUrl(portalData.banner) : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'} 
-                    alt={portalData.name} 
-                />
+            <div
+                className="portal-info-banner"
+                style={!bannerSrc ? { background: 'linear-gradient(135deg, #1b1e28 0%, #101218 100%)' } : undefined}
+            >
+                {bannerSrc && (
+                    <img
+                        src={bannerSrc}
+                        alt={portalData.name}
+                        loading="eager"
+                        decoding="async"
+                    />
+                )}
                 <div className="portal-info-avatar-wrapper">
-                    <img src={getImageUrl(portalData.avatar)} alt={portalData.name} className="portal-info-avatar-img" />
+                    {avatarSrc ? (
+                        <img
+                            src={avatarSrc}
+                            alt={portalData.name}
+                            className="portal-info-avatar-img"
+                            loading="eager"
+                            decoding="async"
+                            onError={(e) => {
+                                const orig = getImageUrl(portalData.avatar, 'original');
+                                if (orig && e.target.src !== orig) e.target.src = orig;
+                            }}
+                        />
+                    ) : (
+                        <div className="portal-info-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#232632', color: '#fff', fontWeight: 700, fontSize: '22px' }}>
+                            {(portalData.name || 'P').substring(0, 2).toUpperCase()}
+                        </div>
+                    )}
                 </div>
                 <div className="portal-info-top-actions">
                     {isAdmin && (
@@ -382,13 +427,10 @@ const PortalInfoModal = ({ portal, onClose, isMobile, onLeave, onJoinStatusChang
     if (isMobile) {
         return (
             <div className="bottom-sheet-overlay" onClick={onClose}>
-                <div 
-                    className="bottom-sheet-content" 
+                <div
+                    ref={sheetRef}
+                    className="bottom-sheet-content"
                     onClick={e => e.stopPropagation()}
-                    style={{
-                        transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
-                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
                 >
                     <div 
                         className="bottom-sheet-handle-wrapper"

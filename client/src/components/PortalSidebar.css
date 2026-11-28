@@ -1,5 +1,5 @@
 .portal-sidebar {
-    width: 72px !important; /* Fixed width to prevent "wide bar" feeling */
+    width: 72px !important;
     height: 100%;
     background: transparent;
     display: flex;
@@ -7,19 +7,16 @@
     align-items: center;
     padding: 12px 0;
     overflow-y: auto;
-    overflow-x: hidden !important; /* Strictly prevent horizontal scroll/swipe */
+    overflow-x: hidden !important;
     scrollbar-width: none;
     -ms-overflow-style: none;
     border-radius: 0;
     box-shadow: none;
-    border-right: none;
-    border-top: none;
-    border-bottom: none;
+    border: none;
     position: relative;
     z-index: 99995;
-    flex-shrink: 0; /* Never shrink */
-    /* High enough to sit above the global backdrop (99990) */
-    touch-action: pan-y; /* Allow vertical scroll but disable horizontal swipes */
+    flex-shrink: 0;
+    touch-action: pan-y;
 }
 
 .portal-sidebar::-webkit-scrollbar {
@@ -38,46 +35,106 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 16px;
-    transition: all 0.2s ease;
+    transition: background-color 0.14s ease, color 0.14s ease;
 }
 
 .sidebar-close-btn:hover {
     background: var(--bg-hover);
-    color: var(--primary-color);
+    color: var(--text-primary);
 }
 
-/* Tiny Sidebar Styles */
-/* Standard Desktop Sizes */
+/* Sidebar Item — full width to edge-align left Discord-style indicator */
 .sidebar-item {
     position: relative;
-    width: 48px;
-    /* Restored to standard */
-    height: 48px;
-    margin-bottom: 8px;
+    width: 100%;
+    height: 56px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s ease;
+    overflow: visible;
+    transition: opacity 0.14s ease;
 }
 
+.sidebar-item.reordering {
+    cursor: grab;
+    touch-action: none;
+}
+
+.sidebar-item.reordering:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.sidebar-item.dragging {
+    opacity: 0.5;
+}
+
+.sidebar-item.dragging .portal-icon {
+    border: 2px dashed var(--text-primary);
+}
+
+/* Left Indicator Bar - Edge Aligned (Zero infinite animations) */
+.sidebar-indicator {
+    position: absolute;
+    left: 0;
+    width: 4px;
+    height: 8px;
+    background-color: var(--text-primary);
+    border-radius: 0 4px 4px 0;
+    transform: scaleY(0);
+    transition: transform 0.16s ease-out, opacity 0.14s ease;
+    opacity: 0;
+    z-index: 100;
+}
+
+.sidebar-item.active .sidebar-indicator {
+    transform: scaleY(4.5);
+    opacity: 1;
+}
+
+.sidebar-item:hover .sidebar-indicator {
+    transform: scaleY(2.2);
+    opacity: 1;
+}
+
+.sidebar-item.has-unread:not(.active):not(:hover) .sidebar-indicator {
+    transform: scaleY(1);
+    opacity: 1;
+}
+
+.portal-icon-container {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+
+/* Clean solid/translucent portal icon — zero backdrop-filter blur overhead */
 .portal-icon {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: var(--bg-card, #14161c);
     color: var(--foreground);
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
     font-weight: bold;
     overflow: hidden;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: var(--glass-shadow);
+    z-index: 10;
+    transition: transform 0.14s ease-out, background-color 0.14s ease, border-color 0.14s ease;
+}
+
+[data-theme='light'] .portal-icon {
+    background: #f1f5f9;
+    border-color: rgba(0, 0, 0, 0.1);
 }
 
 .portal-icon img {
@@ -86,46 +143,66 @@
     object-fit: cover;
 }
 
-/* Hover effect */
 .sidebar-item:hover .portal-icon {
-    border-radius: 50% !important;
-    transform: scale(1.05);
-    background: var(--glass-bg-hover);
-    border-color: var(--glass-border-hover);
-    box-shadow: var(--glass-shadow-hover);
+    border-radius: 50%;
+    transform: scale(1.04);
+    border-color: var(--text-tertiary);
 }
 
-/* Active State */
 .sidebar-item.active .portal-icon {
-    border-radius: 50% !important;
-    border: 1px solid var(--accent);
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
     background-color: var(--accent);
     color: var(--background);
-    transform: scale(1.05);
+    transform: scale(1.04);
+}
+
+/* Subtle static unread ring (replaces heavy 60fps infinite box-shadow/scale pulse) */
+.sidebar-item.has-unread:not(.active) .portal-icon {
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme='light'] .sidebar-item.has-unread:not(.active) .portal-icon {
+    border-color: rgba(15, 23, 42, 0.45);
+}
+
+/* Red Notification Badge - Outside the clipped circle */
+.unread-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background-color: #f23f43;
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2.5px solid var(--bg-darker);
+    pointer-events: none;
+    z-index: 100;
 }
 
 @media (max-width: 768px) {
     .portal-sidebar {
-        width: 64px !important; /* Fixed mobile width */
+        width: 64px !important;
         padding: 12px 0 20px 0;
     }
 
     .sidebar-item {
-        width: 48px;
-        height: 48px;
-        margin-bottom: 8px;
+        height: 52px;
+        margin-bottom: 4px;
     }
 
+    .portal-icon-container,
     .portal-icon {
-        width: 42px; /* Slimmed from 48px but bigger than 32px for better Discord look */
+        width: 42px;
         height: 42px;
         font-size: 14px;
-    }
-
-    /* Force circle on mobile too */
-    .sidebar-item:hover .portal-icon,
-    .sidebar-item.active .portal-icon {
-        border-radius: 50% !important;
     }
 }
 
@@ -196,10 +273,6 @@ html.has-3button-nav .sidebar-bottom-actions {
     }
 }
 
-.portal-icon-container {
-    position: relative;
-}
-
 .portal-upload-progress-ring {
     position: absolute;
     top: 0;
@@ -208,13 +281,13 @@ html.has-3button-nav .sidebar-bottom-actions {
     height: 100%;
     pointer-events: none;
     z-index: 10;
-    animation: progressRingRotate 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation: progressRingRotate 2.5s linear infinite;
 }
 
 .progress-ring-circle {
     stroke: #a0e0ff;
     stroke-linecap: round;
-    transition: stroke-dashoffset 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: stroke-dashoffset 0.2s ease-out;
 }
 
 @keyframes progressRingRotate {

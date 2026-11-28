@@ -72,34 +72,12 @@
   --primary-color: var(--primary-cyan);
 }
 
-/* Native High-FPS View Transitions for Theme Toggle */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.18s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Scoped Theme Transition Fallback - Only targets primary structural surfaces (Zero box-shadow / zero global wildcard lag) */
-html.theme-transitioning body,
-html.theme-transitioning #root,
-html.theme-transitioning .app-container,
-html.theme-transitioning .navbar,
-html.theme-transitioning .sub-header,
-html.theme-transitioning .portal-sidebar,
-html.theme-transitioning .channel-sidebar,
-html.theme-transitioning .discord-main-content,
-html.theme-transitioning .main-content-wrapper,
-html.theme-transitioning .post-card,
-html.theme-transitioning .comment-item,
-html.theme-transitioning .settings-container,
-html.theme-transitioning .modal-content,
-html.theme-transitioning .card,
-html.theme-transitioning input,
-html.theme-transitioning textarea,
-html.theme-transitioning button {
-  transition: background-color 0.16s ease,
-              border-color 0.16s ease,
-              color 0.16s ease !important;
+/* Instant 1-frame Theme Switch — prevents hundreds of staggered color transitions */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+  animation-duration: 0.001ms !important;
 }
 
 /* Android 3-Button & Gesture Navigation Adaptation */
@@ -150,12 +128,10 @@ html.has-gesture-nav {
 }
 
 /* ==========================================================================
-   GLOBAL HIGH-FPS MODAL & POPUP ANIMATIONS
-   Arayüz yapısını ve düzenini bozmadan tüm açılır pencerelere
-   ve menülere donanım ivmeli açılma hareket animasyonu
+   UNIFIED LIGHTWEIGHT MOTION SYSTEM (No !important overrides, no permanent will-change)
+   Subtle, consistent 150ms fade/slide across all modals and dropdowns on every device.
    ========================================================================== */
 
-/* 1. Tüm Açılır Pencere Arka Plan Katmanları (Overlays) */
 .modal-overlay,
 .profile-edit-modal-overlay,
 .edit-modal-overlay,
@@ -174,11 +150,9 @@ html.has-gesture-nav {
 .security-questions-modal-overlay,
 .register-device-modal-overlay,
 .device-modal-overlay {
-    animation: oxypaceOverlayFadeIn 0.22s ease-out forwards !important;
-    will-change: opacity;
+    animation: oxypaceOverlayFadeIn 0.14s ease-out;
 }
 
-/* 2. Tüm Açılır Pencere Gövdeleri / Kartları (Modal Contents & Dialogs) */
 .modal-content,
 .profile-edit-modal-dialog,
 .edit-modal-content-modern,
@@ -202,12 +176,9 @@ html.has-gesture-nav {
 .register-device-modal-content,
 .advanced-modal,
 .notifications-modal-content {
-    animation: oxypaceModalPopIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-    will-change: transform, opacity;
-    transform-origin: center center;
+    animation: oxypaceModalPopIn 0.16s ease-out;
 }
 
-/* 3. Tüm Açılır Menüler & Popover'lar (Dropdowns & Popovers) */
 .pd-dropdown-menu,
 .profile-visibility-dropdown-menu,
 .flyout-menu,
@@ -217,39 +188,37 @@ html.has-gesture-nav {
 .custom-select-menu,
 .member-flyout,
 .channel-actions-menu {
-    animation: oxypaceDropdownSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-    will-change: transform, opacity;
-    transform-origin: top center;
+    animation: oxypaceDropdownSlideIn 0.13s ease-out;
 }
 
 @keyframes oxypaceOverlayFadeIn {
-    0% {
+    from {
         opacity: 0;
     }
-    100% {
+    to {
         opacity: 1;
     }
 }
 
 @keyframes oxypaceModalPopIn {
-    0% {
+    from {
         opacity: 0;
-        transform: scale(0.92) translateY(12px);
+        transform: translateY(6px);
     }
-    100% {
+    to {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: translateY(0);
     }
 }
 
 @keyframes oxypaceDropdownSlideIn {
-    0% {
+    from {
         opacity: 0;
-        transform: translateY(-8px) scale(0.96);
+        transform: translateY(-4px);
     }
-    100% {
+    to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -1026,26 +995,15 @@ body.perf-lite *::after {
 }
 
 /* ================================================================
-   PHASE 2: OFFSCREEN LAYOUT/PAINT VIRTUALIZATION & VIDEO PLACEHOLDER
+   LAZY VIDEO PLACEHOLDER (content-visibility: auto removed to eliminate
+   empty thin bars & scroll-anchoring jumps across feeds and grids)
    ================================================================ */
-.portal-feed-container .post-card {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 340px;
-}
-
-.modern-portals-grid .modern-portal-card {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 118px;
-}
-
-.messages-container .message-row {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 68px;
-}
-
 .lazy-video-placeholder {
   position: relative;
   width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  max-height: 520px;
   background: #0a0c10;
   border-radius: 12px;
   overflow: hidden;

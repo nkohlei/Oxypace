@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'rea
 import { createPortal } from 'react-dom';
 import { getImageUrl } from '../utils/imageUtils';
 import { preloadImage } from '../utils/preloadUtils';
+import { getCached, setCached } from '../utils/memoryCache';
 import { uploadFile } from '../utils/uploadUtils';
 import { normalizeImageFileForBrowser, normalizeImageFilesForBrowser } from '../utils/heicHelper';
 import { useVideoTranscoder } from '../hooks/useVideoTranscoder';
@@ -60,10 +61,8 @@ const Profile = () => {
             return currentUser;
         }
         if (username) {
-            try {
-                const cached = sessionStorage.getItem(`oxypace_cached_profile_${username}`);
-                if (cached) return JSON.parse(cached);
-            } catch (_) {}
+            const cached = getCached(`oxypace_cached_profile_${username}`, { checkLocal: false });
+            if (cached) return cached;
         }
         return null;
     });
@@ -392,15 +391,13 @@ const Profile = () => {
         }
     };
 
-    // Posts State
+    // Posts State (RAM-first cache)
     const [userPosts, setUserPosts] = useState(() => {
-        try {
-            const cacheKey = username ? `oxypace_profile_posts_${username}` : (currentUser?._id ? `oxypace_profile_posts_${currentUser._id}` : null);
-            if (cacheKey) {
-                const cached = localStorage.getItem(cacheKey) || sessionStorage.getItem(cacheKey);
-                if (cached) return JSON.parse(cached);
-            }
-        } catch (_) {}
+        const cacheKey = username ? `oxypace_profile_posts_${username}` : (currentUser?._id ? `oxypace_profile_posts_${currentUser._id}` : null);
+        if (cacheKey) {
+            const cached = getCached(cacheKey);
+            if (Array.isArray(cached)) return cached;
+        }
         return [];
     });
     const [postsLoading, setPostsLoading] = useState(false);
@@ -562,7 +559,7 @@ const Profile = () => {
         try {
             const params = new URLSearchParams({
                 page: String(page),
-                limit: '50'
+                limit: '15'
             });
             if (filter === 'personal') {
                 params.set('filter', 'personal');
@@ -581,15 +578,13 @@ const Profile = () => {
             } else {
                 setUserPosts(postsData);
                 if (filter === 'all') {
-                    try {
-                        const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
-                        localStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 20)));
-                    } catch (_) {
-                        try {
-                            const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
-                            sessionStorage.setItem(cacheKey, JSON.stringify(postsData.slice(0, 15)));
-                        } catch (__) {}
-                    }
+                    const cacheKey = username ? `oxypace_profile_posts_${username}` : `oxypace_profile_posts_${userId}`;
+                    setCached(cacheKey, postsData.slice(0, 15), {
+                        session: true,
+                        local: true,
+                        localValue: postsData.slice(0, 15),
+                        fallbackValue: postsData.slice(0, 10),
+                    });
                 }
             }
 
@@ -948,11 +943,11 @@ const Profile = () => {
         try {
             const response = await axios.get(`/api/users/${username}`);
             setProfileUser(response.data);
-            try {
-                sessionStorage.setItem(`oxypace_cached_profile_${username}`, JSON.stringify(response.data));
-            } catch (_) {}
-            if (response.data?.avatar) preloadImage(response.data.avatar, 'original');
-            if (response.data?.coverImage) preloadImage(response.data.coverImage, 'original');
+            setCached(`oxypace_cached_profile_${username}`, response.data, { session: true, local: false });
+            const avatarUrl = response.data?.profile?.avatar || response.data?.avatar;
+            const coverUrl = response.data?.profile?.coverImage || response.data?.coverImage;
+            if (avatarUrl) preloadImage(avatarUrl, 'medium');
+            if (coverUrl) preloadImage(coverUrl, 'original');
             if (response.data?.customBadge?.url) preloadImage(response.data.customBadge.url, 'original');
         } catch (err) {
             console.error('Failed to fetch user profile:', err);
@@ -1339,7 +1334,8 @@ const Profile = () => {
                                     <img
                                         src={getImageUrl(profileUser.profile.coverImage)}
                                         alt="Banner"
-                                        loading="lazy"
+                                        loading="eager"
+                                        fetchPriority="high"
                                         decoding="async"
                                         width="600"
                                         height="200"
@@ -1390,7 +1386,7 @@ const Profile = () => {
                                         alt={profileUser.username}
                                         style={{ width: '100%', height: '100%' }}
                                         isDeleted={profileUser?.isDeleted}
-                                        sizeType="original"
+                                        sizeType="medium"
                                     />
                                     {/* Edit button removed from here, now in modal */}
                                 </div>

@@ -10,7 +10,7 @@ import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
-import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
+import { processAndUploadMultiResAvatars, processAndUploadOptimizedBanner } from '../utils/avatarOptimizer.js';
 import Comment from '../models/Comment.js';
 import Portal from '../models/Portal.js';
 import { pubClient } from '../sockets/redisAdapter.js';
@@ -1008,16 +1008,21 @@ router.get('/:username', optionalProtect, async (req, res) => {
         delete userObj.password;
         delete userObj.verificationToken;
 
-        // Calculate post count
-        userObj.postCount = await Post.countDocuments({ author: user._id });
+        // Run post count and viewer lookup in parallel instead of sequential awaits
+        const [postCount, currentUser] = await Promise.all([
+            Post.countDocuments({ author: user._id }),
+            req.user
+                ? User.findById(req.user._id).select('following followers joinedPortals followRequests').lean()
+                : Promise.resolve(null),
+        ]);
+        userObj.postCount = postCount;
 
         let isOwner = false;
         let isFriend = false;
         let mutualFriends = [];
         let mutualPortals = [];
 
-        if (req.user) {
-            const currentUser = await User.findById(req.user._id).select('following followers joinedPortals followRequests');
+        if (req.user && currentUser) {
             isOwner = req.user._id.toString() === user._id.toString();
 
             // Check following status
@@ -1083,10 +1088,16 @@ router.get('/:username', optionalProtect, async (req, res) => {
                 const mutualPortalIds = myPortalIds.filter((id) => theirPortalIds.includes(id));
 
                 if (mutualPortalIds.length > 0) {
-                    // Filter from the already populated user.joinedPortals
-                    mutualPortals = (user.joinedPortals || []).filter((p) =>
-                        p && p._id && mutualPortalIds.includes(p._id.toString())
-                    );
+                    // Filter from the already populated user.joinedPortals and strip heavy member lists
+                    mutualPortals = (user.joinedPortals || [])
+                        .filter((p) => p && p._id && mutualPortalIds.includes(p._id.toString()))
+                        .map((p) => {
+                            const pObj = p.toObject ? p.toObject() : { ...p };
+                            delete pObj.members;
+                            delete pObj.allowedUsers;
+                            delete pObj.admins;
+                            return pObj;
+                        });
                 }
             }
         } else {
@@ -1152,16 +1163,21 @@ router.get('/:username', optionalProtect, async (req, res) => {
         }
         // ─────────────────────────────────────────────────────────────────────────
 
-        // Populate friends list for non-private or authorized viewer
-        userObj.friends = await User.find({
-            _id: { $in: friendIds },
-            isDeleted: { $ne: true }
-        })
-            .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
-            .lean();
-
-        // Fetch portals owned by the user
-        const ownedPortals = await Portal.find({ owner: user._id }).select('name avatar badges customBadge isVerified privacy members allowedUsers owner admins');
+        // Fetch friends list and owned portals in parallel
+        const [friendsList, ownedPortals] = await Promise.all([
+            friendIds.length > 0
+                ? User.find({
+                    _id: { $in: friendIds },
+                    isDeleted: { $ne: true }
+                })
+                    .select('username profile.displayName profile.avatar profile.lowResAvatar verificationBadge customBadge')
+                    .lean()
+                : Promise.resolve([]),
+            Portal.find({ owner: user._id })
+                .select('name avatar lowResAvatar badges customBadge isVerified privacy members allowedUsers owner admins')
+                .lean(),
+        ]);
+        userObj.friends = friendsList;
 
         // Privacy Check for Portals
         // Default to public if setting missing
@@ -1328,9 +1344,9 @@ router.post(
             const prevCover = user.profile?.coverImage;
             let newCoverUrl = '';
             if (req.body.mediaKey) {
-                newCoverUrl = constructProxiedUrl(req.body.mediaKey);
+                newCoverUrl = await processAndUploadOptimizedBanner(req.body.mediaKey);
             } else if (req.file) {
-                newCoverUrl = constructProxiedUrl(req.file.key);
+                newCoverUrl = await processAndUploadOptimizedBanner(req.file);
             } else {
                 return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
             }

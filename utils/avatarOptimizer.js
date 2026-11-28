@@ -110,3 +110,69 @@ export async function processAndUploadMultiResAvatars(mediaKeyOrFile) {
         lowRes: constructProxiedUrl(lowResKey)
     };
 }
+
+/**
+ * Optimizes a user cover or portal banner image into a crisp, lightweight WebP
+ * (max 1280x480 inside, quality 82, ~40-120 KB instead of 5-15 MB raw PNG/JPG).
+ * Preserves animated GIFs and gracefully falls back to the original R2 object on error.
+ */
+export async function processAndUploadOptimizedBanner(mediaKeyOrFile) {
+    const bucketName = process.env.R2_BUCKET_NAME || 'oxypace';
+    let originalKey = typeof mediaKeyOrFile === 'string'
+        ? mediaKeyOrFile
+        : (mediaKeyOrFile?.key || '');
+
+    if (!originalKey) {
+        throw new Error('Invalid banner file or key provided');
+    }
+
+    const parsedPath = path.parse(originalKey);
+    const folder = parsedPath.dir || 'banners';
+    const baseName = parsedPath.name;
+    const extLower = (parsedPath.ext || '').toLowerCase();
+
+    // Keep animated GIFs or already-optimized banner WebPs untouched
+    if (extLower === '.gif' || baseName.endsWith('-banner')) {
+        return constructProxiedUrl(originalKey);
+    }
+
+    try {
+        let inputBuffer = mediaKeyOrFile?.buffer || null;
+        if (!inputBuffer) {
+            const r2Response = await r2.send(new GetObjectCommand({
+                Bucket: bucketName,
+                Key: originalKey,
+            }));
+            const chunks = [];
+            for await (const chunk of r2Response.Body) {
+                chunks.push(chunk);
+            }
+            inputBuffer = Buffer.concat(chunks);
+        }
+
+        // Extra GIF magic-bytes guard
+        if (inputBuffer.length >= 3 && inputBuffer.toString('utf8', 0, 3) === 'GIF') {
+            return constructProxiedUrl(originalKey);
+        }
+
+        const bannerBuffer = await sharp(inputBuffer)
+            .rotate()
+            .resize(1280, 480, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 82 })
+            .toBuffer();
+
+        const bannerKey = `${folder}/${baseName}-banner.webp`;
+        await r2.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: bannerKey,
+            ContentType: 'image/webp',
+            CacheControl: 'public, max-age=31536000, immutable',
+            Body: bannerBuffer,
+        }));
+
+        return constructProxiedUrl(bannerKey);
+    } catch (err) {
+        console.warn('[BannerOptimizer] Falling back to original banner:', err.message);
+        return constructProxiedUrl(originalKey);
+    }
+}

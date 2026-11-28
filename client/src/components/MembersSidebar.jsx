@@ -5,6 +5,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import UserBadges from './UserBadges';
+import './MembersSidebar.css';
 
 const MembersSidebar = ({ members = [], onClose }) => {
     const onlineUsers = useOnlineUsers();
@@ -207,134 +208,6 @@ const MembersSidebar = ({ members = [], onClose }) => {
                     </Link>
                 );
             })}
-
-            <style>{`
-                .members-sidebar {
-                    width: 240px;
-                    background-color: var(--bg-secondary);
-                    height: 100%;
-                    overflow-y: auto;
-                    flex-shrink: 0;
-                    padding: 0 8px 8px 16px; /* Adjusted padding top */
-                }
-                
-                .members-header-top {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 16px 0 8px 0;
-                    margin-bottom: 8px;
-                }
-
-                .members-header-top h3 {
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: var(--text-tertiary);
-                    text-transform: uppercase;
-                    margin: 0;
-                }
-
-                .close-members-btn {
-                    background: transparent;
-                    border: none;
-                    color: var(--text-muted);
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 4px;
-                    border-radius: 4px;
-                    transition: all 0.2s;
-                }
-
-                .close-members-btn:hover {
-                    color: var(--text-primary);
-                    background-color: var(--bg-hover);
-                }
-
-                .members-category {
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: var(--text-tertiary);
-                    text-transform: uppercase;
-                    margin: 24px 0 8px 0;
-                }
-                .members-category:first-child { margin-top: 0; }
-                
-                .member-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 6px 8px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    margin-bottom: 2px;
-                    color: var(--text-secondary);
-                    text-decoration: none;
-                }
-                .member-link {
-                    text-decoration: none;
-                    color: inherit;
-                }
-                .member-item:hover {
-                    background-color: var(--bg-hover);
-                    color: var(--text-primary);
-                }
-                .member-item.offline {
-                    opacity: 0.7;
-                }
-                .member-item.offline:hover {
-                    opacity: 1;
-                }
-                .member-avatar-wrapper {
-                    position: relative;
-                    width: 32px;
-                    height: 32px;
-                }
-                .member-avatar, .member-avatar-placeholder {
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 50%;
-                    object-fit: cover;
-                }
-                .member-avatar-placeholder {
-                    background-color: var(--primary-color);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: 500;
-                    font-size: 12px;
-                }
-                .status-indicator {
-                    position: absolute;
-                    bottom: -2px;
-                    right: -2px;
-                    width: 14px;
-                    height: 14px;
-                    border-radius: 50%;
-                    border: 3px solid var(--bg-secondary);
-                }
-                .status-indicator.online { background-color: #23a559; }
-
-                .member-info {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .member-name {
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: inherit;
-                }
-                .active-role {
-                    color: #2ecc71 !important; /* Keep role color specific */
-                }
-                .member-custom-status {
-                    font-size: 12px;
-                    margin-top: 2px;
-                    color: var(--text-tertiary);
-                }
-            `}</style>
         </div>
     );
 };

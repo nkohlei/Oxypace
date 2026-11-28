@@ -168,7 +168,7 @@ const QuotedPost = ({ quotedPost, viewer, depth = 0 }) => {
                                 }
                                 alt=""
                                 className="quoted-portal-icon"
-                                style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                                style={{ imageRendering: '-webkit-optimize-contrast' }}
                                 loading="lazy"
                                 decoding="async"
                                 width="16"

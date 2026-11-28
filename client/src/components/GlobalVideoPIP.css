@@ -466,7 +466,7 @@
     padding: 10px;
     overflow-y: auto;
     overflow-x: hidden;
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
 }
 
 /* Participant Card */

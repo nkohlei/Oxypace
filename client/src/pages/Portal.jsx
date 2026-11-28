@@ -18,6 +18,7 @@ import TanitimShowcase from '../components/TanitimShowcase';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
 import { preloadImage, preloadUsers } from '../utils/preloadUtils';
+import { getCached, setCached } from '../utils/memoryCache';
 import { useUI } from '../context/UIContext';
 import { useActiveVoiceRoom } from '../context/VoiceContext';
 const PortalSettingsModal = lazy(() => import('../components/PortalSettingsModal'));
@@ -96,16 +97,11 @@ const Portal = () => {
     const isGhost = typeof window !== 'undefined' && !!localStorage.getItem('admin_backup_token');
 
     const [portal, setPortal] = useState(() => {
-        // 1. Check sessionStorage cache first for complete portal with channels
-        try {
-            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
-                    return parsed;
-                }
-            }
-        } catch (_) { }
+        // 1. RAM-first cache hit (0ms) with session/local cold fallback
+        const parsed = getCached(`oxypace_portal_cache_${id}`);
+        if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
+            return parsed;
+        }
 
         // 2. Only use location.state.portal if it has channels
         if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
@@ -139,15 +135,10 @@ const Portal = () => {
     const posts = useGlobalStore((state) => state.posts);
     const setPosts = useGlobalStore((state) => state.setPosts);
     const [loading, setLoading] = useState(() => {
-        try {
-            const cached = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
-                    return false;
-                }
-            }
-        } catch (_) { }
+        const parsed = getCached(`oxypace_portal_cache_${id}`);
+        if (Array.isArray(parsed?.channels) && parsed.channels.length > 0) {
+            return false;
+        }
         if (location?.state?.portal && (String(location.state.portal._id) === String(id) || String(location.state.portal.id) === String(id))) {
             if (Array.isArray(location.state.portal.channels) && location.state.portal.channels.length > 0) {
                 return false;
@@ -570,10 +561,7 @@ const Portal = () => {
                         ? portalPayload.channels
                         : prev.channels,
                 };
-                try {
-                    sessionStorage.setItem(`oxypace_portal_cache_${id}`, JSON.stringify(merged));
-                    localStorage.setItem(`oxypace_portal_cache_${id}`, JSON.stringify(merged));
-                } catch (_) {}
+                setCached(`oxypace_portal_cache_${id}`, merged, { session: true, local: true });
                 return merged;
             });
             setPosts((prev) => prev.map((p) => {
@@ -1361,17 +1349,12 @@ const Portal = () => {
         isFetchingPortalRef.current = true;
         setError('');
 
-        // Hydrate immediately from cache when switching between portals
+        // Hydrate immediately from RAM-first cache when switching between portals
         let cachedPortalForId = null;
-        try {
-            const rawCache = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
-            if (rawCache) {
-                const parsed = JSON.parse(rawCache);
-                if (parsed && String(parsed._id) === String(id) && Array.isArray(parsed.channels) && parsed.channels.length > 0) {
-                    cachedPortalForId = parsed;
-                }
-            }
-        } catch (_) { }
+        const parsedCache = getCached(`oxypace_portal_cache_${id}`);
+        if (parsedCache && String(parsedCache._id) === String(id) && Array.isArray(parsedCache.channels) && parsedCache.channels.length > 0) {
+            cachedPortalForId = parsedCache;
+        }
 
         if (!portal || String(portal._id) !== String(id) || !Array.isArray(portal.channels) || portal.channels.length === 0) {
             if (cachedPortalForId) {
@@ -1401,17 +1384,13 @@ const Portal = () => {
             try {
                 const res = await axios.get(`/api/portals/${id}`);
                 setPortal(res.data);
-                scheduleIdleWrite(() => {
-                    const slimMembers =
-                        Array.isArray(res.data?.members) &&
-                        user?._id &&
-                        res.data.members.some((m) => String(m?._id || m) === String(user._id))
-                            ? [user._id]
-                            : [];
-                    const serialized = JSON.stringify({ ...res.data, members: slimMembers });
-                    sessionStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
-                    localStorage.setItem(`oxypace_portal_cache_${id}`, serialized);
-                });
+                const slimMembers =
+                    Array.isArray(res.data?.members) &&
+                    user?._id &&
+                    res.data.members.some((m) => String(m?._id || m) === String(user._id))
+                        ? [user._id]
+                        : [];
+                setCached(`oxypace_portal_cache_${id}`, { ...res.data, members: slimMembers }, { session: true, local: true });
                 if (res.data?.avatar) preloadImage(res.data.avatar, 'original');
                 const b = res.data?.coverImage || res.data?.banner;
                 if (b) preloadImage(b, 'original');
@@ -1486,21 +1465,16 @@ const Portal = () => {
             abortControllerRef.current = new AbortController();
 
             let hasCachedPosts = false;
-            try {
-                const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        setPosts(parsed);
-                        setContentLoading(false);
-                        hasCachedPosts = true;
-                        const returnCtx = pendingReturnCtxRef.current;
-                        if (returnCtx && returnCtx.postId && parsed.length > 10) {
-                            shouldPreserveLoadedTailRef.current = true;
-                        }
-                    }
+            const parsed = getCached(cacheKey);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setPosts(parsed);
+                setContentLoading(false);
+                hasCachedPosts = true;
+                const returnCtx = pendingReturnCtxRef.current;
+                if (returnCtx && returnCtx.postId && parsed.length > 10) {
+                    shouldPreserveLoadedTailRef.current = true;
                 }
-            } catch (_) { }
+            }
 
             if (!hasCachedPosts) {
                 setContentLoading(true);
@@ -1566,9 +1540,7 @@ const Portal = () => {
                     const existingIds = new Set(prev.map(p => p._id));
                     const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p._id));
                     const merged = [...prev, ...uniqueNewPosts];
-                    scheduleIdleWrite(() => {
-                        sessionStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 30)));
-                    });
+                    setCached(cacheKey, merged.slice(0, 30), { session: true, local: false });
                     return merged;
                 });
             } else {
@@ -1580,13 +1552,11 @@ const Portal = () => {
                     shouldPreserveLoadedTailRef.current = false;
                 }
                 setPosts(finalPosts);
-                scheduleIdleWrite(() => {
-                    try {
-                        sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 15)));
-                        localStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 12)));
-                    } catch (_) {
-                        try { sessionStorage.setItem(cacheKey, JSON.stringify(finalPosts.slice(0, 10))); } catch (__) { }
-                    }
+                setCached(cacheKey, finalPosts.slice(0, 15), {
+                    session: true,
+                    local: true,
+                    localValue: finalPosts.slice(0, 12),
+                    fallbackValue: finalPosts.slice(0, 10),
                 });
             }
 
@@ -1645,15 +1615,10 @@ const Portal = () => {
         setMobileChannelOpen(keepChannelOpen);
 
         let hydratedPortal = null;
-        try {
-            const rawPortal = sessionStorage.getItem(`oxypace_portal_cache_${id}`) || localStorage.getItem(`oxypace_portal_cache_${id}`);
-            if (rawPortal) {
-                const parsed = JSON.parse(rawPortal);
-                if (parsed && String(parsed._id) === String(id) && Array.isArray(parsed.channels) && parsed.channels.length > 0) {
-                    hydratedPortal = parsed;
-                }
-            }
-        } catch (_) {}
+        const parsedPortal = getCached(`oxypace_portal_cache_${id}`);
+        if (parsedPortal && String(parsedPortal._id) === String(id) && Array.isArray(parsedPortal.channels) && parsedPortal.channels.length > 0) {
+            hydratedPortal = parsedPortal;
+        }
 
         if (hydratedPortal) {
             const targetChId =
@@ -1663,13 +1628,8 @@ const Portal = () => {
                 null;
             let hydratedPosts = [];
             if (targetChId) {
-                try {
-                    const rawPosts = sessionStorage.getItem(`portal_posts_${id}_${targetChId}`) || localStorage.getItem(`portal_posts_${id}_${targetChId}`);
-                    if (rawPosts) {
-                        const parsedPosts = JSON.parse(rawPosts);
-                        if (Array.isArray(parsedPosts)) hydratedPosts = parsedPosts;
-                    }
-                } catch (_) {}
+                const parsedPosts = getCached(`portal_posts_${id}_${targetChId}`);
+                if (Array.isArray(parsedPosts)) hydratedPosts = parsedPosts;
             }
             setPortal(hydratedPortal);
             setCurrentChannel(targetChId);

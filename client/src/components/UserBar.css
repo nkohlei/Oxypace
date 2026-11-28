@@ -63,10 +63,8 @@
     justify-content: center;
     border: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.14s ease, color 0.14s ease;
     background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     color: #b5bac1;
     box-shadow: none;
 }

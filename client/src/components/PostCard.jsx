@@ -28,42 +28,42 @@ import PromotedPortalCard from './PromotedPortalCard';
 import PostAttachments from './PostAttachments';
 import { extractYouTubeInfo } from '../utils/mediaAttachments';
 
-// Mounts <VideoPlayer> only when near/in viewport; only top feed cards mount eagerly so channel open stays instant
+// One-way lazy mount: mounts <VideoPlayer> once it approaches the viewport and keeps it mounted
+// so scrolling away and back never collapses the card or reloads video from scratch.
+// Network & playback isolation is enforced inside VideoPlayer (single centered active video).
 const LazyVideoSlot = ({ poster, eagerMount = false, ...videoProps }) => {
     const slotRef = useRef(null);
-    const [isNearViewport, setIsNearViewport] = useState(Boolean(eagerMount));
-    const heightRef = useRef(240);
+    const [hasMounted, setHasMounted] = useState(Boolean(eagerMount));
 
     useEffect(() => {
+        if (hasMounted) return;
         const node = slotRef.current;
         if (!node || typeof IntersectionObserver === 'undefined') {
-            setIsNearViewport(true);
+            setHasMounted(true);
             return;
         }
 
         const observer = new IntersectionObserver(
             (entries) => {
                 const entry = entries[0];
-                if (!entry) return;
-                const near = entry.isIntersecting;
-                if (!near && node.offsetHeight > 60) {
-                    heightRef.current = node.offsetHeight;
+                if (entry?.isIntersecting) {
+                    setHasMounted(true);
+                    observer.disconnect();
                 }
-                setIsNearViewport((prev) => (prev === near ? prev : near));
             },
-            { rootMargin: '300px 0px', threshold: 0 }
+            { rootMargin: '800px 0px', threshold: 0 }
         );
 
         observer.observe(node);
         return () => observer.disconnect();
-    }, []);
+    }, [hasMounted]);
 
     return (
-        <div ref={slotRef} style={!isNearViewport ? { minHeight: `${heightRef.current}px` } : undefined}>
-            {isNearViewport ? (
+        <div ref={slotRef}>
+            {hasMounted ? (
                 <VideoPlayer poster={poster} {...videoProps} />
             ) : (
-                <div className="lazy-video-placeholder" style={{ height: `${heightRef.current}px` }}>
+                <div className="lazy-video-placeholder">
                     {poster && <img src={poster} alt="" loading="lazy" decoding="async" />}
                 </div>
             )}

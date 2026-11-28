@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -12,6 +12,25 @@ import { preloadPortals } from '../utils/preloadUtils';
 import { MessageSquare, Compass, Plus, Save, ArrowUpDown } from 'lucide-react';
 import './PortalSidebar.css';
 
+const PortalUploadRing = memo(({ portalId }) => {
+    const activeUpload = useUploadStore(state => state.activeUploads[`portal-${portalId}`]);
+    if (!activeUpload || activeUpload.status !== 'uploading') return null;
+    return (
+        <svg className="portal-upload-progress-ring" viewBox="0 0 48 48">
+            <circle
+                className="progress-ring-circle"
+                strokeWidth="3.5"
+                fill="transparent"
+                r="21.5"
+                cx="24"
+                cy="24"
+                strokeDasharray="135"
+                strokeDashoffset={135 - (135 * (activeUpload.progress || 0)) / 100}
+            />
+        </svg>
+    );
+});
+
 const PortalSidebar = () => {
     const { user, isAuthenticated, updateUser, refreshUser } = useAuth();
     const { closeSidebar, toggleSidebar } = useUI();
@@ -21,7 +40,6 @@ const PortalSidebar = () => {
     const syncUnreadCounts = useGlobalStore(state => state.syncUnreadCounts);
     const unreadMessagesCount = useGlobalStore(state => state.unreadMessagesCount);
     const fetchUnreadMessagesCount = useGlobalStore(state => state.fetchUnreadMessagesCount);
-    const activeUploads = useUploadStore(state => state.activeUploads);
     const navigate = useNavigate();
     const location = useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -312,7 +330,6 @@ const PortalSidebar = () => {
                 <div className="portals-scroll-area">
                     {orderedPortals.map((portal, index) => {
                         const filteredCount = getFilteredUnreadCount(portal._id);
-                        const activeUpload = activeUploads[`portal-${portal._id}`];
                         return (
                             <div
                                 key={portal._id}
@@ -343,8 +360,7 @@ const PortalSidebar = () => {
                                                 draggable="false" 
                                                 loading="eager"
                                                 decoding="async"
-                                                fetchpriority="high"
-                                                style={{ imageRendering: '-webkit-optimize-contrast', contentVisibility: 'auto' }}
+                                                style={{ imageRendering: '-webkit-optimize-contrast' }}
                                                 onError={() => handlePortalImageError(portal._id, portal.lowResAvatar || portal.avatar)}
                                             />
                                         ) : (
@@ -352,21 +368,8 @@ const PortalSidebar = () => {
                                         )}
                                     </div>
 
-                                    {/* Green Circular Upload Progress Effect */}
-                                    {activeUpload && activeUpload.status === 'uploading' && (
-                                        <svg className="portal-upload-progress-ring" viewBox="0 0 48 48">
-                                            <circle
-                                                className="progress-ring-circle"
-                                                strokeWidth="3.5"
-                                                fill="transparent"
-                                                r="21.5"
-                                                cx="24"
-                                                cy="24"
-                                                strokeDasharray="135"
-                                                strokeDashoffset={135 - (135 * (activeUpload.progress || 0)) / 100}
-                                            />
-                                        </svg>
-                                    )}
+                                    {/* Isolated Upload Progress Ring — only this portal icon re-renders on progress */}
+                                    <PortalUploadRing portalId={portal._id} />
 
                                     {/* Red Notification Badge - Moved outside .portal-icon to avoid clipping */}
                                     {filteredCount > 0 && (
@@ -423,180 +426,7 @@ const PortalSidebar = () => {
                         </div>
                     </div>
                 </div>
-
-                <style>{`
-                .portal-floating-tooltip {
-                    position: fixed;
-                    transform: translateY(-50%);
-                    background-color: rgba(10, 15, 32, 0.95);
-                    color: white;
-                    padding: 5px 12px;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    white-space: nowrap;
-                    z-index: 100000;
-                    pointer-events: none;
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    animation: tooltipFadeIn 0.15s ease-out;
-                }
-
-                @keyframes tooltipFadeIn {
-                    from { opacity: 0; transform: translateY(-50%) translateX(-5px); }
-                    to { opacity: 1; transform: translateY(-50%) translateX(0); }
-                }
-
-                @media (max-width: 768px) {
-                    .portal-floating-tooltip {
-                        font-size: 11px;
-                        padding: 3px 8px;
-                    }
-                }
-
-                .sidebar-item.reordering {
-                    cursor: grab;
-                    touch-action: none;
-                }
-                .sidebar-item.reordering:active {
-                    cursor: grabbing;
-                    transform: scale(0.95);
-                }
-                .sidebar-item.dragging {
-                    opacity: 0.5;
-                }
-                .sidebar-item {
-                    width: 100% !important; /* Full sidebar width to align indicator */
-                    height: 56px; /* Slightly taller for padding */
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    position: relative;
-                    overflow: visible !important; /* CRITICAL: Allow badges to overflow */
-                }
-
-                .sidebar-item.dragging .portal-icon {
-                    border: 2px dashed var(--primary-color);
-                }
-
-                /* --- Discord-style Sidebar Enhancements --- */
-
-                /* Left Indicator Bar - Fixed to very left edge */
-                .sidebar-indicator {
-                    position: absolute;
-                    left: 0;
-                    width: 4px;
-                    height: 8px;
-                    background-color: white;
-                    border-radius: 0 4px 4px 0;
-                    transform: scaleY(0);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    opacity: 0;
-                    z-index: 100 !important; /* Always on top */
-                }
-
-                .sidebar-item.active .sidebar-indicator {
-                    transform: scaleY(5); /* ~40px */
-                    opacity: 1;
-                }
-
-                .sidebar-item:hover .sidebar-indicator {
-                    transform: scaleY(2.5); /* ~20px */
-                    opacity: 1;
-                }
-
-                .sidebar-item.has-unread:not(.active):not(:hover) .sidebar-indicator {
-                    transform: scaleY(1); /* 8px small dot */
-                    opacity: 1;
-                }
-
-                /* New container for icon + badge + pulse */
-                .portal-icon-container {
-                    position: relative;
-                    width: 48px;
-                    height: 48px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 5;
-                }
-
-                /* Red Notification Badge - Outside the clipped circle */
-                .unread-badge {
-                    position: absolute;
-                    top: -2px; /* Moved to top-right for better visibility */
-                    right: -2px;
-                    background-color: #f23f43; /* Discord-red */
-                    color: white;
-                    font-size: 11px;
-                    font-weight: 800;
-                    min-width: 18px;
-                    height: 18px;
-                    border-radius: 9px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0 4px;
-                    border: 3px solid var(--bg-darker);
-                    box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
-                    pointer-events: none;
-                    z-index: 100; /* Ensure it stays above everything */
-                }
-
-                /* Blue Pulsing Frame ("Çerçeve") - Now on the container to avoid clipping */
-                .sidebar-item.has-unread:not(.active) .portal-icon-container::after {
-                    content: '';
-                    position: absolute;
-                    inset: -3px;
-                    border: 2px solid #00d2ff;
-                    border-radius: 50%;
-                    animation: portalUnreadPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-                    pointer-events: none;
-                    box-shadow: 0 0 12px rgba(0, 210, 255, 0.7);
-                    z-index: 60; /* Below badge, above icon */
-                }
-
-                @keyframes portalUnreadPulse {
-                    0% {
-                        opacity: 0.7;
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7);
-                    }
-                    50% {
-                        opacity: 1;
-                        transform: scale(1.05);
-                        box-shadow: 0 0 0 8px rgba(0, 210, 255, 0);
-                    }
-                    100% {
-                        opacity: 0.7;
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
-                    }
-                }
-
-                /* Subtle pulse for the whole icon area */
-                .sidebar-item.has-unread:not(.active) .portal-icon-container {
-                    animation: subtlePulse 2s infinite ease-in-out;
-                }
-
-                @keyframes subtlePulse {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.02); }
-                    100% { transform: scale(1); }
-                }
-
-                .portal-icon {
-                    /* Original styles from PortalSidebar.css are preserved, 
-                       but we ensure it stays exactly 48x48 here */
-                    width: 48px;
-                    height: 48px;
-                    z-index: 10;
-                }
-            `}</style>
-
             </div>
-
-            {/* Floating Tooltip via Portal removed */}
 
             {/* Create Portal Modal - Rendered at root level to bypass sidebar transforms */}
             {showCreateModal && createPortal(
@@ -607,4 +437,4 @@ const PortalSidebar = () => {
     );
 };
 
-export default PortalSidebar;
+export default memo(PortalSidebar);

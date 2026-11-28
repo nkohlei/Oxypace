@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -44,19 +44,19 @@ const Settings = () => {
         searchVisibility: true,
         readReceipts: true,
     });
-    const [videoSettings, setVideoSettings] = useState({
+    const [videoSettings, setVideoSettings] = useState(() => ({
         playbackQuality: localStorage.getItem('video_playback_quality') || 'auto',
         downloadQuality: localStorage.getItem('video_download_quality') || 'ask',
         downloadFormat: localStorage.getItem('video_download_format') || 'ask',
         autoplay: localStorage.getItem('video_autoplay') || 'on',
-    });
+    }));
     // Canlı Oda Kalite & Veri Tasarrufu Modu
     const [liveRoomQuality, setLiveRoomQuality] = useState(() => {
         return localStorage.getItem('oxypace_call_quality') || 'saver';
     });
     const [perfMode, setPerfMode] = useState(() => getPerformanceMode());
     const [perfModeApplied, setPerfModeApplied] = useState(() => getPerformanceMode() === 'lite' || (getPerformanceMode() === 'auto' && detectLowEndDevice()));
-    const isLowEndHardwareDetected = detectLowEndDevice();
+    const isLowEndHardwareDetected = useMemo(() => detectLowEndDevice(), []);
 
     const handlePerformanceModeChange = (mode) => {
         const res = applyPerformanceMode(mode);

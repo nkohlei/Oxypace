@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, ChevronRight, ZoomIn, Image, Sparkles, CheckCircle2 } from 'lucide-react';
 import { getImageUrl } from '../utils/imageUtils';
-import { isPerfLiteActive } from '../utils/performanceMode';
 import './PostImageGallery.css';
 
 export const PostImageGallery = ({ media, isOptimistic = false }) => {
@@ -196,40 +195,61 @@ export const PostImageGallery = ({ media, isOptimistic = false }) => {
     );
 };
 
+// In-memory cache of resolved image aspect ratios & loaded state to eliminate layout jumps on scroll/re-mount
+const imageAspectRatioCache = new Map();
+const imageLoadedSet = new Set();
+
+const rememberImageDimensions = (url, naturalWidth, naturalHeight) => {
+    if (!url || !naturalWidth || !naturalHeight) return null;
+    const ratio = naturalWidth / naturalHeight;
+    if (isNaN(ratio) || ratio <= 0) return null;
+    const clamped = `${Math.max(0.5, Math.min(ratio, 3.0))}`;
+    if (imageAspectRatioCache.size > 500) {
+        const oldestKey = imageAspectRatioCache.keys().next().value;
+        imageAspectRatioCache.delete(oldestKey);
+        imageLoadedSet.delete(oldestKey);
+    }
+    imageAspectRatioCache.set(url, clamped);
+    imageLoadedSet.add(url);
+    return clamped;
+};
+
 /**
- * Single image display with Twitter/X style reserved aspect-ratio skeleton frame
+ * Single image display with cached aspect-ratio frame (zero layout shift on re-visit)
  */
 const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [aspectRatio, setAspectRatio] = useState('16 / 9');
-    const imgRef = useRef(null);
     const resolvedUrl = getImageUrl(imgUrl, 'feed');
+    const cachedRatio = imageAspectRatioCache.get(resolvedUrl);
+    const [isLoaded, setIsLoaded] = useState(() => imageLoadedSet.has(resolvedUrl));
+    const [aspectRatio, setAspectRatio] = useState(() => cachedRatio || '16 / 9');
+    const imgRef = useRef(null);
 
     useEffect(() => {
+        const nextCachedRatio = imageAspectRatioCache.get(resolvedUrl);
+        if (nextCachedRatio) {
+            setAspectRatio(nextCachedRatio);
+        }
+        if (imageLoadedSet.has(resolvedUrl)) {
+            setIsLoaded(true);
+            return;
+        }
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
             setIsLoaded(true);
-            const { naturalWidth, naturalHeight } = imgRef.current;
-            if (naturalWidth && naturalHeight) {
-                const ratio = naturalWidth / naturalHeight;
-                if (!isNaN(ratio) && ratio > 0) {
-                    setAspectRatio(`${Math.max(0.5, Math.min(ratio, 3.0))}`);
-                }
-            }
+            const nextRatio = rememberImageDimensions(
+                resolvedUrl,
+                imgRef.current.naturalWidth,
+                imgRef.current.naturalHeight
+            );
+            if (nextRatio) setAspectRatio(nextRatio);
         }
-    }, [imgUrl]);
+    }, [resolvedUrl]);
 
     const handleLoad = (e) => {
         setIsLoaded(true);
         const { naturalWidth, naturalHeight } = e.target;
-        if (naturalWidth && naturalHeight) {
-            const ratio = naturalWidth / naturalHeight;
-            if (!isNaN(ratio) && ratio > 0) {
-                setAspectRatio(`${Math.max(0.5, Math.min(ratio, 3.0))}`);
-            }
-        }
+        const nextRatio = rememberImageDimensions(resolvedUrl, naturalWidth, naturalHeight);
+        if (nextRatio) setAspectRatio(nextRatio);
     };
-
-    const perfLite = isPerfLiteActive();
 
     return (
         <div
@@ -238,15 +258,6 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
             onClick={(e) => isLoaded && onOpenLightbox(0, e)}
             title={isLoaded ? 'Görseli büyüt' : undefined}
         >
-            {/* Ambient progressive blur backdrop skipped on perf-lite to save mobile GPU fill-rate */}
-            {!perfLite && (
-                <div
-                    className="gallery-blur-backdrop"
-                    style={{ backgroundImage: `url(${resolvedUrl})` }}
-                    aria-hidden="true"
-                />
-            )}
-
             <img
                 ref={imgRef}
                 src={resolvedUrl}
@@ -254,7 +265,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
                 loading="lazy"
                 decoding="async"
                 onLoad={handleLoad}
-                className={`gallery-image single-img ${isLoaded || perfLite ? 'loaded' : 'is-loading-blur'}`}
+                className={`gallery-image single-img ${isLoaded ? 'loaded' : 'is-loading-fade'}`}
             />
             {isLoaded && (
                 <div className="gallery-zoom-hint">
@@ -266,19 +277,23 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
 };
 
 /**
- * Multi image carousel slide with Twitter-style progressive blur
+ * Multi image carousel slide with instant cached fade-in (no blur backdrop overhead)
  */
 const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const imgRef = useRef(null);
     const resolvedUrl = getImageUrl(imgUrl, 'feed');
-    const perfLite = isPerfLiteActive();
+    const [isLoaded, setIsLoaded] = useState(() => imageLoadedSet.has(resolvedUrl));
+    const imgRef = useRef(null);
 
     useEffect(() => {
+        if (imageLoadedSet.has(resolvedUrl)) {
+            setIsLoaded(true);
+            return;
+        }
         if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+            imageLoadedSet.add(resolvedUrl);
             setIsLoaded(true);
         }
-    }, [imgUrl]);
+    }, [resolvedUrl]);
 
     return (
         <div
@@ -286,22 +301,17 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
             onClick={(e) => isLoaded && onOpenLightbox(index, e)}
             title={isLoaded ? 'Görseli büyütmek için tıkla' : undefined}
         >
-            {!perfLite && (
-                <div
-                    className="gallery-blur-backdrop"
-                    style={{ backgroundImage: isLoaded ? `url(${resolvedUrl})` : 'none' }}
-                    aria-hidden="true"
-                />
-            )}
-
             <img
                 ref={imgRef}
                 src={resolvedUrl}
                 alt={`Görsel ${index + 1}`}
                 loading="lazy"
                 decoding="async"
-                onLoad={() => setIsLoaded(true)}
-                className={`gallery-image slide-img ${isLoaded || perfLite ? 'loaded' : 'is-loading-blur'}`}
+                onLoad={() => {
+                    imageLoadedSet.add(resolvedUrl);
+                    setIsLoaded(true);
+                }}
+                className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
             />
         </div>
     );

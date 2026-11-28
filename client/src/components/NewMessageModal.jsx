@@ -3,6 +3,7 @@ import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
 import UserBadges from './UserBadges';
 import { X, Lock } from 'lucide-react';
+import './NewMessageModal.css';
 
 const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -185,15 +186,6 @@ const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
                                 msOverflowStyle: 'none' /* IE 10+ */,
                             }}
                         >
-                            {
-                                /* Hide scrollbar for Chrome/Safari/Opera */
-                                <style>{`
-                                .suggested-friends-scroll::-webkit-scrollbar { 
-                                    display: none; 
-                                }
-                             `}</style>
-                            }
-
                             {currentUser.friends.map((friendId) => {
                                 // Assuming 'friends' is an array of IDs or objects.
                                 // If IDs, we can't show much without fetching.
@@ -421,12 +413,6 @@ const NewMessageModal = ({ onClose, onSelectUser, currentUser }) => {
                     )}
                 </div>
             </div>
-            <style>{`
-                @keyframes zoomIn {
-                    from { transform: scale(0.95); opacity: 0; }
-                    to { transform: scale(1); opacity: 1; }
-                }
-            `}</style>
         </div>
     );
 };

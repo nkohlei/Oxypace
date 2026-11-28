@@ -351,14 +351,6 @@ const UserBar = ({ currentChannelId }) => {
                     </button>
                 </div>
             </div>
-            <style>
-                {`
-                .user-bar-info:hover {
-                    background-color: var(--bg-hover) !important;
-                    color: var(--text-primary) !important;
-                }
-                `}
-            </style>
         </div>
     );
 };

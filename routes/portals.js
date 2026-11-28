@@ -6,7 +6,7 @@ import User from '../models/User.js';
 import BotConfig from '../models/BotConfig.js';
 import Notification from '../models/Notification.js';
 import { constructProxiedUrl } from '../utils/mediaConfig.js';
-import { processAndUploadMultiResAvatars } from '../utils/avatarOptimizer.js';
+import { processAndUploadMultiResAvatars, processAndUploadOptimizedBanner } from '../utils/avatarOptimizer.js';
 import { protect, optionalProtect } from '../middleware/auth.js';
 import { mongoIdValidation } from '../middleware/validation.js';
 import multer from 'multer';
@@ -1149,9 +1149,9 @@ router.post('/:id/banner', protect, mongoIdValidation('id'), upload.single('bann
         const prevBanner = portal.banner;
         let newBannerUrl = '';
         if (req.body.mediaKey) {
-            newBannerUrl = constructProxiedUrl(req.body.mediaKey);
+            newBannerUrl = await processAndUploadOptimizedBanner(req.body.mediaKey);
         } else if (req.file) {
-            newBannerUrl = constructProxiedUrl(req.file.key);
+            newBannerUrl = await processAndUploadOptimizedBanner(req.file);
         } else {
             return res.status(400).json({ message: 'No file uploaded or mediaKey provided' });
         }

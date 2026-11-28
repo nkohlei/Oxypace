@@ -8,8 +8,6 @@
     height: calc(64px + var(--safe-area-top, env(safe-area-inset-top, 0px))); 
     min-height: calc(64px + var(--safe-area-top, env(safe-area-inset-top, 0px)));
     background: #000000 !important; /* Pure sleek black */
-    backdrop-filter: blur(20px) saturate(160%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
     border-bottom: 1px solid var(--border-subtle) !important;
     z-index: 9999 !important;
     box-shadow: none !important;
@@ -17,7 +15,7 @@
     padding-top: var(--safe-area-top, env(safe-area-inset-top, 0px)); /* Safe area support */
     display: flex;
     align-items: center;
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+    transition: transform 0.22s ease-out;
 }
 
 :root[data-theme='light'] .navbar,
@@ -74,7 +72,7 @@
     border-radius: 50%;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -143,7 +141,6 @@
     color: var(--text-primary);
     font-weight: 800;
     font-size: 1.35rem;
-    animation: logoDropInDesktop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     z-index: 10;
     position: relative;
 }
@@ -208,7 +205,7 @@ body.dark-mode .logo-text {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     width: 38px;
     height: 38px;
 }
@@ -288,7 +285,7 @@ body.dark-mode .logo-text {
     letter-spacing: 0.5px;
     padding: 4px 10px;
     border-radius: 8px;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     background: transparent;
     user-select: none;
     margin-right: 4px;
@@ -330,7 +327,7 @@ body.dark-mode .logo-text {
     font-size: 0.9rem;
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -371,7 +368,7 @@ body.dark-mode .logo-text {
     min-width: 0;
     flex-shrink: 1;
     margin-left: 10px;
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     box-shadow: 0 0 10px rgba(34, 197, 94, 0.15);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
@@ -511,7 +508,7 @@ body.dark-mode .logo-text {
     font-size: 0.95rem;
     padding: 8px 12px;
     border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
 }
 
 .guest-login-btn:hover {
@@ -527,7 +524,7 @@ body.dark-mode .logo-text {
     text-decoration: none;
     font-weight: 600;
     font-size: 0.95rem;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     box-shadow: none;
 }
 
@@ -778,7 +775,7 @@ body.dark-mode .dropdown-user-info:hover {
     align-items: center;
     justify-content: center;
     opacity: 0.6;
-    transition: all 0.16s ease;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
     padding: 0;
     flex-shrink: 0;
 }
@@ -1224,7 +1221,7 @@ body.dark-mode .dropdown-item.admin-link:hover {
     position: relative;
     display: flex;
     align-items: center;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.14s ease, color 0.14s ease;
     box-sizing: border-box;
     padding: 0 4px;
 }
@@ -1248,7 +1245,7 @@ body.dark-mode .dropdown-item.admin-link:hover {
     text-align: center;
     left: 0;
     z-index: 1;
-    transition: all 0.4s ease;
+    transition: background-color 0.14s ease, color 0.14s ease;
     pointer-events: none;
     line-height: 1.1;
     display: flex;
@@ -1276,7 +1273,7 @@ body.dark-mode .dropdown-item.admin-link:hover {
     align-items: center;
     justify-content: center;
     z-index: 2;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: left 0.16s ease-out, background-color 0.14s ease, color 0.14s ease;
 }
 
 .neumorphic-theme-toggle.light .theme-thumb {
@@ -1508,7 +1505,7 @@ body:has(.global-upload-banner) .app-wrapper {
     align-items: center;
     justify-content: center;
     margin-right: 12px;
-    transition: all 0.2s ease;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease, transform 0.14s ease;
 }
 
 .nav-theme-toggle-btn:hover {

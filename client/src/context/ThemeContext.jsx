@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 const ThemeContext = createContext(null);
 
@@ -27,7 +27,7 @@ export const ThemeProvider = ({ children }) => {
 
     const isFirstMount = useRef(true);
 
-    // Apply theme changes with smooth, high-FPS morphing
+    // Apply theme changes instantaneously (0ms freeze, zero startViewTransition bitmap stall)
     useEffect(() => {
         const root = document.documentElement;
 
@@ -53,31 +53,37 @@ export const ThemeProvider = ({ children }) => {
             return;
         }
 
-        // Modern Chromium View Transitions API for 120 FPS native GPU crossfade
-        if (typeof document !== 'undefined' && document.startViewTransition) {
-            document.startViewTransition(() => {
-                applyThemeClasses();
+        // Disable transitions for 1 frame so hundreds of nodes swap colors in a single paint
+        root.classList.add('theme-switching');
+        applyThemeClasses();
+        let raf2 = null;
+        const raf1 = requestAnimationFrame(() => {
+            raf2 = requestAnimationFrame(() => {
+                root.classList.remove('theme-switching');
             });
-        } else {
-            root.classList.add('theme-transitioning');
-            applyThemeClasses();
-            const timer = setTimeout(() => {
-                root.classList.remove('theme-transitioning');
-            }, 180);
-            return () => clearTimeout(timer);
-        }
+        });
+        return () => {
+            cancelAnimationFrame(raf1);
+            if (raf2) cancelAnimationFrame(raf2);
+            root.classList.remove('theme-switching');
+        };
     }, [isDark]);
 
-    const toggleTheme = () => {
-        setIsDark(!isDark);
-    };
+    const toggleTheme = useCallback(() => {
+        setIsDark((prev) => !prev);
+    }, []);
 
-    const toggleMotionSpeed = () => {
+    const toggleMotionSpeed = useCallback(() => {
         setMotionSpeed((prev) => (prev === '1x' ? '0.5x' : '1x'));
-    };
+    }, []);
+
+    const contextValue = useMemo(
+        () => ({ isDark, toggleTheme, motionSpeed, setMotionSpeed, toggleMotionSpeed }),
+        [isDark, toggleTheme, motionSpeed, toggleMotionSpeed]
+    );
 
     return (
-        <ThemeContext.Provider value={{ isDark, toggleTheme, motionSpeed, setMotionSpeed, toggleMotionSpeed }}>
+        <ThemeContext.Provider value={contextValue}>
             {children}
         </ThemeContext.Provider>
     );

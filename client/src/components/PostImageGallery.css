@@ -60,26 +60,20 @@
     display: block;
     position: relative;
     z-index: 1;
-    transform: translateZ(0);
     image-rendering: auto;
 }
 
+.gallery-single-image-wrapper .gallery-image.single-img.is-loading-fade,
 .gallery-single-image-wrapper .gallery-image.single-img.is-loading-blur,
 .post-gallery-slide .gallery-image.slide-img.is-loading-blur {
-    opacity: 0.85;
-    filter: blur(18px);
-    -webkit-filter: blur(18px);
-    transform: scale(1.04) translateZ(0);
-    transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    opacity: 0;
+    transition: opacity 0.16s ease-out;
 }
 
 .gallery-single-image-wrapper .gallery-image.single-img.loaded,
 .post-gallery-slide .gallery-image.slide-img.loaded {
     opacity: 1;
-    filter: blur(0px);
-    -webkit-filter: blur(0px);
-    transform: scale(1) translateZ(0);
-    transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    transition: opacity 0.16s ease-out;
 }
 
 /* Removed: scale(1.012) hover was triggering full composite repass through backdrop-filter parent */

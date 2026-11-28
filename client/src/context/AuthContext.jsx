@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useGlobalStore } from '../store/useGlobalStore';
 import { getImageUrl } from '../utils/imageUtils';
 import { getActiveOtaVersion } from '../utils/otaUpdater';
+import { persistLocalIdle, clearMemoryCache } from '../utils/memoryCache';
 
 const resolveAbsAvatarUrl = (raw) => {
     if (!raw) return '';
@@ -58,6 +59,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     const [savedAccounts, setSavedAccounts] = useState(() => getStoredAccounts());
+    const userRef = useRef(user);
+    const tokenRef = useRef(token);
+    userRef.current = user;
+    tokenRef.current = token;
 
     // Keep active user synchronized in saved accounts list
     useEffect(() => {
@@ -387,26 +392,29 @@ export const AuthProvider = ({ children }) => {
         window.location.reload();
     };
 
-    const removeSavedAccount = (targetUserId) => {
+    const removeSavedAccount = useCallback((targetUserId) => {
         setSavedAccounts(prev => {
             const updated = prev.filter(a => a.userId !== targetUserId);
             persistAccounts(updated);
             return updated;
         });
-    };
+    }, []);
 
-    const logout = (removeCurrent = true) => {
+    const logout = useCallback((removeCurrent = true) => {
         try {
-            if (token) {
-                unbindFcmTokenReliable(token);
+            const currentToken = tokenRef.current;
+            const currentUser = userRef.current;
+            if (currentToken) {
+                unbindFcmTokenReliable(currentToken);
             }
-            if (removeCurrent && user?._id) {
+            if (removeCurrent && currentUser?._id) {
                 setSavedAccounts(prev => {
-                    const updated = prev.filter(a => a.userId !== user._id);
+                    const updated = prev.filter(a => a.userId !== currentUser._id);
                     persistAccounts(updated);
                     return updated;
                 });
             }
+            clearMemoryCache();
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             localStorage.removeItem('_oxypace_uid'); // presence cache temizle
@@ -429,9 +437,9 @@ export const AuthProvider = ({ children }) => {
         }
         // Reset unread counts and other portal state
         useGlobalStore.getState().resetStore();
-    };
+    }, []);
 
-    const updateUser = (userDataOrUpdater) => {
+    const updateUser = useCallback((userDataOrUpdater) => {
         setUser(prevUser => {
             const nextPatch = typeof userDataOrUpdater === 'function'
                 ? userDataOrUpdater(prevUser)
@@ -454,19 +462,18 @@ export const AuthProvider = ({ children }) => {
                 ...nextPatch,
                 securityQuestionsConfigured: newConfigured
             };
-            try {
-                localStorage.setItem('user', JSON.stringify(updated));
-            } catch (_) {}
+            persistLocalIdle('user', updated);
             return updated;
         });
-    };
+    }, []);
 
-    const refreshUser = async () => {
-        if (!token) return null;
-        return await fetchUser(token);
-    };
+    const refreshUser = useCallback(async () => {
+        const currentToken = tokenRef.current;
+        if (!currentToken) return null;
+        return await fetchUser(currentToken);
+    }, []);
 
-    const syncPortalInUser = (portalPayload) => {
+    const syncPortalInUser = useCallback((portalPayload) => {
         if (!portalPayload?._id) return;
         const pid = String(portalPayload._id);
         setUser((prevUser) => {
@@ -483,14 +490,12 @@ export const AuthProvider = ({ children }) => {
                 joinedPortals: Array.isArray(prevUser.joinedPortals) ? prevUser.joinedPortals.map(updateEntry) : prevUser.joinedPortals,
                 portals: Array.isArray(prevUser.portals) ? prevUser.portals.map(updateEntry) : prevUser.portals,
             };
-            try {
-                localStorage.setItem('user', JSON.stringify(updated));
-            } catch (_) {}
+            persistLocalIdle('user', updated);
             return updated;
         });
-    };
+    }, []);
 
-    const syncPortalMembership = (portalOrId, action = 'joined') => {
+    const syncPortalMembership = useCallback((portalOrId, action = 'joined') => {
         if (!portalOrId) return;
         const pid = typeof portalOrId === 'object' ? String(portalOrId._id || '') : String(portalOrId);
         if (!pid) return;
@@ -515,12 +520,10 @@ export const AuthProvider = ({ children }) => {
                 joinedPortals: mergeList(prevUser.joinedPortals),
                 portals: mergeList(prevUser.portals),
             };
-            try {
-                localStorage.setItem('user', JSON.stringify(updated));
-            } catch (_) {}
+            persistLocalIdle('user', updated);
             return updated;
         });
-    };
+    }, []);
 
     // Axios global response interceptor to detect if client IP or authenticated user is banned
     useEffect(() => {
@@ -561,7 +564,7 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         user,
         token,
         loading,
@@ -576,7 +579,18 @@ export const AuthProvider = ({ children }) => {
         addAndSwitchAccount,
         removeSavedAccount,
         isAuthenticated: !!token && !!user,
-    };
+    }), [
+        user,
+        token,
+        loading,
+        logout,
+        updateUser,
+        refreshUser,
+        syncPortalInUser,
+        syncPortalMembership,
+        savedAccounts,
+        removeSavedAccount,
+    ]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

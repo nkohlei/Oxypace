@@ -145,13 +145,14 @@ export const SocketProvider = ({ children }) => {
             if (!userId) return;
             const strId = String(userId);
             setOnlineUsers(prev => {
-                const prevList = (prev || []).map(String);
+                const list = Array.isArray(prev) ? prev : [];
+                const exists = list.includes(strId);
                 if (status === 'online') {
-                    return prevList.includes(strId) ? prevList : [...prevList, strId];
+                    return exists ? prev : [...list, strId];
                 } else if (status === 'offline') {
-                    return prevList.filter(id => id !== strId);
+                    return exists ? list.filter(id => id !== strId) : prev;
                 }
-                return prevList;
+                return prev;
             });
         });
 

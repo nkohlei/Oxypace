@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { SlidersHorizontal, Globe, UserCheck, Users, Clock, Lock } from 'lucide-react';
@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import SubHeader from '../components/SubHeader';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUtils';
+import { getCached, setCached } from '../utils/memoryCache';
 import { preloadPortals, preloadUsers } from '../utils/preloadUtils';
 import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
@@ -21,19 +22,129 @@ const getTitleLengthTier = (name = '') => {
     return 'xlarge';
 };
 
+const PortalExploreCard = memo(({ portal, isMember, defaultBanner, onCardClick, onJoin }) => {
+    const titleTier = getTitleLengthTier(portal.name);
+    const avatarSrc = portal.avatar
+        ? (/\.gif($|\?)/i.test(portal.avatar)
+            ? getImageUrl(portal.avatar, 'original')
+            : getImageUrl(portal.lowResAvatar || portal.avatar, 'thumbnail'))
+        : null;
+
+    return (
+        <div
+            className="modern-portal-card"
+            onClick={() => onCardClick(portal)}
+        >
+            {/* Slim Banner with native lazy <img> + Overlaid Avatar, Title & Corner Badges */}
+            <div
+                className="card-banner"
+                style={!portal.banner ? { background: defaultBanner } : undefined}
+            >
+                {portal.banner && (
+                    <img
+                        src={getImageUrl(portal.banner)}
+                        alt=""
+                        className="card-banner-img"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                )}
+                <div className="card-banner-top-left">
+                    <span className="banner-member-count" title="Üye">
+                        <Users size={13} strokeWidth={2.2} />
+                        <span>{portal.memberCount || 0}</span>
+                    </span>
+                </div>
+
+                {(portal.privacy === 'private' || portal.isNSFW || isMember) && (
+                    <div className="card-banner-top-right">
+                        {portal.privacy === 'private' && (
+                            <span className="banner-privacy-icon" title="Gizli Portal" aria-label="Gizli Portal">
+                                <Lock size={13} strokeWidth={2.3} />
+                            </span>
+                        )}
+                        {portal.isNSFW && (
+                            <span className="banner-nsfw-tag">+18</span>
+                        )}
+                        {isMember && (
+                            <span className="banner-member-icon" title="Üyesiniz" aria-label="Üyesiniz">
+                                <UserCheck size={15} strokeWidth={2.4} />
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                <div className="card-banner-overlay">
+                    <div className="card-icon-wrapper">
+                        {avatarSrc ? (
+                            <img
+                                src={avatarSrc}
+                                alt={portal.name}
+                                className="card-icon-img"
+                                loading="lazy"
+                                decoding="async"
+                                width="36"
+                                height="36"
+                                onError={(e) => {
+                                    const orig = getImageUrl(portal.avatar, 'original');
+                                    if (orig && e.target.src !== orig) e.target.src = orig;
+                                }}
+                            />
+                        ) : (
+                            <div className="card-icon-placeholder">
+                                {portal.name.substring(0, 2).toUpperCase()}
+                            </div>
+                        )}
+                    </div>
+                    <div className="card-title-group">
+                        <h3 className={`card-title title-${titleTier}`}>
+                            <span className="card-title-text">{portal.name}</span>
+                            <PortalBadges portal={portal} size={titleTier === 'short' ? 18 : titleTier === 'medium' ? 16 : 14} />
+                        </h3>
+                    </div>
+                </div>
+            </div>
+
+            {/* Slim Single-Row Description Strip */}
+            <div className="card-body">
+                <p className="card-desc" title={portal.description || ''}>
+                    {portal.description || 'Bu topluluk hakkında henüz bir açıklama yok.'}
+                </p>
+
+                {!isMember && (
+                    portal.isRequested ? (
+                        <button
+                            className="join-status-btn requested"
+                            onClick={(e) => e.stopPropagation()}
+                            title="İstek Gönderildi"
+                        >
+                            <Clock size={11} />
+                            <span>İstek</span>
+                        </button>
+                    ) : (
+                        <button
+                            className={`join-action-btn ${portal.privacy === 'private' ? 'request' : 'join'}`}
+                            onClick={(e) => onJoin(e, portal._id, portal.privacy === 'private')}
+                        >
+                            {portal.privacy === 'private' ? 'İstek' : 'Katıl'}
+                        </button>
+                    )
+                )}
+            </div>
+        </div>
+    );
+});
+
 const Search = () => {
     const { user, syncPortalMembership } = useAuth(); // Auth context
     const [query, setQuery] = useState('');
     const [userResults, setUserResults] = useState([]);
     const [portalResults, setPortalResults] = useState(() => {
-        try {
-            const cached = sessionStorage.getItem('oxypace_cached_explore_portals');
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                preloadPortals(parsed);
-                return parsed;
-            }
-        } catch (_) {}
+        const cached = getCached('oxypace_cached_explore_portals', { checkLocal: false });
+        if (Array.isArray(cached) && cached.length > 0) {
+            preloadPortals(cached);
+            return cached;
+        }
         return [];
     });
     const [selectedPortalForInfo, setSelectedPortalForInfo] = useState(null);
@@ -42,6 +153,7 @@ const Search = () => {
     const [activeTab, setActiveTab] = useState('portals'); // 'portals' or 'users'
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+    const isHeaderHiddenRef = useRef(false);
     const lastScrollTopRef = useRef(0);
     const searchDebounceRef = useRef(null);
     const navigate = useNavigate();
@@ -57,17 +169,24 @@ const Search = () => {
 
         lastScrollTopRef.current = getScrollTop();
 
+        const updateHeaderHidden = (next) => {
+            if (isHeaderHiddenRef.current !== next) {
+                isHeaderHiddenRef.current = next;
+                setIsHeaderHidden(next);
+            }
+        };
+
         const handleScroll = () => {
             const currentTop = getScrollTop();
             const delta = currentTop - lastScrollTopRef.current;
 
             if (currentTop <= 16) {
-                setIsHeaderHidden(false);
-            } else if (Math.abs(delta) >= 6) {
+                updateHeaderHidden(false);
+            } else if (Math.abs(delta) >= 8) {
                 if (delta > 0 && currentTop > 56) {
-                    setIsHeaderHidden(true);
+                    updateHeaderHidden(true);
                 } else if (delta < 0) {
-                    setIsHeaderHidden(false);
+                    updateHeaderHidden(false);
                 }
             }
 
@@ -106,7 +225,7 @@ const Search = () => {
             if (Array.isArray(res.data)) {
                 setPortalResults(res.data);
                 if (!keyword) {
-                    sessionStorage.setItem('oxypace_cached_explore_portals', JSON.stringify(res.data));
+                    setCached('oxypace_cached_explore_portals', res.data, { session: true, local: false });
                 }
                 preloadPortals(res.data);
             }
@@ -149,7 +268,10 @@ const Search = () => {
         }
     };
 
-    const handleJoinPortal = async (e, portalId, isPrivate) => {
+    const portalResultsRef = useRef(portalResults);
+    portalResultsRef.current = portalResults;
+
+    const handleJoinPortal = useCallback(async (e, portalId, isPrivate) => {
         e.stopPropagation();
         if (!user) {
             navigate('/login');
@@ -157,7 +279,6 @@ const Search = () => {
         }
         try {
             const res = await axios.post(`/api/portals/${portalId}/join`);
-            // Update local state to reflect change
             setPortalResults((prev) =>
                 prev.map((p) => {
                     if (p._id === portalId) {
@@ -171,14 +292,14 @@ const Search = () => {
                 })
             );
             if (user && syncPortalMembership && res.data.status !== 'requested') {
-                const targetPortal = portalResults.find((p) => p._id === portalId) || { _id: portalId };
+                const targetPortal = portalResultsRef.current.find((p) => p._id === portalId) || { _id: portalId };
                 syncPortalMembership(targetPortal, 'joined');
             }
         } catch (err) {
             console.error('Join failed:', err);
             alert(err.response?.data?.message || 'İşlem başarısız oldu.');
         }
-    };
+    }, [user, navigate, syncPortalMembership]);
 
     const handleLeavePortal = async (e, portalId, portalName) => {
         e.stopPropagation();
@@ -226,7 +347,7 @@ const Search = () => {
         return 'linear-gradient(135deg, #18181b 0%, #27272a 50%, #3f3f46 100%)';
     };
 
-    const isUserMemberOfPortal = (targetPortal) => {
+    const isUserMemberOfPortal = useCallback((targetPortal) => {
         if (!targetPortal) return false;
         if (targetPortal.isMember) return true;
         const currentUserId = user?._id?.toString();
@@ -239,9 +360,9 @@ const Search = () => {
             }
         }
         return false;
-    };
+    }, [user]);
 
-    const handlePortalCardClick = (targetPortal) => {
+    const handlePortalCardClick = useCallback((targetPortal) => {
         const isMember = isUserMemberOfPortal(targetPortal);
         const isPrivate = targetPortal.privacy === 'private' || targetPortal.isPrivate === true;
 
@@ -250,7 +371,7 @@ const Search = () => {
         } else {
             navigate(`/portal/${targetPortal._id}`);
         }
-    };
+    }, [isUserMemberOfPortal, navigate]);
 
     return (
         <div className="app-wrapper search-page-wrapper">
@@ -385,116 +506,16 @@ const Search = () => {
                                             <p>Portal bulunamadı.</p>
                                         </div>
                                     ) : (
-                                        portalResults.map((portal) => {
-                                            const isMember = isUserMemberOfPortal(portal);
-                                            const titleTier = getTitleLengthTier(portal.name);
-                                            return (
-                                            <div
+                                        portalResults.map((portal) => (
+                                            <PortalExploreCard
                                                 key={portal._id}
-                                                className="modern-portal-card"
-                                                onClick={() => handlePortalCardClick(portal)}
-                                            >
-                                                {/* Slim Banner + Overlaid Avatar, Title & Frameless Corner Badges */}
-                                                <div
-                                                    className="card-banner"
-                                                    style={{
-                                                        background: portal.banner
-                                                            ? `url(${getImageUrl(portal.banner)}) center/cover`
-                                                            : getDefaultBanner(portal),
-                                                    }}
-                                                >
-                                                    <div className="card-banner-top-left">
-                                                        <span className="banner-member-count" title="Üye">
-                                                            <Users size={13} strokeWidth={2.2} />
-                                                            <span>{portal.memberCount || 0}</span>
-                                                        </span>
-                                                    </div>
-
-                                                    {(portal.privacy === 'private' || portal.isNSFW || isMember) && (
-                                                        <div className="card-banner-top-right">
-                                                            {portal.privacy === 'private' && (
-                                                                <span className="banner-privacy-icon" title="Gizli Portal" aria-label="Gizli Portal">
-                                                                    <Lock size={13} strokeWidth={2.3} />
-                                                                </span>
-                                                            )}
-                                                            {portal.isNSFW && (
-                                                                <span className="banner-nsfw-tag">+18</span>
-                                                            )}
-                                                            {isMember && (
-                                                                <span className="banner-member-icon" title="Üyesiniz" aria-label="Üyesiniz">
-                                                                    <UserCheck size={15} strokeWidth={2.4} />
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    <div className="card-banner-overlay">
-                                                        <div className="card-icon-wrapper">
-                                                            {portal.avatar ? (
-                                                                <img
-                                                                    src={getImageUrl(portal.avatar)}
-                                                                    alt={portal.name}
-                                                                    className="card-icon-img"
-                                                                    loading="eager"
-                                                                    decoding="async"
-                                                                    width="36"
-                                                                    height="36"
-                                                                />
-                                                            ) : (
-                                                                <div className="card-icon-placeholder">
-                                                                    {portal.name
-                                                                        .substring(0, 2)
-                                                                        .toUpperCase()}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="card-title-group">
-                                                            <h3 className={`card-title title-${titleTier}`}>
-                                                                <span className="card-title-text">{portal.name}</span>
-                                                                <PortalBadges portal={portal} size={titleTier === 'short' ? 18 : titleTier === 'medium' ? 16 : 14} />
-                                                            </h3>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Slim Single-Row Description Strip */}
-                                                <div className="card-body">
-                                                    <p className="card-desc" title={portal.description || ''}>
-                                                        {portal.description ||
-                                                            'Bu topluluk hakkında henüz bir açıklama yok.'}
-                                                    </p>
-
-                                                    {!isMember && (
-                                                        portal.isRequested ? (
-                                                            <button
-                                                                className="join-status-btn requested"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                title="İstek Gönderildi"
-                                                            >
-                                                                <Clock size={11} />
-                                                                <span>İstek</span>
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                className={`join-action-btn ${portal.privacy === 'private' ? 'request' : 'join'}`}
-                                                                onClick={(e) =>
-                                                                    handleJoinPortal(
-                                                                        e,
-                                                                        portal._id,
-                                                                        portal.privacy === 'private'
-                                                                    )
-                                                                }
-                                                            >
-                                                                {portal.privacy === 'private'
-                                                                    ? 'İstek'
-                                                                    : 'Katıl'}
-                                                            </button>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </div>
-                                            );
-                                        })
+                                                portal={portal}
+                                                isMember={isUserMemberOfPortal(portal)}
+                                                defaultBanner={getDefaultBanner(portal)}
+                                                onCardClick={handlePortalCardClick}
+                                                onJoin={handleJoinPortal}
+                                            />
+                                        ))
                                     )}
                                 </div>
                             )}
