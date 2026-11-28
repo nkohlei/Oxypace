@@ -2,7 +2,7 @@ export const APP_VERSION_CONFIG = {
     latestVersion: '2.6.5',
     versionCode: 266,
     minSupportedVersionCode: 266,
-    otaVersion: '2.6.5-ota.8',
+    otaVersion: '2.6.5-ota.9',
     builtinOtaVersion: '2.6.5-ota.2',
     otaBundleUrl: 'https://api.oxypace.com.tr/downloads/bundle.zip',
     otaMinNativeVersionCode: 266,

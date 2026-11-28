@@ -6,8 +6,13 @@
  */
 
 // Cloudflare R2 Custom Domain (Global Edge CDN, HTTP/3 QUIC, Zero Egress, Unblocked in TR)
-export const R2_DOMAIN = process.env.R2_PUBLIC_DOMAIN || 'https://cdn.oxypace.com.tr';
 const LEGACY_R2_DEV = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+const rawEnvDomain = (typeof process !== 'undefined' && process.env.R2_PUBLIC_DOMAIN)
+    ? process.env.R2_PUBLIC_DOMAIN.trim().replace(/\/+$/, '')
+    : '';
+export const R2_DOMAIN = (rawEnvDomain && !rawEnvDomain.includes('.r2.dev'))
+    ? rawEnvDomain
+    : 'https://cdn.oxypace.com.tr';
 
 // Koyeb API Proxy Base URL - Dynamic with fallback to new domain
 const backendBase = (typeof process !== 'undefined' && process.env.BACKEND_URL) 
@@ -17,16 +22,15 @@ export const PROXY_BASE = `${backendBase.replace(/\/$/, '')}/api/media/`;
 
 export const constructProxiedUrl = (key) => {
     if (!key) return null;
-    
-    // If it's already a direct R2 custom CDN URL, return it as-is
-    if (key.startsWith(R2_DOMAIN)) {
-        return key;
-    }
 
-    let cleanKey = key;
+    let cleanKey = String(key).trim();
 
-    // Normalize legacy r2.dev URLs to custom CDN domain
-    if (cleanKey.startsWith(LEGACY_R2_DEV)) {
+    // Strip custom CDN domain or legacy r2.dev domain so we always normalize slashes cleanly
+    if (cleanKey.startsWith(R2_DOMAIN)) {
+        cleanKey = cleanKey.substring(R2_DOMAIN.length);
+    } else if (cleanKey.startsWith('https://cdn.oxypace.com.tr')) {
+        cleanKey = cleanKey.substring('https://cdn.oxypace.com.tr'.length);
+    } else if (cleanKey.startsWith(LEGACY_R2_DEV)) {
         cleanKey = cleanKey.substring(LEGACY_R2_DEV.length);
     }
 
@@ -45,14 +49,14 @@ export const constructProxiedUrl = (key) => {
     }
 
     // If it's still an external URL (starts with http), return it
-    if (cleanKey.startsWith('http')) {
+    if (cleanKey.startsWith('http://') || cleanKey.startsWith('https://')) {
         return cleanKey;
     }
 
-    // Ensure key doesn't start with a slash
-    cleanKey = cleanKey.startsWith('/') ? cleanKey.substring(1) : cleanKey;
-    
-    // Return the DIRECT R2 URL (Fastest, supports seeking, sound, and full controls)
+    // Strip ALL leading slashes and collapse any accidental double slashes (prevents R2 404 on //posts/...)
+    cleanKey = cleanKey.replace(/^\/+/, '').replace(/\/{2,}/g, '/');
+
+    // Return the DIRECT R2 custom CDN URL
     return `${R2_DOMAIN}/${cleanKey}`;
 };
 

@@ -105,9 +105,9 @@ export const getImageUrl = (path, sizeType = 'original') => {
             relativePath = relativePath.substring(9);
         }
 
-        if (relativePath.startsWith('/')) {
-            relativePath = relativePath.substring(1);
-        }
+        // Strip ALL leading slashes and collapse accidental duplicate slashes (e.g. //posts/...)
+        // Cloudflare R2 Custom Domain treats leading // as part of the object key and returns 404!
+        relativePath = relativePath.replace(/^\/+/, '');
 
         // Normalize legacy post folder structure
         if (relativePath.startsWith('post-') && !relativePath.startsWith('posts/')) {
@@ -130,11 +130,15 @@ export const getImageUrl = (path, sizeType = 'original') => {
             // --- 2. INTERNAL R2 IMAGES, VIDEOS, AUDIO & ASSETS ---
             // Route directly to Cloudflare R2 Custom Domain (cdn.oxypace.com.tr) for global Edge caching,
             // HTTP/3 QUIC, zero VPS/Node proxy overhead, and complete isolation from api.oxypace.com.tr.
+            relativePath = relativePath.replace(/\/{2,}/g, '/');
+
             if (isHeic) {
                 // HEIC/HEIF requires on-the-fly JPEG conversion on backend
                 finalUrl = `${apiBaseUrl}/api/media/${relativePath}`;
             } else {
-                if (sizeType && sizeType !== 'original' && (relativePath.includes('avatars/') || relativePath.includes('portals/') || relativePath.includes('banners/'))) {
+                // Only request pre-generated multi-res WebP variants for avatar/portal icons (never for 'feed' post images!)
+                const isAvatarVariant = sizeType === 'thumbnail' || sizeType === 'medium' || sizeType === 'lowres';
+                if (isAvatarVariant && (relativePath.includes('avatars/') || relativePath.includes('portals/') || relativePath.includes('banners/'))) {
                     const pathParts = relativePath.split('?');
                     const mainPath = pathParts[0];
                     const query = pathParts[1] ? `?${pathParts[1]}` : '';
@@ -145,14 +149,14 @@ export const getImageUrl = (path, sizeType = 'original') => {
                         const isLegacyAvatar = /av\.+\d+/.test(pathWithoutExt) || pathWithoutExt.includes('default') || pathWithoutExt.includes('ui-avatars');
 
                         // Request pre-generated WebP variant (UserAvatar falls back cleanly to original on 404)
-                        if (!isLegacyAvatar && !mainPath.includes('-thumbnail') && !mainPath.includes('-medium') && !mainPath.includes('-lowres')) {
+                        if (!isLegacyAvatar && !mainPath.includes('-thumbnail') && !mainPath.includes('-medium') && !mainPath.includes('-lowres') && !mainPath.includes('-banner')) {
                             relativePath = `${pathWithoutExt}-${sizeType}.webp${query}`;
                         }
                     }
                 }
 
                 // Strip ?w=720 if present so Cloudflare Edge & browser share one canonical cache key
-                const cleanCdnPath = relativePath.replace(/([?&])w=\d+&?/, (m, p1) => (p1 === '?' ? '?' : '&')).replace(/[?&]$/, '');
+                const cleanCdnPath = relativePath.replace(/([?&])w=\d+&?/, (m, p1) => (p1 === '?' ? '?' : '&')).replace(/[?&]$/, '').replace(/^\/+/, '');
                 finalUrl = `${cdnBaseUrl}/${cleanCdnPath}`;
             }
         }

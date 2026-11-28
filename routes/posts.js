@@ -931,16 +931,19 @@ router.get('/download', async (req, res) => {
             return res.status(400).json({ message: 'URL is required' });
         }
         
-        // Resolve relative proxy paths to absolute R2 domain
-        const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+        // Resolve relative proxy paths to absolute custom CDN domain (clean slashes)
+        const R2_DOMAIN = 'https://cdn.oxypace.com.tr';
         if (url.startsWith('/r2-media/')) {
-            url = `${R2_DOMAIN}/${url.substring(10)}`;
+            url = `${R2_DOMAIN}/${url.substring(10).replace(/^\/+/, '')}`;
         } else if (url.startsWith('r2-media/')) {
-            url = `${R2_DOMAIN}/${url.substring(9)}`;
+            url = `${R2_DOMAIN}/${url.substring(9).replace(/^\/+/, '')}`;
         } else if (url.startsWith('/')) {
-            url = `${R2_DOMAIN}${url}`;
+            url = `${R2_DOMAIN}/${url.replace(/^\/+/, '')}`;
         } else if (!url.startsWith('http')) {
-            url = `${R2_DOMAIN}/${url}`;
+            url = `${R2_DOMAIN}/${url.replace(/^\/+/, '')}`;
+        } else if (url.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) {
+            const tail = url.split('pub-094a78010abf4ebf9726834268946cb8.r2.dev')[1] || '';
+            url = `${R2_DOMAIN}/${tail.replace(/^\/+/, '')}`;
         }
         
         const response = await axios.get(url, { responseType: 'stream' });

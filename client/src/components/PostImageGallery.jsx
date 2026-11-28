@@ -251,6 +251,16 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
         if (nextRatio) setAspectRatio(nextRatio);
     };
 
+    const handleError = (e) => {
+        const fallback = getImageUrl(imgUrl, 'original');
+        if (fallback && e.currentTarget.src !== fallback && !e.currentTarget.dataset.fallbackTried) {
+            e.currentTarget.dataset.fallbackTried = '1';
+            e.currentTarget.src = fallback;
+            return;
+        }
+        setIsLoaded(true);
+    };
+
     return (
         <div
             className={`gallery-single-image-wrapper ${isLoaded ? 'is-loaded' : 'is-loading'}`}
@@ -265,6 +275,7 @@ const SinglePostImage = ({ imgUrl, onOpenLightbox }) => {
                 loading="lazy"
                 decoding="async"
                 onLoad={handleLoad}
+                onError={handleError}
                 className={`gallery-image single-img ${isLoaded ? 'loaded' : 'is-loading-fade'}`}
             />
             {isLoaded && (
@@ -309,6 +320,15 @@ const CarouselSlide = ({ imgUrl, index, onOpenLightbox }) => {
                 decoding="async"
                 onLoad={() => {
                     imageLoadedSet.add(resolvedUrl);
+                    setIsLoaded(true);
+                }}
+                onError={(e) => {
+                    const fallback = getImageUrl(imgUrl, 'original');
+                    if (fallback && e.currentTarget.src !== fallback && !e.currentTarget.dataset.fallbackTried) {
+                        e.currentTarget.dataset.fallbackTried = '1';
+                        e.currentTarget.src = fallback;
+                        return;
+                    }
                     setIsLoaded(true);
                 }}
                 className={`gallery-image slide-img ${isLoaded ? 'loaded' : 'is-loading-blur'}`}
