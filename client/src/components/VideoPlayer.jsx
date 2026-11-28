@@ -215,7 +215,24 @@ const checkCenterVideo = () => {
     }
   });
 
-  // 2. If any video is actively playing and STILL visible on screen (>= 25%), KEEP it playing
+  // 2. Enforce SINGLE-VIDEO network discipline: only the single focused/playing video may prebuffer ('auto'),
+  // while all other mounted videos stay 'none' (with poster) or 'metadata' so multiple MP4s never saturate bandwidth.
+  const primaryFocusVideo = currentlyPlaying || closestVideo;
+  mountedVideos.forEach(video => {
+    if (isLiveStreamVideo(video)) return;
+    if (video === primaryFocusVideo) {
+      if (video.preload !== 'auto') {
+        video.preload = 'auto';
+      }
+    } else if (video.paused) {
+      const idlePreload = video.poster ? 'none' : 'metadata';
+      if (video.preload !== idlePreload) {
+        video.preload = idlePreload;
+      }
+    }
+  });
+
+  // If any video is actively playing and STILL visible on screen (>= 25%), KEEP it playing
   if (currentlyPlaying) {
     pauseAllOtherVideos(currentlyPlaying);
     return;
@@ -351,7 +368,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   });
   const [derivedPoster, setDerivedPoster] = useState(null);
   const [isWaiting, setIsWaiting] = useState(false);
-  const [isInViewport, setIsInViewport] = useState(false);
   const [naturalDimensions, setNaturalDimensions] = useState(null);
   const [probedOriginalHeight, setProbedOriginalHeight] = useState(0);
 
@@ -1470,8 +1486,6 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
     if (container && typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-          const nearOrVisible = entry.isIntersecting;
-          setIsInViewport(prev => (prev === nearOrVisible ? prev : nearOrVisible));
           if (!entry.isIntersecting || entry.intersectionRatio < 0.2) {
             // Pauses immediately when it goes out of view or below 20% visible
             const containerVideos = container.querySelectorAll('video');
@@ -2112,7 +2126,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
         className="native-video-element"
         style={videoStyle('A')}
         playsInline loop={!isAdPlaying}
-        preload={activeVideo === 'A' ? (isInViewport ? "auto" : "metadata") : "none"}
+        preload={activeVideo === 'A' ? (watchParty ? "auto" : (effectivePoster ? "none" : "metadata")) : "none"}
         muted={isMuted}
         crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
         onClick={handleVideoAreaClick}
@@ -2134,7 +2148,7 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
           className="native-video-element"
           style={videoStyle('B')}
           playsInline loop={!isAdPlaying}
-          preload={activeVideo === 'B' ? (isInViewport ? "auto" : "metadata") : "none"}
+          preload={activeVideo === 'B' ? (watchParty ? "auto" : (effectivePoster ? "none" : "metadata")) : "none"}
           muted={isMuted}
           crossOrigin={isHls(src) || (src && src.startsWith('http') && !src.includes('pub-094a78010abf4ebf9726834268946cb8.r2.dev')) ? undefined : "anonymous"}
           onClick={handleVideoAreaClick}

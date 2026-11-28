@@ -5,8 +5,9 @@
  * Hardcoded strings ensure operational stability even if environment variables are misconfigured.
  */
 
-// Cloudflare R2 Public Domain (The 'ham' URL) - HARDCODED as per instructions
-export const R2_DOMAIN = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
+// Cloudflare R2 Custom Domain (Global Edge CDN, HTTP/3 QUIC, Zero Egress, Unblocked in TR)
+export const R2_DOMAIN = process.env.R2_PUBLIC_DOMAIN || 'https://cdn.oxypace.com.tr';
+const LEGACY_R2_DEV = 'https://pub-094a78010abf4ebf9726834268946cb8.r2.dev';
 
 // Koyeb API Proxy Base URL - Dynamic with fallback to new domain
 const backendBase = (typeof process !== 'undefined' && process.env.BACKEND_URL) 
@@ -17,12 +18,17 @@ export const PROXY_BASE = `${backendBase.replace(/\/$/, '')}/api/media/`;
 export const constructProxiedUrl = (key) => {
     if (!key) return null;
     
-    // If it's already a direct R2 URL, return it as-is
+    // If it's already a direct R2 custom CDN URL, return it as-is
     if (key.startsWith(R2_DOMAIN)) {
         return key;
     }
 
     let cleanKey = key;
+
+    // Normalize legacy r2.dev URLs to custom CDN domain
+    if (cleanKey.startsWith(LEGACY_R2_DEV)) {
+        cleanKey = cleanKey.substring(LEGACY_R2_DEV.length);
+    }
 
     // Extract key from absolute or relative proxy URLs
     if (cleanKey.includes('/api/media/')) {
