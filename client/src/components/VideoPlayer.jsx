@@ -403,14 +403,17 @@ const VideoPlayer = ({ src, qualities, videoUrl, lowVideoUrl, video144, video360
   }, []);
 
   useEffect(() => {
+    const serverAutoplay = user?.settings?.video?.autoplay;
     const local = localStorage.getItem('video_autoplay');
-    if (local === 'on' || local === 'off') {
+    if (serverAutoplay === 'on' || serverAutoplay === 'off') {
+      if (local !== serverAutoplay) {
+        localStorage.setItem('video_autoplay', serverAutoplay);
+      }
+      cachedAutoplayOff = serverAutoplay === 'off';
+      setIsAutoplayOff(serverAutoplay === 'off');
+    } else if (local === 'on' || local === 'off') {
       cachedAutoplayOff = local === 'off';
       setIsAutoplayOff(local === 'off');
-    } else if (user?.settings?.video?.autoplay === 'on' || user?.settings?.video?.autoplay === 'off') {
-      localStorage.setItem('video_autoplay', user.settings.video.autoplay);
-      cachedAutoplayOff = user.settings.video.autoplay === 'off';
-      setIsAutoplayOff(user.settings.video.autoplay === 'off');
     }
   }, [user?.settings?.video?.autoplay]);
 

@@ -21,16 +21,16 @@
     display: none;
 }
 
-/* ===================== Auth In-Page Modal Overlay ===================== */
+/* ===================== Auth In-Page Modal Overlay (Solid Matte) ===================== */
 .auth-modal-overlay {
     position: fixed !important;
     inset: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
     height: 100dvh !important;
-    background: rgba(0, 0, 0, 0.65) !important;
-    backdrop-filter: blur(16px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    background: rgba(6, 7, 10, 0.92) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -38,12 +38,12 @@
     z-index: 9999999 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    animation: authOverlayFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: authOverlayFade 0.14s ease-out forwards;
 }
 
 html.light .auth-modal-overlay,
 :root[data-theme="light"] .auth-modal-overlay {
-    background: rgba(255, 255, 255, 0.65) !important;
+    background: rgba(240, 242, 246, 0.94) !important;
 }
 
 @keyframes authOverlayFade {
@@ -70,17 +70,15 @@ html.light .auth-modal-overlay,
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: #171a22;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     color: #ffffff;
     text-decoration: none;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    transition: all 0.2s ease;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    transition: background-color 0.14s ease, border-color 0.14s ease;
     flex-shrink: 0;
     cursor: pointer;
     margin-top: 2px;
@@ -88,50 +86,48 @@ html.light .auth-modal-overlay,
 
 html.light .auth-circle-back-btn,
 :root[data-theme="light"] .auth-circle-back-btn {
-    background: rgba(0, 0, 0, 0.06);
-    border-color: rgba(0, 0, 0, 0.18);
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.14);
     color: #111111;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .auth-circle-back-btn svg {
     width: 18px;
     height: 18px;
-    transition: transform 0.2s ease;
 }
 
 .auth-circle-back-btn:hover {
-    background: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 255, 255, 0.35);
-    transform: translateX(-3px);
+    background: #232734;
+    border-color: rgba(255, 255, 255, 0.28);
 }
 
 html.light .auth-circle-back-btn:hover,
 :root[data-theme="light"] .auth-circle-back-btn:hover {
-    background: rgba(0, 0, 0, 0.12);
-    border-color: rgba(0, 0, 0, 0.3);
+    background: #f1f5f9;
+    border-color: rgba(0, 0, 0, 0.25);
 }
 
-/* ===================== Compact & High-Contrast Auth Card ===================== */
+/* ===================== Compact & Solid Matte High-Contrast Auth Card ===================== */
 .auth-card {
     position: relative;
     z-index: 2;
     width: 340px;
     max-width: calc(100vw - 40px);
-    border-radius: 20px;
-    padding: 28px 24px;
-    background: rgba(14, 18, 28, 0.82) !important;
-    backdrop-filter: blur(24px) !important;
-    -webkit-backdrop-filter: blur(24px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    border-radius: 16px;
+    padding: 26px 24px;
+    background: #12141a !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85) !important;
 }
 
 html.light .auth-card,
 :root[data-theme="light"] .auth-card {
-    background: rgba(255, 255, 255, 0.92) !important;
+    background: #ffffff !important;
     border: 1px solid rgba(0, 0, 0, 0.12) !important;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.14) !important;
 }
 
 /* ===================== Auth Header ===================== */

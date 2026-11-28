@@ -1581,88 +1581,89 @@ router.get('/:id/following', protect, mongoIdValidation('id'), async (req, res) 
 router.put('/settings', protect, async (req, res) => {
     try {
         const { notifications, privacy, video } = req.body;
-        const user = await User.findById(req.user._id);
+        const setPayload = {};
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (!user.settings) {
-            user.settings = {};
-        }
-
-        const toPlain = (sub) => (sub && typeof sub.toObject === 'function' ? sub.toObject() : (sub || {}));
-        user.settings.notifications = toPlain(user.settings.notifications);
-        user.settings.privacy = toPlain(user.settings.privacy);
-        user.settings.video = toPlain(user.settings.video);
-
-        if (notifications) {
-            user.settings.notifications = { ...user.settings.notifications, ...notifications };
-            user.markModified('settings.notifications');
-        }
-        if (privacy) {
-            user.settings.privacy = { ...user.settings.privacy, ...privacy };
-            user.markModified('settings.privacy');
-
-            // Handle live real-time showOnlineStatus toggle across cluster & all clients
-            if (typeof privacy.showOnlineStatus === 'boolean') {
-                const io = req.app.get('io');
-                const strUserId = String(user._id);
-                if (!privacy.showOnlineStatus) {
-                    if (pubClient) {
-                        try {
-                            await pubClient.sadd('hidden_user_ids', strUserId);
-                            await pubClient.srem('online_user_ids', strUserId);
-                        } catch (err) {}
-                    }
-                    if (io) {
-                        io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
-                        try {
-                            const redisMembers = pubClient ? await pubClient.smembers('online_user_ids') : [];
-                            const hiddenMembers = pubClient ? await pubClient.smembers('hidden_user_ids') : [];
-                            const hiddenSet = new Set(hiddenMembers.map(String));
-                            const filtered = (redisMembers || []).filter(id => !hiddenSet.has(String(id)));
-                            io.emit('getOnlineUsers', filtered);
-                        } catch (err) {}
-                    }
-                } else {
-                    if (pubClient) {
-                        try {
-                            await pubClient.srem('hidden_user_ids', strUserId);
-                            await pubClient.sadd('online_user_ids', strUserId);
-                        } catch (err) {}
-                    }
-                    if (io) {
-                        io.emit('user_status_change', { userId: strUserId, status: 'online' });
-                        try {
-                            const redisMembers = pubClient ? await pubClient.smembers('online_user_ids') : [];
-                            io.emit('getOnlineUsers', redisMembers || []);
-                        } catch (err) {}
-                    }
+        if (notifications && typeof notifications === 'object') {
+            for (const [k, v] of Object.entries(notifications)) {
+                if (typeof v === 'boolean') {
+                    setPayload[`settings.notifications.${k}`] = v;
                 }
             }
         }
-        if (video && typeof video === 'object') {
-            const nextVideo = { ...user.settings.video };
-            if (['auto', 'performance', 'saver', 'lowest'].includes(video.playbackQuality)) {
-                nextVideo.playbackQuality = video.playbackQuality;
+
+        if (privacy && typeof privacy === 'object') {
+            for (const [k, v] of Object.entries(privacy)) {
+                if (v !== undefined) {
+                    setPayload[`settings.privacy.${k}`] = v;
+                }
             }
-            if (['ask', '1080', '720', '360'].includes(video.downloadQuality)) {
-                nextVideo.downloadQuality = video.downloadQuality;
-            }
-            if (['ask', 'mp4', 'original'].includes(video.downloadFormat)) {
-                nextVideo.downloadFormat = video.downloadFormat;
-            }
-            if (video.autoplay === 'on' || video.autoplay === 'off') {
-                nextVideo.autoplay = video.autoplay;
-            }
-            user.settings.video = nextVideo;
-            user.markModified('settings.video');
         }
 
-        user.markModified('settings');
-        await user.save();
-        res.json({ message: 'Settings updated', settings: user.settings });
+        if (video && typeof video === 'object') {
+            if (['auto', 'performance', 'saver', 'lowest'].includes(video.playbackQuality)) {
+                setPayload['settings.video.playbackQuality'] = video.playbackQuality;
+            }
+            if (['ask', '1080', '720', '360'].includes(video.downloadQuality)) {
+                setPayload['settings.video.downloadQuality'] = video.downloadQuality;
+            }
+            if (['ask', 'mp4', 'original'].includes(video.downloadFormat)) {
+                setPayload['settings.video.downloadFormat'] = video.downloadFormat;
+            }
+            if (video.autoplay === 'on' || video.autoplay === 'off') {
+                setPayload['settings.video.autoplay'] = video.autoplay;
+            }
+        }
+
+        // Atomic $set update prevents VersionError / race overwrites with concurrent sync-version or fcm-token saves
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            Object.keys(setPayload).length > 0 ? { $set: setPayload } : {},
+            { new: true }
+        ).select('settings');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Handle live real-time showOnlineStatus toggle across cluster & all clients
+        if (privacy && typeof privacy.showOnlineStatus === 'boolean') {
+            const io = req.app.get('io');
+            const strUserId = String(updatedUser._id);
+            if (!privacy.showOnlineStatus) {
+                if (pubClient) {
+                    try {
+                        await pubClient.sadd('hidden_user_ids', strUserId);
+                        await pubClient.srem('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
+                if (io) {
+                    io.emit('user_status_change', { userId: strUserId, status: 'offline', lastActive: new Date() });
+                    try {
+                        const redisMembers = pubClient ? await pubClient.smembers('online_user_ids') : [];
+                        const hiddenMembers = pubClient ? await pubClient.smembers('hidden_user_ids') : [];
+                        const hiddenSet = new Set(hiddenMembers.map(String));
+                        const filtered = (redisMembers || []).filter(id => !hiddenSet.has(String(id)));
+                        io.emit('getOnlineUsers', filtered);
+                    } catch (err) {}
+                }
+            } else {
+                if (pubClient) {
+                    try {
+                        await pubClient.srem('hidden_user_ids', strUserId);
+                        await pubClient.sadd('online_user_ids', strUserId);
+                    } catch (err) {}
+                }
+                if (io) {
+                    io.emit('user_status_change', { userId: strUserId, status: 'online' });
+                    try {
+                        const redisMembers = pubClient ? await pubClient.smembers('online_user_ids') : [];
+                        io.emit('getOnlineUsers', redisMembers || []);
+                    } catch (err) {}
+                }
+            }
+        }
+
+        res.json({ message: 'Settings updated', settings: updatedUser.settings });
     } catch (error) {
         console.error('Update settings error:', error);
         res.status(500).json({ message: 'Server error' });

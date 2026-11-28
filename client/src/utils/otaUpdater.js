@@ -7,7 +7,7 @@ import axios from 'axios';
 // @capgo/capacitor-updater (which remains in root package.json for Android).
 const CapacitorUpdater = registerPlugin('CapacitorUpdater');
 
-export const CURRENT_OTA_VERSION = '2.6.5-ota.7';
+export const CURRENT_OTA_VERSION = '2.6.5-ota.8';
 
 let otaInitialized = false;
 let otaCheckInFlight = false;
@@ -56,6 +56,56 @@ export async function getVersionSummary() {
         otaVersion: bundleInfo.version,
         isOtaBundle: bundleInfo.isOtaBundle,
     };
+}
+
+/**
+ * Read-only availability check for the Settings -> Sürüm Bilgisi page.
+ * Does NOT download or force-apply anything; reports whether a newer OTA or APK exists.
+ */
+export async function checkOtaAvailability() {
+    const summary = await getVersionSummary();
+    try {
+        const { data } = await axios.get('/api/app/version', { timeout: 10000 });
+        const latestAppVersion = data?.latestVersion || summary.appVersion;
+        const latestOtaVersion = data?.otaVersion || summary.otaVersion;
+        const minNativeCode = Number(data?.otaMinNativeVersionCode || 0);
+        const minSupportedNative = Number(data?.minSupportedVersionCode || 0);
+        const currentNativeCode = Number(summary.versionCode || 0);
+
+        const isNative = Capacitor.isNativePlatform();
+        const hasApkUpdate = Boolean(
+            isNative && currentNativeCode > 0 && (currentNativeCode < minSupportedNative || (minNativeCode > 0 && currentNativeCode < minNativeCode))
+        );
+        const hasOtaUpdate = Boolean(
+            isNative &&
+            !hasApkUpdate &&
+            data?.otaVersion &&
+            data?.otaBundleUrl &&
+            String(data.otaVersion) !== String(summary.otaVersion)
+        );
+
+        return {
+            ...summary,
+            checked: true,
+            latestAppVersion,
+            latestOtaVersion,
+            hasOtaUpdate,
+            hasApkUpdate,
+            downloadUrl: data?.downloadUrl || 'https://api.oxypace.com.tr/downloads/oxypace.apk',
+            changelog: data?.changelog || '',
+        };
+    } catch (_) {
+        return {
+            ...summary,
+            checked: false,
+            latestAppVersion: summary.appVersion,
+            latestOtaVersion: summary.otaVersion,
+            hasOtaUpdate: false,
+            hasApkUpdate: false,
+            downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
+            changelog: '',
+        };
+    }
 }
 
 function showOtaUpdatedToast(versionText) {

@@ -1,38 +1,90 @@
+/* Modern Monochrome Members Drawer — Clean Flat List (No category headers, no badges, no glow) */
 .members-sidebar {
-    width: 240px;
-    background-color: var(--bg-secondary);
-    height: 100%;
-    overflow-y: auto;
-    flex-shrink: 0;
-    padding: 0 8px 8px 16px;
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 248px;
+    max-width: 82vw;
+    background-color: #0c0c0e;
+    border-left: 1px solid var(--border-subtle);
+    z-index: 2000 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+    animation: membersSlideIn 0.16s ease-out;
+}
+
+:root[data-theme='light'] .members-sidebar,
+[data-theme='light'] .members-sidebar {
+    background-color: #ffffff;
+    border-left-color: rgba(0, 0, 0, 0.08);
+    box-shadow: -6px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes membersSlideIn {
+    from {
+        transform: translateX(16px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 .members-header-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 0 8px 0;
-    margin-bottom: 8px;
+    padding: 10px 12px 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.members-header-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 }
 
 .members-header-top h3 {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
+    color: var(--text-primary);
+    letter-spacing: 0.01em;
     margin: 0;
+}
+
+.members-total-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 6px;
+    border-radius: 6px;
+    line-height: 1.4;
+}
+
+:root[data-theme='light'] .members-total-count,
+[data-theme='light'] .members-total-count {
+    background: rgba(0, 0, 0, 0.06);
 }
 
 .close-members-btn {
     background: transparent;
     border: none;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4px;
-    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 8px !important;
     transition: color 0.14s ease, background-color 0.14s ease;
 }
 
@@ -41,85 +93,146 @@
     background-color: var(--bg-hover);
 }
 
-.members-category {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    margin: 24px 0 8px 0;
+.members-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 6px 8px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    -webkit-overflow-scrolling: touch;
 }
-.members-category:first-child { margin-top: 0; }
 
 .member-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     padding: 6px 8px;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    margin-bottom: 2px;
     color: var(--text-secondary);
     text-decoration: none;
+    transition: background-color 0.14s ease, color 0.14s ease;
 }
+
 .member-link {
     text-decoration: none;
     color: inherit;
 }
+
 .member-item:hover {
     background-color: var(--bg-hover);
     color: var(--text-primary);
 }
-.member-item.offline {
-    opacity: 0.7;
+
+.member-item.is-offline {
+    opacity: 0.82;
 }
-.member-item.offline:hover {
+
+.member-item.is-offline:hover {
     opacity: 1;
 }
+
 .member-avatar-wrapper {
     position: relative;
     width: 32px;
     height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
 }
-.member-avatar, .member-avatar-placeholder {
+
+:root[data-theme='light'] .member-avatar-wrapper,
+[data-theme='light'] .member-avatar-wrapper {
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Solid clean green frame for active users — zero neon glow, zero animation, zero dot */
+.member-avatar-wrapper.is-online {
+    border: 2px solid #22c55e;
+}
+
+:root[data-theme='light'] .member-avatar-wrapper.is-online,
+[data-theme='light'] .member-avatar-wrapper.is-online {
+    border-color: #16a34a;
+}
+
+.member-avatar,
+.member-avatar-placeholder {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
+    display: block;
 }
+
 .member-avatar-placeholder {
-    background-color: var(--primary-color);
+    background-color: #1c1f28;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-weight: 500;
+    color: var(--text-primary);
+    font-weight: 600;
     font-size: 12px;
 }
-.status-indicator {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 3px solid var(--bg-secondary);
+
+:root[data-theme='light'] .member-avatar-placeholder,
+[data-theme='light'] .member-avatar-placeholder {
+    background-color: #e2e8f0;
+    color: #0f172a;
 }
-.status-indicator.online { background-color: #23a559; }
 
 .member-info {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
+
 .member-name {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 500;
-    color: inherit;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.active-role {
-    color: #2ecc71 !important;
+
+.member-item.is-offline .member-name {
+    color: var(--text-secondary);
 }
-.member-custom-status {
-    font-size: 12px;
-    margin-top: 2px;
+
+.member-name.is-online {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+:root[data-theme='light'] .member-name.is-online,
+[data-theme='light'] .member-name.is-online {
+    color: #16a34a;
+}
+
+.member-last-active {
+    font-size: 11px;
     color: var(--text-tertiary);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.members-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.members-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.members-list::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 4px;
 }

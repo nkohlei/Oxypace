@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
     Eye, EyeOff, ShieldCheck, KeyRound, Lock, CheckCircle2, AlertTriangle, 
     Hourglass, ChevronDown, Sliders, Type, MoveVertical, RotateCcw, 
-    Sparkles, Film, Grid, Check, RefreshCw, Tv, Volume2, Shield, Zap 
+    Sparkles, Film, Grid, Check, RefreshCw, Tv, Volume2, Shield, Zap, Info, Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -13,7 +13,7 @@ import Badge from '../components/Badge';
 import UserBadges from '../components/UserBadges';
 import { getImageUrl } from '../utils/imageUtils';
 import { Capacitor } from '@capacitor/core';
-import { getVersionSummary, checkAndApplyOtaUpdate } from '../utils/otaUpdater';
+import { getVersionSummary, checkAndApplyOtaUpdate, checkOtaAvailability, CURRENT_OTA_VERSION } from '../utils/otaUpdater';
 import { getPerformanceMode, applyPerformanceMode, detectLowEndDevice } from '../utils/performanceMode';
 import '../components/InfoPage.css';
 import './Settings.css';
@@ -66,35 +66,60 @@ const Settings = () => {
     const [versionInfo, setVersionInfo] = useState({
         platform: Capacitor.isNativePlatform() ? 'android' : 'web',
         appVersion: '2.6.5',
-        otaVersion: '2.6.5-ota.2',
+        versionCode: Capacitor.isNativePlatform() ? 266 : 0,
+        otaVersion: CURRENT_OTA_VERSION,
+        hasOtaUpdate: false,
+        hasApkUpdate: false,
+        latestAppVersion: '2.6.5',
+        latestOtaVersion: CURRENT_OTA_VERSION,
+        checked: false,
+        downloadUrl: 'https://api.oxypace.com.tr/downloads/oxypace.apk',
+        changelog: '',
     });
     const [otaCheckState, setOtaCheckState] = useState({ checking: false, label: '' });
+    const contentScrollRef = useRef(null);
     const videoMutationSeqRef = useRef(0);
     const lastLocalVideoEditRef = useRef(0);
 
     useEffect(() => {
         let mounted = true;
         getVersionSummary().then((summary) => {
-            if (mounted && summary) setVersionInfo(summary);
+            if (mounted && summary) setVersionInfo((prev) => ({ ...prev, ...summary }));
         }).catch(() => {});
         return () => { mounted = false; };
     }, []);
 
-    const handleManualOtaCheck = async () => {
+    useEffect(() => {
+        if (contentScrollRef.current) {
+            contentScrollRef.current.scrollTop = 0;
+        }
+        if (activeMenu === 'version') {
+            let mounted = true;
+            checkOtaAvailability().then((info) => {
+                if (mounted && info) {
+                    setVersionInfo((prev) => ({ ...prev, ...info }));
+                }
+            }).catch(() => {});
+            return () => { mounted = false; };
+        }
+    }, [activeMenu]);
+
+    const handleDownloadOtaUpdate = async () => {
         if (otaCheckState.checking) return;
-        setOtaCheckState({ checking: true, label: 'Kontrol ediliyor...' });
+        setOtaCheckState({ checking: true, label: 'İndiriliyor...' });
         const res = await checkAndApplyOtaUpdate(true);
         if (res?.status === 'up_to_date') {
-            setOtaCheckState({ checking: false, label: 'Güncel ✓' });
+            setOtaCheckState({ checking: false, label: 'Uygulama güncel.' });
+            setVersionInfo((prev) => ({ ...prev, hasOtaUpdate: false }));
         } else if (res?.status === 'downloading') {
-            setOtaCheckState({ checking: false, label: 'İndiriliyor...' });
+            setOtaCheckState({ checking: false, label: 'İndirme devam ediyor...' });
         } else if (res?.status === 'applied' || res?.status === 'queued') {
             setOtaCheckState({ checking: false, label: 'Güncelleme uygulanıyor...' });
         } else {
-            setOtaCheckState({ checking: false, label: res?.message || 'Denetlendi' });
+            setOtaCheckState({ checking: false, label: res?.message || 'Güncelleme başlatılamadı.' });
         }
-        getVersionSummary().then((summary) => {
-            if (summary) setVersionInfo(summary);
+        checkOtaAvailability().then((info) => {
+            if (info) setVersionInfo((prev) => ({ ...prev, ...info }));
         }).catch(() => {});
     };
 
@@ -817,6 +842,15 @@ const Settings = () => {
                     <span style={{ fontWeight: 500 }}>Performans ve Akıcılık</span>
                 </div>
 
+                <div
+                    className={`channel-item ${activeMenu === 'version' ? 'active' : ''}`}
+                    onClick={() => setActiveMenu('version')}
+                    style={{ padding: '8px', margin: '2px 0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: activeMenu === 'version' ? 'var(--text-primary)' : 'var(--text-secondary)', backgroundColor: activeMenu === 'version' ? 'var(--bg-hover)' : 'transparent' }}
+                >
+                    <Info size={20} />
+                    <span style={{ fontWeight: 500 }}>Sürüm Bilgisi</span>
+                </div>
+
                 <div style={{
                     padding: '24px 8px 8px 8px',
                     color: '#949ba4',
@@ -869,41 +903,6 @@ const Settings = () => {
 
                 <div className="settings-footer-info" style={{ marginTop: 'auto', paddingTop: '24px' }}>
                     <p>&copy; 2026 Oxypace</p>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94a3b8)', marginTop: '4px' }}>
-                        {versionInfo.platform === 'android'
-                            ? `Android v${versionInfo.appVersion} • OTA: ${versionInfo.otaVersion}`
-                            : `Web v${versionInfo.appVersion}`}
-                    </p>
-                    {Capacitor.isNativePlatform() && (
-                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <button
-                                type="button"
-                                onClick={handleManualOtaCheck}
-                                disabled={otaCheckState.checking}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(56, 189, 248, 0.35)',
-                                    background: 'rgba(56, 189, 248, 0.12)',
-                                    color: '#38bdf8',
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    cursor: otaCheckState.checking ? 'wait' : 'pointer',
-                                }}
-                            >
-                                <RefreshCw size={13} />
-                                {otaCheckState.checking ? 'Denetleniyor...' : 'Güncelleme Denetle'}
-                            </button>
-                            {otaCheckState.label && (
-                                <span style={{ fontSize: '11.5px', color: '#86efac', fontWeight: 500 }}>
-                                    {otaCheckState.label}
-                                </span>
-                            )}
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -947,6 +946,10 @@ const Settings = () => {
                 title = "Performans ve Akıcılık";
                 content = renderPerformanceMenu();
                 break;
+            case 'version':
+                title = "Sürüm Bilgisi";
+                content = renderVersionMenu();
+                break;
             case 'danger':
                 title = "Tehlikeli Alan";
                 content = renderDangerMenu();
@@ -988,7 +991,11 @@ const Settings = () => {
                         </div>
                     </div>
                 )}
-                <div className="settings-content-scrollable custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
+                <div
+                    ref={contentScrollRef}
+                    className="settings-content-scrollable custom-scrollbar"
+                    style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}
+                >
                     <div className={activeMenu !== 'main' ? 'settings-main-panel' : ''}>
                         {content}
                     </div>
@@ -1904,6 +1911,95 @@ const Settings = () => {
                         <li>Sürekli dönen/parlayan rozet animasyonlarını durdurur.</li>
                         <li>Tekil video dekoderiyle bellek kullanımını düşürür.</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderVersionMenu = () => (
+        <div className="submenu-content">
+            <div className="settings-group-container">
+                <h3 className="settings-group-title">Uygulama Detayları</h3>
+                <div className="settings-card">
+                    <div className="version-info-list">
+                        <div className="version-info-row">
+                            <span className="version-info-label">Platform</span>
+                            <span className="version-info-value">
+                                {versionInfo.platform === 'android' ? 'Android Uygulaması' : 'Web'}
+                            </span>
+                        </div>
+                        <div className="version-info-row">
+                            <span className="version-info-label">Uygulama Sürümü</span>
+                            <span className="version-info-value">v{versionInfo.appVersion}</span>
+                        </div>
+                        {versionInfo.platform === 'android' && versionInfo.versionCode > 0 && (
+                            <div className="version-info-row">
+                                <span className="version-info-label">Derleme Numarası</span>
+                                <span className="version-info-value">{versionInfo.versionCode}</span>
+                            </div>
+                        )}
+                        <div className="version-info-row">
+                            <span className="version-info-label">Canlı Paket (OTA)</span>
+                            <span className="version-info-value">{versionInfo.otaVersion}</span>
+                        </div>
+                        <div className="version-info-row">
+                            <span className="version-info-label">Güncelleme Durumu</span>
+                            <span className="version-info-value">
+                                {versionInfo.hasApkUpdate
+                                    ? `Yeni uygulama sürümü mevcut (v${versionInfo.latestAppVersion})`
+                                    : versionInfo.hasOtaUpdate
+                                        ? `Yeni canlı güncelleme mevcut (${versionInfo.latestOtaVersion})`
+                                        : 'Uygulama güncel'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {versionInfo.hasOtaUpdate && (
+                        <div className="version-update-box">
+                            <div className="version-update-meta">
+                                <span className="version-update-title">
+                                    İndirilebilir Güncelleme: {versionInfo.latestOtaVersion}
+                                </span>
+                                {versionInfo.changelog && (
+                                    <p className="version-update-notes">{versionInfo.changelog}</p>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="version-download-btn"
+                                onClick={handleDownloadOtaUpdate}
+                                disabled={otaCheckState.checking}
+                            >
+                                <Download size={15} />
+                                <span>{otaCheckState.checking ? 'İndiriliyor...' : 'Güncellemeyi İndir ve Yükle'}</span>
+                            </button>
+                            {otaCheckState.label && (
+                                <span className="version-status-note">{otaCheckState.label}</span>
+                            )}
+                        </div>
+                    )}
+
+                    {versionInfo.hasApkUpdate && (
+                        <div className="version-update-box">
+                            <div className="version-update-meta">
+                                <span className="version-update-title">
+                                    Yeni Sürüm Mevcut: v{versionInfo.latestAppVersion}
+                                </span>
+                                {versionInfo.changelog && (
+                                    <p className="version-update-notes">{versionInfo.changelog}</p>
+                                )}
+                            </div>
+                            <a
+                                href={versionInfo.downloadUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="version-download-btn"
+                            >
+                                <Download size={15} />
+                                <span>Yeni Sürümü İndir</span>
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -238,11 +238,13 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
         window.location.href = '/';
     };
 
+    const isNativeOrMobileLogo = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+
     const handleLogoClick = (e) => {
         const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
         if (isMobile) {
             e.preventDefault();
-            navigate('/messages');
+            e.stopPropagation();
         }
     };
 
@@ -269,10 +271,17 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
             <header className={`navbar${mapMode ? ' navbar-map-mode' : ''}${hidden ? ' navbar-hidden' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-left">
-                        <Link to="/" className="brand-logo" onClick={handleLogoClick}>
-                            <img src="/logo.png" alt="Oxypace Logo" className="logo-image" width="38" height="38" decoding="async" />
-                            <img src="/oxypace-text-logo2.webp" alt="oxypace" className="logo-text" width="110" height="25" decoding="async" />
-                        </Link>
+                        {isNativeOrMobileLogo ? (
+                            <div className="brand-logo brand-logo--static" aria-label="Oxypace">
+                                <img src="/logo.png" alt="Oxypace Logo" className="logo-image" width="38" height="38" decoding="async" />
+                                <img src="/oxypace-text-logo2.webp" alt="oxypace" className="logo-text" width="110" height="25" decoding="async" />
+                            </div>
+                        ) : (
+                            <Link to="/" className="brand-logo" onClick={handleLogoClick}>
+                                <img src="/logo.png" alt="Oxypace Logo" className="logo-image" width="38" height="38" decoding="async" />
+                                <img src="/oxypace-text-logo2.webp" alt="oxypace" className="logo-text" width="110" height="25" decoding="async" />
+                            </Link>
+                        )}
 
                         {isLiveRoomActive && (
                             <button
@@ -433,7 +442,7 @@ const Navbar = ({ centerContent = null, hideThemeToggle = false, mapMode = false
                                                  src={user?.profile?.avatar}
                                                  alt="Avatar"
                                                  className="dropdown-avatar"
-                                                 size={40}
+                                                 size={34}
                                              />
                                              <div className="dropdown-user-details">
                                                  <span className="dropdown-username">{user?.username}</span>

@@ -210,6 +210,23 @@ export const AuthProvider = ({ children }) => {
             setUser(userData);
             try {
                 localStorage.setItem('user', JSON.stringify(userData));
+                // Immediately hydrate server-saved video preferences into localStorage so fresh APK installs / logins stay in sync
+                const remoteVideo = userData?.settings?.video;
+                if (remoteVideo && typeof remoteVideo === 'object') {
+                    if (remoteVideo.playbackQuality) {
+                        localStorage.setItem('video_playback_quality', remoteVideo.playbackQuality);
+                    }
+                    if (remoteVideo.downloadQuality) {
+                        localStorage.setItem('video_download_quality', remoteVideo.downloadQuality);
+                    }
+                    if (remoteVideo.downloadFormat) {
+                        localStorage.setItem('video_download_format', remoteVideo.downloadFormat);
+                    }
+                    if (remoteVideo.autoplay === 'on' || remoteVideo.autoplay === 'off') {
+                        localStorage.setItem('video_autoplay', remoteVideo.autoplay);
+                        window.dispatchEvent(new CustomEvent('video-autoplay-changed', { detail: remoteVideo.autoplay }));
+                    }
+                }
             } catch (_) {}
 
             // Auto-sync client app version and platform for admin tracking
@@ -334,6 +351,10 @@ export const AuthProvider = ({ children }) => {
         }
 
         localStorage.removeItem('_oxypace_uid');
+        localStorage.removeItem('video_autoplay');
+        localStorage.removeItem('video_playback_quality');
+        localStorage.removeItem('video_download_quality');
+        localStorage.removeItem('video_download_format');
         sessionStorage.clear();
         sessionStorage.setItem('oxypace_fresh_login', 'true');
 
@@ -418,6 +439,10 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             localStorage.removeItem('_oxypace_uid'); // presence cache temizle
+            localStorage.removeItem('video_autoplay');
+            localStorage.removeItem('video_playback_quality');
+            localStorage.removeItem('video_download_quality');
+            localStorage.removeItem('video_download_format');
             sessionStorage.clear();
             document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
             axios.post('/api/auth/logout').catch(() => {});
